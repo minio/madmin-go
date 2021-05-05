@@ -44,7 +44,7 @@ type BucketAccessInfo struct {
 // account across buckets.
 type AccountInfo struct {
 	AccountName string
-	Policy      []byte // Use iam/policy.Parse to parse the result, to be done by the caller.
+	Policy      json.RawMessage // Use iam/policy.Parse to parse the result, to be done by the caller.
 	Buckets     []BucketAccessInfo
 }
 
@@ -255,10 +255,10 @@ func (adm *AdminClient) SetUserStatus(ctx context.Context, accessKey string, sta
 
 // AddServiceAccountReq is the request options of the add service account admin call
 type AddServiceAccountReq struct {
-	Policy     []byte `json:"policy,omitempty"` // Parsed value from iam/policy.Parse()
-	TargetUser string `json:"targetUser,omitempty"`
-	AccessKey  string `json:"accessKey,omitempty"`
-	SecretKey  string `json:"secretKey,omitempty"`
+	Policy     json.RawMessage `json:"policy,omitempty"` // Parsed value from iam/policy.Parse()
+	TargetUser string          `json:"targetUser,omitempty"`
+	AccessKey  string          `json:"accessKey,omitempty"`
+	SecretKey  string          `json:"secretKey,omitempty"`
 }
 
 // AddServiceAccountResp is the response body of the add service account admin call
@@ -309,9 +309,9 @@ func (adm *AdminClient) AddServiceAccount(ctx context.Context, opts AddServiceAc
 
 // UpdateServiceAccountReq is the request options of the edit service account admin call
 type UpdateServiceAccountReq struct {
-	NewPolicy    []byte `json:"newPolicy,omitempty"` // Parsed policy from iam/policy.Parse
-	NewSecretKey string `json:"newSecretKey,omitempty"`
-	NewStatus    string `json:"newStatus,omityempty"`
+	NewPolicy    json.RawMessage `json:"newPolicy,omitempty"` // Parsed policy from iam/policy.Parse
+	NewSecretKey string          `json:"newSecretKey,omitempty"`
+	NewStatus    string          `json:"newStatus,omityempty"`
 }
 
 // UpdateServiceAccount - edit an existing service account

@@ -50,7 +50,7 @@ func (adm *AdminClient) InfoCannedPolicy(ctx context.Context, policyName string)
 }
 
 // ListCannedPolicies - list all configured canned policies.
-func (adm *AdminClient) ListCannedPolicies(ctx context.Context) (map[string]*json.RawMessage, error) {
+func (adm *AdminClient) ListCannedPolicies(ctx context.Context) (map[string]json.RawMessage, error) {
 	reqData := requestData{
 		relPath: adminAPIPrefix + "/list-canned-policies",
 	}
@@ -72,7 +72,7 @@ func (adm *AdminClient) ListCannedPolicies(ctx context.Context) (map[string]*jso
 		return nil, err
 	}
 
-	var policies = make(map[string]*json.RawMessage)
+	var policies = make(map[string]json.RawMessage)
 	if err = json.Unmarshal(respBytes, &policies); err != nil {
 		return nil, err
 	}
