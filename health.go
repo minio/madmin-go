@@ -19,263 +19,656 @@ package madmin
 import (
 	"context"
 	"encoding/json"
-	"io"
-	"math/big"
+	"errors"
 	"net/http"
 	"net/url"
+	"runtime"
+	"syscall"
 	"time"
 
-	"github.com/shirou/gopsutil/v3/cpu"
-	diskhw "github.com/shirou/gopsutil/v3/disk"
-	"github.com/shirou/gopsutil/v3/host"
-	"github.com/shirou/gopsutil/v3/mem"
-	"github.com/shirou/gopsutil/v3/process"
+	"github.com/shirou/gopsutil/cpu"
+	"github.com/shirou/gopsutil/disk"
+	"github.com/shirou/gopsutil/host"
+	"github.com/shirou/gopsutil/mem"
+	"github.com/shirou/gopsutil/net"
+	"github.com/shirou/gopsutil/process"
 )
 
-// HealthInfo - MinIO cluster's health Info
-type HealthInfo struct {
-	TimeStamp time.Time       `json:"timestamp,omitempty"`
-	Error     string          `json:"error,omitempty"`
-	Perf      PerfInfo        `json:"perf,omitempty"`
-	Minio     MinioHealthInfo `json:"minio,omitempty"`
-	Sys       SysHealthInfo   `json:"sys,omitempty"`
+const (
+	// HealthInfoVersion0 is version 0
+	HealthInfoVersion0 = ""
+	// HealthInfoVersion1 is version 1
+	HealthInfoVersion1 = "1"
+	// HealthInfoVersion is current health info version.
+	HealthInfoVersion = HealthInfoVersion1
+)
+
+// CPU contains system's CPU information.
+type CPU struct {
+	VendorID   string   `json:"vendor_id"`
+	Family     string   `json:"family"`
+	Model      string   `json:"model"`
+	Stepping   int32    `json:"stepping"`
+	PhysicalID string   `json:"physical_id"`
+	ModelName  string   `json:"model_name"`
+	Mhz        float64  `json:"mhz"`
+	CacheSize  int32    `json:"cache_size"`
+	Flags      []string `json:"flags"`
+	Microcode  string   `json:"microcode"`
+	Cores      int      `json:"cores"` // computed
 }
 
-// SysHealthInfo - Includes hardware and system information of the MinIO cluster
-type SysHealthInfo struct {
-	CPUInfo    []ServerCPUInfo    `json:"cpus,omitempty"`
-	DiskHwInfo []ServerDiskHwInfo `json:"drives,omitempty"`
-	OsInfo     []ServerOsInfo     `json:"osinfos,omitempty"`
-	MemInfo    []ServerMemInfo    `json:"meminfos,omitempty"`
-	ProcInfo   []ServerProcInfo   `json:"procinfos,omitempty"`
-	Error      string             `json:"error,omitempty"`
-}
-
-// ServerProcInfo - Includes host process lvl information
-type ServerProcInfo struct {
-	Addr      string       `json:"addr"`
-	Processes []SysProcess `json:"processes,omitempty"`
-	Error     string       `json:"error,omitempty"`
-}
-
-// SysProcess - Includes process lvl information about a single process
-type SysProcess struct {
-	Pid             int32                       `json:"pid"`
-	Background      bool                        `json:"background,omitempty"`
-	CPUPercent      float64                     `json:"cpupercent,omitempty"`
-	Children        []int32                     `json:"children,omitempty"`
-	CmdLine         string                      `json:"cmd,omitempty"`
-	ConnectionCount int                         `json:"connection_count,omitempty"`
-	CreateTime      int64                       `json:"createtime,omitempty"`
-	Cwd             string                      `json:"cwd,omitempty"`
-	Exe             string                      `json:"exe,omitempty"`
-	Gids            []int32                     `json:"gids,omitempty"`
-	IOCounters      *process.IOCountersStat     `json:"iocounters,omitempty"`
-	IsRunning       bool                        `json:"isrunning,omitempty"`
-	MemInfo         *process.MemoryInfoStat     `json:"meminfo,omitempty"`
-	MemMaps         *[]process.MemoryMapsStat   `json:"memmaps,omitempty"`
-	MemPercent      float32                     `json:"mempercent,omitempty"`
-	Name            string                      `json:"name,omitempty"`
-	Nice            int32                       `json:"nice,omitempty"`
-	NumCtxSwitches  *process.NumCtxSwitchesStat `json:"numctxswitches,omitempty"`
-	NumFds          int32                       `json:"numfds,omitempty"`
-	NumThreads      int32                       `json:"numthreads,omitempty"`
-	PageFaults      *process.PageFaultsStat     `json:"pagefaults,omitempty"`
-	Parent          int32                       `json:"parent,omitempty"`
-	Ppid            int32                       `json:"ppid,omitempty"`
-	Status          string                      `json:"status,omitempty"`
-	Tgid            int32                       `json:"tgid,omitempty"`
-	Times           *cpu.TimesStat              `json:"cputimes,omitempty"`
-	Uids            []int32                     `json:"uids,omitempty"`
-	Username        string                      `json:"username,omitempty"`
-}
-
-// ServerMemInfo - Includes host virtual and swap mem information
-type ServerMemInfo struct {
-	Addr       string                 `json:"addr"`
-	SwapMem    *mem.SwapMemoryStat    `json:"swap,omitempty"`
-	VirtualMem *mem.VirtualMemoryStat `json:"virtualmem,omitempty"`
-	Error      string                 `json:"error,omitempty"`
-}
-
-// ServerOsInfo - Includes host os information
-type ServerOsInfo struct {
-	Addr    string                 `json:"addr"`
-	Info    *host.InfoStat         `json:"info,omitempty"`
-	Sensors []host.TemperatureStat `json:"sensors,omitempty"`
-	Users   []host.UserStat        `json:"users,omitempty"`
-	Error   string                 `json:"error,omitempty"`
-}
-
-// ServerCPUInfo - Includes cpu and timer stats of each node of the MinIO cluster
-type ServerCPUInfo struct {
-	Addr     string          `json:"addr"`
-	CPUStat  []cpu.InfoStat  `json:"cpu,omitempty"`
-	TimeStat []cpu.TimesStat `json:"time,omitempty"`
-	Error    string          `json:"error,omitempty"`
-}
-
-// MinioHealthInfo - Includes MinIO confifuration information
-type MinioHealthInfo struct {
-	Info   InfoMessage `json:"info,omitempty"`
-	Config interface{} `json:"config,omitempty"`
-	Error  string      `json:"error,omitempty"`
-}
-
-// ServerDiskHwInfo - Includes usage counters, disk counters and partitions
-type ServerDiskHwInfo struct {
-	Addr       string                           `json:"addr"`
-	Usage      []*diskhw.UsageStat              `json:"usages,omitempty"`
-	Partitions []PartitionStat                  `json:"partitions,omitempty"`
-	Counters   map[string]diskhw.IOCountersStat `json:"counters,omitempty"`
-	Error      string                           `json:"error,omitempty"`
-}
-
-// SmartInfo contains S.M.A.R.T data about the drive
-type SmartInfo struct {
-	Device string `json:"device"`
-
-	Scsi *SmartScsiInfo `json:"scsi,omitempty"`
-	Nvme *SmartNvmeInfo `json:"nvme,omitempty"`
-	Ata  *SmartAtaInfo  `json:"ata,omitempty"`
-
+// CPUs contains all CPU information of a node.
+type CPUs struct {
+	Addr  string `json:"addr"`
 	Error string `json:"error,omitempty"`
+
+	CPUs []CPU `json:"cpus,omitempty"`
 }
 
-// SmartAtaInfo contains ATA drive info
-type SmartAtaInfo struct {
-	LUWWNDeviceID         string `json:"scsiLuWWNDeviceID,omitempty"`
-	SerialNum             string `json:"serialNum,omitempty"`
-	ModelNum              string `json:"modelNum,omitempty"`
-	FirmwareRevision      string `json:"firmwareRevision,omitempty"`
-	RotationRate          string `json:"RotationRate,omitempty"`
-	ATAMajorVersion       string `json:"MajorVersion,omitempty"`
-	ATAMinorVersion       string `json:"MinorVersion,omitempty"`
-	SmartSupportAvailable bool   `json:"smartSupportAvailable,omitempty"`
-	SmartSupportEnabled   bool   `json:"smartSupportEnabled,omitempty"`
-	ErrorLog              string `json:"smartErrorLog,omitempty"`
-	Transport             string `json:"transport,omitempty"`
+// GetCPUs returns system's all CPU information.
+func GetCPUs(ctx context.Context, addr string) CPUs {
+	infos, err := cpu.InfoWithContext(ctx)
+	if err != nil {
+		return CPUs{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	cpuMap := map[string][]cpu.InfoStat{}
+	for _, info := range infos {
+		infoStats, found := cpuMap[info.PhysicalID]
+		if !found {
+			infoStats = []cpu.InfoStat{}
+		}
+		cpuMap[info.PhysicalID] = append(infoStats, info)
+	}
+
+	cpus := []CPU{}
+	for _, infoStats := range cpuMap {
+		cpus = append(cpus, CPU{
+			VendorID:   infoStats[0].VendorID,
+			Family:     infoStats[0].Family,
+			Model:      infoStats[0].Model,
+			Stepping:   infoStats[0].Stepping,
+			PhysicalID: infoStats[0].PhysicalID,
+			ModelName:  infoStats[0].ModelName,
+			Mhz:        infoStats[0].Mhz,
+			CacheSize:  infoStats[0].CacheSize,
+			Flags:      infoStats[0].Flags,
+			Microcode:  infoStats[0].Microcode,
+			Cores:      len(infoStats),
+		})
+	}
+
+	return CPUs{
+		Addr: addr,
+		CPUs: cpus,
+	}
 }
 
-// SmartScsiInfo contains SCSI drive Info
-type SmartScsiInfo struct {
-	CapacityBytes int64  `json:"scsiCapacityBytes,omitempty"`
-	ModeSenseBuf  string `json:"scsiModeSenseBuf,omitempty"`
-	RespLen       int64  `json:"scsirespLen,omitempty"`
-	BdLen         int64  `json:"scsiBdLen,omitempty"`
-	Offset        int64  `json:"scsiOffset,omitempty"`
-	RPM           int64  `json:"sciRpm,omitempty"`
+// Partition contains disk partition's information.
+type Partition struct {
+	Error string `json:"error,omitempty"`
+
+	Device       string `json:"device,omitempty"`
+	Mountpoint   string `json:"mountpoint,omitempty"`
+	FSType       string `json:"fs_type,omitempty"`
+	MountOptions string `json:"mount_options,omitempty"`
+	MountFSType  string `json:"mount_fs_type,omitempty"`
+	SpaceTotal   uint64 `json:"space_total,omitempty"`
+	SpaceFree    uint64 `json:"space_free,omitempty"`
+	InodeTotal   uint64 `json:"inode_total,omitempty"`
+	InodeFree    uint64 `json:"inode_free,omitempty"`
 }
 
-// SmartNvmeInfo contains NVMe drive info
-type SmartNvmeInfo struct {
-	SerialNum       string `json:"serialNum,omitempty"`
-	VendorID        string `json:"vendorId,omitempty"`
-	FirmwareVersion string `json:"firmwareVersion,omitempty"`
-	ModelNum        string `json:"modelNum,omitempty"`
-	SpareAvailable  string `json:"spareAvailable,omitempty"`
-	SpareThreshold  string `json:"spareThreshold,omitempty"`
-	Temperature     string `json:"temperature,omitempty"`
-	CriticalWarning string `json:"criticalWarning,omitempty"`
+// Partitions contains all disk partitions information of a node.
+type Partitions struct {
+	Addr  string `json:"addr"`
+	Error string `json:"error,omitempty"`
 
-	MaxDataTransferPages        int      `json:"maxDataTransferPages,omitempty"`
-	ControllerBusyTime          *big.Int `json:"controllerBusyTime,omitempty"`
-	PowerOnHours                *big.Int `json:"powerOnHours,omitempty"`
-	PowerCycles                 *big.Int `json:"powerCycles,omitempty"`
-	UnsafeShutdowns             *big.Int `json:"unsafeShutdowns,omitempty"`
-	MediaAndDataIntegrityErrors *big.Int `json:"mediaAndDataIntgerityErrors,omitempty"`
-	DataUnitsReadBytes          *big.Int `json:"dataUnitsReadBytes,omitempty"`
-	DataUnitsWrittenBytes       *big.Int `json:"dataUnitsWrittenBytes,omitempty"`
-	HostReadCommands            *big.Int `json:"hostReadCommands,omitempty"`
-	HostWriteCommands           *big.Int `json:"hostWriteCommands,omitempty"`
+	Partitions []Partition `json:"partitions,omitempty"`
 }
 
-// PartitionStat - includes data from both shirou/psutil.diskHw.PartitionStat as well as SMART data
-type PartitionStat struct {
-	Device     string    `json:"device"`
-	Mountpoint string    `json:"mountpoint,omitempty"`
-	Fstype     string    `json:"fstype,omitempty"`
-	Opts       string    `json:"opts,omitempty"`
-	SmartInfo  SmartInfo `json:"smartInfo,omitempty"`
+// GetPartitions returns all disk partitions information of a node running linux only operating system.
+func GetPartitions(ctx context.Context, addr string) Partitions {
+	if runtime.GOOS != "linux" {
+		return Partitions{
+			Addr:  addr,
+			Error: "unsupported operating system " + runtime.GOOS,
+		}
+	}
+
+	parts, err := disk.PartitionsWithContext(ctx, false)
+	if err != nil {
+		return Partitions{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	partitions := []Partition{}
+
+	for i := range parts {
+		usage, err := disk.UsageWithContext(ctx, parts[i].Mountpoint)
+		if err != nil {
+			partitions = append(partitions, Partition{
+				Device: parts[i].Device,
+				Error:  err.Error(),
+			})
+		} else {
+			partitions = append(partitions, Partition{
+				Device:       parts[i].Device,
+				Mountpoint:   parts[i].Mountpoint,
+				FSType:       parts[i].Fstype,
+				MountOptions: parts[i].Opts,
+				MountFSType:  usage.Fstype,
+				SpaceTotal:   usage.Total,
+				SpaceFree:    usage.Free,
+				InodeTotal:   usage.InodesTotal,
+				InodeFree:    usage.InodesFree,
+			})
+		}
+	}
+
+	return Partitions{
+		Addr:       addr,
+		Partitions: partitions,
+	}
+}
+
+// OSInfo contains operating system's information.
+type OSInfo struct {
+	Addr  string `json:"addr"`
+	Error string `json:"error,omitempty"`
+
+	Info    host.InfoStat          `json:"info,omitempty"`
+	Sensors []host.TemperatureStat `json:"sensors,omitempty"`
+}
+
+// GetOSInfo returns linux only operating system's information.
+func GetOSInfo(ctx context.Context, addr string) OSInfo {
+	if runtime.GOOS != "linux" {
+		return OSInfo{
+			Addr:  addr,
+			Error: "unsupported operating system " + runtime.GOOS,
+		}
+	}
+
+	info, err := host.InfoWithContext(ctx)
+	if err != nil {
+		return OSInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	sensors, err := host.SensorsTemperaturesWithContext(ctx)
+	if err != nil {
+		if _, isWarningErr := err.(*host.Warnings); !isWarningErr {
+			return OSInfo{
+				Addr:  addr,
+				Error: err.Error(),
+			}
+		}
+	}
+
+	return OSInfo{
+		Addr:    addr,
+		Info:    *info,
+		Sensors: sensors,
+	}
+}
+
+// MemInfo contains system's RAM and swap information.
+type MemInfo struct {
+	Addr  string `json:"addr"`
+	Error string `json:"error,omitempty"`
+
+	Total          uint64 `json:"total,omitempty"`
+	Available      uint64 `json:"available,omitempty"`
+	SwapSpaceTotal uint64 `json:"swap_space_total,omitempty"`
+	SwapSpaceFree  uint64 `json:"swap_space_free,omitempty"`
+}
+
+// GetMemInfo returns system's RAM and swap information.
+func GetMemInfo(ctx context.Context, addr string) MemInfo {
+	meminfo, err := mem.VirtualMemoryWithContext(ctx)
+	if err != nil {
+		return MemInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	swapinfo, err := mem.SwapMemoryWithContext(ctx)
+	if err != nil {
+		return MemInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	return MemInfo{
+		Addr:           addr,
+		Total:          meminfo.Total,
+		Available:      meminfo.Available,
+		SwapSpaceTotal: swapinfo.Total,
+		SwapSpaceFree:  swapinfo.Free,
+	}
+}
+
+// ProcInfo contains current process's information.
+type ProcInfo struct {
+	Addr  string `json:"addr"`
+	Error string `json:"error,omitempty"`
+
+	PID            int32                      `json:"pid,omitempty"`
+	IsBackground   bool                       `json:"is_background,omitempty"`
+	CPUPercent     float64                    `json:"cpu_percent,omitempty"`
+	ChildrenPIDs   []int32                    `json:"children_pids,omitempty"`
+	CmdLine        string                     `json:"cmd_line,omitempty"`
+	NumConnections int                        `json:"num_connections,omitempty"`
+	CreateTime     int64                      `json:"create_time,omitempty"`
+	CWD            string                     `json:"cwd,omitempty"`
+	ExecPath       string                     `json:"exec_path,omitempty"`
+	GIDs           []int32                    `json:"gids,omitempty"`
+	IOCounters     process.IOCountersStat     `json:"iocounters,omitempty"`
+	NetIOCounters  []net.IOCountersStat       `json:"net_iocounters,omitempty"`
+	IsRunning      bool                       `json:"is_running,omitempty"`
+	MemInfo        process.MemoryInfoStat     `json:"mem_info,omitempty"`
+	MemMaps        []process.MemoryMapsStat   `json:"mem_maps,omitempty"`
+	MemPercent     float32                    `json:"mem_percent,omitempty"`
+	Name           string                     `json:"name,omitempty"`
+	Nice           int32                      `json:"nice,omitempty"`
+	NumCtxSwitches process.NumCtxSwitchesStat `json:"num_ctx_switches,omitempty"`
+	NumFDs         int32                      `json:"num_fds,omitempty"`
+	NumThreads     int32                      `json:"num_threads,omitempty"`
+	PageFaults     process.PageFaultsStat     `json:"page_faults,omitempty"`
+	PPID           int32                      `json:"ppid,omitempty"`
+	Status         string                     `json:"status,omitempty"`
+	TGID           int32                      `json:"tgid,omitempty"`
+	Times          cpu.TimesStat              `json:"times,omitempty"`
+	UIDs           []int32                    `json:"uids,omitempty"`
+	Username       string                     `json:"username,omitempty"`
+	Rlimit         []process.RlimitStat       `json:"rlimit,omitempty"`
+}
+
+// GetProcInfo returns current MinIO process information.
+func GetProcInfo(ctx context.Context, addr string) ProcInfo {
+	pid := int32(syscall.Getpid())
+	proc, err := process.NewProcess(pid)
+	if err != nil {
+		return ProcInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	isBackground, err := proc.BackgroundWithContext(ctx)
+	if err != nil {
+		return ProcInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	cpuPercent, err := proc.CPUPercentWithContext(ctx)
+	if err != nil {
+		return ProcInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	children, _ := proc.ChildrenWithContext(ctx)
+	childrenPIDs := []int32{}
+	for i := range children {
+		childrenPIDs = append(childrenPIDs, children[i].Pid)
+	}
+
+	cmdLine, err := proc.CmdlineWithContext(ctx)
+	if err != nil {
+		return ProcInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	connections, err := proc.ConnectionsWithContext(ctx)
+	if err != nil {
+		return ProcInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+	numConnections := len(connections)
+
+	createTime, err := proc.CreateTimeWithContext(ctx)
+	if err != nil {
+		return ProcInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	cwd, err := proc.CwdWithContext(ctx)
+	if err != nil {
+		return ProcInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	execPath, err := proc.ExeWithContext(ctx)
+	if err != nil {
+		return ProcInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	gids, err := proc.GidsWithContext(ctx)
+	if err != nil {
+		return ProcInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	ioCounters, err := proc.IOCountersWithContext(ctx)
+	if err != nil {
+		return ProcInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	netIOCounters, err := proc.NetIOCountersWithContext(ctx, true)
+	if err != nil {
+		return ProcInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	isRunning, err := proc.IsRunningWithContext(ctx)
+	if err != nil {
+		return ProcInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	memInfo, err := proc.MemoryInfoWithContext(ctx)
+	if err != nil {
+		return ProcInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	memMaps, err := proc.MemoryMapsWithContext(ctx, true)
+	if err != nil {
+		return ProcInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	memPercent, err := proc.MemoryPercentWithContext(ctx)
+	if err != nil {
+		return ProcInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	name, err := proc.NameWithContext(ctx)
+	if err != nil {
+		return ProcInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	nice, err := proc.NiceWithContext(ctx)
+	if err != nil {
+		return ProcInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	numCtxSwitches, err := proc.NumCtxSwitchesWithContext(ctx)
+	if err != nil {
+		return ProcInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	numFDs, err := proc.NumFDsWithContext(ctx)
+	if err != nil {
+		return ProcInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	numThreads, err := proc.NumThreadsWithContext(ctx)
+	if err != nil {
+		return ProcInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	pageFaults, err := proc.PageFaultsWithContext(ctx)
+	if err != nil {
+		return ProcInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	ppid, _ := proc.PpidWithContext(ctx)
+
+	status, err := proc.StatusWithContext(ctx)
+	if err != nil {
+		return ProcInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	tgid, err := proc.Tgid()
+	if err != nil {
+		return ProcInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	times, err := proc.TimesWithContext(ctx)
+	if err != nil {
+		return ProcInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	uids, err := proc.UidsWithContext(ctx)
+	if err != nil {
+		return ProcInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	username, err := proc.UsernameWithContext(ctx)
+	if err != nil {
+		return ProcInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	rlimit, err := proc.RlimitUsageWithContext(ctx, true)
+	if err != nil {
+		return ProcInfo{
+			Addr:  addr,
+			Error: err.Error(),
+		}
+	}
+
+	return ProcInfo{
+		Addr:           addr,
+		PID:            pid,
+		IsBackground:   isBackground,
+		CPUPercent:     cpuPercent,
+		ChildrenPIDs:   childrenPIDs,
+		CmdLine:        cmdLine,
+		NumConnections: numConnections,
+		CreateTime:     createTime,
+		CWD:            cwd,
+		ExecPath:       execPath,
+		GIDs:           gids,
+		IOCounters:     *ioCounters,
+		NetIOCounters:  netIOCounters,
+		IsRunning:      isRunning,
+		MemInfo:        *memInfo,
+		MemMaps:        *memMaps,
+		MemPercent:     memPercent,
+		Name:           name,
+		Nice:           nice,
+		NumCtxSwitches: *numCtxSwitches,
+		NumFDs:         numFDs,
+		NumThreads:     numThreads,
+		PageFaults:     *pageFaults,
+		PPID:           ppid,
+		Status:         status,
+		TGID:           tgid,
+		Times:          *times,
+		UIDs:           uids,
+		Username:       username,
+		Rlimit:         rlimit,
+	}
+}
+
+// SysInfo - Includes hardware and system information of the MinIO cluster
+type SysInfo struct {
+	CPUInfo    []CPUs       `json:"cpus,omitempty"`
+	Partitions []Partitions `json:"partitions,omitempty"`
+	OSInfo     []OSInfo     `json:"osinfo,omitempty"`
+	MemInfo    []MemInfo    `json:"meminfo,omitempty"`
+	ProcInfo   []ProcInfo   `json:"procinfo,omitempty"`
+}
+
+// Latency contains write operation latency in seconds of a disk drive.
+type Latency struct {
+	Avg          float64 `json:"avg"`
+	Max          float64 `json:"max"`
+	Min          float64 `json:"min"`
+	Percentile50 float64 `json:"percentile_50"`
+	Percentile90 float64 `json:"percentile_90"`
+	Percentile99 float64 `json:"percentile_99"`
+}
+
+// Throughput contains write performance in bytes per second of a disk drive.
+type Throughput struct {
+	Avg          uint64 `json:"avg"`
+	Max          uint64 `json:"max"`
+	Min          uint64 `json:"min"`
+	Percentile50 uint64 `json:"percentile_50"`
+	Percentile90 uint64 `json:"percentile_90"`
+	Percentile99 uint64 `json:"percentile_99"`
+}
+
+// DrivePerfInfo contains disk drive's performance information.
+type DrivePerfInfo struct {
+	Error string `json:"error,omitempty"`
+
+	Path       string     `json:"path"`
+	Latency    Latency    `json:"latency,omitempty"`
+	Throughput Throughput `json:"throughput,omitempty"`
+}
+
+// DrivePerfInfos contains all disk drive's performance information of a node.
+type DrivePerfInfos struct {
+	Addr  string `json:"addr"`
+	Error string `json:"error,omitempty"`
+
+	SerialPerf   []DrivePerfInfo `json:"serial_perf,omitempty"`
+	ParallelPerf []DrivePerfInfo `json:"parallel_perf,omitempty"`
+}
+
+// PeerNetPerfInfo contains network performance information of a node.
+type PeerNetPerfInfo struct {
+	Addr  string `json:"addr"`
+	Error string `json:"error,omitempty"`
+
+	Latency    Latency    `json:"latency,omitempty"`
+	Throughput Throughput `json:"throughput,omitempty"`
+}
+
+// NetPerfInfo contains network performance information of a node to other nodes.
+type NetPerfInfo struct {
+	Addr  string `json:"addr"`
+	Error string `json:"error,omitempty"`
+
+	RemotePeers []PeerNetPerfInfo `json:"remote_peers,omitempty"`
 }
 
 // PerfInfo - Includes Drive and Net perf info for the entire MinIO cluster
 type PerfInfo struct {
-	DriveInfo   []ServerDrivesInfo    `json:"drives,omitempty"`
-	Net         []ServerNetHealthInfo `json:"net,omitempty"`
-	NetParallel ServerNetHealthInfo   `json:"net_parallel,omitempty"`
-	Error       string                `json:"error,omitempty"`
+	Drives      []DrivePerfInfos `json:"drives,omitempty"`
+	Net         []NetPerfInfo    `json:"net,omitempty"`
+	NetParallel NetPerfInfo      `json:"net_parallel,omitempty"`
 }
 
-// ServerDrivesInfo - Drive info about all drives in a single MinIO node
-type ServerDrivesInfo struct {
-	Addr     string          `json:"addr"`
-	Serial   []DrivePerfInfo `json:"serial,omitempty"`   // Drive perf info collected one drive at a time
-	Parallel []DrivePerfInfo `json:"parallel,omitempty"` // Drive perf info collected in parallel
-	Error    string          `json:"error,omitempty"`
+// MinioConfig contains minio configuration of a node.
+type MinioConfig struct {
+	Error string `json:"error,omitempty"`
+
+	Config interface{} `json:"config,omitempty"`
 }
 
-// DiskLatency holds latency information for write operations to the drive
-type DiskLatency struct {
-	Avg          float64 `json:"avg_secs,omitempty"`
-	Percentile50 float64 `json:"percentile50_secs,omitempty"`
-	Percentile90 float64 `json:"percentile90_secs,omitempty"`
-	Percentile99 float64 `json:"percentile99_secs,omitempty"`
-	Min          float64 `json:"min_secs,omitempty"`
-	Max          float64 `json:"max_secs,omitempty"`
+// MinioHealthInfo - Includes MinIO confifuration information
+type MinioHealthInfo struct {
+	Error string `json:"error,omitempty"`
+
+	Config MinioConfig `json:"config,omitempty"`
+	Info   InfoMessage `json:"info,omitempty"`
 }
 
-// DiskThroughput holds throughput information for write operations to the drive
-type DiskThroughput struct {
-	Avg          float64 `json:"avg_bytes_per_sec,omitempty"`
-	Percentile50 float64 `json:"percentile50_bytes_per_sec,omitempty"`
-	Percentile90 float64 `json:"percentile90_bytes_per_sec,omitempty"`
-	Percentile99 float64 `json:"percentile99_bytes_per_sec,omitempty"`
-	Min          float64 `json:"min_bytes_per_sec,omitempty"`
-	Max          float64 `json:"max_bytes_per_sec,omitempty"`
+// HealthInfo - MinIO cluster's health Info
+type HealthInfo struct {
+	Version string `json:"version"`
+	Error   string `json:"error,omitempty"`
+
+	TimeStamp time.Time       `json:"timestamp,omitempty"`
+	Sys       SysInfo         `json:"sys,omitempty"`
+	Perf      PerfInfo        `json:"perf,omitempty"`
+	Minio     MinioHealthInfo `json:"minio,omitempty"`
 }
 
-// DrivePerfInfo - Stats about a single drive in a MinIO node
-type DrivePerfInfo struct {
-	Path       string         `json:"endpoint"`
-	Latency    DiskLatency    `json:"latency,omitempty"`
-	Throughput DiskThroughput `json:"throughput,omitempty"`
-	Error      string         `json:"error,omitempty"`
+func (info HealthInfo) String() string {
+	data, err := json.Marshal(info)
+	if err != nil {
+		panic(err) // This never happens.
+	}
+	return string(data)
 }
 
-// ServerNetHealthInfo - Network health info about a single MinIO node
-type ServerNetHealthInfo struct {
-	Addr  string        `json:"addr"`
-	Net   []NetPerfInfo `json:"net,omitempty"`
-	Error string        `json:"error,omitempty"`
-}
-
-// NetLatency holds latency information for read/write operations to the drive
-type NetLatency struct {
-	Avg          float64 `json:"avg_secs,omitempty"`
-	Percentile50 float64 `json:"percentile50_secs,omitempty"`
-	Percentile90 float64 `json:"percentile90_secs,omitempty"`
-	Percentile99 float64 `json:"percentile99_secs,omitempty"`
-	Min          float64 `json:"min_secs,omitempty"`
-	Max          float64 `json:"max_secs,omitempty"`
-}
-
-// NetThroughput holds throughput information for read/write operations to the drive
-type NetThroughput struct {
-	Avg          float64 `json:"avg_bytes_per_sec,omitempty"`
-	Percentile50 float64 `json:"percentile50_bytes_per_sec,omitempty"`
-	Percentile90 float64 `json:"percentile90_bytes_per_sec,omitempty"`
-	Percentile99 float64 `json:"percentile99_bytes_per_sec,omitempty"`
-	Min          float64 `json:"min_bytes_per_sec,omitempty"`
-	Max          float64 `json:"max_bytes_per_sec,omitempty"`
-}
-
-// NetPerfInfo - one-to-one network connectivity Stats between 2 MinIO nodes
-type NetPerfInfo struct {
-	Addr       string        `json:"remote"`
-	Latency    NetLatency    `json:"latency,omitempty"`
-	Throughput NetThroughput `json:"throughput,omitempty"`
-	Error      string        `json:"error,omitempty"`
+// JSON returns this structure as JSON formatted string.
+func (info HealthInfo) JSON() string {
+	data, err := json.MarshalIndent(info, " ", "    ")
+	if err != nil {
+		panic(err) // This never happens.
+	}
+	return string(data)
 }
 
 // HealthDataType - Typed Health data types
@@ -288,7 +681,7 @@ const (
 	HealthDataTypeMinioInfo   HealthDataType = "minioinfo"
 	HealthDataTypeMinioConfig HealthDataType = "minioconfig"
 	HealthDataTypeSysCPU      HealthDataType = "syscpu"
-	HealthDataTypeSysDiskHw   HealthDataType = "sysdiskhw"
+	HealthDataTypeSysDriveHw  HealthDataType = "sysdrivehw"
 	HealthDataTypeSysDocker   HealthDataType = "sysdocker" // is this really needed?
 	HealthDataTypeSysOsInfo   HealthDataType = "sysosinfo"
 	HealthDataTypeSysLoad     HealthDataType = "sysload" // provides very little info. Making it TBD
@@ -304,7 +697,7 @@ var HealthDataTypesMap = map[string]HealthDataType{
 	"minioinfo":   HealthDataTypeMinioInfo,
 	"minioconfig": HealthDataTypeMinioConfig,
 	"syscpu":      HealthDataTypeSysCPU,
-	"sysdiskhw":   HealthDataTypeSysDiskHw,
+	"sysdrivehw":  HealthDataTypeSysDriveHw,
 	"sysdocker":   HealthDataTypeSysDocker,
 	"sysosinfo":   HealthDataTypeSysOsInfo,
 	"sysload":     HealthDataTypeSysLoad,
@@ -320,7 +713,7 @@ var HealthDataTypesList = []HealthDataType{
 	HealthDataTypeMinioInfo,
 	HealthDataTypeMinioConfig,
 	HealthDataTypeSysCPU,
-	HealthDataTypeSysDiskHw,
+	HealthDataTypeSysDriveHw,
 	HealthDataTypeSysDocker,
 	HealthDataTypeSysOsInfo,
 	HealthDataTypeSysLoad,
@@ -329,106 +722,58 @@ var HealthDataTypesList = []HealthDataType{
 	HealthDataTypeSysProcess,
 }
 
+type healthInfoVersion struct {
+	Version string `json:"version,omitempty"`
+	Error   string `json:"error,omitempty"`
+}
+
 // ServerHealthInfo - Connect to a minio server and call Health Info Management API
 // to fetch server's information represented by HealthInfo structure
-func (adm *AdminClient) ServerHealthInfo(ctx context.Context, healthDataTypes []HealthDataType, deadline time.Duration) <-chan HealthInfo {
-	respChan := make(chan HealthInfo)
-	go func() {
-		v := url.Values{}
+func (adm *AdminClient) ServerHealthInfo(ctx context.Context, types []HealthDataType, deadline time.Duration) (*http.Response, string, error) {
+	v := url.Values{}
+	v.Set("deadline", deadline.Truncate(1*time.Second).String())
+	for _, d := range HealthDataTypesList { // Init all parameters to false.
+		v.Set(string(d), "false")
+	}
+	for _, d := range types {
+		v.Set(string(d), "true")
+	}
 
-		v.Set("deadline",
-			deadline.Truncate(1*time.Second).String())
-
-		// start with all set to false
-		for _, d := range HealthDataTypesList {
-			v.Set(string(d), "false")
-		}
-
-		// only 'trueify' user provided values
-		for _, d := range healthDataTypes {
-			v.Set(string(d), "true")
-		}
-		var healthInfoMessage HealthInfo
-		healthInfoMessage.TimeStamp = time.Now()
-
-		resp, err := adm.executeMethod(ctx, "GET", requestData{
+	resp, err := adm.executeMethod(
+		ctx, "GET", requestData{
 			relPath:     adminAPIPrefix + "/healthinfo",
 			queryValues: v,
-		})
+		},
+	)
 
-		defer closeResponse(resp)
-		if err != nil {
-			respChan <- HealthInfo{
-				Error: err.Error(),
-			}
-			close(respChan)
-			return
-		}
-
-		// Check response http status code
-		if resp.StatusCode != http.StatusOK {
-			respChan <- HealthInfo{
-				Error: httpRespToErrorResponse(resp).Error(),
-			}
-			return
-		}
-
-		// Unmarshal the server's json response
-		decoder := json.NewDecoder(resp.Body)
-		for {
-			err := decoder.Decode(&healthInfoMessage)
-			healthInfoMessage.TimeStamp = time.Now()
-
-			if err == io.EOF {
-				break
-			}
-			if err != nil {
-				respChan <- HealthInfo{
-					Error: err.Error(),
-				}
-			}
-			respChan <- healthInfoMessage
-		}
-
-		respChan <- healthInfoMessage
-
-		if v.Get(string(HealthDataTypeMinioInfo)) == "true" {
-			info, err := adm.ServerInfo(ctx)
-			if err != nil {
-				respChan <- HealthInfo{
-					Error: err.Error(),
-				}
-				return
-			}
-			healthInfoMessage.Minio.Info = info
-			respChan <- healthInfoMessage
-		}
-
-		close(respChan)
-	}()
-	return respChan
-}
-
-// GetTotalCapacity gets the total capacity a server holds.
-func (s *ServerDiskHwInfo) GetTotalCapacity() (capacity uint64) {
-	for _, u := range s.Usage {
-		capacity += u.Total
+	if err != nil {
+		closeResponse(resp)
+		return nil, "", err
 	}
-	return
-}
 
-// GetTotalFreeCapacity gets the total capacity that is free.
-func (s *ServerDiskHwInfo) GetTotalFreeCapacity() (capacity uint64) {
-	for _, u := range s.Usage {
-		capacity += u.Free
+	if resp.StatusCode != http.StatusOK {
+		closeResponse(resp)
+		return nil, "", httpRespToErrorResponse(resp)
 	}
-	return
-}
 
-// GetTotalUsedCapacity gets the total capacity used.
-func (s *ServerDiskHwInfo) GetTotalUsedCapacity() (capacity uint64) {
-	for _, u := range s.Usage {
-		capacity += u.Used
+	decoder := json.NewDecoder(resp.Body)
+	var version healthInfoVersion
+	if err = decoder.Decode(&version); err != nil {
+		closeResponse(resp)
+		return nil, "", err
 	}
-	return
+
+	if version.Error != "" {
+		closeResponse(resp)
+		return nil, "", errors.New(version.Error)
+	}
+
+	switch version.Version {
+	case "", HealthInfoVersion:
+	default:
+		closeResponse(resp)
+		return nil, "", errors.New("Upgrade Minio Client to support health info version " + version.Version)
+	}
+
+	return resp, version.Version, nil
 }
