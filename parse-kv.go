@@ -126,7 +126,7 @@ func SanitizeValue(v string) string {
 // happens with the right number of input keys, if keys
 // input is empty returned value is empty slice as well.
 func KvFields(input string, keys []string) []string {
-	var valueIndexes []int
+	valueIndexes := make([]int, 0, len(keys))
 	for _, key := range keys {
 		i := strings.Index(input, key+KvSeparator)
 		if i == -1 {

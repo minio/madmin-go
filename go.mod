@@ -7,7 +7,7 @@ require (
 	github.com/minio/argon2 v1.0.0
 	github.com/minio/minio v0.0.0-20210422165109-3455f786faf0
 	github.com/minio/minio-go/v7 v7.0.11-0.20210302210017-6ae69c73ce78
-	github.com/minio/sio v0.2.1
+	github.com/minio/sio v0.3.0
 	github.com/secure-io/sio-go v0.3.1
 	github.com/shirou/gopsutil v3.21.4+incompatible
 	github.com/tinylib/msgp v1.1.3

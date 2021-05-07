@@ -46,7 +46,7 @@ type HelpKVS []HelpKV
 
 // Keys returns help keys
 func (h Help) Keys() []string {
-	var keys []string
+	keys := make([]string, 0, len(h.KeysHelp))
 	for _, kh := range h.KeysHelp {
 		keys = append(keys, kh.Key)
 	}
