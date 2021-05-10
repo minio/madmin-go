@@ -23,6 +23,35 @@ import (
 	"net/url"
 )
 
+// KMSStatus contains various informations about
+// the KMS connected to a MinIO server - like
+// the KMS endpoints and the default key ID.
+type KMSStatus struct {
+	Name         string               `json:"name"`           // Name or type of the KMS
+	DefaultKeyID string               `json:"default-key-id"` // The key ID used when no explicit key is specified
+	Endpoints    map[string]ItemState `json:"endpoints"`      // List of KMS endpoints and their status (online/offline)
+}
+
+// KMSStatus returns status information about the KMS connected
+// to the MinIO server, if configured.
+func (adm *AdminClient) KMSStatus(ctx context.Context) (KMSStatus, error) {
+	resp, err := adm.executeMethod(ctx, http.MethodGet, requestData{
+		relPath: adminAPIPrefix + "/kms/status", // GET <endpoint>/<admin-API>/kms/status
+	})
+	if err != nil {
+		return KMSStatus{}, err
+	}
+	defer closeResponse(resp)
+	if resp.StatusCode != http.StatusOK {
+		return KMSStatus{}, httpRespToErrorResponse(resp)
+	}
+	var status KMSStatus
+	if err = json.NewDecoder(resp.Body).Decode(&status); err != nil {
+		return KMSStatus{}, err
+	}
+	return status, nil
+}
+
 // CreateKey tries to create a new master key with the given keyID
 // at the KMS connected to a MinIO server.
 func (adm *AdminClient) CreateKey(ctx context.Context, keyID string) error {
