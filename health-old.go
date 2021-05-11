@@ -18,12 +18,9 @@ package madmin
 
 import (
 	"encoding/json"
+	"math/big"
 	"time"
 
-	"github.com/minio/minio/pkg/disk"
-	"github.com/minio/minio/pkg/net"
-
-	smart "github.com/minio/minio/pkg/smart"
 	"github.com/shirou/gopsutil/cpu"
 	diskhw "github.com/shirou/gopsutil/disk"
 	"github.com/shirou/gopsutil/host"
@@ -171,13 +168,69 @@ func (s *ServerDiskHwInfo) GetTotalUsedCapacity() (capacity uint64) {
 	return
 }
 
+// SmartInfo contains S.M.A.R.T data about the drive
+type SmartInfo struct {
+	Device string         `json:"device"`
+	Scsi   *SmartScsiInfo `json:"scsi,omitempty"`
+	Nvme   *SmartNvmeInfo `json:"nvme,omitempty"`
+	Ata    *SmartAtaInfo  `json:"ata,omitempty"`
+}
+
+// SmartNvmeInfo contains NVMe drive info
+type SmartNvmeInfo struct {
+	SerialNum       string `json:"serialNum,omitempty"`
+	VendorID        string `json:"vendorId,omitempty"`
+	FirmwareVersion string `json:"firmwareVersion,omitempty"`
+	ModelNum        string `json:"modelNum,omitempty"`
+	SpareAvailable  string `json:"spareAvailable,omitempty"`
+	SpareThreshold  string `json:"spareThreshold,omitempty"`
+	Temperature     string `json:"temperature,omitempty"`
+	CriticalWarning string `json:"criticalWarning,omitempty"`
+
+	MaxDataTransferPages        int      `json:"maxDataTransferPages,omitempty"`
+	ControllerBusyTime          *big.Int `json:"controllerBusyTime,omitempty"`
+	PowerOnHours                *big.Int `json:"powerOnHours,omitempty"`
+	PowerCycles                 *big.Int `json:"powerCycles,omitempty"`
+	UnsafeShutdowns             *big.Int `json:"unsafeShutdowns,omitempty"`
+	MediaAndDataIntegrityErrors *big.Int `json:"mediaAndDataIntgerityErrors,omitempty"`
+	DataUnitsReadBytes          *big.Int `json:"dataUnitsReadBytes,omitempty"`
+	DataUnitsWrittenBytes       *big.Int `json:"dataUnitsWrittenBytes,omitempty"`
+	HostReadCommands            *big.Int `json:"hostReadCommands,omitempty"`
+	HostWriteCommands           *big.Int `json:"hostWriteCommands,omitempty"`
+}
+
+// SmartScsiInfo contains SCSI drive Info
+type SmartScsiInfo struct {
+	CapacityBytes int64  `json:"scsiCapacityBytes,omitempty"`
+	ModeSenseBuf  string `json:"scsiModeSenseBuf,omitempty"`
+	RespLen       int64  `json:"scsirespLen,omitempty"`
+	BdLen         int64  `json:"scsiBdLen,omitempty"`
+	Offset        int64  `json:"scsiOffset,omitempty"`
+	RPM           int64  `json:"sciRpm,omitempty"`
+}
+
+// SmartAtaInfo contains ATA drive info
+type SmartAtaInfo struct {
+	LUWWNDeviceID         string `json:"scsiLuWWNDeviceID,omitempty"`
+	SerialNum             string `json:"serialNum,omitempty"`
+	ModelNum              string `json:"modelNum,omitempty"`
+	FirmwareRevision      string `json:"firmwareRevision,omitempty"`
+	RotationRate          string `json:"RotationRate,omitempty"`
+	ATAMajorVersion       string `json:"MajorVersion,omitempty"`
+	ATAMinorVersion       string `json:"MinorVersion,omitempty"`
+	SmartSupportAvailable bool   `json:"smartSupportAvailable,omitempty"`
+	SmartSupportEnabled   bool   `json:"smartSupportEnabled,omitempty"`
+	ErrorLog              string `json:"smartErrorLog,omitempty"`
+	Transport             string `json:"transport,omitempty"`
+}
+
 // PartitionStat - includes data from both shirou/psutil.diskHw.PartitionStat as well as SMART data
 type PartitionStat struct {
-	Device     string     `json:"device"`
-	Mountpoint string     `json:"mountpoint,omitempty"`
-	Fstype     string     `json:"fstype,omitempty"`
-	Opts       string     `json:"opts,omitempty"`
-	SmartInfo  smart.Info `json:"smartInfo,omitempty"`
+	Device     string    `json:"device"`
+	Mountpoint string    `json:"mountpoint,omitempty"`
+	Fstype     string    `json:"fstype,omitempty"`
+	Opts       string    `json:"opts,omitempty"`
+	SmartInfo  SmartInfo `json:"smartInfo,omitempty"`
 }
 
 // PerfInfoV0 - Includes Drive and Net perf info for the entire MinIO cluster
@@ -196,12 +249,32 @@ type ServerDrivesInfo struct {
 	Error    string            `json:"error,omitempty"`
 }
 
+// DiskLatency holds latency information for write operations to the drive
+type DiskLatency struct {
+	Avg          float64 `json:"avg_secs,omitempty"`
+	Percentile50 float64 `json:"percentile50_secs,omitempty"`
+	Percentile90 float64 `json:"percentile90_secs,omitempty"`
+	Percentile99 float64 `json:"percentile99_secs,omitempty"`
+	Min          float64 `json:"min_secs,omitempty"`
+	Max          float64 `json:"max_secs,omitempty"`
+}
+
+// DiskThroughput holds throughput information for write operations to the drive
+type DiskThroughput struct {
+	Avg          float64 `json:"avg_bytes_per_sec,omitempty"`
+	Percentile50 float64 `json:"percentile50_bytes_per_sec,omitempty"`
+	Percentile90 float64 `json:"percentile90_bytes_per_sec,omitempty"`
+	Percentile99 float64 `json:"percentile99_bytes_per_sec,omitempty"`
+	Min          float64 `json:"min_bytes_per_sec,omitempty"`
+	Max          float64 `json:"max_bytes_per_sec,omitempty"`
+}
+
 // DrivePerfInfoV0 - Stats about a single drive in a MinIO node
 type DrivePerfInfoV0 struct {
-	Path       string          `json:"endpoint"`
-	Latency    disk.Latency    `json:"latency,omitempty"`
-	Throughput disk.Throughput `json:"throughput,omitempty"`
-	Error      string          `json:"error,omitempty"`
+	Path       string         `json:"endpoint"`
+	Latency    DiskLatency    `json:"latency,omitempty"`
+	Throughput DiskThroughput `json:"throughput,omitempty"`
+	Error      string         `json:"error,omitempty"`
 }
 
 // ServerNetHealthInfo - Network health info about a single MinIO node
@@ -211,10 +284,30 @@ type ServerNetHealthInfo struct {
 	Error string          `json:"error,omitempty"`
 }
 
+// NetLatency holds latency information for read/write operations to the drive
+type NetLatency struct {
+	Avg          float64 `json:"avg_secs,omitempty"`
+	Percentile50 float64 `json:"percentile50_secs,omitempty"`
+	Percentile90 float64 `json:"percentile90_secs,omitempty"`
+	Percentile99 float64 `json:"percentile99_secs,omitempty"`
+	Min          float64 `json:"min_secs,omitempty"`
+	Max          float64 `json:"max_secs,omitempty"`
+}
+
+// NetThroughput holds throughput information for read/write operations to the drive
+type NetThroughput struct {
+	Avg          float64 `json:"avg_bytes_per_sec,omitempty"`
+	Percentile50 float64 `json:"percentile50_bytes_per_sec,omitempty"`
+	Percentile90 float64 `json:"percentile90_bytes_per_sec,omitempty"`
+	Percentile99 float64 `json:"percentile99_bytes_per_sec,omitempty"`
+	Min          float64 `json:"min_bytes_per_sec,omitempty"`
+	Max          float64 `json:"max_bytes_per_sec,omitempty"`
+}
+
 // NetPerfInfoV0 - one-to-one network connectivity Stats between 2 MinIO nodes
 type NetPerfInfoV0 struct {
-	Addr       string         `json:"remote"`
-	Latency    net.Latency    `json:"latency,omitempty"`
-	Throughput net.Throughput `json:"throughput,omitempty"`
-	Error      string         `json:"error,omitempty"`
+	Addr       string        `json:"remote"`
+	Latency    NetLatency    `json:"latency,omitempty"`
+	Throughput NetThroughput `json:"throughput,omitempty"`
+	Error      string        `json:"error,omitempty"`
 }
