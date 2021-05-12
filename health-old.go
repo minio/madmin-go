@@ -21,11 +21,11 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/shirou/gopsutil/cpu"
-	diskhw "github.com/shirou/gopsutil/disk"
-	"github.com/shirou/gopsutil/host"
-	"github.com/shirou/gopsutil/mem"
-	"github.com/shirou/gopsutil/process"
+	"github.com/shirou/gopsutil/v3/cpu"
+	diskhw "github.com/shirou/gopsutil/v3/disk"
+	"github.com/shirou/gopsutil/v3/host"
+	"github.com/shirou/gopsutil/v3/mem"
+	"github.com/shirou/gopsutil/v3/process"
 )
 
 // HealthInfoV0 - MinIO cluster's health Info
@@ -101,6 +101,11 @@ type SysProcess struct {
 	Times           *cpu.TimesStat              `json:"cputimes,omitempty"`
 	Uids            []int32                     `json:"uids,omitempty"`
 	Username        string                      `json:"username,omitempty"`
+}
+
+// GetOwner - returns owner of the process
+func (sp SysProcess) GetOwner() string {
+	return sp.Username
 }
 
 // ServerMemInfo - Includes host virtual and swap mem information
