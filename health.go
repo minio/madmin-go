@@ -23,15 +23,15 @@ import (
 	"net/http"
 	"net/url"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 
-	"github.com/shirou/gopsutil/cpu"
-	"github.com/shirou/gopsutil/disk"
-	"github.com/shirou/gopsutil/host"
-	"github.com/shirou/gopsutil/mem"
-	"github.com/shirou/gopsutil/net"
-	"github.com/shirou/gopsutil/process"
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/disk"
+	"github.com/shirou/gopsutil/v3/host"
+	"github.com/shirou/gopsutil/v3/mem"
+	"github.com/shirou/gopsutil/v3/process"
 )
 
 const (
@@ -39,8 +39,10 @@ const (
 	HealthInfoVersion0 = ""
 	// HealthInfoVersion1 is version 1
 	HealthInfoVersion1 = "1"
+	// HealthInfoVersion2 is version 2
+	HealthInfoVersion2 = "2"
 	// HealthInfoVersion is current health info version.
-	HealthInfoVersion = HealthInfoVersion1
+	HealthInfoVersion = HealthInfoVersion2
 )
 
 // CPU contains system's CPU information.
@@ -76,30 +78,32 @@ func GetCPUs(ctx context.Context, addr string) CPUs {
 		}
 	}
 
-	cpuMap := map[string][]cpu.InfoStat{}
+	cpuMap := map[string]CPU{}
 	for _, info := range infos {
-		infoStats, found := cpuMap[info.PhysicalID]
-		if !found {
-			infoStats = []cpu.InfoStat{}
+		cpu, found := cpuMap[info.PhysicalID]
+		if found {
+			cpu.Cores += 1
+		} else {
+			cpu = CPU{
+				VendorID:   info.VendorID,
+				Family:     info.Family,
+				Model:      info.Model,
+				Stepping:   info.Stepping,
+				PhysicalID: info.PhysicalID,
+				ModelName:  info.ModelName,
+				Mhz:        info.Mhz,
+				CacheSize:  info.CacheSize,
+				Flags:      info.Flags,
+				Microcode:  info.Microcode,
+				Cores:      1,
+			}
 		}
-		cpuMap[info.PhysicalID] = append(infoStats, info)
+		cpuMap[info.PhysicalID] = cpu
 	}
 
 	cpus := []CPU{}
-	for _, infoStats := range cpuMap {
-		cpus = append(cpus, CPU{
-			VendorID:   infoStats[0].VendorID,
-			Family:     infoStats[0].Family,
-			Model:      infoStats[0].Model,
-			Stepping:   infoStats[0].Stepping,
-			PhysicalID: infoStats[0].PhysicalID,
-			ModelName:  infoStats[0].ModelName,
-			Mhz:        infoStats[0].Mhz,
-			CacheSize:  infoStats[0].CacheSize,
-			Flags:      infoStats[0].Flags,
-			Microcode:  infoStats[0].Microcode,
-			Cores:      len(infoStats),
-		})
+	for _, cpu := range cpuMap {
+		cpus = append(cpus, cpu)
 	}
 
 	return CPUs{
@@ -162,7 +166,7 @@ func GetPartitions(ctx context.Context, addr string) Partitions {
 				Device:       parts[i].Device,
 				Mountpoint:   parts[i].Mountpoint,
 				FSType:       parts[i].Fstype,
-				MountOptions: parts[i].Opts,
+				MountOptions: strings.Join(parts[i].Opts, ","),
 				MountFSType:  usage.Fstype,
 				SpaceTotal:   usage.Total,
 				SpaceFree:    usage.Free,
@@ -275,7 +279,6 @@ type ProcInfo struct {
 	ExecPath       string                     `json:"exec_path,omitempty"`
 	GIDs           []int32                    `json:"gids,omitempty"`
 	IOCounters     process.IOCountersStat     `json:"iocounters,omitempty"`
-	NetIOCounters  []net.IOCountersStat       `json:"net_iocounters,omitempty"`
 	IsRunning      bool                       `json:"is_running,omitempty"`
 	MemInfo        process.MemoryInfoStat     `json:"mem_info,omitempty"`
 	MemMaps        []process.MemoryMapsStat   `json:"mem_maps,omitempty"`
@@ -292,7 +295,6 @@ type ProcInfo struct {
 	Times          cpu.TimesStat              `json:"times,omitempty"`
 	UIDs           []int32                    `json:"uids,omitempty"`
 	Username       string                     `json:"username,omitempty"`
-	Rlimit         []process.RlimitStat       `json:"rlimit,omitempty"`
 }
 
 // GetProcInfo returns current MinIO process information.
@@ -378,14 +380,6 @@ func GetProcInfo(ctx context.Context, addr string) ProcInfo {
 	}
 
 	ioCounters, err := proc.IOCountersWithContext(ctx)
-	if err != nil {
-		return ProcInfo{
-			Addr:  addr,
-			Error: err.Error(),
-		}
-	}
-
-	netIOCounters, err := proc.NetIOCountersWithContext(ctx, true)
 	if err != nil {
 		return ProcInfo{
 			Addr:  addr,
@@ -515,14 +509,6 @@ func GetProcInfo(ctx context.Context, addr string) ProcInfo {
 		}
 	}
 
-	rlimit, err := proc.RlimitUsageWithContext(ctx, true)
-	if err != nil {
-		return ProcInfo{
-			Addr:  addr,
-			Error: err.Error(),
-		}
-	}
-
 	return ProcInfo{
 		Addr:           addr,
 		PID:            pid,
@@ -536,7 +522,6 @@ func GetProcInfo(ctx context.Context, addr string) ProcInfo {
 		ExecPath:       execPath,
 		GIDs:           gids,
 		IOCounters:     *ioCounters,
-		NetIOCounters:  netIOCounters,
 		IsRunning:      isRunning,
 		MemInfo:        *memInfo,
 		MemMaps:        *memMaps,
@@ -548,12 +533,11 @@ func GetProcInfo(ctx context.Context, addr string) ProcInfo {
 		NumThreads:     numThreads,
 		PageFaults:     *pageFaults,
 		PPID:           ppid,
-		Status:         status,
+		Status:         status[0],
 		TGID:           tgid,
 		Times:          *times,
 		UIDs:           uids,
 		Username:       username,
-		Rlimit:         rlimit,
 	}
 }
 
@@ -671,6 +655,25 @@ func (info HealthInfo) JSON() string {
 	return string(data)
 }
 
+// GetError - returns error from the cluster health info
+func (info HealthInfo) GetError() string {
+	return info.Error
+}
+
+// GetStatus - returns status of the cluster health info
+func (info HealthInfo) GetStatus() string {
+	if info.Error != "" {
+		return "error"
+	} else {
+		return "success"
+	}
+}
+
+// GetTimestamp - returns timestamp from the cluster health info
+func (info HealthInfo) GetTimestamp() time.Time {
+	return info.TimeStamp
+}
+
 // HealthDataType - Typed Health data types
 type HealthDataType string
 
@@ -722,7 +725,8 @@ var HealthDataTypesList = []HealthDataType{
 	HealthDataTypeSysProcess,
 }
 
-type healthInfoVersion struct {
+// HealthInfoVersionStruct - struct for health info version
+type HealthInfoVersionStruct struct {
 	Version string `json:"version,omitempty"`
 	Error   string `json:"error,omitempty"`
 }
@@ -757,7 +761,7 @@ func (adm *AdminClient) ServerHealthInfo(ctx context.Context, types []HealthData
 	}
 
 	decoder := json.NewDecoder(resp.Body)
-	var version healthInfoVersion
+	var version HealthInfoVersionStruct
 	if err = decoder.Decode(&version); err != nil {
 		closeResponse(resp)
 		return nil, "", err
