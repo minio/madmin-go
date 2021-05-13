@@ -208,21 +208,19 @@ func GetOSInfo(ctx context.Context, addr string) OSInfo {
 		}
 	}
 
-	sensors, err := host.SensorsTemperaturesWithContext(ctx)
+	osInfo := OSInfo{
+		Addr: addr,
+		Info: *info,
+	}
+
+	osInfo.Sensors, err = host.SensorsTemperaturesWithContext(ctx)
 	if err != nil {
 		if _, isWarningErr := err.(*host.Warnings); !isWarningErr {
-			return OSInfo{
-				Addr:  addr,
-				Error: err.Error(),
-			}
+			osInfo.Error = err.Error()
 		}
 	}
 
-	return OSInfo{
-		Addr:    addr,
-		Info:    *info,
-		Sensors: sensors,
-	}
+	return osInfo
 }
 
 // MemInfo contains system's RAM and swap information.
@@ -300,245 +298,180 @@ type ProcInfo struct {
 // GetProcInfo returns current MinIO process information.
 func GetProcInfo(ctx context.Context, addr string) ProcInfo {
 	pid := int32(syscall.Getpid())
+
+	procInfo := ProcInfo{
+		Addr: addr,
+		PID:  pid,
+	}
+	var err error
+
 	proc, err := process.NewProcess(pid)
 	if err != nil {
-		return ProcInfo{
-			Addr:  addr,
-			Error: err.Error(),
-		}
+		procInfo.Error = err.Error()
+		return procInfo
 	}
 
-	isBackground, err := proc.BackgroundWithContext(ctx)
+	procInfo.IsBackground, err = proc.BackgroundWithContext(ctx)
 	if err != nil {
-		return ProcInfo{
-			Addr:  addr,
-			Error: err.Error(),
-		}
+		procInfo.Error = err.Error()
+		return procInfo
 	}
 
-	cpuPercent, err := proc.CPUPercentWithContext(ctx)
+	procInfo.CPUPercent, err = proc.CPUPercentWithContext(ctx)
 	if err != nil {
-		return ProcInfo{
-			Addr:  addr,
-			Error: err.Error(),
-		}
+		procInfo.Error = err.Error()
+		return procInfo
 	}
 
+	procInfo.ChildrenPIDs = []int32{}
 	children, _ := proc.ChildrenWithContext(ctx)
-	childrenPIDs := []int32{}
 	for i := range children {
-		childrenPIDs = append(childrenPIDs, children[i].Pid)
+		procInfo.ChildrenPIDs = append(procInfo.ChildrenPIDs, children[i].Pid)
 	}
 
-	cmdLine, err := proc.CmdlineWithContext(ctx)
+	procInfo.CmdLine, err = proc.CmdlineWithContext(ctx)
 	if err != nil {
-		return ProcInfo{
-			Addr:  addr,
-			Error: err.Error(),
-		}
+		procInfo.Error = err.Error()
+		return procInfo
 	}
 
 	connections, err := proc.ConnectionsWithContext(ctx)
 	if err != nil {
-		return ProcInfo{
-			Addr:  addr,
-			Error: err.Error(),
-		}
+		procInfo.Error = err.Error()
+		return procInfo
 	}
-	numConnections := len(connections)
+	procInfo.NumConnections = len(connections)
 
-	createTime, err := proc.CreateTimeWithContext(ctx)
+	procInfo.CreateTime, err = proc.CreateTimeWithContext(ctx)
 	if err != nil {
-		return ProcInfo{
-			Addr:  addr,
-			Error: err.Error(),
-		}
+		procInfo.Error = err.Error()
+		return procInfo
 	}
 
-	cwd, err := proc.CwdWithContext(ctx)
+	procInfo.CWD, err = proc.CwdWithContext(ctx)
 	if err != nil {
-		return ProcInfo{
-			Addr:  addr,
-			Error: err.Error(),
-		}
+		procInfo.Error = err.Error()
+		return procInfo
 	}
 
-	execPath, err := proc.ExeWithContext(ctx)
+	procInfo.ExecPath, err = proc.ExeWithContext(ctx)
 	if err != nil {
-		return ProcInfo{
-			Addr:  addr,
-			Error: err.Error(),
-		}
+		procInfo.Error = err.Error()
+		return procInfo
 	}
 
-	gids, err := proc.GidsWithContext(ctx)
+	procInfo.GIDs, err = proc.GidsWithContext(ctx)
 	if err != nil {
-		return ProcInfo{
-			Addr:  addr,
-			Error: err.Error(),
-		}
+		procInfo.Error = err.Error()
+		return procInfo
 	}
 
 	ioCounters, err := proc.IOCountersWithContext(ctx)
 	if err != nil {
-		return ProcInfo{
-			Addr:  addr,
-			Error: err.Error(),
-		}
+		procInfo.Error = err.Error()
+		return procInfo
 	}
+	procInfo.IOCounters = *ioCounters
 
-	isRunning, err := proc.IsRunningWithContext(ctx)
+	procInfo.IsRunning, err = proc.IsRunningWithContext(ctx)
 	if err != nil {
-		return ProcInfo{
-			Addr:  addr,
-			Error: err.Error(),
-		}
+		procInfo.Error = err.Error()
+		return procInfo
 	}
 
 	memInfo, err := proc.MemoryInfoWithContext(ctx)
 	if err != nil {
-		return ProcInfo{
-			Addr:  addr,
-			Error: err.Error(),
-		}
+		procInfo.Error = err.Error()
+		return procInfo
 	}
+	procInfo.MemInfo = *memInfo
 
 	memMaps, err := proc.MemoryMapsWithContext(ctx, true)
 	if err != nil {
-		return ProcInfo{
-			Addr:  addr,
-			Error: err.Error(),
-		}
+		procInfo.Error = err.Error()
+		return procInfo
+	}
+	procInfo.MemMaps = *memMaps
+
+	procInfo.MemPercent, err = proc.MemoryPercentWithContext(ctx)
+	if err != nil {
+		procInfo.Error = err.Error()
+		return procInfo
 	}
 
-	memPercent, err := proc.MemoryPercentWithContext(ctx)
+	procInfo.Name, err = proc.NameWithContext(ctx)
 	if err != nil {
-		return ProcInfo{
-			Addr:  addr,
-			Error: err.Error(),
-		}
+		procInfo.Error = err.Error()
+		return procInfo
 	}
 
-	name, err := proc.NameWithContext(ctx)
+	procInfo.Nice, err = proc.NiceWithContext(ctx)
 	if err != nil {
-		return ProcInfo{
-			Addr:  addr,
-			Error: err.Error(),
-		}
-	}
-
-	nice, err := proc.NiceWithContext(ctx)
-	if err != nil {
-		return ProcInfo{
-			Addr:  addr,
-			Error: err.Error(),
-		}
+		procInfo.Error = err.Error()
+		return procInfo
 	}
 
 	numCtxSwitches, err := proc.NumCtxSwitchesWithContext(ctx)
 	if err != nil {
-		return ProcInfo{
-			Addr:  addr,
-			Error: err.Error(),
-		}
+		procInfo.Error = err.Error()
+		return procInfo
+	}
+	procInfo.NumCtxSwitches = *numCtxSwitches
+
+	procInfo.NumFDs, err = proc.NumFDsWithContext(ctx)
+	if err != nil {
+		procInfo.Error = err.Error()
+		return procInfo
 	}
 
-	numFDs, err := proc.NumFDsWithContext(ctx)
+	procInfo.NumThreads, err = proc.NumThreadsWithContext(ctx)
 	if err != nil {
-		return ProcInfo{
-			Addr:  addr,
-			Error: err.Error(),
-		}
-	}
-
-	numThreads, err := proc.NumThreadsWithContext(ctx)
-	if err != nil {
-		return ProcInfo{
-			Addr:  addr,
-			Error: err.Error(),
-		}
+		procInfo.Error = err.Error()
+		return procInfo
 	}
 
 	pageFaults, err := proc.PageFaultsWithContext(ctx)
 	if err != nil {
-		return ProcInfo{
-			Addr:  addr,
-			Error: err.Error(),
-		}
+		procInfo.Error = err.Error()
+		return procInfo
 	}
+	procInfo.PageFaults = *pageFaults
 
-	ppid, _ := proc.PpidWithContext(ctx)
+	procInfo.PPID, _ = proc.PpidWithContext(ctx)
 
 	status, err := proc.StatusWithContext(ctx)
 	if err != nil {
-		return ProcInfo{
-			Addr:  addr,
-			Error: err.Error(),
-		}
+		procInfo.Error = err.Error()
+		return procInfo
 	}
+	procInfo.Status = status[0]
 
-	tgid, err := proc.Tgid()
+	procInfo.TGID, err = proc.Tgid()
 	if err != nil {
-		return ProcInfo{
-			Addr:  addr,
-			Error: err.Error(),
-		}
+		procInfo.Error = err.Error()
+		return procInfo
 	}
 
 	times, err := proc.TimesWithContext(ctx)
 	if err != nil {
-		return ProcInfo{
-			Addr:  addr,
-			Error: err.Error(),
-		}
+		procInfo.Error = err.Error()
+		return procInfo
 	}
+	procInfo.Times = *times
 
-	uids, err := proc.UidsWithContext(ctx)
+	procInfo.UIDs, err = proc.UidsWithContext(ctx)
 	if err != nil {
-		return ProcInfo{
-			Addr:  addr,
-			Error: err.Error(),
-		}
+		procInfo.Error = err.Error()
+		return procInfo
 	}
 
-	username, err := proc.UsernameWithContext(ctx)
+	procInfo.Username, err = proc.UsernameWithContext(ctx)
 	if err != nil {
-		return ProcInfo{
-			Addr:  addr,
-			Error: err.Error(),
-		}
+		procInfo.Error = err.Error()
+		return procInfo
 	}
 
-	return ProcInfo{
-		Addr:           addr,
-		PID:            pid,
-		IsBackground:   isBackground,
-		CPUPercent:     cpuPercent,
-		ChildrenPIDs:   childrenPIDs,
-		CmdLine:        cmdLine,
-		NumConnections: numConnections,
-		CreateTime:     createTime,
-		CWD:            cwd,
-		ExecPath:       execPath,
-		GIDs:           gids,
-		IOCounters:     *ioCounters,
-		IsRunning:      isRunning,
-		MemInfo:        *memInfo,
-		MemMaps:        *memMaps,
-		MemPercent:     memPercent,
-		Name:           name,
-		Nice:           nice,
-		NumCtxSwitches: *numCtxSwitches,
-		NumFDs:         numFDs,
-		NumThreads:     numThreads,
-		PageFaults:     *pageFaults,
-		PPID:           ppid,
-		Status:         status[0],
-		TGID:           tgid,
-		Times:          *times,
-		UIDs:           uids,
-		Username:       username,
-	}
+	return procInfo
 }
 
 // SysInfo - Includes hardware and system information of the MinIO cluster
