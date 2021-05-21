@@ -552,12 +552,49 @@ type MinioConfig struct {
 	Config interface{} `json:"config,omitempty"`
 }
 
+// MemStats is strip down version of runtime.MemStats containing memory stats of MinIO server.
+type MemStats struct {
+	Alloc      uint64
+	TotalAlloc uint64
+	Mallocs    uint64
+	Frees      uint64
+	HeapAlloc  uint64
+}
+
+// ServerInfo holds server information
+type ServerInfo struct {
+	State      string            `json:"state,omitempty"`
+	Endpoint   string            `json:"endpoint,omitempty"`
+	Uptime     int64             `json:"uptime,omitempty"`
+	Version    string            `json:"version,omitempty"`
+	CommitID   string            `json:"commitID,omitempty"`
+	Network    map[string]string `json:"network,omitempty"`
+	Disks      []Disk            `json:"drives,omitempty"`
+	PoolNumber int               `json:"poolNumber,omitempty"`
+	MemStats   MemStats          `json:"mem_stats"`
+}
+
+// MinioInfo contains MinIO server and object storage information.
+type MinioInfo struct {
+	Mode         string       `json:"mode,omitempty"`
+	Domain       []string     `json:"domain,omitempty"`
+	Region       string       `json:"region,omitempty"`
+	SQSARN       []string     `json:"sqsARN,omitempty"`
+	DeploymentID string       `json:"deploymentID,omitempty"`
+	Buckets      Buckets      `json:"buckets,omitempty"`
+	Objects      Objects      `json:"objects,omitempty"`
+	Usage        Usage        `json:"usage,omitempty"`
+	Services     Services     `json:"services,omitempty"`
+	Backend      interface{}  `json:"backend,omitempty"`
+	Servers      []ServerInfo `json:"servers,omitempty"`
+}
+
 // MinioHealthInfo - Includes MinIO confifuration information
 type MinioHealthInfo struct {
 	Error string `json:"error,omitempty"`
 
 	Config MinioConfig `json:"config,omitempty"`
-	Info   InfoMessage `json:"info,omitempty"`
+	Info   MinioInfo   `json:"info,omitempty"`
 }
 
 // HealthInfo - MinIO cluster's health Info
