@@ -97,6 +97,8 @@ type BucketTarget struct {
 	StorageClass        string        `json:"storageclass,omitempty"`
 	HealthCheckDuration time.Duration `json:"healthCheckDuration,omitempty"`
 	DisableProxy        bool          `json:"disableProxy"`
+	ResetBeforeDate     time.Time     `json:"resetBeforeDate,omitempty"`
+	ResetID             string        `json:"resetID,omitempty"`
 }
 
 // Clone returns shallow clone of BucketTarget without secret key in credentials
@@ -117,6 +119,8 @@ func (t *BucketTarget) Clone() BucketTarget {
 		StorageClass:        t.StorageClass, // target storage class
 		HealthCheckDuration: t.HealthCheckDuration,
 		DisableProxy:        t.DisableProxy,
+		ResetBeforeDate:     t.ResetBeforeDate,
+		ResetID:             t.ResetID,
 	}
 }
 
@@ -250,6 +254,8 @@ const (
 	HealthCheckDurationUpdateType
 	// PathUpdateType update Path
 	PathUpdateType
+	// ResetUpdateType sets ResetBeforeDate and ResetID on a bucket target
+	ResetUpdateType
 )
 
 // GetTargetUpdateOps returns a slice of update operations being
