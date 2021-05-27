@@ -569,7 +569,7 @@ type ServerInfo struct {
 	Version    string            `json:"version,omitempty"`
 	CommitID   string            `json:"commitID,omitempty"`
 	Network    map[string]string `json:"network,omitempty"`
-	Disks      []Disk            `json:"drives,omitempty"`
+	Drives     []Disk            `json:"drives,omitempty"`
 	PoolNumber int               `json:"poolNumber,omitempty"`
 	MemStats   MemStats          `json:"mem_stats"`
 }
