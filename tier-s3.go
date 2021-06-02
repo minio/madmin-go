@@ -27,6 +27,7 @@ type TierS3 struct {
 	Prefix       string `json:",omitempty"`
 	Region       string `json:",omitempty"`
 	StorageClass string `json:",omitempty"`
+	AWSRole      bool   `json:",omitempty"`
 }
 
 // S3Options supports NewTierS3 to take variadic options
@@ -60,6 +61,14 @@ func S3Endpoint(endpoint string) func(s3 *TierS3) error {
 func S3StorageClass(storageClass string) func(s3 *TierS3) error {
 	return func(s3 *TierS3) error {
 		s3.StorageClass = storageClass
+		return nil
+	}
+}
+
+// S3AWSRole helper to use optional AWS Role to NewTierS3
+func S3AWSRole() func(s3 *TierS3) error {
+	return func(s3 *TierS3) error {
+		s3.AWSRole = true
 		return nil
 	}
 }

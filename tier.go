@@ -93,6 +93,7 @@ type TierCreds struct {
 	AccessKey string `json:"access,omitempty"`
 	SecretKey string `json:"secret,omitempty"`
 	CredsJSON []byte `json:"creds,omitempty"`
+	AWSRole   bool   `json:"awsrole"`
 }
 
 // EditTier supports updating credentials for the remote tier identified by tierName.
