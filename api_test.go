@@ -21,10 +21,24 @@ import (
 	"testing"
 
 	"github.com/minio/madmin-go"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
 func TestMinioAdminClient(t *testing.T) {
 	_, err := madmin.New("localhost:9000", "food", "food123", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestMinioAdminClientWithOpts(t *testing.T) {
+	creds := credentials.NewStaticV4("food", "food123", "")
+	opts := madmin.Options{
+		Creds:              creds,
+		Secure:             true,
+		InsecureSkipVerify: true,
+	}
+	_, err := madmin.NewWithOptions("localhost:9000", &opts)
 	if err != nil {
 		t.Fatal(err)
 	}
