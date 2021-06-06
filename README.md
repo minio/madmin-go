@@ -54,7 +54,7 @@ func main() {
 | Top operations          | IAM operations                        | Misc                                              | KMS                             |
 |:------------------------|:--------------------------------------|:--------------------------------------------------|:--------------------------------|
 | [`TopLocks`](#TopLocks) | [`AddUser`](#AddUser)                 | [`StartProfiling`](#StartProfiling)               | [`GetKeyStatus`](#GetKeyStatus) |
-|                         | [`SetUserPolicy`](#SetUserPolicy)     | [`DownloadProfilingData`](#DownloadProfilingData) |                                 |
+|                         | [`SetPolicy`](#SetPolicy)             | [`DownloadProfilingData`](#DownloadProfilingData) |                                 |
 |                         | [`ListUsers`](#ListUsers)             | [`ServerUpdate`](#ServerUpdate)                   |                                 |
 |                         | [`AddCannedPolicy`](#AddCannedPolicy) |                                                   |                                 |
 
@@ -447,14 +447,14 @@ __Example__
 	}
 ```
 
-<a name="SetUserPolicy"></a>
-### SetUserPolicy(ctx context.Context, user string, policyName string) error
-Enable a canned policy `get-only` for a given user on MinIO server.
+<a name="SetPolicy"></a>
+### SetPolicy(ctx context.Context, policyName, entityName string, isGroup bool) error
+Enable a canned policy `get-only` for a given user or group on MinIO server.
 
 __Example__
 
 ``` go
-	if err = madmClnt.SetUserPolicy(context.Background(), "newuser", "get-only"); err != nil {
+	if err = madmClnt.SetPolicy(context.Background(), "get-only", "newuser", false); err != nil {
 		log.Fatalln(err)
 	}
 ```
