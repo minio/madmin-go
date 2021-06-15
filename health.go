@@ -45,6 +45,12 @@ const (
 	HealthInfoVersion = HealthInfoVersion2
 )
 
+// NodeInfo - Interface to abstract any struct that contains address/endpoint and error fields
+type NodeInfo interface {
+	GetAddr() string
+	SetAddr(addr string) NodeInfo
+}
+
 // CPU contains system's CPU information.
 type CPU struct {
 	VendorID   string   `json:"vendor_id"`
@@ -66,6 +72,22 @@ type CPUs struct {
 	Error string `json:"error,omitempty"`
 
 	CPUs []CPU `json:"cpus,omitempty"`
+}
+
+func (c CPUs) GetAddr() string {
+	return c.Addr
+}
+
+func (c CPUs) SetAddr(addr string) NodeInfo {
+	c.Addr = addr
+	return c
+}
+
+func (c CPUs) Anonymize(addrAnonymizer func(string) (string, error)) CPUs {
+	newAddr, err := addrAnonymizer(c.Addr)
+	c.Addr = newAddr
+	c.Error = err.Error()
+	return c
 }
 
 // GetCPUs returns system's all CPU information.
@@ -135,6 +157,15 @@ type Partitions struct {
 	Partitions []Partition `json:"partitions,omitempty"`
 }
 
+func (p Partitions) GetAddr() string {
+	return p.Addr
+}
+
+func (p Partitions) SetAddr(addr string) NodeInfo {
+	p.Addr = addr
+	return p
+}
+
 // GetPartitions returns all disk partitions information of a node running linux only operating system.
 func GetPartitions(ctx context.Context, addr string) Partitions {
 	if runtime.GOOS != "linux" {
@@ -191,6 +222,15 @@ type OSInfo struct {
 	Sensors []host.TemperatureStat `json:"sensors,omitempty"`
 }
 
+func (o OSInfo) GetAddr() string {
+	return o.Addr
+}
+
+func (o OSInfo) SetAddr(addr string) NodeInfo {
+	o.Addr = addr
+	return o
+}
+
 // GetOSInfo returns linux only operating system's information.
 func GetOSInfo(ctx context.Context, addr string) OSInfo {
 	if runtime.GOOS != "linux" {
@@ -232,6 +272,15 @@ type MemInfo struct {
 	Available      uint64 `json:"available,omitempty"`
 	SwapSpaceTotal uint64 `json:"swap_space_total,omitempty"`
 	SwapSpaceFree  uint64 `json:"swap_space_free,omitempty"`
+}
+
+func (m MemInfo) GetAddr() string {
+	return m.Addr
+}
+
+func (m MemInfo) SetAddr(addr string) NodeInfo {
+	m.Addr = addr
+	return m
 }
 
 // GetMemInfo returns system's RAM and swap information.
@@ -293,6 +342,15 @@ type ProcInfo struct {
 	Times          cpu.TimesStat              `json:"times,omitempty"`
 	UIDs           []int32                    `json:"uids,omitempty"`
 	Username       string                     `json:"username,omitempty"`
+}
+
+func (p ProcInfo) GetAddr() string {
+	return p.Addr
+}
+
+func (p ProcInfo) SetAddr(addr string) NodeInfo {
+	p.Addr = addr
+	return p
 }
 
 // GetProcInfo returns current MinIO process information.
@@ -521,6 +579,15 @@ type DrivePerfInfos struct {
 	ParallelPerf []DrivePerfInfo `json:"parallel_perf,omitempty"`
 }
 
+func (d DrivePerfInfos) GetAddr() string {
+	return d.Addr
+}
+
+func (d DrivePerfInfos) SetAddr(addr string) NodeInfo {
+	d.Addr = addr
+	return d
+}
+
 // PeerNetPerfInfo contains network performance information of a node.
 type PeerNetPerfInfo struct {
 	Addr  string `json:"addr"`
@@ -530,12 +597,30 @@ type PeerNetPerfInfo struct {
 	Throughput Throughput `json:"throughput,omitempty"`
 }
 
+func (n PeerNetPerfInfo) GetAddr() string {
+	return n.Addr
+}
+
+func (n PeerNetPerfInfo) SetAddr(addr string) NodeInfo {
+	n.Addr = addr
+	return n
+}
+
 // NetPerfInfo contains network performance information of a node to other nodes.
 type NetPerfInfo struct {
 	Addr  string `json:"addr"`
 	Error string `json:"error,omitempty"`
 
 	RemotePeers []PeerNetPerfInfo `json:"remote_peers,omitempty"`
+}
+
+func (n NetPerfInfo) GetAddr() string {
+	return n.Addr
+}
+
+func (n NetPerfInfo) SetAddr(addr string) NodeInfo {
+	n.Addr = addr
+	return n
 }
 
 // PerfInfo - Includes Drive and Net perf info for the entire MinIO cluster
