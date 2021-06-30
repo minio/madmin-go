@@ -48,7 +48,23 @@ const (
 // NodeInfo - Interface to abstract any struct that contains address/endpoint and error fields
 type NodeInfo interface {
 	GetAddr() string
-	SetAddr(addr string) NodeInfo
+	SetAddr(addr string)
+}
+
+// NodeCommon - Common fields across most node-specific health structs
+type NodeCommon struct {
+	Addr  string `json:"addr"`
+	Error string `json:"error,omitempty"`
+}
+
+// GetAddr - return the address of the node
+func (n *NodeCommon) GetAddr() string {
+	return n.Addr
+}
+
+// SetAddr - set the address of the node
+func (n *NodeCommon) SetAddr(addr string) {
+	n.Addr = addr
 }
 
 // CPU contains system's CPU information.
@@ -68,26 +84,9 @@ type CPU struct {
 
 // CPUs contains all CPU information of a node.
 type CPUs struct {
-	Addr  string `json:"addr"`
-	Error string `json:"error,omitempty"`
+	NodeCommon
 
 	CPUs []CPU `json:"cpus,omitempty"`
-}
-
-func (c CPUs) GetAddr() string {
-	return c.Addr
-}
-
-func (c CPUs) SetAddr(addr string) NodeInfo {
-	c.Addr = addr
-	return c
-}
-
-func (c CPUs) Anonymize(addrAnonymizer func(string) (string, error)) CPUs {
-	newAddr, err := addrAnonymizer(c.Addr)
-	c.Addr = newAddr
-	c.Error = err.Error()
-	return c
 }
 
 // GetCPUs returns system's all CPU information.
@@ -95,8 +94,10 @@ func GetCPUs(ctx context.Context, addr string) CPUs {
 	infos, err := cpu.InfoWithContext(ctx)
 	if err != nil {
 		return CPUs{
-			Addr:  addr,
-			Error: err.Error(),
+			NodeCommon: NodeCommon{
+				Addr:  addr,
+				Error: err.Error(),
+			},
 		}
 	}
 
@@ -104,7 +105,7 @@ func GetCPUs(ctx context.Context, addr string) CPUs {
 	for _, info := range infos {
 		cpu, found := cpuMap[info.PhysicalID]
 		if found {
-			cpu.Cores += 1
+			cpu.Cores++
 		} else {
 			cpu = CPU{
 				VendorID:   info.VendorID,
@@ -129,8 +130,8 @@ func GetCPUs(ctx context.Context, addr string) CPUs {
 	}
 
 	return CPUs{
-		Addr: addr,
-		CPUs: cpus,
+		NodeCommon: NodeCommon{Addr: addr},
+		CPUs:       cpus,
 	}
 }
 
@@ -151,35 +152,29 @@ type Partition struct {
 
 // Partitions contains all disk partitions information of a node.
 type Partitions struct {
-	Addr  string `json:"addr"`
-	Error string `json:"error,omitempty"`
+	NodeCommon
 
 	Partitions []Partition `json:"partitions,omitempty"`
-}
-
-func (p Partitions) GetAddr() string {
-	return p.Addr
-}
-
-func (p Partitions) SetAddr(addr string) NodeInfo {
-	p.Addr = addr
-	return p
 }
 
 // GetPartitions returns all disk partitions information of a node running linux only operating system.
 func GetPartitions(ctx context.Context, addr string) Partitions {
 	if runtime.GOOS != "linux" {
 		return Partitions{
-			Addr:  addr,
-			Error: "unsupported operating system " + runtime.GOOS,
+			NodeCommon: NodeCommon{
+				Addr:  addr,
+				Error: "unsupported operating system " + runtime.GOOS,
+			},
 		}
 	}
 
 	parts, err := disk.PartitionsWithContext(ctx, false)
 	if err != nil {
 		return Partitions{
-			Addr:  addr,
-			Error: err.Error(),
+			NodeCommon: NodeCommon{
+				Addr:  addr,
+				Error: err.Error(),
+			},
 		}
 	}
 
@@ -208,49 +203,43 @@ func GetPartitions(ctx context.Context, addr string) Partitions {
 	}
 
 	return Partitions{
-		Addr:       addr,
+		NodeCommon: NodeCommon{Addr: addr},
 		Partitions: partitions,
 	}
 }
 
 // OSInfo contains operating system's information.
 type OSInfo struct {
-	Addr  string `json:"addr"`
-	Error string `json:"error,omitempty"`
+	NodeCommon
 
 	Info    host.InfoStat          `json:"info,omitempty"`
 	Sensors []host.TemperatureStat `json:"sensors,omitempty"`
-}
-
-func (o OSInfo) GetAddr() string {
-	return o.Addr
-}
-
-func (o OSInfo) SetAddr(addr string) NodeInfo {
-	o.Addr = addr
-	return o
 }
 
 // GetOSInfo returns linux only operating system's information.
 func GetOSInfo(ctx context.Context, addr string) OSInfo {
 	if runtime.GOOS != "linux" {
 		return OSInfo{
-			Addr:  addr,
-			Error: "unsupported operating system " + runtime.GOOS,
+			NodeCommon: NodeCommon{
+				Addr:  addr,
+				Error: "unsupported operating system " + runtime.GOOS,
+			},
 		}
 	}
 
 	info, err := host.InfoWithContext(ctx)
 	if err != nil {
 		return OSInfo{
-			Addr:  addr,
-			Error: err.Error(),
+			NodeCommon: NodeCommon{
+				Addr:  addr,
+				Error: err.Error(),
+			},
 		}
 	}
 
 	osInfo := OSInfo{
-		Addr: addr,
-		Info: *info,
+		NodeCommon: NodeCommon{Addr: addr},
+		Info:       *info,
 	}
 
 	osInfo.Sensors, err = host.SensorsTemperaturesWithContext(ctx)
@@ -265,8 +254,7 @@ func GetOSInfo(ctx context.Context, addr string) OSInfo {
 
 // MemInfo contains system's RAM and swap information.
 type MemInfo struct {
-	Addr  string `json:"addr"`
-	Error string `json:"error,omitempty"`
+	NodeCommon
 
 	Total          uint64 `json:"total,omitempty"`
 	Available      uint64 `json:"available,omitempty"`
@@ -274,35 +262,30 @@ type MemInfo struct {
 	SwapSpaceFree  uint64 `json:"swap_space_free,omitempty"`
 }
 
-func (m MemInfo) GetAddr() string {
-	return m.Addr
-}
-
-func (m MemInfo) SetAddr(addr string) NodeInfo {
-	m.Addr = addr
-	return m
-}
-
 // GetMemInfo returns system's RAM and swap information.
 func GetMemInfo(ctx context.Context, addr string) MemInfo {
 	meminfo, err := mem.VirtualMemoryWithContext(ctx)
 	if err != nil {
 		return MemInfo{
-			Addr:  addr,
-			Error: err.Error(),
+			NodeCommon: NodeCommon{
+				Addr:  addr,
+				Error: err.Error(),
+			},
 		}
 	}
 
 	swapinfo, err := mem.SwapMemoryWithContext(ctx)
 	if err != nil {
 		return MemInfo{
-			Addr:  addr,
-			Error: err.Error(),
+			NodeCommon: NodeCommon{
+				Addr:  addr,
+				Error: err.Error(),
+			},
 		}
 	}
 
 	return MemInfo{
-		Addr:           addr,
+		NodeCommon:     NodeCommon{Addr: addr},
 		Total:          meminfo.Total,
 		Available:      meminfo.Available,
 		SwapSpaceTotal: swapinfo.Total,
@@ -312,8 +295,7 @@ func GetMemInfo(ctx context.Context, addr string) MemInfo {
 
 // ProcInfo contains current process's information.
 type ProcInfo struct {
-	Addr  string `json:"addr"`
-	Error string `json:"error,omitempty"`
+	NodeCommon
 
 	PID            int32                      `json:"pid,omitempty"`
 	IsBackground   bool                       `json:"is_background,omitempty"`
@@ -344,22 +326,13 @@ type ProcInfo struct {
 	Username       string                     `json:"username,omitempty"`
 }
 
-func (p ProcInfo) GetAddr() string {
-	return p.Addr
-}
-
-func (p ProcInfo) SetAddr(addr string) NodeInfo {
-	p.Addr = addr
-	return p
-}
-
 // GetProcInfo returns current MinIO process information.
 func GetProcInfo(ctx context.Context, addr string) ProcInfo {
 	pid := int32(syscall.Getpid())
 
 	procInfo := ProcInfo{
-		Addr: addr,
-		PID:  pid,
+		NodeCommon: NodeCommon{Addr: addr},
+		PID:        pid,
 	}
 	var err error
 
@@ -572,55 +545,25 @@ type DrivePerfInfo struct {
 
 // DrivePerfInfos contains all disk drive's performance information of a node.
 type DrivePerfInfos struct {
-	Addr  string `json:"addr"`
-	Error string `json:"error,omitempty"`
+	NodeCommon
 
 	SerialPerf   []DrivePerfInfo `json:"serial_perf,omitempty"`
 	ParallelPerf []DrivePerfInfo `json:"parallel_perf,omitempty"`
 }
 
-func (d DrivePerfInfos) GetAddr() string {
-	return d.Addr
-}
-
-func (d DrivePerfInfos) SetAddr(addr string) NodeInfo {
-	d.Addr = addr
-	return d
-}
-
 // PeerNetPerfInfo contains network performance information of a node.
 type PeerNetPerfInfo struct {
-	Addr  string `json:"addr"`
-	Error string `json:"error,omitempty"`
+	NodeCommon
 
 	Latency    Latency    `json:"latency,omitempty"`
 	Throughput Throughput `json:"throughput,omitempty"`
 }
 
-func (n PeerNetPerfInfo) GetAddr() string {
-	return n.Addr
-}
-
-func (n PeerNetPerfInfo) SetAddr(addr string) NodeInfo {
-	n.Addr = addr
-	return n
-}
-
 // NetPerfInfo contains network performance information of a node to other nodes.
 type NetPerfInfo struct {
-	Addr  string `json:"addr"`
-	Error string `json:"error,omitempty"`
+	NodeCommon
 
 	RemotePeers []PeerNetPerfInfo `json:"remote_peers,omitempty"`
-}
-
-func (n NetPerfInfo) GetAddr() string {
-	return n.Addr
-}
-
-func (n NetPerfInfo) SetAddr(addr string) NodeInfo {
-	n.Addr = addr
-	return n
 }
 
 // PerfInfo - Includes Drive and Net perf info for the entire MinIO cluster
@@ -719,9 +662,8 @@ func (info HealthInfo) GetError() string {
 func (info HealthInfo) GetStatus() string {
 	if info.Error != "" {
 		return "error"
-	} else {
-		return "success"
 	}
+	return "success"
 }
 
 // GetTimestamp - returns timestamp from the cluster health info
