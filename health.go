@@ -45,6 +45,28 @@ const (
 	HealthInfoVersion = HealthInfoVersion2
 )
 
+// NodeInfo - Interface to abstract any struct that contains address/endpoint and error fields
+type NodeInfo interface {
+	GetAddr() string
+	SetAddr(addr string)
+}
+
+// NodeCommon - Common fields across most node-specific health structs
+type NodeCommon struct {
+	Addr  string `json:"addr"`
+	Error string `json:"error,omitempty"`
+}
+
+// GetAddr - return the address of the node
+func (n *NodeCommon) GetAddr() string {
+	return n.Addr
+}
+
+// SetAddr - set the address of the node
+func (n *NodeCommon) SetAddr(addr string) {
+	n.Addr = addr
+}
+
 // CPU contains system's CPU information.
 type CPU struct {
 	VendorID   string   `json:"vendor_id"`
@@ -62,8 +84,7 @@ type CPU struct {
 
 // CPUs contains all CPU information of a node.
 type CPUs struct {
-	Addr  string `json:"addr"`
-	Error string `json:"error,omitempty"`
+	NodeCommon
 
 	CPUs []CPU `json:"cpus,omitempty"`
 }
@@ -73,8 +94,10 @@ func GetCPUs(ctx context.Context, addr string) CPUs {
 	infos, err := cpu.InfoWithContext(ctx)
 	if err != nil {
 		return CPUs{
-			Addr:  addr,
-			Error: err.Error(),
+			NodeCommon: NodeCommon{
+				Addr:  addr,
+				Error: err.Error(),
+			},
 		}
 	}
 
@@ -82,7 +105,7 @@ func GetCPUs(ctx context.Context, addr string) CPUs {
 	for _, info := range infos {
 		cpu, found := cpuMap[info.PhysicalID]
 		if found {
-			cpu.Cores += 1
+			cpu.Cores++
 		} else {
 			cpu = CPU{
 				VendorID:   info.VendorID,
@@ -107,8 +130,8 @@ func GetCPUs(ctx context.Context, addr string) CPUs {
 	}
 
 	return CPUs{
-		Addr: addr,
-		CPUs: cpus,
+		NodeCommon: NodeCommon{Addr: addr},
+		CPUs:       cpus,
 	}
 }
 
@@ -129,8 +152,7 @@ type Partition struct {
 
 // Partitions contains all disk partitions information of a node.
 type Partitions struct {
-	Addr  string `json:"addr"`
-	Error string `json:"error,omitempty"`
+	NodeCommon
 
 	Partitions []Partition `json:"partitions,omitempty"`
 }
@@ -139,16 +161,20 @@ type Partitions struct {
 func GetPartitions(ctx context.Context, addr string) Partitions {
 	if runtime.GOOS != "linux" {
 		return Partitions{
-			Addr:  addr,
-			Error: "unsupported operating system " + runtime.GOOS,
+			NodeCommon: NodeCommon{
+				Addr:  addr,
+				Error: "unsupported operating system " + runtime.GOOS,
+			},
 		}
 	}
 
 	parts, err := disk.PartitionsWithContext(ctx, false)
 	if err != nil {
 		return Partitions{
-			Addr:  addr,
-			Error: err.Error(),
+			NodeCommon: NodeCommon{
+				Addr:  addr,
+				Error: err.Error(),
+			},
 		}
 	}
 
@@ -177,15 +203,14 @@ func GetPartitions(ctx context.Context, addr string) Partitions {
 	}
 
 	return Partitions{
-		Addr:       addr,
+		NodeCommon: NodeCommon{Addr: addr},
 		Partitions: partitions,
 	}
 }
 
 // OSInfo contains operating system's information.
 type OSInfo struct {
-	Addr  string `json:"addr"`
-	Error string `json:"error,omitempty"`
+	NodeCommon
 
 	Info    host.InfoStat          `json:"info,omitempty"`
 	Sensors []host.TemperatureStat `json:"sensors,omitempty"`
@@ -195,22 +220,26 @@ type OSInfo struct {
 func GetOSInfo(ctx context.Context, addr string) OSInfo {
 	if runtime.GOOS != "linux" {
 		return OSInfo{
-			Addr:  addr,
-			Error: "unsupported operating system " + runtime.GOOS,
+			NodeCommon: NodeCommon{
+				Addr:  addr,
+				Error: "unsupported operating system " + runtime.GOOS,
+			},
 		}
 	}
 
 	info, err := host.InfoWithContext(ctx)
 	if err != nil {
 		return OSInfo{
-			Addr:  addr,
-			Error: err.Error(),
+			NodeCommon: NodeCommon{
+				Addr:  addr,
+				Error: err.Error(),
+			},
 		}
 	}
 
 	osInfo := OSInfo{
-		Addr: addr,
-		Info: *info,
+		NodeCommon: NodeCommon{Addr: addr},
+		Info:       *info,
 	}
 
 	osInfo.Sensors, err = host.SensorsTemperaturesWithContext(ctx)
@@ -225,8 +254,7 @@ func GetOSInfo(ctx context.Context, addr string) OSInfo {
 
 // MemInfo contains system's RAM and swap information.
 type MemInfo struct {
-	Addr  string `json:"addr"`
-	Error string `json:"error,omitempty"`
+	NodeCommon
 
 	Total          uint64 `json:"total,omitempty"`
 	Available      uint64 `json:"available,omitempty"`
@@ -239,21 +267,25 @@ func GetMemInfo(ctx context.Context, addr string) MemInfo {
 	meminfo, err := mem.VirtualMemoryWithContext(ctx)
 	if err != nil {
 		return MemInfo{
-			Addr:  addr,
-			Error: err.Error(),
+			NodeCommon: NodeCommon{
+				Addr:  addr,
+				Error: err.Error(),
+			},
 		}
 	}
 
 	swapinfo, err := mem.SwapMemoryWithContext(ctx)
 	if err != nil {
 		return MemInfo{
-			Addr:  addr,
-			Error: err.Error(),
+			NodeCommon: NodeCommon{
+				Addr:  addr,
+				Error: err.Error(),
+			},
 		}
 	}
 
 	return MemInfo{
-		Addr:           addr,
+		NodeCommon:     NodeCommon{Addr: addr},
 		Total:          meminfo.Total,
 		Available:      meminfo.Available,
 		SwapSpaceTotal: swapinfo.Total,
@@ -263,8 +295,7 @@ func GetMemInfo(ctx context.Context, addr string) MemInfo {
 
 // ProcInfo contains current process's information.
 type ProcInfo struct {
-	Addr  string `json:"addr"`
-	Error string `json:"error,omitempty"`
+	NodeCommon
 
 	PID            int32                      `json:"pid,omitempty"`
 	IsBackground   bool                       `json:"is_background,omitempty"`
@@ -300,8 +331,8 @@ func GetProcInfo(ctx context.Context, addr string) ProcInfo {
 	pid := int32(syscall.Getpid())
 
 	procInfo := ProcInfo{
-		Addr: addr,
-		PID:  pid,
+		NodeCommon: NodeCommon{Addr: addr},
+		PID:        pid,
 	}
 	var err error
 
@@ -514,8 +545,7 @@ type DrivePerfInfo struct {
 
 // DrivePerfInfos contains all disk drive's performance information of a node.
 type DrivePerfInfos struct {
-	Addr  string `json:"addr"`
-	Error string `json:"error,omitempty"`
+	NodeCommon
 
 	SerialPerf   []DrivePerfInfo `json:"serial_perf,omitempty"`
 	ParallelPerf []DrivePerfInfo `json:"parallel_perf,omitempty"`
@@ -523,8 +553,7 @@ type DrivePerfInfos struct {
 
 // PeerNetPerfInfo contains network performance information of a node.
 type PeerNetPerfInfo struct {
-	Addr  string `json:"addr"`
-	Error string `json:"error,omitempty"`
+	NodeCommon
 
 	Latency    Latency    `json:"latency,omitempty"`
 	Throughput Throughput `json:"throughput,omitempty"`
@@ -532,8 +561,7 @@ type PeerNetPerfInfo struct {
 
 // NetPerfInfo contains network performance information of a node to other nodes.
 type NetPerfInfo struct {
-	Addr  string `json:"addr"`
-	Error string `json:"error,omitempty"`
+	NodeCommon
 
 	RemotePeers []PeerNetPerfInfo `json:"remote_peers,omitempty"`
 }
@@ -634,9 +662,8 @@ func (info HealthInfo) GetError() string {
 func (info HealthInfo) GetStatus() string {
 	if info.Error != "" {
 		return "error"
-	} else {
-		return "success"
 	}
+	return "success"
 }
 
 // GetTimestamp - returns timestamp from the cluster health info
