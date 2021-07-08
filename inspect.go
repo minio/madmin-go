@@ -33,13 +33,13 @@ type InspectOptions struct {
 // Inspect makes an admin call to download a raw files from disk.
 func (adm *AdminClient) Inspect(ctx context.Context, d InspectOptions) (key [32]byte, c io.ReadCloser, err error) {
 	path := fmt.Sprintf(adminAPIPrefix + "/inspect-data")
+	q := make(url.Values)
+	q.Set("volume", d.Volume)
+	q.Set("file", d.File)
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet, requestData{
 			relPath: path,
-			queryValues: url.Values{
-				"volume": {d.Volume},
-				"file": {d.File},
-			},
+			queryValues:q,
 		},
 	)
 
