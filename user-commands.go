@@ -34,10 +34,11 @@ type AccountAccess struct {
 // BucketAccessInfo represents bucket usage of a bucket, and its relevant
 // access type for an account
 type BucketAccessInfo struct {
-	Name    string        `json:"name"`
-	Size    uint64        `json:"size"`
-	Created time.Time     `json:"created"`
-	Access  AccountAccess `json:"access"`
+	Name        string            `json:"name"`
+	Size        uint64            `json:"size"`
+	PrefixUsage map[string]uint64 `json:"prefixUsage"`
+	Created     time.Time         `json:"created"`
+	Access      AccountAccess     `json:"access"`
 }
 
 // AccountInfo represents the account usage info of an
@@ -50,7 +51,14 @@ type AccountInfo struct {
 
 // AccountInfo returns the usage info for the authenticating account.
 func (adm *AdminClient) AccountInfo(ctx context.Context) (AccountInfo, error) {
-	resp, err := adm.executeMethod(ctx, http.MethodGet, requestData{relPath: adminAPIPrefix + "/accountinfo"})
+	q := make(url.Values)
+	q.Set("prefix-usage", "true")
+	resp, err := adm.executeMethod(ctx, http.MethodGet,
+		requestData{
+			relPath:     adminAPIPrefix + "/accountinfo",
+			queryValues: q,
+		},
+	)
 	defer closeResponse(resp)
 	if err != nil {
 		return AccountInfo{}, err
