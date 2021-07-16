@@ -45,6 +45,7 @@ type BucketAccessInfo struct {
 // account across buckets.
 type AccountInfo struct {
 	AccountName string
+	Server      BackendInfo
 	Policy      json.RawMessage // Use iam/policy.Parse to parse the result, to be done by the caller.
 	Buckets     []BucketAccessInfo
 }
