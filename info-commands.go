@@ -185,6 +185,9 @@ type DataUsageInfo struct {
 	// - object size histogram per bucket
 	BucketsUsage map[string]BucketUsageInfo `json:"bucketsUsageInfo"`
 
+	// TierStats holds per-tier stats like bytes tiered, etc.
+	TierStats map[string]TierStats `json:"tierStats"`
+
 	// Deprecated kept here for backward compatibility reasons.
 	BucketSizes map[string]uint64 `json:"bucketsSizes"`
 }
@@ -213,17 +216,18 @@ func (adm *AdminClient) DataUsageInfo(ctx context.Context) (DataUsageInfo, error
 
 // InfoMessage container to hold server admin related information.
 type InfoMessage struct {
-	Mode         string             `json:"mode,omitempty"`
-	Domain       []string           `json:"domain,omitempty"`
-	Region       string             `json:"region,omitempty"`
-	SQSARN       []string           `json:"sqsARN,omitempty"`
-	DeploymentID string             `json:"deploymentID,omitempty"`
-	Buckets      Buckets            `json:"buckets,omitempty"`
-	Objects      Objects            `json:"objects,omitempty"`
-	Usage        Usage              `json:"usage,omitempty"`
-	Services     Services           `json:"services,omitempty"`
-	Backend      interface{}        `json:"backend,omitempty"`
-	Servers      []ServerProperties `json:"servers,omitempty"`
+	Mode         string               `json:"mode,omitempty"`
+	Domain       []string             `json:"domain,omitempty"`
+	Region       string               `json:"region,omitempty"`
+	SQSARN       []string             `json:"sqsARN,omitempty"`
+	DeploymentID string               `json:"deploymentID,omitempty"`
+	Buckets      Buckets              `json:"buckets,omitempty"`
+	Objects      Objects              `json:"objects,omitempty"`
+	Usage        Usage                `json:"usage,omitempty"`
+	AllTierStats map[string]TierStats `json:"allTierStats,omitempty"`
+	Services     Services             `json:"services,omitempty"`
+	Backend      interface{}          `json:"backend,omitempty"`
+	Servers      []ServerProperties   `json:"servers,omitempty"`
 }
 
 // Services contains different services information
@@ -251,6 +255,12 @@ type Objects struct {
 type Usage struct {
 	Size  uint64 `json:"size"`
 	Error string `json:"error,omitempty"`
+}
+
+// TierStats contains total size and number of versions of objects transitioned
+type TierStats struct {
+	TotalSize   uint64 `json:"totalSize"`
+	NumVersions int    `json:"numVersions"`
 }
 
 // KMS contains KMS status information
