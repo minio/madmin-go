@@ -22,6 +22,7 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
+	"os/exec"
 	"runtime"
 	"strings"
 	"syscall"
@@ -45,6 +46,12 @@ const (
 	HealthInfoVersion = HealthInfoVersion2
 )
 
+const (
+	SysErrAuditEnabled      = "audit is enabled"
+	SysErrUpdatedbInstalled = "updatedb is installed"
+	SysErrFstrimInstalled   = "fstrim is installed"
+)
+
 // NodeInfo - Interface to abstract any struct that contains address/endpoint and error fields
 type NodeInfo interface {
 	GetAddr() string
@@ -65,6 +72,13 @@ func (n *NodeCommon) GetAddr() string {
 // SetAddr - set the address of the node
 func (n *NodeCommon) SetAddr(addr string) {
 	n.Addr = addr
+}
+
+// SysErrors - contains a system error
+type SysErrors = struct {
+	NodeCommon
+
+	Errors []string `json:"errors,omitempty"`
 }
 
 // CPU contains system's CPU information.
@@ -250,6 +264,23 @@ func GetOSInfo(ctx context.Context, addr string) OSInfo {
 	}
 
 	return osInfo
+}
+
+// GetSysErrors returns system's RAM and swap information.
+func GetSysErrors(ctx context.Context, addr string) SysErrors {
+	se := SysErrors{NodeCommon: NodeCommon{Addr: addr}}
+	if runtime.GOOS != "linux" {
+		return se
+	}
+	if isAuditEnabled() {
+		se.Errors = append(se.Errors, SysErrAuditEnabled)
+	}
+	return se
+}
+
+func isAuditEnabled() bool {
+	_, err := exec.Command("grep", "audit=1", "/proc/cmdline").Output()
+	return err == nil
 }
 
 // MemInfo contains system's RAM and swap information.
@@ -512,6 +543,7 @@ type SysInfo struct {
 	OSInfo     []OSInfo     `json:"osinfo,omitempty"`
 	MemInfo    []MemInfo    `json:"meminfo,omitempty"`
 	ProcInfo   []ProcInfo   `json:"procinfo,omitempty"`
+	SysErrs    []SysErrors  `json:"errors,omitempty"`
 }
 
 // Latency contains write operation latency in seconds of a disk drive.
@@ -688,6 +720,7 @@ const (
 	HealthDataTypeSysMem      HealthDataType = "sysmem"
 	HealthDataTypeSysNet      HealthDataType = "sysnet"
 	HealthDataTypeSysProcess  HealthDataType = "sysprocess"
+	HealthDataTypeSysErrors   HealthDataType = "syserrors"
 )
 
 // HealthDataTypesMap - Map of Health datatypes
@@ -704,6 +737,7 @@ var HealthDataTypesMap = map[string]HealthDataType{
 	"sysmem":      HealthDataTypeSysMem,
 	"sysnet":      HealthDataTypeSysNet,
 	"sysprocess":  HealthDataTypeSysProcess,
+	"syserrors":   HealthDataTypeSysErrors,
 }
 
 // HealthDataTypesList - List of Health datatypes
@@ -720,6 +754,7 @@ var HealthDataTypesList = []HealthDataType{
 	HealthDataTypeSysMem,
 	HealthDataTypeSysNet,
 	HealthDataTypeSysProcess,
+	HealthDataTypeSysErrors,
 }
 
 // HealthInfoVersionStruct - struct for health info version
