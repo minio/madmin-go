@@ -75,7 +75,7 @@ func (n *NodeCommon) SetAddr(addr string) {
 }
 
 // SysErrors - contains a system error
-type SysErrors = struct {
+type SysErrors struct {
 	NodeCommon
 
 	Errors []string `json:"errors,omitempty"`
