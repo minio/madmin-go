@@ -17,12 +17,13 @@
 package madmin
 
 import (
+	"bufio"
 	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"net/url"
-	"os/exec"
+	"os"
 	"runtime"
 	"strings"
 	"syscall"
@@ -49,7 +50,6 @@ const (
 const (
 	SysErrAuditEnabled      = "audit is enabled"
 	SysErrUpdatedbInstalled = "updatedb is installed"
-	SysErrFstrimInstalled   = "fstrim is installed"
 )
 
 // NodeInfo - Interface to abstract any struct that contains address/endpoint and error fields
@@ -272,15 +272,31 @@ func GetSysErrors(ctx context.Context, addr string) SysErrors {
 	if runtime.GOOS != "linux" {
 		return se
 	}
-	if isAuditEnabled() {
+
+	ae, err := isAuditEnabled()
+	if err != nil {
+		se.Error = err.Error()
+	} else if ae {
 		se.Errors = append(se.Errors, SysErrAuditEnabled)
 	}
+
 	return se
 }
 
-func isAuditEnabled() bool {
-	_, err := exec.Command("grep", "audit=1", "/proc/cmdline").Output()
-	return err == nil
+func isAuditEnabled() (bool, error) {
+	file, err := os.Open("/proc/cmdline")
+	if err != nil {
+		return false, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		if strings.Contains(scanner.Text(), "audit=1") {
+			return true, nil
+		}
+	}
+	return false, scanner.Err()
 }
 
 // MemInfo contains system's RAM and swap information.
