@@ -20,23 +20,39 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"time"
 )
 
 // Pool represents pool specific information
 type Pool struct {
-	Number int      `json:"number"`
-	Local  string   `json:"local"`
-	Remote []string `json:"remote"`
+	SetCount     int      `json:"setCount"`
+	DrivesPerSet int      `json:"drivesPerSet"`
+	CmdLine      string   `json:"cmdline"`
+	Info         PoolInfo `json:"info"`
 }
 
-// Pools is a collection of all the pools
-type Pools map[string]Pool
+// PoolDrainInfo provides pool draining state.
+type PoolDrainInfo struct {
+	StartTime    time.Time `json:"startTime" msg:"st"`
+	TotalSize    int64     `json:"totalSize" msg:"tsm"`
+	TotalObjects int64     `json:"totalObjects" msg:"to"`
+}
+
+// PoolInfo represents pool specific info such as
+// if pool is currently suspended, or being drained
+// etc.
+type PoolInfo struct {
+	ID         int            `json:"id" msg:"id"`
+	LastUpdate time.Time      `json:"lastUpdate" msg:"lu"`
+	Drain      *PoolDrainInfo `json:"drainInfo,omitempty" msg:"dr"`
+	Suspend    bool           `json:"suspend" msg:"sp"`
+}
 
 // ListPools returns list of pools currently configured and being used
 // on the cluster.
-func (adm *AdminClient) ListPools(ctx context.Context) (Pools, error) {
+func (adm *AdminClient) ListPools(ctx context.Context) ([]Pool, error) {
 	resp, err := adm.executeMethod(ctx, http.MethodGet, requestData{
-		relPath: adminAPIPrefix + "/pool/list", // GET <endpoint>/<admin-API>/pool/list
+		relPath: adminAPIPrefix + "/pools/list", // GET <endpoint>/<admin-API>/pools/list
 	})
 	if err != nil {
 		return nil, err
@@ -45,7 +61,7 @@ func (adm *AdminClient) ListPools(ctx context.Context) (Pools, error) {
 	if resp.StatusCode != http.StatusOK {
 		return nil, httpRespToErrorResponse(resp)
 	}
-	var pools = make(Pools)
+	var pools []Pool
 	if err = json.NewDecoder(resp.Body).Decode(&pools); err != nil {
 		return nil, err
 	}

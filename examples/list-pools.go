@@ -21,6 +21,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 
 	"github.com/minio/madmin-go"
@@ -46,5 +47,5 @@ func main() {
 	if err != nil {
 		log.Fatalf("Marshal failed due to: %v", err)
 	}
-	log.Println("Pools received successfully: ", string(out))
+	fmt.Println(string(out))
 }
