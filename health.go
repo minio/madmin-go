@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"runtime"
 	"strings"
 	"syscall"
@@ -280,9 +281,18 @@ func GetSysErrors(ctx context.Context, addr string) SysErrors {
 		se.Errors = append(se.Errors, SysErrAuditEnabled)
 	}
 
+	pkgCmd, arg := getPkgListCmd()
+
+	// updatedb is part of the `mlocate` package
+	if isPackageInstalled("mlocate", pkgCmd, arg) {
+		se.Errors = append(se.Errors, SysErrUpdatedbInstalled)
+	}
+
 	return se
 }
 
+// Audit is enabled if either `audit=1` is present in /proc/cmdline
+// or the `kauditd` process is running
 func isAuditEnabled() (bool, error) {
 	file, err := os.Open("/proc/cmdline")
 	if err != nil {
@@ -296,7 +306,56 @@ func isAuditEnabled() (bool, error) {
 			return true, nil
 		}
 	}
-	return false, scanner.Err()
+
+	return isKauditdRunning()
+}
+
+func isKauditdRunning() (bool, error) {
+	procs, err := process.Processes()
+	if err != nil {
+		return false, err
+	}
+	for _, proc := range procs {
+		pname, err := proc.Name()
+		if err != nil && pname == "kauditd" {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+func isPackageInstalled(pkg string, lstCmd string, arg string) bool {
+	listPackages := exec.Command(lstCmd, arg)
+
+	grep := exec.Command("grep", pkg)
+	pipe, _ := listPackages.StdoutPipe()
+	defer pipe.Close()
+
+	grep.Stdin = pipe
+	listPackages.Start()
+	_, err := grep.Output()
+
+	return err == nil
+}
+
+func getPkgListCmd() (string, string) {
+	var pkgCmd string
+	var arg string
+	if isCommandAvailable("rpm") {
+		pkgCmd = "rpm"
+		arg = "-qa"
+	}
+
+	if isCommandAvailable("dpkg") {
+		pkgCmd = "dpkg"
+		arg = "-l"
+	}
+	return pkgCmd, arg
+}
+
+func isCommandAvailable(cmd string) bool {
+	_, err := exec.Command("which", cmd).Output()
+	return err == nil
 }
 
 // MemInfo contains system's RAM and swap information.
