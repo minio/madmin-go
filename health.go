@@ -276,15 +276,20 @@ func GetSysErrors(ctx context.Context, addr string) SysErrors {
 
 	ae, err := isAuditEnabled()
 	if err != nil {
-		se.Error = err.Error()
+		se.Error = "audit: " + err.Error()
 	} else if ae {
 		se.Errors = append(se.Errors, SysErrAuditEnabled)
 	}
 
-	pkgCmd, arg := getPkgListCmd()
-
-	// updatedb is part of the `mlocate` package
-	if isPackageInstalled("mlocate", pkgCmd, arg) {
+	_, err = exec.LookPath("updatedb")
+	if err != nil {
+		errMsg := "updatedb: " + err.Error()
+		if len(se.Error) == 0 {
+			se.Error = errMsg
+		} else {
+			se.Error = se.Error + ", " + errMsg
+		}
+	} else {
 		se.Errors = append(se.Errors, SysErrUpdatedbInstalled)
 	}
 
@@ -322,40 +327,6 @@ func isKauditdRunning() (bool, error) {
 		}
 	}
 	return false, nil
-}
-
-func isPackageInstalled(pkg string, lstCmd string, arg string) bool {
-	listPackages := exec.Command(lstCmd, arg)
-
-	grep := exec.Command("grep", pkg)
-	pipe, _ := listPackages.StdoutPipe()
-	defer pipe.Close()
-
-	grep.Stdin = pipe
-	listPackages.Start()
-	_, err := grep.Output()
-
-	return err == nil
-}
-
-func getPkgListCmd() (string, string) {
-	var pkgCmd string
-	var arg string
-	if isCommandAvailable("rpm") {
-		pkgCmd = "rpm"
-		arg = "-qa"
-	}
-
-	if isCommandAvailable("dpkg") {
-		pkgCmd = "dpkg"
-		arg = "-l"
-	}
-	return pkgCmd, arg
-}
-
-func isCommandAvailable(cmd string) bool {
-	_, err := exec.Command("which", cmd).Output()
-	return err == nil
 }
 
 // MemInfo contains system's RAM and swap information.
