@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"runtime"
 	"strings"
 	"syscall"
@@ -275,14 +276,28 @@ func GetSysErrors(ctx context.Context, addr string) SysErrors {
 
 	ae, err := isAuditEnabled()
 	if err != nil {
-		se.Error = err.Error()
+		se.Error = "audit: " + err.Error()
 	} else if ae {
 		se.Errors = append(se.Errors, SysErrAuditEnabled)
+	}
+
+	_, err = exec.LookPath("updatedb")
+	if err != nil {
+		errMsg := "updatedb: " + err.Error()
+		if len(se.Error) == 0 {
+			se.Error = errMsg
+		} else {
+			se.Error = se.Error + ", " + errMsg
+		}
+	} else {
+		se.Errors = append(se.Errors, SysErrUpdatedbInstalled)
 	}
 
 	return se
 }
 
+// Audit is enabled if either `audit=1` is present in /proc/cmdline
+// or the `kauditd` process is running
 func isAuditEnabled() (bool, error) {
 	file, err := os.Open("/proc/cmdline")
 	if err != nil {
@@ -296,7 +311,22 @@ func isAuditEnabled() (bool, error) {
 			return true, nil
 		}
 	}
-	return false, scanner.Err()
+
+	return isKauditdRunning()
+}
+
+func isKauditdRunning() (bool, error) {
+	procs, err := process.Processes()
+	if err != nil {
+		return false, err
+	}
+	for _, proc := range procs {
+		pname, err := proc.Name()
+		if err != nil && pname == "kauditd" {
+			return true, nil
+		}
+	}
+	return false, nil
 }
 
 // MemInfo contains system's RAM and swap information.
