@@ -28,10 +28,10 @@ import (
 
 // SpeedtestResult - response from the server containing speedtest result
 type SpeedtestResult struct {
-	Uploads   uint64
-	Downloads uint64
-	Endpoint  string
-	Err       error
+	Uploads   uint64 `json:"uploads"`
+	Downloads uint64 `json:"downloads"`
+	Endpoint  string `json:"endpoint"`
+	Err       error  `json:"err,omitempty"`
 }
 
 // SpeedtestOpts provide configurable options for speedtest
