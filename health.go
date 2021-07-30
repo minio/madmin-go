@@ -49,8 +49,9 @@ const (
 )
 
 const (
-	SysErrAuditEnabled      = "audit is enabled"
-	SysErrUpdatedbInstalled = "updatedb is installed"
+	SysErrAuditEnabled       = "audit is enabled"
+	SysErrUpdatedbInstalled  = "updatedb is installed"
+	SysErrSELinuxNotDisabled = "selinux is not disabled"
 )
 
 // NodeInfo - Interface to abstract any struct that contains address/endpoint and error fields
@@ -293,6 +294,12 @@ func GetSysErrors(ctx context.Context, addr string) SysErrors {
 		se.Errors = append(se.Errors, SysErrUpdatedbInstalled)
 	}
 
+	o, err := exec.Command("getenforce").Output()
+	out := strings.TrimRight(string(o), "\n")
+	if err == nil && out != "Disabled" {
+		// selinux is installed and is not disabled
+		se.Errors = append(se.Errors, SysErrSELinuxNotDisabled)
+	}
 	return se
 }
 
