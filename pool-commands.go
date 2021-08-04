@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -46,6 +47,84 @@ type PoolInfo struct {
 	LastUpdate time.Time      `json:"lastUpdate" msg:"lu"`
 	Drain      *PoolDrainInfo `json:"drainInfo,omitempty" msg:"dr"`
 	Suspend    bool           `json:"suspend" msg:"sp"`
+}
+
+// ResumePool - resume(allow) writes on previously suspended pool.
+func (adm *AdminClient) ResumePool(ctx context.Context, pool string) error {
+	values := url.Values{}
+	values.Set("pool", pool)
+	resp, err := adm.executeMethod(ctx, http.MethodPost, requestData{
+		relPath:     adminAPIPrefix + "/pools/suspend", // POST <endpoint>/<admin-API>/pools/resume?pool=http://server{1...4}/disk{1...4}
+		queryValues: values,
+	})
+	if err != nil {
+		return err
+	}
+	defer closeResponse(resp)
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+	return nil
+}
+
+// SuspendPool - suspend(disallow) writes on a pool.
+func (adm *AdminClient) SuspendPool(ctx context.Context, pool string) error {
+	values := url.Values{}
+	values.Set("pool", pool)
+	resp, err := adm.executeMethod(ctx, http.MethodPost, requestData{
+		relPath:     adminAPIPrefix + "/pools/suspend", // POST <endpoint>/<admin-API>/pools/suspend?pool=http://server{1...4}/disk{1...4}
+		queryValues: values,
+	})
+	if err != nil {
+		return err
+	}
+	defer closeResponse(resp)
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+	return nil
+}
+
+// DrainPool - starts moving data from specified pool to all other existing pools.
+// Draining if successfully started this function will return `nil`, to check
+// for on-going draining cycle use InfoPool.
+func (adm *AdminClient) DrainPool(ctx context.Context, pool string) error {
+	values := url.Values{}
+	values.Set("pool", pool)
+	resp, err := adm.executeMethod(ctx, http.MethodPost, requestData{
+		relPath:     adminAPIPrefix + "/pools/drain", // POST <endpoint>/<admin-API>/pools/drain?pool=http://server{1...4}/disk{1...4}
+		queryValues: values,
+	})
+	if err != nil {
+		return err
+	}
+	defer closeResponse(resp)
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+	return nil
+}
+
+// InfoPool return current status about pool, reports any draining activity in progress
+// and elasped time.
+func (adm *AdminClient) InfoPool(ctx context.Context, pool string) (PoolInfo, error) {
+	values := url.Values{}
+	values.Set("pool", pool)
+	resp, err := adm.executeMethod(ctx, http.MethodPost, requestData{
+		relPath:     adminAPIPrefix + "/pools/info", // GET <endpoint>/<admin-API>/pools/info?pool=http://server{1...4}/disk{1...4}
+		queryValues: values,
+	})
+	if err != nil {
+		return PoolInfo{}, err
+	}
+	defer closeResponse(resp)
+
+	var info PoolInfo
+	if err = json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return PoolInfo{}, err
+	}
+
+	return info, nil
 }
 
 // ListPools returns list of pools currently configured and being used
