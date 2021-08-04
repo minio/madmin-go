@@ -26,27 +26,28 @@ import (
 
 // Pool represents pool specific information
 type Pool struct {
-	SetCount     int      `json:"setCount"`
-	DrivesPerSet int      `json:"drivesPerSet"`
-	CmdLine      string   `json:"cmdline"`
-	Info         PoolInfo `json:"info"`
+	SetCount     int    `json:"setCount"`
+	DrivesPerSet int    `json:"drivesPerSet"`
+	CmdLine      string `json:"cmdline"`
 }
 
-// PoolDrainInfo provides pool draining state.
+// PoolDrainInfo currently draining information
 type PoolDrainInfo struct {
-	StartTime    time.Time `json:"startTime" msg:"st"`
-	TotalSize    int64     `json:"totalSize" msg:"tsm"`
-	TotalObjects int64     `json:"totalObjects" msg:"to"`
+	StartTime   time.Time `json:"startTime"`
+	StartSize   int64     `json:"startSize"`
+	Duration    int64     `json:"duration"`
+	CurrentSize int64     `json:"currentSize"`
+	Complete    bool      `json:"complete"`
+	Failed      bool      `json:"failed"`
 }
 
-// PoolInfo represents pool specific info such as
-// if pool is currently suspended, or being drained
-// etc.
+// PoolInfo captures pool info
 type PoolInfo struct {
-	ID         int            `json:"id" msg:"id"`
-	LastUpdate time.Time      `json:"lastUpdate" msg:"lu"`
-	Drain      *PoolDrainInfo `json:"drainInfo,omitempty" msg:"dr"`
-	Suspend    bool           `json:"suspend" msg:"sp"`
+	ID         int            `json:"id"`
+	CmdLine    string         `json:"cmdline"`
+	LastUpdate time.Time      `json:"lastUpdate"`
+	Drain      *PoolDrainInfo `json:"drainInfo,omitempty"`
+	Suspend    bool           `json:"suspend"`
 }
 
 // ResumePool - resume(allow) writes on previously suspended pool.
