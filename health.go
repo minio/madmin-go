@@ -309,33 +309,23 @@ func GetSysServices(ctx context.Context, addr string) SysServices {
 
 func getSELinuxInfo() (SysService, error) {
 	ss := SysService{Name: SrvSELinux}
-	configFile := "/etc/selinux/config"
 
-	if _, err := os.Stat(configFile); err != nil {
-		if os.IsNotExist(err) {
-			// selinux is not installed.
+	file, err := os.Open("/etc/selinux/config")
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
 			ss.Status = SrvNotInstalled
 			return ss, nil
-		} else {
-			return ss, err
 		}
-	}
-
-	file, err := os.Open(configFile)
-	if err != nil {
 		return ss, err
 	}
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
-	statuses := []string{"enforcing", "permissive", "disabled"}
 	for scanner.Scan() {
-		txt := scanner.Text()
-		for _, status := range statuses {
-			if strings.Contains(txt, "SELINUX="+status) {
-				ss.Status = status
-				return ss, nil
-			}
+		tokens := strings.SplitN(strings.TrimSpace(scanner.Text()), "=", 2)
+		if len(tokens) == 2 && tokens[0] == "SELINUX" {
+			ss.Status = tokens[1]
+			return ss, nil
 		}
 	}
 
