@@ -111,7 +111,7 @@ func (adm *AdminClient) DrainPool(ctx context.Context, pool string) error {
 func (adm *AdminClient) InfoPool(ctx context.Context, pool string) (PoolInfo, error) {
 	values := url.Values{}
 	values.Set("pool", pool)
-	resp, err := adm.executeMethod(ctx, http.MethodPost, requestData{
+	resp, err := adm.executeMethod(ctx, http.MethodGet, requestData{
 		relPath:     adminAPIPrefix + "/pools/info", // GET <endpoint>/<admin-API>/pools/info?pool=http://server{1...4}/disk{1...4}
 		queryValues: values,
 	})
