@@ -55,7 +55,7 @@ func (adm *AdminClient) ResumePool(ctx context.Context, pool string) error {
 	values := url.Values{}
 	values.Set("pool", pool)
 	resp, err := adm.executeMethod(ctx, http.MethodPost, requestData{
-		relPath:     adminAPIPrefix + "/pools/suspend", // POST <endpoint>/<admin-API>/pools/resume?pool=http://server{1...4}/disk{1...4}
+		relPath:     adminAPIPrefix + "/pools/resume", // POST <endpoint>/<admin-API>/pools/resume?pool=http://server{1...4}/disk{1...4}
 		queryValues: values,
 	})
 	if err != nil {
