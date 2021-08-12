@@ -53,10 +53,16 @@ const (
 	SysErrUpdatedbInstalled = "updatedb is installed"
 )
 
+const (
+	SrvSELinux      = "selinux"
+	SrvNotInstalled = "not-installed"
+)
+
 // NodeInfo - Interface to abstract any struct that contains address/endpoint and error fields
 type NodeInfo interface {
 	GetAddr() string
 	SetAddr(addr string)
+	SetError(err string)
 }
 
 // NodeCommon - Common fields across most node-specific health structs
@@ -75,11 +81,29 @@ func (n *NodeCommon) SetAddr(addr string) {
 	n.Addr = addr
 }
 
+// SetError - set the address of the node
+func (n *NodeCommon) SetError(err string) {
+	n.Error = err
+}
+
 // SysErrors - contains a system error
 type SysErrors struct {
 	NodeCommon
 
 	Errors []string `json:"errors,omitempty"`
+}
+
+// SysServices - info about services that affect minio
+type SysServices struct {
+	NodeCommon
+
+	Services []SysService `json:"services,omitempty"`
+}
+
+// SysService - name and status of a sys service
+type SysService struct {
+	Name   string `json:"name"`
+	Status string `json:"status"`
 }
 
 // CPU contains system's CPU information.
@@ -267,7 +291,48 @@ func GetOSInfo(ctx context.Context, addr string) OSInfo {
 	return osInfo
 }
 
-// GetSysErrors returns system's RAM and swap information.
+// GetSysServices returns info of sys services that affect minio
+func GetSysServices(ctx context.Context, addr string) SysServices {
+	ss := SysServices{
+		NodeCommon: NodeCommon{Addr: addr},
+		Services:   []SysService{},
+	}
+	srv, e := getSELinuxInfo()
+	if e != nil {
+		ss.Error = e.Error()
+	} else {
+		ss.Services = append(ss.Services, srv)
+	}
+
+	return ss
+}
+
+func getSELinuxInfo() (SysService, error) {
+	ss := SysService{Name: SrvSELinux}
+
+	file, err := os.Open("/etc/selinux/config")
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			ss.Status = SrvNotInstalled
+			return ss, nil
+		}
+		return ss, err
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		tokens := strings.SplitN(strings.TrimSpace(scanner.Text()), "=", 2)
+		if len(tokens) == 2 && tokens[0] == "SELINUX" {
+			ss.Status = tokens[1]
+			return ss, nil
+		}
+	}
+
+	return ss, scanner.Err()
+}
+
+// GetSysErrors returns issues in system setup/config
 func GetSysErrors(ctx context.Context, addr string) SysErrors {
 	se := SysErrors{NodeCommon: NodeCommon{Addr: addr}}
 	if runtime.GOOS != "linux" {
@@ -282,15 +347,15 @@ func GetSysErrors(ctx context.Context, addr string) SysErrors {
 	}
 
 	_, err = exec.LookPath("updatedb")
-	if err != nil {
+	if err == nil {
+		se.Errors = append(se.Errors, SysErrUpdatedbInstalled)
+	} else if !strings.HasSuffix(err.Error(), exec.ErrNotFound.Error()) {
 		errMsg := "updatedb: " + err.Error()
 		if len(se.Error) == 0 {
 			se.Error = errMsg
 		} else {
 			se.Error = se.Error + ", " + errMsg
 		}
-	} else {
-		se.Errors = append(se.Errors, SysErrUpdatedbInstalled)
 	}
 
 	return se
@@ -584,12 +649,13 @@ func GetProcInfo(ctx context.Context, addr string) ProcInfo {
 
 // SysInfo - Includes hardware and system information of the MinIO cluster
 type SysInfo struct {
-	CPUInfo    []CPUs       `json:"cpus,omitempty"`
-	Partitions []Partitions `json:"partitions,omitempty"`
-	OSInfo     []OSInfo     `json:"osinfo,omitempty"`
-	MemInfo    []MemInfo    `json:"meminfo,omitempty"`
-	ProcInfo   []ProcInfo   `json:"procinfo,omitempty"`
-	SysErrs    []SysErrors  `json:"errors,omitempty"`
+	CPUInfo     []CPUs        `json:"cpus,omitempty"`
+	Partitions  []Partitions  `json:"partitions,omitempty"`
+	OSInfo      []OSInfo      `json:"osinfo,omitempty"`
+	MemInfo     []MemInfo     `json:"meminfo,omitempty"`
+	ProcInfo    []ProcInfo    `json:"procinfo,omitempty"`
+	SysErrs     []SysErrors   `json:"errors,omitempty"`
+	SysServices []SysServices `json:"services,omitempty"`
 }
 
 // Latency contains write operation latency in seconds of a disk drive.
@@ -767,6 +833,7 @@ const (
 	HealthDataTypeSysNet      HealthDataType = "sysnet"
 	HealthDataTypeSysProcess  HealthDataType = "sysprocess"
 	HealthDataTypeSysErrors   HealthDataType = "syserrors"
+	HealthDataTypeSysServices HealthDataType = "sysservices"
 )
 
 // HealthDataTypesMap - Map of Health datatypes
@@ -784,6 +851,7 @@ var HealthDataTypesMap = map[string]HealthDataType{
 	"sysnet":      HealthDataTypeSysNet,
 	"sysprocess":  HealthDataTypeSysProcess,
 	"syserrors":   HealthDataTypeSysErrors,
+	"sysservices": HealthDataTypeSysServices,
 }
 
 // HealthDataTypesList - List of Health datatypes
@@ -801,6 +869,7 @@ var HealthDataTypesList = []HealthDataType{
 	HealthDataTypeSysNet,
 	HealthDataTypeSysProcess,
 	HealthDataTypeSysErrors,
+	HealthDataTypeSysServices,
 }
 
 // HealthInfoVersionStruct - struct for health info version
