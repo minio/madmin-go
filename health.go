@@ -30,6 +30,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/minio/pkg/sys"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/host"
@@ -98,6 +99,13 @@ type SysServices struct {
 	NodeCommon
 
 	Services []SysService `json:"services,omitempty"`
+}
+
+// SysConfigs - info about services that affect minio
+type SysConfig struct {
+	NodeCommon
+
+	Config map[string]interface{} `json:"config,omitempty"`
 }
 
 // SysService - name and status of a sys service
@@ -289,6 +297,23 @@ func GetOSInfo(ctx context.Context, addr string) OSInfo {
 	}
 
 	return osInfo
+}
+
+// GetSysConfig returns config values from the system
+// (only those affecting minio performance)
+func GetSysConfig(ctx context.Context, addr string) SysConfig {
+	sc := SysConfig{
+		NodeCommon: NodeCommon{Addr: addr},
+		Config:     map[string]interface{}{},
+	}
+	_, maxLimit, err := sys.GetMaxOpenFileLimit()
+	if err != nil {
+		sc.Error = "rlimit: " + err.Error()
+	} else {
+		sc.Config["rlimit-max"] = maxLimit
+	}
+
+	return sc
 }
 
 // GetSysServices returns info of sys services that affect minio
@@ -656,6 +681,7 @@ type SysInfo struct {
 	ProcInfo    []ProcInfo    `json:"procinfo,omitempty"`
 	SysErrs     []SysErrors   `json:"errors,omitempty"`
 	SysServices []SysServices `json:"services,omitempty"`
+	SysConfig   []SysConfig   `json:"config,omitempty"`
 }
 
 // Latency contains write operation latency in seconds of a disk drive.
@@ -834,6 +860,7 @@ const (
 	HealthDataTypeSysProcess  HealthDataType = "sysprocess"
 	HealthDataTypeSysErrors   HealthDataType = "syserrors"
 	HealthDataTypeSysServices HealthDataType = "sysservices"
+	HealthDataTypeSysConfig   HealthDataType = "sysconfig"
 )
 
 // HealthDataTypesMap - Map of Health datatypes
@@ -852,6 +879,7 @@ var HealthDataTypesMap = map[string]HealthDataType{
 	"sysprocess":  HealthDataTypeSysProcess,
 	"syserrors":   HealthDataTypeSysErrors,
 	"sysservices": HealthDataTypeSysServices,
+	"sysconfig":   HealthDataTypeSysConfig,
 }
 
 // HealthDataTypesList - List of Health datatypes
@@ -870,6 +898,7 @@ var HealthDataTypesList = []HealthDataType{
 	HealthDataTypeSysProcess,
 	HealthDataTypeSysErrors,
 	HealthDataTypeSysServices,
+	HealthDataTypeSysConfig,
 }
 
 // HealthInfoVersionStruct - struct for health info version
