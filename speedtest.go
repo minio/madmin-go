@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"time"
 )
@@ -39,6 +40,20 @@ type SpeedtestOpts struct {
 	Size        int           // Object size used in speed test
 	Concurrency int           // Concurrency used in speed test
 	Duration    time.Duration // Total duration of the speed test
+}
+
+type SpeedtestResults []SpeedtestResult
+
+func (s SpeedtestResults) Len() int {
+	return len(s)
+}
+
+func (s SpeedtestResults) Less(i, j int) bool {
+	return s[i].Endpoint < s[i].Endpoint
+}
+
+func (s SpeedtestResults) Swap(i, j int) {
+	s[i], s[j] = s[j], s[i]
 }
 
 // Speedtest - perform speedtest on the MinIO servers
@@ -65,5 +80,10 @@ func (adm *AdminClient) Speedtest(ctx context.Context, opts SpeedtestOpts) ([]Sp
 	}
 	var result []SpeedtestResult
 	err = json.Unmarshal(respBytes, &result)
-	return result, err
+	if err != nil {
+		return nil, err
+	}
+
+	sort.Sort(SpeedtestResults(result))
+	return result, nil
 }
