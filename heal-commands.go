@@ -318,7 +318,7 @@ type BgHealState struct {
 	// Endpoint -> MRF Status
 	MRF map[string]MRFStatus `json:"mrf"`
 	// Parity per storage class
-	SCParity map[string]int `json:"scParity"`
+	SCParity map[string]int `json:"sc_parity"`
 }
 
 // SetStatus contains information about the heal status of a set.
