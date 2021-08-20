@@ -3,6 +3,7 @@ module github.com/minio/madmin-go
 go 1.16
 
 require (
+	github.com/google/go-cmp v0.5.5 // indirect
 	github.com/minio/argon2 v1.0.0
 	github.com/minio/minio-go/v7 v7.0.11-0.20210302210017-6ae69c73ce78
 	github.com/minio/sha256-simd v1.0.0 // indirect
@@ -11,6 +12,7 @@ require (
 	github.com/secure-io/sio-go v0.3.1
 	github.com/shirou/gopsutil/v3 v3.21.6
 	github.com/smartystreets/assertions v1.1.1 // indirect
+	github.com/stretchr/testify v1.7.0 // indirect
 	github.com/tinylib/msgp v1.1.3
 	golang.org/x/crypto v0.0.0-20210421170649-83a5a9bb288b
 	golang.org/x/net v0.0.0-20210421230115-4e50805a0758
