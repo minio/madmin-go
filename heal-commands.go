@@ -309,15 +309,16 @@ type MRFStatus struct {
 
 // BgHealState represents the status of the background heal
 type BgHealState struct {
+	// Total items scanned by the continous background healing
 	ScannedItemsCount int64
-
+	// Disks currently in heal states
 	HealDisks []string
-
 	// SetStatus contains information for each set.
 	Sets []SetStatus `json:"sets"`
-
 	// Endpoint -> MRF Status
 	MRF map[string]MRFStatus `json:"mrf"`
+	// Parity per storage class
+	SCParity map[string]int `json:"scParity"`
 }
 
 // SetStatus contains information about the heal status of a set.
@@ -370,6 +371,14 @@ type HealingDisk struct {
 
 // Merge others into b.
 func (b *BgHealState) Merge(others ...BgHealState) {
+	// SCParity is the same from all nodes, just pick
+	// the information from the first node.
+	if b.SCParity == nil && len(others) > 0 {
+		b.SCParity = make(map[string]int)
+		for k, v := range others[0].SCParity {
+			b.SCParity[k] = v
+		}
+	}
 	if b.MRF == nil {
 		b.MRF = make(map[string]MRFStatus)
 	}
