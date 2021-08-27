@@ -309,6 +309,8 @@ type MRFStatus struct {
 
 // BgHealState represents the status of the background heal
 type BgHealState struct {
+	// List of offline endpoints with no background heal state info
+	OfflineEndpoints []string `json:"offline_nodes"`
 	// Total items scanned by the continous background healing
 	ScannedItemsCount int64
 	// Disks currently in heal states
@@ -383,6 +385,9 @@ func (b *BgHealState) Merge(others ...BgHealState) {
 		b.MRF = make(map[string]MRFStatus)
 	}
 	for _, other := range others {
+		for _, offlineEndpoint := range other.OfflineEndpoints {
+			b.OfflineEndpoints = append(b.OfflineEndpoints, offlineEndpoint)
+		}
 		for k, v := range other.MRF {
 			b.MRF[k] = v
 		}
