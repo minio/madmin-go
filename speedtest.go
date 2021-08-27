@@ -26,12 +26,28 @@ import (
 	"time"
 )
 
-// SpeedtestResult - response from the server containing speedtest result
-type SpeedtestResult struct {
-	Uploads   uint64 `json:"uploads"`
-	Downloads uint64 `json:"downloads"`
-	Endpoint  string `json:"endpoint"`
-	Err       error  `json:"err,omitempty"`
+// SpeedTestStatServer - stats of a server
+type SpeedTestStatServer struct {
+	Endpoint         string `json:"endpoint"`
+	ThroughputPerSec uint64 `json:"throughputPerSec"`
+	ObjectsPerSec    uint64 `json:"objectsPerSec"`
+	Err              string `json:"err"`
+}
+
+// SpeedTestStats - stats of all the servers
+type SpeedTestStats struct {
+	ThroughputPerSec uint64                `json:"throughputPerSec"`
+	ObjectsPerSec    uint64                `json:"objectsPerSec"`
+	Servers          []SpeedTestStatServer `json:"servers"`
+}
+
+// SpeedTestResult - result of the speedtest() call
+type SpeedTestResult struct {
+	Version  string `json:"version"`
+	Servers  int    `json:"servers"`
+	Disks    int    `json:"disks"`
+	PUTStats SpeedTestStats
+	GETStats SpeedTestStats
 }
 
 // SpeedtestOpts provide configurable options for speedtest
@@ -39,14 +55,18 @@ type SpeedtestOpts struct {
 	Size        int           // Object size used in speed test
 	Concurrency int           // Concurrency used in speed test
 	Duration    time.Duration // Total duration of the speed test
+	Autotune    bool          // Enable autotuning
 }
 
 // Speedtest - perform speedtest on the MinIO servers
-func (adm *AdminClient) Speedtest(ctx context.Context, opts SpeedtestOpts) ([]SpeedtestResult, error) {
+func (adm *AdminClient) Speedtest(ctx context.Context, opts SpeedtestOpts) (SpeedTestResult, error) {
 	queryVals := make(url.Values)
 	queryVals.Set("size", strconv.Itoa(opts.Size))
 	queryVals.Set("duration", opts.Duration.String())
 	queryVals.Set("concurrent", strconv.Itoa(opts.Concurrency))
+	if opts.Autotune {
+		queryVals.Set("autotune", "true")
+	}
 	resp, err := adm.executeMethod(ctx,
 		http.MethodPost, requestData{
 			relPath:     adminAPIPrefix + "/speedtest",
@@ -54,16 +74,16 @@ func (adm *AdminClient) Speedtest(ctx context.Context, opts SpeedtestOpts) ([]Sp
 		})
 	defer closeResponse(resp)
 	if err != nil {
-		return nil, err
+		return SpeedTestResult{}, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, httpRespToErrorResponse(resp)
+		return SpeedTestResult{}, httpRespToErrorResponse(resp)
 	}
 	respBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return SpeedTestResult{}, err
 	}
-	var result []SpeedtestResult
+	var result SpeedTestResult
 	err = json.Unmarshal(respBytes, &result)
 	return result, err
 }
