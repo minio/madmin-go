@@ -19,7 +19,6 @@ package madmin
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -79,11 +78,15 @@ func (adm *AdminClient) Speedtest(ctx context.Context, opts SpeedtestOpts) (Spee
 	if resp.StatusCode != http.StatusOK {
 		return SpeedTestResult{}, httpRespToErrorResponse(resp)
 	}
-	respBytes, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		return SpeedTestResult{}, err
-	}
 	var result SpeedTestResult
-	err = json.Unmarshal(respBytes, &result)
-	return result, err
+	for {
+		dec := json.NewDecoder(resp.Body)
+		if err := dec.Decode(&result); err != nil {
+			return result, err
+		}
+		if result.Version != "" {
+			return result, err
+		}
+		// Blank reply to keep the connection alive, keep reading the stream.
+	}
 }
