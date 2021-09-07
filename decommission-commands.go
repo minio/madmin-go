@@ -24,8 +24,8 @@ import (
 	"time"
 )
 
-// PoolDecomissionInfo currently draining information
-type PoolDecomissionInfo struct {
+// PoolDecommissionInfo currently draining information
+type PoolDecommissionInfo struct {
 	StartTime   time.Time `json:"startTime"`
 	StartSize   int64     `json:"startSize"`
 	Duration    int64     `json:"duration"`
@@ -39,13 +39,13 @@ type PoolStatus struct {
 	ID          int                  `json:"id"`
 	CmdLine     string               `json:"cmdline"`
 	LastUpdate  time.Time            `json:"lastUpdate"`
-	Decomission *PoolDecomissionInfo `json:"decomissionInfo,omitempty"`
+	Decommission *PoolDecommissionInfo `json:"decomissionInfo,omitempty"`
 }
 
-// DecomissionPool - starts moving data from specified pool to all other existing pools.
-// Decomissioning if successfully started this function will return `nil`, to check
+// DecommissionPool - starts moving data from specified pool to all other existing pools.
+// Decommissioning if successfully started this function will return `nil`, to check
 // for on-going draining cycle use StatusPool.
-func (adm *AdminClient) DecomissionPool(ctx context.Context, pool string) error {
+func (adm *AdminClient) DecommissionPool(ctx context.Context, pool string) error {
 	values := url.Values{}
 	values.Set("pool", pool)
 	resp, err := adm.executeMethod(ctx, http.MethodPost, requestData{
@@ -63,9 +63,9 @@ func (adm *AdminClient) DecomissionPool(ctx context.Context, pool string) error 
 	return nil
 }
 
-// CancelDecomissionPool - cancels an on-going decomissioning process,
+// CancelDecommissionPool - cancels an on-going decomissioning process,
 // this automatically makes the pool available for writing once canceled.
-func (adm *AdminClient) CancelDecomissionPool(ctx context.Context, pool string) error {
+func (adm *AdminClient) CancelDecommissionPool(ctx context.Context, pool string) error {
 	values := url.Values{}
 	values.Set("pool", pool)
 	resp, err := adm.executeMethod(ctx, http.MethodPost, requestData{
