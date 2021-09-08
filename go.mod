@@ -15,3 +15,6 @@ require (
 	golang.org/x/net v0.0.0-20210421230115-4e50805a0758
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
 )
+
+// incompatible APIs
+retract [v1.1.1, v1.1.2, v1.1.3]
