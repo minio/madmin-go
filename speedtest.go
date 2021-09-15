@@ -58,7 +58,7 @@ type SpeedtestOpts struct {
 }
 
 // Speedtest - perform speedtest on the MinIO servers
-func (adm *AdminClient) Speedtest(ctx context.Context, opts SpeedtestOpts) (SpeedTestResult, error) {
+func (adm *AdminClient) Speedtest(ctx context.Context, opts SpeedtestOpts) (chan SpeedTestResult, error) {
 	queryVals := make(url.Values)
 	queryVals.Set("size", strconv.Itoa(opts.Size))
 	queryVals.Set("duration", opts.Duration.String())
@@ -71,22 +71,28 @@ func (adm *AdminClient) Speedtest(ctx context.Context, opts SpeedtestOpts) (Spee
 			relPath:     adminAPIPrefix + "/speedtest",
 			queryValues: queryVals,
 		})
-	defer closeResponse(resp)
 	if err != nil {
-		return SpeedTestResult{}, err
+		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return SpeedTestResult{}, httpRespToErrorResponse(resp)
+		return nil, httpRespToErrorResponse(resp)
 	}
-	var result SpeedTestResult
-	for {
-		dec := json.NewDecoder(resp.Body)
-		if err := dec.Decode(&result); err != nil {
-			return result, err
+	ch := make(chan SpeedTestResult)
+	go func() {
+		defer closeResponse(resp)
+		defer close(ch)
+		var result SpeedTestResult
+		for {
+			dec := json.NewDecoder(resp.Body)
+			if err := dec.Decode(&result); err != nil {
+				return
+			}
+			select {
+			case ch <- result:
+			case <-ctx.Done():
+				return
+			}
 		}
-		if result.Version != "" {
-			return result, err
-		}
-		// Blank reply to keep the connection alive, keep reading the stream.
-	}
+	}()
+	return ch, nil
 }
