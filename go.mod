@@ -7,6 +7,7 @@ require (
 	github.com/minio/minio-go/v7 v7.0.11-0.20210302210017-6ae69c73ce78
 	github.com/minio/sha256-simd v1.0.0 // indirect
 	github.com/philhofer/fwd v1.1.1 // indirect
+	github.com/prometheus/procfs v0.7.3
 	github.com/secure-io/sio-go v0.3.1
 	github.com/shirou/gopsutil/v3 v3.21.6
 	github.com/smartystreets/assertions v1.1.1 // indirect
@@ -15,6 +16,3 @@ require (
 	golang.org/x/net v0.0.0-20210421230115-4e50805a0758
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
 )
-
-// incompatible APIs
-retract [v1.1.1, v1.1.2, v1.1.3]

@@ -23,6 +23,8 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+
+	"github.com/minio/minio-go/v7/pkg/tags"
 )
 
 // AccountAccess contains information about
@@ -31,14 +33,28 @@ type AccountAccess struct {
 	Write bool `json:"write"`
 }
 
+// BucketDetails provides information about features currently
+// turned-on per bucket.
+type BucketDetails struct {
+	Versioning          bool         `json:"versioning"`
+	VersioningSuspended bool         `json:"versioningSuspended"`
+	Locking             bool         `json:"locking"`
+	Replication         bool         `json:"replication"`
+	Tagging             *tags.Tags   `json:"tags"`
+	Quota               *BucketQuota `json:"quota"`
+}
+
 // BucketAccessInfo represents bucket usage of a bucket, and its relevant
 // access type for an account
 type BucketAccessInfo struct {
-	Name        string            `json:"name"`
-	Size        uint64            `json:"size"`
-	PrefixUsage map[string]uint64 `json:"prefixUsage"`
-	Created     time.Time         `json:"created"`
-	Access      AccountAccess     `json:"access"`
+	Name                 string            `json:"name"`
+	Size                 uint64            `json:"size"`
+	Objects              uint64            `json:"objects"`
+	ObjectSizesHistogram map[string]uint64 `json:"objectHistogram"`
+	Details              *BucketDetails    `json:"details"`
+	PrefixUsage          map[string]uint64 `json:"prefixUsage"`
+	Created              time.Time         `json:"created"`
+	Access               AccountAccess     `json:"access"`
 }
 
 // AccountInfo represents the account usage info of an

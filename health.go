@@ -30,7 +30,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/minio/pkg/sys"
+	"github.com/prometheus/procfs"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/host"
@@ -306,11 +306,15 @@ func GetSysConfig(ctx context.Context, addr string) SysConfig {
 		NodeCommon: NodeCommon{Addr: addr},
 		Config:     map[string]interface{}{},
 	}
-	_, maxLimit, err := sys.GetMaxOpenFileLimit()
+	proc, err := procfs.Self()
 	if err != nil {
 		sc.Error = "rlimit: " + err.Error()
 	} else {
-		sc.Config["rlimit-max"] = maxLimit
+		limits, err := proc.Limits()
+		if err != nil {
+			sc.Error = "rlimit: " + err.Error()
+		}
+		sc.Config["rlimit-max"] = limits.OpenFiles
 	}
 
 	return sc
