@@ -66,10 +66,17 @@ type AccountInfo struct {
 	Buckets     []BucketAccessInfo
 }
 
+// AccountOpts allows for configurable behavior with "prefix-usage"
+type AccountOpts struct {
+	PrefixUsage bool
+}
+
 // AccountInfo returns the usage info for the authenticating account.
-func (adm *AdminClient) AccountInfo(ctx context.Context) (AccountInfo, error) {
+func (adm *AdminClient) AccountInfo(ctx context.Context, opts AccountOpts) (AccountInfo, error) {
 	q := make(url.Values)
-	q.Set("prefix-usage", "true")
+	if opts.PrefixUsage {
+		q.Set("prefix-usage", "true")
+	}
 	resp, err := adm.executeMethod(ctx, http.MethodGet,
 		requestData{
 			relPath:     adminAPIPrefix + "/accountinfo",
