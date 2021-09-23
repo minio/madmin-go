@@ -403,7 +403,7 @@ func (adm AdminClient) executeMethod(ctx context.Context, method string, reqData
 		res.Body = ioutil.NopCloser(errBodySeeker)
 
 		// Verify if error response code is retryable.
-		if isS3CodeRetryable(errResponse.Code) {
+		if isAdminErrCodeRetryable(errResponse.Code) {
 			continue // Retry.
 		}
 
