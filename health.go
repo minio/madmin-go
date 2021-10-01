@@ -886,10 +886,8 @@ var HealthDataTypesMap = map[string]HealthDataType{
 	"sysconfig":   HealthDataTypeSysConfig,
 }
 
-// HealthDataTypesList - List of Health datatypes
-var HealthDataTypesList = []HealthDataType{
-	HealthDataTypePerfDrive,
-	HealthDataTypePerfNet,
+// HealthDataTypesLite - List of health datatypes related to lightweight tests
+var HealthDataTypesLite = []HealthDataType{
 	HealthDataTypeMinioInfo,
 	HealthDataTypeMinioConfig,
 	HealthDataTypeSysCPU,
@@ -904,6 +902,15 @@ var HealthDataTypesList = []HealthDataType{
 	HealthDataTypeSysServices,
 	HealthDataTypeSysConfig,
 }
+
+// HealthDataTypesHeavy - List of health datatypes related to heavy (long running) tests
+var HealthDataTypesHeavy = []HealthDataType{
+	HealthDataTypePerfDrive,
+	HealthDataTypePerfNet,
+}
+
+// HealthDataTypesList - List of Health datatypes
+var HealthDataTypesList = append(HealthDataTypesLite, HealthDataTypesHeavy...)
 
 // HealthInfoVersionStruct - struct for health info version
 type HealthInfoVersionStruct struct {
