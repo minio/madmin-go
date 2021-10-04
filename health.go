@@ -667,10 +667,11 @@ func GetProcInfo(ctx context.Context, addr string) ProcInfo {
 		return procInfo
 	}
 
+	// In certain environments, it is not possible to get username e.g. minio-operator
+	// Plus it's not a serious error. So ignore error if any.
 	procInfo.Username, err = proc.UsernameWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Username = "<non-root>"
 	}
 
 	return procInfo
