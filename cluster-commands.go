@@ -225,13 +225,13 @@ const (
 
 // CRSvcAccCreate - create operation
 type CRSvcAccCreate struct {
-	Parent        string          `json:"parent"`
-	AccessKey     string          `json:"accessKey"`
-	SecretKey     string          `json:"secretKey"`
-	Groups        []string        `json:"groups"`
-	LDAPUser      string          `json:"ldapUser"`
-	SessionPolicy json.RawMessage `json:"sessionPolicy"`
-	Status        string          `json:"status"`
+	Parent        string                 `json:"parent"`
+	AccessKey     string                 `json:"accessKey"`
+	SecretKey     string                 `json:"secretKey"`
+	Groups        []string               `json:"groups"`
+	Claims        map[string]interface{} `json:"claims"`
+	SessionPolicy json.RawMessage        `json:"sessionPolicy"`
+	Status        string                 `json:"status"`
 }
 
 // CRSvcAccUpdate - update operation
