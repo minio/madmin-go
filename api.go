@@ -431,6 +431,20 @@ func (adm AdminClient) setUserAgent(req *http.Request) {
 	}
 }
 
+// GetAccessAndSecretKey - retrieves the access and secret keys.
+func (adm AdminClient) GetAccessAndSecretKey() (string, string) {
+	value, err := adm.credsProvider.Get()
+	if err != nil {
+		return "", ""
+	}
+	return value.AccessKeyID, value.SecretAccessKey
+}
+
+// GetEndpointURL - returns the endpoint for the admin client.
+func (adm AdminClient) GetEndpointURL() *url.URL {
+	return adm.endpointURL
+}
+
 func (adm AdminClient) getSecretKey() string {
 	value, err := adm.credsProvider.Get()
 	if err != nil {
