@@ -352,3 +352,38 @@ func (adm *AdminClient) CRInternalReplicateBucketMeta(ctx context.Context, item 
 
 	return nil
 }
+
+// IDPSettings contains key IDentity Provider settings to validate that all
+// peers have the same configuration.
+type IDPSettings struct {
+	IsLDAPEnabled          bool
+	LDAPUserDNSearchBase   string
+	LDAPUserDNSearchFilter string
+	LDAPGroupSearchBase    string
+	LDAPGroupSearchFilter  string
+}
+
+// CRInternalGetIDPSettings - fetches IDP settings from the server.
+func (adm *AdminClient) CRInternalGetIDPSettings(ctx context.Context) (info IDPSettings, err error) {
+	reqData := requestData{
+		relPath: adminAPIPrefix + "/site-replication/peer/idp-settings",
+	}
+
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return info, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return info, httpRespToErrorResponse(resp)
+	}
+
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return info, err
+	}
+
+	err = json.Unmarshal(b, &info)
+	return info, err
+}
