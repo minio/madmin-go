@@ -24,14 +24,9 @@ import (
 	"net/url"
 )
 
-// CRAdd - argument type for the CR add command.
-type CRAdd struct {
-	Clusters []PeerCluster `json:"clusters"`
-}
-
-// PeerCluster - represents a cluster to be added to the set of replicated
-// clusters.
-type PeerCluster struct {
+// PeerSite - represents a cluster/site to be added to the set of replicated
+// sites.
+type PeerSite struct {
 	Name      string `json:"name"`
 	Endpoint  string `json:"endpoints"`
 	AccessKey string `json:"accessKey"`
@@ -52,20 +47,20 @@ type ReplicateAddStatus struct {
 	InitialSyncErrorMessage string `json:"initialSyncErrorMessage,omitempty"`
 }
 
-// ClusterReplicateAdd - sends the CR add API call.
-func (adm *AdminClient) ClusterReplicateAdd(ctx context.Context, addArg CRAdd) (ReplicateAddStatus, error) {
-	crAddBytes, err := json.Marshal(addArg)
+// SiteReplicationAdd - sends the SR add API call.
+func (adm *AdminClient) SiteReplicationAdd(ctx context.Context, sites []PeerSite) (ReplicateAddStatus, error) {
+	sitesBytes, err := json.Marshal(sites)
 	if err != nil {
 		return ReplicateAddStatus{}, nil
 	}
-	eCRAddBytes, err := EncryptData(adm.getSecretKey(), crAddBytes)
+	encBytes, err := EncryptData(adm.getSecretKey(), sitesBytes)
 	if err != nil {
 		return ReplicateAddStatus{}, err
 	}
 
 	reqData := requestData{
 		relPath: adminAPIPrefix + "/site-replication/add",
-		content: eCRAddBytes,
+		content: encBytes,
 	}
 
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
@@ -91,16 +86,16 @@ func (adm *AdminClient) ClusterReplicateAdd(ctx context.Context, addArg CRAdd) (
 	return res, nil
 }
 
-// ClusterReplicateInfo - contains cluster replication information.
-type ClusterReplicateInfo struct {
+// SiteReplicationInfo - contains cluster replication information.
+type SiteReplicationInfo struct {
 	Enabled                 bool       `json:"enabled"`
 	Name                    string     `json:"name,omitempty"`
-	Clusters                []PeerInfo `json:"clusters,omitempty"`
+	Sites                   []PeerInfo `json:"sites,omitempty"`
 	ServiceAccountAccessKey string     `json:"serviceAccountAccessKey,omitempty"`
 }
 
-// ClusterReplicateInfo - returns cluster replication information.
-func (adm *AdminClient) ClusterReplicateInfo(ctx context.Context) (info ClusterReplicateInfo, err error) {
+// SiteReplicationInfo - returns cluster replication information.
+func (adm *AdminClient) SiteReplicationInfo(ctx context.Context) (info SiteReplicationInfo, err error) {
 	reqData := requestData{
 		relPath: adminAPIPrefix + "/site-replication/info",
 	}
@@ -124,8 +119,8 @@ func (adm *AdminClient) ClusterReplicateInfo(ctx context.Context) (info ClusterR
 	return info, err
 }
 
-// CRInternalJoinReq - arg body for CRInternalJoin
-type CRInternalJoinReq struct {
+// SRInternalJoinReq - arg body for SRInternalJoin
+type SRInternalJoinReq struct {
 	SvcAcctAccessKey string              `json:"svcAcctAccessKey"`
 	SvcAcctSecretKey string              `json:"svcAcctSecretKey"`
 	SvcAcctParent    string              `json:"svcAcctParent"`
@@ -141,9 +136,9 @@ type PeerInfo struct {
 	DeploymentID string `json:"deploymentID"`
 }
 
-// CRInternalJoin - used only by minio server to send CR join requests to peer
+// SRInternalJoin - used only by minio server to send SR join requests to peer
 // servers.
-func (adm *AdminClient) CRInternalJoin(ctx context.Context, r CRInternalJoinReq) error {
+func (adm *AdminClient) SRInternalJoin(ctx context.Context, r SRInternalJoinReq) error {
 	b, err := json.Marshal(r)
 	if err != nil {
 		return err
@@ -186,8 +181,8 @@ const (
 	ForceDeleteBucketBktOp BktOp = "force-delete-bucket"
 )
 
-// CRInternalBucketOps - tells peers to create bucket and setup replication.
-func (adm *AdminClient) CRInternalBucketOps(ctx context.Context, bucket string, op BktOp, opts map[string]string) error {
+// SRInternalBucketOps - tells peers to create bucket and setup replication.
+func (adm *AdminClient) SRInternalBucketOps(ctx context.Context, bucket string, op BktOp, opts map[string]string) error {
 	v := url.Values{}
 	v.Add("bucket", bucket)
 	v.Add("operation", string(op))
@@ -216,16 +211,16 @@ func (adm *AdminClient) CRInternalBucketOps(ctx context.Context, bucket string, 
 	return nil
 }
 
-// CRIAMItem.Type constants.
+// SRIAMItem.Type constants.
 const (
-	CRIAMItemPolicy        = "policy"
-	CRIAMItemSvcAcc        = "service-account"
-	CRIAMItemSTSAcc        = "sts-account"
-	CRIAMItemPolicyMapping = "policy-mapping"
+	SRIAMItemPolicy        = "policy"
+	SRIAMItemSvcAcc        = "service-account"
+	SRIAMItemSTSAcc        = "sts-account"
+	SRIAMItemPolicyMapping = "policy-mapping"
 )
 
-// CRSvcAccCreate - create operation
-type CRSvcAccCreate struct {
+// SRSvcAccCreate - create operation
+type SRSvcAccCreate struct {
 	Parent        string                 `json:"parent"`
 	AccessKey     string                 `json:"accessKey"`
 	SecretKey     string                 `json:"secretKey"`
@@ -235,60 +230,60 @@ type CRSvcAccCreate struct {
 	Status        string                 `json:"status"`
 }
 
-// CRSvcAccUpdate - update operation
-type CRSvcAccUpdate struct {
+// SRSvcAccUpdate - update operation
+type SRSvcAccUpdate struct {
 	AccessKey     string          `json:"accessKey"`
 	SecretKey     string          `json:"secretKey"`
 	Status        string          `json:"status"`
 	SessionPolicy json.RawMessage `json:"sessionPolicy"`
 }
 
-// CRSvcAccDelete - delete operation
-type CRSvcAccDelete struct {
+// SRSvcAccDelete - delete operation
+type SRSvcAccDelete struct {
 	AccessKey string `json:"accessKey"`
 }
 
-// CRSvcAccChange - sum-type to represent an svc account change.
-type CRSvcAccChange struct {
-	Create *CRSvcAccCreate `json:"crSvcAccCreate"`
-	Update *CRSvcAccUpdate `json:"crSvcAccUpdate"`
-	Delete *CRSvcAccDelete `json:"crSvcAccDelete"`
+// SRSvcAccChange - sum-type to represent an svc account change.
+type SRSvcAccChange struct {
+	Create *SRSvcAccCreate `json:"crSvcAccCreate"`
+	Update *SRSvcAccUpdate `json:"crSvcAccUpdate"`
+	Delete *SRSvcAccDelete `json:"crSvcAccDelete"`
 }
 
-// CRPolicyMapping - represents mapping of a policy to a user or group.
-type CRPolicyMapping struct {
+// SRPolicyMapping - represents mapping of a policy to a user or group.
+type SRPolicyMapping struct {
 	UserOrGroup string `json:"userOrGroup"`
 	IsGroup     bool   `json:"isGroup"`
 	Policy      string `json:"policy"`
 }
 
-// CRSTSCredential - represents an STS credential to be replicated.
-type CRSTSCredential struct {
+// SRSTSCredential - represents an STS credential to be replicated.
+type SRSTSCredential struct {
 	AccessKey    string `json:"accessKey"`
 	SecretKey    string `json:"secretKey"`
 	SessionToken string `json:"sessionToken"`
 }
 
-// CRIAMItem - represents an IAM object that will be copied to a peer.
-type CRIAMItem struct {
+// SRIAMItem - represents an IAM object that will be copied to a peer.
+type SRIAMItem struct {
 	Type string `json:"type"`
 
-	// Name and Policy below are used when Type == CRIAMItemPolicy
+	// Name and Policy below are used when Type == SRIAMItemPolicy
 	Name   string          `json:"name"`
 	Policy json.RawMessage `json:"policy"`
 
-	// Used when Type == CRIAMItemPolicyMapping
-	PolicyMapping *CRPolicyMapping `json:"policyMapping"`
+	// Used when Type == SRIAMItemPolicyMapping
+	PolicyMapping *SRPolicyMapping `json:"policyMapping"`
 
-	// Used when Type == CRIAMItemSvcAcc
-	SvcAccChange *CRSvcAccChange `json:"serviceAccountChange"`
+	// Used when Type == SRIAMItemSvcAcc
+	SvcAccChange *SRSvcAccChange `json:"serviceAccountChange"`
 
-	// Used when Type = CRIAMItemSTSAcc
-	STSCredential *CRSTSCredential `json:"stsCredential"`
+	// Used when Type = SRIAMItemSTSAcc
+	STSCredential *SRSTSCredential `json:"stsCredential"`
 }
 
-// CRInternalReplicateIAMItem - copies an IAM object to a peer cluster.
-func (adm *AdminClient) CRInternalReplicateIAMItem(ctx context.Context, item CRIAMItem) error {
+// SRInternalReplicateIAMItem - copies an IAM object to a peer cluster.
+func (adm *AdminClient) SRInternalReplicateIAMItem(ctx context.Context, item SRIAMItem) error {
 	b, err := json.Marshal(item)
 	if err != nil {
 		return err
@@ -311,17 +306,17 @@ func (adm *AdminClient) CRInternalReplicateIAMItem(ctx context.Context, item CRI
 	return nil
 }
 
-// CRBucketMeta.Type constants
+// SRBucketMeta.Type constants
 const (
-	CRBucketMetaTypePolicy           = "policy"
-	CRBucketMetaTypeTags             = "tags"
-	CRBucketMetaTypeObjectLockConfig = "object-lock-config"
-	CRBucketMetaTypeSSEConfig        = "sse-config"
+	SRBucketMetaTypePolicy           = "policy"
+	SRBucketMetaTypeTags             = "tags"
+	SRBucketMetaTypeObjectLockConfig = "object-lock-config"
+	SRBucketMetaTypeSSEConfig        = "sse-config"
 )
 
-// CRBucketMeta - represents a bucket metadata change that will be copied to a
+// SRBucketMeta - represents a bucket metadata change that will be copied to a
 // peer.
-type CRBucketMeta struct {
+type SRBucketMeta struct {
 	Type   string          `json:"type"`
 	Bucket string          `json:"bucket"`
 	Policy json.RawMessage `json:"policy,omitempty"`
@@ -339,9 +334,9 @@ type CRBucketMeta struct {
 	SSEConfig *string `json:"sseConfig,omitempty"`
 }
 
-// CRInternalReplicateBucketMeta - copies a bucket metadata change to a peer
+// SRInternalReplicateBucketMeta - copies a bucket metadata change to a peer
 // cluster.
-func (adm *AdminClient) CRInternalReplicateBucketMeta(ctx context.Context, item CRBucketMeta) error {
+func (adm *AdminClient) SRInternalReplicateBucketMeta(ctx context.Context, item SRBucketMeta) error {
 	b, err := json.Marshal(item)
 	if err != nil {
 		return err
@@ -374,8 +369,8 @@ type IDPSettings struct {
 	LDAPGroupSearchFilter  string
 }
 
-// CRInternalGetIDPSettings - fetches IDP settings from the server.
-func (adm *AdminClient) CRInternalGetIDPSettings(ctx context.Context) (info IDPSettings, err error) {
+// SRInternalGetIDPSettings - fetches IDP settings from the server.
+func (adm *AdminClient) SRInternalGetIDPSettings(ctx context.Context) (info IDPSettings, err error) {
 	reqData := requestData{
 		relPath: adminAPIPrefix + "/site-replication/peer/idp-settings",
 	}
