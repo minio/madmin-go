@@ -220,6 +220,7 @@ func (adm *AdminClient) CRInternalBucketOps(ctx context.Context, bucket string, 
 const (
 	CRIAMItemPolicy        = "policy"
 	CRIAMItemSvcAcc        = "service-account"
+	CRIAMItemSTSAcc        = "sts-account"
 	CRIAMItemPolicyMapping = "policy-mapping"
 )
 
@@ -261,6 +262,13 @@ type CRPolicyMapping struct {
 	Policy      string `json:"policy"`
 }
 
+// CRSTSCredential - represents an STS credential to be replicated.
+type CRSTSCredential struct {
+	AccessKey    string `json:"accessKey"`
+	SecretKey    string `json:"secretKey"`
+	SessionToken string `json:"sessionToken"`
+}
+
 // CRIAMItem - represents an IAM object that will be copied to a peer.
 type CRIAMItem struct {
 	Type string `json:"type"`
@@ -274,6 +282,9 @@ type CRIAMItem struct {
 
 	// Used when Type == CRIAMItemSvcAcc
 	SvcAccChange *CRSvcAccChange `json:"serviceAccountChange"`
+
+	// Used when Type = CRIAMItemSTSAcc
+	STSCredential *CRSTSCredential `json:"stsCredential"`
 }
 
 // CRInternalReplicateIAMItem - copies an IAM object to a peer cluster.
