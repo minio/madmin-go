@@ -224,7 +224,7 @@ type InfoMessage struct {
 	Buckets      Buckets              `json:"buckets,omitempty"`
 	Objects      Objects              `json:"objects,omitempty"`
 	Usage        Usage                `json:"usage,omitempty"`
-	AllTierStats map[string]TierStats `json:"allTierStats,omitempty"`
+	TierStats    map[string]TierStats `json:"tierStats,omitempty"`
 	Services     Services             `json:"services,omitempty"`
 	Backend      interface{}          `json:"backend,omitempty"`
 	Servers      []ServerProperties   `json:"servers,omitempty"`
