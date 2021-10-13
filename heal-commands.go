@@ -49,6 +49,7 @@ type HealOpts struct {
 	Recreate  bool         `json:"recreate"` // only used when bucket needs to be healed
 	ScanMode  HealScanMode `json:"scanMode"`
 	NoLock    bool         `json:"nolock"`
+	SoftHeal  bool         `json:"softHeal"`
 }
 
 // Equal returns true if no is same as o.
