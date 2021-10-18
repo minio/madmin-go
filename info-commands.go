@@ -216,18 +216,17 @@ func (adm *AdminClient) DataUsageInfo(ctx context.Context) (DataUsageInfo, error
 
 // InfoMessage container to hold server admin related information.
 type InfoMessage struct {
-	Mode         string               `json:"mode,omitempty"`
-	Domain       []string             `json:"domain,omitempty"`
-	Region       string               `json:"region,omitempty"`
-	SQSARN       []string             `json:"sqsARN,omitempty"`
-	DeploymentID string               `json:"deploymentID,omitempty"`
-	Buckets      Buckets              `json:"buckets,omitempty"`
-	Objects      Objects              `json:"objects,omitempty"`
-	Usage        Usage                `json:"usage,omitempty"`
-	TierStats    map[string]TierStats `json:"tierStats,omitempty"`
-	Services     Services             `json:"services,omitempty"`
-	Backend      interface{}          `json:"backend,omitempty"`
-	Servers      []ServerProperties   `json:"servers,omitempty"`
+	Mode         string             `json:"mode,omitempty"`
+	Domain       []string           `json:"domain,omitempty"`
+	Region       string             `json:"region,omitempty"`
+	SQSARN       []string           `json:"sqsARN,omitempty"`
+	DeploymentID string             `json:"deploymentID,omitempty"`
+	Buckets      Buckets            `json:"buckets,omitempty"`
+	Objects      Objects            `json:"objects,omitempty"`
+	Usage        Usage              `json:"usage,omitempty"`
+	Services     Services           `json:"services,omitempty"`
+	Backend      interface{}        `json:"backend,omitempty"`
+	Servers      []ServerProperties `json:"servers,omitempty"`
 }
 
 // Services contains different services information
@@ -257,10 +256,12 @@ type Usage struct {
 	Error string `json:"error,omitempty"`
 }
 
-// TierStats contains total size and number of versions of objects transitioned
+// TierStats contains per-tier statistics like total size, number of
+// objects/versions transitioned, etc.
 type TierStats struct {
 	TotalSize   uint64 `json:"totalSize"`
 	NumVersions int    `json:"numVersions"`
+	NumObjects  int    `json:"numObjects"`
 }
 
 // KMS contains KMS status information
