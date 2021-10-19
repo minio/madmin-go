@@ -790,6 +790,19 @@ type MinioInfo struct {
 	Services     Services     `json:"services,omitempty"`
 	Backend      interface{}  `json:"backend,omitempty"`
 	Servers      []ServerInfo `json:"servers,omitempty"`
+	TLS          TLSInfo      `json:"tls,omitempty"`
+}
+
+type TLSInfo struct {
+	TLSEnabled bool      `json:"tls_enabled"`
+	Certs      []TLSCert `json:"certs,omitempty"`
+}
+
+type TLSCert struct {
+	PubKeyAlgo    string    `json:"pub_key_algo"`
+	SignatureAlgo string    `json:"signature_algo"`
+	NotBefore     time.Time `json:"not_before"`
+	NotAfter      time.Time `json:"not_after"`
 }
 
 // MinioHealthInfo - Includes MinIO confifuration information
