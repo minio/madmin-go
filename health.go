@@ -790,7 +790,7 @@ type MinioInfo struct {
 	Services     Services     `json:"services,omitempty"`
 	Backend      interface{}  `json:"backend,omitempty"`
 	Servers      []ServerInfo `json:"servers,omitempty"`
-	TLS          TLSInfo      `json:"tls,omitempty"`
+	TLS          TLSInfo      `json:"tls"`
 }
 
 type TLSInfo struct {
