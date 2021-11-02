@@ -42,11 +42,13 @@ type SpeedTestStats struct {
 
 // SpeedTestResult - result of the speedtest() call
 type SpeedTestResult struct {
-	Version  string `json:"version"`
-	Servers  int    `json:"servers"`
-	Disks    int    `json:"disks"`
-	PUTStats SpeedTestStats
-	GETStats SpeedTestStats
+	Version    string `json:"version"`
+	Servers    int    `json:"servers"`
+	Disks      int    `json:"disks"`
+	Size       int    `json:"size"`
+	Concurrent int    `json:"concurrent"`
+	PUTStats   SpeedTestStats
+	GETStats   SpeedTestStats
 }
 
 // SpeedtestOpts provide configurable options for speedtest
