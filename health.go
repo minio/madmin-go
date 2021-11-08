@@ -794,8 +794,14 @@ type MinioInfo struct {
 }
 
 type TLSInfo struct {
-	TLSEnabled bool      `json:"tls_enabled"`
-	Certs      []TLSCert `json:"certs,omitempty"`
+	// When unmarshalling a MinioInfo json that doesn't have tls info
+	// (e.g. olde version of minio), TLSInfo struct gets populated with
+	// TLSEnabled = false because of zero value of bool being false.
+	// TLSInfoAvailable helps to check if the value was indeed set by
+	// the server. Server should always set TLSInfoAvailable to true.
+	TLSInfoAvailable bool      `json:"tls_info_available"`
+	TLSEnabled       bool      `json:"tls_enabled"`
+	Certs            []TLSCert `json:"certs,omitempty"`
 }
 
 type TLSCert struct {
