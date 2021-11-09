@@ -28,7 +28,7 @@ import (
 type PoolDecommissionInfo struct {
 	StartTime   time.Time `json:"startTime"`
 	StartSize   int64     `json:"startSize"`
-	Duration    int64     `json:"duration"`
+	TotalSize   int64     `json:"totalSize"`
 	CurrentSize int64     `json:"currentSize"`
 	Complete    bool      `json:"complete"`
 	Failed      bool      `json:"failed"`
@@ -36,9 +36,9 @@ type PoolDecommissionInfo struct {
 
 // PoolStatus captures current pool status
 type PoolStatus struct {
-	ID          int                  `json:"id"`
-	CmdLine     string               `json:"cmdline"`
-	LastUpdate  time.Time            `json:"lastUpdate"`
+	ID           int                   `json:"id"`
+	CmdLine      string                `json:"cmdline"`
+	LastUpdate   time.Time             `json:"lastUpdate"`
 	Decommission *PoolDecommissionInfo `json:"decomissionInfo,omitempty"`
 }
 
