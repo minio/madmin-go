@@ -23,10 +23,10 @@ import (
 )
 
 // DelConfigKV - delete key from server config.
-func (adm *AdminClient) DelConfigKV(ctx context.Context, k string) (err error) {
+func (adm *AdminClient) DelConfigKV(ctx context.Context, k string) (restart bool, err error) {
 	econfigBytes, err := EncryptData(adm.getSecretKey(), []byte(k))
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	reqData := requestData{
@@ -39,14 +39,14 @@ func (adm *AdminClient) DelConfigKV(ctx context.Context, k string) (err error) {
 
 	defer closeResponse(resp)
 	if err != nil {
-		return err
+		return false, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return httpRespToErrorResponse(resp)
+		return false, httpRespToErrorResponse(resp)
 	}
 
-	return nil
+	return resp.Header.Get(ConfigAppliedHeader) != ConfigAppliedTrue, nil
 }
 
 const (
