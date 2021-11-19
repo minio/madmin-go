@@ -17,7 +17,6 @@
 package madmin
 
 import (
-	"encoding/json"
 	"io"
 	"io/ioutil"
 	"net"
@@ -34,12 +33,6 @@ const (
 	AdminAPIVersionV2 = "v2"
 	adminAPIPrefix    = "/" + AdminAPIVersion
 )
-
-// jsonDecoder decode json to go type.
-func jsonDecoder(body io.Reader, v interface{}) error {
-	d := json.NewDecoder(body)
-	return d.Decode(v)
-}
 
 // getEndpointURL - construct a new endpoint.
 func getEndpointURL(endpoint string, secure bool) (*url.URL, error) {

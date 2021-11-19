@@ -84,7 +84,7 @@ func (adm *AdminClient) CancelDecommissionPool(ctx context.Context, pool string)
 }
 
 // StatusPool return current status about pool, reports any draining activity in progress
-// and elasped time.
+// and elapsed time.
 func (adm *AdminClient) StatusPool(ctx context.Context, pool string) (PoolStatus, error) {
 	values := url.Values{}
 	values.Set("pool", pool)

@@ -101,7 +101,7 @@ type SysServices struct {
 	Services []SysService `json:"services,omitempty"`
 }
 
-// SysConfigs - info about services that affect minio
+// SysConfig - info about services that affect minio
 type SysConfig struct {
 	NodeCommon
 

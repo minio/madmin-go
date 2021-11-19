@@ -16,6 +16,7 @@
 // limitations under the License.
 //
 
+//go:build !fips
 // +build !fips
 
 package madmin
