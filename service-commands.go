@@ -35,6 +35,16 @@ func (adm *AdminClient) ServiceStop(ctx context.Context) error {
 	return adm.serviceCallAction(ctx, ServiceActionStop)
 }
 
+// ServiceFreeze - freezes all incoming S3 API calls on MinIO cluster
+func (adm *AdminClient) ServiceFreeze(ctx context.Context) error {
+	return adm.serviceCallAction(ctx, ServiceActionFreeze)
+}
+
+// ServiceUnfreeze - un-freezes all incoming S3 API calls on MinIO cluster
+func (adm *AdminClient) ServiceUnfreeze(ctx context.Context) error {
+	return adm.serviceCallAction(ctx, ServiceActionUnfreeze)
+}
+
 // ServiceAction - type to restrict service-action values
 type ServiceAction string
 
@@ -43,6 +53,10 @@ const (
 	ServiceActionRestart ServiceAction = "restart"
 	// ServiceActionStop represents stop action
 	ServiceActionStop = "stop"
+	// ServiceActionFreeze represents freeze action
+	ServiceActionFreeze = "freeze"
+	// ServiceActionUnfreeze represents unfreeze a previous freeze action
+	ServiceActionUnfreeze = "unfreeze"
 )
 
 // serviceCallAction - call service restart/update/stop API.
