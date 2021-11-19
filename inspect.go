@@ -38,8 +38,8 @@ func (adm *AdminClient) Inspect(ctx context.Context, d InspectOptions) (key [32]
 	q.Set("file", d.File)
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet, requestData{
-			relPath: path,
-			queryValues:q,
+			relPath:     path,
+			queryValues: q,
 		},
 	)
 
@@ -47,7 +47,6 @@ func (adm *AdminClient) Inspect(ctx context.Context, d InspectOptions) (key [32]
 		closeResponse(resp)
 		return key, nil, err
 	}
-
 
 	if resp.StatusCode != http.StatusOK {
 		return key, nil, httpRespToErrorResponse(resp)
