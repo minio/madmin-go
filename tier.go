@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"path"
+	"time"
 )
 
 // tierAPI is API path prefix for tier related admin APIs
@@ -131,9 +132,15 @@ func (adm *AdminClient) EditTier(ctx context.Context, tierName string, creds Tie
 
 // TierInfo contains tier name, type and statistics
 type TierInfo struct {
-	Name  string
-	Type  string
-	Stats TierStats
+	Name       string
+	Type       string
+	Stats      TierStats
+	DailyStats DailyTierStats
+}
+
+type DailyTierStats struct {
+	Bins      [24]TierStats
+	UpdatedAt time.Time
 }
 
 // TierStats returns per-tier stats of all configured tiers (incl. internal
