@@ -22,9 +22,12 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 // InfoCannedPolicy - expand canned policy into JSON structure.
+//
+// To be DEPRECATED in favor of the implementation in InfoCannedPolicyV2
 func (adm *AdminClient) InfoCannedPolicy(ctx context.Context, policyName string) ([]byte, error) {
 	queryValues := url.Values{}
 	queryValues.Set("name", policyName)
@@ -47,6 +50,47 @@ func (adm *AdminClient) InfoCannedPolicy(ctx context.Context, policyName string)
 	}
 
 	return ioutil.ReadAll(resp.Body)
+}
+
+// PolicyInfo contains information on a policy.
+type PolicyInfo struct {
+	PolicyName string
+	Policy     json.RawMessage
+	CreateDate *time.Time `json:",omitempty"`
+	UpdateDate *time.Time `json:",omitempty"`
+}
+
+// InfoCannedPolicyV2 - get info on a policy including timestamps and policy json.
+func (adm *AdminClient) InfoCannedPolicyV2(ctx context.Context, policyName string) (*PolicyInfo, error) {
+	queryValues := url.Values{}
+	queryValues.Set("name", policyName)
+	queryValues.Set("v", "2")
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/info-canned-policy",
+		queryValues: queryValues,
+	}
+
+	// Execute GET on /minio/admin/v3/info-canned-policy
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+
+	defer closeResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var p PolicyInfo
+	err = json.Unmarshal(data, &p)
+	return &p, err
 }
 
 // ListCannedPolicies - list all configured canned policies.
