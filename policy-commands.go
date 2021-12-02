@@ -56,8 +56,23 @@ func (adm *AdminClient) InfoCannedPolicy(ctx context.Context, policyName string)
 type PolicyInfo struct {
 	PolicyName string
 	Policy     json.RawMessage
-	CreateDate *time.Time `json:",omitempty"`
-	UpdateDate *time.Time `json:",omitempty"`
+	CreateDate time.Time `json:",omitempty"`
+	UpdateDate time.Time `json:",omitempty"`
+}
+
+// MarshalJSON marshaller for JSON
+func (pi PolicyInfo) MarshalJSON() ([]byte, error) {
+	type aliasPolicyInfo PolicyInfo // needed to avoid recursive marshal
+	if pi.CreateDate.IsZero() && pi.UpdateDate.IsZero() {
+		return json.Marshal(&struct {
+			PolicyName string
+			Policy     json.RawMessage
+		}{
+			PolicyName: pi.PolicyName,
+			Policy:     pi.Policy,
+		})
+	}
+	return json.Marshal(aliasPolicyInfo(pi))
 }
 
 // InfoCannedPolicyV2 - get info on a policy including timestamps and policy json.
