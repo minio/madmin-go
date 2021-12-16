@@ -791,6 +791,8 @@ type MinioInfo struct {
 	Backend      interface{}  `json:"backend,omitempty"`
 	Servers      []ServerInfo `json:"servers,omitempty"`
 	TLS          *TLSInfo     `json:"tls"`
+	IsKubernetes *bool        `json:"is_kubernetes"`
+	IsDocker     *bool        `json:"is_docker"`
 }
 
 type TLSInfo struct {
