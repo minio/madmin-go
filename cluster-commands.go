@@ -535,3 +535,68 @@ func (adm *AdminClient) SRStatusInfo(ctx context.Context) (info SRStatusInfo, er
 	err = json.NewDecoder(resp.Body).Decode(&info)
 	return info, err
 }
+
+// ReplicateEditStatus - returns status of edit request.
+type ReplicateEditStatus struct {
+	Success   bool   `json:"success"`
+	Status    string `json:"status"`
+	ErrDetail string `json:"errorDetail,omitempty"`
+}
+
+// SiteReplicationEdit - sends the SR edit API call.
+func (adm *AdminClient) SiteReplicationEdit(ctx context.Context, site PeerInfo) (ReplicateEditStatus, error) {
+	sitesBytes, err := json.Marshal(site)
+	if err != nil {
+		return ReplicateEditStatus{}, nil
+	}
+	encBytes, err := EncryptData(adm.getSecretKey(), sitesBytes)
+	if err != nil {
+		return ReplicateEditStatus{}, err
+	}
+
+	reqData := requestData{
+		relPath: adminAPIPrefix + "/site-replication/edit",
+		content: encBytes,
+	}
+
+	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return ReplicateEditStatus{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return ReplicateEditStatus{}, httpRespToErrorResponse(resp)
+	}
+
+	var res ReplicateEditStatus
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	return res, err
+}
+
+// SRPeerEdit - used only by minio server to update peer endpoint
+// for a server already in the site replication setup
+func (adm *AdminClient) SRPeerEdit(ctx context.Context, pi PeerInfo) error {
+
+	b, err := json.Marshal(pi)
+	if err != nil {
+		return err
+	}
+
+	reqData := requestData{
+		relPath: adminAPIPrefix + "/site-replication/peer/edit",
+		content: b,
+	}
+
+	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+
+	return nil
+}
