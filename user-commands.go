@@ -216,9 +216,16 @@ func (adm *AdminClient) GetUserInfo(ctx context.Context, name string) (u UserInf
 	return u, nil
 }
 
-// SetUser - sets a user info.
+// AddOrUpdateUserReq allows to update user details such as secret key and
+// account status.
+type AddOrUpdateUserReq struct {
+	SecretKey string        `json:"secretKey,omitempty"`
+	Status    AccountStatus `json:"status"`
+}
+
+// SetUser - update user secret key or account status.
 func (adm *AdminClient) SetUser(ctx context.Context, accessKey, secretKey string, status AccountStatus) error {
-	data, err := json.Marshal(UserInfo{
+	data, err := json.Marshal(AddOrUpdateUserReq{
 		SecretKey: secretKey,
 		Status:    status,
 	})
