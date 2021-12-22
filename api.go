@@ -336,6 +336,25 @@ var successStatus = []int{
 	http.StatusPartialContent,
 }
 
+// RequestData exposing internal data structure requestData
+type RequestData struct {
+	CustomHeaders http.Header
+	QueryValues   url.Values
+	RelPath       string // URL path relative to admin API base endpoint
+	Content       []byte
+}
+
+// ExecuteMethod - similar to internal method executeMethod() useful
+// for writing custom requests.
+func (adm AdminClient) ExecuteMethod(ctx context.Context, method string, reqData RequestData) (res *http.Response, err error) {
+	return adm.executeMethod(ctx, method, requestData{
+		customHeaders: reqData.CustomHeaders,
+		queryValues:   reqData.QueryValues,
+		relPath:       reqData.RelPath,
+		content:       reqData.Content,
+	})
+}
+
 // executeMethod - instantiates a given method, and retries the
 // request upon any error up to maxRetries attempts in a binomially
 // delayed manner using a standard back off algorithm.
