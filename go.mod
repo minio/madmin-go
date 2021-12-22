@@ -5,7 +5,7 @@ go 1.16
 require (
 	github.com/google/go-cmp v0.5.5 // indirect
 	github.com/minio/argon2 v1.0.0
-	github.com/minio/minio-go/v7 v7.0.11-0.20210302210017-6ae69c73ce78
+	github.com/minio/minio-go/v7 v7.0.18
 	github.com/minio/sha256-simd v1.0.0 // indirect
 	github.com/philhofer/fwd v1.1.1 // indirect
 	github.com/prometheus/procfs v0.7.3
