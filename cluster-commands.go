@@ -121,8 +121,8 @@ func (adm *AdminClient) SiteReplicationInfo(ctx context.Context) (info SiteRepli
 	return info, err
 }
 
-// SRInternalJoinReq - arg body for SRInternalJoin
-type SRInternalJoinReq struct {
+// SRPeerJoinReq - arg body for SRPeerJoin
+type SRPeerJoinReq struct {
 	SvcAcctAccessKey string              `json:"svcAcctAccessKey"`
 	SvcAcctSecretKey string              `json:"svcAcctSecretKey"`
 	SvcAcctParent    string              `json:"svcAcctParent"`
@@ -138,9 +138,9 @@ type PeerInfo struct {
 	DeploymentID string `json:"deploymentID"`
 }
 
-// SRInternalJoin - used only by minio server to send SR join requests to peer
+// SRPeerJoin - used only by minio server to send SR join requests to peer
 // servers.
-func (adm *AdminClient) SRInternalJoin(ctx context.Context, r SRInternalJoinReq) error {
+func (adm *AdminClient) SRPeerJoin(ctx context.Context, r SRPeerJoinReq) error {
 	b, err := json.Marshal(r)
 	if err != nil {
 		return err
@@ -183,8 +183,8 @@ const (
 	ForceDeleteBucketBktOp BktOp = "force-delete-bucket"
 )
 
-// SRInternalBucketOps - tells peers to create bucket and setup replication.
-func (adm *AdminClient) SRInternalBucketOps(ctx context.Context, bucket string, op BktOp, opts map[string]string) error {
+// SRPeerBucketOps - tells peers to create bucket and setup replication.
+func (adm *AdminClient) SRPeerBucketOps(ctx context.Context, bucket string, op BktOp, opts map[string]string) error {
 	v := url.Values{}
 	v.Add("bucket", bucket)
 	v.Add("operation", string(op))
@@ -284,8 +284,8 @@ type SRIAMItem struct {
 	STSCredential *SRSTSCredential `json:"stsCredential"`
 }
 
-// SRInternalReplicateIAMItem - copies an IAM object to a peer cluster.
-func (adm *AdminClient) SRInternalReplicateIAMItem(ctx context.Context, item SRIAMItem) error {
+// SRPeerReplicateIAMItem - copies an IAM object to a peer cluster.
+func (adm *AdminClient) SRPeerReplicateIAMItem(ctx context.Context, item SRIAMItem) error {
 	b, err := json.Marshal(item)
 	if err != nil {
 		return err
@@ -336,9 +336,9 @@ type SRBucketMeta struct {
 	SSEConfig *string `json:"sseConfig,omitempty"`
 }
 
-// SRInternalReplicateBucketMeta - copies a bucket metadata change to a peer
+// SRPeerReplicateBucketMeta - copies a bucket metadata change to a peer
 // cluster.
-func (adm *AdminClient) SRInternalReplicateBucketMeta(ctx context.Context, item SRBucketMeta) error {
+func (adm *AdminClient) SRPeerReplicateBucketMeta(ctx context.Context, item SRBucketMeta) error {
 	b, err := json.Marshal(item)
 	if err != nil {
 		return err
@@ -361,8 +361,8 @@ func (adm *AdminClient) SRInternalReplicateBucketMeta(ctx context.Context, item 
 	return nil
 }
 
-// SRBucketMetaInfo - returns all the bucket metadata available for bucket
-type SRBucketMetaInfo struct {
+// SRBucketInfo - returns all the bucket metadata available for bucket
+type SRBucketInfo struct {
 	Bucket string          `json:"bucket"`
 	Policy json.RawMessage `json:"policy,omitempty"`
 
@@ -391,8 +391,8 @@ type IDPSettings struct {
 	LDAPGroupSearchFilter  string
 }
 
-// SRInternalGetIDPSettings - fetches IDP settings from the server.
-func (adm *AdminClient) SRInternalGetIDPSettings(ctx context.Context) (info IDPSettings, err error) {
+// SRPeerGetIDPSettings - fetches IDP settings from the server.
+func (adm *AdminClient) SRPeerGetIDPSettings(ctx context.Context) (info IDPSettings, err error) {
 	reqData := requestData{
 		relPath: adminAPIPrefix + "/site-replication/peer/idp-settings",
 	}
@@ -421,17 +421,17 @@ type SRInfo struct {
 	Enabled        bool
 	Name           string
 	DeploymentID   string
-	Buckets        map[string]SRBucketMetaInfo   // map of bucket metadata info
+	Buckets        map[string]SRBucketInfo       // map of bucket metadata info
 	Policies       map[string]json.RawMessage    //  map of IAM policy name to content
 	UserPolicies   map[string]SRPolicyMapping    // map of username -> user policy mapping
 	GroupPolicies  map[string]SRPolicyMapping    // map of groupname -> group policy mapping
 	ReplicationCfg map[string]replication.Config // map of bucket -> replication config
 }
 
-// ListSiteReplicationInfo - returns replication metadata info for a site.
-func (adm *AdminClient) ListSiteReplicationInfo(ctx context.Context) (info SRInfo, err error) {
+// SRMetaInfo - returns replication metadata info for a site.
+func (adm *AdminClient) SRMetaInfo(ctx context.Context) (info SRInfo, err error) {
 	reqData := requestData{
-		relPath: adminAPIPrefix + "/site-replication/replicationinfo",
+		relPath: adminAPIPrefix + "/site-replication/metainfo",
 	}
 
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
@@ -516,8 +516,8 @@ type SRSiteSummary struct {
 	TotalGroupsCount         int // total number of groups seen on this site
 }
 
-// SiteReplicationStatusInfo - returns site replication status
-func (adm *AdminClient) SiteReplicationStatusInfo(ctx context.Context) (info SRStatusInfo, err error) {
+// SRStatusInfo - returns site replication status
+func (adm *AdminClient) SRStatusInfo(ctx context.Context) (info SRStatusInfo, err error) {
 	reqData := requestData{
 		relPath: adminAPIPrefix + "/site-replication/status",
 	}
