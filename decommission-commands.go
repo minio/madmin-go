@@ -39,7 +39,7 @@ type PoolStatus struct {
 	ID           int                   `json:"id"`
 	CmdLine      string                `json:"cmdline"`
 	LastUpdate   time.Time             `json:"lastUpdate"`
-	Decommission *PoolDecommissionInfo `json:"decomissionInfo,omitempty"`
+	Decommission *PoolDecommissionInfo `json:"decommissionInfo,omitempty"`
 }
 
 // DecommissionPool - starts moving data from specified pool to all other existing pools.
@@ -49,8 +49,8 @@ func (adm *AdminClient) DecommissionPool(ctx context.Context, pool string) error
 	values := url.Values{}
 	values.Set("pool", pool)
 	resp, err := adm.executeMethod(ctx, http.MethodPost, requestData{
-		// POST <endpoint>/<admin-API>/pools/decomission?pool=http://server{1...4}/disk{1...4}
-		relPath:     adminAPIPrefix + "/pools/decomission",
+		// POST <endpoint>/<admin-API>/pools/decommission?pool=http://server{1...4}/disk{1...4}
+		relPath:     adminAPIPrefix + "/pools/decommission",
 		queryValues: values,
 	})
 	if err != nil {
@@ -63,7 +63,7 @@ func (adm *AdminClient) DecommissionPool(ctx context.Context, pool string) error
 	return nil
 }
 
-// CancelDecommissionPool - cancels an on-going decomissioning process,
+// CancelDecommissionPool - cancels an on-going decommissioning process,
 // this automatically makes the pool available for writing once canceled.
 func (adm *AdminClient) CancelDecommissionPool(ctx context.Context, pool string) error {
 	values := url.Values{}
