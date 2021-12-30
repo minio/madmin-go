@@ -263,6 +263,13 @@ type OSInfo struct {
 	Sensors []host.TemperatureStat `json:"sensors,omitempty"`
 }
 
+// TimeInfo contains current time in UTC
+type TimeInfo struct {
+	NodeCommon
+
+	CurrentTime time.Time `json:"current_time"`
+}
+
 // GetOSInfo returns linux only operating system's information.
 func GetOSInfo(ctx context.Context, addr string) OSInfo {
 	if runtime.GOOS != "linux" {
@@ -495,6 +502,15 @@ type ProcInfo struct {
 	Times          cpu.TimesStat              `json:"times,omitempty"`
 	UIDs           []int32                    `json:"uids,omitempty"`
 	Username       string                     `json:"username,omitempty"`
+}
+
+// GetTimeInfo returns the current time on the host
+func GetTimeInfo(ctx context.Context, addr string) TimeInfo {
+	timeInfo := TimeInfo{
+		NodeCommon:  NodeCommon{Addr: addr},
+		CurrentTime: time.Now().UTC(),
+	}
+	return timeInfo
 }
 
 // GetProcInfo returns current MinIO process information.
