@@ -263,11 +263,11 @@ type OSInfo struct {
 	Sensors []host.TemperatureStat `json:"sensors,omitempty"`
 }
 
-// TimeInfo contains current time in UTC
+// TimeInfo contains current time in UTC, and the
+// roundtrip duration when fetching it remotely
 type TimeInfo struct {
-	NodeCommon
-
-	CurrentTime time.Time `json:"current_time"`
+	CurrentTime       time.Time `json:"current_time"`
+	RoundtripDuration int32     `json:"roundtrip_duration"`
 }
 
 // GetOSInfo returns linux only operating system's information.
@@ -323,6 +323,8 @@ func GetSysConfig(ctx context.Context, addr string) SysConfig {
 		}
 		sc.Config["rlimit-max"] = limits.OpenFiles
 	}
+
+	sc.Config["time-info"] = TimeInfo{CurrentTime: time.Now().UTC()}
 
 	return sc
 }
@@ -502,15 +504,6 @@ type ProcInfo struct {
 	Times          cpu.TimesStat              `json:"times,omitempty"`
 	UIDs           []int32                    `json:"uids,omitempty"`
 	Username       string                     `json:"username,omitempty"`
-}
-
-// GetTimeInfo returns the current time on the host
-func GetTimeInfo(ctx context.Context, addr string) TimeInfo {
-	timeInfo := TimeInfo{
-		NodeCommon:  NodeCommon{Addr: addr},
-		CurrentTime: time.Now().UTC(),
-	}
-	return timeInfo
 }
 
 // GetProcInfo returns current MinIO process information.
