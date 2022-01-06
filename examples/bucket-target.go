@@ -89,5 +89,4 @@ func main() {
 	if err := madmClnt.RemoveBucketTarget(ctx, "srcbucket", arn); err != nil {
 		log.Fatalln(err)
 	}
-
 }

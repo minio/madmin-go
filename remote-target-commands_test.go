@@ -46,41 +46,48 @@ func TestGetTargetUpdateOps(t *testing.T) {
 		values      url.Values
 		expectedOps []TargetUpdateType
 	}{
-		{values: url.Values{
-			"update": []string{"true"}},
+		{
+			values: url.Values{
+				"update": []string{"true"},
+			},
 			expectedOps: []TargetUpdateType{},
 		},
-		{values: url.Values{
-			"update": []string{"false"},
-			"path":   []string{"true"},
-		},
+		{
+			values: url.Values{
+				"update": []string{"false"},
+				"path":   []string{"true"},
+			},
 			expectedOps: []TargetUpdateType{},
 		},
-		{values: url.Values{
-			"update": []string{"true"},
-			"path":   []string{""},
-		},
+		{
+			values: url.Values{
+				"update": []string{"true"},
+				"path":   []string{""},
+			},
 			expectedOps: []TargetUpdateType{},
 		},
-		{values: url.Values{
-			"update": []string{"true"},
-			"path":   []string{"true"},
-			"bzzzz":  []string{"true"},
-		},
+		{
+			values: url.Values{
+				"update": []string{"true"},
+				"path":   []string{"true"},
+				"bzzzz":  []string{"true"},
+			},
 			expectedOps: []TargetUpdateType{PathUpdateType},
 		},
 
-		{values: url.Values{
-			"update":      []string{"true"},
-			"path":        []string{"true"},
-			"creds":       []string{"true"},
-			"sync":        []string{"true"},
-			"proxy":       []string{"true"},
-			"bandwidth":   []string{"true"},
-			"healthcheck": []string{"true"},
-		},
+		{
+			values: url.Values{
+				"update":      []string{"true"},
+				"path":        []string{"true"},
+				"creds":       []string{"true"},
+				"sync":        []string{"true"},
+				"proxy":       []string{"true"},
+				"bandwidth":   []string{"true"},
+				"healthcheck": []string{"true"},
+			},
 			expectedOps: []TargetUpdateType{
-				PathUpdateType, CredentialsUpdateType, SyncUpdateType, ProxyUpdateType, BandwidthLimitUpdateType, HealthCheckDurationUpdateType},
+				PathUpdateType, CredentialsUpdateType, SyncUpdateType, ProxyUpdateType, BandwidthLimitUpdateType, HealthCheckDurationUpdateType,
+			},
 		},
 	}
 	for i, test := range testCases {

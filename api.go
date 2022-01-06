@@ -359,7 +359,7 @@ func (adm AdminClient) ExecuteMethod(ctx context.Context, method string, reqData
 // request upon any error up to maxRetries attempts in a binomially
 // delayed manner using a standard back off algorithm.
 func (adm AdminClient) executeMethod(ctx context.Context, method string, reqData requestData) (res *http.Response, err error) {
-	var reqRetry = MaxRetry // Indicates how many times we can retry the request
+	reqRetry := MaxRetry // Indicates how many times we can retry the request
 	defer func() {
 		if err != nil {
 			// close idle connections before returning, upon error.
@@ -524,7 +524,6 @@ func (adm AdminClient) newRequest(ctx context.Context, method string, reqData re
 
 // makeTargetURL make a new target url.
 func (adm AdminClient) makeTargetURL(r requestData) (*url.URL, error) {
-
 	host := adm.endpointURL.Host
 	scheme := adm.endpointURL.Scheme
 

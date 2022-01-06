@@ -222,8 +222,8 @@ func (hri *HealResultItem) GetOnlineCounts() (b, a int) {
 // honored.
 func (adm *AdminClient) Heal(ctx context.Context, bucket, prefix string,
 	healOpts HealOpts, clientToken string, forceStart, forceStop bool) (
-	healStart HealStartSuccess, healTaskStatus HealTaskStatus, err error) {
-
+	healStart HealStartSuccess, healTaskStatus HealTaskStatus, err error,
+) {
 	if forceStart && forceStop {
 		return healStart, healTaskStatus, ErrInvalidArgument("forceStart and forceStop set to true is not allowed")
 	}

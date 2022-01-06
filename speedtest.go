@@ -53,10 +53,11 @@ type SpeedTestResult struct {
 
 // SpeedtestOpts provide configurable options for speedtest
 type SpeedtestOpts struct {
-	Size        int           // Object size used in speed test
-	Concurrency int           // Concurrency used in speed test
-	Duration    time.Duration // Total duration of the speed test
-	Autotune    bool          // Enable autotuning
+	Size         int           // Object size used in speed test
+	Concurrency  int           // Concurrency used in speed test
+	Duration     time.Duration // Total duration of the speed test
+	Autotune     bool          // Enable autotuning
+	StorageClass string        // Choose type of storage-class to be used while testing I/O
 }
 
 // Speedtest - perform speedtest on the MinIO servers

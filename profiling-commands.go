@@ -93,7 +93,6 @@ func (adm *AdminClient) DownloadProfilingData(ctx context.Context) (io.ReadClose
 			relPath: path,
 		},
 	)
-
 	if err != nil {
 		closeResponse(resp)
 		return nil, err

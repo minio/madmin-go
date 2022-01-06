@@ -42,7 +42,6 @@ func main() {
 	err = madmClnt.HealBucket(context.Background(), "mybucket", isDryRun)
 	if err != nil {
 		log.Fatalln(err)
-
 	}
 
 	// Heal bucket mybucket - for real this time.
