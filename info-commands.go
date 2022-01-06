@@ -95,7 +95,7 @@ func (d1 BackendDisks) Merge(d2 BackendDisks) BackendDisks {
 	if len(d2) == 0 {
 		d2 = make(BackendDisks)
 	}
-	var merged = make(BackendDisks)
+	merged := make(BackendDisks)
 	for i1, v1 := range d1 {
 		if v2, ok := d2[i1]; ok {
 			merged[i1] = v2 + v1

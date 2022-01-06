@@ -52,6 +52,7 @@ type ARN struct {
 func (a ARN) Empty() bool {
 	return !a.Type.IsValid()
 }
+
 func (a ARN) String() string {
 	return fmt.Sprintf("arn:minio:%s:%s:%s:%s", a.Type, a.Region, a.ID, a.Bucket)
 }

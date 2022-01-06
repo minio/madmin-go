@@ -20,7 +20,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"log"
-
 	"reflect"
 	"testing"
 )

@@ -131,7 +131,7 @@ func (adm *AdminClient) ListCannedPolicies(ctx context.Context) (map[string]json
 		return nil, err
 	}
 
-	var policies = make(map[string]json.RawMessage)
+	policies := make(map[string]json.RawMessage)
 	if err = json.Unmarshal(respBytes, &policies); err != nil {
 		return nil, err
 	}

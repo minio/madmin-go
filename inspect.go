@@ -42,7 +42,6 @@ func (adm *AdminClient) Inspect(ctx context.Context, d InspectOptions) (key [32]
 			queryValues: q,
 		},
 	)
-
 	if err != nil {
 		closeResponse(resp)
 		return key, nil, err

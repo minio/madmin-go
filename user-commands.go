@@ -174,7 +174,7 @@ func (adm *AdminClient) ListUsers(ctx context.Context) (map[string]UserInfo, err
 		return nil, err
 	}
 
-	var users = make(map[string]UserInfo)
+	users := make(map[string]UserInfo)
 	if err = json.Unmarshal(data, &users); err != nil {
 		return nil, err
 	}

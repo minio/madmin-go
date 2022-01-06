@@ -136,7 +136,7 @@ func KvFields(input string, keys []string) []string {
 	}
 
 	sort.Ints(valueIndexes)
-	var fields = make([]string, len(valueIndexes))
+	fields := make([]string, len(valueIndexes))
 	for i := range valueIndexes {
 		j := i + 1
 		if j < len(valueIndexes) {
@@ -164,7 +164,7 @@ func ParseTarget(s string, help Help) (*Target, error) {
 		return nil, fmt.Errorf("unknown sub-system %s", subSystemValue[0])
 	}
 
-	var kvs = KVS{}
+	kvs := KVS{}
 	var prevK string
 	for _, v := range KvFields(inputs[1], help.Keys()) {
 		kv := strings.SplitN(v, KvSeparator, 2)

@@ -78,7 +78,7 @@ func (adm *AdminClient) HelpConfigKV(ctx context.Context, subSys, key string, en
 		return Help{}, httpRespToErrorResponse(resp)
 	}
 
-	var help = Help{}
+	help := Help{}
 	d := json.NewDecoder(resp.Body)
 	d.DisallowUnknownFields()
 	if err = d.Decode(&help); err != nil {

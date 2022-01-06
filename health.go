@@ -961,7 +961,6 @@ func (adm *AdminClient) ServerHealthInfo(ctx context.Context, types []HealthData
 			queryValues: v,
 		},
 	)
-
 	if err != nil {
 		closeResponse(resp)
 		return nil, "", err
