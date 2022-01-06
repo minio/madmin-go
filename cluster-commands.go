@@ -219,6 +219,8 @@ const (
 	SRIAMItemSvcAcc        = "service-account"
 	SRIAMItemSTSAcc        = "sts-account"
 	SRIAMItemPolicyMapping = "policy-mapping"
+	SRIAMItemIAMUser       = "iam-user"
+	SRIAMItemGroupInfo     = "group-info"
 )
 
 // SRSvcAccCreate - create operation
@@ -261,9 +263,24 @@ type SRPolicyMapping struct {
 
 // SRSTSCredential - represents an STS credential to be replicated.
 type SRSTSCredential struct {
-	AccessKey    string `json:"accessKey"`
-	SecretKey    string `json:"secretKey"`
-	SessionToken string `json:"sessionToken"`
+	AccessKey           string `json:"accessKey"`
+	SecretKey           string `json:"secretKey"`
+	SessionToken        string `json:"sessionToken"`
+	ParentUser          string `json:"parentUser"`
+	ParentPolicyMapping string `json:"parentPolicyMapping,omitempty"`
+}
+
+// SRIAMUser - represents a regular (IAM) user to be replicated. A nil UserReq
+// implies that a user delete operation should be replicated on the peer cluster.
+type SRIAMUser struct {
+	AccessKey   string              `json:"accessKey"`
+	IsDeleteReq bool                `json:"isDeleteReq"`
+	UserReq     *AddOrUpdateUserReq `json:"userReq"`
+}
+
+// SRGroupInfo - represents a regular (IAM) user to be replicated.
+type SRGroupInfo struct {
+	UpdateReq GroupAddRemove `json:"updateReq"`
 }
 
 // SRIAMItem - represents an IAM object that will be copied to a peer.
@@ -282,6 +299,12 @@ type SRIAMItem struct {
 
 	// Used when Type = SRIAMItemSTSAcc
 	STSCredential *SRSTSCredential `json:"stsCredential"`
+
+	// Used when Type = SRIAMItemIAMUser
+	IAMUser *SRIAMUser `json:"iamUser"`
+
+	// Used when Type = SRIAMItemGroupInfo
+	GroupInfo *SRGroupInfo `json:"groupInfo"`
 }
 
 // SRPeerReplicateIAMItem - copies an IAM object to a peer cluster.
@@ -381,9 +404,36 @@ type SRBucketInfo struct {
 	ReplicationConfig *string `json:"replicationConfig,omitempty"`
 }
 
+// OpenIDProviderSettings contains info on a particular OIDC based provider.
+type OpenIDProviderSettings struct {
+	ClaimName            string
+	ClaimUserinfoEnabled bool
+	RolePolicy           string
+	ClientID             string
+	HashedClientSecret   string
+}
+
+// OpenIDSettings contains OpenID configuration info of a cluster.
+type OpenIDSettings struct {
+	// Enabled is true iff there is at least one OpenID provider configured.
+	Enabled bool
+	Region  string
+	// Map of role ARN to provider info
+	Roles map[string]OpenIDProviderSettings
+	// Info on the claim based provider (all fields are empty if not
+	// present)
+	ClaimProvider OpenIDProviderSettings
+}
+
 // IDPSettings contains key IDentity Provider settings to validate that all
 // peers have the same configuration.
 type IDPSettings struct {
+	LDAP   LDAPSettings
+	OpenID OpenIDSettings
+}
+
+// LDAPSettings contains LDAP configuration info of a cluster.
+type LDAPSettings struct {
 	IsLDAPEnabled          bool
 	LDAPUserDNSearchBase   string
 	LDAPUserDNSearchFilter string
@@ -413,6 +463,14 @@ func (adm *AdminClient) SRPeerGetIDPSettings(ctx context.Context) (info IDPSetti
 	}
 
 	err = json.Unmarshal(b, &info)
+	if err != nil {
+		// If the server is older version, the IDPSettings was =
+		// LDAPSettings, so we try that.
+		err2 := json.Unmarshal(b, &info.LDAP)
+		if err2 == nil {
+			err = nil
+		}
+	}
 	return info, err
 }
 
