@@ -331,9 +331,9 @@ type ServerProperties struct {
 
 // DiskMetrics has the information about XL Storage APIs
 // the number of calls of each API and the moving average of
-// the duration of each API.
+// the duration, in nanosecond, of each API.
 type DiskMetrics struct {
-	APILatencies map[string]string `json:"apiLatencies,omitempty"`
+	APILatencies map[string]uint64 `json:"apiLatencies,omitempty"`
 	APICalls     map[string]uint64 `json:"apiCalls,omitempty"`
 }
 
