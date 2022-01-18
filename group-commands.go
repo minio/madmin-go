@@ -26,9 +26,10 @@ import (
 
 // GroupAddRemove is type for adding/removing members to/from a group.
 type GroupAddRemove struct {
-	Group    string   `json:"group"`
-	Members  []string `json:"members"`
-	IsRemove bool     `json:"isRemove"`
+	Group    string      `json:"group"`
+	Members  []string    `json:"members"`
+	Status   GroupStatus `json:"groupStatus"`
+	IsRemove bool        `json:"isRemove"`
 }
 
 // UpdateGroupMembers - adds/removes users to/from a group. Server
