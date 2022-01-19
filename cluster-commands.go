@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/minio/minio-go/v7/pkg/replication"
 )
@@ -404,6 +405,8 @@ type SRBucketInfo struct {
 	SSEConfig *string `json:"sseConfig,omitempty"`
 	// replication config in json representation
 	ReplicationConfig *string `json:"replicationConfig,omitempty"`
+	// quota config in json representation
+	QuotaConfig *string `json:"quotaConfig,omitempty"`
 }
 
 // OpenIDProviderSettings contains info on a particular OIDC based provider.
@@ -484,14 +487,17 @@ type SRInfo struct {
 	Buckets        map[string]SRBucketInfo       // map of bucket metadata info
 	Policies       map[string]json.RawMessage    //  map of IAM policy name to content
 	UserPolicies   map[string]SRPolicyMapping    // map of username -> user policy mapping
+	UserInfoMap    map[string]UserInfo           // map of user name to UserInfo
+	GroupDescMap   map[string]GroupDesc          // map of group name to GroupDesc
 	GroupPolicies  map[string]SRPolicyMapping    // map of groupname -> group policy mapping
 	ReplicationCfg map[string]replication.Config // map of bucket -> replication config
 }
 
 // SRMetaInfo - returns replication metadata info for a site.
-func (adm *AdminClient) SRMetaInfo(ctx context.Context) (info SRInfo, err error) {
+func (adm *AdminClient) SRMetaInfo(ctx context.Context, opts SRStatusOptions) (info SRInfo, err error) {
 	reqData := requestData{
-		relPath: adminAPIPrefix + "/site-replication/metainfo",
+		relPath:     adminAPIPrefix + "/site-replication/metainfo",
+		queryValues: opts.getURLValues(),
 	}
 
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
@@ -510,38 +516,50 @@ func (adm *AdminClient) SRMetaInfo(ctx context.Context) (info SRInfo, err error)
 
 // SRStatusInfo returns detailed status on site replication status
 type SRStatusInfo struct {
-	Enabled          bool
-	MaxBuckets       int                                        // maximum buckets seen across sites
-	MaxUsers         int                                        // maximum users seen across sites
-	MaxGroups        int                                        // maximum groups seen across sites
-	MaxPolicies      int                                        // maximum policies across sites
-	Sites            map[string]PeerInfo                        // deployment->sitename
-	StatsSummary     map[string]SRSiteSummary                   // map of deployment id -> site stat
-	BucketMismatches map[string]map[string]SRBucketStatsSummary // map of bucket to slice of deployment IDs with stats
-	PolicyMismatches map[string]map[string]SRPolicyStatsSummary // map of policy name to slice of deployment IDs with policy summary
-	UserMismatches   map[string]map[string]SRUserStatsSummary   // map of user name to slice of deployment IDs with user mismatches
-	GroupMismatches  map[string]map[string]SRGroupStatsSummary  // map of group name to slice of deployment IDs with group mismatches
+	Enabled      bool
+	MaxBuckets   int                      // maximum buckets seen across sites
+	MaxUsers     int                      // maximum users seen across sites
+	MaxGroups    int                      // maximum groups seen across sites
+	MaxPolicies  int                      // maximum policies across sites
+	Sites        map[string]PeerInfo      // deployment->sitename
+	StatsSummary map[string]SRSiteSummary // map of deployment id -> site stat
+	// BucketStats map of bucket to slice of deployment IDs with stats. This is populated only if there are
+	// mismatches or if a specific bucket's stats are requested
+	BucketStats map[string]map[string]SRBucketStatsSummary
+	// PolicyStats map of policy to slice of deployment IDs with stats. This is populated only if there are
+	// mismatches or if a specific bucket's stats are requested
+	PolicyStats map[string]map[string]SRPolicyStatsSummary
+	// UserStats map of user to slice of deployment IDs with stats. This is populated only if there are
+	// mismatches or if a specific bucket's stats are requested
+	UserStats map[string]map[string]SRUserStatsSummary
+	// GroupStats map of group to slice of deployment IDs with stats. This is populated only if there are
+	// mismatches or if a specific bucket's stats are requested
+	GroupStats map[string]map[string]SRGroupStatsSummary
 }
 
 // SRPolicyStatsSummary has status of policy replication misses
 type SRPolicyStatsSummary struct {
 	DeploymentID   string
 	PolicyMismatch bool
-	PolicyMissing  bool
+	HasPolicy      bool
 }
 
 // SRUserStatsSummary has status of user replication misses
 type SRUserStatsSummary struct {
-	DeploymentID   string
-	PolicyMismatch bool
-	UserMissing    bool
+	DeploymentID     string
+	PolicyMismatch   bool
+	UserInfoMismatch bool
+	HasUser          bool
+	HasPolicyMapping bool
 }
 
 // SRGroupStatsSummary has status of group replication misses
 type SRGroupStatsSummary struct {
-	DeploymentID   string
-	PolicyMismatch bool
-	GroupMissing   bool
+	DeploymentID      string
+	PolicyMismatch    bool
+	HasGroup          bool
+	GroupDescMismatch bool
+	HasPolicyMapping  bool
 }
 
 // SRBucketStatsSummary has status of bucket metadata replication misses
@@ -552,34 +570,127 @@ type SRBucketStatsSummary struct {
 	OLockConfigMismatch    bool
 	PolicyMismatch         bool
 	SSEConfigMismatch      bool
-	HasReplicationCfg      bool
 	ReplicationCfgMismatch bool
+	QuotaCfgMismatch       bool
+	HasTagsSet             bool
+	HasOLockConfigSet      bool
+	HasPolicySet           bool
+	HasSSECfgSet           bool
+	HasReplicationCfg      bool
+	HasQuotaCfgSet         bool
 }
 
 // SRSiteSummary holds the count of replicated items in site replication
 type SRSiteSummary struct {
-	ReplicatedBuckets        int // count of buckets replicated across sites
-	ReplicatedTags           int // count of buckets with tags replicated across sites
-	ReplicatedBucketPolicies int // count of policies replicated across sites
-	ReplicatedIAMPolicies    int // count of IAM policies replicated across sites
-	ReplicatedUsers          int // count of users replicated across sites
-	ReplicatedGroups         int // count of groups replicated across sites
-	ReplicatedLockConfig     int // count of object lock config replicated across sites
-	ReplicatedSSEConfig      int
-	TotalBucketsCount        int // total buckets on this site
-	TotalTagsCount           int // total count of buckets with tags on this site
-	TotalBucketPoliciesCount int // total count of buckets with bucket policies for this site
-	TotalIAMPoliciesCount    int // total count of IAM policies for this site
-	TotalLockConfigCount     int // total count of buckets with object lock config for this site
-	TotalSSEConfigCount      int // total count of buckets with SSE config
-	TotalUsersCount          int // total number of users seen on this site
-	TotalGroupsCount         int // total number of groups seen on this site
+	ReplicatedBuckets             int // count of buckets replicated across sites
+	ReplicatedTags                int // count of buckets with tags replicated across sites
+	ReplicatedBucketPolicies      int // count of policies replicated across sites
+	ReplicatedIAMPolicies         int // count of IAM policies replicated across sites
+	ReplicatedUsers               int // count of users replicated across sites
+	ReplicatedGroups              int // count of groups replicated across sites
+	ReplicatedLockConfig          int // count of object lock config replicated across sites
+	ReplicatedSSEConfig           int
+	ReplicatedQuotaConfig         int // count of bucket with quota config replicated across sites
+	ReplicatedUserPolicyMappings  int // count of user policy mappings replicated across sites
+	ReplicatedGroupPolicyMappings int // count of group policy mappings replicated across sites
+
+	TotalBucketsCount            int // total buckets on this site
+	TotalTagsCount               int // total count of buckets with tags on this site
+	TotalBucketPoliciesCount     int // total count of buckets with bucket policies for this site
+	TotalIAMPoliciesCount        int // total count of IAM policies for this site
+	TotalLockConfigCount         int // total count of buckets with object lock config for this site
+	TotalSSEConfigCount          int // total count of buckets with SSE config
+	TotalQuotaConfigCount        int // total count of buckets with quota config
+	TotalUsersCount              int // total number of users seen on this site
+	TotalGroupsCount             int // total number of groups seen on this site
+	TotalUserPolicyMappingCount  int // total number of user policy mappings seen on this site
+	TotalGroupPolicyMappingCount int // total number of group policy mappings seen on this site
+
+}
+
+// SREntityType specifies type of entity
+type SREntityType int
+
+const (
+	// Unspecified entity
+	Unspecified SREntityType = iota
+
+	// SRBucketEntity Bucket entity type
+	SRBucketEntity
+
+	// SRPolicyEntity Policy entity type
+	SRPolicyEntity
+
+	// SRUserEntity User entity type
+	SRUserEntity
+
+	// SRGroupEntity Group entity type
+	SRGroupEntity
+)
+
+// SRStatusOptions holds SR status options
+type SRStatusOptions struct {
+	Buckets     bool
+	Policies    bool
+	Users       bool
+	Groups      bool
+	Entity      SREntityType
+	EntityValue string
+}
+
+// IsEntitySet returns true if entity option is set
+func (o *SRStatusOptions) IsEntitySet() bool {
+	switch o.Entity {
+	case SRBucketEntity, SRPolicyEntity, SRUserEntity, SRGroupEntity:
+		return true
+	default:
+		return false
+	}
+}
+
+// GetSREntityType returns the SREntityType for a key
+func GetSREntityType(name string) SREntityType {
+	switch name {
+	case "bucket":
+		return SRBucketEntity
+	case "user":
+		return SRUserEntity
+	case "group":
+		return SRGroupEntity
+	case "policy":
+		return SRPolicyEntity
+	default:
+		return Unspecified
+	}
+}
+
+func (o *SRStatusOptions) getURLValues() url.Values {
+	urlValues := make(url.Values)
+	urlValues.Set("buckets", strconv.FormatBool(o.Buckets))
+	urlValues.Set("policies", strconv.FormatBool(o.Policies))
+	urlValues.Set("users", strconv.FormatBool(o.Users))
+	urlValues.Set("groups", strconv.FormatBool(o.Groups))
+	if o.IsEntitySet() {
+		urlValues.Set("entityvalue", o.EntityValue)
+		switch o.Entity {
+		case SRBucketEntity:
+			urlValues.Set("entity", "bucket")
+		case SRPolicyEntity:
+			urlValues.Set("entity", "policy")
+		case SRUserEntity:
+			urlValues.Set("entity", "user")
+		case SRGroupEntity:
+			urlValues.Set("entity", "group")
+		}
+	}
+	return urlValues
 }
 
 // SRStatusInfo - returns site replication status
-func (adm *AdminClient) SRStatusInfo(ctx context.Context) (info SRStatusInfo, err error) {
+func (adm *AdminClient) SRStatusInfo(ctx context.Context, opts SRStatusOptions) (info SRStatusInfo, err error) {
 	reqData := requestData{
-		relPath: adminAPIPrefix + "/site-replication/status",
+		relPath:     adminAPIPrefix + "/site-replication/status",
+		queryValues: opts.getURLValues(),
 	}
 
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
