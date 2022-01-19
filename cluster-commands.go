@@ -337,10 +337,10 @@ const (
 	SRBucketMetaTypeTags             = "tags"
 	SRBucketMetaTypeObjectLockConfig = "object-lock-config"
 	SRBucketMetaTypeSSEConfig        = "sse-config"
+	SRBucketMetaTypeQuotaConfig      = "quota-config"
 )
 
-// SRBucketMeta - represents a bucket metadata change that will be copied to a
-// peer.
+// SRBucketMeta - represents a bucket metadata change that will be copied to a peer.
 type SRBucketMeta struct {
 	Type   string          `json:"type"`
 	Bucket string          `json:"bucket"`
@@ -357,10 +357,12 @@ type SRBucketMeta struct {
 	// Since SSE config does not have a json representation, we use its xml
 	// byte respresentation.
 	SSEConfig *string `json:"sseConfig,omitempty"`
+
+	// Quota has a json representation use it as is.
+	Quota json.RawMessage `json:"quota,omitempty"`
 }
 
-// SRPeerReplicateBucketMeta - copies a bucket metadata change to a peer
-// cluster.
+// SRPeerReplicateBucketMeta - copies a bucket metadata change to a peer cluster.
 func (adm *AdminClient) SRPeerReplicateBucketMeta(ctx context.Context, item SRBucketMeta) error {
 	b, err := json.Marshal(item)
 	if err != nil {
