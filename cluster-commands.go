@@ -637,7 +637,6 @@ func (adm *AdminClient) SiteReplicationEdit(ctx context.Context, site PeerInfo) 
 // SRPeerEdit - used only by minio server to update peer endpoint
 // for a server already in the site replication setup
 func (adm *AdminClient) SRPeerEdit(ctx context.Context, pi PeerInfo) error {
-
 	b, err := json.Marshal(pi)
 	if err != nil {
 		return err
