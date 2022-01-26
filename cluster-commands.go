@@ -724,6 +724,6 @@ type SRRemoveReq struct {
 }
 
 const (
-	ReplicateRemoveStatusSuccess = "Requested sites were removed from cluster replication successfully."
+	ReplicateRemoveStatusSuccess = "Requested site(s) were removed from cluster replication successfully."
 	ReplicateRemoveStatusPartial = "Some site(s) could not be removed from cluster replication configuration."
 )
