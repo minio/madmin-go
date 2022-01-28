@@ -30,13 +30,11 @@ type QuotaType string
 const (
 	// HardQuota specifies a hard quota of usage for bucket
 	HardQuota QuotaType = "hard"
-	// FIFOQuota specifies a quota limit beyond which older files are deleted from bucket
-	FIFOQuota QuotaType = "fifo"
 )
 
-// IsValid returns true if quota type is one of FIFO or Hard
+// IsValid returns true if quota type is one of Hard
 func (t QuotaType) IsValid() bool {
-	return t == HardQuota || t == FIFOQuota
+	return t == HardQuota
 }
 
 // BucketQuota holds bucket quota restrictions
