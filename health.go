@@ -116,17 +116,18 @@ type SysService struct {
 
 // CPU contains system's CPU information.
 type CPU struct {
-	VendorID   string   `json:"vendor_id"`
-	Family     string   `json:"family"`
-	Model      string   `json:"model"`
-	Stepping   int32    `json:"stepping"`
-	PhysicalID string   `json:"physical_id"`
-	ModelName  string   `json:"model_name"`
-	Mhz        float64  `json:"mhz"`
-	CacheSize  int32    `json:"cache_size"`
-	Flags      []string `json:"flags"`
-	Microcode  string   `json:"microcode"`
-	Cores      int      `json:"cores"` // computed
+	VendorID     string   `json:"vendor_id"`
+	Family       string   `json:"family"`
+	Model        string   `json:"model"`
+	Stepping     int32    `json:"stepping"`
+	PhysicalID   string   `json:"physical_id"`
+	ModelName    string   `json:"model_name"`
+	Mhz          float64  `json:"mhz"`
+	CacheSize    int32    `json:"cache_size"`
+	Flags        []string `json:"flags"`
+	Microcode    string   `json:"microcode"`
+	Cores        int      `json:"cores"` // computed
+	FreqGovernor string   `json:"freq_governor"`
 }
 
 // CPUs contains all CPU information of a node.
@@ -148,6 +149,8 @@ func GetCPUs(ctx context.Context, addr string) CPUs {
 		}
 	}
 
+	freqGovernor, _ := getCPUFreqGovernor()
+
 	cpuMap := map[string]CPU{}
 	for _, info := range infos {
 		cpu, found := cpuMap[info.PhysicalID]
@@ -168,6 +171,7 @@ func GetCPUs(ctx context.Context, addr string) CPUs {
 				Cores:      1,
 			}
 		}
+		cpu.FreqGovernor = freqGovernor
 		cpuMap[info.PhysicalID] = cpu
 	}
 
