@@ -133,7 +133,8 @@ type CPU struct {
 type CPUs struct {
 	NodeCommon
 
-	CPUs []CPU `json:"cpus,omitempty"`
+	CPUs          []CPU `json:"cpus,omitempty"`
+	IsFreqGovPerf *bool `json:"is_freq_gov_perf,omitempty"`
 }
 
 // GetCPUs returns system's all CPU information.
@@ -176,9 +177,16 @@ func GetCPUs(ctx context.Context, addr string) CPUs {
 		cpus = append(cpus, cpu)
 	}
 
+	var igp *bool
+	isGovPerf, err := isFreqGovPerf()
+	if err == nil {
+		igp = &isGovPerf
+	}
+
 	return CPUs{
-		NodeCommon: NodeCommon{Addr: addr},
-		CPUs:       cpus,
+		NodeCommon:    NodeCommon{Addr: addr},
+		CPUs:          cpus,
+		IsFreqGovPerf: igp,
 	}
 }
 
