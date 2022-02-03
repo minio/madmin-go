@@ -19,6 +19,10 @@
 
 package madmin
 
-func getCPUFreqGovernor() (string, error) {
-	return "", nil
+import (
+	"errors"
+)
+
+func isFreqGovPerf() (bool, error) {
+	return false, errors.New("Not implemented for non-linux platforms")
 }

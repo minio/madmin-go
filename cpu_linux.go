@@ -19,21 +19,26 @@
 
 package madmin
 
-import "github.com/prometheus/procfs/sysfs"
+import (
+	"github.com/prometheus/procfs/sysfs"
+)
 
-func getCPUFreqGovernor() (string, error) {
+func isFreqGovPerf() (bool, error) {
 	fs, err := sysfs.NewFS("/sys")
 	if err != nil {
-		return "", err
+		return false, err
 	}
 
 	stats, err := fs.SystemCpufreq()
 	if err != nil {
-		return "", err
+		return false, err
 	}
 
-	if len(stats) > 0 {
-		return stats[0].Governor, nil // assuming its same on all cpus/cores
+	for _, s := range stats {
+		if s.Governor != "performance" {
+			return false, nil
+		}
 	}
-	return "", nil
+
+	return true, nil
 }

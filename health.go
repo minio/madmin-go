@@ -116,25 +116,25 @@ type SysService struct {
 
 // CPU contains system's CPU information.
 type CPU struct {
-	VendorID     string   `json:"vendor_id"`
-	Family       string   `json:"family"`
-	Model        string   `json:"model"`
-	Stepping     int32    `json:"stepping"`
-	PhysicalID   string   `json:"physical_id"`
-	ModelName    string   `json:"model_name"`
-	Mhz          float64  `json:"mhz"`
-	CacheSize    int32    `json:"cache_size"`
-	Flags        []string `json:"flags"`
-	Microcode    string   `json:"microcode"`
-	Cores        int      `json:"cores"` // computed
-	FreqGovernor string   `json:"freq_governor"`
+	VendorID   string   `json:"vendor_id"`
+	Family     string   `json:"family"`
+	Model      string   `json:"model"`
+	Stepping   int32    `json:"stepping"`
+	PhysicalID string   `json:"physical_id"`
+	ModelName  string   `json:"model_name"`
+	Mhz        float64  `json:"mhz"`
+	CacheSize  int32    `json:"cache_size"`
+	Flags      []string `json:"flags"`
+	Microcode  string   `json:"microcode"`
+	Cores      int      `json:"cores"` // computed
 }
 
 // CPUs contains all CPU information of a node.
 type CPUs struct {
 	NodeCommon
 
-	CPUs []CPU `json:"cpus,omitempty"`
+	CPUs          []CPU `json:"cpus,omitempty"`
+	IsFreqGovPerf *bool `json:"is_freq_gov_perf,omitempty"`
 }
 
 // GetCPUs returns system's all CPU information.
@@ -148,8 +148,6 @@ func GetCPUs(ctx context.Context, addr string) CPUs {
 			},
 		}
 	}
-
-	freqGovernor, _ := getCPUFreqGovernor()
 
 	cpuMap := map[string]CPU{}
 	for _, info := range infos {
@@ -171,7 +169,6 @@ func GetCPUs(ctx context.Context, addr string) CPUs {
 				Cores:      1,
 			}
 		}
-		cpu.FreqGovernor = freqGovernor
 		cpuMap[info.PhysicalID] = cpu
 	}
 
@@ -180,9 +177,16 @@ func GetCPUs(ctx context.Context, addr string) CPUs {
 		cpus = append(cpus, cpu)
 	}
 
+	var igp *bool
+	isGovPerf, err := isFreqGovPerf()
+	if err == nil {
+		igp = &isGovPerf
+	}
+
 	return CPUs{
-		NodeCommon: NodeCommon{Addr: addr},
-		CPUs:       cpus,
+		NodeCommon:    NodeCommon{Addr: addr},
+		CPUs:          cpus,
+		IsFreqGovPerf: igp,
 	}
 }
 
