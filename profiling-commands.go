@@ -34,6 +34,7 @@ type ProfilerType string
 // Different supported profiler types.
 const (
 	ProfilerCPU        ProfilerType = "cpu"        // represents CPU profiler type
+	ProfilerCPUIO      ProfilerType = "cpuio"      // represents CPU with IO (fgprof) profiler type
 	ProfilerMEM        ProfilerType = "mem"        // represents MEM profiler type
 	ProfilerBlock      ProfilerType = "block"      // represents Block profiler type
 	ProfilerMutex      ProfilerType = "mutex"      // represents Mutex profiler type
