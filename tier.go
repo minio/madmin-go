@@ -115,9 +115,29 @@ func (adm *AdminClient) EditTier(ctx context.Context, tierName string, creds Tie
 		content: encData,
 	}
 
-	// Execute POST on /minio/admin/v3/tier/tierName" to edit a tier
+	// Execute POST on /minio/admin/v3/tier/tierName to edit a tier
 	// configured.
 	resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusNoContent {
+		return httpRespToErrorResponse(resp)
+	}
+
+	return nil
+}
+
+// RemoveTier removes an empty tier identified by tierName
+func (adm *AdminClient) RemoveTier(ctx context.Context, tierName string) error {
+	reqData := requestData{
+		relPath: path.Join(adminAPIPrefix, tierAPI, tierName),
+	}
+
+	// Execute DELETE on /minio/admin/v3/tier/tierName to remove an empty tier.
+	resp, err := adm.executeMethod(ctx, http.MethodDelete, reqData)
 	defer closeResponse(resp)
 	if err != nil {
 		return err
