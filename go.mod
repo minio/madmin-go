@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/minio/argon2 v1.0.0
-	github.com/minio/minio-go/v7 v7.0.20
+	github.com/minio/minio-go/v7 v7.0.23
 	github.com/prometheus/procfs v0.7.3
 	github.com/secure-io/sio-go v0.3.1
 	github.com/shirou/gopsutil/v3 v3.21.6
