@@ -150,6 +150,26 @@ func (adm *AdminClient) RemoveTier(ctx context.Context, tierName string) error {
 	return nil
 }
 
+// VerifyTier verifies tierName's remote tier config
+func (adm *AdminClient) VerifyTier(ctx context.Context, tierName string) error {
+	reqData := requestData{
+		relPath: path.Join(adminAPIPrefix, tierAPI, tierName),
+	}
+
+	// Execute GET on /minio/admin/v3/tier/tierName to verify tierName's config.
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusNoContent {
+		return httpRespToErrorResponse(resp)
+	}
+
+	return nil
+}
+
 // TierInfo contains tier name, type and statistics
 type TierInfo struct {
 	Name       string
