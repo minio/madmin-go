@@ -132,6 +132,9 @@ func (adm *AdminClient) EditTier(ctx context.Context, tierName string, creds Tie
 
 // RemoveTier removes an empty tier identified by tierName
 func (adm *AdminClient) RemoveTier(ctx context.Context, tierName string) error {
+	if tierName == "" {
+		return ErrTierNameEmpty
+	}
 	reqData := requestData{
 		relPath: path.Join(adminAPIPrefix, tierAPI, tierName),
 	}
@@ -152,6 +155,9 @@ func (adm *AdminClient) RemoveTier(ctx context.Context, tierName string) error {
 
 // VerifyTier verifies tierName's remote tier config
 func (adm *AdminClient) VerifyTier(ctx context.Context, tierName string) error {
+	if tierName == "" {
+		return ErrTierNameEmpty
+	}
 	reqData := requestData{
 		relPath: path.Join(adminAPIPrefix, tierAPI, tierName),
 	}
