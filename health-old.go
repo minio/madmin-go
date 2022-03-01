@@ -28,13 +28,83 @@ import (
 	"github.com/shirou/gopsutil/v3/process"
 )
 
-// HealthInfoV0 - MinIO cluster's health Info
+// HealthInfoV0 - MinIO cluster's health Info version 0
 type HealthInfoV0 struct {
 	TimeStamp time.Time         `json:"timestamp,omitempty"`
 	Error     string            `json:"error,omitempty"`
 	Perf      PerfInfoV0        `json:"perf,omitempty"`
 	Minio     MinioHealthInfoV0 `json:"minio,omitempty"`
 	Sys       SysHealthInfo     `json:"sys,omitempty"`
+}
+
+// HealthInfoV2 - MinIO cluster's health Info version 2
+type HealthInfoV2 struct {
+	Version string `json:"version"`
+	Error   string `json:"error,omitempty"`
+
+	TimeStamp time.Time       `json:"timestamp,omitempty"`
+	Sys       SysInfo         `json:"sys,omitempty"`
+	Perf      PerfInfo        `json:"perf,omitempty"`
+	Minio     MinioHealthInfo `json:"minio,omitempty"`
+}
+
+// Latency contains write operation latency in seconds of a disk drive.
+type Latency struct {
+	Avg          float64 `json:"avg"`
+	Max          float64 `json:"max"`
+	Min          float64 `json:"min"`
+	Percentile50 float64 `json:"percentile_50"`
+	Percentile90 float64 `json:"percentile_90"`
+	Percentile99 float64 `json:"percentile_99"`
+}
+
+// Throughput contains write performance in bytes per second of a disk drive.
+type Throughput struct {
+	Avg          uint64 `json:"avg"`
+	Max          uint64 `json:"max"`
+	Min          uint64 `json:"min"`
+	Percentile50 uint64 `json:"percentile_50"`
+	Percentile90 uint64 `json:"percentile_90"`
+	Percentile99 uint64 `json:"percentile_99"`
+}
+
+// DrivePerfInfo contains disk drive's performance information.
+type DrivePerfInfo struct {
+	Error string `json:"error,omitempty"`
+
+	Path       string     `json:"path"`
+	Latency    Latency    `json:"latency,omitempty"`
+	Throughput Throughput `json:"throughput,omitempty"`
+}
+
+// DrivePerfInfos contains all disk drive's performance information of a node.
+type DrivePerfInfos struct {
+	NodeCommon
+
+	SerialPerf   []DrivePerfInfo `json:"serial_perf,omitempty"`
+	ParallelPerf []DrivePerfInfo `json:"parallel_perf,omitempty"`
+}
+
+// PeerNetPerfInfo contains network performance information of a node.
+type PeerNetPerfInfo struct {
+	NodeCommon
+
+	Latency    Latency    `json:"latency,omitempty"`
+	Throughput Throughput `json:"throughput,omitempty"`
+}
+
+// NetPerfInfo contains network performance information of a node to other nodes.
+type NetPerfInfo struct {
+	NodeCommon
+
+	RemotePeers []PeerNetPerfInfo `json:"remote_peers,omitempty"`
+}
+
+// PerfInfo - Includes Drive and Net perf info for the entire MinIO cluster
+type PerfInfo struct {
+	Drives      []DrivePerfInfos `json:"drives,omitempty"`
+	Net         []NetPerfInfo    `json:"net,omitempty"`
+	NetParallel NetPerfInfo      `json:"net_parallel,omitempty"`
 }
 
 func (info HealthInfoV0) String() string {
