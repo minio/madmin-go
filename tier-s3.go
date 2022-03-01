@@ -97,7 +97,7 @@ func NewTierS3(name, accessKey, secretKey, bucket string, options ...S3Options) 
 	}
 
 	return &TierConfig{
-		Version: TierConfigV1,
+		Version: TierConfigVer,
 		Type:    S3,
 		Name:    name,
 		S3:      sc,

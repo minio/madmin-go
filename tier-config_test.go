@@ -29,7 +29,7 @@ func TestUnmarshalInvalidTierConfig(t *testing.T) {
 	}{
 		{
 			cfg: TierConfig{
-				Version: TierConfigV1,
+				Version: TierConfigVer,
 				Name:    "S3TIER?",
 				Type:    S3,
 				GCS: &TierGCS{
@@ -61,7 +61,7 @@ func TestUnmarshalInvalidTierConfig(t *testing.T) {
 		},
 		{
 			cfg: TierConfig{
-				Version: TierConfigV1,
+				Version: TierConfigVer,
 				Type:    GCS,
 				GCS: &TierGCS{
 					Creds:        "VWJ1bnR1IDIwLjA0LjEgTFRTIFxuIFxsCgo",
@@ -76,7 +76,7 @@ func TestUnmarshalInvalidTierConfig(t *testing.T) {
 		},
 		{
 			cfg: TierConfig{
-				Version: TierConfigV1,
+				Version: TierConfigVer,
 				Name:    "GCSTIER",
 				Type:    GCS,
 				GCS: &TierGCS{

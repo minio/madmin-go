@@ -78,7 +78,7 @@ func TestS3Tier(t *testing.T) {
 	storageClass := "S3_IA"
 
 	want := &TierConfig{
-		Version: TierConfigV1,
+		Version: TierConfigVer,
 		Type:    S3,
 		Name:    scName,
 		S3: &TierS3{
@@ -118,7 +118,7 @@ func TestAzTier(t *testing.T) {
 	bucket, prefix := "testbucket", "testprefix"
 	region := "us-east-1"
 	want := &TierConfig{
-		Version: TierConfigV1,
+		Version: TierConfigVer,
 		Type:    Azure,
 		Name:    scName,
 		Azure: &TierAzure{
@@ -158,7 +158,7 @@ func TestGCSStorageClass(t *testing.T) {
 	region := "us-west-2"
 
 	want := &TierConfig{
-		Version: TierConfigV1,
+		Version: TierConfigVer,
 		Type:    GCS,
 		Name:    scName,
 		GCS: &TierGCS{
