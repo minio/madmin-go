@@ -24,8 +24,8 @@ import (
 
 //go:generate msgp -file $GOFILE
 
-// TierConfigV1 is the supported tier config version
-const TierConfigV1 = "v1"
+// TierConfigVer refers to the current tier config version
+const TierConfigVer = "v1"
 
 // TierType enumerates different remote tier backends.
 type TierType int
@@ -39,6 +39,8 @@ const (
 	Azure
 	// GCS refers to Google Cloud Storage
 	GCS
+	// MinIO refers to MinIO object storage backend
+	MinIO
 )
 
 // String returns the name of tt's remote tier backend.
@@ -50,6 +52,8 @@ func (tt TierType) String() string {
 		return "azure"
 	case GCS:
 		return "gcs"
+	case MinIO:
+		return "minio"
 	}
 	return "unsupported"
 }
@@ -87,6 +91,8 @@ func NewTierType(scType string) (TierType, error) {
 		return Azure, nil
 	case GCS.String():
 		return GCS, nil
+	case MinIO.String():
+		return MinIO, nil
 	}
 
 	return Unsupported, ErrTierTypeUnsupported
@@ -102,6 +108,7 @@ type TierConfig struct {
 	S3      *TierS3    `json:",omitempty"`
 	Azure   *TierAzure `json:",omitempty"`
 	GCS     *TierGCS   `json:",omitempty"`
+	MinIO   *TierMinIO `json:",omitempty"`
 }
 
 var (
@@ -121,6 +128,7 @@ func (cfg *TierConfig) Clone() TierConfig {
 		s3  TierS3
 		az  TierAzure
 		gcs TierGCS
+		m   TierMinIO
 	)
 	switch cfg.Type {
 	case S3:
@@ -132,6 +140,9 @@ func (cfg *TierConfig) Clone() TierConfig {
 	case GCS:
 		gcs = *cfg.GCS
 		gcs.Creds = "REDACTED"
+	case MinIO:
+		m = *cfg.MinIO
+		m.SecretKey = "REDACTED"
 	}
 	return TierConfig{
 		Version: cfg.Version,
@@ -140,6 +151,7 @@ func (cfg *TierConfig) Clone() TierConfig {
 		S3:      &s3,
 		Azure:   &az,
 		GCS:     &gcs,
+		MinIO:   &m,
 	}
 }
 
@@ -154,7 +166,9 @@ func (cfg *TierConfig) UnmarshalJSON(b []byte) error {
 		return err
 	}
 
-	if m.Version != TierConfigV1 {
+	switch m.Version {
+	case TierConfigVer:
+	default:
 		return ErrTierInvalidConfigVersion
 	}
 
@@ -169,6 +183,10 @@ func (cfg *TierConfig) UnmarshalJSON(b []byte) error {
 		}
 	case GCS:
 		if m.GCS == nil {
+			return ErrTierInvalidConfig
+		}
+	case MinIO:
+		if m.MinIO == nil {
 			return ErrTierInvalidConfig
 		}
 	}
@@ -190,6 +208,8 @@ func (cfg *TierConfig) Endpoint() string {
 		return cfg.Azure.Endpoint
 	case GCS:
 		return cfg.GCS.Endpoint
+	case MinIO:
+		return cfg.MinIO.Endpoint
 	}
 	log.Printf("unexpected tier type %s", cfg.Type)
 	return ""
@@ -204,6 +224,8 @@ func (cfg *TierConfig) Bucket() string {
 		return cfg.Azure.Bucket
 	case GCS:
 		return cfg.GCS.Bucket
+	case MinIO:
+		return cfg.MinIO.Bucket
 	}
 	log.Printf("unexpected tier type %s", cfg.Type)
 	return ""
@@ -218,6 +240,8 @@ func (cfg *TierConfig) Prefix() string {
 		return cfg.Azure.Prefix
 	case GCS:
 		return cfg.GCS.Prefix
+	case MinIO:
+		return cfg.MinIO.Prefix
 	}
 	log.Printf("unexpected tier type %s", cfg.Type)
 	return ""
@@ -232,6 +256,8 @@ func (cfg *TierConfig) Region() string {
 		return cfg.Azure.Region
 	case GCS:
 		return cfg.GCS.Region
+	case MinIO:
+		return cfg.MinIO.Region
 	}
 	log.Printf("unexpected tier type %s", cfg.Type)
 	return ""

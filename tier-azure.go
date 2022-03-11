@@ -90,7 +90,7 @@ func NewTierAzure(name, accountName, accountKey, bucket string, options ...Azure
 	}
 
 	return &TierConfig{
-		Version: TierConfigV1,
+		Version: TierConfigVer,
 		Type:    Azure,
 		Name:    name,
 		Azure:   az,

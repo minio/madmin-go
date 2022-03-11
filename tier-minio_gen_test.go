@@ -9,8 +9,8 @@ import (
 	"github.com/tinylib/msgp/msgp"
 )
 
-func TestMarshalUnmarshalTierAzure(t *testing.T) {
-	v := TierAzure{}
+func TestMarshalUnmarshalTierMinIO(t *testing.T) {
+	v := TierMinIO{}
 	bts, err := v.MarshalMsg(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -32,8 +32,8 @@ func TestMarshalUnmarshalTierAzure(t *testing.T) {
 	}
 }
 
-func BenchmarkMarshalMsgTierAzure(b *testing.B) {
-	v := TierAzure{}
+func BenchmarkMarshalMsgTierMinIO(b *testing.B) {
+	v := TierMinIO{}
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -41,8 +41,8 @@ func BenchmarkMarshalMsgTierAzure(b *testing.B) {
 	}
 }
 
-func BenchmarkAppendMsgTierAzure(b *testing.B) {
-	v := TierAzure{}
+func BenchmarkAppendMsgTierMinIO(b *testing.B) {
+	v := TierMinIO{}
 	bts := make([]byte, 0, v.Msgsize())
 	bts, _ = v.MarshalMsg(bts[0:0])
 	b.SetBytes(int64(len(bts)))
@@ -53,8 +53,8 @@ func BenchmarkAppendMsgTierAzure(b *testing.B) {
 	}
 }
 
-func BenchmarkUnmarshalTierAzure(b *testing.B) {
-	v := TierAzure{}
+func BenchmarkUnmarshalTierMinIO(b *testing.B) {
+	v := TierMinIO{}
 	bts, _ := v.MarshalMsg(nil)
 	b.ReportAllocs()
 	b.SetBytes(int64(len(bts)))
@@ -67,17 +67,17 @@ func BenchmarkUnmarshalTierAzure(b *testing.B) {
 	}
 }
 
-func TestEncodeDecodeTierAzure(t *testing.T) {
-	v := TierAzure{}
+func TestEncodeDecodeTierMinIO(t *testing.T) {
+	v := TierMinIO{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 
 	m := v.Msgsize()
 	if buf.Len() > m {
-		t.Log("WARNING: TestEncodeDecodeTierAzure Msgsize() is inaccurate")
+		t.Log("WARNING: TestEncodeDecodeTierMinIO Msgsize() is inaccurate")
 	}
 
-	vn := TierAzure{}
+	vn := TierMinIO{}
 	err := msgp.Decode(&buf, &vn)
 	if err != nil {
 		t.Error(err)
@@ -91,8 +91,8 @@ func TestEncodeDecodeTierAzure(t *testing.T) {
 	}
 }
 
-func BenchmarkEncodeTierAzure(b *testing.B) {
-	v := TierAzure{}
+func BenchmarkEncodeTierMinIO(b *testing.B) {
+	v := TierMinIO{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))
@@ -105,8 +105,8 @@ func BenchmarkEncodeTierAzure(b *testing.B) {
 	en.Flush()
 }
 
-func BenchmarkDecodeTierAzure(b *testing.B) {
-	v := TierAzure{}
+func BenchmarkDecodeTierMinIO(b *testing.B) {
+	v := TierMinIO{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))

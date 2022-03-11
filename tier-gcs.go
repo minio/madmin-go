@@ -90,7 +90,7 @@ func NewTierGCS(name string, credsJSON []byte, bucket string, options ...GCSOpti
 	}
 
 	return &TierConfig{
-		Version: TierConfigV1,
+		Version: TierConfigVer,
 		Type:    GCS,
 		Name:    name,
 		GCS:     gcs,
