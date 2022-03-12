@@ -22,6 +22,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 // GroupAddRemove is type for adding/removing members to/from a group.
@@ -64,10 +65,11 @@ func (adm *AdminClient) UpdateGroupMembers(ctx context.Context, g GroupAddRemove
 // GroupDesc is a type that holds group info along with the policy
 // attached to it.
 type GroupDesc struct {
-	Name    string   `json:"name"`
-	Status  string   `json:"status"`
-	Members []string `json:"members"`
-	Policy  string   `json:"policy"`
+	Name      string    `json:"name"`
+	Status    string    `json:"status"`
+	Members   []string  `json:"members"`
+	Policy    string    `json:"policy"`
+	UpdatedAt time.Time `json:"updatedAt,omitempty"`
 }
 
 // GetGroupDescription - fetches information on a group.
