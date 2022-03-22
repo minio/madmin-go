@@ -781,17 +781,31 @@ type MemStats struct {
 	HeapAlloc  uint64
 }
 
+// GCStats collect information about recent garbage collections.
+type GCStats struct {
+	LastGC     time.Time       `json:"last_gc"`     // time of last collection
+	NumGC      int64           `json:"num_gc"`      // number of garbage collections
+	PauseTotal time.Duration   `json:"pause_total"` // total pause for all collections
+	Pause      []time.Duration `json:"pause"`       // pause history, most recent first
+	PauseEnd   []time.Time     `json:"pause_end"`   // pause end times history, most recent first
+}
+
 // ServerInfo holds server information
 type ServerInfo struct {
-	State      string            `json:"state,omitempty"`
-	Endpoint   string            `json:"endpoint,omitempty"`
-	Uptime     int64             `json:"uptime,omitempty"`
-	Version    string            `json:"version,omitempty"`
-	CommitID   string            `json:"commitID,omitempty"`
-	Network    map[string]string `json:"network,omitempty"`
-	Drives     []Disk            `json:"drives,omitempty"`
-	PoolNumber int               `json:"poolNumber,omitempty"`
-	MemStats   MemStats          `json:"mem_stats"`
+	State          string            `json:"state,omitempty"`
+	Endpoint       string            `json:"endpoint,omitempty"`
+	Uptime         int64             `json:"uptime,omitempty"`
+	Version        string            `json:"version,omitempty"`
+	CommitID       string            `json:"commitID,omitempty"`
+	Network        map[string]string `json:"network,omitempty"`
+	Drives         []Disk            `json:"drives,omitempty"`
+	PoolNumber     int               `json:"poolNumber,omitempty"`
+	MemStats       MemStats          `json:"mem_stats"`
+	GOMAXPROCS     int               `json:"gomaxprocs"`
+	NumCPU         int               `json:"num_cpu"`
+	RuntimeVersion string            `json:"runtime_version"`
+	GCStats        GCStats           `json:"gc_stats"`
+	MinioEnvVars   map[string]string `json:"minio_env_vars"`
 }
 
 // MinioInfo contains MinIO server and object storage information.
