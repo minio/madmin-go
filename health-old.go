@@ -48,6 +48,41 @@ type HealthInfoV2 struct {
 	Minio     MinioHealthInfo `json:"minio,omitempty"`
 }
 
+func (info HealthInfoV2) String() string {
+	data, err := json.Marshal(info)
+	if err != nil {
+		panic(err) // This never happens.
+	}
+	return string(data)
+}
+
+// JSON returns this structure as JSON formatted string.
+func (info HealthInfoV2) JSON() string {
+	data, err := json.MarshalIndent(info, " ", "    ")
+	if err != nil {
+		panic(err) // This never happens.
+	}
+	return string(data)
+}
+
+// GetError - returns error from the cluster health info v2
+func (info HealthInfoV2) GetError() string {
+	return info.Error
+}
+
+// GetStatus - returns status of the cluster health info v2
+func (info HealthInfoV2) GetStatus() string {
+	if info.Error != "" {
+		return "error"
+	}
+	return "success"
+}
+
+// GetTimestamp - returns timestamp from the cluster health info v2
+func (info HealthInfoV2) GetTimestamp() time.Time {
+	return info.TimeStamp
+}
+
 // Latency contains write operation latency in seconds of a disk drive.
 type Latency struct {
 	Avg          float64 `json:"avg"`
