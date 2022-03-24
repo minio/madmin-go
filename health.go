@@ -847,9 +847,9 @@ type HealthDataType string
 
 // HealthDataTypes
 const (
-	HealthDataTypePerfDrive   HealthDataType = "perfdrive"
-	HealthDataTypePerfNet     HealthDataType = "perfnet"
-	HealthDataTypePerfObj     HealthDataType = "perfobj"
+	HealthDataTypePerfDrive   HealthDataType = "driveperf"
+	HealthDataTypePerfNet     HealthDataType = "netperf"
+	HealthDataTypePerfObj     HealthDataType = "objperf"
 	HealthDataTypeMinioInfo   HealthDataType = "minioinfo"
 	HealthDataTypeMinioConfig HealthDataType = "minioconfig"
 	HealthDataTypeSysCPU      HealthDataType = "syscpu"
