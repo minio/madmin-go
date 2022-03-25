@@ -25,6 +25,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 // ProfilerType represents the profiler type
@@ -52,7 +53,7 @@ type StartProfilingResult struct {
 }
 
 // StartProfiling makes an admin call to remotely start profiling on a standalone
-// server or the whole cluster in  case of a distributed setup.
+// server or the whole cluster in  case of a distributed setup. [DEPRECATED]
 func (adm *AdminClient) StartProfiling(ctx context.Context, profiler ProfilerType) ([]StartProfilingResult, error) {
 	v := url.Values{}
 	v.Set("profilerType", string(profiler))
@@ -85,8 +86,8 @@ func (adm *AdminClient) StartProfiling(ctx context.Context, profiler ProfilerTyp
 	return startResults, nil
 }
 
-// DownloadProfilingData makes an admin call to download profiling data of a standalone
-// server or of the whole cluster in  case of a distributed setup.
+//  DownloadProfilingData makes an admin call to download profiling data of a standalone
+// server or of the whole cluster in  case of a distributed setup.[DEPRECATED]
 func (adm *AdminClient) DownloadProfilingData(ctx context.Context) (io.ReadCloser, error) {
 	path := fmt.Sprintf(adminAPIPrefix + "/profiling/download")
 	resp, err := adm.executeMethod(ctx,
@@ -107,5 +108,32 @@ func (adm *AdminClient) DownloadProfilingData(ctx context.Context) (io.ReadClose
 		return nil, errors.New("body is nil")
 	}
 
+	return resp.Body, nil
+}
+
+// Profile makes an admin call to remotely start profiling on a standalone
+// server or the whole cluster in  case of a distributed setup for a specified duration.
+func (adm *AdminClient) Profile(ctx context.Context, profiler ProfilerType, duration time.Duration) (io.ReadCloser, error) {
+	v := url.Values{}
+	v.Set("profilerType", string(profiler))
+	v.Set("duration", duration.String())
+	resp, err := adm.executeMethod(ctx,
+		http.MethodPost, requestData{
+			relPath:     adminAPIPrefix + "/profile",
+			queryValues: v,
+		},
+	)
+	if err != nil {
+		closeResponse(resp)
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+
+	if resp.Body == nil {
+		return nil, errors.New("body is nil")
+	}
 	return resp.Body, nil
 }
