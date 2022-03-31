@@ -45,8 +45,10 @@ const (
 	HealthInfoVersion1 = "1"
 	// HealthInfoVersion2 is version 2
 	HealthInfoVersion2 = "2"
+	// HealthInfoVersion3 is version 3
+	HealthInfoVersion3 = "3"
 	// HealthInfoVersion is current health info version.
-	HealthInfoVersion = HealthInfoVersion2
+	HealthInfoVersion = HealthInfoVersion3
 )
 
 const (
@@ -706,63 +708,11 @@ type SysInfo struct {
 	SysConfig   []SysConfig   `json:"config,omitempty"`
 }
 
-// Latency contains write operation latency in seconds of a disk drive.
-type Latency struct {
-	Avg          float64 `json:"avg"`
-	Max          float64 `json:"max"`
-	Min          float64 `json:"min"`
-	Percentile50 float64 `json:"percentile_50"`
-	Percentile90 float64 `json:"percentile_90"`
-	Percentile99 float64 `json:"percentile_99"`
-}
-
-// Throughput contains write performance in bytes per second of a disk drive.
-type Throughput struct {
-	Avg          uint64 `json:"avg"`
-	Max          uint64 `json:"max"`
-	Min          uint64 `json:"min"`
-	Percentile50 uint64 `json:"percentile_50"`
-	Percentile90 uint64 `json:"percentile_90"`
-	Percentile99 uint64 `json:"percentile_99"`
-}
-
-// DrivePerfInfo contains disk drive's performance information.
-type DrivePerfInfo struct {
-	Error string `json:"error,omitempty"`
-
-	Path       string     `json:"path"`
-	Latency    Latency    `json:"latency,omitempty"`
-	Throughput Throughput `json:"throughput,omitempty"`
-}
-
-// DrivePerfInfos contains all disk drive's performance information of a node.
-type DrivePerfInfos struct {
-	NodeCommon
-
-	SerialPerf   []DrivePerfInfo `json:"serial_perf,omitempty"`
-	ParallelPerf []DrivePerfInfo `json:"parallel_perf,omitempty"`
-}
-
-// PeerNetPerfInfo contains network performance information of a node.
-type PeerNetPerfInfo struct {
-	NodeCommon
-
-	Latency    Latency    `json:"latency,omitempty"`
-	Throughput Throughput `json:"throughput,omitempty"`
-}
-
-// NetPerfInfo contains network performance information of a node to other nodes.
-type NetPerfInfo struct {
-	NodeCommon
-
-	RemotePeers []PeerNetPerfInfo `json:"remote_peers,omitempty"`
-}
-
-// PerfInfo - Includes Drive and Net perf info for the entire MinIO cluster
-type PerfInfo struct {
-	Drives      []DrivePerfInfos `json:"drives,omitempty"`
-	Net         []NetPerfInfo    `json:"net,omitempty"`
-	NetParallel NetPerfInfo      `json:"net_parallel,omitempty"`
+// SpeedTestResults - Includes perf test results of the MinIO cluster
+type SpeedTestResults struct {
+	DrivePerf []DriveSpeedTestResult `json:"drive,omitempty"`
+	ObjPerf   []SpeedTestResult      `json:"obj,omitempty"`
+	NetPerf   []NetperfNodeResult    `json:"net,omitempty"`
 }
 
 // MinioConfig contains minio configuration of a node.
@@ -851,10 +801,10 @@ type HealthInfo struct {
 	Version string `json:"version"`
 	Error   string `json:"error,omitempty"`
 
-	TimeStamp time.Time       `json:"timestamp,omitempty"`
-	Sys       SysInfo         `json:"sys,omitempty"`
-	Perf      PerfInfo        `json:"perf,omitempty"`
-	Minio     MinioHealthInfo `json:"minio,omitempty"`
+	TimeStamp time.Time        `json:"timestamp,omitempty"`
+	Sys       SysInfo          `json:"sys,omitempty"`
+	Perf      SpeedTestResults `json:"perf,omitempty"`
+	Minio     MinioHealthInfo  `json:"minio,omitempty"`
 }
 
 func (info HealthInfo) String() string {
@@ -897,8 +847,9 @@ type HealthDataType string
 
 // HealthDataTypes
 const (
-	HealthDataTypePerfDrive   HealthDataType = "perfdrive"
-	HealthDataTypePerfNet     HealthDataType = "perfnet"
+	HealthDataTypePerfDrive   HealthDataType = "driveperf"
+	HealthDataTypePerfNet     HealthDataType = "netperf"
+	HealthDataTypePerfObj     HealthDataType = "objperf"
 	HealthDataTypeMinioInfo   HealthDataType = "minioinfo"
 	HealthDataTypeMinioConfig HealthDataType = "minioconfig"
 	HealthDataTypeSysCPU      HealthDataType = "syscpu"
@@ -918,6 +869,7 @@ const (
 var HealthDataTypesMap = map[string]HealthDataType{
 	"perfdrive":   HealthDataTypePerfDrive,
 	"perfnet":     HealthDataTypePerfNet,
+	"perfobj":     HealthDataTypePerfObj,
 	"minioinfo":   HealthDataTypeMinioInfo,
 	"minioconfig": HealthDataTypeMinioConfig,
 	"syscpu":      HealthDataTypeSysCPU,
@@ -933,8 +885,8 @@ var HealthDataTypesMap = map[string]HealthDataType{
 	"sysconfig":   HealthDataTypeSysConfig,
 }
 
-// HealthDataTypesLite - List of health datatypes related to lightweight tests
-var HealthDataTypesLite = []HealthDataType{
+// HealthDataTypesList - List of health datatypes
+var HealthDataTypesList = []HealthDataType{
 	HealthDataTypeMinioInfo,
 	HealthDataTypeMinioConfig,
 	HealthDataTypeSysCPU,
@@ -948,16 +900,10 @@ var HealthDataTypesLite = []HealthDataType{
 	HealthDataTypeSysErrors,
 	HealthDataTypeSysServices,
 	HealthDataTypeSysConfig,
-}
-
-// HealthDataTypesHeavy - List of health datatypes related to heavy (long running) tests
-var HealthDataTypesHeavy = []HealthDataType{
 	HealthDataTypePerfDrive,
+	HealthDataTypePerfObj,
 	HealthDataTypePerfNet,
 }
-
-// HealthDataTypesList - List of Health datatypes
-var HealthDataTypesList = append(HealthDataTypesLite, HealthDataTypesHeavy...)
 
 // HealthInfoVersionStruct - struct for health info version
 type HealthInfoVersionStruct struct {
@@ -1006,7 +952,7 @@ func (adm *AdminClient) ServerHealthInfo(ctx context.Context, types []HealthData
 	}
 
 	switch version.Version {
-	case "", HealthInfoVersion:
+	case "", HealthInfoVersion2, HealthInfoVersion:
 	default:
 		closeResponse(resp)
 		return nil, "", errors.New("Upgrade Minio Client to support health info version " + version.Version)
