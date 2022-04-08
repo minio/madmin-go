@@ -23,9 +23,9 @@ import (
 	"io"
 	"io/ioutil"
 
-	"golang.org/x/crypto/argon2"
 	"github.com/secure-io/sio-go"
 	"github.com/secure-io/sio-go/sioutil"
+	"golang.org/x/crypto/argon2"
 	"golang.org/x/crypto/pbkdf2"
 )
 

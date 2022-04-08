@@ -605,7 +605,6 @@ type SRSiteSummary struct {
 	TotalGroupsCount             int // total number of groups seen on this site
 	TotalUserPolicyMappingCount  int // total number of user policy mappings seen on this site
 	TotalGroupPolicyMappingCount int // total number of group policy mappings seen on this site
-
 }
 
 // SREntityType specifies type of entity
