@@ -868,9 +868,9 @@ const (
 
 // HealthDataTypesMap - Map of Health datatypes
 var HealthDataTypesMap = map[string]HealthDataType{
-	"perfdrive":   HealthDataTypePerfDrive,
-	"perfnet":     HealthDataTypePerfNet,
-	"perfobj":     HealthDataTypePerfObj,
+	"driveperf":   HealthDataTypePerfDrive,
+	"netperf":     HealthDataTypePerfNet,
+	"objperf":     HealthDataTypePerfObj,
 	"minioinfo":   HealthDataTypeMinioInfo,
 	"minioconfig": HealthDataTypeMinioConfig,
 	"syscpu":      HealthDataTypeSysCPU,
