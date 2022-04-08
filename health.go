@@ -713,6 +713,7 @@ type SpeedTestResults struct {
 	DrivePerf []DriveSpeedTestResult `json:"drive,omitempty"`
 	ObjPerf   []SpeedTestResult      `json:"obj,omitempty"`
 	NetPerf   []NetperfNodeResult    `json:"net,omitempty"`
+	Error     string                 `json:"error,omitempty"`
 }
 
 // MinioConfig contains minio configuration of a node.
