@@ -223,6 +223,7 @@ type InfoMessage struct {
 	DeploymentID string             `json:"deploymentID,omitempty"`
 	Buckets      Buckets            `json:"buckets,omitempty"`
 	Objects      Objects            `json:"objects,omitempty"`
+	Versions     Versions           `json:"versions,omitempty"`
 	Usage        Usage              `json:"usage,omitempty"`
 	Services     Services           `json:"services,omitempty"`
 	Backend      interface{}        `json:"backend,omitempty"`
@@ -246,6 +247,12 @@ type Buckets struct {
 
 // Objects contains the number of objects
 type Objects struct {
+	Count uint64 `json:"count"`
+	Error string `json:"error,omitempty"`
+}
+
+// Versions contains the number of versions
+type Versions struct {
 	Count uint64 `json:"count"`
 	Error string `json:"error,omitempty"`
 }
