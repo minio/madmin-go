@@ -124,6 +124,7 @@ type UserInfo struct {
 	PolicyName string        `json:"policyName,omitempty"`
 	Status     AccountStatus `json:"status"`
 	MemberOf   []string      `json:"memberOf,omitempty"`
+	UpdatedAt  time.Time     `json:"updatedAt,omitempty"`
 }
 
 // RemoveUser - remove a user.

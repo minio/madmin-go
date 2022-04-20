@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 
 	"github.com/minio/minio-go/v7/pkg/replication"
 )
@@ -257,9 +258,11 @@ type SRSvcAccChange struct {
 
 // SRPolicyMapping - represents mapping of a policy to a user or group.
 type SRPolicyMapping struct {
-	UserOrGroup string `json:"userOrGroup"`
-	IsGroup     bool   `json:"isGroup"`
-	Policy      string `json:"policy"`
+	UserOrGroup string    `json:"userOrGroup"`
+	IsGroup     bool      `json:"isGroup"`
+	Policy      string    `json:"policy"`
+	CreatedAt   time.Time `json:"createdAt,omitempty"`
+	UpdatedAt   time.Time `json:"updatedAt,omitempty"`
 }
 
 // SRSTSCredential - represents an STS credential to be replicated.
@@ -407,6 +410,15 @@ type SRBucketInfo struct {
 	ReplicationConfig *string `json:"replicationConfig,omitempty"`
 	// quota config in json representation
 	QuotaConfig *string `json:"quotaConfig,omitempty"`
+	// time stamps of bucket metadata updates
+	PolicyUpdatedAt            time.Time `json:"policyTimestamp,omitempty"`
+	TagConfigUpdatedAt         time.Time `json:"tagTimestamp,omitempty"`
+	ObjectLockConfigUpdatedAt  time.Time `json:"olockTimestamp,omitempty"`
+	SSEConfigUpdatedAt         time.Time `json:"sseTimestamp,omitempty"`
+	ReplicationConfigUpdatedAt time.Time `json:"replicationConfigTimestamp,omitempty"`
+	QuotaConfigUpdatedAt       time.Time `json:"quotaTimestamp,omitempty"`
+	CreatedAt                  time.Time `json:"bucketTimestamp,omitempty"`
+	Location                   string    `json:"location,omitempty"`
 }
 
 // OpenIDProviderSettings contains info on a particular OIDC based provider.
@@ -479,13 +491,19 @@ func (adm *AdminClient) SRPeerGetIDPSettings(ctx context.Context) (info IDPSetti
 	return info, err
 }
 
+// SRIAMPolicy - represents an IAM policy.
+type SRIAMPolicy struct {
+	Policy    json.RawMessage `json:"policy"`
+	UpdatedAt time.Time       `json:"updatedAt,omitempty"`
+}
+
 // SRInfo gets replication metadata for a site
 type SRInfo struct {
 	Enabled        bool
 	Name           string
 	DeploymentID   string
 	Buckets        map[string]SRBucketInfo       // map of bucket metadata info
-	Policies       map[string]json.RawMessage    //  map of IAM policy name to content
+	Policies       map[string]SRIAMPolicy        //  map of IAM policy name to content
 	UserPolicies   map[string]SRPolicyMapping    // map of username -> user policy mapping
 	UserInfoMap    map[string]UserInfo           // map of user name to UserInfo
 	GroupDescMap   map[string]GroupDesc          // map of group name to GroupDesc
