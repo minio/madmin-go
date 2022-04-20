@@ -87,7 +87,7 @@ func (adm *AdminClient) StartProfiling(ctx context.Context, profiler ProfilerTyp
 }
 
 // Deprecated: DownloadProfilingData makes an admin call to download profiling data of a standalone
-// server or of the whole cluster in  case of a distributed setup.[DEPRECATED]
+// server or of the whole cluster in case of a distributed setup.
 func (adm *AdminClient) DownloadProfilingData(ctx context.Context) (io.ReadCloser, error) {
 	path := fmt.Sprintf(adminAPIPrefix + "/profiling/download")
 	resp, err := adm.executeMethod(ctx,
