@@ -52,7 +52,7 @@ type StartProfilingResult struct {
 	Error    string `json:"error"`
 }
 
-// StartProfiling makes an admin call to remotely start profiling on a standalone
+// Deprecated: StartProfiling makes an admin call to remotely start profiling on a standalone
 // server or the whole cluster in  case of a distributed setup. [DEPRECATED]
 func (adm *AdminClient) StartProfiling(ctx context.Context, profiler ProfilerType) ([]StartProfilingResult, error) {
 	v := url.Values{}
