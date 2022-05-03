@@ -698,14 +698,26 @@ func GetProcInfo(ctx context.Context, addr string) ProcInfo {
 
 // SysInfo - Includes hardware and system information of the MinIO cluster
 type SysInfo struct {
-	CPUInfo     []CPUs        `json:"cpus,omitempty"`
-	Partitions  []Partitions  `json:"partitions,omitempty"`
-	OSInfo      []OSInfo      `json:"osinfo,omitempty"`
-	MemInfo     []MemInfo     `json:"meminfo,omitempty"`
-	ProcInfo    []ProcInfo    `json:"procinfo,omitempty"`
-	SysErrs     []SysErrors   `json:"errors,omitempty"`
-	SysServices []SysServices `json:"services,omitempty"`
-	SysConfig   []SysConfig   `json:"config,omitempty"`
+	CPUInfo        []CPUs         `json:"cpus,omitempty"`
+	Partitions     []Partitions   `json:"partitions,omitempty"`
+	OSInfo         []OSInfo       `json:"osinfo,omitempty"`
+	MemInfo        []MemInfo      `json:"meminfo,omitempty"`
+	ProcInfo       []ProcInfo     `json:"procinfo,omitempty"`
+	SysErrs        []SysErrors    `json:"errors,omitempty"`
+	SysServices    []SysServices  `json:"services,omitempty"`
+	SysConfig      []SysConfig    `json:"config,omitempty"`
+	KubernetesInfo KubernetesInfo `json:"kubernetes"`
+}
+
+// KubernetesInfo - Information about the kubernetes platform
+type KubernetesInfo struct {
+	Major      string    `json:"major,omitempty"`
+	Minor      string    `json:"minor,omitempty"`
+	GitVersion string    `json:"gitVersion,omitempty"`
+	GitCommit  string    `json:"gitCommit,omitempty"`
+	BuildDate  time.Time `json:"buildDate,omitempty"`
+	Platform   string    `json:"platform,omitempty"`
+	Error      string    `json:"error,omitempty"`
 }
 
 // SpeedTestResults - Includes perf test results of the MinIO cluster
