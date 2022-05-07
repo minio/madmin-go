@@ -339,6 +339,7 @@ func (adm *AdminClient) SRPeerReplicateIAMItem(ctx context.Context, item SRIAMIt
 const (
 	SRBucketMetaTypePolicy           = "policy"
 	SRBucketMetaTypeTags             = "tags"
+	SRBucketMetaTypeVersionConfig    = "version-config"
 	SRBucketMetaTypeObjectLockConfig = "object-lock-config"
 	SRBucketMetaTypeSSEConfig        = "sse-config"
 	SRBucketMetaTypeQuotaConfig      = "quota-config"
@@ -349,6 +350,10 @@ type SRBucketMeta struct {
 	Type   string          `json:"type"`
 	Bucket string          `json:"bucket"`
 	Policy json.RawMessage `json:"policy,omitempty"`
+
+	// Since Versioning config does not have a json representation, we use
+	// xml byte presentation directly.
+	Versioning *string `json:"versioningConfig,omitempty`
 
 	// Since tags does not have a json representation, we use its xml byte
 	// representation directly.
@@ -395,6 +400,10 @@ type SRBucketInfo struct {
 	Bucket string          `json:"bucket"`
 	Policy json.RawMessage `json:"policy,omitempty"`
 
+	// Since Versioning config does not have a json representation, we use
+	// xml byte presentation directly.
+	Versioning *string `json:"versioningConfig,omitempty`
+
 	// Since tags does not have a json representation, we use its xml byte
 	// representation directly.
 	Tags *string `json:"tags,omitempty"`
@@ -410,11 +419,13 @@ type SRBucketInfo struct {
 	ReplicationConfig *string `json:"replicationConfig,omitempty"`
 	// quota config in json representation
 	QuotaConfig *string `json:"quotaConfig,omitempty"`
+
 	// time stamps of bucket metadata updates
 	PolicyUpdatedAt            time.Time `json:"policyTimestamp,omitempty"`
 	TagConfigUpdatedAt         time.Time `json:"tagTimestamp,omitempty"`
 	ObjectLockConfigUpdatedAt  time.Time `json:"olockTimestamp,omitempty"`
 	SSEConfigUpdatedAt         time.Time `json:"sseTimestamp,omitempty"`
+	VersioningConfigUpdatedAt  time.Time `json:"versioningTimestamp,omitempty"`
 	ReplicationConfigUpdatedAt time.Time `json:"replicationConfigTimestamp,omitempty"`
 	QuotaConfigUpdatedAt       time.Time `json:"quotaTimestamp,omitempty"`
 	CreatedAt                  time.Time `json:"bucketTimestamp,omitempty"`
@@ -582,20 +593,21 @@ type SRGroupStatsSummary struct {
 
 // SRBucketStatsSummary has status of bucket metadata replication misses
 type SRBucketStatsSummary struct {
-	DeploymentID           string
-	HasBucket              bool
-	TagMismatch            bool
-	OLockConfigMismatch    bool
-	PolicyMismatch         bool
-	SSEConfigMismatch      bool
-	ReplicationCfgMismatch bool
-	QuotaCfgMismatch       bool
-	HasTagsSet             bool
-	HasOLockConfigSet      bool
-	HasPolicySet           bool
-	HasSSECfgSet           bool
-	HasReplicationCfg      bool
-	HasQuotaCfgSet         bool
+	DeploymentID             string
+	HasBucket                bool
+	TagMismatch              bool
+	VersioningConfigMismatch bool
+	OLockConfigMismatch      bool
+	PolicyMismatch           bool
+	SSEConfigMismatch        bool
+	ReplicationCfgMismatch   bool
+	QuotaCfgMismatch         bool
+	HasTagsSet               bool
+	HasOLockConfigSet        bool
+	HasPolicySet             bool
+	HasSSECfgSet             bool
+	HasReplicationCfg        bool
+	HasQuotaCfgSet           bool
 }
 
 // SRSiteSummary holds the count of replicated items in site replication
@@ -607,7 +619,8 @@ type SRSiteSummary struct {
 	ReplicatedUsers               int // count of users replicated across sites
 	ReplicatedGroups              int // count of groups replicated across sites
 	ReplicatedLockConfig          int // count of object lock config replicated across sites
-	ReplicatedSSEConfig           int
+	ReplicatedSSEConfig           int // count of SSE config replicated across sites
+	ReplicatedVersioningConfig    int // count of versioning config replicated across sites
 	ReplicatedQuotaConfig         int // count of bucket with quota config replicated across sites
 	ReplicatedUserPolicyMappings  int // count of user policy mappings replicated across sites
 	ReplicatedGroupPolicyMappings int // count of group policy mappings replicated across sites
@@ -618,6 +631,7 @@ type SRSiteSummary struct {
 	TotalIAMPoliciesCount        int // total count of IAM policies for this site
 	TotalLockConfigCount         int // total count of buckets with object lock config for this site
 	TotalSSEConfigCount          int // total count of buckets with SSE config
+	TotalVersioningConfigCount   int // total count of bucekts with versioning config
 	TotalQuotaConfigCount        int // total count of buckets with quota config
 	TotalUsersCount              int // total number of users seen on this site
 	TotalGroupsCount             int // total number of groups seen on this site
