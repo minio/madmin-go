@@ -353,7 +353,7 @@ type SRBucketMeta struct {
 
 	// Since Versioning config does not have a json representation, we use
 	// xml byte presentation directly.
-	Versioning *string `json:"versioningConfig,omitempty`
+	Versioning *string `json:"versioningConfig,omitempty"`
 
 	// Since tags does not have a json representation, we use its xml byte
 	// representation directly.
@@ -402,7 +402,7 @@ type SRBucketInfo struct {
 
 	// Since Versioning config does not have a json representation, we use
 	// xml byte presentation directly.
-	Versioning *string `json:"versioningConfig,omitempty`
+	Versioning *string `json:"versioningConfig,omitempty"`
 
 	// Since tags does not have a json representation, we use its xml byte
 	// representation directly.
