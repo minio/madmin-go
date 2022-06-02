@@ -43,16 +43,12 @@ func (adm *AdminClient) Inspect(ctx context.Context, d InspectOptions) (key [32]
 		},
 	)
 	if err != nil {
-		closeResponse(resp)
 		return key, nil, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		closeResponse(resp)
 		return key, nil, httpRespToErrorResponse(resp)
-	}
-
-	if resp.Body == nil {
-		return key, nil, errors.New("body is nil")
 	}
 	_, err = io.ReadFull(resp.Body, key[:1])
 	if err != nil {
@@ -61,6 +57,7 @@ func (adm *AdminClient) Inspect(ctx context.Context, d InspectOptions) (key [32]
 	}
 	// This is the only version we know.
 	if key[0] != 1 {
+		closeResponse(resp)
 		return key, nil, errors.New("unknown data version")
 	}
 	// Read key...
