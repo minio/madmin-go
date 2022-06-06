@@ -128,12 +128,12 @@ func (adm AdminClient) ServiceTrace(ctx context.Context, opts ServiceTraceOpts) 
 			// Execute GET to call trace handler
 			resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 			if err != nil {
-				closeResponse(resp)
 				traceInfoCh <- ServiceTraceInfo{Err: err}
 				return
 			}
 
 			if resp.StatusCode != http.StatusOK {
+				closeResponse(resp)
 				traceInfoCh <- ServiceTraceInfo{Err: httpRespToErrorResponse(resp)}
 				return
 			}
@@ -142,10 +142,12 @@ func (adm AdminClient) ServiceTrace(ctx context.Context, opts ServiceTraceOpts) 
 			for {
 				var info TraceInfo
 				if err = dec.Decode(&info); err != nil {
+					closeResponse(resp)
 					break
 				}
 				select {
 				case <-ctx.Done():
+					closeResponse(resp)
 					return
 				case traceInfoCh <- ServiceTraceInfo{Trace: info}:
 				}
