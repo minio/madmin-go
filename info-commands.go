@@ -142,6 +142,7 @@ type BucketUsageInfo struct {
 	ReplicationPendingCount uint64 `json:"objectsPendingReplicationCount"`
 	ReplicationFailedCount  uint64 `json:"objectsFailedReplicationCount"`
 
+	VersionsCount        uint64            `json:"versionsCount"`
 	ObjectsCount         uint64            `json:"objectsCount"`
 	ObjectSizesHistogram map[string]uint64 `json:"objectsSizesHistogram"`
 }
