@@ -44,6 +44,7 @@ type HealthOpts struct {
 	ClusterRead bool
 	Maintenance bool
 	Trace       bool
+	Transport   http.RoundTripper
 }
 
 // Healthy will hit `/minio/health/cluster` and `/minio/health/cluster/ready` anonymous APIs to check the cluster health
@@ -58,6 +59,9 @@ func Healthy(ctx context.Context, endpoint string, opts HealthOpts) (result Heal
 	anonymousClient, err := newAnonymousClient(targetURL.Host, secure, opts.Trace)
 	if err != nil {
 		return HealthResult{}, err
+	}
+	if opts.Transport != nil {
+		anonymousClient.setCustomTransport(opts.Transport)
 	}
 
 	if opts.ClusterRead {
