@@ -26,14 +26,21 @@ import (
 	"github.com/minio/madmin-go"
 )
 
-// Note: This is an anonymous API which doesn't require any credentials
 func main() {
+	// API requests are secure (HTTPS) if secure=true and insecure (HTTPS) otherwise.
+	// NewAnonymousClient returns an anonymous MinIO Admin client object.
+	// Anonymous client doesn't require any credentials
+	madmAnonClnt, err := madmin.NewAnonymousClient("your-minio.example.com:9000", true)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	// To enable trace :-
+	// madmAnonClnt.TraceOn(nil)
 	opts := madmin.HealthOpts{
 		ClusterRead: false, // set to "true" to check if the cluster has read quorum
 		Maintenance: false, // set to "true" to check if the cluster is taken down for maintenance
-		Trace:       false, // set to "true" to enable trace
 	}
-	healthResult, err := madmin.Healthy(context.Background(), "https://your-minio.example.com:9000", opts)
+	healthResult, err := madmAnonClnt.Healthy(context.Background(), opts)
 	if err != nil {
 		log.Fatalln(err)
 	}
