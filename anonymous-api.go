@@ -88,6 +88,27 @@ func newAnonymousClient(endpoint string, secure bool, enableTrace bool) (*anonym
 	return clnt, nil
 }
 
+// setCustomTransport - set new custom transport.
+func (an *anonymousClient) setCustomTransport(customHTTPTransport http.RoundTripper) {
+	// Set this to override default transport
+	// ``http.DefaultTransport``.
+	//
+	// This transport is usually needed for debugging OR to add your
+	// own custom TLS certificates on the client transport, for custom
+	// CA's and certs which are not part of standard certificate
+	// authority follow this example :-
+	//
+	//   tr := &http.Transport{
+	//           TLSClientConfig:    &tls.Config{RootCAs: pool},
+	//           DisableCompression: true,
+	//   }
+	//   api.SetTransport(tr)
+	//
+	if an.httpClient != nil {
+		an.httpClient.Transport = customHTTPTransport
+	}
+}
+
 // executeMethod - does a simple http request to the target with parameters provided in the request
 func (an anonymousClient) executeMethod(ctx context.Context, method string, reqData requestData) (res *http.Response, err error) {
 	defer func() {
