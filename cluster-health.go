@@ -43,34 +43,17 @@ type HealthResult struct {
 type HealthOpts struct {
 	ClusterRead bool
 	Maintenance bool
-	Trace       bool
-	Transport   http.RoundTripper
 }
 
 // Healthy will hit `/minio/health/cluster` and `/minio/health/cluster/ready` anonymous APIs to check the cluster health
-func Healthy(ctx context.Context, endpoint string, opts HealthOpts) (result HealthResult, err error) {
-	var targetURL *url.URL
-	targetURL, err = url.Parse(endpoint)
-	if err != nil {
-		return HealthResult{}, err
-	}
-
-	secure := targetURL.Scheme == "https"
-	anonymousClient, err := newAnonymousClient(targetURL.Host, secure, opts.Trace)
-	if err != nil {
-		return HealthResult{}, err
-	}
-	if opts.Transport != nil {
-		anonymousClient.setCustomTransport(opts.Transport)
-	}
-
+func (an *AnonymousClient) Healthy(ctx context.Context, opts HealthOpts) (result HealthResult, err error) {
 	if opts.ClusterRead {
-		return anonymousClient.clusterReadCheck(ctx)
+		return an.clusterReadCheck(ctx)
 	}
-	return anonymousClient.clusterCheck(ctx, opts.Maintenance)
+	return an.clusterCheck(ctx, opts.Maintenance)
 }
 
-func (an *anonymousClient) clusterCheck(ctx context.Context, maintenance bool) (result HealthResult, err error) {
+func (an *AnonymousClient) clusterCheck(ctx context.Context, maintenance bool) (result HealthResult, err error) {
 	urlValues := make(url.Values)
 	if maintenance {
 		urlValues.Set(maintanenceURLParameterKey, "true")
@@ -112,7 +95,7 @@ func (an *anonymousClient) clusterCheck(ctx context.Context, maintenance bool) (
 	return result, nil
 }
 
-func (an *anonymousClient) clusterReadCheck(ctx context.Context) (result HealthResult, err error) {
+func (an *AnonymousClient) clusterReadCheck(ctx context.Context) (result HealthResult, err error) {
 	resp, err := an.executeMethod(ctx, http.MethodGet, requestData{
 		relPath: clusterReadCheckEndpoint,
 	})

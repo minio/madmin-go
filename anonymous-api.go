@@ -36,8 +36,8 @@ import (
 	"golang.org/x/net/publicsuffix"
 )
 
-// anonymousClient implements a simple HTTP client
-type anonymousClient struct {
+// AnonymousClient implements an anonymous http client for MinIO
+type AnonymousClient struct {
 	// Parsed endpoint url provided by the caller
 	endpointURL *url.URL
 	// Indicate whether we are using https or not
@@ -49,8 +49,8 @@ type anonymousClient struct {
 	traceOutput    io.Writer
 }
 
-// newAnonymousClient can be used for anonymous APIs without credentials set
-func newAnonymousClient(endpoint string, secure bool, enableTrace bool) (*anonymousClient, error) {
+// NewAnonymousClient can be used for anonymous APIs without credentials set
+func NewAnonymousClient(endpoint string, secure bool) (*AnonymousClient, error) {
 	// Initialize cookies to preserve server sent cookies if any and replay
 	// them upon each request.
 	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
@@ -64,20 +64,13 @@ func newAnonymousClient(endpoint string, secure bool, enableTrace bool) (*anonym
 		return nil, err
 	}
 
-	clnt := new(anonymousClient)
+	clnt := new(AnonymousClient)
 
 	// Remember whether we are using https or not
 	clnt.secure = secure
 
 	// Save endpoint URL, user agent for future uses.
 	clnt.endpointURL = endpointURL
-
-	if enableTrace {
-		// Sets a new output stream.
-		clnt.traceOutput = os.Stdout
-		// Enable tracing.
-		clnt.isTraceEnabled = true
-	}
 
 	// Instantiate http client and bucket location cache.
 	clnt.httpClient = &http.Client{
@@ -88,8 +81,8 @@ func newAnonymousClient(endpoint string, secure bool, enableTrace bool) (*anonym
 	return clnt, nil
 }
 
-// setCustomTransport - set new custom transport.
-func (an *anonymousClient) setCustomTransport(customHTTPTransport http.RoundTripper) {
+// SetCustomTransport - set new custom transport.
+func (an *AnonymousClient) SetCustomTransport(customHTTPTransport http.RoundTripper) {
 	// Set this to override default transport
 	// ``http.DefaultTransport``.
 	//
@@ -109,8 +102,21 @@ func (an *anonymousClient) setCustomTransport(customHTTPTransport http.RoundTrip
 	}
 }
 
+// TraceOn - enable HTTP tracing.
+func (an *AnonymousClient) TraceOn(outputStream io.Writer) {
+	// if outputStream is nil then default to os.Stdout.
+	if outputStream == nil {
+		outputStream = os.Stdout
+	}
+	// Sets a new output stream.
+	an.traceOutput = outputStream
+
+	// Enable tracing.
+	an.isTraceEnabled = true
+}
+
 // executeMethod - does a simple http request to the target with parameters provided in the request
-func (an anonymousClient) executeMethod(ctx context.Context, method string, reqData requestData) (res *http.Response, err error) {
+func (an AnonymousClient) executeMethod(ctx context.Context, method string, reqData requestData) (res *http.Response, err error) {
 	defer func() {
 		if err != nil {
 			// close idle connections before returning, upon error.
@@ -135,7 +141,7 @@ func (an anonymousClient) executeMethod(ctx context.Context, method string, reqD
 }
 
 // newRequest - instantiate a new HTTP request for a given method.
-func (an anonymousClient) newRequest(ctx context.Context, method string, reqData requestData) (req *http.Request, err error) {
+func (an AnonymousClient) newRequest(ctx context.Context, method string, reqData requestData) (req *http.Request, err error) {
 	// If no method is supplied default to 'POST'.
 	if method == "" {
 		method = "POST"
@@ -166,7 +172,7 @@ func (an anonymousClient) newRequest(ctx context.Context, method string, reqData
 }
 
 // makeTargetURL make a new target url.
-func (an anonymousClient) makeTargetURL(r requestData) (*url.URL, error) {
+func (an AnonymousClient) makeTargetURL(r requestData) (*url.URL, error) {
 	host := an.endpointURL.Host
 	scheme := an.endpointURL.Scheme
 
@@ -184,7 +190,7 @@ func (an anonymousClient) makeTargetURL(r requestData) (*url.URL, error) {
 }
 
 // do - execute http request.
-func (an anonymousClient) do(req *http.Request) (*http.Response, error) {
+func (an AnonymousClient) do(req *http.Request) (*http.Response, error) {
 	resp, err := an.httpClient.Do(req)
 	if err != nil {
 		// Handle this specifically for now until future Golang versions fix this issue properly.
@@ -218,7 +224,7 @@ func (an anonymousClient) do(req *http.Request) (*http.Response, error) {
 }
 
 // dumpHTTP - dump HTTP request and response.
-func (an anonymousClient) dumpHTTP(req *http.Request, resp *http.Response) error {
+func (an AnonymousClient) dumpHTTP(req *http.Request, resp *http.Response) error {
 	// Starts http dump.
 	_, err := fmt.Fprintln(an.traceOutput, "---------START-HTTP---------")
 	if err != nil {
