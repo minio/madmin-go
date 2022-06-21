@@ -72,9 +72,10 @@ func (adm *AdminClient) DriveSpeedtest(ctx context.Context, opts DriveSpeedTestO
 	go func() {
 		defer closeResponse(resp)
 		defer close(ch)
-		var result DriveSpeedTestResult
+
+		dec := json.NewDecoder(resp.Body)
 		for {
-			dec := json.NewDecoder(resp.Body)
+			var result DriveSpeedTestResult
 			if err := dec.Decode(&result); err != nil {
 				return
 			}

@@ -84,9 +84,9 @@ func (adm *AdminClient) Speedtest(ctx context.Context, opts SpeedtestOpts) (chan
 	go func() {
 		defer closeResponse(resp)
 		defer close(ch)
-		var result SpeedTestResult
+		dec := json.NewDecoder(resp.Body)
 		for {
-			dec := json.NewDecoder(resp.Body)
+			var result SpeedTestResult
 			if err := dec.Decode(&result); err != nil {
 				return
 			}
