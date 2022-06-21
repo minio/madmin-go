@@ -40,7 +40,7 @@ type logAPI struct {
 type logEntry struct {
 	DeploymentID string    `json:"deploymentid,omitempty"`
 	Level        string    `json:"level"`
-	LogKind      string    `json:"errKind"`
+	LogKind      LogKind   `json:"errKind"`
 	Time         string    `json:"time"`
 	API          *logAPI   `json:"api,omitempty"`
 	RemoteHost   string    `json:"remotehost,omitempty"`

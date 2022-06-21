@@ -22,6 +22,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -91,14 +92,57 @@ type ServiceTraceInfo struct {
 
 // ServiceTraceOpts holds tracing options
 type ServiceTraceOpts struct {
-	All bool // Deprecated
+	// Trace types:
+	S3       bool
+	Internal bool
+	Storage  bool
+	OS       bool
+	Scanner  bool
 
-	S3         bool
-	Internal   bool
-	Storage    bool
-	OS         bool
 	OnlyErrors bool
 	Threshold  time.Duration
+}
+
+// TraceTypes returns the enabled traces as a bitfield value.
+func (t ServiceTraceOpts) TraceTypes() TraceType {
+	var tt TraceType
+	tt.SetIf(t.S3, TraceS3)
+	tt.SetIf(t.Internal, TraceInternal)
+	tt.SetIf(t.Storage, TraceStorage)
+	tt.SetIf(t.OS, TraceOS)
+	tt.SetIf(t.Scanner, TraceScanner)
+	return tt
+}
+
+// AddParams will add parameter to url values.
+func (t ServiceTraceOpts) AddParams(u url.Values) {
+	u.Set("err", strconv.FormatBool(t.OnlyErrors))
+	u.Set("threshold", t.Threshold.String())
+
+	u.Set("s3", strconv.FormatBool(t.S3))
+	u.Set("internal", strconv.FormatBool(t.Internal))
+	u.Set("storage", strconv.FormatBool(t.Storage))
+	u.Set("os", strconv.FormatBool(t.OS))
+	u.Set("scanner", strconv.FormatBool(t.Scanner))
+}
+
+// ParseParams will parse parameters and set them to t.
+func (t *ServiceTraceOpts) ParseParams(r *http.Request) (err error) {
+	t.S3 = r.Form.Get("s3") == "true"
+	t.OS = r.Form.Get("os") == "true"
+	t.Scanner = r.Form.Get("scanner") == "true"
+	t.Storage = r.Form.Get("storage") == "true"
+	t.Internal = r.Form.Get("internal") == "true"
+	t.OnlyErrors = r.Form.Get("err") == "true"
+
+	if th := r.Form.Get("threshold"); th != "" {
+		d, err := time.ParseDuration(th)
+		if err != nil {
+			return err
+		}
+		t.Threshold = d
+	}
+	return nil
 }
 
 // ServiceTrace - listen on http trace notifications.
@@ -109,18 +153,8 @@ func (adm AdminClient) ServiceTrace(ctx context.Context, opts ServiceTraceOpts) 
 		defer close(traceInfoCh)
 		for {
 			urlValues := make(url.Values)
-			urlValues.Set("err", strconv.FormatBool(opts.OnlyErrors))
-			urlValues.Set("threshold", opts.Threshold.String())
+			opts.AddParams(urlValues)
 
-			if opts.All {
-				// Deprecated flag
-				urlValues.Set("all", "true")
-			} else {
-				urlValues.Set("s3", strconv.FormatBool(opts.S3))
-				urlValues.Set("internal", strconv.FormatBool(opts.Internal))
-				urlValues.Set("storage", strconv.FormatBool(opts.Storage))
-				urlValues.Set("os", strconv.FormatBool(opts.OS))
-			}
 			reqData := requestData{
 				relPath:     adminAPIPrefix + "/trace",
 				queryValues: urlValues,
@@ -144,6 +178,36 @@ func (adm AdminClient) ServiceTrace(ctx context.Context, opts ServiceTraceOpts) 
 				if err = dec.Decode(&info); err != nil {
 					closeResponse(resp)
 					break
+				}
+				// Convert if legacy...
+				if info.TraceType == 0 {
+					var info2 traceInfoLegacy
+					if err = dec.Decode(&info2); err != nil {
+						break
+					}
+					info.TraceType = TraceS3
+					if strings.Contains(info2.ReqInfo.Path, ".minio.sys/") {
+						// This is how servers previously determined if internal.
+						info.TraceType = TraceInternal
+					}
+					info.Time = info2.Time
+					info.Duration = info2.CallStats.Latency
+					info.Path = info2.ReqInfo.Path
+					info.HTTP = &TraceHTTPStats{
+						ReqInfo:   info2.ReqInfo,
+						RespInfo:  info2.RespInfo,
+						CallStats: info2.CallStats,
+					}
+					if info.Path == "" && info2.OSStats.Path != "" {
+						info.TraceType = TraceOS
+						info.Path = info2.OSStats.Path
+						info.Duration = info2.OSStats.Duration
+					}
+					if info.Path == "" && info2.StorageStats.Path != "" {
+						info.TraceType = TraceStorage
+						info.Path = info2.StorageStats.Path
+						info.Duration = info2.StorageStats.Duration
+					}
 				}
 				select {
 				case <-ctx.Done():
