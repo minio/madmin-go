@@ -41,8 +41,8 @@ func (m LogMask) Mask() uint64 {
 }
 
 // Contains returns whether all flags in other is present in t.
-func (t LogMask) Contains(other LogMask) bool {
-	return t&other == other
+func (m LogMask) Contains(other LogMask) bool {
+	return m&other == other
 }
 
 // LogKind specifies the kind of error log
@@ -69,6 +69,7 @@ func (l LogKind) LogMask() LogMask {
 	}
 	return 0
 }
+
 func (l LogKind) String() string {
 	return string(l)
 }

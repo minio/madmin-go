@@ -28,6 +28,7 @@ import (
 	"time"
 )
 
+// MetricType is a bitfield representation of different metric types.
 type MetricType uint32
 
 const (
@@ -39,6 +40,7 @@ const (
 	MetricsAll = 1<<(iota) - 1
 )
 
+// MetricsOptions are options provided to Metrics call.
 type MetricsOptions struct {
 	Type     MetricType    // Return only these metric types. Several types can be combined using |. Leave at 0 to return all.
 	N        int           // Maximum number of samples to return. 0 will return endless stream.
@@ -112,6 +114,7 @@ type Metrics struct {
 	Scanner *ScannerMetrics `json:"scanner,omitempty"`
 }
 
+// Merge other into r.
 func (r *Metrics) Merge(other *Metrics) {
 	if other == nil {
 		return
