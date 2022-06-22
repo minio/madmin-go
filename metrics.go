@@ -19,7 +19,9 @@ package madmin
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"sort"
@@ -81,6 +83,9 @@ func (adm *AdminClient) Metrics(ctx context.Context, o MetricsOptions, out func(
 		var m RealtimeMetrics
 		err := dec.Decode(&m)
 		if err != nil {
+			if errors.Is(err, io.EOF) {
+				err = io.ErrUnexpectedEOF
+			}
 			return err
 		}
 		out(m)
