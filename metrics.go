@@ -185,7 +185,8 @@ type ScannerMetrics struct {
 // TimedAction contains a number of actions and their accumulated duration in nanoseconds.
 type TimedAction struct {
 	Count   uint64 `json:"count"`
-	AccTime uint64 `json:"acc_time_ns"`
+	AccTime uint64 `json:"acc_time_ns,omitempty"`
+	Bytes   uint64 `json:"bytes,omitempty"`
 }
 
 // Avg returns the average time spent on the action.
@@ -196,10 +197,19 @@ func (t TimedAction) Avg() time.Duration {
 	return time.Duration(t.AccTime / t.Count)
 }
 
+// AvgBytes returns the average time spent on the action.
+func (t TimedAction) AvgBytes() uint64 {
+	if t.Count == 0 {
+		return 0
+	}
+	return t.Bytes / t.Count
+}
+
 // Merge other into t.
 func (t *TimedAction) Merge(other TimedAction) {
 	t.Count += other.Count
 	t.AccTime += other.AccTime
+	t.Bytes += other.Bytes
 }
 
 // Merge other into 's'.
