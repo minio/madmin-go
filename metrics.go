@@ -126,10 +126,15 @@ func (r *Metrics) Merge(other *Metrics) {
 	if other == nil {
 		return
 	}
-	if r.Scanner == nil {
+	if r.Scanner == nil && other.Scanner != nil {
 		r.Scanner = &ScannerMetrics{}
 	}
 	r.Scanner.Merge(other.Scanner)
+
+	if r.Disk == nil && other.Disk != nil {
+		r.Disk = &DiskMetric{}
+	}
+	r.Disk.Merge(other.Disk)
 }
 
 // Merge will merge other into r.
