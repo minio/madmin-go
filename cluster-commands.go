@@ -309,6 +309,9 @@ type SRIAMItem struct {
 
 	// Used when Type = SRIAMItemGroupInfo
 	GroupInfo *SRGroupInfo `json:"groupInfo"`
+
+	// UpdatedAt - timestamp of last update
+	UpdatedAt time.Time `json:"updatedAt,omitempty"`
 }
 
 // SRPeerReplicateIAMItem - copies an IAM object to a peer cluster.
@@ -369,6 +372,9 @@ type SRBucketMeta struct {
 
 	// Quota has a json representation use it as is.
 	Quota json.RawMessage `json:"quota,omitempty"`
+
+	// UpdatedAt - timestamp of last update
+	UpdatedAt time.Time `json:"updatedAt,omitempty"`
 }
 
 // SRPeerReplicateBucketMeta - copies a bucket metadata change to a peer cluster.
