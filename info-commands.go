@@ -341,8 +341,8 @@ type ServerProperties struct {
 // the number of calls of each API and the moving average of
 // the duration, in nanosecond, of each API.
 type DiskMetrics struct {
-	APILatencies map[string]interface{} `json:"apiLatencies,omitempty"`
-	APICalls     map[string]uint64      `json:"apiCalls,omitempty"`
+	APILatencies map[string]uint64 `json:"apiLatencies,omitempty"`
+	APICalls     map[string]uint64 `json:"apiCalls,omitempty"`
 }
 
 // Disk holds Disk information

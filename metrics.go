@@ -36,6 +36,7 @@ type MetricType uint32
 const (
 	MetricsNone    MetricType = 0
 	MetricsScanner MetricType = 1 << (iota)
+	MetricsDisk
 
 	// MetricsAll must be last.
 	// Enables all metrics.
@@ -107,9 +108,9 @@ type RealtimeMetrics struct {
 	// Error indicates an error occurred.
 	Errors []string `json:"errors,omitempty"`
 	// Hosts indicates the scanned hosts
-	Hosts  []string           `json:"hosts"`
-	Total  Metrics            `json:"total"`
-	ByHost map[string]Metrics `json:"by_host,omitempty"`
+	Hosts      []string           `json:"hosts"`
+	Aggregated Metrics            `json:"aggregated"`
+	ByHost     map[string]Metrics `json:"by_host,omitempty"`
 	// Final indicates whether this is the final packet and the receiver can exit.
 	Final bool `json:"final"`
 }
@@ -117,6 +118,7 @@ type RealtimeMetrics struct {
 // Metrics contains all metric types.
 type Metrics struct {
 	Scanner *ScannerMetrics `json:"scanner,omitempty"`
+	Disk    *DiskMetrics    `json:"disk,omitempty"`
 }
 
 // Merge other into r.
@@ -146,7 +148,7 @@ func (r *RealtimeMetrics) Merge(other *RealtimeMetrics) {
 		r.ByHost[host] = metrics
 	}
 	r.Hosts = append(r.Hosts, other.Hosts...)
-	r.Total.Merge(&other.Total)
+	r.Aggregated.Merge(&other.Aggregated)
 	sort.Strings(r.Hosts)
 }
 

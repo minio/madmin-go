@@ -100,6 +100,7 @@ func (t TraceInfo) Mask() uint64 {
 
 // traceInfoLegacy - represents a trace record, additionally
 // also reports errors if any while listening on trace.
+// For minio versions before July 2022.
 type traceInfoLegacy struct {
 	TraceType TraceType `json:"type"`
 
@@ -131,7 +132,7 @@ type TraceHTTPStats struct {
 type TraceCallStats struct {
 	InputBytes  int `json:"inputbytes"`
 	OutputBytes int `json:"outputbytes"`
-	// Deprecated: Use TraceInfo.Duration
+	// Deprecated: Use TraceInfo.Duration (June 2022)
 	Latency         time.Duration `json:"latency"`
 	TimeToFirstByte time.Duration `json:"timetofirstbyte"`
 }
