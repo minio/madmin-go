@@ -118,7 +118,7 @@ type RealtimeMetrics struct {
 // Metrics contains all metric types.
 type Metrics struct {
 	Scanner *ScannerMetrics `json:"scanner,omitempty"`
-	Disk    *DiskMetrics    `json:"disk,omitempty"`
+	Disk    *DiskMetric     `json:"disk,omitempty"`
 }
 
 // Merge other into r.
@@ -267,4 +267,58 @@ func (s *ScannerMetrics) Merge(other *ScannerMetrics) {
 	}
 	s.ActivePaths = append(s.ActivePaths, other.ActivePaths...)
 	sort.Strings(s.ActivePaths)
+}
+
+// DiskMetric contains metrics for one or more disks.
+type DiskMetric struct {
+	// Time these metrics were collected
+	CollectedAt time.Time `json:"collected"`
+
+	// Number of disks
+	NDisks int `json:"n_disks"`
+
+	// Offline disks
+	Offline int `json:"offline,omitempty"`
+
+	// Healing disks
+	Healing int `json:"healing,omitempty"`
+
+	// Number of accumulated operations by type since server restart.
+	LifeTimeOps map[string]uint64 `json:"life_time_ops,omitempty"`
+
+	// Last minute statistics.
+	LastMinute struct {
+		Operations map[string]TimedAction `json:"operations,omitempty"`
+	} `json:"last_minute"`
+}
+
+// Merge other into 's'.
+func (d *DiskMetric) Merge(other *DiskMetric) {
+	if other == nil {
+		return
+	}
+	if d.CollectedAt.Before(other.CollectedAt) {
+		// Use latest timestamp
+		d.CollectedAt = other.CollectedAt
+	}
+	d.NDisks += other.NDisks
+	d.Offline += other.Offline
+	d.Healing += other.Healing
+
+	if len(other.LifeTimeOps) > 0 && d.LifeTimeOps == nil {
+		d.LifeTimeOps = make(map[string]uint64, len(other.LifeTimeOps))
+	}
+	for k, v := range other.LifeTimeOps {
+		total := d.LifeTimeOps[k] + v
+		d.LifeTimeOps[k] = total
+	}
+
+	if d.LastMinute.Operations == nil && len(other.LastMinute.Operations) > 0 {
+		d.LastMinute.Operations = make(map[string]TimedAction, len(other.LastMinute.Operations))
+	}
+	for k, v := range other.LastMinute.Operations {
+		total := d.LastMinute.Operations[k]
+		total.Merge(v)
+		d.LastMinute.Operations[k] = total
+	}
 }
