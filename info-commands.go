@@ -343,6 +343,9 @@ type ServerProperties struct {
 type DiskMetrics struct {
 	LastMinute map[string]TimedAction `json:"lastMinute,omitempty"`
 	APICalls   map[string]uint64      `json:"apiCalls,omitempty"`
+
+	// Deprecated: Use LastMinute instead. Not populated from servers after July 2022.
+	APILatencies map[string]interface{} `json:"apiLatencies,omitempty"`
 }
 
 // Disk holds Disk information
