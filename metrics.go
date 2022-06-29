@@ -33,10 +33,13 @@ import (
 // MetricType is a bitfield representation of different metric types.
 type MetricType uint32
 
+// MetricsNone indicates no metrics.
+const MetricsNone MetricType = 0
+
 const (
-	MetricsNone    MetricType = 0
 	MetricsScanner MetricType = 1 << (iota)
 	MetricsDisk
+	MetricsOS
 
 	// MetricsAll must be last.
 	// Enables all metrics.
@@ -119,6 +122,7 @@ type RealtimeMetrics struct {
 type Metrics struct {
 	Scanner *ScannerMetrics `json:"scanner,omitempty"`
 	Disk    *DiskMetric     `json:"disk,omitempty"`
+	OS      *OSMetrics      `json:"os,omitempty"`
 }
 
 // Merge other into r.
@@ -135,6 +139,11 @@ func (r *Metrics) Merge(other *Metrics) {
 		r.Disk = &DiskMetric{}
 	}
 	r.Disk.Merge(other.Disk)
+
+	if r.OS == nil && other.OS != nil {
+		r.OS = &OSMetrics{}
+	}
+	r.OS.Merge(other.OS)
 }
 
 // Merge will merge other into r.
@@ -192,7 +201,7 @@ type ScannerMetrics struct {
 // TimedAction contains a number of actions and their accumulated duration in nanoseconds.
 type TimedAction struct {
 	Count   uint64 `json:"count"`
-	AccTime uint64 `json:"acc_time_ns,omitempty"`
+	AccTime uint64 `json:"acc_time_ns"`
 	Bytes   uint64 `json:"bytes,omitempty"`
 }
 
@@ -325,5 +334,47 @@ func (d *DiskMetric) Merge(other *DiskMetric) {
 		total := d.LastMinute.Operations[k]
 		total.Merge(v)
 		d.LastMinute.Operations[k] = total
+	}
+}
+
+// OSMetrics contains metrics for OS operations.
+type OSMetrics struct {
+	// Time these metrics were collected
+	CollectedAt time.Time `json:"collected"`
+
+	// Number of accumulated operations by type since server restart.
+	LifeTimeOps map[string]uint64 `json:"life_time_ops,omitempty"`
+
+	// Last minute statistics.
+	LastMinute struct {
+		Operations map[string]TimedAction `json:"operations,omitempty"`
+	} `json:"last_minute"`
+}
+
+// Merge other into 'o'.
+func (o *OSMetrics) Merge(other *OSMetrics) {
+	if other == nil {
+		return
+	}
+	if o.CollectedAt.Before(other.CollectedAt) {
+		// Use latest timestamp
+		o.CollectedAt = other.CollectedAt
+	}
+
+	if len(other.LifeTimeOps) > 0 && o.LifeTimeOps == nil {
+		o.LifeTimeOps = make(map[string]uint64, len(other.LifeTimeOps))
+	}
+	for k, v := range other.LifeTimeOps {
+		total := o.LifeTimeOps[k] + v
+		o.LifeTimeOps[k] = total
+	}
+
+	if o.LastMinute.Operations == nil && len(other.LastMinute.Operations) > 0 {
+		o.LastMinute.Operations = make(map[string]TimedAction, len(other.LastMinute.Operations))
+	}
+	for k, v := range other.LastMinute.Operations {
+		total := o.LastMinute.Operations[k]
+		total.Merge(v)
+		o.LastMinute.Operations[k] = total
 	}
 }
