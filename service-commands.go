@@ -174,46 +174,48 @@ func (adm AdminClient) ServiceTrace(ctx context.Context, opts ServiceTraceOpts) 
 
 			dec := json.NewDecoder(resp.Body)
 			for {
-				var info TraceInfo
+				var info traceInfoLegacy
 				if err = dec.Decode(&info); err != nil {
-					closeResponse(resp)
+					traceInfoCh <- ServiceTraceInfo{Err: err}
 					break
 				}
 				// Convert if legacy...
-				if info.TraceType == 0 {
-					var info2 traceInfoLegacy
-					if err = dec.Decode(&info2); err != nil {
-						break
-					}
-					info.TraceType = TraceS3
-					if strings.Contains(info2.ReqInfo.Path, ".minio.sys/") {
-						// This is how servers previously determined if internal.
+				if info.TraceType == TraceS3 {
+					if !strings.HasPrefix(info.FuncName, "s3.") {
 						info.TraceType = TraceInternal
 					}
-					info.Time = info2.Time
-					info.Duration = info2.CallStats.Latency
-					info.Path = info2.ReqInfo.Path
-					info.HTTP = &TraceHTTPStats{
-						ReqInfo:   info2.ReqInfo,
-						RespInfo:  info2.RespInfo,
-						CallStats: info2.CallStats,
+					if info.CallStats != nil {
+						info.Duration = info.CallStats.Latency
 					}
-					if info.Path == "" && info2.OSStats.Path != "" {
-						info.TraceType = TraceOS
-						info.Path = info2.OSStats.Path
-						info.Duration = info2.OSStats.Duration
+					if info.ReqInfo != nil {
+						info.Path = info.ReqInfo.Path
 					}
-					if info.Path == "" && info2.StorageStats.Path != "" {
-						info.TraceType = TraceStorage
-						info.Path = info2.StorageStats.Path
-						info.Duration = info2.StorageStats.Duration
+					info.HTTP = &TraceHTTPStats{}
+					if info.ReqInfo != nil {
+						info.HTTP.ReqInfo = *info.ReqInfo
 					}
+					if info.RespInfo != nil {
+						info.HTTP.RespInfo = *info.RespInfo
+					}
+					if info.CallStats != nil {
+						info.HTTP.CallStats = *info.CallStats
+					}
+				}
+				if info.OSStats != nil {
+					info.TraceType = TraceOS
+					info.Path = info.OSStats.Path
+					info.Duration = info.OSStats.Duration
+				}
+				if info.StorageStats != nil {
+					info.TraceType = TraceStorage
+					info.Path = info.StorageStats.Path
+					info.Duration = info.StorageStats.Duration
 				}
 				select {
 				case <-ctx.Done():
 					closeResponse(resp)
 					return
-				case traceInfoCh <- ServiceTraceInfo{Trace: info}:
+				case traceInfoCh <- ServiceTraceInfo{Trace: info.TraceInfo}:
 				}
 			}
 		}

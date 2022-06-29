@@ -102,21 +102,17 @@ func (t TraceInfo) Mask() uint64 {
 // also reports errors if any while listening on trace.
 // For minio versions before July 2022.
 type traceInfoLegacy struct {
-	TraceType TraceType `json:"type"`
+	TraceInfo
 
-	NodeName string    `json:"nodename"`
-	FuncName string    `json:"funcname"`
-	Time     time.Time `json:"time"`
+	ReqInfo   *TraceRequestInfo  `json:"request"`
+	RespInfo  *TraceResponseInfo `json:"response"`
+	CallStats *TraceCallStats    `json:"stats"`
 
-	ReqInfo   TraceRequestInfo  `json:"request"`
-	RespInfo  TraceResponseInfo `json:"response"`
-	CallStats TraceCallStats    `json:"stats"`
-
-	StorageStats struct {
+	StorageStats *struct {
 		Path     string        `json:"path"`
 		Duration time.Duration `json:"duration"`
 	} `json:"storageStats"`
-	OSStats struct {
+	OSStats *struct {
 		Path     string        `json:"path"`
 		Duration time.Duration `json:"duration"`
 	} `json:"osStats"`
