@@ -101,8 +101,6 @@ func (adm *AdminClient) GetConfigKV(ctx context.Context, key string) ([]byte, er
 		return nil, err
 	}
 
-	defer closeResponse(resp)
-
 	if resp.StatusCode != http.StatusOK {
 		return nil, httpRespToErrorResponse(resp)
 	}
