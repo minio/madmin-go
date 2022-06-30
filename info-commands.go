@@ -341,8 +341,11 @@ type ServerProperties struct {
 // the number of calls of each API and the moving average of
 // the duration, in nanosecond, of each API.
 type DiskMetrics struct {
+	LastMinute map[string]TimedAction `json:"lastMinute,omitempty"`
+	APICalls   map[string]uint64      `json:"apiCalls,omitempty"`
+
+	// Deprecated: Use LastMinute instead. Not populated from servers after July 2022.
 	APILatencies map[string]interface{} `json:"apiLatencies,omitempty"`
-	APICalls     map[string]uint64      `json:"apiCalls,omitempty"`
 }
 
 // Disk holds Disk information

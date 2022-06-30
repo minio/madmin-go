@@ -24,6 +24,56 @@ import (
 	"strconv"
 )
 
+// LogMask is a bit mask for log types.
+type LogMask uint64
+
+const (
+	LogMaskMinIO LogMask = 1 << iota
+	LogMaskApplication
+
+	// LogMaskAll must be the last.
+	LogMaskAll LogMask = (1 << iota) - 1
+)
+
+// Mask returns the LogMask as uint64
+func (m LogMask) Mask() uint64 {
+	return uint64(m)
+}
+
+// Contains returns whether all flags in other is present in t.
+func (m LogMask) Contains(other LogMask) bool {
+	return m&other == other
+}
+
+// LogKind specifies the kind of error log
+type LogKind string
+
+const (
+	// LogKindMinio Minio errors
+	LogKindMinio LogKind = "MINIO"
+	// LogKindApplication Application errors
+	LogKindApplication LogKind = "APPLICATION"
+	// LogKindAll All errors
+	LogKindAll LogKind = "ALL"
+)
+
+// LogMask returns the mask based on the kind.
+func (l LogKind) LogMask() LogMask {
+	switch l {
+	case LogKindMinio:
+		return LogMaskMinIO
+	case LogKindApplication:
+		return LogMaskApplication
+	case LogKindAll:
+		return LogMaskAll
+	}
+	return 0
+}
+
+func (l LogKind) String() string {
+	return string(l)
+}
+
 // LogInfo holds console log messages
 type LogInfo struct {
 	logEntry
@@ -77,4 +127,9 @@ func (adm AdminClient) GetLogs(ctx context.Context, node string, lineCnt int, lo
 
 	// Returns the log info channel, for caller to start reading from.
 	return logCh
+}
+
+// Mask returns the mask based on the error level.
+func (l LogInfo) Mask() uint64 {
+	return l.LogKind.LogMask().Mask()
 }

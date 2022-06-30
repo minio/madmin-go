@@ -21,8 +21,9 @@ package main
 
 import (
 	"context"
-	"github.com/minio/madmin-go"
 	"log"
+
+	"github.com/minio/madmin-go"
 )
 
 func main() {
