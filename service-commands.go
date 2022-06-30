@@ -176,6 +176,7 @@ func (adm AdminClient) ServiceTrace(ctx context.Context, opts ServiceTraceOpts) 
 			for {
 				var info traceInfoLegacy
 				if err = dec.Decode(&info); err != nil {
+					closeResponse(resp)
 					traceInfoCh <- ServiceTraceInfo{Err: err}
 					break
 				}
