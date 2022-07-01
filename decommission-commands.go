@@ -99,6 +99,10 @@ func (adm *AdminClient) StatusPool(ctx context.Context, pool string) (PoolStatus
 	}
 	defer closeResponse(resp)
 
+	if resp.StatusCode != http.StatusOK {
+		return PoolStatus{}, httpRespToErrorResponse(resp)
+	}
+
 	var info PoolStatus
 	if err = json.NewDecoder(resp.Body).Decode(&info); err != nil {
 		return PoolStatus{}, err
