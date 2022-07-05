@@ -181,34 +181,30 @@ func (adm AdminClient) ServiceTrace(ctx context.Context, opts ServiceTraceOpts) 
 					break
 				}
 				// Convert if legacy...
-				if info.TraceType == TraceS3 {
-					if !strings.HasPrefix(info.FuncName, "s3.") {
+				if info.TraceType == TraceType(0) {
+					if strings.HasPrefix(info.FuncName, "s3.") {
+						info.TraceType = TraceS3
+					} else {
 						info.TraceType = TraceInternal
-					}
-					if info.CallStats != nil {
-						info.Duration = info.CallStats.Latency
-					}
-					if info.ReqInfo != nil {
-						info.Path = info.ReqInfo.Path
 					}
 					info.HTTP = &TraceHTTPStats{}
 					if info.ReqInfo != nil {
+						info.Path = info.ReqInfo.Path
 						info.HTTP.ReqInfo = *info.ReqInfo
 					}
 					if info.RespInfo != nil {
 						info.HTTP.RespInfo = *info.RespInfo
 					}
 					if info.CallStats != nil {
+						info.Duration = info.CallStats.Latency
 						info.HTTP.CallStats = *info.CallStats
 					}
 				}
-				if info.OSStats != nil {
-					info.TraceType = TraceOS
+				if info.TraceType == TraceOS && info.OSStats != nil {
 					info.Path = info.OSStats.Path
 					info.Duration = info.OSStats.Duration
 				}
-				if info.StorageStats != nil {
-					info.TraceType = TraceStorage
+				if info.TraceType == TraceStorage && info.StorageStats != nil {
 					info.Path = info.StorageStats.Path
 					info.Duration = info.StorageStats.Duration
 				}
