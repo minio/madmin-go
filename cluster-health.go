@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 )
 
 const (
@@ -113,4 +114,68 @@ func (an *AnonymousClient) clusterReadCheck(ctx context.Context) (result HealthR
 		}
 	}
 	return result, nil
+}
+
+// AliveOpts customizing liveness check.
+type AliveOpts struct {
+	Readiness bool // send request to /minio/health/ready
+}
+
+// AliveResult returns the time spent getting a response
+// back from the server on /minio/health/live endpoint
+type AliveResult struct {
+	Endpoint     *url.URL      `json:"endpoint"`
+	ResponseTime time.Duration `json:"responseTime"`
+	Online       bool          `json:"online"` // captures x-minio-server-status
+	Error        error         `json:"error"`
+}
+
+// Alive will hit `/minio/health/live` to check if server is reachable, optionally returns
+// the amount of time spent getting a response back from the server.
+func (an *AnonymousClient) Alive(ctx context.Context, opts AliveOpts, servers ...ServerProperties) (resultsCh chan AliveResult) {
+	resource := "/minio/health/live"
+	if opts.Readiness {
+		resource = "/minio/health/ready"
+	}
+
+	resultsCh = make(chan AliveResult)
+	go func() {
+		defer close(resultsCh)
+		for _, server := range servers {
+			u, err := url.Parse(an.endpointURL.Scheme + "://" + server.Endpoint)
+			if err != nil {
+				resultsCh <- AliveResult{
+					Error: err,
+				}
+				return
+			}
+			t := time.Now()
+			resp, err := an.executeMethod(ctx, http.MethodGet, requestData{
+				relPath:          resource,
+				endpointOverride: u,
+			})
+			responseTime := time.Since(t)
+			closeResponse(resp)
+			if err != nil {
+				resultsCh <- AliveResult{
+					Endpoint:     u,
+					Error:        err,
+					ResponseTime: responseTime,
+				}
+				return
+			}
+			result := AliveResult{
+				Endpoint:     u,
+				ResponseTime: responseTime,
+				Online:       resp.StatusCode == http.StatusOK && resp.Header.Get("x-minio-server-status") != "offline",
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case resultsCh <- result:
+			}
+		}
+	}()
+
+	return resultsCh
 }

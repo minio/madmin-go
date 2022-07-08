@@ -173,8 +173,12 @@ func (an AnonymousClient) newRequest(ctx context.Context, method string, reqData
 
 // makeTargetURL make a new target url.
 func (an AnonymousClient) makeTargetURL(r requestData) (*url.URL, error) {
-	host := an.endpointURL.Host
-	scheme := an.endpointURL.Scheme
+	u := an.endpointURL
+	if r.endpointOverride != nil {
+		u = r.endpointOverride
+	}
+	host := u.Host
+	scheme := u.Scheme
 
 	urlStr := scheme + "://" + host + r.relPath
 

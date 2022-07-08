@@ -211,6 +211,8 @@ type requestData struct {
 	queryValues   url.Values
 	relPath       string // URL path relative to admin API base endpoint
 	content       []byte
+	// endpointOverride overrides target URL with anonymousClient
+	endpointOverride *url.URL
 }
 
 // Filter out signature value from Authorization header.
