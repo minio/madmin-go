@@ -19,6 +19,7 @@ package madmin
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -57,15 +58,29 @@ type SpeedtestOpts struct {
 	Concurrency  int           // Concurrency used in speed test
 	Duration     time.Duration // Total duration of the speed test
 	Autotune     bool          // Enable autotuning
-	StorageClass string        // Choose type of storage-class to be used while testing I/O
+	StorageClass string        // Choose type of storage-class to be used while performing I/O
+	Bucket       string        // Choose a custom bucket name while performing I/O
 }
 
 // Speedtest - perform speedtest on the MinIO servers
 func (adm *AdminClient) Speedtest(ctx context.Context, opts SpeedtestOpts) (chan SpeedTestResult, error) {
+	if opts.Duration <= time.Second {
+		return nil, errors.New("duration must be greater a second")
+	}
+	if opts.Size <= 0 {
+		return nil, errors.New("size must be greater than 0 bytes")
+	}
+	if opts.Concurrency <= 0 {
+		return nil, errors.New("concurrency must be greater than 0")
+	}
+
 	queryVals := make(url.Values)
 	queryVals.Set("size", strconv.Itoa(opts.Size))
 	queryVals.Set("duration", opts.Duration.String())
 	queryVals.Set("concurrent", strconv.Itoa(opts.Concurrency))
+	if opts.Bucket != "" {
+		queryVals.Set("bucket", opts.Bucket)
+	}
 	if opts.Autotune {
 		queryVals.Set("autotune", "true")
 	}
