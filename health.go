@@ -30,6 +30,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/minio/madmin-go/cgroup"
 	"github.com/prometheus/procfs"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
@@ -450,6 +451,26 @@ type MemInfo struct {
 	Available      uint64 `json:"available,omitempty"`
 	SwapSpaceTotal uint64 `json:"swap_space_total,omitempty"`
 	SwapSpaceFree  uint64 `json:"swap_space_free,omitempty"`
+	// Limit will store cgroup limit if configured and
+	// less than Total, otherwise same as Total
+	Limit uint64 `json:"limit,omitempty"`
+}
+
+// Get the final system memory limit chosen by the user.
+// by default without any configuration on a vanilla Linux
+// system you would see physical RAM limit. If cgroup
+// is configured at some point in time this function
+// would return the memory limit chosen for the given pid.
+func getMemoryLimit(sysLimit uint64) uint64 {
+	// Following code is deliberately ignoring the error.
+	cGroupLimit, err := cgroup.GetMemoryLimit(os.Getpid())
+	if err == nil && cGroupLimit <= sysLimit {
+		// cgroup limit is lesser than system limit means
+		// user wants to limit the memory usage further
+		return cGroupLimit
+	}
+
+	return sysLimit
 }
 
 // GetMemInfo returns system's RAM and swap information.
@@ -480,6 +501,7 @@ func GetMemInfo(ctx context.Context, addr string) MemInfo {
 		Available:      meminfo.Available,
 		SwapSpaceTotal: swapinfo.Total,
 		SwapSpaceFree:  swapinfo.Free,
+		Limit:          getMemoryLimit(meminfo.Total),
 	}
 }
 
