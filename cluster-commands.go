@@ -183,6 +183,8 @@ const (
 	DeleteBucketBktOp BktOp = "delete-bucket"
 	// delete bucket (forceDelete = on)
 	ForceDeleteBucketBktOp BktOp = "force-delete-bucket"
+	// purge bucket
+	PurgeDeletedBucketOp BktOp = "purge-deleted-bucket"
 )
 
 // SRPeerBucketOps - tells peers to create bucket and setup replication.
@@ -192,7 +194,7 @@ func (adm *AdminClient) SRPeerBucketOps(ctx context.Context, bucket string, op B
 	v.Add("operation", string(op))
 
 	// For make-bucket, bucket options may be sent via `opts`
-	if op == MakeWithVersioningBktOp {
+	if op == MakeWithVersioningBktOp || op == DeleteBucketBktOp {
 		for k, val := range opts {
 			v.Add(k, val)
 		}
@@ -435,6 +437,7 @@ type SRBucketInfo struct {
 	ReplicationConfigUpdatedAt time.Time `json:"replicationConfigTimestamp,omitempty"`
 	QuotaConfigUpdatedAt       time.Time `json:"quotaTimestamp,omitempty"`
 	CreatedAt                  time.Time `json:"bucketTimestamp,omitempty"`
+	DeletedAt                  time.Time `json:"bucketDeletedTimestamp,omitempty"`
 	Location                   string    `json:"location,omitempty"`
 }
 
@@ -601,6 +604,7 @@ type SRGroupStatsSummary struct {
 type SRBucketStatsSummary struct {
 	DeploymentID             string
 	HasBucket                bool
+	BucketMarkedDeleted      bool
 	TagMismatch              bool
 	VersioningConfigMismatch bool
 	OLockConfigMismatch      bool
@@ -673,6 +677,7 @@ type SRStatusOptions struct {
 	Groups      bool
 	Entity      SREntityType
 	EntityValue string
+	ShowDeleted bool
 }
 
 // IsEntitySet returns true if entity option is set
@@ -707,6 +712,8 @@ func (o *SRStatusOptions) getURLValues() url.Values {
 	urlValues.Set("policies", strconv.FormatBool(o.Policies))
 	urlValues.Set("users", strconv.FormatBool(o.Users))
 	urlValues.Set("groups", strconv.FormatBool(o.Groups))
+	urlValues.Set("showDeleted", strconv.FormatBool(o.ShowDeleted))
+
 	if o.IsEntitySet() {
 		urlValues.Set("entityvalue", o.EntityValue)
 		switch o.Entity {
