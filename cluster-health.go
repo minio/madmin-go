@@ -156,19 +156,22 @@ func (an *AnonymousClient) Alive(ctx context.Context, opts AliveOpts, servers ..
 			})
 			responseTime := time.Since(t)
 			closeResponse(resp)
+
+			var result AliveResult
 			if err != nil {
-				resultsCh <- AliveResult{
+				result = AliveResult{
 					Endpoint:     u,
 					Error:        err,
 					ResponseTime: responseTime,
 				}
-				return
+			} else {
+				result = AliveResult{
+					Endpoint:     u,
+					ResponseTime: responseTime,
+					Online:       resp.StatusCode == http.StatusOK && resp.Header.Get("x-minio-server-status") != "offline",
+				}
 			}
-			result := AliveResult{
-				Endpoint:     u,
-				ResponseTime: responseTime,
-				Online:       resp.StatusCode == http.StatusOK && resp.Header.Get("x-minio-server-status") != "offline",
-			}
+
 			select {
 			case <-ctx.Done():
 				return
