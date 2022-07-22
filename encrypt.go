@@ -29,6 +29,15 @@ import (
 	"golang.org/x/crypto/pbkdf2"
 )
 
+// IsEncrypted reports whether data is encrypted.
+func IsEncrypted(data []byte) bool {
+	if len(data) <= 32 {
+		return false
+	}
+	b := data[32]
+	return b == pbkdf2AESGCM || b == argon2idAESGCM || b == argon2idChaCHa20Poly1305
+}
+
 // EncryptData encrypts the data with an unique key
 // derived from password using the Argon2id PBKDF.
 //
