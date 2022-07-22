@@ -94,3 +94,18 @@ func TestDecryptData(t *testing.T) {
 		})
 	}
 }
+
+func TestIsDecrypted(t *testing.T) {
+	for i, test := range decryptDataTests {
+		i, test := i, test
+		t.Run(fmt.Sprintf("Test-%d", i), func(t *testing.T) {
+			ciphertext, err := hex.DecodeString(test.Data)
+			if err != nil {
+				t.Fatalf("Failed to decode ciphertext data: %v", err)
+			}
+			if !IsEncrypted(ciphertext) {
+				t.Fatal("Ciphertext is not encrypted")
+			}
+		})
+	}
+}
