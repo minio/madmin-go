@@ -77,6 +77,10 @@ type BackendInfo struct {
 	StandardSCParity int   // Parity disks for currently configured Standard storage class.
 	RRSCData         []int // Data disks for currently configured Reduced Redundancy storage class.
 	RRSCParity       int   // Parity disks for currently configured Reduced Redundancy storage class.
+
+	// Adds number of erasure sets and drives per set.
+	TotalSets    []int // Each index value corresponds to per pool
+	DrivesPerSet []int // Each index value corresponds to per pool
 }
 
 // BackendDisks - represents the map of endpoint-disks.
