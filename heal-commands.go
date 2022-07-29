@@ -46,7 +46,7 @@ type HealOpts struct {
 	Recursive bool         `json:"recursive"`
 	DryRun    bool         `json:"dryRun"`
 	Remove    bool         `json:"remove"`
-	Recreate  bool         `json:"recreate"` // only used when bucket needs to be healed
+	Recreate  bool         `json:"recreate"` // Rewrite all resources specified at the bucket or prefix.
 	ScanMode  HealScanMode `json:"scanMode"`
 	NoLock    bool         `json:"nolock"`
 }
@@ -60,6 +60,9 @@ func (o HealOpts) Equal(no HealOpts) bool {
 		return false
 	}
 	if o.Remove != no.Remove {
+		return false
+	}
+	if o.Recreate != no.Recreate {
 		return false
 	}
 	return o.ScanMode == no.ScanMode
