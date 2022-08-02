@@ -141,44 +141,53 @@ func (an *AnonymousClient) Alive(ctx context.Context, opts AliveOpts, servers ..
 	resultsCh = make(chan AliveResult)
 	go func() {
 		defer close(resultsCh)
-		for _, server := range servers {
-			u, err := url.Parse(an.endpointURL.Scheme + "://" + server.Endpoint)
-			if err != nil {
-				resultsCh <- AliveResult{
-					Error: err,
+		if len(servers) == 0 {
+			an.fetchData(ctx, an.endpointURL, resource, resultsCh)
+		} else {
+			for _, server := range servers {
+				u, err := url.Parse(an.endpointURL.Scheme + "://" + server.Endpoint)
+				an.fetchData(ctx, u, resource, resultsCh)
+				if err != nil {
+					resultsCh <- AliveResult{
+						Error: err,
+					}
+					return
 				}
-				return
-			}
-			t := time.Now()
-			resp, err := an.executeMethod(ctx, http.MethodGet, requestData{
-				relPath:          resource,
-				endpointOverride: u,
-			})
-			responseTime := time.Since(t)
-			closeResponse(resp)
 
-			var result AliveResult
-			if err != nil {
-				result = AliveResult{
-					Endpoint:     u,
-					Error:        err,
-					ResponseTime: responseTime,
-				}
-			} else {
-				result = AliveResult{
-					Endpoint:     u,
-					ResponseTime: responseTime,
-					Online:       resp.StatusCode == http.StatusOK && resp.Header.Get("x-minio-server-status") != "offline",
-				}
-			}
-
-			select {
-			case <-ctx.Done():
-				return
-			case resultsCh <- result:
 			}
 		}
 	}()
 
 	return resultsCh
+}
+
+func (an *AnonymousClient) fetchData(ctx context.Context, u *url.URL, resource string, resultsCh chan AliveResult) {
+	t := time.Now()
+	resp, err := an.executeMethod(ctx, http.MethodGet, requestData{
+		relPath:          resource,
+		endpointOverride: u,
+	})
+	responseTime := time.Since(t)
+	closeResponse(resp)
+
+	var result AliveResult
+	if err != nil {
+		result = AliveResult{
+			Endpoint:     u,
+			Error:        err,
+			ResponseTime: responseTime,
+		}
+	} else {
+		result = AliveResult{
+			Endpoint:     u,
+			ResponseTime: responseTime,
+			Online:       resp.StatusCode == http.StatusOK && resp.Header.Get("x-minio-server-status") != "offline",
+		}
+	}
+
+	select {
+	case <-ctx.Done():
+		return
+	case resultsCh <- result:
+	}
 }

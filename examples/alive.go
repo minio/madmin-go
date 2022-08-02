@@ -22,7 +22,6 @@ package main
 import (
 	"context"
 	"log"
-	"os"
 
 	"github.com/minio/madmin-go"
 )
