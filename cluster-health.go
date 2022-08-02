@@ -142,17 +142,17 @@ func (an *AnonymousClient) Alive(ctx context.Context, opts AliveOpts, servers ..
 	go func() {
 		defer close(resultsCh)
 		if len(servers) == 0 {
-			an.fetchData(ctx, an.endpointURL, resource, resultsCh)
+			an.alive(ctx, an.endpointURL, resource, resultsCh)
 		} else {
 			for _, server := range servers {
 				u, err := url.Parse(an.endpointURL.Scheme + "://" + server.Endpoint)
-				an.fetchData(ctx, u, resource, resultsCh)
 				if err != nil {
 					resultsCh <- AliveResult{
 						Error: err,
 					}
 					return
 				}
+				an.alive(ctx, u, resource, resultsCh)
 
 			}
 		}
@@ -161,7 +161,7 @@ func (an *AnonymousClient) Alive(ctx context.Context, opts AliveOpts, servers ..
 	return resultsCh
 }
 
-func (an *AnonymousClient) fetchData(ctx context.Context, u *url.URL, resource string, resultsCh chan AliveResult) {
+func (an *AnonymousClient) alive(ctx context.Context, u *url.URL, resource string, resultsCh chan AliveResult) {
 	t := time.Now()
 	resp, err := an.executeMethod(ctx, http.MethodGet, requestData{
 		relPath:          resource,
