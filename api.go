@@ -496,7 +496,7 @@ func (adm AdminClient) newRequest(ctx context.Context, method string, reqData re
 	}
 
 	// Initialize a new HTTP request for the method.
-	req, err = http.NewRequestWithContext(ctx, method, targetURL.String(), nil)
+	req, err = http.NewRequestWithContext(ctx, method, targetURL.String(), bytes.NewReader(reqData.content))
 	if err != nil {
 		return nil, err
 	}
