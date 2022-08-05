@@ -44,6 +44,8 @@ const (
 	TraceHealing
 	// TraceBatchReplication will trace batch replication operations.
 	TraceBatchReplication
+	// TraceRebalance will trace rebalance operations
+	TraceRebalance
 	// Add more here...
 
 	// TraceAll contains all valid trace modes.
