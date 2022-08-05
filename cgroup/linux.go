@@ -72,7 +72,7 @@ func GetEntries(pid int) (CGEntries, error) {
 // at /proc/<pid>/cgroup.
 //
 // CGROUP entries id, component and path are always in
-// the following format. ``ID:COMPONENT:PATH``
+// the following format. “ID:COMPONENT:PATH“
 //
 // Following code block parses this information and
 // returns a procCGroup which is a parsed list of all
