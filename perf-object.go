@@ -38,6 +38,8 @@ type SpeedTestStatServer struct {
 type SpeedTestStats struct {
 	ThroughputPerSec uint64                `json:"throughputPerSec"`
 	ObjectsPerSec    uint64                `json:"objectsPerSec"`
+	Response         Timings               `json:"responseTime"`
+	TTFB             Timings               `json:"ttfb,omitempty"`
 	Servers          []SpeedTestStatServer `json:"servers"`
 }
 

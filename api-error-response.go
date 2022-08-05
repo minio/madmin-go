@@ -110,14 +110,14 @@ func httpRespToErrorResponse(resp *http.Response) error {
 //
 // For example:
 //
-//   import admin "github.com/minio/madmin-go"
-//   ...
-//   ...
-//   ss, err := adm.ServiceStatus(...)
-//   if err != nil {
-//      resp := admin.ToErrorResponse(err)
-//   }
-//   ...
+//	import admin "github.com/minio/madmin-go"
+//	...
+//	...
+//	ss, err := adm.ServiceStatus(...)
+//	if err != nil {
+//	   resp := admin.ToErrorResponse(err)
+//	}
+//	...
 func ToErrorResponse(err error) ErrorResponse {
 	switch err := err.(type) {
 	case ErrorResponse:
