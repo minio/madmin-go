@@ -66,20 +66,28 @@ type SpeedtestOpts struct {
 
 // Speedtest - perform speedtest on the MinIO servers
 func (adm *AdminClient) Speedtest(ctx context.Context, opts SpeedtestOpts) (chan SpeedTestResult, error) {
-	if opts.Duration <= time.Second {
-		return nil, errors.New("duration must be greater a second")
-	}
-	if opts.Size <= 0 {
-		return nil, errors.New("size must be greater than 0 bytes")
-	}
-	if opts.Concurrency <= 0 {
-		return nil, errors.New("concurrency must be greater than 0")
+	if !opts.Autotune {
+		if opts.Duration <= time.Second {
+			return nil, errors.New("duration must be greater a second")
+		}
+		if opts.Size <= 0 {
+			return nil, errors.New("size must be greater than 0 bytes")
+		}
+		if opts.Concurrency <= 0 {
+			return nil, errors.New("concurrency must be greater than 0")
+		}
 	}
 
 	queryVals := make(url.Values)
-	queryVals.Set("size", strconv.Itoa(opts.Size))
-	queryVals.Set("duration", opts.Duration.String())
-	queryVals.Set("concurrent", strconv.Itoa(opts.Concurrency))
+	if opts.Size > 0 {
+		queryVals.Set("size", strconv.Itoa(opts.Size))
+	}
+	if opts.Duration > 0 {
+		queryVals.Set("duration", opts.Duration.String())
+	}
+	if opts.Concurrency > 0 {
+		queryVals.Set("concurrent", strconv.Itoa(opts.Concurrency))
+	}
 	if opts.Bucket != "" {
 		queryVals.Set("bucket", opts.Bucket)
 	}
