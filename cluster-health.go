@@ -150,7 +150,7 @@ func (an *AnonymousClient) Alive(ctx context.Context, opts AliveOpts, servers ..
 					resultsCh <- AliveResult{
 						Error: err,
 					}
-					return
+					continue
 				}
 				an.alive(ctx, u, resource, resultsCh)
 
