@@ -40,6 +40,22 @@ type Timings struct {
 
 // Measure - calculate all the latency measurements
 func (ts TimeDurations) Measure() Timings {
+	if len(ts) == 0 {
+		return Timings{
+			Avg:     0,
+			P50:     0,
+			P75:     0,
+			P95:     0,
+			P99:     0,
+			P999:    0,
+			Long5p:  0,
+			Short5p: 0,
+			Min:     0,
+			Max:     0,
+			Range:   0,
+			StdDev:  0,
+		}
+	}
 	sort.Slice(ts, func(i, j int) bool {
 		return int64(ts[i]) < int64(ts[j])
 	})
