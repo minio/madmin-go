@@ -92,6 +92,7 @@ type TraceInfo struct {
 	Duration time.Duration `json:"dur"`
 
 	Message string          `json:"msg,omitempty"`
+	Error   string          `json:"error,omitempty"`
 	HTTP    *TraceHTTPStats `json:"http,omitempty"`
 }
 
