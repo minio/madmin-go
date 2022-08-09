@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"github.com/minio/madmin-go/cgroup"
+	"github.com/minio/madmin-go/kernel"
 	"github.com/prometheus/procfs"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
@@ -292,6 +293,16 @@ func GetOSInfo(ctx context.Context, addr string) OSInfo {
 		}
 	}
 
+	kr, err := kernel.CurrentRelease()
+	if err != nil {
+		return OSInfo{
+			NodeCommon: NodeCommon{
+				Addr:  addr,
+				Error: err.Error(),
+			},
+		}
+	}
+
 	info, err := host.InfoWithContext(ctx)
 	if err != nil {
 		return OSInfo{
@@ -306,6 +317,7 @@ func GetOSInfo(ctx context.Context, addr string) OSInfo {
 		NodeCommon: NodeCommon{Addr: addr},
 		Info:       *info,
 	}
+	osInfo.Info.KernelVersion = kr
 
 	osInfo.Sensors, err = host.SensorsTemperaturesWithContext(ctx)
 	if err != nil {
