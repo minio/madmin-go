@@ -13,7 +13,8 @@ func _() {
 	_ = x[TraceS3-4]
 	_ = x[TraceInternal-8]
 	_ = x[TraceScanner-16]
-	_ = x[TraceAll-31]
+	_ = x[TraceDecommission-32]
+	_ = x[TraceAll-63]
 }
 
 const (
@@ -21,7 +22,8 @@ const (
 	_TraceType_name_1 = "S3"
 	_TraceType_name_2 = "Internal"
 	_TraceType_name_3 = "Scanner"
-	_TraceType_name_4 = "All"
+	_TraceType_name_4 = "Decommission"
+	_TraceType_name_5 = "All"
 )
 
 var (
@@ -39,8 +41,10 @@ func (i TraceType) String() string {
 		return _TraceType_name_2
 	case i == 16:
 		return _TraceType_name_3
-	case i == 31:
+	case i == 32:
 		return _TraceType_name_4
+	case i == 63:
+		return _TraceType_name_5
 	default:
 		return "TraceType(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
