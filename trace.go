@@ -38,6 +38,8 @@ const (
 	TraceInternal
 	// TraceScanner will trace scan operations.
 	TraceScanner
+	// TraceDecommission will trace decommission operations.
+	TraceDecommission
 	// Add more here...
 
 	// TraceAll contains all valid trace modes.

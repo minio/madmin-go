@@ -93,11 +93,12 @@ type ServiceTraceInfo struct {
 // ServiceTraceOpts holds tracing options
 type ServiceTraceOpts struct {
 	// Trace types:
-	S3       bool
-	Internal bool
-	Storage  bool
-	OS       bool
-	Scanner  bool
+	S3           bool
+	Internal     bool
+	Storage      bool
+	OS           bool
+	Scanner      bool
+	Decommission bool
 
 	OnlyErrors bool
 	Threshold  time.Duration
@@ -111,6 +112,7 @@ func (t ServiceTraceOpts) TraceTypes() TraceType {
 	tt.SetIf(t.Storage, TraceStorage)
 	tt.SetIf(t.OS, TraceOS)
 	tt.SetIf(t.Scanner, TraceScanner)
+	tt.SetIf(t.Decommission, TraceDecommission)
 	return tt
 }
 
@@ -124,6 +126,7 @@ func (t ServiceTraceOpts) AddParams(u url.Values) {
 	u.Set("storage", strconv.FormatBool(t.Storage))
 	u.Set("os", strconv.FormatBool(t.OS))
 	u.Set("scanner", strconv.FormatBool(t.Scanner))
+	u.Set("decommission", strconv.FormatBool(t.Decommission))
 }
 
 // ParseParams will parse parameters and set them to t.
@@ -131,6 +134,7 @@ func (t *ServiceTraceOpts) ParseParams(r *http.Request) (err error) {
 	t.S3 = r.Form.Get("s3") == "true"
 	t.OS = r.Form.Get("os") == "true"
 	t.Scanner = r.Form.Get("scanner") == "true"
+	t.Decommission = r.Form.Get("decommission") == "true"
 	t.Storage = r.Form.Get("storage") == "true"
 	t.Internal = r.Form.Get("internal") == "true"
 	t.OnlyErrors = r.Form.Get("err") == "true"
