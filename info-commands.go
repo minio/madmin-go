@@ -358,8 +358,11 @@ type Disk struct {
 	RootDisk        bool         `json:"rootDisk,omitempty"`
 	DrivePath       string       `json:"path,omitempty"`
 	Healing         bool         `json:"healing,omitempty"`
+	Scanning        bool         `json:"scanning,omitempty"`
 	State           string       `json:"state,omitempty"`
 	UUID            string       `json:"uuid,omitempty"`
+	Major           uint32       `json:"major"`
+	Minor           uint32       `json:"minor"`
 	Model           string       `json:"model,omitempty"`
 	TotalSpace      uint64       `json:"totalspace,omitempty"`
 	UsedSpace       uint64       `json:"usedspace,omitempty"`

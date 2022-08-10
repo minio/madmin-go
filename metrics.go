@@ -53,6 +53,8 @@ type MetricsOptions struct {
 	Interval time.Duration // Interval between samples. Will be rounded up to 1s.
 	Hosts    []string      // Leave empty for all
 	ByHost   bool          // Return metrics by host.
+	Disks    []string
+	ByDisk   bool
 }
 
 // Metrics makes an admin call to retrieve metrics.
@@ -67,6 +69,11 @@ func (adm *AdminClient) Metrics(ctx context.Context, o MetricsOptions, out func(
 	if o.ByHost {
 		q.Set("by-host", "true")
 	}
+	q.Set("disks", strings.Join(o.Disks, ","))
+	if o.ByDisk {
+		q.Set("by-disk", "true")
+	}
+
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet, requestData{
 			relPath:     path,
@@ -111,9 +118,10 @@ type RealtimeMetrics struct {
 	// Error indicates an error occurred.
 	Errors []string `json:"errors,omitempty"`
 	// Hosts indicates the scanned hosts
-	Hosts      []string           `json:"hosts"`
-	Aggregated Metrics            `json:"aggregated"`
-	ByHost     map[string]Metrics `json:"by_host,omitempty"`
+	Hosts      []string              `json:"hosts"`
+	Aggregated Metrics               `json:"aggregated"`
+	ByHost     map[string]Metrics    `json:"by_host,omitempty"`
+	ByDisk     map[string]DiskMetric `json:"by_disk,omitempty"`
 	// Final indicates whether this is the final packet and the receiver can exit.
 	Final bool `json:"final"`
 }
@@ -155,15 +163,25 @@ func (r *RealtimeMetrics) Merge(other *RealtimeMetrics) {
 	if len(other.Errors) > 0 {
 		r.Errors = append(r.Errors, other.Errors...)
 	}
+
 	if r.ByHost == nil && len(other.ByHost) > 0 {
 		r.ByHost = make(map[string]Metrics, len(other.ByHost))
 	}
 	for host, metrics := range other.ByHost {
 		r.ByHost[host] = metrics
 	}
+
 	r.Hosts = append(r.Hosts, other.Hosts...)
 	r.Aggregated.Merge(&other.Aggregated)
 	sort.Strings(r.Hosts)
+
+	// Gather per disk metrics
+	if r.ByDisk == nil && len(other.ByDisk) > 0 {
+		r.ByDisk = make(map[string]DiskMetric, len(other.ByDisk))
+	}
+	for disk, metrics := range other.ByDisk {
+		r.ByDisk[disk] = metrics
+	}
 }
 
 // ScannerMetrics contains scanner information.
@@ -283,6 +301,27 @@ func (s *ScannerMetrics) Merge(other *ScannerMetrics) {
 	sort.Strings(s.ActivePaths)
 }
 
+// DiskIOStats contains IO stats of a single drive
+type DiskIOStats struct {
+	ReadIOs        uint64 `json:"read_ios"`
+	ReadMerges     uint64 `json:"read_merges"`
+	ReadSectors    uint64 `json:"read_sectors"`
+	ReadTicks      uint64 `json:"read_ticks"`
+	WriteIOs       uint64 `json:"write_ios"`
+	WriteMerges    uint64 `json:"write_merges"`
+	WriteSectors   uint64 `json:"wrte_sectors"`
+	WriteTicks     uint64 `json:"write_ticks"`
+	CurrentIOs     uint64 `json:"current_ios"`
+	TotalTicks     uint64 `json:"total_ticks"`
+	ReqTicks       uint64 `json:"req_ticks"`
+	DiscardIOs     uint64 `json:"discard_ios"`
+	DiscardMerges  uint64 `json:"discard_merges"`
+	DiscardSectors uint64 `json:"discard_secotrs"`
+	DiscardTicks   uint64 `json:"discard_ticks"`
+	FlushIOs       uint64 `json:"flush_ios"`
+	FlushTicks     uint64 `json:"flush_ticks"`
+}
+
 // DiskMetric contains metrics for one or more disks.
 type DiskMetric struct {
 	// Time these metrics were collected
@@ -304,6 +343,8 @@ type DiskMetric struct {
 	LastMinute struct {
 		Operations map[string]TimedAction `json:"operations,omitempty"`
 	} `json:"last_minute"`
+
+	IOStats DiskIOStats `json:"iostats,omitempty"`
 }
 
 // Merge other into 's'.
