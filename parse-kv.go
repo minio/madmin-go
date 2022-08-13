@@ -1,5 +1,5 @@
 //
-// MinIO Object Storage (c) 2021 MinIO, Inc.
+// MinIO Object Storage (c) 2022 MinIO, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -23,6 +23,81 @@ import (
 	"sort"
 	"strings"
 	"unicode"
+
+	"github.com/minio/minio-go/v7/pkg/set"
+)
+
+// Top level configuration key constants.
+const (
+	CredentialsSubSys    = "credentials"
+	PolicyOPASubSys      = "policy_opa"
+	PolicyPluginSubSys   = "policy_plugin"
+	IdentityOpenIDSubSys = "identity_openid"
+	IdentityLDAPSubSys   = "identity_ldap"
+	IdentityTLSSubSys    = "identity_tls"
+	IdentityPluginSubSys = "identity_plugin"
+	CacheSubSys          = "cache"
+	SiteSubSys           = "site"
+	RegionSubSys         = "region"
+	EtcdSubSys           = "etcd"
+	StorageClassSubSys   = "storage_class"
+	APISubSys            = "api"
+	CompressionSubSys    = "compression"
+	LoggerWebhookSubSys  = "logger_webhook"
+	AuditWebhookSubSys   = "audit_webhook"
+	AuditKafkaSubSys     = "audit_kafka"
+	HealSubSys           = "heal"
+	ScannerSubSys        = "scanner"
+	CrawlerSubSys        = "crawler"
+	SubnetSubSys         = "subnet"
+	CallhomeSubSys       = "callhome"
+
+	NotifyKafkaSubSys    = "notify_kafka"
+	NotifyMQTTSubSys     = "notify_mqtt"
+	NotifyMySQLSubSys    = "notify_mysql"
+	NotifyNATSSubSys     = "notify_nats"
+	NotifyNSQSubSys      = "notify_nsq"
+	NotifyESSubSys       = "notify_elasticsearch"
+	NotifyAMQPSubSys     = "notify_amqp"
+	NotifyPostgresSubSys = "notify_postgres"
+	NotifyRedisSubSys    = "notify_redis"
+	NotifyWebhookSubSys  = "notify_webhook"
+)
+
+// SubSystems - list of all subsystems in MinIO
+var SubSystems = set.CreateStringSet(
+	CredentialsSubSys,
+	PolicyOPASubSys,
+	PolicyPluginSubSys,
+	IdentityOpenIDSubSys,
+	IdentityLDAPSubSys,
+	IdentityTLSSubSys,
+	IdentityPluginSubSys,
+	CacheSubSys,
+	SiteSubSys,
+	RegionSubSys,
+	EtcdSubSys,
+	StorageClassSubSys,
+	APISubSys,
+	CompressionSubSys,
+	LoggerWebhookSubSys,
+	AuditWebhookSubSys,
+	AuditKafkaSubSys,
+	HealSubSys,
+	ScannerSubSys,
+	CrawlerSubSys,
+	SubnetSubSys,
+	CallhomeSubSys,
+	NotifyKafkaSubSys,
+	NotifyMQTTSubSys,
+	NotifyMySQLSubSys,
+	NotifyNATSSubSys,
+	NotifyNSQSubSys,
+	NotifyESSubSys,
+	NotifyAMQPSubSys,
+	NotifyPostgresSubSys,
+	NotifyRedisSubSys,
+	NotifyWebhookSubSys,
 )
 
 // KV - is a shorthand of each key value.
@@ -113,6 +188,11 @@ const (
 	KvSingleQuote      = `'`
 
 	Default = `_`
+
+	EnvPrefix        = "MINIO_"
+	EnvWordDelimiter = `_`
+
+	EnvLinePrefix = KvComment + KvSpaceSeparator + EnvPrefix
 )
 
 // SanitizeValue - this function is needed, to trim off single or double quotes, creeping into the values.
