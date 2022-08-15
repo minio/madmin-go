@@ -49,6 +49,25 @@ type AnonymousClient struct {
 	traceOutput    io.Writer
 }
 
+func NewAnonymousClientNoEndpoint() (*AnonymousClient, error) {
+	// Initialize cookies to preserve server sent cookies if any and replay
+	// them upon each request.
+	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
+	if err != nil {
+		return nil, err
+	}
+
+	clnt := new(AnonymousClient)
+
+	// Instantiate http client and bucket location cache.
+	clnt.httpClient = &http.Client{
+		Jar:       jar,
+		Transport: DefaultTransport(true),
+	}
+
+	return clnt, nil
+}
+
 // NewAnonymousClient can be used for anonymous APIs without credentials set
 func NewAnonymousClient(endpoint string, secure bool) (*AnonymousClient, error) {
 	// Initialize cookies to preserve server sent cookies if any and replay
@@ -176,6 +195,8 @@ func (an AnonymousClient) makeTargetURL(r requestData) (*url.URL, error) {
 	u := an.endpointURL
 	if r.endpointOverride != nil {
 		u = r.endpointOverride
+	} else if u == nil {
+		return nil, errors.New("endpoint not configured unable to use AnonymousClient")
 	}
 	host := u.Host
 	scheme := u.Scheme
