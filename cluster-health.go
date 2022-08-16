@@ -21,6 +21,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"sync"
 	"time"
 )
 
@@ -138,27 +139,38 @@ func (an *AnonymousClient) Alive(ctx context.Context, opts AliveOpts, servers ..
 		resource = "/minio/health/ready"
 	}
 
+	scheme := "http"
+	if an.endpointURL != nil {
+		scheme = an.endpointURL.Scheme
+	}
+
 	resultsCh = make(chan AliveResult)
 	go func() {
 		defer close(resultsCh)
 		if len(servers) == 0 {
 			an.alive(ctx, an.endpointURL, resource, resultsCh)
 		} else {
+			var wg sync.WaitGroup
+			wg.Add(len(servers))
 			for _, server := range servers {
-				scheme := "http"
-				if an.endpointURL != nil {
-					scheme = an.endpointURL.Scheme
-				}
-				u, err := url.Parse(scheme + "://" + server.Endpoint)
-				if err != nil {
-					resultsCh <- AliveResult{
-						Error: err,
+				server := server
+				go func() {
+					defer wg.Done()
+					sscheme := server.Scheme
+					if sscheme == "" {
+						sscheme = scheme
 					}
-					continue
-				}
-				an.alive(ctx, u, resource, resultsCh)
-
+					u, err := url.Parse(sscheme + "://" + server.Endpoint)
+					if err != nil {
+						resultsCh <- AliveResult{
+							Error: err,
+						}
+						return
+					}
+					an.alive(ctx, u, resource, resultsCh)
+				}()
 			}
+			wg.Wait()
 		}
 	}()
 

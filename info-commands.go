@@ -332,6 +332,7 @@ type ErasureBackend struct {
 type ServerProperties struct {
 	State      string            `json:"state,omitempty"`
 	Endpoint   string            `json:"endpoint,omitempty"`
+	Scheme     string            `json:"scheme,omitempty"`
 	Uptime     int64             `json:"uptime,omitempty"`
 	Version    string            `json:"version,omitempty"`
 	CommitID   string            `json:"commitID,omitempty"`
