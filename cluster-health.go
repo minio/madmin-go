@@ -145,7 +145,11 @@ func (an *AnonymousClient) Alive(ctx context.Context, opts AliveOpts, servers ..
 			an.alive(ctx, an.endpointURL, resource, resultsCh)
 		} else {
 			for _, server := range servers {
-				u, err := url.Parse(an.endpointURL.Scheme + "://" + server.Endpoint)
+				scheme := "http"
+				if an.endpointURL != nil {
+					scheme = an.endpointURL.Scheme
+				}
+				u, err := url.Parse(scheme + "://" + server.Endpoint)
 				if err != nil {
 					resultsCh <- AliveResult{
 						Error: err,
