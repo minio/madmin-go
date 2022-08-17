@@ -19,6 +19,7 @@ package madmin
 import (
 	"context"
 	"net/http"
+	"net/http/httptrace"
 	"net/url"
 	"strconv"
 	"sync"
@@ -64,7 +65,7 @@ func (an *AnonymousClient) clusterCheck(ctx context.Context, maintenance bool) (
 	resp, err := an.executeMethod(ctx, http.MethodGet, requestData{
 		relPath:     clusterCheckEndpoint,
 		queryValues: urlValues,
-	})
+	}, nil)
 	defer closeResponse(resp)
 	if err != nil {
 		return result, err
@@ -100,7 +101,7 @@ func (an *AnonymousClient) clusterCheck(ctx context.Context, maintenance bool) (
 func (an *AnonymousClient) clusterReadCheck(ctx context.Context) (result HealthResult, err error) {
 	resp, err := an.executeMethod(ctx, http.MethodGet, requestData{
 		relPath: clusterReadCheckEndpoint,
-	})
+	}, nil)
 	defer closeResponse(resp)
 	if err != nil {
 		return result, err
@@ -125,10 +126,11 @@ type AliveOpts struct {
 // AliveResult returns the time spent getting a response
 // back from the server on /minio/health/live endpoint
 type AliveResult struct {
-	Endpoint     *url.URL      `json:"endpoint"`
-	ResponseTime time.Duration `json:"responseTime"`
-	Online       bool          `json:"online"` // captures x-minio-server-status
-	Error        error         `json:"error"`
+	Endpoint       *url.URL      `json:"endpoint"`
+	ResponseTime   time.Duration `json:"responseTime"`
+	DNSResolveTime time.Duration `json:"dnsResolveTime"`
+	Online         bool          `json:"online"` // captures x-minio-server-status
+	Error          error         `json:"error"`
 }
 
 // Alive will hit `/minio/health/live` to check if server is reachable, optionally returns
@@ -178,27 +180,41 @@ func (an *AnonymousClient) Alive(ctx context.Context, opts AliveOpts, servers ..
 }
 
 func (an *AnonymousClient) alive(ctx context.Context, u *url.URL, resource string, resultsCh chan AliveResult) {
-	t := time.Now()
+	var (
+		dnsStartTime, dnsDoneTime   time.Time
+		reqStartTime, firstByteTime time.Time
+	)
+
+	trace := &httptrace.ClientTrace{
+		DNSStart: func(_ httptrace.DNSStartInfo) {
+			dnsStartTime = time.Now()
+		},
+		DNSDone: func(_ httptrace.DNSDoneInfo) {
+			dnsDoneTime = time.Now()
+		},
+		GetConn: func(_ string) {
+			reqStartTime = time.Now()
+		},
+		GotFirstResponseByte: func() {
+			firstByteTime = time.Now()
+		},
+	}
+
 	resp, err := an.executeMethod(ctx, http.MethodGet, requestData{
 		relPath:          resource,
 		endpointOverride: u,
-	})
-	responseTime := time.Since(t)
+	}, trace)
 	closeResponse(resp)
 
-	var result AliveResult
+	result := AliveResult{
+		Endpoint:       u,
+		ResponseTime:   firstByteTime.Sub(reqStartTime) - dnsDoneTime.Sub(dnsStartTime),
+		DNSResolveTime: dnsDoneTime.Sub(dnsStartTime),
+	}
 	if err != nil {
-		result = AliveResult{
-			Endpoint:     u,
-			Error:        err,
-			ResponseTime: responseTime,
-		}
+		result.Error = err
 	} else {
-		result = AliveResult{
-			Endpoint:     u,
-			ResponseTime: responseTime,
-			Online:       resp.StatusCode == http.StatusOK && resp.Header.Get("x-minio-server-status") != "offline",
-		}
+		result.Online = resp.StatusCode == http.StatusOK && resp.Header.Get("x-minio-server-status") != "offline"
 	}
 
 	select {

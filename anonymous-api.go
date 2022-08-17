@@ -27,6 +27,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/http/cookiejar"
+	"net/http/httptrace"
 	"net/http/httputil"
 	"net/url"
 	"os"
@@ -135,7 +136,7 @@ func (an *AnonymousClient) TraceOn(outputStream io.Writer) {
 }
 
 // executeMethod - does a simple http request to the target with parameters provided in the request
-func (an AnonymousClient) executeMethod(ctx context.Context, method string, reqData requestData) (res *http.Response, err error) {
+func (an AnonymousClient) executeMethod(ctx context.Context, method string, reqData requestData, trace *httptrace.ClientTrace) (res *http.Response, err error) {
 	defer func() {
 		if err != nil {
 			// close idle connections before returning, upon error.
@@ -148,6 +149,10 @@ func (an AnonymousClient) executeMethod(ctx context.Context, method string, reqD
 	req, err = an.newRequest(ctx, method, reqData)
 	if err != nil {
 		return nil, err
+	}
+
+	if trace != nil {
+		req = req.WithContext(httptrace.WithClientTrace(req.Context(), trace))
 	}
 
 	// Initiate the request.
