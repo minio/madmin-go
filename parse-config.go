@@ -170,6 +170,9 @@ type SubsysConfig struct {
 
 // AddConfigKV - adds a config parameter to the subsystem.
 func (c *SubsysConfig) AddConfigKV(ckv ConfigKV) {
+	if c.kvIndexMap == nil {
+		c.kvIndexMap = make(map[string]int)
+	}
 	idx, ok := c.kvIndexMap[ckv.Key]
 	if ok {
 		c.KV[idx] = ckv
@@ -182,6 +185,10 @@ func (c *SubsysConfig) AddConfigKV(ckv ConfigKV) {
 // Lookup resolves the value of a config parameter. If an env variable is
 // specified on the server for the parameter, it is returned.
 func (c *SubsysConfig) Lookup(key string) (val string, present bool) {
+	if c.kvIndexMap == nil {
+		return "", false
+	}
+
 	idx, ok := c.kvIndexMap[key]
 	if !ok {
 		return "", false
