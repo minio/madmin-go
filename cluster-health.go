@@ -205,10 +205,16 @@ func (an *AnonymousClient) alive(ctx context.Context, u *url.URL, resource strin
 		endpointOverride: u,
 	}, trace)
 	closeResponse(resp)
+	var respTime time.Duration
+	if firstByteTime.IsZero() {
+		respTime = time.Since(reqStartTime)
+	} else {
+		respTime = firstByteTime.Sub(reqStartTime) - dnsDoneTime.Sub(dnsStartTime)
+	}
 
 	result := AliveResult{
 		Endpoint:       u,
-		ResponseTime:   firstByteTime.Sub(reqStartTime) - dnsDoneTime.Sub(dnsStartTime),
+		ResponseTime:   respTime,
 		DNSResolveTime: dnsDoneTime.Sub(dnsStartTime),
 	}
 	if err != nil {
