@@ -325,8 +325,23 @@ func getConfigLineSubSystemAndTarget(s string) (subSys, target string) {
 	return pieces[0], Default
 }
 
-func ParseServerConfigOutput(s string) ([]SubsysConfig, error) {
-	lines := strings.Split(s, "\n")
+// ParseServerConfigOutput - takes a server config output and returns a slice of
+// configs. Depending on the server config get API request, this may return
+// configuration info for one or more configuration sub-systems.
+//
+// A configuration subsystem in the server may have one or more subsystem
+// targets (named instances of the sub-system, for example `notify_postres`,
+// `logger_webhook` or `identity_openid`). For every subsystem and target
+// returned in `serverConfigOutput`, this function returns a separate
+// `SubsysConfig` value in the output slice. The default target is returned as
+// "" (empty string) by this function.
+//
+// Use the `Lookup()` function on the `SubsysConfig` type to query a
+// subsystem-target pair for a configuration parameter. This returns the
+// effective value (i.e. possibly overridden by an environment variable) of the
+// configuration parameter on the server.
+func ParseServerConfigOutput(serverConfigOutput string) ([]SubsysConfig, error) {
+	lines := strings.Split(serverConfigOutput, "\n")
 
 	// Clean up config lines
 	var configLines []string
