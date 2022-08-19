@@ -261,6 +261,7 @@ type SRSvcAccChange struct {
 // SRPolicyMapping - represents mapping of a policy to a user or group.
 type SRPolicyMapping struct {
 	UserOrGroup string    `json:"userOrGroup"`
+	UserType    int       `json:"userType"`
 	IsGroup     bool      `json:"isGroup"`
 	Policy      string    `json:"policy"`
 	CreatedAt   time.Time `json:"createdAt,omitempty"`
