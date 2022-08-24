@@ -352,7 +352,8 @@ func ParseServerConfigOutput(serverConfigOutput string) ([]SubsysConfig, error) 
 		}
 	}
 
-	// Parse out config lines into groups corresponding to a single subsystem.
+	// Parse out config lines into groups corresponding to a single subsystem
+	// and target.
 	//
 	// How does it work? The server output is a list of lines, where each line
 	// may be one of:
@@ -395,6 +396,9 @@ func ParseServerConfigOutput(serverConfigOutput string) ([]SubsysConfig, error) 
 			configGroups = append(configGroups, currGroup)
 			subSystems = append(subSystems, subSys)
 			targets = append(targets, target)
+
+			// Reset currGroup to collect lines for the next group.
+			currGroup = nil
 		}
 	}
 
