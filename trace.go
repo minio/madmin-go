@@ -40,6 +40,8 @@ const (
 	TraceScanner
 	// TraceDecommission will trace decommission operations.
 	TraceDecommission
+	// TraceHealing will trace healing operations.
+	TraceHealing
 	// Add more here...
 
 	// TraceAll contains all valid trace modes.
@@ -91,9 +93,10 @@ type TraceInfo struct {
 	Path     string        `json:"path"`
 	Duration time.Duration `json:"dur"`
 
-	Message string          `json:"msg,omitempty"`
-	Error   string          `json:"error,omitempty"`
-	HTTP    *TraceHTTPStats `json:"http,omitempty"`
+	Message    string          `json:"msg,omitempty"`
+	Error      string          `json:"error,omitempty"`
+	HTTP       *TraceHTTPStats `json:"http,omitempty"`
+	HealResult *HealResultItem `json:"healResult,omitempty"`
 }
 
 // Mask returns the trace type as uint32.

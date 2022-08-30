@@ -99,6 +99,7 @@ type ServiceTraceOpts struct {
 	OS           bool
 	Scanner      bool
 	Decommission bool
+	Healing      bool
 
 	OnlyErrors bool
 	Threshold  time.Duration
@@ -113,6 +114,7 @@ func (t ServiceTraceOpts) TraceTypes() TraceType {
 	tt.SetIf(t.OS, TraceOS)
 	tt.SetIf(t.Scanner, TraceScanner)
 	tt.SetIf(t.Decommission, TraceDecommission)
+	tt.SetIf(t.Healing, TraceHealing)
 	return tt
 }
 
@@ -127,6 +129,7 @@ func (t ServiceTraceOpts) AddParams(u url.Values) {
 	u.Set("os", strconv.FormatBool(t.OS))
 	u.Set("scanner", strconv.FormatBool(t.Scanner))
 	u.Set("decommission", strconv.FormatBool(t.Decommission))
+	u.Set("healing", strconv.FormatBool(t.Healing))
 }
 
 // ParseParams will parse parameters and set them to t.
@@ -135,6 +138,7 @@ func (t *ServiceTraceOpts) ParseParams(r *http.Request) (err error) {
 	t.OS = r.Form.Get("os") == "true"
 	t.Scanner = r.Form.Get("scanner") == "true"
 	t.Decommission = r.Form.Get("decommission") == "true"
+	t.Healing = r.Form.Get("healing") == "true"
 	t.Storage = r.Form.Get("storage") == "true"
 	t.Internal = r.Form.Get("internal") == "true"
 	t.OnlyErrors = r.Form.Get("err") == "true"
