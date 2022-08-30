@@ -40,6 +40,8 @@ const (
 	TraceScanner
 	// TraceDecommission will trace decommission operations.
 	TraceDecommission
+	// TraceHealing will trace healing operations.
+	TraceHealing
 	// Add more here...
 
 	// TraceAll contains all valid trace modes.
