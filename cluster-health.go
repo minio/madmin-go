@@ -193,7 +193,11 @@ func (an *AnonymousClient) alive(ctx context.Context, u *url.URL, resource strin
 			dnsDoneTime = time.Now()
 		},
 		GetConn: func(_ string) {
-			reqStartTime = time.Now()
+			// GetConn is called again when trace is ON
+			// https://github.com/golang/go/issues/44281
+			if reqStartTime.IsZero() {
+				reqStartTime = time.Now()
+			}
 		},
 		GotFirstResponseByte: func() {
 			firstByteTime = time.Now()
