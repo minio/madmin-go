@@ -1,5 +1,5 @@
 //
-// MinIO Object Storage (c) 2022 MinIO, Inc.
+// MinIO Object Storage (c) 2021 MinIO, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -18,48 +18,79 @@ package madmin
 
 //go:generate msgp -file $GOFILE
 
-// TierMinIO represents the remote tier configuration for MinIO object storage backend.
+// TierMinIO represents the remote tier configuration for Minio type AWS S3 compatible backend.
 type TierMinIO struct {
-	Endpoint  string `json:",omitempty"`
-	AccessKey string `json:",omitempty"`
-	SecretKey string `json:",omitempty"`
-	Bucket    string `json:",omitempty"`
-	Prefix    string `json:",omitempty"`
-	Region    string `json:",omitempty"`
+	Endpoint     string `json:",omitempty"`
+	AccessKey    string `json:",omitempty"`
+	SecretKey    string `json:",omitempty"`
+	Bucket       string `json:",omitempty"`
+	Prefix       string `json:",omitempty"`
+	Region       string `json:",omitempty"`
+	StorageClass string `json:",omitempty"`
+	AWSRole      bool   `json:",omitempty"`
 }
 
-// MinIOOptions supports NewTierMinIO to take variadic options
+// MinioOptions supports NewTierS3 to take variadic options
 type MinIOOptions func(*TierMinIO) error
 
-// MinIORegion helper to supply optional region to NewTierMinIO
-func MinIORegion(region string) func(m *TierMinIO) error {
-	return func(m *TierMinIO) error {
-		m.Region = region
+// MinioRegion helper to supply optional region to NewTierMinIO
+func MinIORegion(region string) func(minio *TierMinIO) error {
+	return func(minio *TierMinIO) error {
+		minio.Region = region
 		return nil
 	}
 }
 
-// MinIOPrefix helper to supply optional object prefix to NewTierMinIO
-func MinIOPrefix(prefix string) func(m *TierMinIO) error {
-	return func(m *TierMinIO) error {
-		m.Prefix = prefix
+// MinioPrefix helper to supply optional object prefix to NewTierS3
+func MinIOPrefix(prefix string) func(minio *TierMinIO) error {
+	return func(minio *TierMinIO) error {
+		minio.Prefix = prefix
 		return nil
 	}
 }
 
-func NewTierMinIO(name, endpoint, accessKey, secretKey, bucket string, options ...MinIOOptions) (*TierConfig, error) {
+// MinioEndpoint helper to supply optional endpoint to NewTierMinIO
+func MinIOEndpoint(endpoint string) func(minio *TierMinIO) error {
+	return func(minio *TierMinIO) error {
+		minio.Endpoint = endpoint
+		return nil
+	}
+}
+
+// MinioStorageClass helper to supply optional storage class to NewTierMinIO
+func MinIOStorageClass(storageClass string) func(minio *TierMinIO) error {
+	return func(minio *TierMinIO) error {
+		minio.StorageClass = storageClass
+		return nil
+	}
+}
+
+// MinioAWSRole helper to use optional AWS Role to NewTierMinIO
+func MinIOAWSRole() func(minio *TierMinIO) error {
+	return func(minio *TierMinIO) error {
+		minio.AWSRole = true
+		return nil
+	}
+}
+
+// NewTierMinIO returns a TierConfig of Minio type. Returns error if the given
+// parameters are invalid like name is empty etc.
+func NewTierMinIO(name, accessKey, secretKey, endpoint, bucket string, options ...MinIOOptions) (*TierConfig, error) {
 	if name == "" {
 		return nil, ErrTierNameEmpty
 	}
-	m := &TierMinIO{
+	sc := &TierMinIO{
 		AccessKey: accessKey,
 		SecretKey: secretKey,
 		Bucket:    bucket,
-		Endpoint:  endpoint,
+		// Defaults
+		Endpoint:     endpoint,
+		Region:       "",
+		StorageClass: "",
 	}
 
 	for _, option := range options {
-		err := option(m)
+		err := option(sc)
 		if err != nil {
 			return nil, err
 		}
@@ -69,6 +100,6 @@ func NewTierMinIO(name, endpoint, accessKey, secretKey, bucket string, options .
 		Version: TierConfigVer,
 		Type:    MinIO,
 		Name:    name,
-		MinIO:   m,
+		MinIO:   sc,
 	}, nil
 }
