@@ -30,10 +30,10 @@ type TierMinIO struct {
 	AWSRole      bool   `json:",omitempty"`
 }
 
-// MinioOptions supports NewTierS3 to take variadic options
+// MinIOOptions supports NewTierS3 to take variadic options
 type MinIOOptions func(*TierMinIO) error
 
-// MinioRegion helper to supply optional region to NewTierMinIO
+// MinIORegion helper to supply optional region to NewTierMinIO
 func MinIORegion(region string) func(minio *TierMinIO) error {
 	return func(minio *TierMinIO) error {
 		minio.Region = region
@@ -41,7 +41,7 @@ func MinIORegion(region string) func(minio *TierMinIO) error {
 	}
 }
 
-// MinioPrefix helper to supply optional object prefix to NewTierS3
+// MinIOPrefix helper to supply optional object prefix to NewTierS3
 func MinIOPrefix(prefix string) func(minio *TierMinIO) error {
 	return func(minio *TierMinIO) error {
 		minio.Prefix = prefix
@@ -49,7 +49,7 @@ func MinIOPrefix(prefix string) func(minio *TierMinIO) error {
 	}
 }
 
-// MinioEndpoint helper to supply optional endpoint to NewTierMinIO
+// MinIOEndpoint helper to supply optional endpoint to NewTierMinIO
 func MinIOEndpoint(endpoint string) func(minio *TierMinIO) error {
 	return func(minio *TierMinIO) error {
 		minio.Endpoint = endpoint
@@ -57,7 +57,7 @@ func MinIOEndpoint(endpoint string) func(minio *TierMinIO) error {
 	}
 }
 
-// MinioStorageClass helper to supply optional storage class to NewTierMinIO
+// MinIOStorageClass helper to supply optional storage class to NewTierMinIO
 func MinIOStorageClass(storageClass string) func(minio *TierMinIO) error {
 	return func(minio *TierMinIO) error {
 		minio.StorageClass = storageClass
@@ -65,7 +65,7 @@ func MinIOStorageClass(storageClass string) func(minio *TierMinIO) error {
 	}
 }
 
-// MinioAWSRole helper to use optional AWS Role to NewTierMinIO
+// MinIOAWSRole helper to use optional AWS Role to NewTierMinIO
 func MinIOAWSRole() func(minio *TierMinIO) error {
 	return func(minio *TierMinIO) error {
 		minio.AWSRole = true
