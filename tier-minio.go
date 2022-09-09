@@ -1,5 +1,5 @@
 //
-// MinIO Object Storage (c) 2021 MinIO, Inc.
+// MinIO Object Storage (c) 2022 MinIO, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -27,7 +27,6 @@ type TierMinIO struct {
 	Prefix       string `json:",omitempty"`
 	Region       string `json:",omitempty"`
 	StorageClass string `json:",omitempty"`
-	AWSRole      bool   `json:",omitempty"`
 }
 
 // MinIOOptions supports NewTierS3 to take variadic options
@@ -61,14 +60,6 @@ func MinIOEndpoint(endpoint string) func(minio *TierMinIO) error {
 func MinIOStorageClass(storageClass string) func(minio *TierMinIO) error {
 	return func(minio *TierMinIO) error {
 		minio.StorageClass = storageClass
-		return nil
-	}
-}
-
-// MinIOAWSRole helper to use optional AWS Role to NewTierMinIO
-func MinIOAWSRole() func(minio *TierMinIO) error {
-	return func(minio *TierMinIO) error {
-		minio.AWSRole = true
 		return nil
 	}
 }
