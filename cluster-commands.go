@@ -883,3 +883,59 @@ const (
 	ReplicateRemoveStatusSuccess = "Requested site(s) were removed from cluster replication successfully."
 	ReplicateRemoveStatusPartial = "Some site(s) could not be removed from cluster replication configuration."
 )
+
+type ResyncBucketStatus struct {
+	Bucket    string `json:"bucket"`
+	Status    string `json:"status"`
+	ErrDetail string `json:"errorDetail,omitempty"`
+}
+
+// SRResyncOpStatus - returns status of resync start request.
+type SRResyncOpStatus struct {
+	OpType    string               `json:"op"` // one of "start" or "cancel"
+	ResyncID  string               `json:"id"`
+	Status    string               `json:"status"`
+	Buckets   []ResyncBucketStatus `json:"buckets"`
+	ErrDetail string               `json:"errorDetail,omitempty"`
+}
+
+// SiteResyncOp type of resync operation
+type SiteResyncOp string
+
+const (
+	// SiteResyncStart starts a site resync operation
+	SiteResyncStart SiteResyncOp = "start"
+	// SiteResyncCancel cancels ongoing site resync
+	SiteResyncCancel SiteResyncOp = "cancel"
+)
+
+// SiteReplicationResyncOp - perform a site replication resync operation
+func (adm *AdminClient) SiteReplicationResyncOp(ctx context.Context, site PeerInfo, op SiteResyncOp) (SRResyncOpStatus, error) {
+	reqBytes, err := json.Marshal(site)
+	if err != nil {
+		return SRResyncOpStatus{}, nil
+	}
+
+	v := url.Values{}
+	v.Add("operation", string(op))
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/site-replication/resync/op",
+		content:     reqBytes,
+		queryValues: v,
+	}
+
+	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return SRResyncOpStatus{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return SRResyncOpStatus{}, httpRespToErrorResponse(resp)
+	}
+
+	var res SRResyncOpStatus
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	return res, err
+}
