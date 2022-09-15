@@ -235,6 +235,45 @@ type InfoMessage struct {
 	Servers      []ServerProperties `json:"servers,omitempty"`
 }
 
+func (info InfoMessage) BackendType() BackendType {
+	// MinIO server type default
+	backendType := Unknown
+
+	// Set the type of MinIO server ("FS", "Erasure", "Unknown")
+	switch v := info.Backend.(type) {
+	case FSBackend:
+		backendType = FS
+	case ErasureBackend:
+		backendType = Erasure
+	case map[string]interface{}:
+		vt, ok := v["backendType"]
+		if ok {
+			backendTypeS, _ := vt.(string)
+			switch backendTypeS {
+			case "Erasure":
+				backendType = Erasure
+			}
+		}
+	}
+	return backendType
+}
+
+func (info InfoMessage) StandardParity() int {
+	switch info.BackendType() {
+	case Erasure:
+		switch v := info.Backend.(type) {
+		case ErasureBackend:
+			return v.StandardSCParity
+		case map[string]interface{}:
+			scParity, ok := v["standardSCParity"].(int)
+			if ok {
+				return scParity
+			}
+		}
+	}
+	return -1
+}
+
 // Services contains different services information
 type Services struct {
 	KMS           KMS                           `json:"kms,omitempty"`
