@@ -265,9 +265,9 @@ func (info InfoMessage) StandardParity() int {
 		case ErasureBackend:
 			return v.StandardSCParity
 		case map[string]interface{}:
-			scParity, ok := v["standardSCParity"].(int)
+			scParity, ok := v["standardSCParity"].(float64)
 			if ok {
-				return scParity
+				return int(scParity)
 			}
 		}
 	}
