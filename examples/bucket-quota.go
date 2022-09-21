@@ -37,10 +37,14 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	var kiB int64 = 1 << 10
+	var kiB uint64 = 1 << 10
 	ctx := context.Background()
+	quota := &madmin.BucketQuota{
+		Quota:	32*kiB, 
+		Type:	madmin.HardQuota,
+	}
 	// set bucket quota config
-	if err := madmClnt.SetBucketQuota(ctx, "bucket-name", 64*kiB, HardQuota); err != nil {
+	if err := madmClnt.SetBucketQuota(ctx, "bucket-name", quota); err != nil {
 		log.Fatalln(err)
 	}
 	// gets bucket quota config
