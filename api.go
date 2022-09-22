@@ -78,6 +78,7 @@ const (
 	libraryVersion = "0.0.1"
 
 	libraryAdminURLPrefix = "/minio/admin"
+	libraryKMSURLPrefix   = "/minio/kms"
 )
 
 // User Agent should always following the below style.
@@ -213,6 +214,8 @@ type requestData struct {
 	content       []byte
 	// endpointOverride overrides target URL with anonymousClient
 	endpointOverride *url.URL
+	// isKMS replaces URL prefix with /kms
+	isKMS bool
 }
 
 // Filter out signature value from Authorization header.
@@ -528,8 +531,11 @@ func (adm AdminClient) newRequest(ctx context.Context, method string, reqData re
 func (adm AdminClient) makeTargetURL(r requestData) (*url.URL, error) {
 	host := adm.endpointURL.Host
 	scheme := adm.endpointURL.Scheme
-
-	urlStr := scheme + "://" + host + libraryAdminURLPrefix + r.relPath
+	prefix := libraryAdminURLPrefix
+	if r.isKMS {
+		prefix = libraryKMSURLPrefix
+	}
+	urlStr := scheme + "://" + host + prefix + r.relPath
 
 	// If there are any query values, add them to the end.
 	if len(r.queryValues) > 0 {

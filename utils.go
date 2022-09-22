@@ -32,6 +32,8 @@ const (
 	AdminAPIVersion   = "v3"
 	AdminAPIVersionV2 = "v2"
 	adminAPIPrefix    = "/" + AdminAPIVersion
+	KMSAPIVersion     = "v1"
+	KMSAPIPrefix      = "/" + KMSAPIVersion
 )
 
 // getEndpointURL - construct a new endpoint.
