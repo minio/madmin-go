@@ -19,7 +19,6 @@ package madmin
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
 )
@@ -330,9 +329,6 @@ func (adm *AdminClient) DescribeIdentity(ctx context.Context, identity string) (
 	if err = json.NewDecoder(resp.Body).Decode(&i); err != nil {
 		return nil, err
 	}
-	bytes, err := json.Marshal(i)
-	fmt.Println("bytes", string(bytes))
-	fmt.Println("err", err)
 	return &i, nil
 }
 
@@ -351,9 +347,6 @@ func (adm *AdminClient) DescribeSelfIdentity(ctx context.Context) (*KMSDescribeS
 	if err = json.NewDecoder(resp.Body).Decode(&si); err != nil {
 		return nil, err
 	}
-	b, err := json.Marshal(si)
-	fmt.Println("bytes", string(b))
-	fmt.Println("err", err)
 	return &si, nil
 }
 
@@ -399,7 +392,7 @@ func (adm *AdminClient) doKMSRequest(ctx context.Context, path, method string, c
 		qv.Set(key, value)
 	}
 	reqData := requestData{
-		relPath:     KMSAPIPrefix + path,
+		relPath:     kmsAPIPrefix + path,
 		queryValues: qv,
 		isKMS:       true,
 		content:     content,
