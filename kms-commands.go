@@ -1,5 +1,5 @@
 //
-// MinIO Object Storage (c) 2021 MinIO, Inc.
+// MinIO Object Storage (c) 2022 MinIO, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -30,6 +30,61 @@ type KMSStatus struct {
 	Name         string               `json:"name"`           // Name or type of the KMS
 	DefaultKeyID string               `json:"default-key-id"` // The key ID used when no explicit key is specified
 	Endpoints    map[string]ItemState `json:"endpoints"`      // List of KMS endpoints and their status (online/offline)
+}
+
+// KMSKeyInfo contains key metadata
+type KMSKeyInfo struct {
+	CreatedAt string `json:"createdAt"`
+	CreatedBy string `json:"createdBy"`
+	Name      string `json:"name"`
+}
+
+// KMSPolicyInfo contains policy metadata
+type KMSPolicyInfo struct {
+	CreatedAt string `json:"createdAt"`
+	CreatedBy string `json:"createdBy"`
+	Name      string `json:"name"`
+}
+
+// KMSIdentityInfo contains policy metadata
+type KMSIdentityInfo struct {
+	CreatedAt string `json:"createdAt"`
+	CreatedBy string `json:"createdBy"`
+	Identity  string `json:"identity"`
+	Policy    string `json:"policy"`
+	Error     string `json:"error"`
+}
+
+// KMSDescribePolicy contains policy metadata
+type KMSDescribePolicy struct {
+	Name      string `json:"name"`
+	CreatedAt string `json:"created_at"`
+	CreatedBy string `json:"created_by"`
+}
+
+// KMSPolicy represents a KMS policy
+type KMSPolicy struct {
+	Allow []string `json:"allow"`
+	Deny  []string `json:"deny"`
+}
+
+// KMSDescribeIdentity contains identity metadata
+type KMSDescribeIdentity struct {
+	Policy    string `json:"policy"`
+	Identity  string `json:"identity"`
+	IsAdmin   bool   `json:"isAdmin"`
+	CreatedAt string `json:"createdAt"`
+	CreatedBy string `json:"createdBy"`
+}
+
+// KMSDescribeSelfIdentity describes the identity issuing the request
+type KMSDescribeSelfIdentity struct {
+	Policy     *KMSPolicy `json:"policy"`
+	PolicyName string     `json:"policyName"`
+	Identity   string     `json:"identity"`
+	IsAdmin    bool       `json:"isAdmin"`
+	CreatedAt  string     `json:"createdAt"`
+	CreatedBy  string     `json:"createdBy"`
 }
 
 // KMSStatus returns status information about the KMS connected
@@ -74,6 +129,54 @@ func (adm *AdminClient) CreateKey(ctx context.Context, keyID string) error {
 	return nil
 }
 
+// DeleteKey tries to delete a key with the given keyID
+// at the KMS connected to a MinIO server.
+func (adm *AdminClient) DeleteKey(ctx context.Context, keyID string) error {
+	// DELETE /minio/kms/v1/key/delete?key-id=<keyID>
+	resp, err := adm.doKMSRequest(ctx, "/key/delete", http.MethodDelete, nil, map[string]string{"key-id": keyID})
+	if err != nil {
+		return err
+	}
+	defer closeResponse(resp)
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+	return nil
+}
+
+// ImportKey tries to import a cryptographic key
+// at the KMS connected to a MinIO server.
+func (adm *AdminClient) ImportKey(ctx context.Context, keyID string, content []byte) error {
+	// POST /minio/kms/v1/key/import?key-id=<keyID>
+	resp, err := adm.doKMSRequest(ctx, "/key/import", http.MethodPost, content, map[string]string{"key-id": keyID})
+	if err != nil {
+		return err
+	}
+	defer closeResponse(resp)
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+	return nil
+}
+
+// ListKeys tries to get all key names that match the specified pattern
+func (adm *AdminClient) ListKeys(ctx context.Context, pattern string) ([]KMSKeyInfo, error) {
+	// GET /minio/kms/v1/key/list?pattern=<pattern>
+	resp, err := adm.doKMSRequest(ctx, "/key/list", http.MethodGet, nil, map[string]string{"pattern": pattern})
+	if err != nil {
+		return nil, err
+	}
+	defer closeResponse(resp)
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+	var results []KMSKeyInfo
+	if err = json.NewDecoder(resp.Body).Decode(&results); err != nil {
+		return nil, err
+	}
+	return results, nil
+}
+
 // GetKeyStatus requests status information about the key referenced by keyID
 // from the KMS connected to a MinIO by performing a Admin-API request.
 // It basically hits the `/minio/admin/v3/kms/key/status` API endpoint.
@@ -110,4 +213,189 @@ type KMSKeyStatus struct {
 	KeyID         string `json:"key-id"`
 	EncryptionErr string `json:"encryption-error,omitempty"` // An empty error == success
 	DecryptionErr string `json:"decryption-error,omitempty"` // An empty error == success
+}
+
+// SetKMSPolicy tries to create or update a policy
+// at the KMS connected to a MinIO server.
+func (adm *AdminClient) SetKMSPolicy(ctx context.Context, policy string, content []byte) error {
+	// POST /minio/kms/v1/policy/set?policy=<policy>
+	resp, err := adm.doKMSRequest(ctx, "/policy/set", http.MethodPost, content, map[string]string{"policy": policy})
+	if err != nil {
+		return err
+	}
+	defer closeResponse(resp)
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+	return nil
+}
+
+// AssignPolicy tries to assign a policy to an identity
+// at the KMS connected to a MinIO server.
+func (adm *AdminClient) AssignPolicy(ctx context.Context, policy string, content []byte) error {
+	// POST /minio/kms/v1/policy/assign?policy=<policy>
+	resp, err := adm.doKMSRequest(ctx, "/policy/assign", http.MethodPost, content, map[string]string{"policy": policy})
+	if err != nil {
+		return err
+	}
+	defer closeResponse(resp)
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+	return nil
+}
+
+// DescribePolicy tries to describe a KMS policy
+func (adm *AdminClient) DescribePolicy(ctx context.Context, policy string) (*KMSDescribePolicy, error) {
+	// GET /minio/kms/v1/policy/describe?policy=<policy>
+	resp, err := adm.doKMSRequest(ctx, "/policy/describe", http.MethodGet, nil, map[string]string{"policy": policy})
+	if err != nil {
+		return nil, err
+	}
+	defer closeResponse(resp)
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+	var dp KMSDescribePolicy
+	if err = json.NewDecoder(resp.Body).Decode(&dp); err != nil {
+		return nil, err
+	}
+	return &dp, nil
+}
+
+// GetPolicy tries to get a KMS policy
+func (adm *AdminClient) GetPolicy(ctx context.Context, policy string) (*KMSPolicy, error) {
+	// GET /minio/kms/v1/policy/get?policy=<policy>
+	resp, err := adm.doKMSRequest(ctx, "/policy/get", http.MethodGet, nil, map[string]string{"policy": policy})
+	if err != nil {
+		return nil, err
+	}
+	defer closeResponse(resp)
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+	var p KMSPolicy
+	if err = json.NewDecoder(resp.Body).Decode(&p); err != nil {
+		return nil, err
+	}
+	return &p, nil
+}
+
+// ListPolicies tries to get all policies that match the specified pattern
+func (adm *AdminClient) ListPolicies(ctx context.Context, pattern string) ([]KMSPolicyInfo, error) {
+	// GET /minio/kms/v1/policy/list?pattern=<pattern>
+	resp, err := adm.doKMSRequest(ctx, "/policy/list", http.MethodGet, nil, map[string]string{"pattern": pattern})
+	if err != nil {
+		return nil, err
+	}
+	defer closeResponse(resp)
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+	var results []KMSPolicyInfo
+	if err = json.NewDecoder(resp.Body).Decode(&results); err != nil {
+		return nil, err
+	}
+	return results, nil
+}
+
+// DeletePolicy tries to delete a policy
+// at the KMS connected to a MinIO server.
+func (adm *AdminClient) DeletePolicy(ctx context.Context, policy string) error {
+	// DELETE /minio/kms/v1/policy/delete?policy=<policy>
+	resp, err := adm.doKMSRequest(ctx, "/policy/delete", http.MethodDelete, nil, map[string]string{"policy": policy})
+	if err != nil {
+		return err
+	}
+	defer closeResponse(resp)
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+	return nil
+}
+
+// DescribeIdentity tries to describe a KMS identity
+func (adm *AdminClient) DescribeIdentity(ctx context.Context, identity string) (*KMSDescribeIdentity, error) {
+	// GET /minio/kms/v1/identity/describe?identity=<identity>
+	resp, err := adm.doKMSRequest(ctx, "/identity/describe", http.MethodGet, nil, map[string]string{"identity": identity})
+	if err != nil {
+		return nil, err
+	}
+	defer closeResponse(resp)
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+	var i KMSDescribeIdentity
+	if err = json.NewDecoder(resp.Body).Decode(&i); err != nil {
+		return nil, err
+	}
+	return &i, nil
+}
+
+// DescribeSelfIdentity tries to describe the identity issuing the request.
+func (adm *AdminClient) DescribeSelfIdentity(ctx context.Context) (*KMSDescribeSelfIdentity, error) {
+	// GET /minio/kms/v1/identity/describe-self
+	resp, err := adm.doKMSRequest(ctx, "/identity/describe-self", http.MethodGet, nil, map[string]string{})
+	if err != nil {
+		return nil, err
+	}
+	defer closeResponse(resp)
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+	var si KMSDescribeSelfIdentity
+	if err = json.NewDecoder(resp.Body).Decode(&si); err != nil {
+		return nil, err
+	}
+	return &si, nil
+}
+
+// ListIdentities tries to get all identities that match the specified pattern
+func (adm *AdminClient) ListIdentities(ctx context.Context, pattern string) ([]KMSIdentityInfo, error) {
+	// GET /minio/kms/v1/identity/list?pattern=<pattern>
+	if pattern == "" { // list identities does not default to *
+		pattern = "*"
+	}
+	resp, err := adm.doKMSRequest(ctx, "/identity/list", http.MethodGet, nil, map[string]string{"pattern": pattern})
+	if err != nil {
+		return nil, err
+	}
+	defer closeResponse(resp)
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+	var results []KMSIdentityInfo
+	if err = json.NewDecoder(resp.Body).Decode(&results); err != nil {
+		return nil, err
+	}
+	return results, nil
+}
+
+// DeleteIdentity tries to delete a identity
+// at the KMS connected to a MinIO server.
+func (adm *AdminClient) DeleteIdentity(ctx context.Context, identity string) error {
+	// DELETE /minio/kms/v1/identity/delete?identity=<identity>
+	resp, err := adm.doKMSRequest(ctx, "/identity/delete", http.MethodDelete, nil, map[string]string{"identity": identity})
+	if err != nil {
+		return err
+	}
+	defer closeResponse(resp)
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+	return nil
+}
+
+func (adm *AdminClient) doKMSRequest(ctx context.Context, path, method string, content []byte, values map[string]string) (*http.Response, error) {
+	qv := url.Values{}
+	for key, value := range values {
+		qv.Set(key, value)
+	}
+	reqData := requestData{
+		relPath:     kmsAPIPrefix + path,
+		queryValues: qv,
+		isKMS:       true,
+		content:     content,
+	}
+	return adm.executeMethod(ctx, method, reqData)
 }
