@@ -42,6 +42,8 @@ const (
 	TraceDecommission
 	// TraceHealing will trace healing operations.
 	TraceHealing
+	// TraceBatchReplication will trace batch replication operations.
+	TraceBatchReplication
 	// Add more here...
 
 	// TraceAll contains all valid trace modes.
