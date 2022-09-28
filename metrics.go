@@ -40,6 +40,7 @@ const (
 	MetricsScanner MetricType = 1 << (iota)
 	MetricsDisk
 	MetricsOS
+	MetricsBatchJobs
 
 	// MetricsAll must be last.
 	// Enables all metrics.
@@ -55,6 +56,7 @@ type MetricsOptions struct {
 	ByHost   bool          // Return metrics by host.
 	Disks    []string
 	ByDisk   bool
+	ByJobID  string
 }
 
 // Metrics makes an admin call to retrieve metrics.
@@ -72,6 +74,9 @@ func (adm *AdminClient) Metrics(ctx context.Context, o MetricsOptions, out func(
 	q.Set("disks", strings.Join(o.Disks, ","))
 	if o.ByDisk {
 		q.Set("by-disk", "true")
+	}
+	if o.ByJobID != "" {
+		q.Set("by-jobID", o.ByJobID)
 	}
 
 	resp, err := adm.executeMethod(ctx,
@@ -128,9 +133,10 @@ type RealtimeMetrics struct {
 
 // Metrics contains all metric types.
 type Metrics struct {
-	Scanner *ScannerMetrics `json:"scanner,omitempty"`
-	Disk    *DiskMetric     `json:"disk,omitempty"`
-	OS      *OSMetrics      `json:"os,omitempty"`
+	Scanner   *ScannerMetrics  `json:"scanner,omitempty"`
+	Disk      *DiskMetric      `json:"disk,omitempty"`
+	OS        *OSMetrics       `json:"os,omitempty"`
+	BatchJobs *BatchJobMetrics `json:"batchJobs,omitempty"`
 }
 
 // Merge other into r.
@@ -152,6 +158,10 @@ func (r *Metrics) Merge(other *Metrics) {
 		r.OS = &OSMetrics{}
 	}
 	r.OS.Merge(other.OS)
+	if r.BatchJobs == nil && other.BatchJobs != nil {
+		r.BatchJobs = &BatchJobMetrics{}
+	}
+	r.BatchJobs.Merge(other.BatchJobs)
 }
 
 // Merge will merge other into r.
@@ -417,5 +427,58 @@ func (o *OSMetrics) Merge(other *OSMetrics) {
 		total := o.LastMinute.Operations[k]
 		total.Merge(v)
 		o.LastMinute.Operations[k] = total
+	}
+}
+
+// BatchJobMetrics contains metrics for batch operations
+type BatchJobMetrics struct {
+	// Time these metrics were collected
+	CollectedAt time.Time `json:"collected"`
+
+	// Jobs by ID.
+	Jobs map[string]JobMetric
+}
+
+type JobMetric struct {
+	JobID         string    `json:"jobID"`
+	JobType       string    `json:"jobType"`
+	StartTime     time.Time `json:"startTime"`
+	LastUpdate    time.Time `json:"lastUpdate"`
+	RetryAttempts int       `json:"retryAttempts"`
+
+	Complete bool `json:"complete"`
+	Failed   bool `json:"failed"`
+
+	// Specific job type data:
+	Replicate *ReplicateInfo `json:"replicate,omitempty"`
+}
+
+type ReplicateInfo struct {
+	// Last bucket/object batch replicated
+	Bucket string `json:"lastBucket"`
+	Object string `json:"lastObject"`
+
+	// Verbose information
+	Objects          int64 `json:"objects"`
+	ObjectsFailed    int64 `json:"objectsFailed"`
+	BytesTransferred int64 `json:"bytesTransferred"`
+	BytesFailed      int64 `json:"bytesFailed"`
+}
+
+// Merge other into 'o'.
+func (o *BatchJobMetrics) Merge(other *BatchJobMetrics) {
+	if other == nil || len(other.Jobs) == 0 {
+		return
+	}
+	if o.CollectedAt.Before(other.CollectedAt) {
+		// Use latest timestamp
+		o.CollectedAt = other.CollectedAt
+	}
+	if o.Jobs == nil {
+		o.Jobs = make(map[string]JobMetric, len(other.Jobs))
+	}
+	// Job
+	for k, v := range other.Jobs {
+		o.Jobs[k] = v
 	}
 }
