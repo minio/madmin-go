@@ -107,6 +107,25 @@ func (adm *AdminClient) KMSStatus(ctx context.Context) (KMSStatus, error) {
 	return status, nil
 }
 
+// KMSStatusV2 returns status information about the KMS connected
+// to the MinIO server, if configured.
+func (adm *AdminClient) KMSStatusV2(ctx context.Context) (KMSStatus, error) {
+	// GET /minio/kms/v1/status
+	resp, err := adm.doKMSRequest(ctx, "/status", http.MethodGet, nil, map[string]string{})
+	if err != nil {
+		return KMSStatus{}, err
+	}
+	defer closeResponse(resp)
+	if resp.StatusCode != http.StatusOK {
+		return KMSStatus{}, httpRespToErrorResponse(resp)
+	}
+	var status KMSStatus
+	if err = json.NewDecoder(resp.Body).Decode(&status); err != nil {
+		return KMSStatus{}, err
+	}
+	return status, nil
+}
+
 // CreateKey tries to create a new master key with the given keyID
 // at the KMS connected to a MinIO server.
 func (adm *AdminClient) CreateKey(ctx context.Context, keyID string) error {
@@ -119,6 +138,21 @@ func (adm *AdminClient) CreateKey(ctx context.Context, keyID string) error {
 	}
 
 	resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
+	if err != nil {
+		return err
+	}
+	defer closeResponse(resp)
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+	return nil
+}
+
+// CreateKeyV2 tries to create a new master key with the given keyID
+// at the KMS connected to a MinIO server.
+func (adm *AdminClient) CreateKeyV2(ctx context.Context, keyID string) error {
+	// POST /minio/kms/v1/key/create?key-id=<keyID>
+	resp, err := adm.doKMSRequest(ctx, "/key/create", http.MethodPost, nil, map[string]string{"key-id": keyID})
 	if err != nil {
 		return err
 	}
@@ -190,6 +224,26 @@ func (adm *AdminClient) GetKeyStatus(ctx context.Context, keyID string) (*KMSKey
 	}
 
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	if err != nil {
+		return nil, err
+	}
+	defer closeResponse(resp)
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+	var keyInfo KMSKeyStatus
+	if err = json.NewDecoder(resp.Body).Decode(&keyInfo); err != nil {
+		return nil, err
+	}
+	return &keyInfo, nil
+}
+
+// GetKeyStatusV2 requests status information about the key referenced by keyID
+// from the KMS connected to a MinIO by performing a Admin-API request.
+// It basically hits the `/minio/admin/v3/kms/key/status` API endpoint.
+func (adm *AdminClient) GetKeyStatusV2(ctx context.Context, keyID string) (*KMSKeyStatus, error) {
+	// GET /minio/kms/v1/key/status?key-id=<keyID>
+	resp, err := adm.doKMSRequest(ctx, "/key/status", http.MethodGet, nil, map[string]string{"key-id": keyID})
 	if err != nil {
 		return nil, err
 	}
