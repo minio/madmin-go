@@ -89,6 +89,7 @@ type KMSDescribeSelfIdentity struct {
 
 // KMSStatus returns status information about the KMS connected
 // to the MinIO server, if configured.
+// Deprecated: use KMSStatusV2 instead
 func (adm *AdminClient) KMSStatus(ctx context.Context) (KMSStatus, error) {
 	resp, err := adm.executeMethod(ctx, http.MethodGet, requestData{
 		relPath: adminAPIPrefix + "/kms/status", // GET <endpoint>/<admin-API>/kms/status
@@ -128,6 +129,7 @@ func (adm *AdminClient) KMSStatusV2(ctx context.Context) (KMSStatus, error) {
 
 // CreateKey tries to create a new master key with the given keyID
 // at the KMS connected to a MinIO server.
+// Deprecated: use CreateKeyV2 instead
 func (adm *AdminClient) CreateKey(ctx context.Context, keyID string) error {
 	// POST /minio/admin/v3/kms/key/create?key-id=<keyID>
 	qv := url.Values{}
@@ -214,6 +216,7 @@ func (adm *AdminClient) ListKeys(ctx context.Context, pattern string) ([]KMSKeyI
 // GetKeyStatus requests status information about the key referenced by keyID
 // from the KMS connected to a MinIO by performing a Admin-API request.
 // It basically hits the `/minio/admin/v3/kms/key/status` API endpoint.
+// Deprecated: use GetKeyStatusV2 instead
 func (adm *AdminClient) GetKeyStatus(ctx context.Context, keyID string) (*KMSKeyStatus, error) {
 	// GET /minio/admin/v3/kms/key/status?key-id=<keyID>
 	qv := url.Values{}
