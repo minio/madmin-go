@@ -894,9 +894,6 @@ type HealthDataType string
 
 // HealthDataTypes
 const (
-	HealthDataTypePerfDrive   HealthDataType = "driveperf"
-	HealthDataTypePerfNet     HealthDataType = "netperf"
-	HealthDataTypePerfObj     HealthDataType = "objperf"
 	HealthDataTypeMinioInfo   HealthDataType = "minioinfo"
 	HealthDataTypeMinioConfig HealthDataType = "minioconfig"
 	HealthDataTypeSysCPU      HealthDataType = "syscpu"
@@ -914,9 +911,6 @@ const (
 
 // HealthDataTypesMap - Map of Health datatypes
 var HealthDataTypesMap = map[string]HealthDataType{
-	"driveperf":   HealthDataTypePerfDrive,
-	"netperf":     HealthDataTypePerfNet,
-	"objperf":     HealthDataTypePerfObj,
 	"minioinfo":   HealthDataTypeMinioInfo,
 	"minioconfig": HealthDataTypeMinioConfig,
 	"syscpu":      HealthDataTypeSysCPU,
@@ -947,9 +941,6 @@ var HealthDataTypesList = []HealthDataType{
 	HealthDataTypeSysErrors,
 	HealthDataTypeSysServices,
 	HealthDataTypeSysConfig,
-	HealthDataTypePerfDrive,
-	HealthDataTypePerfObj,
-	HealthDataTypePerfNet,
 }
 
 // HealthInfoVersionStruct - struct for health info version
