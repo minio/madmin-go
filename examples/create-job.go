@@ -46,7 +46,7 @@ replicate:
     name: "weekly-replication-job"
   
   target:
-    type: "s3"
+    type: "minio"
     bucket: "testbucket"
     endpoint: "https://play.min.io"
     credentials:
@@ -55,7 +55,7 @@ replicate:
       sessionToken: ""
       
   source:
-    type: "s3"
+    type: "minio"
     bucket: "testbucket"
     prefix: ""
 `
