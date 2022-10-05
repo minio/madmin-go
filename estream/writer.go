@@ -247,8 +247,8 @@ func (w *streamWriter) Close() error {
 		return err
 	}
 
-	// Add final hash.
-	if err := w.w.setErr(w.w.mw.WriteUint8(hashTypeXxhash)); err != nil {
+	// Add final checksum.
+	if err := w.w.setErr(w.w.mw.WriteUint8(checksumTypeXxhash)); err != nil {
 		return err
 	}
 

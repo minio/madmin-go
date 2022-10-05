@@ -39,7 +39,6 @@ type Reader struct {
 	err           error
 	inStream      bool
 	key           *[32]byte
-	nonce         *[32]byte
 	private       *rsa.PrivateKey
 	privateFn     func(key *rsa.PublicKey) *rsa.PrivateKey
 	skipEncrypted bool
@@ -221,7 +220,15 @@ func (r *Reader) skipDataBlocks() error {
 			}
 		case blockEOS:
 			// Skip hash
-			return r.mr.Skip()
+			t, err := r.mr.ReadUint8()
+			if err != nil {
+				return err
+			}
+			r.inStream = false
+			if t != checksumTypeNone {
+				return r.mr.Skip()
+			}
+			return nil
 		default:
 			if err := r.skipBlock(id); err != nil {
 				return err
@@ -306,13 +313,23 @@ func (r *streamReader) Read(b []byte) (int, error) {
 			r.tmp = buf
 			r.buf.Write(buf)
 		case blockEOS:
-			hash, err := r.up.mr.ReadBytes(nil)
+			hashType, err := r.up.mr.ReadUint8()
 			if err != nil {
 				return 0, r.up.setErr(err)
 			}
-			got := r.h.Sum(nil)
-			if !bytes.Equal(hash, got) {
-				return 0, r.up.setErr(fmt.Errorf("checksum mismatch, want %s, got %s", hex.EncodeToString(hash), hex.EncodeToString(got)))
+			switch hashType {
+			case checksumTypeXxhash:
+				hash, err := r.up.mr.ReadBytes(nil)
+				if err != nil {
+					return 0, r.up.setErr(err)
+				}
+				got := r.h.Sum(nil)
+				if !bytes.Equal(hash, got) {
+					return 0, r.up.setErr(fmt.Errorf("checksum mismatch, want %s, got %s", hex.EncodeToString(hash), hex.EncodeToString(got)))
+				}
+			case checksumTypeNone:
+			default:
+				return 0, r.up.setErr(fmt.Errorf("unknown checksum id %d", hashType))
 			}
 			r.isEOF = true
 			r.up.inStream = false

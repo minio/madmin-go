@@ -29,6 +29,6 @@ const (
 )
 
 const (
-	hashTypeNone = iota
-	hashTypeXxhash
+	checksumTypeNone = iota
+	checksumTypeXxhash
 )
