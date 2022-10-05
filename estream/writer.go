@@ -114,6 +114,19 @@ func (w *Writer) AddKeyPlain() error {
 	return w.setErr(w.mw.WriteBytes(key[:]))
 }
 
+// AddError will indicate the writer encountered an error
+// and the reader should abort the stream.
+// The message will be returned as an error.
+func (w *Writer) AddError(msg string) error {
+	if w.err != nil {
+		return w.err
+	}
+	if err := w.addBlock(blockError); err != nil {
+		return w.setErr(err)
+	}
+	return w.mw.WriteString(msg)
+}
+
 // AddUnencryptedStream adds a named stream.
 // Extra data can be added, which is added without encryption or checksums.
 func (w *Writer) AddUnencryptedStream(name string, extra []byte) (io.WriteCloser, error) {

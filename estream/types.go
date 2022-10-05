@@ -26,6 +26,7 @@ const (
 	blockDatablock
 	blockEOS
 	blockEOF
+	blockError
 )
 
 const (

@@ -196,6 +196,12 @@ func (r *Reader) NextStream() (*Stream, error) {
 
 		case blockEOF:
 			return nil, io.EOF
+		case blockError:
+			msg, err := r.mr.ReadString()
+			if err != nil {
+				return nil, r.setErr(err)
+			}
+			return nil, r.setErr(errors.New(msg))
 		default:
 			if err := r.skipBlock(id); err != nil {
 				return nil, r.setErr(err)
@@ -229,6 +235,12 @@ func (r *Reader) skipDataBlocks() error {
 				return r.mr.Skip()
 			}
 			return nil
+		case blockError:
+			msg, err := r.mr.ReadString()
+			if err != nil {
+				return err
+			}
+			return errors.New(msg)
 		default:
 			if err := r.skipBlock(id); err != nil {
 				return err
@@ -334,6 +346,12 @@ func (r *streamReader) Read(b []byte) (int, error) {
 			r.isEOF = true
 			r.up.inStream = false
 			return 0, io.EOF
+		case blockError:
+			msg, err := r.up.mr.ReadString()
+			if err != nil {
+				return 0, r.up.setErr(err)
+			}
+			return 0, r.up.setErr(errors.New(msg))
 		default:
 			if err := r.up.skipBlock(id); err != nil {
 				return 0, r.up.setErr(err)
