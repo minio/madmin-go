@@ -41,8 +41,8 @@ type KMSKeyInfo struct {
 
 // KMSPolicyInfo contains policy metadata
 type KMSPolicyInfo struct {
-	CreatedAt string `json:"createdAt"`
-	CreatedBy string `json:"createdBy"`
+	CreatedAt string `json:"created_at"`
+	CreatedBy string `json:"created_by"`
 	Name      string `json:"name"`
 }
 
