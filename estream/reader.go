@@ -34,6 +34,7 @@ import (
 
 type Reader struct {
 	mr            *msgp.Reader
+	majorV        uint8
 	minorV        uint8
 	err           error
 	inStream      bool
@@ -56,7 +57,7 @@ func NewReader(r io.Reader) (*Reader, error) {
 		return nil, fmt.Errorf("unknown stream version: 0x%x", ver[0])
 	}
 
-	return &Reader{mr: msgp.NewReader(r), minorV: ver[1]}, nil
+	return &Reader{mr: msgp.NewReader(r), majorV: ver[0], minorV: ver[1]}, nil
 }
 
 // SetPrivateKey will set the private key to allow stream decryption.
