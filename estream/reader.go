@@ -114,10 +114,13 @@ func (r *Reader) NextStream() (*Stream, error) {
 			}
 			r.key = (*[32]byte)(key)
 		case blockEncryptedKey:
+			// Read public key
 			publicKey, err := r.mr.ReadBytes(nil)
 			if err != nil {
 				return nil, r.setErr(err)
 			}
+
+			// Request private key if we have a custom function.
 			if r.privateFn != nil {
 				pk, err := x509.ParsePKCS1PublicKey(publicKey)
 				if err != nil {
@@ -125,10 +128,11 @@ func (r *Reader) NextStream() (*Stream, error) {
 				}
 				r.private = r.privateFn(pk)
 				if r.private == nil {
-					return nil, r.setErr(errors.New("nil private key provided"))
+					return nil, r.setErr(errors.New("nil private key returned"))
 				}
 			}
 
+			// Read cipher key
 			cipherKey, err := r.mr.ReadBytes(nil)
 			if err != nil {
 				return nil, r.setErr(err)
@@ -140,6 +144,7 @@ func (r *Reader) NextStream() (*Stream, error) {
 				return nil, r.setErr(errors.New("private key has not been set"))
 			}
 
+			// Decrypt stream key
 			key, err := rsa.DecryptOAEP(sha512.New(), rand.Reader, r.private, cipherKey, nil)
 			if err != nil {
 				return nil, err
@@ -174,6 +179,7 @@ func (r *Reader) NextStream() (*Stream, error) {
 				}
 				return nil, r.setErr(errors.New("key has not been received"))
 			}
+			// Read stream nonce
 			nonce, err := r.mr.ReadBytes(nil)
 			if err != nil {
 				return nil, r.setErr(err)
@@ -182,7 +188,8 @@ func (r *Reader) NextStream() (*Stream, error) {
 			if err != nil {
 				return nil, r.setErr(err)
 			}
-			// Zero nonce, we only use each key once, and 32 bytes is plenty.
+
+			// Check if nonce is expected length.
 			if len(nonce) != stream.NonceSize() {
 				return nil, r.setErr(fmt.Errorf("unexpected nonce length: %d", len(nonce)))
 			}
@@ -300,6 +307,7 @@ func (r *streamReader) Read(b []byte) (int, error) {
 		return 0, r.up.err
 	}
 	for {
+		// If we have anything in the buffer return that first.
 		if r.buf.Len() > 0 {
 			n, err := r.buf.Read(b)
 			if err == io.EOF {
@@ -321,15 +329,18 @@ func (r *streamReader) Read(b []byte) (int, error) {
 			if err != nil {
 				return 0, r.up.setErr(err)
 			}
+
+			// Write to buffer and checksum
 			r.h.Write(buf)
 			r.tmp = buf
 			r.buf.Write(buf)
 		case blockEOS:
-			hashType, err := r.up.mr.ReadUint8()
+			// Verify stream checksum if any.
+			checksum, err := r.up.mr.ReadUint8()
 			if err != nil {
 				return 0, r.up.setErr(err)
 			}
-			switch hashType {
+			switch checksum {
 			case checksumTypeXxhash:
 				hash, err := r.up.mr.ReadBytes(nil)
 				if err != nil {
@@ -341,7 +352,7 @@ func (r *streamReader) Read(b []byte) (int, error) {
 				}
 			case checksumTypeNone:
 			default:
-				return 0, r.up.setErr(fmt.Errorf("unknown checksum id %d", hashType))
+				return 0, r.up.setErr(fmt.Errorf("unknown checksum id %d", checksum))
 			}
 			r.isEOF = true
 			r.up.inStream = false

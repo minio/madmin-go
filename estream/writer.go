@@ -107,6 +107,8 @@ func (w *Writer) AddKeyPlain() error {
 		return w.setErr(err)
 	}
 	w.key = &key
+
+	// Write key directly to stream
 	if err = w.addBlock(blockPlainKey); err != nil {
 		return w.setErr(err)
 	}
@@ -137,6 +139,8 @@ func (w *Writer) AddUnencryptedStream(name string, extra []byte) (io.WriteCloser
 	if err := w.addBlock(blockPlainStream); err != nil {
 		return nil, w.setErr(err)
 	}
+
+	// Write metadata...
 	if err := w.mw.WriteString(name); err != nil {
 		return nil, err
 	}
@@ -162,6 +166,7 @@ func (w *Writer) AddEncryptedStream(name string, extra []byte) (io.WriteCloser, 
 	if err := w.addBlock(blockEncStream); err != nil {
 		return nil, w.setErr(err)
 	}
+	// Write metadata...
 	if err := w.mw.WriteString(name); err != nil {
 		return nil, err
 	}
@@ -173,7 +178,7 @@ func (w *Writer) AddEncryptedStream(name string, extra []byte) (io.WriteCloser, 
 		return nil, w.setErr(err)
 	}
 
-	// Write nonce for stream.
+	// Make nonce for stream.
 	nonce := make([]byte, stream.NonceSize())
 	if _, err := io.ReadFull(crand.Reader, nonce); err != nil {
 		return nil, w.setErr(err)
@@ -202,6 +207,7 @@ func (w *Writer) Flush() error {
 		return err
 	}
 
+	// Flush upstream if we can
 	if f, ok := w.up.(http.Flusher); ok {
 		f.Flush()
 	}
@@ -241,6 +247,8 @@ func (w *streamWriter) Write(b []byte) (int, error) {
 	}
 	// Update hash.
 	w.h.Write(b)
+
+	// Write data as binary array.
 	return len(b), w.w.setErr(w.w.mw.WriteBytes(b))
 }
 
