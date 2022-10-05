@@ -21,6 +21,7 @@ import (
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha512"
+	"crypto/x509"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -39,6 +40,7 @@ type Reader struct {
 	key           *[32]byte
 	nonce         *[32]byte
 	private       *rsa.PrivateKey
+	privateFn     func(key *rsa.PublicKey) *rsa.PrivateKey
 	skipEncrypted bool
 }
 
@@ -58,8 +60,18 @@ func NewReader(r io.Reader) (*Reader, error) {
 }
 
 // SetPrivateKey will set the private key to allow stream decryption.
+// This overrides any function set by PrivateKeyProvider.
 func (r *Reader) SetPrivateKey(k *rsa.PrivateKey) {
+	r.privateFn = nil
 	r.private = k
+}
+
+// PrivateKeyProvider will ask for a private key matching the public key.
+// If the function returns a nil private key the stream key will not be decrypted.
+// This overrides any key set by SetPrivateKey.
+func (r *Reader) PrivateKeyProvider(fn func(key *rsa.PublicKey) *rsa.PrivateKey) {
+	r.privateFn = fn
+	r.private = nil
 }
 
 // SkipEncrypted will skip encrypted streams if no private key has been set.
@@ -102,6 +114,21 @@ func (r *Reader) NextStream() (*Stream, error) {
 			}
 			r.key = (*[32]byte)(key)
 		case blockEncryptedKey:
+			publicKey, err := r.mr.ReadBytes(nil)
+			if err != nil {
+				return nil, r.setErr(err)
+			}
+			if r.privateFn != nil {
+				pk, err := x509.ParsePKCS1PublicKey(publicKey)
+				if err != nil {
+					return nil, r.setErr(err)
+				}
+				r.private = r.privateFn(pk)
+				if r.private == nil {
+					return nil, r.setErr(errors.New("nil private key provided"))
+				}
+			}
+
 			cipherKey, err := r.mr.ReadBytes(nil)
 			if err != nil {
 				return nil, r.setErr(err)
