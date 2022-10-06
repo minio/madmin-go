@@ -68,7 +68,8 @@ func (r *Reader) SetPrivateKey(k *rsa.PrivateKey) {
 }
 
 // PrivateKeyProvider will ask for a private key matching the public key.
-// If the function returns a nil private key the stream key will not be decrypted.
+// If the function returns a nil private key the stream key will not be decrypted
+// and if SkipEncrypted has been set any streams with this key will be silently skipped.
 // This overrides any key set by SetPrivateKey.
 func (r *Reader) PrivateKeyProvider(fn func(key *rsa.PublicKey) *rsa.PrivateKey) {
 	r.privateFn = fn
@@ -76,8 +77,8 @@ func (r *Reader) PrivateKeyProvider(fn func(key *rsa.PublicKey) *rsa.PrivateKey)
 }
 
 // SkipEncrypted will skip encrypted streams if no private key has been set.
-func (r *Reader) SkipEncrypted() {
-	r.skipEncrypted = true
+func (r *Reader) SkipEncrypted(b bool) {
+	r.skipEncrypted = b
 }
 
 // Stream returns the next stream.
@@ -145,6 +146,10 @@ func (r *Reader) NextStream() (*Stream, error) {
 				}
 				r.private = r.privateFn(pk)
 				if r.private == nil {
+					if r.skipEncrypted {
+						r.key = nil
+						continue
+					}
 					return nil, r.setErr(errors.New("nil private key returned"))
 				}
 			}
@@ -156,6 +161,7 @@ func (r *Reader) NextStream() (*Stream, error) {
 			}
 			if r.private == nil {
 				if r.skipEncrypted {
+					r.key = nil
 					continue
 				}
 				return nil, r.setErr(errors.New("private key has not been set"))

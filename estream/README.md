@@ -17,6 +17,101 @@ This package provides a flexible way to merge multiple streams with controlled e
 * Nonce per stream (of course).
 * Messagepack for platform independent type safety.
 
+# Usage
+
+Create a writer that will write the stream. 
+
+You must provide an `io.Writer` to which the output is written. 
+Once all streams have been written it should be closed to indicate end of payload. 
+
+```Go
+    w := estream.NewWriter(output)
+    defer w.Close()
+```
+
+It is possible to signal an error to the receiver using `w.AddError(msg string)`.
+This will return the error to the receiver.  
+
+## Adding keys
+
+Keys for streams must be added. The keys themselves are 32 bytes of random data, 
+but it must be specified how they are stored. 
+
+They can be added as plain text, which isn't secure, 
+but allows later encryption using a public key.
+To add a key without encryption use `w.AddKeyPlain()` 
+which will add the keys to the stream.
+
+To add an encrypted key provide a 2048 bit public RSA key.
+Use `w.AddKeyEncrypted(publicKey)` to add a key to the stream.
+
+Once a key has been sent on the stream it will be used for all subsequent encrypted streams.
+This means that different keys with different private/public keys can be sent for different streams.
+
+## Sending streams
+
+Streams are added using either `w.AddEncryptedStream` or `w.AddUnencryptedStream`.
+
+A string identifier can be used to identify each stream when reading.
+An optional byte block can also be sent.
+
+Note that neither the name nor the byte block is encrypted, 
+so they should not contain sensitive data.
+
+The functions above return an `io.WriteCloser`.
+Data for this stream should be written to this interface
+and `Close()` should be called before another stream can be added.
+
+# Reading Streams
+
+To read back data `r, err := estream.NewReader(input)` can be used for create a Reader.
+
+To set a private key, use `r.SetPrivateKey(key)` to set a single private key.
+
+For multiple keys a key provider can be made to return the appropriate key:
+
+```Go
+    var key1, key2 *rsa.PrivateKey
+    // (read keys)
+    r.PrivateKeyProvider(func(key *rsa.PublicKey) *rsa.PrivateKey {
+        if key.Equal(&key1.PublicKey) {
+            return key1
+        }
+        if key.Equal(&key2.PublicKey) {
+            return key2
+        }
+        // Unknown key :(
+        return nil
+    })
+```
+
+It is possible to skip streams that cannot be decrypted using `r.SkipEncrypted(true)`.
+
+A simple for loop can be used to get all streams:
+
+```Go
+    for {
+        stream, err := r.NextStream()
+        if err == io.EOF {
+            // All streams read
+            break
+        }
+        // Metadata:
+        fmt.Println(stream.Name)
+        fmt.Println(stream.Extra)
+		
+        // Stream content is a standard io.Reader
+        io.Copy(os.StdOut, stream)
+    }
+```
+
+## Replacing keys
+
+It is possible to replace public keys needed for decryption using `estream.ReplaceKeys()`.
+
+For encrypted keys the private key must be provided and optionally unencrypted keys can also be 
+encrypted using a public key.
+
 # Format
 
 ## Header

@@ -38,6 +38,7 @@ func TestStreamRoundtrip(t *testing.T) {
 		t.Fatal(err)
 	}
 	wantStreams := 0
+	wantDecStreams := 0
 	for name, value := range testStreams {
 		st, err := w.AddEncryptedStream(name, []byte(name))
 		if err != nil {
@@ -58,6 +59,7 @@ func TestStreamRoundtrip(t *testing.T) {
 		}
 		st.Close()
 		wantStreams += 2
+		wantDecStreams += 2
 	}
 
 	priv, err := rsa.GenerateKey(crand.Reader, 2048)
@@ -88,6 +90,7 @@ func TestStreamRoundtrip(t *testing.T) {
 		}
 		st.Close()
 		wantStreams += 2
+		wantDecStreams += 1
 	}
 	err = w.Close()
 	if err != nil {
@@ -95,11 +98,13 @@ func TestStreamRoundtrip(t *testing.T) {
 	}
 
 	// Read back...
-	r, err := NewReader(&buf)
+	b := buf.Bytes()
+	r, err := NewReader(bytes.NewBuffer(b))
 	if err != nil {
 		t.Fatal(err)
 	}
 	r.SetPrivateKey(priv)
+
 	var gotStreams int
 	for {
 		st, err := r.NextStream()
@@ -128,6 +133,43 @@ func TestStreamRoundtrip(t *testing.T) {
 	if gotStreams != wantStreams {
 		t.Errorf("want %d streams, got %d", wantStreams, gotStreams)
 	}
+
+	// Read back, but skip encrypted streams.
+	r, err = NewReader(bytes.NewBuffer(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.SkipEncrypted(true)
+
+	gotStreams = 0
+	for {
+		st, err := r.NextStream()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("stream %d: %v", gotStreams, err)
+		}
+		want, ok := testStreams[st.Name]
+		if !ok {
+			t.Fatal("unexpected stream name", st.Name)
+		}
+		if !bytes.Equal(st.Extra, []byte(st.Name)) {
+			t.Fatal("unexpected stream extra:", st.Extra)
+		}
+		got, err := io.ReadAll(st)
+		if err != nil {
+			t.Fatalf("stream %d: %v", gotStreams, err)
+		}
+		if !bytes.Equal(got, want) {
+			t.Errorf("stream %d: content mismatch (len %d,%d)", gotStreams, len(got), len(want))
+		}
+		gotStreams++
+	}
+	if gotStreams != wantDecStreams {
+		t.Errorf("want %d streams, got %d", wantStreams, gotStreams)
+	}
+
 }
 
 func TestReplaceKeys(t *testing.T) {
