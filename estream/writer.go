@@ -147,7 +147,9 @@ func (w *Writer) AddUnencryptedStream(name string, extra []byte) (io.WriteCloser
 	if err := w.mw.WriteBytes(extra); err != nil {
 		return nil, err
 	}
-
+	if err := w.mw.WriteUint8(uint8(checksumTypeXxhash)); err != nil {
+		return nil, err
+	}
 	return w.newStreamWriter(), nil
 }
 
@@ -171,6 +173,9 @@ func (w *Writer) AddEncryptedStream(name string, extra []byte) (io.WriteCloser, 
 		return nil, err
 	}
 	if err := w.mw.WriteBytes(extra); err != nil {
+		return nil, err
+	}
+	if err := w.mw.WriteUint8(uint8(checksumTypeXxhash)); err != nil {
 		return nil, err
 	}
 	stream, err := sio.AES_256_GCM.Stream(w.key[:])
@@ -265,11 +270,6 @@ func (w *streamWriter) Close() error {
 
 	err := w.w.addBlock(blockEOS)
 	if err != nil {
-		return err
-	}
-
-	// Add final checksum.
-	if err := w.w.setErr(w.w.mw.WriteUint8(checksumTypeXxhash)); err != nil {
 		return err
 	}
 

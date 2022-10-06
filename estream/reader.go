@@ -163,9 +163,18 @@ func (r *Reader) NextStream() (*Stream, error) {
 			if err != nil {
 				return nil, r.setErr(err)
 			}
+			c, err := r.mr.ReadUint8()
+			if err != nil {
+				return nil, r.setErr(err)
+			}
+			checksum := checksumType(c)
+			if !checksum.valid() {
+				return nil, r.setErr(fmt.Errorf("unknown checksum type %d", checksum))
+			}
+
 			if id == blockPlainStream {
 				return &Stream{
-					Reader: r.newStreamReader(),
+					Reader: r.newStreamReader(checksum),
 					Name:   name,
 					Extra:  extra,
 				}, nil
@@ -233,15 +242,8 @@ func (r *Reader) skipDataBlocks() error {
 			}
 		case blockEOS:
 			// Skip hash
-			t, err := r.mr.ReadUint8()
-			if err != nil {
-				return err
-			}
 			r.inStream = false
-			if t != checksumTypeNone {
-				return r.mr.Skip()
-			}
-			return nil
+			return r.mr.Skip()
 		case blockError:
 			msg, err := r.mr.ReadString()
 			if err != nil {
@@ -290,10 +292,11 @@ type streamReader struct {
 	buf   bytes.Buffer
 	tmp   []byte
 	isEOF bool
+	check checksumType
 }
 
-func (r *Reader) newStreamReader() *streamReader {
-	sr := &streamReader{up: r}
+func (r *Reader) newStreamReader(ct checksumType) *streamReader {
+	sr := &streamReader{up: r, check: ct}
 	sr.h.Reset()
 	r.inStream = true
 	return sr
@@ -331,28 +334,26 @@ func (r *streamReader) Read(b []byte) (int, error) {
 			}
 
 			// Write to buffer and checksum
-			r.h.Write(buf)
+			if r.check == checksumTypeXxhash {
+				r.h.Write(buf)
+			}
 			r.tmp = buf
 			r.buf.Write(buf)
 		case blockEOS:
 			// Verify stream checksum if any.
-			checksum, err := r.up.mr.ReadUint8()
+			hash, err := r.up.mr.ReadBytes(nil)
 			if err != nil {
 				return 0, r.up.setErr(err)
 			}
-			switch checksum {
+			switch r.check {
 			case checksumTypeXxhash:
-				hash, err := r.up.mr.ReadBytes(nil)
-				if err != nil {
-					return 0, r.up.setErr(err)
-				}
 				got := r.h.Sum(nil)
 				if !bytes.Equal(hash, got) {
 					return 0, r.up.setErr(fmt.Errorf("checksum mismatch, want %s, got %s", hex.EncodeToString(hash), hex.EncodeToString(got)))
 				}
 			case checksumTypeNone:
 			default:
-				return 0, r.up.setErr(fmt.Errorf("unknown checksum id %d", checksum))
+				return 0, r.up.setErr(fmt.Errorf("unknown checksum id %d", r.check))
 			}
 			r.isEOF = true
 			r.up.inStream = false

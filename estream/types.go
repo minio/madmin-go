@@ -29,7 +29,15 @@ const (
 	blockError
 )
 
+type checksumType uint8
+
 const (
-	checksumTypeNone = iota
+	checksumTypeNone checksumType = iota
 	checksumTypeXxhash
+
+	checksumTypeUnknown
 )
+
+func (c checksumType) valid() bool {
+	return c >= checksumTypeNone && c < checksumTypeUnknown
+}
