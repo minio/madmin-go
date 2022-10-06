@@ -4,6 +4,7 @@ go 1.17
 
 require (
 	github.com/cespare/xxhash/v2 v2.1.2
+	github.com/google/uuid v1.3.0
 	github.com/minio/minio-go/v7 v7.0.23
 	github.com/prometheus/procfs v0.7.3
 	github.com/secure-io/sio-go v0.3.1

@@ -22,9 +22,7 @@ linters:
     - revive
     - ineffassign
     - gosimple
-    - deadcode
     - unused
-    - structcheck
     - prealloc
     - unconvert
     - gofumpt

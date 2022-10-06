@@ -39,7 +39,7 @@ const BatchJobReplicateTemplate = `replicate:
   apiVersion: v1
   # source of the objects to be replicated
   source:
-    type: TYPE # valid values are "s3"
+    type: TYPE # valid values are "minio"
     bucket: BUCKET
     prefix: PREFIX
     # NOTE: if source is remote then target must be "local"
@@ -51,7 +51,7 @@ const BatchJobReplicateTemplate = `replicate:
 
   # target where the objects must be replicated
   target:
-    type: TYPE # valid values are "s3"
+    type: TYPE # valid values are "minio"
     bucket: BUCKET
     prefix: PREFIX
     # NOTE: if target is remote then source must be "local"
@@ -123,24 +123,6 @@ func (adm *AdminClient) StartBatchJob(ctx context.Context, job string) (BatchJob
 	return res, nil
 }
 
-// MetricsBatchJob indicates progress information regarding various types of objects.
-type MetricsBatchJob struct {
-	Type BatchJobType // Type defines the type of job
-	// Final indicates whether this is the final packet and the receiver can exit.
-	Final bool `json:"final"`
-
-	Replicate struct {
-		NumObjects       int64         `json:"numObjects"`
-		NumVersions      int64         `json:"numVersions"`
-		NumObjectsFailed int64         `json:"numObjectsFailed"`
-		IOPS             int64         `json:"numIOPS"`
-		Throughput       int64         `json:"throughPut"`
-		Transferred      int64         `json:"transferred"`
-		Elapsed          time.Duration `json:"elapsed"`
-		CurrObjName      string        `json:"currObjName"`
-	}
-}
-
 // DescribeBatchJob - describes a currently running Job.
 func (adm *AdminClient) DescribeBatchJob(ctx context.Context, jobID string) (string, error) {
 	values := make(url.Values)
@@ -166,43 +148,6 @@ func (adm *AdminClient) DescribeBatchJob(ctx context.Context, jobID string) (str
 	}
 
 	return string(buf), nil
-}
-
-// StatusBatchJob - provides real-time job progress for a given jobID.
-func (adm *AdminClient) StatusBatchJob(ctx context.Context, jobID string, out func(MetricsBatchJob)) error {
-	values := make(url.Values)
-	values.Set("jobId", jobID)
-
-	resp, err := adm.executeMethod(ctx, http.MethodGet,
-		requestData{
-			relPath:     adminAPIPrefix + "/status-job",
-			queryValues: values,
-		},
-	)
-	if err != nil {
-		return err
-	}
-	defer closeResponse(resp)
-	if resp.StatusCode != http.StatusOK {
-		return httpRespToErrorResponse(resp)
-	}
-
-	dec := json.NewDecoder(resp.Body)
-	for {
-		var m MetricsBatchJob
-		err := dec.Decode(&m)
-		if err != nil {
-			if errors.Is(err, io.EOF) {
-				err = io.ErrUnexpectedEOF
-			}
-			return err
-		}
-		out(m)
-		if m.Final {
-			break
-		}
-	}
-	return nil
 }
 
 // GenerateBatchJobOpts is to be implemented in future.
