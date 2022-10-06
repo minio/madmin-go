@@ -16,7 +16,8 @@ func _() {
 	_ = x[TraceDecommission-32]
 	_ = x[TraceHealing-64]
 	_ = x[TraceBatchReplication-128]
-	_ = x[TraceAll-255]
+	_ = x[TraceRebalance-256]
+	_ = x[TraceAll-511]
 }
 
 const (
@@ -27,7 +28,8 @@ const (
 	_TraceType_name_4 = "Decommission"
 	_TraceType_name_5 = "Healing"
 	_TraceType_name_6 = "BatchReplication"
-	_TraceType_name_7 = "All"
+	_TraceType_name_7 = "Rebalance"
+	_TraceType_name_8 = "All"
 )
 
 var (
@@ -51,8 +53,10 @@ func (i TraceType) String() string {
 		return _TraceType_name_5
 	case i == 128:
 		return _TraceType_name_6
-	case i == 255:
+	case i == 256:
 		return _TraceType_name_7
+	case i == 511:
+		return _TraceType_name_8
 	default:
 		return "TraceType(" + strconv.FormatInt(int64(i), 10) + ")"
 	}

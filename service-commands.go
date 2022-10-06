@@ -101,6 +101,7 @@ type ServiceTraceOpts struct {
 	Decommission     bool
 	Healing          bool
 	BatchReplication bool
+	Rebalance        bool
 
 	OnlyErrors bool
 	Threshold  time.Duration
@@ -117,6 +118,8 @@ func (t ServiceTraceOpts) TraceTypes() TraceType {
 	tt.SetIf(t.Decommission, TraceDecommission)
 	tt.SetIf(t.Healing, TraceHealing)
 	tt.SetIf(t.BatchReplication, TraceBatchReplication)
+	tt.SetIf(t.Rebalance, TraceRebalance)
+
 	return tt
 }
 
@@ -133,6 +136,7 @@ func (t ServiceTraceOpts) AddParams(u url.Values) {
 	u.Set("decommission", strconv.FormatBool(t.Decommission))
 	u.Set("healing", strconv.FormatBool(t.Healing))
 	u.Set("batch-replication", strconv.FormatBool(t.BatchReplication))
+	u.Set("rebalance", strconv.FormatBool(t.Rebalance))
 }
 
 // ParseParams will parse parameters and set them to t.
@@ -143,6 +147,7 @@ func (t *ServiceTraceOpts) ParseParams(r *http.Request) (err error) {
 	t.Decommission = r.Form.Get("decommission") == "true"
 	t.Healing = r.Form.Get("healing") == "true"
 	t.BatchReplication = r.Form.Get("batch-replication") == "true"
+	t.Rebalance = r.Form.Get("rebalance") == "true"
 	t.Storage = r.Form.Get("storage") == "true"
 	t.Internal = r.Form.Get("internal") == "true"
 	t.OnlyErrors = r.Form.Get("err") == "true"
