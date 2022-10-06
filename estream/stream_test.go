@@ -129,3 +129,134 @@ func TestStreamRoundtrip(t *testing.T) {
 		t.Errorf("want %d streams, got %d", wantStreams, gotStreams)
 	}
 }
+
+func TestReplaceKeys(t *testing.T) {
+	var buf bytes.Buffer
+	w := NewWriter(&buf)
+	if err := w.AddKeyPlain(); err != nil {
+		t.Fatal(err)
+	}
+	wantStreams := 0
+	for name, value := range testStreams {
+		st, err := w.AddEncryptedStream(name, []byte(name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = io.Copy(st, bytes.NewBuffer(value))
+		if err != nil {
+			t.Fatal(err)
+		}
+		st.Close()
+		st, err = w.AddUnencryptedStream(name, []byte(name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = io.Copy(st, bytes.NewBuffer(value))
+		if err != nil {
+			t.Fatal(err)
+		}
+		st.Close()
+		wantStreams += 2
+	}
+
+	priv, err := rsa.GenerateKey(crand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = w.AddKeyEncrypted(&priv.PublicKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, value := range testStreams {
+		st, err := w.AddEncryptedStream(name, []byte(name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = io.Copy(st, bytes.NewBuffer(value))
+		if err != nil {
+			t.Fatal(err)
+		}
+		st.Close()
+		st, err = w.AddUnencryptedStream(name, []byte(name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = io.Copy(st, bytes.NewBuffer(value))
+		if err != nil {
+			t.Fatal(err)
+		}
+		st.Close()
+		wantStreams += 2
+	}
+	err = w.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	priv2, err := rsa.GenerateKey(crand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var replaced bytes.Buffer
+	err = ReplaceKeys(&replaced, &buf, func(key *rsa.PublicKey) (*rsa.PrivateKey, *rsa.PublicKey) {
+		if key == nil {
+			return nil, &priv2.PublicKey
+		}
+		if key.Equal(&priv.PublicKey) {
+			return priv, &priv2.PublicKey
+		}
+		t.Fatal("unknown key\n", *key, "\nwant\n", priv.PublicKey)
+		return nil, nil
+	}, true)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Read back...
+	r, err := NewReader(&replaced)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Use key provider.
+	r.PrivateKeyProvider(func(key *rsa.PublicKey) *rsa.PrivateKey {
+		if key.Equal(&priv2.PublicKey) {
+			return priv2
+		}
+		t.Fatal("unexpected public key")
+		return nil
+	})
+
+	var gotStreams int
+	for {
+		st, err := r.NextStream()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("stream %d: %v", gotStreams, err)
+		}
+		want, ok := testStreams[st.Name]
+		if !ok {
+			t.Fatal("unexpected stream name", st.Name)
+		}
+		if st.SentEncrypted != (gotStreams&1 == 0) {
+			t.Errorf("stream %d was sent with unexpected encryption %v", gotStreams, st.SentEncrypted)
+		}
+		if !bytes.Equal(st.Extra, []byte(st.Name)) {
+			t.Fatal("unexpected stream extra:", st.Extra)
+		}
+		got, err := io.ReadAll(st)
+		if err != nil {
+			t.Fatalf("stream %d: %v", gotStreams, err)
+		}
+		if !bytes.Equal(got, want) {
+			t.Errorf("stream %d: content mismatch (len %d,%d)", gotStreams, len(got), len(want))
+		}
+		gotStreams++
+	}
+	if gotStreams != wantStreams {
+		t.Errorf("want %d streams, got %d", wantStreams, gotStreams)
+	}
+}

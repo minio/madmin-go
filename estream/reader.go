@@ -26,6 +26,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"runtime"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/secure-io/sio-go"
@@ -82,8 +83,9 @@ func (r *Reader) SkipEncrypted() {
 // Stream returns the next stream.
 type Stream struct {
 	io.Reader
-	Name  string
-	Extra []byte
+	Name          string
+	Extra         []byte
+	SentEncrypted bool
 }
 
 // NextStream will return the next stream.
@@ -221,9 +223,10 @@ func (r *Reader) NextStream() (*Stream, error) {
 
 			encr := stream.DecryptReader(r.newStreamReader(checksum), nonce, nil)
 			return &Stream{
-				Reader: encr,
-				Name:   name,
-				Extra:  extra,
+				SentEncrypted: true,
+				Reader:        encr,
+				Name:          name,
+				Extra:         extra,
 			}, nil
 		case blockEOS:
 			return nil, errors.New("end-of-stream without being in stream")
@@ -291,6 +294,12 @@ func (r *Reader) setErr(err error) error {
 	}
 	if errors.Is(err, io.EOF) {
 		r.err = io.ErrUnexpectedEOF
+	}
+	if false {
+		_, file, line, ok := runtime.Caller(1)
+		if ok {
+			err = fmt.Errorf("%s:%d: %w", file, line, err)
+		}
 	}
 	r.err = err
 	return err

@@ -56,7 +56,9 @@ func ReplaceKeys(w io.Writer, r io.Reader, replace ReplaceFn, encryptAll bool) e
 	default:
 		return fmt.Errorf("unknown stream version: 0x%x", ver[0])
 	}
-
+	if _, err := w.Write(ver[:]); err != nil {
+		return err
+	}
 	block := make([]byte, 1024)
 	mr := msgp.NewReader(r)
 	mw := msgp.NewWriter(w)
@@ -67,9 +69,10 @@ func ReplaceKeys(w io.Writer, r io.Reader, replace ReplaceFn, encryptAll bool) e
 		if err := mw.WriteUint32(sz); err != nil {
 			return err
 		}
-		_, err := mw.Write(block)
+		_, err := mw.Write(content)
 		return err
 	}
+
 	for {
 		// Read block ID.
 		n, err := mr.ReadInt8()
