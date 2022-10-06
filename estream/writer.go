@@ -225,9 +225,9 @@ func (w *Writer) setErr(err error) error {
 }
 
 type streamWriter struct {
-	w      *Writer
-	closer io.Closer
-	h      xxhash.Digest
+	w          *Writer
+	h          xxhash.Digest
+	eosWritten bool
 }
 
 func (w *streamWriter) Write(b []byte) (int, error) {
@@ -243,14 +243,14 @@ func (w *streamWriter) Write(b []byte) (int, error) {
 
 // Close satisfies the io.Closer interface.
 func (w *streamWriter) Close() error {
-	if w.closer != nil {
-		return w.w.setErr(w.closer.Close())
+	if !w.eosWritten {
+		mw := w.w.addBlock(blockEOS)
+		sum := w.h.Sum(nil)
+		w.w.setErr(mw.WriteBytes(sum))
+		w.eosWritten = true
+		return w.w.sendBlock()
 	}
-
-	mw := w.w.addBlock(blockEOS)
-	sum := w.h.Sum(nil)
-	w.w.setErr(mw.WriteBytes(sum))
-	return w.w.sendBlock()
+	return nil
 }
 
 type closeWrapper struct {
@@ -268,14 +268,19 @@ func (w *closeWrapper) Close() error {
 		if err := w.before(); err != nil {
 			return err
 		}
+		w.before = nil
 	}
-	if err := w.up.Close(); err != nil {
-		return err
+	if w.up != nil {
+		if err := w.up.Close(); err != nil {
+			return err
+		}
+		w.up = nil
 	}
 	if w.after != nil {
 		if err := w.after(); err != nil {
 			return err
 		}
+		w.after = nil
 	}
 	return nil
 }

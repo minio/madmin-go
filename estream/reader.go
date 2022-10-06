@@ -120,7 +120,7 @@ func (r *Reader) NextStream() (*Stream, error) {
 
 		switch id {
 		case blockPlainKey:
-			key, _, err := msgp.ReadBytesZC(block)
+			key, _, err := msgp.ReadBytesBytes(block, make([]byte, 0, 32))
 			if err != nil {
 				return nil, r.setErr(err)
 			}
@@ -174,7 +174,7 @@ func (r *Reader) NextStream() (*Stream, error) {
 			if err != nil {
 				return nil, r.setErr(err)
 			}
-			extra, block, err := msgp.ReadBytesZC(block)
+			extra, block, err := msgp.ReadBytesBytes(block, nil)
 			if err != nil {
 				return nil, r.setErr(err)
 			}
@@ -208,6 +208,7 @@ func (r *Reader) NextStream() (*Stream, error) {
 			if err != nil {
 				return nil, r.setErr(err)
 			}
+
 			stream, err := sio.AES_256_GCM.Stream(r.key[:])
 			if err != nil {
 				return nil, r.setErr(err)
@@ -224,7 +225,8 @@ func (r *Reader) NextStream() (*Stream, error) {
 				Name:   name,
 				Extra:  extra,
 			}, nil
-
+		case blockEOS:
+			return nil, errors.New("end-of-stream without being in stream")
 		case blockEOF:
 			return nil, io.EOF
 		case blockError:
