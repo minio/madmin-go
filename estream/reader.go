@@ -203,7 +203,7 @@ func (r *Reader) NextStream() (*Stream, error) {
 				return nil, r.setErr(fmt.Errorf("unexpected nonce length: %d", len(nonce)))
 			}
 
-			encr := stream.DecryptReader(r.newStreamReader(), nonce, nil)
+			encr := stream.DecryptReader(r.newStreamReader(checksum), nonce, nil)
 			return &Stream{
 				Reader: encr,
 				Name:   name,
