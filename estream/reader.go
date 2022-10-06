@@ -96,6 +96,8 @@ func (r *Reader) NextStream() (*Stream, error) {
 	if r.inStream {
 		return nil, errors.New("previous stream not read until EOF")
 	}
+
+	block := make([]byte, 1024)
 	for {
 		// Read block ID.
 		n, err := r.mr.ReadInt8()
@@ -103,9 +105,22 @@ func (r *Reader) NextStream() (*Stream, error) {
 			return nil, r.setErr(err)
 		}
 		id := blockID(n)
+		sz, err := r.mr.ReadUint32()
+		if err != nil {
+			return nil, r.setErr(err)
+		}
+		if cap(block) < int(sz) {
+			block = make([]byte, sz)
+		}
+		block = block[:sz]
+		_, err = io.ReadFull(r.mr, block)
+		if err != nil {
+			return nil, r.setErr(err)
+		}
+
 		switch id {
 		case blockPlainKey:
-			key, err := r.mr.ReadBytes(nil)
+			key, _, err := msgp.ReadBytesZC(block)
 			if err != nil {
 				return nil, r.setErr(err)
 			}
@@ -115,7 +130,7 @@ func (r *Reader) NextStream() (*Stream, error) {
 			r.key = (*[32]byte)(key)
 		case blockEncryptedKey:
 			// Read public key
-			publicKey, err := r.mr.ReadBytes(nil)
+			publicKey, block, err := msgp.ReadBytesZC(block)
 			if err != nil {
 				return nil, r.setErr(err)
 			}
@@ -133,7 +148,7 @@ func (r *Reader) NextStream() (*Stream, error) {
 			}
 
 			// Read cipher key
-			cipherKey, err := r.mr.ReadBytes(nil)
+			cipherKey, _, err := msgp.ReadBytesZC(block)
 			if err != nil {
 				return nil, r.setErr(err)
 			}
@@ -155,15 +170,15 @@ func (r *Reader) NextStream() (*Stream, error) {
 			}
 			r.key = (*[32]byte)(key)
 		case blockPlainStream, blockEncStream:
-			name, err := r.mr.ReadString()
+			name, block, err := msgp.ReadStringBytes(block)
 			if err != nil {
 				return nil, r.setErr(err)
 			}
-			extra, err := r.mr.ReadBytes(nil)
+			extra, block, err := msgp.ReadBytesZC(block)
 			if err != nil {
 				return nil, r.setErr(err)
 			}
-			c, err := r.mr.ReadUint8()
+			c, block, err := msgp.ReadUint8Bytes(block)
 			if err != nil {
 				return nil, r.setErr(err)
 			}
@@ -189,7 +204,7 @@ func (r *Reader) NextStream() (*Stream, error) {
 				return nil, r.setErr(errors.New("key has not been received"))
 			}
 			// Read stream nonce
-			nonce, err := r.mr.ReadBytes(nil)
+			nonce, _, err := msgp.ReadBytesZC(block)
 			if err != nil {
 				return nil, r.setErr(err)
 			}
@@ -213,14 +228,14 @@ func (r *Reader) NextStream() (*Stream, error) {
 		case blockEOF:
 			return nil, io.EOF
 		case blockError:
-			msg, err := r.mr.ReadString()
+			msg, _, err := msgp.ReadStringBytes(block)
 			if err != nil {
 				return nil, r.setErr(err)
 			}
 			return nil, r.setErr(errors.New(msg))
 		default:
-			if err := r.skipBlock(id); err != nil {
-				return nil, r.setErr(err)
+			if id >= 0 {
+				return nil, fmt.Errorf("unknown block type: %d", id)
 			}
 		}
 	}
@@ -234,42 +249,35 @@ func (r *Reader) skipDataBlocks() error {
 			return err
 		}
 		id := blockID(n)
-		switch id {
-		case blockDatablock:
-			// Skip data
-			if err := r.mr.Skip(); err != nil {
-				return err
-			}
-		case blockEOS:
-			// Skip hash
-			r.inStream = false
-			return r.mr.Skip()
-		case blockError:
+		sz, err := r.mr.ReadUint32()
+		if err != nil {
+			return err
+		}
+		if id == blockError {
 			msg, err := r.mr.ReadString()
 			if err != nil {
 				return err
 			}
 			return errors.New(msg)
+		}
+		// Discard data
+		_, err = io.CopyN(io.Discard, r.mr, int64(sz))
+		if err != nil {
+			return err
+		}
+		switch id {
+		case blockDatablock:
+			// Skip data
+		case blockEOS:
+			// Done
+			r.inStream = false
+			return nil
 		default:
-			if err := r.skipBlock(id); err != nil {
-				return err
+			if id >= 0 {
+				return fmt.Errorf("unknown block type: %d", id)
 			}
 		}
 	}
-}
-
-func (r *Reader) skipBlock(id blockID) error {
-	if id >= 0 {
-		return fmt.Errorf("unknown block type: %d", id)
-	}
-
-	// Negative is a skippable block. Read size, skip it.
-	skip, err := r.mr.ReadUint32()
-	if err != nil {
-		return err
-	}
-	_, err = io.Copy(io.Discard, io.LimitReader(r.mr, int64(skip)))
-	return err
 }
 
 func (r *Reader) setErr(err error) error {
@@ -325,6 +333,13 @@ func (r *streamReader) Read(b []byte) (int, error) {
 			return 0, r.up.setErr(err)
 		}
 		id := blockID(n)
+
+		// Read size...
+		sz, err := r.up.mr.ReadUint32()
+		if err != nil {
+			return 0, r.up.setErr(err)
+		}
+
 		switch id {
 		case blockDatablock:
 			// Read block
@@ -365,7 +380,12 @@ func (r *streamReader) Read(b []byte) (int, error) {
 			}
 			return 0, r.up.setErr(errors.New(msg))
 		default:
-			if err := r.up.skipBlock(id); err != nil {
+			if id >= 0 {
+				return 0, fmt.Errorf("unexpected block type: %d", id)
+			}
+			// Skip block...
+			_, err := io.CopyN(io.Discard, r.up.mr, int64(sz))
+			if err != nil {
 				return 0, r.up.setErr(err)
 			}
 		}

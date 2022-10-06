@@ -34,14 +34,20 @@ but may contain data that will be ignored by older versions.
 
 ## Blocks
 
+
+| Field  | Type         | Contents                 |
+|--------|--------------|--------------------------|
+| id     | integer      | Block ID                 |
+| length | unsigned int | Length of block in bytes |
+
 Each block is preceded by a messagepack encoded int8 indicating the block type.
 
 Positive types must be parsed by the decoder. Negative types are *skippable* blocks.
 
-Skippable blocks must have their length encoded as a messagepack unsigned integer following the block ID.
+Blocks have their length encoded as a messagepack unsigned integer following the block ID.
 This indicates the number of bytes to skip after the length to reach the next block ID.
 
-The skippable block size must be representable by a 32 bit unsigned integer.
+Maximum block size is 2^32-1 (4294967295) bytes.
 
 All block content is messagepack encoded.
 
@@ -83,6 +89,9 @@ Stream will be encrypted using `AES_256_GCM` using the last key provided on stre
 | Nonce    | bin array | 32 byte nonce used for stream |
 
 The stream consists of all data blocks following until "End Of Stream" block is sent.
+
+Checksum is of encrypted data.
+There is no checksum for decrypted data.
 
 ### id 4: Plain Stream
 
@@ -135,4 +144,11 @@ It is expected that the parser returns the message and stops processing.
 | ID  | Type                  | Bytes     |
 |-----|-----------------------|-----------|
 | 0   | No checksum           | (ignored) | 
-| 1   | 64 bit xxhash (XXH64) | 8         | 
+| 1   | 64 bit xxhash (XXH64) | 8         |
+
+# Version History
+
+| Major | Minor | Changes         |
+|-------|-------|-----------------|
+| 2     | 1     | Initial Version | 
+

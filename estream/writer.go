@@ -17,13 +17,14 @@
 package estream
 
 import (
+	"bytes"
 	crand "crypto/rand"
 	"crypto/rsa"
 	"crypto/sha512"
 	"crypto/x509"
 	"errors"
 	"io"
-	"net/http"
+	"math"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/secure-io/sio-go"
@@ -34,10 +35,10 @@ import (
 // Streams can optionally be encrypted.
 // All streams have checksum verification.
 type Writer struct {
-	mw  *msgp.Writer
 	up  io.Writer
 	err error
 	key *[32]byte
+	bw  blockWriter
 }
 
 const (
@@ -48,8 +49,9 @@ const (
 // NewWriter will return a writer that allows to add encrypted and non-encrypted data streams.
 func NewWriter(w io.Writer) *Writer {
 	_, err := w.Write([]byte{writerMajorVersion, writerMinorVersion})
-	mw := msgp.NewWriter(w)
-	return &Writer{mw: mw, err: err, up: w}
+	writer := &Writer{err: err, up: w}
+	writer.bw.init(w)
+	return writer
 }
 
 // Close will flush and close the output stream.
@@ -57,10 +59,8 @@ func (w *Writer) Close() error {
 	if w.err != nil {
 		return w.err
 	}
-	if err := w.addBlock(blockEOF); err != nil {
-		return w.setErr(err)
-	}
-	return w.mw.Flush()
+	w.addBlock(blockEOF)
+	return w.sendBlock()
 }
 
 // AddKeyEncrypted will create a new encryption key and add it to the stream.
@@ -81,17 +81,16 @@ func (w *Writer) AddKeyEncrypted(publicKey *rsa.PublicKey) error {
 		return w.setErr(err)
 	}
 
-	if err = w.addBlock(blockEncryptedKey); err != nil {
-		return w.setErr(err)
-	}
+	mw := w.addBlock(blockEncryptedKey)
 
 	// Write public key...
-	if err := w.mw.WriteBytes(x509.MarshalPKCS1PublicKey(publicKey)); err != nil {
+	if err := mw.WriteBytes(x509.MarshalPKCS1PublicKey(publicKey)); err != nil {
 		return w.setErr(err)
 	}
 
 	// Write encrypted cipher key
-	return w.setErr(w.mw.WriteBytes(cipherKey))
+	w.setErr(mw.WriteBytes(cipherKey))
+	return w.sendBlock()
 }
 
 // AddKeyPlain will create a new encryption key and add it to the stream.
@@ -108,12 +107,10 @@ func (w *Writer) AddKeyPlain() error {
 	}
 	w.key = &key
 
-	// Write key directly to stream
-	if err = w.addBlock(blockPlainKey); err != nil {
-		return w.setErr(err)
-	}
+	mw := w.addBlock(blockPlainKey)
+	w.setErr(mw.WriteBytes(key[:]))
 
-	return w.setErr(w.mw.WriteBytes(key[:]))
+	return w.sendBlock()
 }
 
 // AddError will indicate the writer encountered an error
@@ -123,10 +120,9 @@ func (w *Writer) AddError(msg string) error {
 	if w.err != nil {
 		return w.err
 	}
-	if err := w.addBlock(blockError); err != nil {
-		return w.setErr(err)
-	}
-	return w.mw.WriteString(msg)
+	mw := w.addBlock(blockError)
+	w.setErr(mw.WriteString(msg))
+	return w.sendBlock()
 }
 
 // AddUnencryptedStream adds a named stream.
@@ -136,18 +132,13 @@ func (w *Writer) AddUnencryptedStream(name string, extra []byte) (io.WriteCloser
 		return nil, w.err
 	}
 
-	if err := w.addBlock(blockPlainStream); err != nil {
-		return nil, w.setErr(err)
-	}
+	mw := w.addBlock(blockPlainStream)
 
 	// Write metadata...
-	if err := w.mw.WriteString(name); err != nil {
-		return nil, err
-	}
-	if err := w.mw.WriteBytes(extra); err != nil {
-		return nil, err
-	}
-	if err := w.mw.WriteUint8(uint8(checksumTypeXxhash)); err != nil {
+	w.setErr(mw.WriteString(name))
+	w.setErr(mw.WriteBytes(extra))
+	w.setErr(mw.WriteUint8(uint8(checksumTypeXxhash)))
+	if err := w.sendBlock(); err != nil {
 		return nil, err
 	}
 	return w.newStreamWriter(), nil
@@ -165,19 +156,13 @@ func (w *Writer) AddEncryptedStream(name string, extra []byte) (io.WriteCloser, 
 	if w.key == nil {
 		return nil, errors.New("AddEncryptedStream: No key on stream")
 	}
-	if err := w.addBlock(blockEncStream); err != nil {
-		return nil, w.setErr(err)
-	}
+	mw := w.addBlock(blockEncStream)
+
 	// Write metadata...
-	if err := w.mw.WriteString(name); err != nil {
-		return nil, err
-	}
-	if err := w.mw.WriteBytes(extra); err != nil {
-		return nil, err
-	}
-	if err := w.mw.WriteUint8(uint8(checksumTypeXxhash)); err != nil {
-		return nil, err
-	}
+	w.setErr(mw.WriteString(name))
+	w.setErr(mw.WriteBytes(extra))
+	w.setErr(mw.WriteUint8(uint8(checksumTypeXxhash)))
+
 	stream, err := sio.AES_256_GCM.Stream(w.key[:])
 	if err != nil {
 		return nil, w.setErr(err)
@@ -190,8 +175,10 @@ func (w *Writer) AddEncryptedStream(name string, extra []byte) (io.WriteCloser, 
 	}
 
 	// Write nonce as bin array.
-	if err := w.mw.WriteBytes(nonce); err != nil {
-		return nil, w.setErr(err)
+	w.setErr(mw.WriteBytes(nonce))
+
+	if err := w.sendBlock(); err != nil {
+		return nil, err
 	}
 
 	// Send output as blocks.
@@ -206,21 +193,18 @@ func (w *Writer) AddEncryptedStream(name string, extra []byte) (io.WriteCloser, 
 	}, nil
 }
 
-// Flush the currently written data.
-func (w *Writer) Flush() error {
-	if err := w.setErr(w.mw.Flush()); err != nil {
-		return err
-	}
-
-	// Flush upstream if we can
-	if f, ok := w.up.(http.Flusher); ok {
-		f.Flush()
-	}
-	return nil
+// addBlock initializes a new block.
+// Block content should be written to the returned writer.
+// When done call sendBlock.
+func (w *Writer) addBlock(id blockID) *msgp.Writer {
+	return w.bw.newBlock(id)
 }
 
-func (w *Writer) addBlock(id blockID) error {
-	return w.setErr(w.mw.WriteInt8(int8(id)))
+func (w *Writer) sendBlock() error {
+	if w.err != nil {
+		return w.err
+	}
+	return w.setErr(w.bw.send())
 }
 
 func (w *Writer) newStreamWriter() *streamWriter {
@@ -247,19 +231,14 @@ type streamWriter struct {
 }
 
 func (w *streamWriter) Write(b []byte) (int, error) {
-	if err := w.w.addBlock(blockDatablock); err != nil {
-		return 0, err
-	}
+	mw := w.w.addBlock(blockDatablock)
 	// Update hash.
 	w.h.Write(b)
-
+	if err := mw.WriteBytes(b); err != nil {
+		return 0, w.w.setErr(err)
+	}
 	// Write data as binary array.
-	return len(b), w.w.setErr(w.w.mw.WriteBytes(b))
-}
-
-// Flush adds http.Flusher support.
-func (w *streamWriter) Flush() {
-	_ = w.w.setErr(w.w.Flush())
+	return len(b), w.w.sendBlock()
 }
 
 // Close satisfies the io.Closer interface.
@@ -268,13 +247,10 @@ func (w *streamWriter) Close() error {
 		return w.w.setErr(w.closer.Close())
 	}
 
-	err := w.w.addBlock(blockEOS)
-	if err != nil {
-		return err
-	}
-
+	mw := w.w.addBlock(blockEOS)
 	sum := w.h.Sum(nil)
-	return w.w.setErr(w.w.mw.WriteBytes(sum))
+	w.w.setErr(mw.WriteBytes(sum))
+	return w.w.sendBlock()
 }
 
 type closeWrapper struct {
@@ -302,4 +278,47 @@ func (w *closeWrapper) Close() error {
 		}
 	}
 	return nil
+}
+
+type blockWriter struct {
+	id  blockID
+	w   io.Writer
+	wr  *msgp.Writer
+	buf bytes.Buffer
+	hdr [8 + 5]byte
+}
+
+func (b *blockWriter) init(w io.Writer) {
+	b.w = w
+	b.buf.Grow(1 << 10)
+	b.buf.Reset()
+	b.wr = msgp.NewWriter(&b.buf)
+}
+
+func (b *blockWriter) newBlock(id blockID) *msgp.Writer {
+	b.id = id
+	b.buf.Reset()
+	b.wr.Reset(&b.buf)
+	return b.wr
+}
+
+func (b *blockWriter) send() error {
+	if b.id == 0 {
+		return errors.New("blockWriter: no block started")
+	}
+	if err := b.wr.Flush(); err != nil {
+		return err
+	}
+	hdr := msgp.AppendInt8(b.hdr[:0], int8(b.id))
+	if b.buf.Len() > math.MaxUint32 {
+		return errors.New("max block size exceeded")
+	}
+	hdr = msgp.AppendUint32(hdr, uint32(b.buf.Len()))
+	if _, err := b.w.Write(hdr); err != nil {
+		return err
+	}
+	_, err := b.w.Write(b.buf.Bytes())
+	b.buf.Reset()
+	b.id = 0
+	return err
 }
