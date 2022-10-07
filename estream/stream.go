@@ -42,11 +42,21 @@ import (
 // No private key should be returned for this.
 type ReplaceFn func(key *rsa.PublicKey) (*rsa.PrivateKey, *rsa.PublicKey)
 
+// ReplaceKeysOptions allows passing additional options to ReplaceKeys.
+type ReplaceKeysOptions struct {
+	// If EncryptAll set all unencrypted keys will be encrypted.
+	EncryptAll bool
+
+	// PassErrors will pass through error an error packet,
+	// and not return an error.
+	PassErrors bool
+}
+
 // ReplaceKeys will replace the keys in a stream.
 //
 // A replace function must be provided. See ReplaceFn for functionality.
-// If encryptAll is set unencrypted keys will be re-encrypted.
-func ReplaceKeys(w io.Writer, r io.Reader, replace ReplaceFn, encryptAll bool) error {
+// If encryptAll is set.
+func ReplaceKeys(w io.Writer, r io.Reader, replace ReplaceFn, o ReplaceKeysOptions) error {
 	var ver [2]byte
 	if _, err := io.ReadFull(r, ver[:]); err != nil {
 		return err
@@ -59,9 +69,14 @@ func ReplaceKeys(w io.Writer, r io.Reader, replace ReplaceFn, encryptAll bool) e
 	if _, err := w.Write(ver[:]); err != nil {
 		return err
 	}
-	block := make([]byte, 1024)
+	// Input
 	mr := msgp.NewReader(r)
 	mw := msgp.NewWriter(w)
+
+	// Temporary block storage.
+	block := make([]byte, 1024)
+
+	// Write a block.
 	writeBlock := func(id blockID, sz uint32, content []byte) error {
 		if err := mw.WriteInt8(int8(id)); err != nil {
 			return err
@@ -80,6 +95,8 @@ func ReplaceKeys(w io.Writer, r io.Reader, replace ReplaceFn, encryptAll bool) e
 			return err
 		}
 		id := blockID(n)
+
+		// Read size
 		sz, err := mr.ReadUint32()
 		if err != nil {
 			return err
@@ -146,7 +163,7 @@ func ReplaceKeys(w io.Writer, r io.Reader, replace ReplaceFn, encryptAll bool) e
 				return err
 			}
 		case blockPlainKey:
-			if !encryptAll {
+			if !o.EncryptAll {
 				if err := writeBlock(id, sz, block); err != nil {
 					return err
 				}
@@ -184,6 +201,13 @@ func ReplaceKeys(w io.Writer, r io.Reader, replace ReplaceFn, encryptAll bool) e
 			}
 			return mw.Flush()
 		case blockError:
+			if o.PassErrors {
+				if err := writeBlock(id, sz, block); err != nil {
+					return err
+				}
+				return mw.Flush()
+			}
+			// Return error
 			msg, _, err := msgp.ReadStringBytes(block)
 			if err != nil {
 				return err

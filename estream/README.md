@@ -2,10 +2,12 @@
 
 This package provides a flexible way to merge multiple streams with controlled encryption.
 
+The stream is stateful and allows to send individually encrypted streams.
+
 ## Features
 
 * Allows encrypted and unencrypted streams.
-* Any number of keys can be used on a streams.
+* Any number of keys can be used on streams.
 * Each key can be encrypted by a (different) public key.
 * Each stream is identified by a string "name".
 * A stream has optional (unencrypted) metadata slice.
@@ -61,6 +63,9 @@ so they should not contain sensitive data.
 The functions above return an `io.WriteCloser`.
 Data for this stream should be written to this interface
 and `Close()` should be called before another stream can be added.
+
+Note that enuncrypted streams are unbuffered, so it may be a benefit to insert a `bufio.Writer`
+to avoid very small packets. Encrypted streams are buffered since 
 
 # Reading Streams
 
@@ -137,7 +142,8 @@ but may contain data that will be ignored by older versions.
 
 Each block is preceded by a messagepack encoded int8 indicating the block type.
 
-Positive types must be parsed by the decoder. Negative types are *skippable* blocks.
+Positive types must be parsed by the decoder. Negative types are *skippable* blocks, 
+so unknown skippable blocks can be ignored.
 
 Blocks have their length encoded as a messagepack unsigned integer following the block ID.
 This indicates the number of bytes to skip after the length to reach the next block ID.
@@ -236,10 +242,10 @@ It is expected that the parser returns the message and stops processing.
 
 ## Checksum types
 
-| ID  | Type                  | Bytes     |
-|-----|-----------------------|-----------|
-| 0   | No checksum           | (ignored) | 
-| 1   | 64 bit xxhash (XXH64) | 8         |
+| ID  | Type                               | Bytes     |
+|-----|------------------------------------|-----------|
+| 0   | No checksum                        | (ignored) | 
+| 1   | 64 bit xxhash (XXH64) (Big Endian) | 8         |
 
 # Version History
 

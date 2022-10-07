@@ -100,6 +100,7 @@ func (r *Reader) NextStream() (*Stream, error) {
 		return nil, errors.New("previous stream not read until EOF")
 	}
 
+	// Temp storage for blocks.
 	block := make([]byte, 1024)
 	for {
 		// Read block ID.
@@ -108,10 +109,14 @@ func (r *Reader) NextStream() (*Stream, error) {
 			return nil, r.setErr(err)
 		}
 		id := blockID(n)
+
+		// Read block size
 		sz, err := r.mr.ReadUint32()
 		if err != nil {
 			return nil, r.setErr(err)
 		}
+
+		// Read block data
 		if cap(block) < int(sz) {
 			block = make([]byte, sz)
 		}
@@ -121,8 +126,10 @@ func (r *Reader) NextStream() (*Stream, error) {
 			return nil, r.setErr(err)
 		}
 
+		// Parse block
 		switch id {
 		case blockPlainKey:
+			// Read plaintext key.
 			key, _, err := msgp.ReadBytesBytes(block, make([]byte, 0, 32))
 			if err != nil {
 				return nil, r.setErr(err)
@@ -130,6 +137,8 @@ func (r *Reader) NextStream() (*Stream, error) {
 			if len(key) != 32 {
 				return nil, r.setErr(fmt.Errorf("unexpected key length: %d", len(key)))
 			}
+
+			// Set key for following streams.
 			r.key = (*[32]byte)(key)
 		case blockEncryptedKey:
 			// Read public key
@@ -177,7 +186,9 @@ func (r *Reader) NextStream() (*Stream, error) {
 				return nil, r.setErr(fmt.Errorf("unexpected key length: %d", len(key)))
 			}
 			r.key = (*[32]byte)(key)
+
 		case blockPlainStream, blockEncStream:
+			// Read metadata
 			name, block, err := msgp.ReadStringBytes(block)
 			if err != nil {
 				return nil, r.setErr(err)
@@ -195,6 +206,7 @@ func (r *Reader) NextStream() (*Stream, error) {
 				return nil, r.setErr(fmt.Errorf("unknown checksum type %d", checksum))
 			}
 
+			// Return plaintext stream
 			if id == blockPlainStream {
 				return &Stream{
 					Reader: r.newStreamReader(checksum),
@@ -202,6 +214,8 @@ func (r *Reader) NextStream() (*Stream, error) {
 					Extra:  extra,
 				}, nil
 			}
+
+			// Handle encrypted streams.
 			if r.key == nil {
 				if r.skipEncrypted {
 					if err := r.skipDataBlocks(); err != nil {
@@ -252,6 +266,7 @@ func (r *Reader) NextStream() (*Stream, error) {
 	}
 }
 
+// skipDataBlocks reads data blocks until end.
 func (r *Reader) skipDataBlocks() error {
 	for {
 		// Read block ID.
@@ -291,6 +306,7 @@ func (r *Reader) skipDataBlocks() error {
 	}
 }
 
+// setErr sets a stateful error.
 func (r *Reader) setErr(err error) error {
 	if r.err != nil {
 		return r.err
@@ -320,6 +336,7 @@ type streamReader struct {
 	check checksumType
 }
 
+// newStreamReader creates a stream reader that can be read to get all data blocks.
 func (r *Reader) newStreamReader(ct checksumType) *streamReader {
 	sr := &streamReader{up: r, check: ct}
 	sr.h.Reset()
@@ -327,6 +344,7 @@ func (r *Reader) newStreamReader(ct checksumType) *streamReader {
 	return sr
 }
 
+// Read will return data blocks as on stream.
 func (r *streamReader) Read(b []byte) (int, error) {
 	if r.isEOF {
 		return 0, io.EOF

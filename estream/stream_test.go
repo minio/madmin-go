@@ -90,7 +90,7 @@ func TestStreamRoundtrip(t *testing.T) {
 		}
 		st.Close()
 		wantStreams += 2
-		wantDecStreams += 1
+		wantDecStreams++
 	}
 	err = w.Close()
 	if err != nil {
@@ -169,7 +169,6 @@ func TestStreamRoundtrip(t *testing.T) {
 	if gotStreams != wantDecStreams {
 		t.Errorf("want %d streams, got %d", wantStreams, gotStreams)
 	}
-
 }
 
 func TestReplaceKeys(t *testing.T) {
@@ -250,7 +249,7 @@ func TestReplaceKeys(t *testing.T) {
 		}
 		t.Fatal("unknown key\n", *key, "\nwant\n", priv.PublicKey)
 		return nil, nil
-	}, true)
+	}, ReplaceKeysOptions{EncryptAll: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -300,5 +299,31 @@ func TestReplaceKeys(t *testing.T) {
 	}
 	if gotStreams != wantStreams {
 		t.Errorf("want %d streams, got %d", wantStreams, gotStreams)
+	}
+}
+
+func TestError(t *testing.T) {
+	var buf bytes.Buffer
+	w := NewWriter(&buf)
+	if err := w.AddKeyPlain(); err != nil {
+		t.Fatal(err)
+	}
+	want := "an error message!"
+	if err := w.AddError(want); err != nil {
+		t.Fatal(err)
+	}
+	w.Close()
+
+	// Read back...
+	r, err := NewReader(&buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	st, err := r.NextStream()
+	if err == nil {
+		t.Fatalf("did not receive error, got %v, err: %v", st, err)
+	}
+	if err.Error() != want {
+		t.Errorf("Expected %q, got %q", want, err.Error())
 	}
 }
