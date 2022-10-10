@@ -369,16 +369,21 @@ type ErasureBackend struct {
 
 // ServerProperties holds server information
 type ServerProperties struct {
-	State      string            `json:"state,omitempty"`
-	Endpoint   string            `json:"endpoint,omitempty"`
-	Scheme     string            `json:"scheme,omitempty"`
-	Uptime     int64             `json:"uptime,omitempty"`
-	Version    string            `json:"version,omitempty"`
-	CommitID   string            `json:"commitID,omitempty"`
-	Network    map[string]string `json:"network,omitempty"`
-	Disks      []Disk            `json:"drives,omitempty"`
-	PoolNumber int               `json:"poolNumber,omitempty"`
-	MemStats   MemStats          `json:"mem_stats"`
+	State          string            `json:"state,omitempty"`
+	Endpoint       string            `json:"endpoint,omitempty"`
+	Scheme         string            `json:"scheme,omitempty"`
+	Uptime         int64             `json:"uptime,omitempty"`
+	Version        string            `json:"version,omitempty"`
+	CommitID       string            `json:"commitID,omitempty"`
+	Network        map[string]string `json:"network,omitempty"`
+	Disks          []Disk            `json:"drives,omitempty"`
+	PoolNumber     int               `json:"poolNumber,omitempty"`
+	MemStats       MemStats          `json:"mem_stats"`
+	GOMAXPROCS     int               `json:"goMaxProcs,omitempty"`
+	NumCPU         int               `json:"numCpu,omitempty"`
+	RuntimeVersion string            `json:"runtimeVersion,omitempty"`
+	GCStats        GCStats           `json:"gcStats"`
+	MinioEnvVars   map[string]string `json:"minioEnvVars,omitempty"`
 }
 
 // DiskMetrics has the information about XL Storage APIs
