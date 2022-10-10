@@ -379,7 +379,7 @@ type ServerProperties struct {
 	Disks          []Disk            `json:"drives,omitempty"`
 	PoolNumber     int               `json:"poolNumber,omitempty"`
 	MemStats       MemStats          `json:"mem_stats"`
-	GOMAXPROCS     int               `json:"gomaxprocs,omitempty"`
+	GoMaxProcs     int               `json:"go_max_procs,omitempty"`
 	NumCPU         int               `json:"num_cpu,omitempty"`
 	RuntimeVersion string            `json:"runtime_version,omitempty"`
 	GCStats        *GCStats          `json:"gc_stats,omitempty"`
