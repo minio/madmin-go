@@ -379,11 +379,11 @@ type ServerProperties struct {
 	Disks          []Disk            `json:"drives,omitempty"`
 	PoolNumber     int               `json:"poolNumber,omitempty"`
 	MemStats       MemStats          `json:"mem_stats"`
-	GOMAXPROCS     int               `json:"goMaxProcs,omitempty"`
-	NumCPU         int               `json:"numCpu,omitempty"`
-	RuntimeVersion string            `json:"runtimeVersion,omitempty"`
-	GCStats        GCStats           `json:"gcStats"`
-	MinioEnvVars   map[string]string `json:"minioEnvVars,omitempty"`
+	GOMAXPROCS     int               `json:"gomaxprocs,omitempty"`
+	NumCPU         int               `json:"num_cpu,omitempty"`
+	RuntimeVersion string            `json:"runtime_version,omitempty"`
+	GCStats        GCStats           `json:"gc_stats,omitempty"`
+	MinioEnvVars   map[string]string `json:"minio_env_vars,omitempty"`
 }
 
 // DiskMetrics has the information about XL Storage APIs
