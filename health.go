@@ -801,8 +801,8 @@ type ServerInfo struct {
 	GOMAXPROCS     int               `json:"gomaxprocs"`
 	NumCPU         int               `json:"num_cpu"`
 	RuntimeVersion string            `json:"runtime_version"`
-	GCStats        GCStats           `json:"gc_stats"`
-	MinioEnvVars   map[string]string `json:"minio_env_vars"`
+	GCStats        *GCStats          `json:"gc_stats,omitempty"`
+	MinioEnvVars   map[string]string `json:"minio_env_vars,omitempty"`
 }
 
 // MinioInfo contains MinIO server and object storage information.
