@@ -382,7 +382,7 @@ type ServerProperties struct {
 	GOMAXPROCS     int               `json:"gomaxprocs,omitempty"`
 	NumCPU         int               `json:"num_cpu,omitempty"`
 	RuntimeVersion string            `json:"runtime_version,omitempty"`
-	GCStats        GCStats           `json:"gc_stats,omitempty"`
+	GCStats        *GCStats          `json:"gc_stats,omitempty"`
 	MinioEnvVars   map[string]string `json:"minio_env_vars,omitempty"`
 }
 
