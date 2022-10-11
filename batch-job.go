@@ -33,6 +33,12 @@ const (
 	BatchJobReplicate BatchJobType = "replicate"
 )
 
+// SupportedJobTypes supported job types
+var SupportedJobTypes = []BatchJobType{
+	BatchJobReplicate,
+	// add new job types
+}
+
 // BatchJobReplicateTemplate provides a sample template
 // for batch replication
 const BatchJobReplicateTemplate = `replicate:
