@@ -87,6 +87,38 @@ type KMSDescribeSelfIdentity struct {
 	CreatedBy  string     `json:"createdBy"`
 }
 
+type KMSMetrics struct {
+	RequestOK     int64 `json:"kes_http_request_success"`
+	RequestErr    int64 `json:"kes_http_request_error"`
+	RequestFail   int64 `json:"kes_http_request_failure"`
+	RequestActive int64 `json:"kes_http_request_active"`
+
+	AuditEvents int64 `json:"kes_log_audit_events"`
+	ErrorEvents int64 `json:"kes_log_error_events"`
+
+	LatencyHistogram map[int64]int64 `json:"kes_http_response_time"`
+
+	UpTime     int64 `json:"kes_system_up_time"`
+	CPUs       int64 `json:"kes_system_num_cpu"`
+	UsableCPUs int64 `json:"kes_system_num_cpu_used"`
+
+	Threads     int64 `json:"kes_system_num_threads"`
+	HeapAlloc   int64 `json:"kes_system_mem_heap_used"`
+	HeapObjects int64 `json:"kes_system_mem_heap_objects"`
+	StackAlloc  int64 `json:"kes_system_mem_stack_used"`
+}
+
+type KMSAPI struct {
+	Method  string
+	Path    string
+	MaxBody int64
+	Timeout int64
+}
+
+type KMSVersion struct {
+	Version string `json:"version"`
+}
+
 // KMSStatus returns status information about the KMS connected
 // to the MinIO server, if configured.
 func (adm *AdminClient) KMSStatus(ctx context.Context) (KMSStatus, error) {
@@ -104,6 +136,63 @@ func (adm *AdminClient) KMSStatus(ctx context.Context) (KMSStatus, error) {
 		return KMSStatus{}, err
 	}
 	return status, nil
+}
+
+// KMSMetrics returns metrics about the KMS connected
+// to the MinIO server, if configured.
+func (adm *AdminClient) KMSMetrics(ctx context.Context) (*KMSMetrics, error) {
+	// GET /minio/kms/v1/metrics
+	resp, err := adm.doKMSRequest(ctx, "/metrics", http.MethodGet, nil, map[string]string{})
+	if err != nil {
+		return nil, err
+	}
+	defer closeResponse(resp)
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+	var metrics KMSMetrics
+	if err = json.NewDecoder(resp.Body).Decode(&metrics); err != nil {
+		return nil, err
+	}
+	return &metrics, nil
+}
+
+// KMSAPIs returns a list of supported API endpoints in the KMS connected
+// to the MinIO server, if configured.
+func (adm *AdminClient) KMSAPIs(ctx context.Context) ([]KMSAPI, error) {
+	// GET /minio/kms/v1/apis
+	resp, err := adm.doKMSRequest(ctx, "/apis", http.MethodGet, nil, map[string]string{})
+	if err != nil {
+		return nil, err
+	}
+	defer closeResponse(resp)
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+	var apis []KMSAPI
+	if err = json.NewDecoder(resp.Body).Decode(&apis); err != nil {
+		return nil, err
+	}
+	return apis, nil
+}
+
+// KMSVersion returns a list of supported API endpoints in the KMS connected
+// to the MinIO server, if configured.
+func (adm *AdminClient) KMSVersion(ctx context.Context) (*KMSVersion, error) {
+	// GET /minio/kms/v1/version
+	resp, err := adm.doKMSRequest(ctx, "/version", http.MethodGet, nil, map[string]string{})
+	if err != nil {
+		return nil, err
+	}
+	defer closeResponse(resp)
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+	var version KMSVersion
+	if err = json.NewDecoder(resp.Body).Decode(&version); err != nil {
+		return nil, err
+	}
+	return &version, nil
 }
 
 // CreateKey tries to create a new master key with the given keyID
