@@ -74,11 +74,18 @@ type IDPConfig struct {
 	Info []IDPCfgInfo `json:"info"`
 }
 
-var validConfigTypes = set.CreateStringSet("openid")
+// Constants for IDP configuration types.
+const (
+	OpenidIDPCfg string = "openid"
+	LDAPIDPCfg   string = "ldap"
+)
+
+// ValidIDPConfigTypes - set of valid IDP configs.
+var ValidIDPConfigTypes = set.CreateStringSet(OpenidIDPCfg, LDAPIDPCfg)
 
 // GetIDPConfig - fetch IDP config from server.
 func (adm *AdminClient) GetIDPConfig(ctx context.Context, cfgType, cfgName string) (c IDPConfig, err error) {
-	if !validConfigTypes.Contains(cfgType) {
+	if !ValidIDPConfigTypes.Contains(cfgType) {
 		return c, fmt.Errorf("Invalid config type: %s", cfgType)
 	}
 
@@ -124,7 +131,7 @@ type IDPListItem struct {
 
 // ListIDPConfig - list IDP configuration on the server.
 func (adm *AdminClient) ListIDPConfig(ctx context.Context, cfgType string) ([]IDPListItem, error) {
-	if !validConfigTypes.Contains(cfgType) {
+	if !ValidIDPConfigTypes.Contains(cfgType) {
 		return nil, fmt.Errorf("Invalid config type: %s", cfgType)
 	}
 
