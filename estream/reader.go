@@ -87,10 +87,13 @@ type Stream struct {
 	Name          string
 	Extra         []byte
 	SentEncrypted bool
+
+	r *streamReader
 }
 
 // NextStream will return the next stream.
-// Before calling this the previous stream must be read until EOF.
+// Before calling this the previous stream must be read until EOF,
+// or Skip() should have been called.
 // Will return nil, io.EOF when there are no more streams.
 func (r *Reader) NextStream() (*Stream, error) {
 	if r.err != nil {
@@ -342,6 +345,13 @@ func (r *Reader) newStreamReader(ct checksumType) *streamReader {
 	sr.h.Reset()
 	r.inStream = true
 	return sr
+}
+
+// Skip the remainder of the stream.
+func (s *Stream) Skip() error {
+	s.r.isEOF = true
+	s.r.buf.Reset()
+	return s.r.up.skipDataBlocks()
 }
 
 // Read will return data blocks as on stream.
