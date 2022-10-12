@@ -798,11 +798,11 @@ type ServerInfo struct {
 	Drives         []Disk            `json:"drives,omitempty"`
 	PoolNumber     int               `json:"poolNumber,omitempty"`
 	MemStats       MemStats          `json:"mem_stats"`
-	GOMAXPROCS     int               `json:"gomaxprocs"`
+	GoMaxProcs     int               `json:"go_max_procs"`
 	NumCPU         int               `json:"num_cpu"`
 	RuntimeVersion string            `json:"runtime_version"`
-	GCStats        GCStats           `json:"gc_stats"`
-	MinioEnvVars   map[string]string `json:"minio_env_vars"`
+	GCStats        *GCStats          `json:"gc_stats,omitempty"`
+	MinioEnvVars   map[string]string `json:"minio_env_vars,omitempty"`
 }
 
 // MinioInfo contains MinIO server and object storage information.
