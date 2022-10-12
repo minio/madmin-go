@@ -169,6 +169,37 @@ func TestStreamRoundtrip(t *testing.T) {
 	if gotStreams != wantDecStreams {
 		t.Errorf("want %d streams, got %d", wantStreams, gotStreams)
 	}
+
+	gotStreams = 0
+	r, err = NewReader(bytes.NewBuffer(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.SkipEncrypted(true)
+	for {
+		st, err := r.NextStream()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("stream %d: %v", gotStreams, err)
+		}
+		_, ok := testStreams[st.Name]
+		if !ok {
+			t.Fatal("unexpected stream name", st.Name)
+		}
+		if !bytes.Equal(st.Extra, []byte(st.Name)) {
+			t.Fatal("unexpected stream extra:", st.Extra)
+		}
+		err = st.Skip()
+		if err != nil {
+			t.Fatalf("stream %d: %v", gotStreams, err)
+		}
+		gotStreams++
+	}
+	if gotStreams != wantDecStreams {
+		t.Errorf("want %d streams, got %d", wantDecStreams, gotStreams)
+	}
 }
 
 func TestReplaceKeys(t *testing.T) {
@@ -325,5 +356,74 @@ func TestError(t *testing.T) {
 	}
 	if err.Error() != want {
 		t.Errorf("Expected %q, got %q", want, err.Error())
+	}
+}
+
+func TestStreamReturnNonDecryptable(t *testing.T) {
+	var buf bytes.Buffer
+	w := NewWriter(&buf)
+	if err := w.AddKeyPlain(); err != nil {
+		t.Fatal(err)
+	}
+
+	priv, err := rsa.GenerateKey(crand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = w.AddKeyEncrypted(&priv.PublicKey)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantStreams := len(testStreams)
+	for name, value := range testStreams {
+		st, err := w.AddEncryptedStream(name, []byte(name))
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = io.Copy(st, bytes.NewBuffer(value))
+		if err != nil {
+			t.Fatal(err)
+		}
+		st.Close()
+	}
+	err = w.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Read back...
+	b := buf.Bytes()
+	r, err := NewReader(bytes.NewBuffer(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.ReturnNonDecryptable(true)
+	gotStreams := 0
+	for {
+		st, err := r.NextStream()
+		if err == io.EOF {
+			break
+		}
+		if err != ErrNoKey {
+			t.Fatalf("stream %d: %v", gotStreams, err)
+		}
+		_, ok := testStreams[st.Name]
+		if !ok {
+			t.Fatal("unexpected stream name", st.Name)
+		}
+		if !bytes.Equal(st.Extra, []byte(st.Name)) {
+			t.Fatal("unexpected stream extra:", st.Extra)
+		}
+		if !st.SentEncrypted {
+			t.Fatal("stream not marked as encrypted:", st.SentEncrypted)
+		}
+		err = st.Skip()
+		if err != nil {
+			t.Fatalf("stream %d: %v", gotStreams, err)
+		}
+		gotStreams++
+	}
+	if gotStreams != wantStreams {
+		t.Errorf("want %d streams, got %d", wantStreams, gotStreams)
 	}
 }

@@ -43,7 +43,12 @@ type Reader struct {
 	private       *rsa.PrivateKey
 	privateFn     func(key *rsa.PublicKey) *rsa.PrivateKey
 	skipEncrypted bool
+	returnNonDec  bool
 }
+
+// ErrNoKey is returned when a stream cannot be decrypted.
+// The Skip function on the stream can be called to skip to the next.
+var ErrNoKey = errors.New("no valid private key found")
 
 // NewReader will return a Reader that will split streams.
 func NewReader(r io.Reader) (*Reader, error) {
@@ -81,6 +86,14 @@ func (r *Reader) SkipEncrypted(b bool) {
 	r.skipEncrypted = b
 }
 
+// ReturnNonDecryptable will return non-decryptable stream headers.
+// Streams are returned with ErrNoKey error.
+// Streams with this error cannot be read, but the Skip function can be invoked.
+// SkipEncrypted overrides this.
+func (r *Reader) ReturnNonDecryptable(b bool) {
+	r.returnNonDec = b
+}
+
 // Stream returns the next stream.
 type Stream struct {
 	io.Reader
@@ -88,7 +101,7 @@ type Stream struct {
 	Extra         []byte
 	SentEncrypted bool
 
-	r *streamReader
+	parent *Reader
 }
 
 // NextStream will return the next stream.
@@ -158,7 +171,7 @@ func (r *Reader) NextStream() (*Stream, error) {
 				}
 				r.private = r.privateFn(pk)
 				if r.private == nil {
-					if r.skipEncrypted {
+					if r.skipEncrypted || r.returnNonDec {
 						r.key = nil
 						continue
 					}
@@ -172,7 +185,7 @@ func (r *Reader) NextStream() (*Stream, error) {
 				return nil, r.setErr(err)
 			}
 			if r.private == nil {
-				if r.skipEncrypted {
+				if r.skipEncrypted || r.returnNonDec {
 					r.key = nil
 					continue
 				}
@@ -182,6 +195,10 @@ func (r *Reader) NextStream() (*Stream, error) {
 			// Decrypt stream key
 			key, err := rsa.DecryptOAEP(sha512.New(), rand.Reader, r.private, cipherKey, nil)
 			if err != nil {
+				if r.returnNonDec {
+					r.key = nil
+					continue
+				}
 				return nil, err
 			}
 
@@ -215,6 +232,7 @@ func (r *Reader) NextStream() (*Stream, error) {
 					Reader: r.newStreamReader(checksum),
 					Name:   name,
 					Extra:  extra,
+					parent: r,
 				}, nil
 			}
 
@@ -226,7 +244,13 @@ func (r *Reader) NextStream() (*Stream, error) {
 					}
 					continue
 				}
-				return nil, r.setErr(errors.New("key has not been received"))
+				return &Stream{
+					SentEncrypted: true,
+					Reader:        nil,
+					Name:          name,
+					Extra:         extra,
+					parent:        r,
+				}, ErrNoKey
 			}
 			// Read stream nonce
 			nonce, _, err := msgp.ReadBytesZC(block)
@@ -250,6 +274,7 @@ func (r *Reader) NextStream() (*Stream, error) {
 				Reader:        encr,
 				Name:          name,
 				Extra:         extra,
+				parent:        r,
 			}, nil
 		case blockEOS:
 			return nil, errors.New("end-of-stream without being in stream")
@@ -349,9 +374,11 @@ func (r *Reader) newStreamReader(ct checksumType) *streamReader {
 
 // Skip the remainder of the stream.
 func (s *Stream) Skip() error {
-	s.r.isEOF = true
-	s.r.buf.Reset()
-	return s.r.up.skipDataBlocks()
+	if sr, ok := s.Reader.(*streamReader); ok {
+		sr.isEOF = true
+		sr.buf.Reset()
+	}
+	return s.parent.skipDataBlocks()
 }
 
 // Read will return data blocks as on stream.
