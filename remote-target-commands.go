@@ -100,6 +100,7 @@ type BucketTarget struct {
 	DisableProxy        bool          `json:"disableProxy"`
 	ResetBeforeDate     time.Time     `json:"resetBeforeDate,omitempty"`
 	ResetID             string        `json:"resetID,omitempty"`
+	DeploymentID        string        `json:"deploymentID,omitempty"`
 }
 
 // Clone returns shallow clone of BucketTarget without secret key in credentials
@@ -122,6 +123,7 @@ func (t *BucketTarget) Clone() BucketTarget {
 		DisableProxy:        t.DisableProxy,
 		ResetBeforeDate:     t.ResetBeforeDate,
 		ResetID:             t.ResetID,
+		DeploymentID:        t.DeploymentID,
 	}
 }
 
