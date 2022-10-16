@@ -41,6 +41,7 @@ const (
 	MetricsDisk
 	MetricsOS
 	MetricsBatchJobs
+	MetricsSiteResync
 
 	// MetricsAll must be last.
 	// Enables all metrics.
@@ -57,6 +58,7 @@ type MetricsOptions struct {
 	Disks    []string
 	ByDisk   bool
 	ByJobID  string
+	ByDepID  string
 }
 
 // Metrics makes an admin call to retrieve metrics.
@@ -77,6 +79,9 @@ func (adm *AdminClient) Metrics(ctx context.Context, o MetricsOptions, out func(
 	}
 	if o.ByJobID != "" {
 		q.Set("by-jobID", o.ByJobID)
+	}
+	if o.ByDepID != "" {
+		q.Set("by-depID", o.ByDepID)
 	}
 
 	resp, err := adm.executeMethod(ctx,
@@ -133,10 +138,11 @@ type RealtimeMetrics struct {
 
 // Metrics contains all metric types.
 type Metrics struct {
-	Scanner   *ScannerMetrics  `json:"scanner,omitempty"`
-	Disk      *DiskMetric      `json:"disk,omitempty"`
-	OS        *OSMetrics       `json:"os,omitempty"`
-	BatchJobs *BatchJobMetrics `json:"batchJobs,omitempty"`
+	Scanner    *ScannerMetrics    `json:"scanner,omitempty"`
+	Disk       *DiskMetric        `json:"disk,omitempty"`
+	OS         *OSMetrics         `json:"os,omitempty"`
+	BatchJobs  *BatchJobMetrics   `json:"batchJobs,omitempty"`
+	SiteResync *SiteResyncMetrics `json:"siteResync,omitempty"`
 }
 
 // Merge other into r.
@@ -162,6 +168,11 @@ func (r *Metrics) Merge(other *Metrics) {
 		r.BatchJobs = &BatchJobMetrics{}
 	}
 	r.BatchJobs.Merge(other.BatchJobs)
+
+	if r.SiteResync == nil && other.SiteResync != nil {
+		r.SiteResync = &SiteResyncMetrics{}
+	}
+	r.SiteResync.Merge(other.SiteResync)
 }
 
 // Merge will merge other into r.
@@ -480,5 +491,47 @@ func (o *BatchJobMetrics) Merge(other *BatchJobMetrics) {
 	// Job
 	for k, v := range other.Jobs {
 		o.Jobs[k] = v
+	}
+}
+
+// SiteResyncMetrics contains metrics for site resync operation
+type SiteResyncMetrics struct {
+	// Time these metrics were collected
+	CollectedAt time.Time `json:"collected"`
+	// Status of resync operation
+	ResyncStatus string    `json:"resyncStatus,omitempty"`
+	StartTime    time.Time `json:"startTime"`
+	LastUpdate   time.Time `json:"lastUpdate"`
+	NumBuckets   int64     `json:"numBuckets"`
+	ResyncID     string    `json:"resyncID"`
+	DeplID       string    `json:"deplID"`
+
+	// Completed size in bytes
+	ReplicatedSize int64 `json:"completedReplicationSize"`
+	// Total number of objects replicated
+	ReplicatedCount int64 `json:"replicationCount"`
+	// Failed size in bytes
+	FailedSize int64 `json:"failedReplicationSize"`
+	// Total number of failed operations
+	FailedCount int64 `json:"failedReplicationCount"`
+	// Buckets that could not be synced
+	FailedBuckets []string `json:"failedBuckets"`
+	// Last bucket/object replicated.
+	Bucket string `json:"bucket,omitempty"`
+	Object string `json:"object,omitempty"`
+}
+
+func (o SiteResyncMetrics) Complete() bool {
+	return strings.ToLower(o.ResyncStatus) == "completed"
+}
+
+// Merge other into 'o'.
+func (o *SiteResyncMetrics) Merge(other *SiteResyncMetrics) {
+	if other == nil {
+		return
+	}
+	if o.CollectedAt.Before(other.CollectedAt) {
+		// Use latest
+		*o = *other
 	}
 }
