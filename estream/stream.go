@@ -17,14 +17,19 @@
 package estream
 
 import (
+	"crypto/rand"
 	crand "crypto/rand"
 	"crypto/rsa"
 	"crypto/sha512"
 	"crypto/x509"
+	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash"
 	"io"
 
+	"github.com/cespare/xxhash/v2"
+	"github.com/secure-io/sio-go"
 	"github.com/tinylib/msgp/msgp"
 )
 
@@ -216,6 +221,224 @@ func ReplaceKeys(w io.Writer, r io.Reader, replace ReplaceFn, o ReplaceKeysOptio
 		default:
 			if err := writeBlock(id, sz, block); err != nil {
 				return err
+			}
+		}
+	}
+}
+
+// DebugStream will print stream block information to w.
+func (r *Reader) DebugStream(w io.Writer) error {
+	if r.err != nil {
+		return r.err
+	}
+	if r.inStream {
+		return errors.New("previous stream not read until EOF")
+	}
+	fmt.Fprintf(w, "stream major: %v, minor: %v\n", r.majorV, r.minorV)
+
+	// Temp storage for blocks.
+	block := make([]byte, 1024)
+	hashers := []hash.Hash{nil, xxhash.New()}
+	for {
+		// Read block ID.
+		n, err := r.mr.ReadInt8()
+		if err != nil {
+			return r.setErr(err)
+		}
+		id := blockID(n)
+
+		// Read block size
+		sz, err := r.mr.ReadUint32()
+		if err != nil {
+			return r.setErr(err)
+		}
+		fmt.Fprintf(w, "block type: %v, size: %d bytes, in stream: %v\n", id, sz, r.inStream)
+
+		// Read block data
+		if cap(block) < int(sz) {
+			block = make([]byte, sz)
+		}
+		block = block[:sz]
+		_, err = io.ReadFull(r.mr, block)
+		if err != nil {
+			return r.setErr(err)
+		}
+
+		// Parse block
+		switch id {
+		case blockPlainKey:
+			// Read plaintext key.
+			key, _, err := msgp.ReadBytesBytes(block, make([]byte, 0, 32))
+			if err != nil {
+				return r.setErr(err)
+			}
+			if len(key) != 32 {
+				return r.setErr(fmt.Errorf("unexpected key length: %d", len(key)))
+			}
+
+			// Set key for following streams.
+			r.key = (*[32]byte)(key)
+			fmt.Fprintf(w, "plain key read\n")
+
+		case blockEncryptedKey:
+			// Read public key
+			publicKey, block, err := msgp.ReadBytesZC(block)
+			if err != nil {
+				return r.setErr(err)
+			}
+
+			// Request private key if we have a custom function.
+			if r.privateFn != nil {
+				fmt.Fprintf(w, "requesting private key from privateFn\n")
+				pk, err := x509.ParsePKCS1PublicKey(publicKey)
+				if err != nil {
+					return r.setErr(err)
+				}
+				r.private = r.privateFn(pk)
+				if r.private == nil {
+					fmt.Fprintf(w, "privateFn did not provide private key\n")
+					if r.skipEncrypted || r.returnNonDec {
+						fmt.Fprintf(w, "continuing. skipEncrypted: %v, returnNonDec: %v\n", r.skipEncrypted, r.returnNonDec)
+						r.key = nil
+						continue
+					}
+					return r.setErr(errors.New("nil private key returned"))
+				}
+			}
+
+			// Read cipher key
+			cipherKey, _, err := msgp.ReadBytesZC(block)
+			if err != nil {
+				return r.setErr(err)
+			}
+			if r.private == nil {
+				if r.skipEncrypted || r.returnNonDec {
+					fmt.Fprintf(w, "no private key, continuing due to skipEncrypted: %v, returnNonDec: %v\n", r.skipEncrypted, r.returnNonDec)
+					r.key = nil
+					continue
+				}
+				return r.setErr(errors.New("private key has not been set"))
+			}
+
+			// Decrypt stream key
+			key, err := rsa.DecryptOAEP(sha512.New(), rand.Reader, r.private, cipherKey, nil)
+			if err != nil {
+				if r.returnNonDec {
+					fmt.Fprintf(w, "no private key, continuing due to returnNonDec: %v\n", r.returnNonDec)
+					r.key = nil
+					continue
+				}
+				return err
+			}
+
+			if len(key) != 32 {
+				return r.setErr(fmt.Errorf("unexpected key length: %d", len(key)))
+			}
+			r.key = (*[32]byte)(key)
+			fmt.Fprintf(w, "stream key decoded\n")
+
+		case blockPlainStream, blockEncStream:
+			// Read metadata
+			name, block, err := msgp.ReadStringBytes(block)
+			if err != nil {
+				return r.setErr(err)
+			}
+			extra, block, err := msgp.ReadBytesBytes(block, nil)
+			if err != nil {
+				return r.setErr(err)
+			}
+			c, block, err := msgp.ReadUint8Bytes(block)
+			if err != nil {
+				return r.setErr(err)
+			}
+			checksum := checksumType(c)
+			if !checksum.valid() {
+				return r.setErr(fmt.Errorf("unknown checksum type %d", checksum))
+			}
+			fmt.Fprintf(w, "new stream. name: %v, extra size: %v, checksum type: %v\n", name, len(extra), checksum)
+
+			for _, h := range hashers {
+				if h != nil {
+					h.Reset()
+				}
+			}
+
+			// Return plaintext stream
+			if id == blockPlainStream {
+				r.inStream = true
+				continue
+			}
+
+			// Handle encrypted streams.
+			if r.key == nil {
+				if r.skipEncrypted {
+					fmt.Fprintf(w, "nil key, skipEncrypted: %v\n", r.skipEncrypted)
+					r.inStream = true
+					continue
+				}
+				return ErrNoKey
+			}
+			// Read stream nonce
+			nonce, _, err := msgp.ReadBytesZC(block)
+			if err != nil {
+				return r.setErr(err)
+			}
+
+			stream, err := sio.AES_256_GCM.Stream(r.key[:])
+			if err != nil {
+				return r.setErr(err)
+			}
+
+			// Check if nonce is expected length.
+			if len(nonce) != stream.NonceSize() {
+				return r.setErr(fmt.Errorf("unexpected nonce length: %d", len(nonce)))
+			}
+			fmt.Fprintf(w, "nonce len: %v\n", len(nonce))
+			r.inStream = true
+		case blockEOS:
+			if !r.inStream {
+				return errors.New("end-of-stream without being in stream")
+			}
+			h, _, err := msgp.ReadBytesZC(block)
+			if err != nil {
+				return r.setErr(err)
+			}
+			fmt.Fprintf(w, "end-of-stream. stream hash: %s. data hashes: ", hex.EncodeToString(h))
+			for i, h := range hashers {
+				if h != nil {
+					fmt.Fprintf(w, "%s:%s. ", checksumType(i), hex.EncodeToString(h.Sum(nil)))
+				}
+			}
+			fmt.Fprint(w, "\n")
+			r.inStream = false
+		case blockEOF:
+			if r.inStream {
+				return errors.New("end-of-file without finishing stream")
+			}
+			fmt.Fprintf(w, "end-of-file\n")
+			return nil
+		case blockError:
+			msg, _, err := msgp.ReadStringBytes(block)
+			if err != nil {
+				return r.setErr(err)
+			}
+			fmt.Fprintf(w, "error recorded on stream: %v\n", msg)
+			return nil
+		case blockDatablock:
+			buf, _, err := msgp.ReadBytesZC(block)
+			if err != nil {
+				return r.setErr(err)
+			}
+			for _, h := range hashers {
+				if h != nil {
+					h.Write(buf)
+				}
+			}
+			fmt.Fprintf(w, "data block, length: %v\n", len(buf))
+		default:
+			fmt.Fprintf(w, "skipping block\n")
+			if id >= 0 {
+				return fmt.Errorf("unknown block type: %d", id)
 			}
 		}
 	}

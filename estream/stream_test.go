@@ -21,6 +21,7 @@ import (
 	crand "crypto/rand"
 	"crypto/rsa"
 	"io"
+	"os"
 	"testing"
 )
 
@@ -199,6 +200,16 @@ func TestStreamRoundtrip(t *testing.T) {
 	}
 	if gotStreams != wantDecStreams {
 		t.Errorf("want %d streams, got %d", wantDecStreams, gotStreams)
+	}
+
+	r, err = NewReader(bytes.NewBuffer(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.SkipEncrypted(true)
+	err = r.DebugStream(os.Stdout)
+	if err != nil {
+		t.Fatal(err)
 	}
 }
 
