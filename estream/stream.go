@@ -243,14 +243,14 @@ func (r *Reader) DebugStream(w io.Writer) error {
 		// Read block ID.
 		n, err := r.mr.ReadInt8()
 		if err != nil {
-			return r.setErr(err)
+			return r.setErr(fmt.Errorf("reading block id: %w", err))
 		}
 		id := blockID(n)
 
 		// Read block size
 		sz, err := r.mr.ReadUint32()
 		if err != nil {
-			return r.setErr(err)
+			return r.setErr(fmt.Errorf("reading block size: %w", err))
 		}
 		fmt.Fprintf(w, "block type: %v, size: %d bytes, in stream: %v\n", id, sz, r.inStream)
 
@@ -261,7 +261,7 @@ func (r *Reader) DebugStream(w io.Writer) error {
 		block = block[:sz]
 		_, err = io.ReadFull(r.mr, block)
 		if err != nil {
-			return r.setErr(err)
+			return r.setErr(fmt.Errorf("reading block data: %w", err))
 		}
 
 		// Parse block
@@ -270,7 +270,7 @@ func (r *Reader) DebugStream(w io.Writer) error {
 			// Read plaintext key.
 			key, _, err := msgp.ReadBytesBytes(block, make([]byte, 0, 32))
 			if err != nil {
-				return r.setErr(err)
+				return r.setErr(fmt.Errorf("reading key: %w", err))
 			}
 			if len(key) != 32 {
 				return r.setErr(fmt.Errorf("unexpected key length: %d", len(key)))
@@ -284,7 +284,7 @@ func (r *Reader) DebugStream(w io.Writer) error {
 			// Read public key
 			publicKey, block, err := msgp.ReadBytesZC(block)
 			if err != nil {
-				return r.setErr(err)
+				return r.setErr(fmt.Errorf("reading public key: %w", err))
 			}
 
 			// Request private key if we have a custom function.
@@ -292,7 +292,7 @@ func (r *Reader) DebugStream(w io.Writer) error {
 				fmt.Fprintf(w, "requesting private key from privateFn\n")
 				pk, err := x509.ParsePKCS1PublicKey(publicKey)
 				if err != nil {
-					return r.setErr(err)
+					return r.setErr(fmt.Errorf("parse public key: %w", err))
 				}
 				r.private = r.privateFn(pk)
 				if r.private == nil {
@@ -309,7 +309,7 @@ func (r *Reader) DebugStream(w io.Writer) error {
 			// Read cipher key
 			cipherKey, _, err := msgp.ReadBytesZC(block)
 			if err != nil {
-				return r.setErr(err)
+				return r.setErr(fmt.Errorf("reading cipherkey: %w", err))
 			}
 			if r.private == nil {
 				if r.skipEncrypted || r.returnNonDec {
@@ -328,7 +328,7 @@ func (r *Reader) DebugStream(w io.Writer) error {
 					r.key = nil
 					continue
 				}
-				return err
+				return fmt.Errorf("decrypting key: %w", err)
 			}
 
 			if len(key) != 32 {
@@ -341,15 +341,15 @@ func (r *Reader) DebugStream(w io.Writer) error {
 			// Read metadata
 			name, block, err := msgp.ReadStringBytes(block)
 			if err != nil {
-				return r.setErr(err)
+				return r.setErr(fmt.Errorf("reading name: %w", err))
 			}
 			extra, block, err := msgp.ReadBytesBytes(block, nil)
 			if err != nil {
-				return r.setErr(err)
+				return r.setErr(fmt.Errorf("reading extra: %w", err))
 			}
 			c, block, err := msgp.ReadUint8Bytes(block)
 			if err != nil {
-				return r.setErr(err)
+				return r.setErr(fmt.Errorf("reading checksum: %w", err))
 			}
 			checksum := checksumType(c)
 			if !checksum.valid() {
@@ -381,12 +381,12 @@ func (r *Reader) DebugStream(w io.Writer) error {
 			// Read stream nonce
 			nonce, _, err := msgp.ReadBytesZC(block)
 			if err != nil {
-				return r.setErr(err)
+				return r.setErr(fmt.Errorf("reading nonce: %w", err))
 			}
 
 			stream, err := sio.AES_256_GCM.Stream(r.key[:])
 			if err != nil {
-				return r.setErr(err)
+				return r.setErr(fmt.Errorf("initializing sio: %w", err))
 			}
 
 			// Check if nonce is expected length.
@@ -401,7 +401,7 @@ func (r *Reader) DebugStream(w io.Writer) error {
 			}
 			h, _, err := msgp.ReadBytesZC(block)
 			if err != nil {
-				return r.setErr(err)
+				return r.setErr(fmt.Errorf("reading block data: %w", err))
 			}
 			fmt.Fprintf(w, "end-of-stream. stream hash: %s. data hashes: ", hex.EncodeToString(h))
 			for i, h := range hashers {
@@ -420,14 +420,14 @@ func (r *Reader) DebugStream(w io.Writer) error {
 		case blockError:
 			msg, _, err := msgp.ReadStringBytes(block)
 			if err != nil {
-				return r.setErr(err)
+				return r.setErr(fmt.Errorf("reading error string: %w", err))
 			}
 			fmt.Fprintf(w, "error recorded on stream: %v\n", msg)
 			return nil
 		case blockDatablock:
 			buf, _, err := msgp.ReadBytesZC(block)
 			if err != nil {
-				return r.setErr(err)
+				return r.setErr(fmt.Errorf("reading block data: %w", err))
 			}
 			for _, h := range hashers {
 				if h != nil {
