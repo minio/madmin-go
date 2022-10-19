@@ -222,3 +222,164 @@ func (adm *AdminClient) SetPolicy(ctx context.Context, policyName, entityName st
 	}
 	return nil
 }
+
+// AttachPoliciesToUser - attach policies to a user.
+func (adm *AdminClient) AttachPoliciesToUser(ctx context.Context, policiesToAdd, accessKey string) error {
+	queryValues := url.Values{}
+	queryValues.Set("policiesToAdd", policiesToAdd)
+	queryValues.Set("accessKey", accessKey)
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/attach-user-policies",
+		queryValues: queryValues,
+	}
+
+	// Execute PUT on /minio/admin/v3/attach-group-policies
+	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+	return nil
+}
+
+// DetachPoliciesToUser - detach policies from a user.
+func (adm *AdminClient) DetachPoliciesFromUser(ctx context.Context, policiesToDetach, accessKey string) error {
+	queryValues := url.Values{}
+	queryValues.Set("policiesToDetach", policiesToDetach)
+	queryValues.Set("accessKey", accessKey)
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/detach-user-policies",
+		queryValues: queryValues,
+	}
+
+	// Execute PUT on /minio/admin/v3/attach-group-policies
+	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+	return nil
+}
+
+// GetUserPolicies - get policies attached to a user
+func (adm *AdminClient) GetUserPolicies(ctx context.Context, name string) (p []string, err error) {
+	queryValues := url.Values{}
+	queryValues.Set("accessKey", name)
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/list-user-policies",
+		queryValues: queryValues,
+	}
+
+	// Execute GET on /minio/admin/v3/list-user-policies
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+
+	defer closeResponse(resp)
+	if err != nil {
+		return p, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return p, httpRespToErrorResponse(resp)
+	}
+
+	b, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return p, err
+	}
+
+	if err = json.Unmarshal(b, &p); err != nil {
+		return p, err
+	}
+
+	return p, nil
+}
+
+// AttachPoliciesToGroup - attach policies to a user.
+func (adm *AdminClient) AttachPoliciesToGroup(ctx context.Context, policiesToAdd, group string) error {
+	queryValues := url.Values{}
+	queryValues.Set("policiesToAdd", policiesToAdd)
+	queryValues.Set("group", group)
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/attach-group-policies",
+		queryValues: queryValues,
+	}
+
+	// Execute PUT on /minio/admin/v3/attach-group-policies
+	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+	return nil
+}
+
+// DetachPoliciesFromGroup - detach policies from a user.
+func (adm *AdminClient) DetachPoliciesFromGroup(ctx context.Context, policiesToDetach, group string) error {
+	queryValues := url.Values{}
+	queryValues.Set("policiesToDetach", policiesToDetach)
+	queryValues.Set("group", group)
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/detach-group-policies",
+		queryValues: queryValues,
+	}
+
+	// Execute PUT on /minio/admin/v3/attach-group-policies
+	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+	return nil
+}
+
+// GetGroupPolicies - fetches all policies attached to a group.
+func (adm *AdminClient) GetGroupPolicies(ctx context.Context, group string) (p []string, err error) {
+	v := url.Values{}
+	v.Set("group", group)
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/list-group-policies",
+		queryValues: v,
+	}
+
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+
+	data, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = json.Unmarshal(data, &p); err != nil {
+		return nil, err
+	}
+
+	return p, nil
+}
