@@ -22,8 +22,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"time"
-
-	"github.com/google/uuid"
 )
 
 // RebalPoolProgress contains metrics like number of objects, versions, etc rebalanced so far.
@@ -47,13 +45,13 @@ type RebalancePoolStatus struct {
 
 // RebalanceStatus contains metrics and progress related information on all pools
 type RebalanceStatus struct {
-	ID        uuid.UUID             // identifies the ongoing rebalance operation by a uuid
+	ID        string                // identifies the ongoing rebalance operation by a uuid
 	StoppedAt time.Time             `json:"stoppedAt,omitempty"`
 	Pools     []RebalancePoolStatus `json:"pools"` // contains all pools, including inactive
 }
 
 // RebalanceStart starts a rebalance operation if one isn't in progress already
-func (adm *AdminClient) RebalanceStart(ctx context.Context) (id uuid.UUID, err error) {
+func (adm *AdminClient) RebalanceStart(ctx context.Context) (id string, err error) {
 	// Execute POST on /minio/admin/v3/rebalance/start to start a rebalance operation.
 	var resp *http.Response
 	resp, err = adm.executeMethod(ctx,
@@ -69,7 +67,7 @@ func (adm *AdminClient) RebalanceStart(ctx context.Context) (id uuid.UUID, err e
 	}
 
 	var rebalInfo struct {
-		ID uuid.UUID `json:"id"`
+		ID string `json:"id"`
 	}
 	respBytes, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
