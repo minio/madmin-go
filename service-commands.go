@@ -93,18 +93,18 @@ type ServiceTraceInfo struct {
 // ServiceTraceOpts holds tracing options
 type ServiceTraceOpts struct {
 	// Trace types:
-	S3               bool
-	Internal         bool
-	Storage          bool
-	OS               bool
-	Scanner          bool
-	Decommission     bool
-	Healing          bool
-	BatchReplication bool
-	Rebalance        bool
-
-	OnlyErrors bool
-	Threshold  time.Duration
+	S3                bool
+	Internal          bool
+	Storage           bool
+	OS                bool
+	Scanner           bool
+	Decommission      bool
+	Healing           bool
+	BatchReplication  bool
+	Rebalance         bool
+	ReplicationResync bool
+	OnlyErrors        bool
+	Threshold         time.Duration
 }
 
 // TraceTypes returns the enabled traces as a bitfield value.
@@ -119,6 +119,7 @@ func (t ServiceTraceOpts) TraceTypes() TraceType {
 	tt.SetIf(t.Healing, TraceHealing)
 	tt.SetIf(t.BatchReplication, TraceBatchReplication)
 	tt.SetIf(t.Rebalance, TraceRebalance)
+	tt.SetIf(t.ReplicationResync, TraceReplicationResync)
 
 	return tt
 }
@@ -137,6 +138,7 @@ func (t ServiceTraceOpts) AddParams(u url.Values) {
 	u.Set("healing", strconv.FormatBool(t.Healing))
 	u.Set("batch-replication", strconv.FormatBool(t.BatchReplication))
 	u.Set("rebalance", strconv.FormatBool(t.Rebalance))
+	u.Set("replication-resync", strconv.FormatBool(t.ReplicationResync))
 }
 
 // ParseParams will parse parameters and set them to t.
@@ -151,6 +153,7 @@ func (t *ServiceTraceOpts) ParseParams(r *http.Request) (err error) {
 	t.Storage = r.Form.Get("storage") == "true"
 	t.Internal = r.Form.Get("internal") == "true"
 	t.OnlyErrors = r.Form.Get("err") == "true"
+	t.ReplicationResync = r.Form.Get("replication-resync") == "true"
 
 	if th := r.Form.Get("threshold"); th != "" {
 		d, err := time.ParseDuration(th)

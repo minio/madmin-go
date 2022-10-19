@@ -46,6 +46,8 @@ const (
 	TraceBatchReplication
 	// TraceRebalance will trace rebalance operations
 	TraceRebalance
+	// TraceReplicationResync will trace replication resync operations.
+	TraceReplicationResync
 	// Add more here...
 
 	// TraceAll contains all valid trace modes.

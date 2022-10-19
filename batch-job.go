@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -47,28 +48,30 @@ const BatchJobReplicateTemplate = `replicate:
   source:
     type: TYPE # valid values are "minio"
     bucket: BUCKET
-    prefix: PREFIX
+    prefix: PREFIX # 'PREFIX' is optional
     # NOTE: if source is remote then target must be "local"
     # endpoint: ENDPOINT
     # credentials:
     #   accessKey: ACCESS-KEY
     #   secretKey: SECRET-KEY
-    #   sessionToken: SESSION-TOKEN # Available when rotating credentials are used
+    #   sessionToken: SESSION-TOKEN # Optional only available when rotating credentials are used
 
   # target where the objects must be replicated
   target:
     type: TYPE # valid values are "minio"
     bucket: BUCKET
-    prefix: PREFIX
+    prefix: PREFIX # 'PREFIX' is optional
     # NOTE: if target is remote then source must be "local"
     # endpoint: ENDPOINT
     # credentials:
     #   accessKey: ACCESS-KEY
     #   secretKey: SECRET-KEY
-    #   sessionToken: SESSION-TOKEN # Available when rotating credentials are used
+    #   sessionToken: SESSION-TOKEN # Optional only available when rotating credentials are used
 
-  # optional flags based filtering criteria
-  # for all source objects
+  # NOTE: All flags are optional
+  # - filtering criteria only applies for all source objects match the criteria
+  # - configurable notification endpoints
+  # - configurable retries for the job (each retry skips successfully previously replaced objects)
   flags:
     filter:
       newerThan: "7d" # match objects newer than this value (e.g. 7d10h31s)
@@ -158,14 +161,17 @@ func (adm *AdminClient) DescribeBatchJob(ctx context.Context, jobID string) (str
 
 // GenerateBatchJobOpts is to be implemented in future.
 type GenerateBatchJobOpts struct {
-	// TODO
+	Type BatchJobType
 }
 
 // GenerateBatchJob creates a new job template from standard template
 // TODO: allow configuring yaml values
-func (adm *AdminClient) GenerateBatchJob(ctx context.Context, _ GenerateBatchJobOpts) (string, error) {
-	// TODO: allow configuring the template to fill values from GenerateBatchJobOpts
-	return BatchJobReplicateTemplate, nil
+func (adm *AdminClient) GenerateBatchJob(ctx context.Context, opts GenerateBatchJobOpts) (string, error) {
+	if opts.Type == BatchJobReplicate {
+		// TODO: allow configuring the template to fill values from GenerateBatchJobOpts
+		return BatchJobReplicateTemplate, nil
+	}
+	return "", fmt.Errorf("unsupported batch type requested: %s", opts.Type)
 }
 
 // ListBatchJobsResult contains entries for all current jobs.

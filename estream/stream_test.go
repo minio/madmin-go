@@ -202,14 +202,17 @@ func TestStreamRoundtrip(t *testing.T) {
 		t.Errorf("want %d streams, got %d", wantDecStreams, gotStreams)
 	}
 
-	r, err = NewReader(bytes.NewBuffer(b))
-	if err != nil {
-		t.Fatal(err)
-	}
-	r.SkipEncrypted(true)
-	err = r.DebugStream(os.Stdout)
-	if err != nil {
-		t.Fatal(err)
+	if false {
+		r, err = NewReader(bytes.NewBuffer(b))
+		if err != nil {
+			t.Fatal(err)
+		}
+		r.SkipEncrypted(true)
+
+		err = r.DebugStream(os.Stdout)
+		if err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 
