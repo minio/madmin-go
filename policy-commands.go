@@ -247,7 +247,7 @@ func (adm *AdminClient) AttachPoliciesToUser(ctx context.Context, policiesToAdd,
 	return nil
 }
 
-// DetachPoliciesToUser - detach policies from a user.
+// DetachPoliciesFromUser - detach policies from a user.
 func (adm *AdminClient) DetachPoliciesFromUser(ctx context.Context, policiesToDetach, accessKey string) error {
 	queryValues := url.Values{}
 	queryValues.Set("policiesToDetach", policiesToDetach)
