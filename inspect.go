@@ -17,7 +17,9 @@
 package madmin
 
 import (
+	"bufio"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -28,45 +30,78 @@ import (
 // InspectOptions provides options to Inspect.
 type InspectOptions struct {
 	Volume, File string
+	PublicKey    []byte // PublicKey to use for inspected data.
 }
 
 // Inspect makes an admin call to download a raw files from disk.
-func (adm *AdminClient) Inspect(ctx context.Context, d InspectOptions) (key [32]byte, c io.ReadCloser, err error) {
-	path := fmt.Sprintf(adminAPIPrefix + "/inspect-data")
-	q := make(url.Values)
-	q.Set("volume", d.Volume)
-	q.Set("file", d.File)
-	resp, err := adm.executeMethod(ctx,
-		http.MethodGet, requestData{
-			relPath:     path,
-			queryValues: q,
-		},
-	)
+// If inspect is called with a public key no key will be returned
+// and the data is returned encrypted with the public key.
+func (adm *AdminClient) Inspect(ctx context.Context, d InspectOptions) (key []byte, c io.ReadCloser, err error) {
+	// Add form key/values in the body
+	form := make(url.Values)
+	form.Set("volume", d.Volume)
+	form.Set("file", d.File)
+	if d.PublicKey != nil {
+		form.Set("public-key", base64.StdEncoding.EncodeToString(d.PublicKey))
+	}
+
+	method := ""
+	reqData := requestData{
+		relPath: fmt.Sprintf(adminAPIPrefix + "/inspect-data"),
+	}
+
+	// If the public-key is specified, create a POST request and send
+	// parameters as multipart-form instead of query values
+	if d.PublicKey != nil {
+		method = http.MethodPost
+		reqData.customHeaders = make(http.Header)
+		reqData.customHeaders.Set("Content-Type", "application/x-www-form-urlencoded")
+		reqData.content = []byte(form.Encode())
+	} else {
+		method = http.MethodGet
+		reqData.queryValues = form
+	}
+
+	resp, err := adm.executeMethod(ctx, method, reqData)
 	if err != nil {
-		return key, nil, err
+		return nil, nil, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		closeResponse(resp)
-		return key, nil, httpRespToErrorResponse(resp)
+		return nil, nil, httpRespToErrorResponse(resp)
 	}
-	_, err = io.ReadFull(resp.Body, key[:1])
+
+	bior := bufio.NewReaderSize(resp.Body, 4<<10)
+	format, err := bior.ReadByte()
 	if err != nil {
 		closeResponse(resp)
-		return key, nil, err
+		return nil, nil, err
 	}
-	// This is the only version we know.
-	if key[0] != 1 {
+
+	switch format {
+	case 1:
+		key = make([]byte, 32)
+		// Read key...
+		_, err = io.ReadFull(bior, key[:])
+		if err != nil {
+			closeResponse(resp)
+			return nil, nil, err
+		}
+	case 2:
+		if err := bior.UnreadByte(); err != nil {
+			return nil, nil, err
+		}
+	default:
 		closeResponse(resp)
-		return key, nil, errors.New("unknown data version")
-	}
-	// Read key...
-	_, err = io.ReadFull(resp.Body, key[:])
-	if err != nil {
-		closeResponse(resp)
-		return key, nil, err
+		return nil, nil, errors.New("unknown data version")
 	}
 
 	// Return body
-	return key, resp.Body, nil
+	return key, &closeWrapper{Reader: bior, Closer: resp.Body}, nil
+}
+
+type closeWrapper struct {
+	io.Reader
+	io.Closer
 }
