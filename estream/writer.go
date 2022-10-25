@@ -200,6 +200,7 @@ func (w *Writer) addBlock(id blockID) *msgp.Writer {
 	return w.bw.newBlock(id)
 }
 
+// sendBlock sends the queued block.
 func (w *Writer) sendBlock() error {
 	if w.err != nil {
 		return w.err
@@ -207,12 +208,15 @@ func (w *Writer) sendBlock() error {
 	return w.setErr(w.bw.send())
 }
 
+// newStreamWriter creates a new stream writer
 func (w *Writer) newStreamWriter() *streamWriter {
 	sw := &streamWriter{w: w}
 	sw.h.Reset()
 	return sw
 }
 
+// setErr will set a stateful error on w.
+// If an error has already been set that is returned instead.
 func (w *Writer) setErr(err error) error {
 	if w.err != nil {
 		return w.err
@@ -224,16 +228,23 @@ func (w *Writer) setErr(err error) error {
 	return err
 }
 
+// streamWriter will send each individual write as a block on stream.
+// Close must be called when writes have completed to send hashes.
 type streamWriter struct {
 	w          *Writer
 	h          xxhash.Digest
 	eosWritten bool
 }
 
+// Write satisfies the io.Writer interface.
+// Each write is sent as a separate block.
 func (w *streamWriter) Write(b []byte) (int, error) {
 	mw := w.w.addBlock(blockDatablock)
+
 	// Update hash.
 	w.h.Write(b)
+
+	// Write as messagepack bin array.
 	if err := mw.WriteBytes(b); err != nil {
 		return 0, w.w.setErr(err)
 	}
@@ -243,6 +254,7 @@ func (w *streamWriter) Write(b []byte) (int, error) {
 
 // Close satisfies the io.Closer interface.
 func (w *streamWriter) Close() error {
+	// Write EOS only once.
 	if !w.eosWritten {
 		mw := w.w.addBlock(blockEOS)
 		sum := w.h.Sum(nil)
@@ -293,6 +305,8 @@ type blockWriter struct {
 	hdr [8 + 5]byte
 }
 
+// init the blockwriter
+// blocks will be written to w.
 func (b *blockWriter) init(w io.Writer) {
 	b.w = w
 	b.buf.Grow(1 << 10)
@@ -300,6 +314,8 @@ func (b *blockWriter) init(w io.Writer) {
 	b.wr = msgp.NewWriter(&b.buf)
 }
 
+// newBlock starts a new block with the specified id.
+// Content should be written to the returned writer.
 func (b *blockWriter) newBlock(id blockID) *msgp.Writer {
 	b.id = id
 	b.buf.Reset()
@@ -311,18 +327,25 @@ func (b *blockWriter) send() error {
 	if b.id == 0 {
 		return errors.New("blockWriter: no block started")
 	}
+
+	// Flush block data into b.buf
 	if err := b.wr.Flush(); err != nil {
 		return err
 	}
+	// Add block id
 	hdr := msgp.AppendInt8(b.hdr[:0], int8(b.id))
 	if b.buf.Len() > math.MaxUint32 {
 		return errors.New("max block size exceeded")
 	}
+	// Add block length.
 	hdr = msgp.AppendUint32(hdr, uint32(b.buf.Len()))
 	if _, err := b.w.Write(hdr); err != nil {
 		return err
 	}
+	// Write block.
 	_, err := b.w.Write(b.buf.Bytes())
+
+	// Reset for new block.
 	b.buf.Reset()
 	b.id = 0
 	return err
