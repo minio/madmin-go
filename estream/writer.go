@@ -22,6 +22,7 @@ import (
 	"crypto/rsa"
 	"crypto/sha512"
 	"crypto/x509"
+	"encoding/binary"
 	"errors"
 	"io"
 	"math"
@@ -35,10 +36,11 @@ import (
 // Streams can optionally be encrypted.
 // All streams have checksum verification.
 type Writer struct {
-	up  io.Writer
-	err error
-	key *[32]byte
-	bw  blockWriter
+	up    io.Writer
+	err   error
+	key   *[32]byte
+	bw    blockWriter
+	nonce uint64
 }
 
 const (
@@ -168,11 +170,10 @@ func (w *Writer) AddEncryptedStream(name string, extra []byte) (io.WriteCloser, 
 		return nil, w.setErr(err)
 	}
 
-	// Make nonce for stream.
+	// Get nonce for stream.
 	nonce := make([]byte, stream.NonceSize())
-	if _, err := io.ReadFull(crand.Reader, nonce); err != nil {
-		return nil, w.setErr(err)
-	}
+	binary.LittleEndian.PutUint64(nonce, w.nonce)
+	w.nonce++
 
 	// Write nonce as bin array.
 	w.setErr(mw.WriteBytes(nonce))

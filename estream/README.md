@@ -64,8 +64,8 @@ The functions above return an `io.WriteCloser`.
 Data for this stream should be written to this interface
 and `Close()` should be called before another stream can be added.
 
-Note that enuncrypted streams are unbuffered, so it may be a benefit to insert a `bufio.Writer`
-to avoid very small packets. Encrypted streams are buffered since 
+Note that en-uncrypted streams are unbuffered, so it may be a benefit to insert a `bufio.Writer`
+to avoid very small packets. Encrypted streams are buffered since sio collects block before sending.
 
 # Reading Streams
 
@@ -187,7 +187,7 @@ Stream will be encrypted using `AES_256_GCM` using the last key provided on stre
 | Name     | string    | Identifier of the stream      |
 | Extra    | bin array | Optional extra data           |
 | Checksum | uint8     | Checksum type used for stream |
-| Nonce    | bin array | 32 byte nonce used for stream |
+| Nonce    | bin array | 8 byte nonce used for stream  |
 
 The stream consists of all data blocks following until "End Of Stream" block is sent.
 

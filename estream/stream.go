@@ -393,7 +393,7 @@ func (r *Reader) DebugStream(w io.Writer) error {
 			if len(nonce) != stream.NonceSize() {
 				return r.setErr(fmt.Errorf("unexpected nonce length: %d", len(nonce)))
 			}
-			fmt.Fprintf(w, "nonce len: %v\n", len(nonce))
+			fmt.Fprintf(w, "nonce: %v\n", nonce)
 			r.inStream = true
 		case blockEOS:
 			if !r.inStream {
