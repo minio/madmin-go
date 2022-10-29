@@ -335,7 +335,7 @@ func (b *blockWriter) send() error {
 	}
 	// Add block id
 	hdr := msgp.AppendInt8(b.hdr[:0], int8(b.id))
-	if b.buf.Len() > math.MaxUint32 {
+	if uint32(b.buf.Len()) > math.MaxUint32 {
 		return errors.New("max block size exceeded")
 	}
 	// Add block length.
