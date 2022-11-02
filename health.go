@@ -275,11 +275,12 @@ type OSInfo struct {
 	Sensors []host.TemperatureStat `json:"sensors,omitempty"`
 }
 
-// TimeInfo contains current time in UTC, and the
-// roundtrip duration when fetching it remotely
+// TimeInfo contains current time with timezone, and
+// the roundtrip duration when fetching it remotely
 type TimeInfo struct {
 	CurrentTime       time.Time `json:"current_time"`
 	RoundtripDuration int32     `json:"roundtrip_duration"`
+	TimeZone          string    `json:"time_zone"`
 }
 
 // GetOSInfo returns linux only operating system's information.
@@ -347,7 +348,11 @@ func GetSysConfig(ctx context.Context, addr string) SysConfig {
 		sc.Config["rlimit-max"] = limits.OpenFiles
 	}
 
-	sc.Config["time-info"] = TimeInfo{CurrentTime: time.Now().UTC()}
+	zone, _ := time.Now().Zone()
+	sc.Config["time-info"] = TimeInfo{
+		CurrentTime: time.Now(),
+		TimeZone:    zone,
+	}
 
 	return sc
 }
