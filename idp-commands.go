@@ -23,6 +23,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/minio/minio-go/v7/pkg/set"
 )
@@ -261,4 +262,71 @@ func (adm *AdminClient) DeleteIDPConfig(ctx context.Context, cfgType, cfgName st
 	}
 
 	return resp.Header.Get(ConfigAppliedHeader) != ConfigAppliedTrue, nil
+}
+
+// PolicyEntitiesResult - contains response to a policy entities query.
+type PolicyEntitiesResult struct {
+	Timestamp      time.Time             `json:"timestamp"`
+	UserMappings   []UserPolicyEntities  `json:"userMappings,omitempty"`
+	GroupMappings  []GroupPolicyEntities `json:"groupMappings,omitempty"`
+	PolicyMappings []PolicyEntities      `json:"policyMappings,omitempty"`
+}
+
+// UserPolicyEntities - user -> policies mapping
+type UserPolicyEntities struct {
+	User     string   `json:"user"`
+	Policies []string `json:"policies"`
+}
+
+// GroupPolicyEntities - group -> policies mapping
+type GroupPolicyEntities struct {
+	Group    string   `json:"group"`
+	Policies []string `json:"policies"`
+}
+
+// PolicyEntities - policy -> user+group mapping
+type PolicyEntities struct {
+	Policy string   `json:"policy"`
+	Users  []string `json:"users"`
+	Groups []string `json:"groups"`
+}
+
+// PolicyEntitiesQuery - contains request info for policy entities query.
+type PolicyEntitiesQuery struct {
+	Users  []string
+	Groups []string
+	Policy []string
+}
+
+// GetLDAPPolicyEntities - returns LDAP policy entities.
+func (adm *AdminClient) GetLDAPPolicyEntities(ctx context.Context,
+	q PolicyEntitiesQuery,
+) (r PolicyEntitiesResult, err error) {
+	params := make(url.Values)
+	params["user"] = q.Users
+	params["group"] = q.Groups
+	params["policy"] = q.Policy
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/idp/ldap/policy-entities",
+		queryValues: params,
+	}
+
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return r, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return r, httpRespToErrorResponse(resp)
+	}
+
+	content, err := DecryptData(adm.getSecretKey(), resp.Body)
+	if err != nil {
+		return r, err
+	}
+
+	err = json.Unmarshal(content, &r)
+	return r, err
 }
