@@ -41,6 +41,10 @@ func (adm *AdminClient) AddOrUpdateIDPConfig(ctx context.Context, cfgType, cfgNa
 		method = http.MethodPost
 	}
 
+	if cfgName == "" {
+		cfgName = Default
+	}
+
 	h := make(http.Header, 1)
 	h.Add("Content-Type", "application/octet-stream")
 	reqData := requestData{
@@ -226,6 +230,9 @@ func (adm *AdminClient) ListIDPConfig(ctx context.Context, cfgType string) ([]ID
 
 // DeleteIDPConfig - delete an IDP configuration on the server.
 func (adm *AdminClient) DeleteIDPConfig(ctx context.Context, cfgType, cfgName string) (restart bool, err error) {
+	if cfgName == "" {
+		cfgName = Default
+	}
 	reqData := requestData{
 		relPath: strings.Join([]string{adminAPIPrefix, "idp-config", cfgType, cfgName}, "/"),
 	}
