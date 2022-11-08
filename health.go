@@ -853,10 +853,9 @@ type HealthInfo struct {
 	Version string `json:"version"`
 	Error   string `json:"error,omitempty"`
 
-	TimeStamp time.Time        `json:"timestamp,omitempty"`
-	Sys       SysInfo          `json:"sys,omitempty"`
-	Perf      SpeedTestResults `json:"perf,omitempty"`
-	Minio     MinioHealthInfo  `json:"minio,omitempty"`
+	TimeStamp time.Time       `json:"timestamp,omitempty"`
+	Sys       SysInfo         `json:"sys,omitempty"`
+	Minio     MinioHealthInfo `json:"minio,omitempty"`
 }
 
 func (info HealthInfo) String() string {
