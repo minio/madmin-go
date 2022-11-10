@@ -19,8 +19,12 @@ package madmin
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"math/rand"
 	"net/http"
 	"net/url"
+	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -47,6 +51,7 @@ func (adm *AdminClient) Netperf(ctx context.Context, duration time.Duration) (re
 			relPath:     adminAPIPrefix + "/speedtest/net",
 			queryValues: queryVals,
 		})
+	defer closeResponse(resp)
 	if err != nil {
 		return result, err
 	}
@@ -55,4 +60,82 @@ func (adm *AdminClient) Netperf(ctx context.Context, duration time.Duration) (re
 	}
 	err = json.NewDecoder(resp.Body).Decode(&result)
 	return result, err
+}
+
+type NetperfClientResult struct {
+	Endpoint  string `json:"endpoint"`
+	Bandwidth uint64 `json:"bw"`
+	Error     string `json:"error"`
+}
+
+// Reader to read random data.
+type netperfReader struct {
+	n   uint64
+	eof chan struct{}
+	buf []byte
+}
+
+func (m *netperfReader) BytesRead() uint64 {
+	return atomic.LoadUint64(&m.n)
+}
+
+func (m *netperfReader) Read(b []byte) (int, error) {
+	select {
+	case <-m.eof:
+		return 0, io.EOF
+	default:
+	}
+	n := copy(b, m.buf)
+	atomic.AddUint64(&m.n, uint64(n))
+	return n, nil
+}
+
+// NetperfClient - perform network benchmark from client to server.
+func (adm *AdminClient) NetperfClient(ctx context.Context, duration time.Duration) (result NetperfClientResult, err error) {
+	r := &netperfReader{eof: make(chan struct{})}
+	r.buf = make([]byte, 128*(1<<10))
+	rand.Read(r.buf)
+
+	connectionsPerPeer := 16
+
+	errStr := ""
+	var wg sync.WaitGroup
+
+	for i := 0; i < connectionsPerPeer; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			resp, err := adm.executeMethod(ctx,
+				http.MethodPost, requestData{
+					relPath:       adminAPIPrefix + "/speedtest/netclient",
+					contentReader: io.NopCloser(r),
+				})
+			closeResponse(resp)
+
+			if err != nil {
+				errStr = err.Error()
+			} else if resp.StatusCode != http.StatusOK {
+				errStr = resp.Status
+			}
+		}()
+	}
+
+	time.Sleep(duration)
+	close(r.eof)
+	wg.Wait()
+
+	bw := ((r.BytesRead() / uint64(duration.Milliseconds())) * 1000)
+	if errStr != "" {
+		return NetperfClientResult{
+			Endpoint:  adm.endpointURL.String(),
+			Bandwidth: bw,
+			Error:     errStr,
+		}, nil
+	}
+
+	return NetperfClientResult{
+		Endpoint:  adm.endpointURL.String(),
+		Bandwidth: bw,
+	}, nil
 }

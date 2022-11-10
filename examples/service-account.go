@@ -1,5 +1,6 @@
 //go:build ignore
 // +build ignore
+
 //
 // MinIO Object Storage (c) 2022 MinIO, Inc.
 //
@@ -37,7 +38,7 @@ func main() {
 		log.Fatalln(err)
 	}
 	ctx := context.Background()
-	
+
 	// add service account
 	addReq := madmin.AddServiceAccountReq{
 		TargetUser: "my-username",

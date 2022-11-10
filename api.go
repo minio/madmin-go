@@ -212,6 +212,7 @@ type requestData struct {
 	queryValues   url.Values
 	relPath       string // URL path relative to admin API base endpoint
 	content       []byte
+	contentReader io.ReadCloser
 	// endpointOverride overrides target URL with anonymousClient
 	endpointOverride *url.URL
 	// isKMS replaces URL prefix with /kms
@@ -347,6 +348,7 @@ type RequestData struct {
 	QueryValues   url.Values
 	RelPath       string // URL path relative to admin API base endpoint
 	Content       []byte
+	ContentReader io.ReadCloser
 }
 
 // ExecuteMethod - similar to internal method executeMethod() useful
@@ -483,7 +485,7 @@ func (adm AdminClient) getSecretKey() string {
 func (adm AdminClient) newRequest(ctx context.Context, method string, reqData requestData) (req *http.Request, err error) {
 	// If no method is supplied default to 'POST'.
 	if method == "" {
-		method = "POST"
+		method = http.MethodPost
 	}
 
 	// Default all requests to ""
@@ -496,9 +498,15 @@ func (adm AdminClient) newRequest(ctx context.Context, method string, reqData re
 	}
 
 	// Initialize a new HTTP request for the method.
-	req, err = http.NewRequestWithContext(ctx, method, targetURL.String(), bytes.NewReader(reqData.content))
+	req, err = http.NewRequestWithContext(ctx, method, targetURL.String(), nil)
 	if err != nil {
 		return nil, err
+	}
+
+	if reqData.content != nil {
+		req.Body = io.NopCloser(bytes.NewReader(reqData.content))
+	} else {
+		req.Body = reqData.contentReader
 	}
 
 	value, err := adm.credsProvider.Get()
@@ -516,12 +524,17 @@ func (adm AdminClient) newRequest(ctx context.Context, method string, reqData re
 	for k, v := range reqData.customHeaders {
 		req.Header.Set(k, v[0])
 	}
+
 	if length := len(reqData.content); length > 0 {
 		req.ContentLength = int64(length)
 	}
-	sum := sha256.Sum256(reqData.content)
-	req.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sum[:]))
-	req.Body = ioutil.NopCloser(bytes.NewReader(reqData.content))
+
+	req.Header.Set("X-Amz-Content-Sha256", "UNSIGNED-PAYLOAD")
+	if reqData.content != nil {
+		sum := sha256.Sum256(reqData.content)
+		req.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sum[:]))
+		req.Body = ioutil.NopCloser(bytes.NewReader(reqData.content))
+	}
 
 	req = signer.SignV4(*req, accessKeyID, secretAccessKey, sessionToken, location)
 	return req, nil

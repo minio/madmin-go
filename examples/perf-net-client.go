@@ -2,7 +2,7 @@
 // +build ignore
 
 //
-// MinIO Object Storage (c) 2021 MinIO, Inc.
+// MinIO Object Storage (c) 2022 MinIO, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -21,27 +21,27 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"log"
 
 	"github.com/minio/madmin-go"
 )
 
 func main() {
-	// Note: YOUR-ACCESSKEYID, YOUR-SECRETACCESSKEY and my-bucketname are
+	// Note: YOUR-ACCESSKEYID, YOUR-SECRETACCESSKEY are
 	// dummy values, please replace them with original values.
 
-	// API requests are secure (HTTPS) if secure=true and insecure (HTTPS) otherwise.
+	// API requests are secure (HTTPS) if secure=true and insecure (HTTP) otherwise.
 	// New returns an MinIO Admin client object.
 	madmClnt, err := madmin.New("your-minio.example.com:9000", "YOUR-ACCESSKEYID", "YOUR-SECRETACCESSKEY", true)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	opts := madmin.AccountOpts{PrefixUsage: false}
 
-	accountInfo, err := madmClnt.AccountInfo(context.Background(), opts)
+	result, err := madmClnt.NetperfClient(context.Background(), 10*time.Duration)
 	if err != nil {
 		log.Fatalln(err)
 	}
-
-	log.Println(accountInfo)
+	js, _ := json.MarshalIndent(result, "", "  ")
+	log.Printf("Client Netperf Result: %s\n", string(js))
 }
