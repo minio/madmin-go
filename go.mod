@@ -1,4 +1,4 @@
-module github.com/minio/madmin-go
+module github.com/minio/madmin-go/v2
 
 go 1.17
 

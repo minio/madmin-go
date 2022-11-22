@@ -16,7 +16,7 @@ package main
 import (
     "fmt"
 
-    "github.com/minio/madmin-go"
+    "github.com/minio/madmin-go/v2"
 )
 
 func main() {
@@ -576,4 +576,5 @@ __Example__
 ```
 
 ## License
-This SDK is distributed under the [Apache License, Version 2.0](http://www.apache.org/licenses/LICENSE-2.0), see [LICENSE](https://github.com/minio/madmin-go/blob/master/LICENSE).
+All versions of this SDK starting from [v2.0.0](https://github.com/minio/madmin-go/releases/tag/v2.0.0) are distributed under the GNU AGPLv3 license that can be found in the [LICENSE](https://github.com/minio/madmin-go/blob/master/LICENSE) file.
+
