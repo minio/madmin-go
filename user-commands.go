@@ -495,3 +495,39 @@ func (adm *AdminClient) DeleteServiceAccount(ctx context.Context, serviceAccount
 
 	return nil
 }
+
+// TemporaryAccountInfoResp is the response body of the info temporary call
+type TemporaryAccountInfoResp InfoServiceAccountResp
+
+// TemporaryAccountInfo - returns the info of a temporary account
+func (adm *AdminClient) TemporaryAccountInfo(ctx context.Context, accessKey string) (TemporaryAccountInfoResp, error) {
+	queryValues := url.Values{}
+	queryValues.Set("accessKey", accessKey)
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/temporary-account-info",
+		queryValues: queryValues,
+	}
+
+	// Execute GET on /minio/admin/v3/temporary-account-info
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return TemporaryAccountInfoResp{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return TemporaryAccountInfoResp{}, httpRespToErrorResponse(resp)
+	}
+
+	data, err := DecryptData(adm.getSecretKey(), resp.Body)
+	if err != nil {
+		return TemporaryAccountInfoResp{}, err
+	}
+
+	var infoResp TemporaryAccountInfoResp
+	if err = json.Unmarshal(data, &infoResp); err != nil {
+		return TemporaryAccountInfoResp{}, err
+	}
+	return infoResp, nil
+}
