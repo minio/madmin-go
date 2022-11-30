@@ -51,5 +51,13 @@ jobs:
       uses: actions/checkout@v1
 
     - name: Test on ${{ matrix.os }}
+      if: matrix.os == 'ubuntu-latest'
       run: |
-         go test -race ./...
+         go test -v -race ./...
+         GOARCH=386 GOOS=linux go test -v ./...
+
+    - name: Test on ${{ matrix.os }}
+      if: matrix.os != 'ubuntu-latest'
+      run: |
+         go test -v -race ./...
+

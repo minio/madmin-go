@@ -1,23 +1,28 @@
 //
-// MinIO Object Storage (c) 2021 MinIO, Inc.
+// Copyright (c) 2015-2022 MinIO, Inc.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of MinIO Object Storage stack
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <http://www.gnu.org/licenses/>.
 //
 
 package madmin
 
 import (
+	"bufio"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"io"
@@ -28,45 +33,78 @@ import (
 // InspectOptions provides options to Inspect.
 type InspectOptions struct {
 	Volume, File string
+	PublicKey    []byte // PublicKey to use for inspected data.
 }
 
 // Inspect makes an admin call to download a raw files from disk.
-func (adm *AdminClient) Inspect(ctx context.Context, d InspectOptions) (key [32]byte, c io.ReadCloser, err error) {
-	path := fmt.Sprintf(adminAPIPrefix + "/inspect-data")
-	q := make(url.Values)
-	q.Set("volume", d.Volume)
-	q.Set("file", d.File)
-	resp, err := adm.executeMethod(ctx,
-		http.MethodGet, requestData{
-			relPath:     path,
-			queryValues: q,
-		},
-	)
+// If inspect is called with a public key no key will be returned
+// and the data is returned encrypted with the public key.
+func (adm *AdminClient) Inspect(ctx context.Context, d InspectOptions) (key []byte, c io.ReadCloser, err error) {
+	// Add form key/values in the body
+	form := make(url.Values)
+	form.Set("volume", d.Volume)
+	form.Set("file", d.File)
+	if d.PublicKey != nil {
+		form.Set("public-key", base64.StdEncoding.EncodeToString(d.PublicKey))
+	}
+
+	method := ""
+	reqData := requestData{
+		relPath: fmt.Sprintf(adminAPIPrefix + "/inspect-data"),
+	}
+
+	// If the public-key is specified, create a POST request and send
+	// parameters as multipart-form instead of query values
+	if d.PublicKey != nil {
+		method = http.MethodPost
+		reqData.customHeaders = make(http.Header)
+		reqData.customHeaders.Set("Content-Type", "application/x-www-form-urlencoded")
+		reqData.content = []byte(form.Encode())
+	} else {
+		method = http.MethodGet
+		reqData.queryValues = form
+	}
+
+	resp, err := adm.executeMethod(ctx, method, reqData)
 	if err != nil {
-		return key, nil, err
+		return nil, nil, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
 		closeResponse(resp)
-		return key, nil, httpRespToErrorResponse(resp)
+		return nil, nil, httpRespToErrorResponse(resp)
 	}
-	_, err = io.ReadFull(resp.Body, key[:1])
+
+	bior := bufio.NewReaderSize(resp.Body, 4<<10)
+	format, err := bior.ReadByte()
 	if err != nil {
 		closeResponse(resp)
-		return key, nil, err
+		return nil, nil, err
 	}
-	// This is the only version we know.
-	if key[0] != 1 {
+
+	switch format {
+	case 1:
+		key = make([]byte, 32)
+		// Read key...
+		_, err = io.ReadFull(bior, key[:])
+		if err != nil {
+			closeResponse(resp)
+			return nil, nil, err
+		}
+	case 2:
+		if err := bior.UnreadByte(); err != nil {
+			return nil, nil, err
+		}
+	default:
 		closeResponse(resp)
-		return key, nil, errors.New("unknown data version")
-	}
-	// Read key...
-	_, err = io.ReadFull(resp.Body, key[:])
-	if err != nil {
-		closeResponse(resp)
-		return key, nil, err
+		return nil, nil, errors.New("unknown data version")
 	}
 
 	// Return body
-	return key, resp.Body, nil
+	return key, &closeWrapper{Reader: bior, Closer: resp.Body}, nil
+}
+
+type closeWrapper struct {
+	io.Reader
+	io.Closer
 }

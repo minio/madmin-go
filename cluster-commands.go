@@ -1,17 +1,20 @@
 //
-// MinIO Object Storage (c) 2021 MinIO, Inc.
+// Copyright (c) 2015-2022 MinIO, Inc.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of MinIO Object Storage stack
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <http://www.gnu.org/licenses/>.
 //
 
 package madmin
@@ -27,6 +30,9 @@ import (
 
 	"github.com/minio/minio-go/v7/pkg/replication"
 )
+
+// SiteReplAPIVersion holds the supported version of the server Replication API
+const SiteReplAPIVersion = "1"
 
 // PeerSite - represents a cluster/site to be added to the set of replicated
 // sites.
@@ -62,9 +68,13 @@ func (adm *AdminClient) SiteReplicationAdd(ctx context.Context, sites []PeerSite
 		return ReplicateAddStatus{}, err
 	}
 
+	q := make(url.Values)
+	q.Set("api-version", SiteReplAPIVersion)
+
 	reqData := requestData{
-		relPath: adminAPIPrefix + "/site-replication/add",
-		content: encBytes,
+		relPath:     adminAPIPrefix + "/site-replication/add",
+		content:     encBytes,
+		queryValues: q,
 	}
 
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
@@ -100,8 +110,12 @@ type SiteReplicationInfo struct {
 
 // SiteReplicationInfo - returns cluster replication information.
 func (adm *AdminClient) SiteReplicationInfo(ctx context.Context) (info SiteReplicationInfo, err error) {
+	q := make(url.Values)
+	q.Set("api-version", SiteReplAPIVersion)
+
 	reqData := requestData{
-		relPath: adminAPIPrefix + "/site-replication/info",
+		relPath:     adminAPIPrefix + "/site-replication/info",
+		queryValues: q,
 	}
 
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
@@ -152,9 +166,13 @@ func (adm *AdminClient) SRPeerJoin(ctx context.Context, r SRPeerJoinReq) error {
 		return err
 	}
 
+	q := make(url.Values)
+	q.Set("api-version", SiteReplAPIVersion)
+
 	reqData := requestData{
-		relPath: adminAPIPrefix + "/site-replication/peer/join",
-		content: encBuf,
+		relPath:     adminAPIPrefix + "/site-replication/peer/join",
+		content:     encBuf,
+		queryValues: q,
 	}
 
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
@@ -199,6 +217,9 @@ func (adm *AdminClient) SRPeerBucketOps(ctx context.Context, bucket string, op B
 			v.Add(k, val)
 		}
 	}
+
+	v.Set("api-version", SiteReplAPIVersion)
+
 	reqData := requestData{
 		queryValues: v,
 		relPath:     adminAPIPrefix + "/site-replication/peer/bucket-ops",
@@ -323,9 +344,14 @@ func (adm *AdminClient) SRPeerReplicateIAMItem(ctx context.Context, item SRIAMIt
 	if err != nil {
 		return err
 	}
+
+	q := make(url.Values)
+	q.Add("api-version", SiteReplAPIVersion)
+
 	reqData := requestData{
-		relPath: adminAPIPrefix + "/site-replication/peer/iam-item",
-		content: b,
+		relPath:     adminAPIPrefix + "/site-replication/peer/iam-item",
+		content:     b,
+		queryValues: q,
 	}
 
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
@@ -386,9 +412,14 @@ func (adm *AdminClient) SRPeerReplicateBucketMeta(ctx context.Context, item SRBu
 	if err != nil {
 		return err
 	}
+
+	q := make(url.Values)
+	q.Set("api-version", SiteReplAPIVersion)
+
 	reqData := requestData{
-		relPath: adminAPIPrefix + "/site-replication/peer/bucket-meta",
-		content: b,
+		relPath:     adminAPIPrefix + "/site-replication/peer/bucket-meta",
+		content:     b,
+		queryValues: q,
 	}
 
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
@@ -481,8 +512,12 @@ type LDAPSettings struct {
 
 // SRPeerGetIDPSettings - fetches IDP settings from the server.
 func (adm *AdminClient) SRPeerGetIDPSettings(ctx context.Context) (info IDPSettings, err error) {
+	q := make(url.Values)
+	q.Set("api-version", SiteReplAPIVersion)
+
 	reqData := requestData{
-		relPath: adminAPIPrefix + "/site-replication/peer/idp-settings",
+		relPath:     adminAPIPrefix + "/site-replication/peer/idp-settings",
+		queryValues: q,
 	}
 
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
@@ -534,9 +569,12 @@ type SRInfo struct {
 
 // SRMetaInfo - returns replication metadata info for a site.
 func (adm *AdminClient) SRMetaInfo(ctx context.Context, opts SRStatusOptions) (info SRInfo, err error) {
+	q := opts.getURLValues()
+	q.Set("api-version", SiteReplAPIVersion)
+
 	reqData := requestData{
 		relPath:     adminAPIPrefix + "/site-replication/metainfo",
-		queryValues: opts.getURLValues(),
+		queryValues: q,
 	}
 
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
@@ -733,9 +771,12 @@ func (o *SRStatusOptions) getURLValues() url.Values {
 
 // SRStatusInfo - returns site replication status
 func (adm *AdminClient) SRStatusInfo(ctx context.Context, opts SRStatusOptions) (info SRStatusInfo, err error) {
+	q := opts.getURLValues()
+	q.Set("api-version", SiteReplAPIVersion)
+
 	reqData := requestData{
 		relPath:     adminAPIPrefix + "/site-replication/status",
-		queryValues: opts.getURLValues(),
+		queryValues: q,
 	}
 
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
@@ -770,9 +811,13 @@ func (adm *AdminClient) SiteReplicationEdit(ctx context.Context, site PeerInfo) 
 		return ReplicateEditStatus{}, err
 	}
 
+	q := make(url.Values)
+	q.Set("api-version", SiteReplAPIVersion)
+
 	reqData := requestData{
-		relPath: adminAPIPrefix + "/site-replication/edit",
-		content: encBytes,
+		relPath:     adminAPIPrefix + "/site-replication/edit",
+		content:     encBytes,
+		queryValues: q,
 	}
 
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
@@ -798,9 +843,13 @@ func (adm *AdminClient) SRPeerEdit(ctx context.Context, pi PeerInfo) error {
 		return err
 	}
 
+	q := make(url.Values)
+	q.Set("api-version", SiteReplAPIVersion)
+
 	reqData := requestData{
-		relPath: adminAPIPrefix + "/site-replication/peer/edit",
-		content: b,
+		relPath:     adminAPIPrefix + "/site-replication/peer/edit",
+		content:     b,
+		queryValues: q,
 	}
 
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
@@ -822,10 +871,13 @@ func (adm *AdminClient) SiteReplicationRemove(ctx context.Context, removeReq SRR
 	if err != nil {
 		return st, nil
 	}
+	q := make(url.Values)
+	q.Set("api-version", SiteReplAPIVersion)
 
 	reqData := requestData{
-		relPath: adminAPIPrefix + "/site-replication/remove",
-		content: rmvBytes,
+		relPath:     adminAPIPrefix + "/site-replication/remove",
+		content:     rmvBytes,
+		queryValues: q,
 	}
 
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
@@ -849,10 +901,13 @@ func (adm *AdminClient) SRPeerRemove(ctx context.Context, removeReq SRRemoveReq)
 	if err != nil {
 		return st, err
 	}
+	q := make(url.Values)
+	q.Set("api-version", SiteReplAPIVersion)
 
 	reqData := requestData{
-		relPath: adminAPIPrefix + "/site-replication/peer/remove",
-		content: reqBytes,
+		relPath:     adminAPIPrefix + "/site-replication/peer/remove",
+		content:     reqBytes,
+		queryValues: q,
 	}
 
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
@@ -883,3 +938,60 @@ const (
 	ReplicateRemoveStatusSuccess = "Requested site(s) were removed from cluster replication successfully."
 	ReplicateRemoveStatusPartial = "Some site(s) could not be removed from cluster replication configuration."
 )
+
+type ResyncBucketStatus struct {
+	Bucket    string `json:"bucket"`
+	Status    string `json:"status"`
+	ErrDetail string `json:"errorDetail,omitempty"`
+}
+
+// SRResyncOpStatus - returns status of resync start request.
+type SRResyncOpStatus struct {
+	OpType    string               `json:"op"` // one of "start" or "cancel"
+	ResyncID  string               `json:"id"`
+	Status    string               `json:"status"`
+	Buckets   []ResyncBucketStatus `json:"buckets"`
+	ErrDetail string               `json:"errorDetail,omitempty"`
+}
+
+// SiteResyncOp type of resync operation
+type SiteResyncOp string
+
+const (
+	// SiteResyncStart starts a site resync operation
+	SiteResyncStart SiteResyncOp = "start"
+	// SiteResyncCancel cancels ongoing site resync
+	SiteResyncCancel SiteResyncOp = "cancel"
+)
+
+// SiteReplicationResyncOp - perform a site replication resync operation
+func (adm *AdminClient) SiteReplicationResyncOp(ctx context.Context, site PeerInfo, op SiteResyncOp) (SRResyncOpStatus, error) {
+	reqBytes, err := json.Marshal(site)
+	if err != nil {
+		return SRResyncOpStatus{}, nil
+	}
+
+	v := url.Values{}
+	v.Set("operation", string(op))
+	v.Set("api-version", SiteReplAPIVersion)
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/site-replication/resync/op",
+		content:     reqBytes,
+		queryValues: v,
+	}
+
+	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return SRResyncOpStatus{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return SRResyncOpStatus{}, httpRespToErrorResponse(resp)
+	}
+
+	var res SRResyncOpStatus
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	return res, err
+}

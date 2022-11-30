@@ -1,17 +1,20 @@
 //
-// MinIO Object Storage (c) 2021 MinIO, Inc.
+// Copyright (c) 2015-2022 MinIO, Inc.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of MinIO Object Storage stack
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <http://www.gnu.org/licenses/>.
 //
 
 package madmin
@@ -491,4 +494,40 @@ func (adm *AdminClient) DeleteServiceAccount(ctx context.Context, serviceAccount
 	}
 
 	return nil
+}
+
+// TemporaryAccountInfoResp is the response body of the info temporary call
+type TemporaryAccountInfoResp InfoServiceAccountResp
+
+// TemporaryAccountInfo - returns the info of a temporary account
+func (adm *AdminClient) TemporaryAccountInfo(ctx context.Context, accessKey string) (TemporaryAccountInfoResp, error) {
+	queryValues := url.Values{}
+	queryValues.Set("accessKey", accessKey)
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/temporary-account-info",
+		queryValues: queryValues,
+	}
+
+	// Execute GET on /minio/admin/v3/temporary-account-info
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return TemporaryAccountInfoResp{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return TemporaryAccountInfoResp{}, httpRespToErrorResponse(resp)
+	}
+
+	data, err := DecryptData(adm.getSecretKey(), resp.Body)
+	if err != nil {
+		return TemporaryAccountInfoResp{}, err
+	}
+
+	var infoResp TemporaryAccountInfoResp
+	if err = json.Unmarshal(data, &infoResp); err != nil {
+		return TemporaryAccountInfoResp{}, err
+	}
+	return infoResp, nil
 }

@@ -1,17 +1,20 @@
 //
-// MinIO Object Storage (c) 2021 MinIO, Inc.
+// Copyright (c) 2015-2022 MinIO, Inc.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of MinIO Object Storage stack
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <http://www.gnu.org/licenses/>.
 //
 
 package madmin
@@ -31,13 +34,14 @@ import (
 // servers holding the lock, source on the client machine,
 // ID, type(read or write) and time stamp.
 type LockEntry struct {
-	Timestamp  time.Time `json:"time"`       // When the lock was first granted
-	Resource   string    `json:"resource"`   // Resource contains info like bucket+object
-	Type       string    `json:"type"`       // Type indicates if 'Write' or 'Read' lock
-	Source     string    `json:"source"`     // Source at which lock was granted
-	ServerList []string  `json:"serverlist"` // List of servers participating in the lock.
-	Owner      string    `json:"owner"`      // Owner UUID indicates server owns the lock.
-	ID         string    `json:"id"`         // UID to uniquely identify request of client.
+	Timestamp  time.Time     `json:"time"`       // When the lock was first granted
+	Elapsed    time.Duration `json:"elapsed"`    // Duration for which lock has been held
+	Resource   string        `json:"resource"`   // Resource contains info like bucket+object
+	Type       string        `json:"type"`       // Type indicates if 'Write' or 'Read' lock
+	Source     string        `json:"source"`     // Source at which lock was granted
+	ServerList []string      `json:"serverlist"` // List of servers participating in the lock.
+	Owner      string        `json:"owner"`      // Owner UUID indicates server owns the lock.
+	ID         string        `json:"id"`         // UID to uniquely identify request of client.
 	// Represents quorum number of servers required to hold this lock, used to look for stale locks.
 	Quorum int `json:"quorum"`
 }

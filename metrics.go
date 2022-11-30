@@ -1,17 +1,20 @@
 //
-// MinIO Object Storage (c) 2022 MinIO, Inc.
+// Copyright (c) 2015-2022 MinIO, Inc.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of MinIO Object Storage stack
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <http://www.gnu.org/licenses/>.
 //
 
 package madmin
@@ -41,6 +44,7 @@ const (
 	MetricsDisk
 	MetricsOS
 	MetricsBatchJobs
+	MetricsSiteResync
 
 	// MetricsAll must be last.
 	// Enables all metrics.
@@ -57,6 +61,7 @@ type MetricsOptions struct {
 	Disks    []string
 	ByDisk   bool
 	ByJobID  string
+	ByDepID  string
 }
 
 // Metrics makes an admin call to retrieve metrics.
@@ -77,6 +82,9 @@ func (adm *AdminClient) Metrics(ctx context.Context, o MetricsOptions, out func(
 	}
 	if o.ByJobID != "" {
 		q.Set("by-jobID", o.ByJobID)
+	}
+	if o.ByDepID != "" {
+		q.Set("by-depID", o.ByDepID)
 	}
 
 	resp, err := adm.executeMethod(ctx,
@@ -133,10 +141,11 @@ type RealtimeMetrics struct {
 
 // Metrics contains all metric types.
 type Metrics struct {
-	Scanner   *ScannerMetrics  `json:"scanner,omitempty"`
-	Disk      *DiskMetric      `json:"disk,omitempty"`
-	OS        *OSMetrics       `json:"os,omitempty"`
-	BatchJobs *BatchJobMetrics `json:"batchJobs,omitempty"`
+	Scanner    *ScannerMetrics    `json:"scanner,omitempty"`
+	Disk       *DiskMetric        `json:"disk,omitempty"`
+	OS         *OSMetrics         `json:"os,omitempty"`
+	BatchJobs  *BatchJobMetrics   `json:"batchJobs,omitempty"`
+	SiteResync *SiteResyncMetrics `json:"siteResync,omitempty"`
 }
 
 // Merge other into r.
@@ -162,6 +171,11 @@ func (r *Metrics) Merge(other *Metrics) {
 		r.BatchJobs = &BatchJobMetrics{}
 	}
 	r.BatchJobs.Merge(other.BatchJobs)
+
+	if r.SiteResync == nil && other.SiteResync != nil {
+		r.SiteResync = &SiteResyncMetrics{}
+	}
+	r.SiteResync.Merge(other.SiteResync)
 }
 
 // Merge will merge other into r.
@@ -480,5 +494,47 @@ func (o *BatchJobMetrics) Merge(other *BatchJobMetrics) {
 	// Job
 	for k, v := range other.Jobs {
 		o.Jobs[k] = v
+	}
+}
+
+// SiteResyncMetrics contains metrics for site resync operation
+type SiteResyncMetrics struct {
+	// Time these metrics were collected
+	CollectedAt time.Time `json:"collected"`
+	// Status of resync operation
+	ResyncStatus string    `json:"resyncStatus,omitempty"`
+	StartTime    time.Time `json:"startTime"`
+	LastUpdate   time.Time `json:"lastUpdate"`
+	NumBuckets   int64     `json:"numBuckets"`
+	ResyncID     string    `json:"resyncID"`
+	DeplID       string    `json:"deplID"`
+
+	// Completed size in bytes
+	ReplicatedSize int64 `json:"completedReplicationSize"`
+	// Total number of objects replicated
+	ReplicatedCount int64 `json:"replicationCount"`
+	// Failed size in bytes
+	FailedSize int64 `json:"failedReplicationSize"`
+	// Total number of failed operations
+	FailedCount int64 `json:"failedReplicationCount"`
+	// Buckets that could not be synced
+	FailedBuckets []string `json:"failedBuckets"`
+	// Last bucket/object replicated.
+	Bucket string `json:"bucket,omitempty"`
+	Object string `json:"object,omitempty"`
+}
+
+func (o SiteResyncMetrics) Complete() bool {
+	return strings.ToLower(o.ResyncStatus) == "completed"
+}
+
+// Merge other into 'o'.
+func (o *SiteResyncMetrics) Merge(other *SiteResyncMetrics) {
+	if other == nil {
+		return
+	}
+	if o.CollectedAt.Before(other.CollectedAt) {
+		// Use latest
+		*o = *other
 	}
 }

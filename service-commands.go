@@ -1,17 +1,20 @@
 //
-// MinIO Object Storage (c) 2021 MinIO, Inc.
+// Copyright (c) 2015-2022 MinIO, Inc.
 //
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
+// This file is part of MinIO Object Storage stack
 //
-//      http://www.apache.org/licenses/LICENSE-2.0
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
 //
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <http://www.gnu.org/licenses/>.
 //
 
 package madmin
@@ -93,18 +96,18 @@ type ServiceTraceInfo struct {
 // ServiceTraceOpts holds tracing options
 type ServiceTraceOpts struct {
 	// Trace types:
-	S3               bool
-	Internal         bool
-	Storage          bool
-	OS               bool
-	Scanner          bool
-	Decommission     bool
-	Healing          bool
-	BatchReplication bool
-	Rebalance        bool
-
-	OnlyErrors bool
-	Threshold  time.Duration
+	S3                bool
+	Internal          bool
+	Storage           bool
+	OS                bool
+	Scanner           bool
+	Decommission      bool
+	Healing           bool
+	BatchReplication  bool
+	Rebalance         bool
+	ReplicationResync bool
+	OnlyErrors        bool
+	Threshold         time.Duration
 }
 
 // TraceTypes returns the enabled traces as a bitfield value.
@@ -119,6 +122,7 @@ func (t ServiceTraceOpts) TraceTypes() TraceType {
 	tt.SetIf(t.Healing, TraceHealing)
 	tt.SetIf(t.BatchReplication, TraceBatchReplication)
 	tt.SetIf(t.Rebalance, TraceRebalance)
+	tt.SetIf(t.ReplicationResync, TraceReplicationResync)
 
 	return tt
 }
@@ -137,6 +141,7 @@ func (t ServiceTraceOpts) AddParams(u url.Values) {
 	u.Set("healing", strconv.FormatBool(t.Healing))
 	u.Set("batch-replication", strconv.FormatBool(t.BatchReplication))
 	u.Set("rebalance", strconv.FormatBool(t.Rebalance))
+	u.Set("replication-resync", strconv.FormatBool(t.ReplicationResync))
 }
 
 // ParseParams will parse parameters and set them to t.
@@ -151,6 +156,7 @@ func (t *ServiceTraceOpts) ParseParams(r *http.Request) (err error) {
 	t.Storage = r.Form.Get("storage") == "true"
 	t.Internal = r.Form.Get("internal") == "true"
 	t.OnlyErrors = r.Form.Get("err") == "true"
+	t.ReplicationResync = r.Form.Get("replication-resync") == "true"
 
 	if th := r.Form.Get("threshold"); th != "" {
 		d, err := time.ParseDuration(th)
