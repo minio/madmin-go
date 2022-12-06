@@ -22,6 +22,7 @@ package madmin
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -337,6 +338,101 @@ func (adm *AdminClient) GetLDAPPolicyEntities(ctx context.Context,
 		return r, err
 	}
 
+	err = json.Unmarshal(content, &r)
+	return r, err
+}
+
+// PolicyAssociationResp - result of a policy association request.
+type PolicyAssociationResp struct {
+	PoliciesAttached []string `json:"policiesAttached,omitempty"`
+	PoliciesDetached []string `json:"policiesDetached,omitempty"`
+
+	UpdatedAt time.Time `json:"updatedAt"`
+}
+
+// PolicyAssociationReq - request to attach/detach policies from/to a user or
+// group.
+type PolicyAssociationReq struct {
+	Policies []string `json:"policies"`
+
+	// Exactly one of the following must be non-empty in a valid request.
+	User  string `json:"user,omitempty"`
+	Group string `json:"group,omitempty"`
+}
+
+// IsValid validates the object and returns a reason for when it is not.
+func (p PolicyAssociationReq) IsValid() error {
+	if len(p.Policies) == 0 {
+		return errors.New("no policy names were given")
+	}
+	for _, p := range p.Policies {
+		if p == "" {
+			return errors.New("an empty policy name was given")
+		}
+	}
+
+	if p.User == "" && p.Group == "" {
+		return errors.New("no user or group association was given")
+	}
+
+	if p.User != "" && p.Group != "" {
+		return errors.New("either a group or a user association must be given, not both")
+	}
+
+	return nil
+}
+
+// AttachPolicyLDAP - client call to attach policies for LDAP.
+func (adm *AdminClient) AttachPolicyLDAP(ctx context.Context, par PolicyAssociationReq) (PolicyAssociationResp, error) {
+	return adm.attachOrDetachPolicyLDAP(ctx, true, par)
+}
+
+// DetachPolicyLDAP - client call to detach policies for LDAP.
+func (adm *AdminClient) DetachPolicyLDAP(ctx context.Context, par PolicyAssociationReq) (PolicyAssociationResp, error) {
+	return adm.attachOrDetachPolicyLDAP(ctx, false, par)
+}
+
+func (adm *AdminClient) attachOrDetachPolicyLDAP(ctx context.Context, isAttach bool,
+	par PolicyAssociationReq,
+) (PolicyAssociationResp, error) {
+	plainBytes, err := json.Marshal(par)
+	if err != nil {
+		return PolicyAssociationResp{}, err
+	}
+
+	encBytes, err := EncryptData(adm.getSecretKey(), plainBytes)
+	if err != nil {
+		return PolicyAssociationResp{}, err
+	}
+
+	suffix := "detach"
+	if isAttach {
+		suffix = "attach"
+	}
+	h := make(http.Header, 1)
+	h.Add("Content-Type", "application/octet-stream")
+	reqData := requestData{
+		customHeaders: h,
+		relPath:       adminAPIPrefix + "/idp/ldap/policy/" + suffix,
+		content:       encBytes,
+	}
+
+	resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return PolicyAssociationResp{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return PolicyAssociationResp{}, httpRespToErrorResponse(resp)
+	}
+
+	content, err := DecryptData(adm.getSecretKey(), resp.Body)
+	if err != nil {
+		return PolicyAssociationResp{}, err
+	}
+
+	r := PolicyAssociationResp{}
 	err = json.Unmarshal(content, &r)
 	return r, err
 }
