@@ -323,12 +323,7 @@ func GetOSInfo(ctx context.Context, addr string) OSInfo {
 	}
 	osInfo.Info.KernelVersion = kr
 
-	osInfo.Sensors, err = host.SensorsTemperaturesWithContext(ctx)
-	if err != nil {
-		if _, isWarningErr := err.(*host.Warnings); !isWarningErr {
-			osInfo.Error = err.Error()
-		}
-	}
+	osInfo.Sensors, _ = host.SensorsTemperaturesWithContext(ctx)
 
 	return osInfo
 }
