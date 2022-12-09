@@ -273,7 +273,7 @@ func (adm *AdminClient) attachOrDetachPolicyBuiltin(ctx context.Context, isGroup
 	return nil
 }
 
-// AttachPolicyUser- attach policies to a user or group.
+// AttachPolicyUser - attach policies to a user or group.
 func (adm *AdminClient) AttachPolicyUser(ctx context.Context, user string, policies []string) error {
 	return adm.attachOrDetachPolicyBuiltin(ctx, false, true, user, policies)
 }
@@ -283,7 +283,7 @@ func (adm *AdminClient) DetachPolicyUser(ctx context.Context, user string, polic
 	return adm.attachOrDetachPolicyBuiltin(ctx, false, false, user, policies)
 }
 
-// AttachPolicyGroup- attach policies to a user or group.
+// AttachPolicyGroup - attach policies to a user or group.
 func (adm *AdminClient) AttachPolicyGroup(ctx context.Context, user string, policies []string) error {
 	return adm.attachOrDetachPolicyBuiltin(ctx, true, true, user, policies)
 }
