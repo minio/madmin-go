@@ -266,7 +266,8 @@ func (adm *AdminClient) attachOrDetachPolicyBuiltin(ctx context.Context, isGroup
 		return err
 	}
 
-	if resp.StatusCode != http.StatusOK {
+	if (isAttach && resp.StatusCode != http.StatusCreated) ||
+		(!isAttach && resp.StatusCode != http.StatusNoContent) {
 		return httpRespToErrorResponse(resp)
 	}
 
