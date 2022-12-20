@@ -295,7 +295,7 @@ func (adm *AdminClient) DetachPolicyGroup(ctx context.Context, user string, poli
 }
 
 // GetPolicyEntities - returns builtin policy entities.
-func (adm *AdminClient) GetPolicyEntities(ctx context.Context, q PolicyEntitiesQuery,) (r PolicyEntitiesResult, err error) {
+func (adm *AdminClient) GetPolicyEntities(ctx context.Context, q PolicyEntitiesQuery) (r PolicyEntitiesResult, err error) {
 	params := make(url.Values)
 	params["user"] = q.Users
 	params["group"] = q.Groups
@@ -324,4 +324,3 @@ func (adm *AdminClient) GetPolicyEntities(ctx context.Context, q PolicyEntitiesQ
 	err = json.Unmarshal(content, &r)
 	return r, err
 }
-
