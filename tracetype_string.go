@@ -37,50 +37,30 @@ func _() {
 	_ = x[TraceBatchReplication-128]
 	_ = x[TraceRebalance-256]
 	_ = x[TraceReplicationResync-512]
-	_ = x[TraceAll-1023]
+	_ = x[TraceBootstrap-1024]
+	_ = x[TraceAll-2047]
 }
 
-const (
-	_TraceType_name_0 = "OSStorage"
-	_TraceType_name_1 = "S3"
-	_TraceType_name_2 = "Internal"
-	_TraceType_name_3 = "Scanner"
-	_TraceType_name_4 = "Decommission"
-	_TraceType_name_5 = "Healing"
-	_TraceType_name_6 = "BatchReplication"
-	_TraceType_name_7 = "Rebalance"
-	_TraceType_name_8 = "ReplicationResync"
-	_TraceType_name_9 = "All"
-)
+const _TraceType_name = "OSStorageS3InternalScannerDecommissionHealingBatchReplicationRebalanceReplicationResyncBootstrapAll"
 
-var (
-	_TraceType_index_0 = [...]uint8{0, 2, 9}
-)
+var _TraceType_map = map[TraceType]string{
+	1:    _TraceType_name[0:2],
+	2:    _TraceType_name[2:9],
+	4:    _TraceType_name[9:11],
+	8:    _TraceType_name[11:19],
+	16:   _TraceType_name[19:26],
+	32:   _TraceType_name[26:38],
+	64:   _TraceType_name[38:45],
+	128:  _TraceType_name[45:61],
+	256:  _TraceType_name[61:70],
+	512:  _TraceType_name[70:87],
+	1024: _TraceType_name[87:96],
+	2047: _TraceType_name[96:99],
+}
 
 func (i TraceType) String() string {
-	switch {
-	case 1 <= i && i <= 2:
-		i -= 1
-		return _TraceType_name_0[_TraceType_index_0[i]:_TraceType_index_0[i+1]]
-	case i == 4:
-		return _TraceType_name_1
-	case i == 8:
-		return _TraceType_name_2
-	case i == 16:
-		return _TraceType_name_3
-	case i == 32:
-		return _TraceType_name_4
-	case i == 64:
-		return _TraceType_name_5
-	case i == 128:
-		return _TraceType_name_6
-	case i == 256:
-		return _TraceType_name_7
-	case i == 512:
-		return _TraceType_name_8
-	case i == 1023:
-		return _TraceType_name_9
-	default:
-		return "TraceType(" + strconv.FormatInt(int64(i), 10) + ")"
+	if str, ok := _TraceType_map[i]; ok {
+		return str
 	}
+	return "TraceType(" + strconv.FormatInt(int64(i), 10) + ")"
 }
