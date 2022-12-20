@@ -225,3 +225,102 @@ func (adm *AdminClient) SetPolicy(ctx context.Context, policyName, entityName st
 	}
 	return nil
 }
+
+func (adm *AdminClient) attachOrDetachPolicyBuiltin(ctx context.Context, isGroup, isAttach bool, userOrGroup string, policies []string) error {
+	par := PolicyAssociationReq{
+		Policies: policies,
+	}
+	if isGroup {
+		par.Group = userOrGroup
+	} else {
+		par.User = userOrGroup
+	}
+	err := par.IsValid()
+	if err != nil {
+		return err
+	}
+
+	plainBytes, err := json.Marshal(par)
+	if err != nil {
+		return err
+	}
+
+	encBytes, err := EncryptData(adm.getSecretKey(), plainBytes)
+	if err != nil {
+		return err
+	}
+
+	suffix := "detach"
+	if isAttach {
+		suffix = "attach"
+	}
+
+	reqData := requestData{
+		relPath: adminAPIPrefix + "/idp/builtin/policy/" + suffix,
+		content: encBytes,
+	}
+
+	resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	if (isAttach && resp.StatusCode != http.StatusCreated) ||
+		(!isAttach && resp.StatusCode != http.StatusNoContent) {
+		return httpRespToErrorResponse(resp)
+	}
+
+	return nil
+}
+
+// AttachPolicyUser - attach policies to a user or group.
+func (adm *AdminClient) AttachPolicyUser(ctx context.Context, user string, policies []string) error {
+	return adm.attachOrDetachPolicyBuiltin(ctx, false, true, user, policies)
+}
+
+// DetachPolicyUser - detach policies from a user or group.
+func (adm *AdminClient) DetachPolicyUser(ctx context.Context, user string, policies []string) error {
+	return adm.attachOrDetachPolicyBuiltin(ctx, false, false, user, policies)
+}
+
+// AttachPolicyGroup - attach policies to a user or group.
+func (adm *AdminClient) AttachPolicyGroup(ctx context.Context, user string, policies []string) error {
+	return adm.attachOrDetachPolicyBuiltin(ctx, true, true, user, policies)
+}
+
+// DetachPolicyGroup - detach policies from a user or group.
+func (adm *AdminClient) DetachPolicyGroup(ctx context.Context, user string, policies []string) error {
+	return adm.attachOrDetachPolicyBuiltin(ctx, true, false, user, policies)
+}
+
+// GetPolicyEntities - returns builtin policy entities.
+func (adm *AdminClient) GetPolicyEntities(ctx context.Context, q PolicyEntitiesQuery) (r PolicyEntitiesResult, err error) {
+	params := make(url.Values)
+	params["user"] = q.Users
+	params["group"] = q.Groups
+	params["policy"] = q.Policy
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/idp/builtin/policy-entities",
+		queryValues: params,
+	}
+
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return r, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return r, httpRespToErrorResponse(resp)
+	}
+
+	content, err := DecryptData(adm.getSecretKey(), resp.Body)
+	if err != nil {
+		return r, err
+	}
+
+	err = json.Unmarshal(content, &r)
+	return r, err
+}
