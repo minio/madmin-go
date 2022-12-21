@@ -51,6 +51,8 @@ const (
 	TraceRebalance
 	// TraceReplicationResync will trace replication resync operations.
 	TraceReplicationResync
+	// TraceBootstrap will trace events during MinIO cluster bootstrap
+	TraceBootstrap
 	// Add more here...
 
 	// TraceAll contains all valid trace modes.

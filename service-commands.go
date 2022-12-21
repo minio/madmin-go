@@ -106,6 +106,7 @@ type ServiceTraceOpts struct {
 	BatchReplication  bool
 	Rebalance         bool
 	ReplicationResync bool
+	Bootstrap         bool
 	OnlyErrors        bool
 	Threshold         time.Duration
 }
@@ -123,6 +124,7 @@ func (t ServiceTraceOpts) TraceTypes() TraceType {
 	tt.SetIf(t.BatchReplication, TraceBatchReplication)
 	tt.SetIf(t.Rebalance, TraceRebalance)
 	tt.SetIf(t.ReplicationResync, TraceReplicationResync)
+	tt.SetIf(t.Bootstrap, TraceBootstrap)
 
 	return tt
 }
@@ -142,6 +144,7 @@ func (t ServiceTraceOpts) AddParams(u url.Values) {
 	u.Set("batch-replication", strconv.FormatBool(t.BatchReplication))
 	u.Set("rebalance", strconv.FormatBool(t.Rebalance))
 	u.Set("replication-resync", strconv.FormatBool(t.ReplicationResync))
+	u.Set("bootstrap", strconv.FormatBool(t.Bootstrap))
 }
 
 // ParseParams will parse parameters and set them to t.
@@ -157,6 +160,7 @@ func (t *ServiceTraceOpts) ParseParams(r *http.Request) (err error) {
 	t.Internal = r.Form.Get("internal") == "true"
 	t.OnlyErrors = r.Form.Get("err") == "true"
 	t.ReplicationResync = r.Form.Get("replication-resync") == "true"
+	t.Bootstrap = r.Form.Get("bootstrap") == "true"
 
 	if th := r.Form.Get("threshold"); th != "" {
 		d, err := time.ParseDuration(th)
