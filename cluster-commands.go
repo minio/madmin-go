@@ -930,8 +930,9 @@ type ReplicateRemoveStatus struct {
 
 // SRRemoveReq - arg body for SRRemoveReq
 type SRRemoveReq struct {
-	SiteNames []string `json:"sites"`
-	RemoveAll bool     `json:"all"` // true if all sites are to be removed.
+	RequestingDepID string   `json:"requestingDepID"`
+	SiteNames       []string `json:"sites"`
+	RemoveAll       bool     `json:"all"` // true if all sites are to be removed.
 }
 
 const (
