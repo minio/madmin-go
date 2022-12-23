@@ -24,7 +24,7 @@ package main
 import (
 	"context"
 	"log"
-	"time"
+	"os"
 
 	"github.com/minio/madmin-go/v2"
 )
@@ -40,11 +40,11 @@ func main() {
 		log.Fatalln(err)
 	}
 
-	// Clear locks held on mybucket/myprefix for longer than 30s.
-	olderThan := time.Duration(30 * time.Second)
-	locksCleared, err := madmClnt.ClearLocks(context.Background(), "mybucket", "myprefix", olderThan)
-	if err != nil {
+	if len(os.Args) == 1 {
+		log.Fatalln("Please provide paths in following form ./force-unlock bucket/object/foo/1.txt")
+	}
+
+	if err := madmClnt.ForceUnlock(context.Background(), os.Args[:1]...); err != nil {
 		log.Fatalln(err)
 	}
-	log.Println(locksCleared)
 }
