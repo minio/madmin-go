@@ -226,21 +226,13 @@ func (adm *AdminClient) SetPolicy(ctx context.Context, policyName, entityName st
 	return nil
 }
 
-func (adm *AdminClient) attachOrDetachPolicyBuiltin(ctx context.Context, isGroup, isAttach bool, userOrGroup string, policies []string) error {
-	par := PolicyAssociationReq{
-		Policies: policies,
-	}
-	if isGroup {
-		par.Group = userOrGroup
-	} else {
-		par.User = userOrGroup
-	}
-	err := par.IsValid()
+func (adm *AdminClient) attachOrDetachPolicyBuiltin(ctx context.Context, isAttach bool, r PolicyAssociationReq) error {
+	err := r.IsValid()
 	if err != nil {
 		return err
 	}
 
-	plainBytes, err := json.Marshal(par)
+	plainBytes, err := json.Marshal(r)
 	if err != nil {
 		return err
 	}
@@ -274,24 +266,14 @@ func (adm *AdminClient) attachOrDetachPolicyBuiltin(ctx context.Context, isGroup
 	return nil
 }
 
-// AttachPolicyUser - attach policies to a user or group.
-func (adm *AdminClient) AttachPolicyUser(ctx context.Context, user string, policies []string) error {
-	return adm.attachOrDetachPolicyBuiltin(ctx, false, true, user, policies)
+// AttachPolicy - attach policies to a user or group.
+func (adm *AdminClient) AttachPolicy(ctx context.Context, r PolicyAssociationReq) error {
+	return adm.attachOrDetachPolicyBuiltin(ctx, true, r)
 }
 
-// DetachPolicyUser - detach policies from a user or group.
-func (adm *AdminClient) DetachPolicyUser(ctx context.Context, user string, policies []string) error {
-	return adm.attachOrDetachPolicyBuiltin(ctx, false, false, user, policies)
-}
-
-// AttachPolicyGroup - attach policies to a user or group.
-func (adm *AdminClient) AttachPolicyGroup(ctx context.Context, user string, policies []string) error {
-	return adm.attachOrDetachPolicyBuiltin(ctx, true, true, user, policies)
-}
-
-// DetachPolicyGroup - detach policies from a user or group.
-func (adm *AdminClient) DetachPolicyGroup(ctx context.Context, user string, policies []string) error {
-	return adm.attachOrDetachPolicyBuiltin(ctx, true, false, user, policies)
+// DetachPolicy - detach policies from a user or group.
+func (adm *AdminClient) DetachPolicy(ctx context.Context, r PolicyAssociationReq) error {
+	return adm.attachOrDetachPolicyBuiltin(ctx, false, r)
 }
 
 // GetPolicyEntities - returns builtin policy entities.
