@@ -346,6 +346,7 @@ type HealingDisk struct {
 	// When adding new field, update (*healingTracker).toHealingDisk
 
 	ID         string    `json:"id"`
+	HealID     string    `json:"heal_id"`
 	PoolIndex  int       `json:"pool_index"`
 	SetIndex   int       `json:"set_index"`
 	DiskIndex  int       `json:"disk_index"`
