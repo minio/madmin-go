@@ -302,6 +302,7 @@ type AddServiceAccountReq struct {
 	TargetUser string          `json:"targetUser,omitempty"`
 	AccessKey  string          `json:"accessKey,omitempty"`
 	SecretKey  string          `json:"secretKey,omitempty"`
+	Comment    string          `json:"comment,omitempty"`
 }
 
 // AddServiceAccountResp is the response body of the add service account admin call
@@ -355,6 +356,7 @@ type UpdateServiceAccountReq struct {
 	NewPolicy    json.RawMessage `json:"newPolicy,omitempty"` // Parsed policy from iam/policy.Parse
 	NewSecretKey string          `json:"newSecretKey,omitempty"`
 	NewStatus    string          `json:"newStatus,omitempty"`
+	NewComment   string          `json:"newComment,omitempty"`
 }
 
 // UpdateServiceAccount - edit an existing service account
@@ -436,6 +438,7 @@ type InfoServiceAccountResp struct {
 	AccountStatus string `json:"accountStatus"`
 	ImpliedPolicy bool   `json:"impliedPolicy"`
 	Policy        string `json:"policy"`
+	Comment       string `json:"comment"`
 }
 
 // InfoServiceAccount - returns the info of service account belonging to the specified user

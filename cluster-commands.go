@@ -257,6 +257,7 @@ type SRSvcAccCreate struct {
 	Claims        map[string]interface{} `json:"claims"`
 	SessionPolicy json.RawMessage        `json:"sessionPolicy"`
 	Status        string                 `json:"status"`
+	Comment       string                 `json:"comment"`
 }
 
 // SRSvcAccUpdate - update operation
@@ -264,6 +265,7 @@ type SRSvcAccUpdate struct {
 	AccessKey     string          `json:"accessKey"`
 	SecretKey     string          `json:"secretKey"`
 	Status        string          `json:"status"`
+	Comment       string          `json:"comment"`
 	SessionPolicy json.RawMessage `json:"sessionPolicy"`
 }
 
