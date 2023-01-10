@@ -356,18 +356,18 @@ const (
 
 // FSBackend contains specific FS storage information
 type FSBackend struct {
-	Type backendType `json:"backendType,omitempty"`
+	Type backendType `json:"backendType"`
 }
 
 // ErasureBackend contains specific erasure storage information
 type ErasureBackend struct {
-	Type         backendType `json:"backendType,omitempty"`
-	OnlineDisks  int         `json:"onlineDisks,omitempty"`
-	OfflineDisks int         `json:"offlineDisks,omitempty"`
+	Type         backendType `json:"backendType"`
+	OnlineDisks  int         `json:"onlineDisks"`
+	OfflineDisks int         `json:"offlineDisks"`
 	// Parity disks for currently configured Standard storage class.
-	StandardSCParity int `json:"standardSCParity,omitempty"`
+	StandardSCParity int `json:"standardSCParity"`
 	// Parity disks for currently configured Reduced Redundancy storage class.
-	RRSCParity int `json:"rrSCParity,omitempty"`
+	RRSCParity int `json:"rrSCParity"`
 }
 
 // ServerProperties holds server information
