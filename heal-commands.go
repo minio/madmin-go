@@ -397,37 +397,26 @@ func (b *BgHealState) Merge(others ...BgHealState) {
 			b.MRF[k] = v
 		}
 		b.ScannedItemsCount += other.ScannedItemsCount
-		if len(b.Sets) == 0 {
-			b.Sets = make([]SetStatus, len(other.Sets))
-			copy(b.Sets, other.Sets)
-			continue
-		}
 
 		// Add disk if not present.
 		// If present select the one with latest lastupdate.
-		addSet := func(set SetStatus) {
-			for eSetIdx, existing := range b.Sets {
-				if existing.ID != set.ID {
-					continue
+		addDisksFromSet := func(set SetStatus) {
+			found := -1
+			for idx, s := range b.Sets {
+				if s.PoolIndex == set.PoolIndex && s.SetIndex == set.SetIndex {
+					found = idx
 				}
-				if len(existing.Disks) < len(set.Disks) {
-					b.Sets[eSetIdx].Disks = set.Disks
-				}
-				if len(existing.Disks) < len(set.Disks) {
-					return
-				}
-				for i, disk := range set.Disks {
-					// Disks should be the same.
-					if disk.HealInfo != nil {
-						existing.Disks[i].HealInfo = disk.HealInfo
-					}
-				}
-				return
 			}
-			b.Sets = append(b.Sets, set)
+
+			if found == -1 {
+				b.Sets = append(b.Sets, set)
+			} else {
+				b.Sets[found].Disks = append(b.Sets[found].Disks, set.Disks...)
+			}
 		}
-		for _, disk := range other.Sets {
-			addSet(disk)
+
+		for _, set := range other.Sets {
+			addDisksFromSet(set)
 		}
 	}
 	sort.Slice(b.Sets, func(i, j int) bool {
