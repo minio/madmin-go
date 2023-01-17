@@ -303,6 +303,7 @@ type AddServiceAccountReq struct {
 	AccessKey  string          `json:"accessKey,omitempty"`
 	SecretKey  string          `json:"secretKey,omitempty"`
 	Comment    string          `json:"comment,omitempty"`
+	Expiration *time.Time      `json:"expiration,omitempty"`
 }
 
 // AddServiceAccountResp is the response body of the add service account admin call
@@ -353,10 +354,11 @@ func (adm *AdminClient) AddServiceAccount(ctx context.Context, opts AddServiceAc
 
 // UpdateServiceAccountReq is the request options of the edit service account admin call
 type UpdateServiceAccountReq struct {
-	NewPolicy    json.RawMessage `json:"newPolicy,omitempty"` // Parsed policy from iam/policy.Parse
-	NewSecretKey string          `json:"newSecretKey,omitempty"`
-	NewStatus    string          `json:"newStatus,omitempty"`
-	NewComment   string          `json:"newComment,omitempty"`
+	NewPolicy     json.RawMessage `json:"newPolicy,omitempty"` // Parsed policy from iam/policy.Parse
+	NewSecretKey  string          `json:"newSecretKey,omitempty"`
+	NewStatus     string          `json:"newStatus,omitempty"`
+	NewComment    string          `json:"newComment,omitempty"`
+	NewExpiration *time.Time      `json:"newExpiration,omitempty"`
 }
 
 // UpdateServiceAccount - edit an existing service account
@@ -434,11 +436,12 @@ func (adm *AdminClient) ListServiceAccounts(ctx context.Context, user string) (L
 
 // InfoServiceAccountResp is the response body of the info service account call
 type InfoServiceAccountResp struct {
-	ParentUser    string `json:"parentUser"`
-	AccountStatus string `json:"accountStatus"`
-	ImpliedPolicy bool   `json:"impliedPolicy"`
-	Policy        string `json:"policy"`
-	Comment       string `json:"comment"`
+	ParentUser    string     `json:"parentUser"`
+	AccountStatus string     `json:"accountStatus"`
+	ImpliedPolicy bool       `json:"impliedPolicy"`
+	Policy        string     `json:"policy"`
+	Comment       string     `json:"comment"`
+	Expiration    *time.Time `json:"expiration,omitempty"`
 }
 
 // InfoServiceAccount - returns the info of service account belonging to the specified user

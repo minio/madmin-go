@@ -27,6 +27,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/minio/madmin-go/v2"
 )
@@ -44,8 +45,10 @@ func main() {
 	ctx := context.Background()
 
 	// add service account
+	expiration := time.Now().Add(30 * time.Minute)
 	addReq := madmin.AddServiceAccountReq{
 		TargetUser: "my-username",
+		Expiration: &expiration,
 	}
 	addRes, err := madminClient.AddServiceAccount(context.Background(), addReq)
 	if err != nil {
@@ -54,8 +57,10 @@ func main() {
 	fmt.Println(addRes)
 
 	// update service account
+	newExpiration := time.Now().Add(45 * time.Minute)
 	updateReq := madmin.UpdateServiceAccountReq{
-		NewStatus: "my-status",
+		NewStatus:  "my-status",
+		Expiration: &newExpiration,
 	}
 	if err := madminClient.UpdateServiceAccount(ctx, "my-accesskey", updateReq); err != nil {
 		log.Fatalln(err)
