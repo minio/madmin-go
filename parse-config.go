@@ -63,6 +63,8 @@ const (
 	NotifyPostgresSubSys = "notify_postgres"
 	NotifyRedisSubSys    = "notify_redis"
 	NotifyWebhookSubSys  = "notify_webhook"
+
+	LambdaWebhookSubSys = "lambda_webhook"
 )
 
 // SubSystems - list of all subsystems in MinIO
@@ -99,6 +101,7 @@ var SubSystems = set.CreateStringSet(
 	NotifyPostgresSubSys,
 	NotifyRedisSubSys,
 	NotifyWebhookSubSys,
+	LambdaWebhookSubSys,
 )
 
 // Standard config keys and values.
