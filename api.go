@@ -175,6 +175,8 @@ func (adm *AdminClient) SetAppInfo(appName string, appVersion string) {
 }
 
 // SetCustomTransport - set new custom transport.
+//
+// Deprecated: use Options.Transport.
 func (adm *AdminClient) SetCustomTransport(customHTTPTransport http.RoundTripper) {
 	// Set this to override default transport
 	// ``http.DefaultTransport``.
