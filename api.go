@@ -95,8 +95,9 @@ const (
 
 // Options for New method
 type Options struct {
-	Creds  *credentials.Credentials
-	Secure bool
+	Creds     *credentials.Credentials
+	Secure    bool
+	Transport http.RoundTripper
 	// Add future fields here
 }
 
@@ -104,7 +105,7 @@ type Options struct {
 func New(endpoint string, accessKeyID, secretAccessKey string, secure bool) (*AdminClient, error) {
 	creds := credentials.NewStaticV4(accessKeyID, secretAccessKey, "")
 
-	clnt, err := privateNew(endpoint, creds, secure)
+	clnt, err := privateNew(endpoint, creds, secure, DefaultTransport(secure))
 	if err != nil {
 		return nil, err
 	}
@@ -113,14 +114,14 @@ func New(endpoint string, accessKeyID, secretAccessKey string, secure bool) (*Ad
 
 // NewWithOptions - instantiate minio admin client with options.
 func NewWithOptions(endpoint string, opts *Options) (*AdminClient, error) {
-	clnt, err := privateNew(endpoint, opts.Creds, opts.Secure)
+	clnt, err := privateNew(endpoint, opts.Creds, opts.Secure, opts.Transport)
 	if err != nil {
 		return nil, err
 	}
 	return clnt, nil
 }
 
-func privateNew(endpoint string, creds *credentials.Credentials, secure bool) (*AdminClient, error) {
+func privateNew(endpoint string, creds *credentials.Credentials, secure bool, transport http.RoundTripper) (*AdminClient, error) {
 	// Initialize cookies to preserve server sent cookies if any and replay
 	// them upon each request.
 	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
@@ -145,10 +146,15 @@ func privateNew(endpoint string, creds *credentials.Credentials, secure bool) (*
 	// Save endpoint URL, user agent for future uses.
 	clnt.endpointURL = endpointURL
 
+	// Default to DefaultTransport in case of nil transport.
+	if transport == nil {
+		transport = DefaultTransport(secure)
+	}
+
 	// Instantiate http client and bucket location cache.
 	clnt.httpClient = &http.Client{
 		Jar:       jar,
-		Transport: DefaultTransport(secure),
+		Transport: transport,
 	}
 
 	// Add locked pseudo-random number generator.
