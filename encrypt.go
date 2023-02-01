@@ -24,7 +24,6 @@ import (
 	"crypto/sha256"
 	"errors"
 	"io"
-	"io/ioutil"
 
 	"github.com/secure-io/sio-go"
 	"github.com/secure-io/sio-go/sioutil"
@@ -113,21 +112,16 @@ var ErrMaliciousData = sio.NotAuthentic
 // The data must be a valid ciphertext produced by
 // EncryptData. Otherwise, the decryption will fail.
 func DecryptData(password string, data io.Reader) ([]byte, error) {
-	var (
-		salt  [32]byte
-		id    [1]byte
-		nonce [8]byte // This depends on the AEAD but both used ciphers have the same nonce length.
-	)
-
-	if _, err := io.ReadFull(data, salt[:]); err != nil {
+	// Parse the stream header
+	var hdr [41]byte
+	if _, err := io.ReadFull(data, hdr[:]); err != nil {
+		if err == io.EOF {
+			// Incomplete header, return malicious data
+			return nil, ErrMaliciousData
+		}
 		return nil, err
 	}
-	if _, err := io.ReadFull(data, id[:]); err != nil {
-		return nil, err
-	}
-	if _, err := io.ReadFull(data, nonce[:]); err != nil {
-		return nil, err
-	}
+	salt, id, nonce := hdr[0:32], hdr[32:33], hdr[33:41]
 
 	var (
 		err    error
@@ -135,13 +129,13 @@ func DecryptData(password string, data io.Reader) ([]byte, error) {
 	)
 	switch {
 	case id[0] == argon2idAESGCM:
-		key := argon2.IDKey([]byte(password), salt[:], argon2idTime, argon2idMemory, argon2idThreads, 32)
+		key := argon2.IDKey([]byte(password), salt, argon2idTime, argon2idMemory, argon2idThreads, 32)
 		stream, err = sio.AES_256_GCM.Stream(key)
 	case id[0] == argon2idChaCHa20Poly1305:
-		key := argon2.IDKey([]byte(password), salt[:], argon2idTime, argon2idMemory, argon2idThreads, 32)
+		key := argon2.IDKey([]byte(password), salt, argon2idTime, argon2idMemory, argon2idThreads, 32)
 		stream, err = sio.ChaCha20Poly1305.Stream(key)
 	case id[0] == pbkdf2AESGCM:
-		key := pbkdf2.Key([]byte(password), salt[:], pbkdf2Cost, 32, sha256.New)
+		key := pbkdf2.Key([]byte(password), salt, pbkdf2Cost, 32, sha256.New)
 		stream, err = sio.AES_256_GCM.Stream(key)
 	default:
 		err = errors.New("madmin: invalid encryption algorithm ID")
@@ -150,11 +144,7 @@ func DecryptData(password string, data io.Reader) ([]byte, error) {
 		return nil, err
 	}
 
-	plaintext, err := ioutil.ReadAll(stream.DecryptReader(data, nonce[:], nil))
-	if err != nil {
-		return nil, err
-	}
-	return plaintext, err
+	return io.ReadAll(stream.DecryptReader(data, nonce, nil))
 }
 
 const (
