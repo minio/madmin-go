@@ -113,7 +113,7 @@ var ErrMaliciousData = sio.NotAuthentic
 // EncryptData. Otherwise, the decryption will fail.
 func DecryptData(password string, data io.Reader) ([]byte, error) {
 	// Parse the stream header
-	var hdr [41]byte
+	var hdr [32 + 1 + 8]byte
 	if _, err := io.ReadFull(data, hdr[:]); err != nil {
 		if err == io.EOF {
 			// Incomplete header, return malicious data
