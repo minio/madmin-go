@@ -104,6 +104,9 @@ func EncryptData(password string, data []byte) ([]byte, error) {
 // decrypted by provided credentials.
 var ErrMaliciousData = sio.NotAuthentic
 
+// ErrUnexpectedHeader indicates that the data stream returned unexpected header
+var ErrUnexpectedHeader = errors.New("unexpected header")
+
 // DecryptData decrypts the data with the key derived
 // from the salt (part of data) and the password using
 // the PBKDF used in EncryptData. DecryptData returns
@@ -115,9 +118,9 @@ func DecryptData(password string, data io.Reader) ([]byte, error) {
 	// Parse the stream header
 	var hdr [32 + 1 + 8]byte
 	if _, err := io.ReadFull(data, hdr[:]); err != nil {
-		if err == io.EOF {
-			// Incomplete header, return malicious data
-			return nil, ErrMaliciousData
+		if errors.Is(err, io.EOF) {
+			// Incomplete header, return unexpected header
+			return nil, ErrUnexpectedHeader
 		}
 		return nil, err
 	}
