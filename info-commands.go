@@ -222,6 +222,17 @@ func (adm *AdminClient) DataUsageInfo(ctx context.Context) (DataUsageInfo, error
 	return dataUsageInfo, nil
 }
 
+// ErasureSetInfo provides information per erasure set
+type ErasureSetInfo struct {
+	ID            int    `json:"id"`
+	RawUsage      uint64 `json:"rawUsage"`
+	RawCapacity   uint64 `json:"rawCapacity"`
+	Usage         uint64 `json:"usage"`
+	ObjectsCount  uint64 `json:"objectsCount"`
+	VersionsCount uint64 `json:"versionsCount"`
+	HealDisks     int    `json:"healDisks"`
+}
+
 // InfoMessage container to hold server admin related information.
 type InfoMessage struct {
 	Mode         string             `json:"mode,omitempty"`
@@ -236,6 +247,8 @@ type InfoMessage struct {
 	Services     Services           `json:"services,omitempty"`
 	Backend      interface{}        `json:"backend,omitempty"`
 	Servers      []ServerProperties `json:"servers,omitempty"`
+
+	Pools map[int]map[int]ErasureSetInfo `json:"pools,omitempty"`
 }
 
 func (info InfoMessage) BackendType() BackendType {
