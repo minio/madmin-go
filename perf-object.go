@@ -65,7 +65,7 @@ type SpeedtestOpts struct {
 	Autotune     bool          // Enable autotuning
 	StorageClass string        // Choose type of storage-class to be used while performing I/O
 	Bucket       string        // Choose a custom bucket name while performing I/O
-	KeepData     bool          // Avoid cleanup after running an object speed test
+	NoClear      bool          // Avoid cleanup after running an object speed test
 }
 
 // Speedtest - perform speedtest on the MinIO servers
@@ -98,8 +98,8 @@ func (adm *AdminClient) Speedtest(ctx context.Context, opts SpeedtestOpts) (chan
 	if opts.Autotune {
 		queryVals.Set("autotune", "true")
 	}
-	if opts.KeepData {
-		queryVals.Set("keep-data", "true")
+	if opts.NoClear {
+		queryVals.Set("noclear", "true")
 	}
 	resp, err := adm.executeMethod(ctx,
 		http.MethodPost, requestData{
