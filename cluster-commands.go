@@ -258,6 +258,7 @@ type SRSvcAccCreate struct {
 	SessionPolicy json.RawMessage        `json:"sessionPolicy"`
 	Status        string                 `json:"status"`
 	Comment       string                 `json:"comment"`
+	Expiration    *time.Time             `json:"expiration,omitempty"`
 }
 
 // SRSvcAccUpdate - update operation
@@ -267,6 +268,7 @@ type SRSvcAccUpdate struct {
 	Status        string          `json:"status"`
 	Comment       string          `json:"comment"`
 	SessionPolicy json.RawMessage `json:"sessionPolicy"`
+	Expiration    *time.Time      `json:"expiration,omitempty"`
 }
 
 // SRSvcAccDelete - delete operation
