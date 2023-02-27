@@ -24,15 +24,22 @@ import (
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"path"
+	"strconv"
 	"time"
 )
 
 // tierAPI is API path prefix for tier related admin APIs
 const tierAPI = "tier"
 
+// AddTierIgnoreInUse adds a new remote tier, ignoring if it's being used by another MinIO deployment.
+func (adm *AdminClient) AddTierIgnoreInUse(ctx context.Context, cfg *TierConfig) error {
+	return adm.addTier(ctx, cfg, true)
+}
+
 // AddTier adds a new remote tier.
-func (adm *AdminClient) AddTier(ctx context.Context, cfg *TierConfig) error {
+func (adm *AdminClient) addTier(ctx context.Context, cfg *TierConfig, ignoreInUse bool) error {
 	data, err := json.Marshal(cfg)
 	if err != nil {
 		return err
@@ -43,9 +50,12 @@ func (adm *AdminClient) AddTier(ctx context.Context, cfg *TierConfig) error {
 		return err
 	}
 
+	queryVals := url.Values{}
+	queryVals.Set("force", strconv.FormatBool(ignoreInUse))
 	reqData := requestData{
-		relPath: path.Join(adminAPIPrefix, tierAPI),
-		content: encData,
+		relPath:     path.Join(adminAPIPrefix, tierAPI),
+		content:     encData,
+		queryValues: queryVals,
 	}
 
 	// Execute PUT on /minio/admin/v3/tier to add a remote tier
@@ -59,6 +69,11 @@ func (adm *AdminClient) AddTier(ctx context.Context, cfg *TierConfig) error {
 		return httpRespToErrorResponse(resp)
 	}
 	return nil
+}
+
+// AddTier adds a new remote tier.
+func (adm *AdminClient) AddTier(ctx context.Context, cfg *TierConfig) error {
+	return adm.addTier(ctx, cfg, false)
 }
 
 // ListTiers returns a list of remote tiers configured.
