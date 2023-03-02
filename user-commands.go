@@ -50,14 +50,15 @@ type BucketDetails struct {
 // BucketAccessInfo represents bucket usage of a bucket, and its relevant
 // access type for an account
 type BucketAccessInfo struct {
-	Name                 string            `json:"name"`
-	Size                 uint64            `json:"size"`
-	Objects              uint64            `json:"objects"`
-	ObjectSizesHistogram map[string]uint64 `json:"objectHistogram"`
-	Details              *BucketDetails    `json:"details"`
-	PrefixUsage          map[string]uint64 `json:"prefixUsage"`
-	Created              time.Time         `json:"created"`
-	Access               AccountAccess     `json:"access"`
+	Name                    string            `json:"name"`
+	Size                    uint64            `json:"size"`
+	Objects                 uint64            `json:"objects"`
+	ObjectSizesHistogram    map[string]uint64 `json:"objectHistogram"`
+	ObjectVersionsHistogram map[string]uint64 `json:"objectsVersionsHistogram"`
+	Details                 *BucketDetails    `json:"details"`
+	PrefixUsage             map[string]uint64 `json:"prefixUsage"`
+	Created                 time.Time         `json:"created"`
+	Access                  AccountAccess     `json:"access"`
 }
 
 // AccountInfo represents the account usage info of an
