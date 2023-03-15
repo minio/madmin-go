@@ -464,7 +464,8 @@ type JobMetric struct {
 	Failed   bool `json:"failed"`
 
 	// Specific job type data:
-	Replicate *ReplicateInfo `json:"replicate,omitempty"`
+	Replicate *ReplicateInfo   `json:"replicate,omitempty"`
+	KeyRotate *KeyRotationInfo `json:"rotation,omitempty"`
 }
 
 type ReplicateInfo struct {
@@ -477,6 +478,16 @@ type ReplicateInfo struct {
 	ObjectsFailed    int64 `json:"objectsFailed"`
 	BytesTransferred int64 `json:"bytesTransferred"`
 	BytesFailed      int64 `json:"bytesFailed"`
+}
+
+type KeyRotationInfo struct {
+	// Last bucket/object key rotated
+	Bucket string `json:"lastBucket"`
+	Object string `json:"lastObject"`
+
+	// Verbose information
+	Objects       int64 `json:"objects"`
+	ObjectsFailed int64 `json:"objectsFailed"`
 }
 
 // Merge other into 'o'.

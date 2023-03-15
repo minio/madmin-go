@@ -35,11 +35,13 @@ type BatchJobType string
 
 const (
 	BatchJobReplicate BatchJobType = "replicate"
+	BatchJobKeyRotate BatchJobType = "keyrotate"
 )
 
 // SupportedJobTypes supported job types
 var SupportedJobTypes = []BatchJobType{
 	BatchJobReplicate,
+	BatchJobKeyRotate,
 	// add new job types
 }
 
@@ -96,6 +98,40 @@ const BatchJobReplicateTemplate = `replicate:
       endpoint: "https://notify.endpoint" # notification endpoint to receive job status events
       token: "Bearer xxxxx" # optional authentication token for the notification endpoint
 
+    retry:
+      attempts: 10 # number of retries for the job before giving up
+      delay: "500ms" # least amount of delay between each retry
+`
+
+// BatchJobKeyRotateTemplate provides a sample template
+// for batch key rotation
+const BatchJobKeyRotateTemplate = `keyrotate:
+  apiVersion: v1
+  bucket: BUCKET
+  prefix: PREFIX
+  encryption:
+    type: sse-s3 # valid values are sse-s3 and sse-kms
+    key: <new-kms-key> # valid only for sse-kms
+    context: <new-kms-key-context> # valid only for sse-kms
+
+  # optional flags based filtering criteria
+  # for all objects
+  flags:
+    filter:
+      newerThan: "7d" # match objects newer than this value (e.g. 7d10h31s)
+      olderThan: "7d" # match objects older than this value (e.g. 7d10h31s)
+      createdAfter: "date" # match objects created after "date"
+      createdBefore: "date" # match objects created before "date"
+      tags:
+        - key: "name"
+          value: "pick*" # match objects with tag 'name', with all values starting with 'pick'
+      metadata:
+        - key: "content-type"
+          value: "image/*" # match objects with 'content-type', with all values starting with 'image/'
+      kmskey: "key-id" # match objects with KMS key-id (applicable only for sse-kms)
+    notify:
+      endpoint: "https://notify.endpoint" # notification endpoint to receive job status events
+      token: "Bearer xxxxx" # optional authentication token for the notification endpoint
     retry:
       attempts: 10 # number of retries for the job before giving up
       delay: "500ms" # least amount of delay between each retry
@@ -170,9 +206,12 @@ type GenerateBatchJobOpts struct {
 // GenerateBatchJob creates a new job template from standard template
 // TODO: allow configuring yaml values
 func (adm *AdminClient) GenerateBatchJob(ctx context.Context, opts GenerateBatchJobOpts) (string, error) {
-	if opts.Type == BatchJobReplicate {
+	switch opts.Type {
+	case BatchJobReplicate:
 		// TODO: allow configuring the template to fill values from GenerateBatchJobOpts
 		return BatchJobReplicateTemplate, nil
+	case BatchJobKeyRotate:
+		return BatchJobKeyRotateTemplate, nil
 	}
 	return "", fmt.Errorf("unsupported batch type requested: %s", opts.Type)
 }
@@ -219,4 +258,25 @@ func (adm *AdminClient) ListBatchJobs(ctx context.Context, fl *ListBatchJobsFilt
 	}
 
 	return result, nil
+}
+
+// CancelBatchJob cancels ongoing batch job.
+func (adm *AdminClient) CancelBatchJob(ctx context.Context, jobID string) error {
+	values := make(url.Values)
+	values.Set("id", jobID)
+
+	resp, err := adm.executeMethod(ctx, http.MethodDelete,
+		requestData{
+			relPath:     adminAPIPrefix + "/cancel-job",
+			queryValues: values,
+		},
+	)
+	if err != nil {
+		return err
+	}
+	defer closeResponse(resp)
+	if resp.StatusCode != http.StatusNoContent {
+		return httpRespToErrorResponse(resp)
+	}
+	return nil
 }
