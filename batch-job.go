@@ -220,3 +220,24 @@ func (adm *AdminClient) ListBatchJobs(ctx context.Context, fl *ListBatchJobsFilt
 
 	return result, nil
 }
+
+// CancelBatchJob cancels ongoing batch job.
+func (adm *AdminClient) CancelBatchJob(ctx context.Context, jobID string) error {
+	values := make(url.Values)
+	values.Set("id", jobID)
+
+	resp, err := adm.executeMethod(ctx, http.MethodDelete,
+		requestData{
+			relPath:     adminAPIPrefix + "/cancel-job",
+			queryValues: values,
+		},
+	)
+	if err != nil {
+		return err
+	}
+	defer closeResponse(resp)
+	if resp.StatusCode != http.StatusNoContent {
+		return httpRespToErrorResponse(resp)
+	}
+	return nil
+}
