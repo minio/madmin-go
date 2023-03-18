@@ -47,6 +47,8 @@ const (
 	TraceHealing
 	// TraceBatchReplication will trace batch replication operations.
 	TraceBatchReplication
+	// TraceBatchKeyRotation will trace batch keyrotation operations.
+	TraceBatchKeyRotation
 	// TraceRebalance will trace rebalance operations
 	TraceRebalance
 	// TraceReplicationResync will trace replication resync operations.

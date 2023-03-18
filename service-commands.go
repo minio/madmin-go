@@ -104,6 +104,7 @@ type ServiceTraceOpts struct {
 	Decommission      bool
 	Healing           bool
 	BatchReplication  bool
+	BatchKeyRotation  bool
 	Rebalance         bool
 	ReplicationResync bool
 	Bootstrap         bool
@@ -122,6 +123,7 @@ func (t ServiceTraceOpts) TraceTypes() TraceType {
 	tt.SetIf(t.Decommission, TraceDecommission)
 	tt.SetIf(t.Healing, TraceHealing)
 	tt.SetIf(t.BatchReplication, TraceBatchReplication)
+	tt.SetIf(t.BatchKeyRotation, TraceBatchKeyRotation)
 	tt.SetIf(t.Rebalance, TraceRebalance)
 	tt.SetIf(t.ReplicationResync, TraceReplicationResync)
 	tt.SetIf(t.Bootstrap, TraceBootstrap)
@@ -142,6 +144,7 @@ func (t ServiceTraceOpts) AddParams(u url.Values) {
 	u.Set("decommission", strconv.FormatBool(t.Decommission))
 	u.Set("healing", strconv.FormatBool(t.Healing))
 	u.Set("batch-replication", strconv.FormatBool(t.BatchReplication))
+	u.Set("batch-keyrotation", strconv.FormatBool(t.BatchKeyRotation))
 	u.Set("rebalance", strconv.FormatBool(t.Rebalance))
 	u.Set("replication-resync", strconv.FormatBool(t.ReplicationResync))
 	u.Set("bootstrap", strconv.FormatBool(t.Bootstrap))
@@ -155,6 +158,7 @@ func (t *ServiceTraceOpts) ParseParams(r *http.Request) (err error) {
 	t.Decommission = r.Form.Get("decommission") == "true"
 	t.Healing = r.Form.Get("healing") == "true"
 	t.BatchReplication = r.Form.Get("batch-replication") == "true"
+	t.BatchKeyRotation = r.Form.Get("batch-keyrotation") == "true"
 	t.Rebalance = r.Form.Get("rebalance") == "true"
 	t.Storage = r.Form.Get("storage") == "true"
 	t.Internal = r.Form.Get("internal") == "true"
