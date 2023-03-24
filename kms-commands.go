@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 // KMSStatus contains various informations about
@@ -33,6 +34,23 @@ type KMSStatus struct {
 	Name         string               `json:"name"`           // Name or type of the KMS
 	DefaultKeyID string               `json:"default-key-id"` // The key ID used when no explicit key is specified
 	Endpoints    map[string]ItemState `json:"endpoints"`      // List of KMS endpoints and their status (online/offline)
+	Details      KMSState             `json:"details"`        // KMS server status snapshot
+}
+
+// KMSState is a KES server status snapshot.
+type KMSState struct {
+	Version    string
+	OS         string
+	Arch       string
+	UpTime     time.Duration
+	CPUs       int
+	UsableCPUs int
+	HeapAlloc  uint64
+	StackAlloc uint64
+
+	KeyStoreLatency   time.Duration
+	KeyStoreReachable bool
+	KeystoreAvailable bool
 }
 
 // KMSKeyInfo contains key metadata
