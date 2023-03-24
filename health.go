@@ -330,7 +330,7 @@ func GetOSInfo(ctx context.Context, addr string) OSInfo {
 
 // GetSysConfig returns config values from the system
 // (only those affecting minio performance)
-func GetSysConfig(ctx context.Context, addr string) SysConfig {
+func GetSysConfig(_ context.Context, addr string) SysConfig {
 	sc := SysConfig{
 		NodeCommon: NodeCommon{Addr: addr},
 		Config:     map[string]interface{}{},
@@ -356,7 +356,7 @@ func GetSysConfig(ctx context.Context, addr string) SysConfig {
 }
 
 // GetSysServices returns info of sys services that affect minio
-func GetSysServices(ctx context.Context, addr string) SysServices {
+func GetSysServices(_ context.Context, addr string) SysServices {
 	ss := SysServices{
 		NodeCommon: NodeCommon{Addr: addr},
 		Services:   []SysService{},
@@ -397,7 +397,7 @@ func getSELinuxInfo() (SysService, error) {
 }
 
 // GetSysErrors returns issues in system setup/config
-func GetSysErrors(ctx context.Context, addr string) SysErrors {
+func GetSysErrors(_ context.Context, addr string) SysErrors {
 	se := SysErrors{NodeCommon: NodeCommon{Addr: addr}}
 	if runtime.GOOS != "linux" {
 		return se

@@ -151,7 +151,18 @@ type PeerInfo struct {
 	Name     string `json:"name"`
 	// Deployment ID is useful as it is immutable - though endpoint may
 	// change.
-	DeploymentID string `json:"deploymentID"`
+	DeploymentID string     `json:"deploymentID"`
+	SyncState    SyncStatus `json:"sync"` // whether to enable| disable synchronous replication
+}
+
+type SyncStatus string // change in sync state
+const (
+	SyncEnabled  SyncStatus = "enable"
+	SyncDisabled SyncStatus = "disable"
+)
+
+func (s SyncStatus) Empty() bool {
+	return s != SyncDisabled && s != SyncEnabled
 }
 
 // SRPeerJoin - used only by minio server to send SR join requests to peer

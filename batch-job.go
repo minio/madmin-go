@@ -205,7 +205,7 @@ type GenerateBatchJobOpts struct {
 
 // GenerateBatchJob creates a new job template from standard template
 // TODO: allow configuring yaml values
-func (adm *AdminClient) GenerateBatchJob(ctx context.Context, opts GenerateBatchJobOpts) (string, error) {
+func (adm *AdminClient) GenerateBatchJob(_ context.Context, opts GenerateBatchJobOpts) (string, error) {
 	switch opts.Type {
 	case BatchJobReplicate:
 		// TODO: allow configuring the template to fill values from GenerateBatchJobOpts
