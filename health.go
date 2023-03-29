@@ -36,6 +36,7 @@ import (
 	"github.com/minio/madmin-go/v2/cgroup"
 	"github.com/minio/madmin-go/v2/kernel"
 	"github.com/prometheus/procfs"
+	"github.com/prometheus/procfs/sysfs"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/host"
@@ -140,8 +141,8 @@ type CPU struct {
 type CPUs struct {
 	NodeCommon
 
-	CPUs          []CPU `json:"cpus,omitempty"`
-	IsFreqGovPerf *bool `json:"is_freq_gov_perf,omitempty"`
+	CPUs         []CPU                         `json:"cpus,omitempty"`
+	CPUFreqStats []sysfs.SystemCPUCpufreqStats `json:"freq_stats,omitempty"`
 }
 
 // GetCPUs returns system's all CPU information.
@@ -184,16 +185,16 @@ func GetCPUs(ctx context.Context, addr string) CPUs {
 		cpus = append(cpus, cpu)
 	}
 
-	var igp *bool
-	isGovPerf, err := isFreqGovPerf()
-	if err == nil {
-		igp = &isGovPerf
+	var errMsg string
+	freqStats, err := getCPUFreqStats()
+	if err != nil {
+		errMsg = err.Error()
 	}
 
 	return CPUs{
-		NodeCommon:    NodeCommon{Addr: addr},
-		CPUs:          cpus,
-		IsFreqGovPerf: igp,
+		NodeCommon:   NodeCommon{Addr: addr, Error: errMsg},
+		CPUs:         cpus,
+		CPUFreqStats: freqStats,
 	}
 }
 

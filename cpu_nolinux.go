@@ -26,6 +26,6 @@ import (
 	"errors"
 )
 
-func isFreqGovPerf() (bool, error) {
-	return false, errors.New("Not implemented for non-linux platforms")
+func getCPUFreqStats() ([]sysfs.SystemCPUCpufreqStats, error) {
+	return nil, errors.New("Not implemented for non-linux platforms")
 }

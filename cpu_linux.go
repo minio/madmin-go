@@ -25,22 +25,11 @@ import (
 	"github.com/prometheus/procfs/sysfs"
 )
 
-func isFreqGovPerf() (bool, error) {
+func getCPUFreqStats() ([]sysfs.SystemCPUCpufreqStats, error) {
 	fs, err := sysfs.NewFS("/sys")
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
-	stats, err := fs.SystemCpufreq()
-	if err != nil {
-		return false, err
-	}
-
-	for _, s := range stats {
-		if s.Governor != "performance" {
-			return false, nil
-		}
-	}
-
-	return true, nil
+	return fs.SystemCpufreq()
 }
