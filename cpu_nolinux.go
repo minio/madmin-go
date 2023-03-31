@@ -26,6 +26,6 @@ import (
 	"errors"
 )
 
-func getCPUFreqStats() ([]sysfs.SystemCPUCpufreqStats, error) {
+func getCPUFreqStats() ([]CPUFreqStats, error) {
 	return nil, errors.New("Not implemented for non-linux platforms")
 }

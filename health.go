@@ -36,7 +36,6 @@ import (
 	"github.com/minio/madmin-go/v2/cgroup"
 	"github.com/minio/madmin-go/v2/kernel"
 	"github.com/prometheus/procfs"
-	"github.com/prometheus/procfs/sysfs"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/shirou/gopsutil/v3/host"
@@ -141,8 +140,25 @@ type CPU struct {
 type CPUs struct {
 	NodeCommon
 
-	CPUs         []CPU                         `json:"cpus,omitempty"`
-	CPUFreqStats []sysfs.SystemCPUCpufreqStats `json:"freq_stats,omitempty"`
+	CPUs         []CPU          `json:"cpus,omitempty"`
+	CPUFreqStats []CPUFreqStats `json:"freq_stats,omitempty"`
+}
+
+// CPUFreqStats CPU frequency stats
+type CPUFreqStats struct {
+	Name                     string
+	CpuinfoCurrentFrequency  *uint64
+	CpuinfoMinimumFrequency  *uint64
+	CpuinfoMaximumFrequency  *uint64
+	CpuinfoTransitionLatency *uint64
+	ScalingCurrentFrequency  *uint64
+	ScalingMinimumFrequency  *uint64
+	ScalingMaximumFrequency  *uint64
+	AvailableGovernors       string
+	Driver                   string
+	Governor                 string
+	RelatedCpus              string
+	SetSpeed                 string
 }
 
 // GetCPUs returns system's all CPU information.
