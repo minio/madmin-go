@@ -25,22 +25,34 @@ import (
 	"github.com/prometheus/procfs/sysfs"
 )
 
-func isFreqGovPerf() (bool, error) {
+func getCPUFreqStats() ([]CPUFreqStats, error) {
 	fs, err := sysfs.NewFS("/sys")
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
 	stats, err := fs.SystemCpufreq()
 	if err != nil {
-		return false, err
+		return nil, err
 	}
 
-	for _, s := range stats {
-		if s.Governor != "performance" {
-			return false, nil
-		}
+	out := make([]CPUFreqStats, 0, len(stats))
+	for _, stat := range stats {
+		out = append(out, CPUFreqStats{
+			Name:                     stat.Name,
+			CpuinfoCurrentFrequency:  stat.CpuinfoCurrentFrequency,
+			CpuinfoMinimumFrequency:  stat.CpuinfoMinimumFrequency,
+			CpuinfoMaximumFrequency:  stat.CpuinfoMaximumFrequency,
+			CpuinfoTransitionLatency: stat.CpuinfoTransitionLatency,
+			ScalingCurrentFrequency:  stat.ScalingCurrentFrequency,
+			ScalingMinimumFrequency:  stat.ScalingMinimumFrequency,
+			ScalingMaximumFrequency:  stat.ScalingMaximumFrequency,
+			AvailableGovernors:       stat.AvailableGovernors,
+			Driver:                   stat.Driver,
+			Governor:                 stat.Governor,
+			RelatedCpus:              stat.RelatedCpus,
+			SetSpeed:                 stat.SetSpeed,
+		})
 	}
-
-	return true, nil
+	return out, nil
 }

@@ -26,6 +26,6 @@ import (
 	"errors"
 )
 
-func isFreqGovPerf() (bool, error) {
-	return false, errors.New("Not implemented for non-linux platforms")
+func getCPUFreqStats() ([]CPUFreqStats, error) {
+	return nil, errors.New("Not implemented for non-linux platforms")
 }

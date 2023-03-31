@@ -140,8 +140,25 @@ type CPU struct {
 type CPUs struct {
 	NodeCommon
 
-	CPUs          []CPU `json:"cpus,omitempty"`
-	IsFreqGovPerf *bool `json:"is_freq_gov_perf,omitempty"`
+	CPUs         []CPU          `json:"cpus,omitempty"`
+	CPUFreqStats []CPUFreqStats `json:"freq_stats,omitempty"`
+}
+
+// CPUFreqStats CPU frequency stats
+type CPUFreqStats struct {
+	Name                     string
+	CpuinfoCurrentFrequency  *uint64
+	CpuinfoMinimumFrequency  *uint64
+	CpuinfoMaximumFrequency  *uint64
+	CpuinfoTransitionLatency *uint64
+	ScalingCurrentFrequency  *uint64
+	ScalingMinimumFrequency  *uint64
+	ScalingMaximumFrequency  *uint64
+	AvailableGovernors       string
+	Driver                   string
+	Governor                 string
+	RelatedCpus              string
+	SetSpeed                 string
 }
 
 // GetCPUs returns system's all CPU information.
@@ -184,16 +201,16 @@ func GetCPUs(ctx context.Context, addr string) CPUs {
 		cpus = append(cpus, cpu)
 	}
 
-	var igp *bool
-	isGovPerf, err := isFreqGovPerf()
-	if err == nil {
-		igp = &isGovPerf
+	var errMsg string
+	freqStats, err := getCPUFreqStats()
+	if err != nil {
+		errMsg = err.Error()
 	}
 
 	return CPUs{
-		NodeCommon:    NodeCommon{Addr: addr},
-		CPUs:          cpus,
-		IsFreqGovPerf: igp,
+		NodeCommon:   NodeCommon{Addr: addr, Error: errMsg},
+		CPUs:         cpus,
+		CPUFreqStats: freqStats,
 	}
 }
 
