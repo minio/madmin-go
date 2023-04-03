@@ -55,6 +55,9 @@ const (
 	TraceReplicationResync
 	// TraceBootstrap will trace events during MinIO cluster bootstrap
 	TraceBootstrap
+	// TraceFTP will trace events from MinIO FTP Server
+	TraceFTP
+
 	// Add more here...
 
 	// TraceAll contains all valid trace modes.
