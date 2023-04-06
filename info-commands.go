@@ -436,6 +436,7 @@ type Disk struct {
 	Utilization     float64      `json:"utilization,omitempty"`
 	Metrics         *DiskMetrics `json:"metrics,omitempty"`
 	HealInfo        *HealingDisk `json:"heal_info,omitempty"`
+	UsedInodes      uint64       `json:"used_inodes"`
 	FreeInodes      uint64       `json:"free_inodes,omitempty"`
 
 	// Indexes, will be -1 until assigned a set.
