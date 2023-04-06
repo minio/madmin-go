@@ -57,7 +57,8 @@ const (
 	TraceBootstrap
 	// TraceFTP will trace events from MinIO FTP Server
 	TraceFTP
-
+	// TraceILM will trace events during MinIO ILM operations
+	TraceILM
 	// Add more here...
 
 	// TraceAll contains all valid trace modes.

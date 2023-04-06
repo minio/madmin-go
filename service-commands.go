@@ -109,6 +109,7 @@ type ServiceTraceOpts struct {
 	ReplicationResync bool
 	Bootstrap         bool
 	FTP               bool
+	ILM               bool
 	OnlyErrors        bool
 	Threshold         time.Duration
 }
@@ -129,6 +130,7 @@ func (t ServiceTraceOpts) TraceTypes() TraceType {
 	tt.SetIf(t.ReplicationResync, TraceReplicationResync)
 	tt.SetIf(t.Bootstrap, TraceBootstrap)
 	tt.SetIf(t.FTP, TraceFTP)
+	tt.SetIf(t.ILM, TraceILM)
 
 	return tt
 }
@@ -151,6 +153,7 @@ func (t ServiceTraceOpts) AddParams(u url.Values) {
 	u.Set("replication-resync", strconv.FormatBool(t.ReplicationResync))
 	u.Set("bootstrap", strconv.FormatBool(t.Bootstrap))
 	u.Set("ftp", strconv.FormatBool(t.FTP))
+	u.Set("ilm", strconv.FormatBool(t.ILM))
 }
 
 // ParseParams will parse parameters and set them to t.
@@ -169,6 +172,7 @@ func (t *ServiceTraceOpts) ParseParams(r *http.Request) (err error) {
 	t.ReplicationResync = r.Form.Get("replication-resync") == "true"
 	t.Bootstrap = r.Form.Get("bootstrap") == "true"
 	t.FTP = r.Form.Get("ftp") == "true"
+	t.ILM = r.Form.Get("ilm") == "true"
 
 	if th := r.Form.Get("threshold"); th != "" {
 		d, err := time.ParseDuration(th)
