@@ -39,7 +39,11 @@ type KMSStatus struct {
 
 // KMSState is a KES server status snapshot.
 type KMSState struct {
-	Version    string
+	Version           string
+	KeyStoreLatency   time.Duration
+	KeyStoreReachable bool
+	KeystoreAvailable bool
+
 	OS         string
 	Arch       string
 	UpTime     time.Duration
@@ -47,10 +51,6 @@ type KMSState struct {
 	UsableCPUs int
 	HeapAlloc  uint64
 	StackAlloc uint64
-
-	KeyStoreLatency   time.Duration
-	KeyStoreReachable bool
-	KeystoreAvailable bool
 }
 
 // KMSKeyInfo contains key metadata
