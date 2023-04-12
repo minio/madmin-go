@@ -306,11 +306,6 @@ func (adm *AdminClient) Heal(ctx context.Context, bucket, prefix string,
 type MRFStatus struct {
 	BytesHealed uint64 `json:"bytes_healed"`
 	ItemsHealed uint64 `json:"items_healed"`
-
-	TotalItems uint64 `json:"total_items"`
-	TotalBytes uint64 `json:"total_bytes"`
-
-	Started time.Time `json:"started"`
 }
 
 // BgHealState represents the status of the background heal
