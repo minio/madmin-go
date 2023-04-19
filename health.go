@@ -24,11 +24,14 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -303,6 +306,18 @@ type TimeInfo struct {
 	TimeZone          string    `json:"time_zone"`
 }
 
+// XFSErrorConfigs - stores the error configs of all XFS devices on the server
+type XFSErrorConfigs struct {
+	Configs []XFSErrorConfig `json:"configs,omitempty"`
+	Error   string           `json:"error,omitempty"`
+}
+
+// XFSErrorConfig - stores XFS error configuration info for max_retries
+type XFSErrorConfig struct {
+	ConfigFile string `json:"config_file"`
+	MaxRetries int    `json:"max_retries"`
+}
+
 // GetOSInfo returns linux only operating system's information.
 func GetOSInfo(ctx context.Context, addr string) OSInfo {
 	if runtime.GOOS != "linux" {
@@ -369,7 +384,55 @@ func GetSysConfig(_ context.Context, addr string) SysConfig {
 		TimeZone:    zone,
 	}
 
+	xfsErrorConfigs := getXFSErrorMaxRetries()
+	if len(xfsErrorConfigs.Configs) > 0 || len(xfsErrorConfigs.Error) > 0 {
+		sc.Config["xfs-error-config"] = xfsErrorConfigs
+	}
+
 	return sc
+}
+
+func readIntFromFile(filePath string) (num int, err error) {
+	var file *os.File
+	file, err = os.Open(filePath)
+	if err != nil {
+		return
+	}
+	defer file.Close()
+
+	var data []byte
+	data, err = io.ReadAll(file)
+	if err != nil {
+		return
+	}
+
+	return strconv.Atoi(strings.TrimSpace(string(data)))
+}
+
+func getXFSErrorMaxRetries() XFSErrorConfigs {
+	xfsErrCfgPattern := "/sys/fs/xfs/*/error/metadata/*/max_retries"
+	configFiles, err := filepath.Glob(xfsErrCfgPattern)
+	if err != nil {
+		return XFSErrorConfigs{Error: err.Error()}
+	}
+
+	configs := []XFSErrorConfig{}
+	var errMsg string
+	for _, configFile := range configFiles {
+		maxRetries, err := readIntFromFile(configFile)
+		if err != nil {
+			errMsg = err.Error()
+			break
+		}
+		configs = append(configs, XFSErrorConfig{
+			ConfigFile: configFile,
+			MaxRetries: maxRetries,
+		})
+	}
+	return XFSErrorConfigs{
+		Configs: configs,
+		Error:   errMsg,
+	}
 }
 
 // GetSysServices returns info of sys services that affect minio
