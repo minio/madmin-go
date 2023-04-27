@@ -382,6 +382,10 @@ type ErasureBackend struct {
 	StandardSCParity int `json:"standardSCParity"`
 	// Parity disks for currently configured Reduced Redundancy storage class.
 	RRSCParity int `json:"rrSCParity"`
+
+	// Per pool information
+	TotalSets    []int `json:"totalSets"`
+	DrivesPerSet []int `json:"totalDrivesPerSet"`
 }
 
 // ServerProperties holds server information
