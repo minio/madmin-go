@@ -34,7 +34,7 @@ type KMSStatus struct {
 	Name         string               `json:"name"`           // Name or type of the KMS
 	DefaultKeyID string               `json:"default-key-id"` // The key ID used when no explicit key is specified
 	Endpoints    map[string]ItemState `json:"endpoints"`      // List of KMS endpoints and their status (online/offline)
-	Details      KMSState             `json:"details"`        // KMS server status snapshot
+	State        KMSState             `json:"state"`          // Current KMS server state
 }
 
 // KMSState is a KES server status snapshot.
