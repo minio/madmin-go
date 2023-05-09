@@ -59,8 +59,8 @@ func main() {
 	// update service account
 	newExpiration := time.Now().Add(45 * time.Minute)
 	updateReq := madmin.UpdateServiceAccountReq{
-		NewStatus:  "my-status",
-		Expiration: &newExpiration,
+		NewStatus:     "my-status",
+		NewExpiration: &newExpiration,
 	}
 	if err := madminClient.UpdateServiceAccount(ctx, "my-accesskey", updateReq); err != nil {
 		log.Fatalln(err)
