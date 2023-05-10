@@ -22,9 +22,11 @@ package madmin
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"regexp"
 	"time"
 
 	"github.com/minio/minio-go/v7/pkg/tags"
@@ -312,8 +314,50 @@ type AddServiceAccountReq struct {
 	TargetUser string          `json:"targetUser,omitempty"`
 	AccessKey  string          `json:"accessKey,omitempty"`
 	SecretKey  string          `json:"secretKey,omitempty"`
-	Comment    string          `json:"comment,omitempty"`
-	Expiration *time.Time      `json:"expiration,omitempty"`
+
+	// Name for this access key
+	Name string `json:"name,omitempty"`
+	// Description for this access key
+	Description string `json:"description,omitempty"`
+	// Time at which this access key expires
+	Expiration *time.Time `json:"expiration,omitempty"`
+
+	// Deprecated: use description instead
+	Comment string `json:"comment,omitempty"`
+}
+
+var serviceAcctValidNameRegex = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]*`)
+
+func validateSAName(name string) error {
+	if name == "" {
+		return nil
+	}
+	if len(name) > 32 {
+		return errors.New("name must not be longer than 32 characters")
+	}
+	if !serviceAcctValidNameRegex.MatchString(name) {
+		return errors.New("name must contain only ASCII letters, digits, underscores and hyphens and must start with a letter")
+	}
+	return nil
+}
+
+func validateSADescription(desc string) error {
+	if desc == "" {
+		return nil
+	}
+	if len(desc) > 256 {
+		return errors.New("description must be at most 256 bytes long")
+	}
+	return nil
+}
+
+// Validate validates the request parameters.
+func (r *AddServiceAccountReq) Validate() error {
+	err := validateSAName(r.Name)
+	if err != nil {
+		return err
+	}
+	return validateSADescription(r.Description)
 }
 
 // AddServiceAccountResp is the response body of the add service account admin call
@@ -324,6 +368,9 @@ type AddServiceAccountResp struct {
 // AddServiceAccount - creates a new service account belonging to the user sending
 // the request while restricting the service account permission by the given policy document.
 func (adm *AdminClient) AddServiceAccount(ctx context.Context, opts AddServiceAccountReq) (Credentials, error) {
+	if err := opts.Validate(); err != nil {
+		return Credentials{}, err
+	}
 	data, err := json.Marshal(opts)
 	if err != nil {
 		return Credentials{}, err
@@ -364,15 +411,26 @@ func (adm *AdminClient) AddServiceAccount(ctx context.Context, opts AddServiceAc
 
 // UpdateServiceAccountReq is the request options of the edit service account admin call
 type UpdateServiceAccountReq struct {
-	NewPolicy     json.RawMessage `json:"newPolicy,omitempty"` // Parsed policy from iam/policy.Parse
-	NewSecretKey  string          `json:"newSecretKey,omitempty"`
-	NewStatus     string          `json:"newStatus,omitempty"`
-	NewComment    string          `json:"newComment,omitempty"`
-	NewExpiration *time.Time      `json:"newExpiration,omitempty"`
+	NewPolicy      json.RawMessage `json:"newPolicy,omitempty"` // Parsed policy from iam/policy.Parse
+	NewSecretKey   string          `json:"newSecretKey,omitempty"`
+	NewStatus      string          `json:"newStatus,omitempty"`
+	NewName        string          `json:"newName,omitempty"`
+	NewDescription string          `json:"newDescription,omitempty"`
+	NewExpiration  *time.Time      `json:"newExpiration,omitempty"`
+}
+
+func (u *UpdateServiceAccountReq) Validate() error {
+	if err := validateSAName(u.NewName); err != nil {
+		return err
+	}
+	return validateSADescription(u.NewDescription)
 }
 
 // UpdateServiceAccount - edit an existing service account
 func (adm *AdminClient) UpdateServiceAccount(ctx context.Context, accessKey string, opts UpdateServiceAccountReq) error {
+	if err := opts.Validate(); err != nil {
+		return err
+	}
 	data, err := json.Marshal(opts)
 	if err != nil {
 		return err
@@ -450,7 +508,8 @@ type InfoServiceAccountResp struct {
 	AccountStatus string     `json:"accountStatus"`
 	ImpliedPolicy bool       `json:"impliedPolicy"`
 	Policy        string     `json:"policy"`
-	Comment       string     `json:"comment"`
+	Name          string     `json:"name,omitempty"`
+	Description   string     `json:"description,omitempty"`
 	Expiration    *time.Time `json:"expiration,omitempty"`
 }
 

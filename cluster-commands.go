@@ -268,7 +268,8 @@ type SRSvcAccCreate struct {
 	Claims        map[string]interface{} `json:"claims"`
 	SessionPolicy json.RawMessage        `json:"sessionPolicy"`
 	Status        string                 `json:"status"`
-	Comment       string                 `json:"comment"`
+	Name          string                 `json:"name"`
+	Description   string                 `json:"description"`
 	Expiration    *time.Time             `json:"expiration,omitempty"`
 }
 
@@ -277,7 +278,8 @@ type SRSvcAccUpdate struct {
 	AccessKey     string          `json:"accessKey"`
 	SecretKey     string          `json:"secretKey"`
 	Status        string          `json:"status"`
-	Comment       string          `json:"comment"`
+	Name          string          `json:"name"`
+	Description   string          `json:"description"`
 	SessionPolicy json.RawMessage `json:"sessionPolicy"`
 	Expiration    *time.Time      `json:"expiration,omitempty"`
 }
