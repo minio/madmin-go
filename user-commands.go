@@ -464,9 +464,14 @@ func (adm *AdminClient) UpdateServiceAccount(ctx context.Context, accessKey stri
 	return nil
 }
 
+type ServiceAccountInfo struct {
+	AccessKey  string     `json:"accessKey"`
+	Expiration *time.Time `json:"expiration,omitempty"`
+}
+
 // ListServiceAccountsResp is the response body of the list service accounts call
 type ListServiceAccountsResp struct {
-	Accounts []string `json:"accounts"`
+	Accounts []ServiceAccountInfo `json:"accounts"`
 }
 
 // ListServiceAccounts - list service accounts belonging to the specified user
