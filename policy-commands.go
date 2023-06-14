@@ -226,53 +226,62 @@ func (adm *AdminClient) SetPolicy(ctx context.Context, policyName, entityName st
 	return nil
 }
 
-func (adm *AdminClient) attachOrDetachPolicyBuiltin(ctx context.Context, isAttach bool, r PolicyAssociationReq) error {
+func (adm *AdminClient) attachOrDetachPolicyBuiltin(ctx context.Context, isAttach bool,
+	r PolicyAssociationReq,
+) (PolicyAssociationResp, error) {
 	err := r.IsValid()
 	if err != nil {
-		return err
+		return PolicyAssociationResp{}, err
 	}
 
 	plainBytes, err := json.Marshal(r)
 	if err != nil {
-		return err
+		return PolicyAssociationResp{}, err
 	}
 
 	encBytes, err := EncryptData(adm.getSecretKey(), plainBytes)
 	if err != nil {
-		return err
+		return PolicyAssociationResp{}, err
 	}
 
 	suffix := "detach"
 	if isAttach {
 		suffix = "attach"
 	}
-
+	h := make(http.Header, 1)
+	h.Add("Content-Type", "application/octet-stream")
 	reqData := requestData{
-		relPath: adminAPIPrefix + "/idp/builtin/policy/" + suffix,
-		content: encBytes,
+		customHeaders: h,
+		relPath:       adminAPIPrefix + "/idp/builtin/policy/" + suffix,
+		content:       encBytes,
 	}
 
 	resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
 	defer closeResponse(resp)
 	if err != nil {
-		return err
+		return PolicyAssociationResp{}, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return PolicyAssociationResp{}, httpRespToErrorResponse(resp)
 	}
 
-	if (isAttach && resp.StatusCode != http.StatusCreated) ||
-		(!isAttach && resp.StatusCode != http.StatusNoContent) {
-		return httpRespToErrorResponse(resp)
+	content, err := DecryptData(adm.getSecretKey(), resp.Body)
+	if err != nil {
+		return PolicyAssociationResp{}, err
 	}
 
-	return nil
+	rsp := PolicyAssociationResp{}
+	err = json.Unmarshal(content, &rsp)
+	return rsp, err
 }
 
 // AttachPolicy - attach policies to a user or group.
-func (adm *AdminClient) AttachPolicy(ctx context.Context, r PolicyAssociationReq) error {
+func (adm *AdminClient) AttachPolicy(ctx context.Context, r PolicyAssociationReq) (PolicyAssociationResp, error) {
 	return adm.attachOrDetachPolicyBuiltin(ctx, true, r)
 }
 
 // DetachPolicy - detach policies from a user or group.
-func (adm *AdminClient) DetachPolicy(ctx context.Context, r PolicyAssociationReq) error {
+func (adm *AdminClient) DetachPolicy(ctx context.Context, r PolicyAssociationReq) (PolicyAssociationResp, error) {
 	return adm.attachOrDetachPolicyBuiltin(ctx, false, r)
 }
 
