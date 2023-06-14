@@ -25,7 +25,7 @@ import (
 	"context"
 	"log"
 
-	"github.com/minio/madmin-go/v2"
+	"github.com/minio/madmin-go/v3"
 )
 
 func main() {
