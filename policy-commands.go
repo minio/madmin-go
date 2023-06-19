@@ -261,18 +261,30 @@ func (adm *AdminClient) attachOrDetachPolicyBuiltin(ctx context.Context, isAttac
 	if err != nil {
 		return PolicyAssociationResp{}, err
 	}
-	if resp.StatusCode != http.StatusOK {
+
+	// Older minio does not send a response, so we handle that case.
+
+	switch {
+	case resp.StatusCode == http.StatusOK:
+		// Newer/current minio sends a result.
+		content, err := DecryptData(adm.getSecretKey(), resp.Body)
+		if err != nil {
+			return PolicyAssociationResp{}, err
+		}
+
+		rsp := PolicyAssociationResp{}
+		err = json.Unmarshal(content, &rsp)
+		return rsp, err
+
+	case resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusNoContent:
+		// Older minio - no result sent. TODO(aditya): Remove this case after
+		// newer minio is released.
+		return PolicyAssociationResp{}, nil
+
+	default:
+		// Error response case.
 		return PolicyAssociationResp{}, httpRespToErrorResponse(resp)
 	}
-
-	content, err := DecryptData(adm.getSecretKey(), resp.Body)
-	if err != nil {
-		return PolicyAssociationResp{}, err
-	}
-
-	rsp := PolicyAssociationResp{}
-	err = json.Unmarshal(content, &rsp)
-	return rsp, err
 }
 
 // AttachPolicy - attach policies to a user or group.
