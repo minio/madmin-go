@@ -27,7 +27,7 @@ import (
 	"time"
 )
 
-// NetperfNodeResult - stats from each server
+// SiteReplicationperfNodeResult - stats from each server
 type SiteReplicationperfNodeResult struct {
 	Endpoint string `json:"endpoint"`
 	TX       uint64 `json:"tx"`
@@ -35,7 +35,7 @@ type SiteReplicationperfNodeResult struct {
 	Error    string `json:"error,omitempty"`
 }
 
-// NetperfResult - aggregate results from all servers
+// SiteReplicationperfResult - aggregate results from all servers
 type SiteReplicationperfResult struct {
 	NodeResults []SiteReplicationperfNodeResult `json:"nodeResults"`
 }
