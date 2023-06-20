@@ -27,7 +27,11 @@ import (
 	"time"
 )
 
+//go:generate msgp -file $GOFILE
+
 // ReplDiffOpts holds options for `mc replicate diff` command
+//
+//msgp:ignore ReplDiffOpts
 type ReplDiffOpts struct {
 	ARN     string
 	Verbose bool
@@ -36,6 +40,8 @@ type ReplDiffOpts struct {
 
 // TgtDiffInfo returns status of unreplicated objects
 // for the target ARN
+//msgp:ignore TgtDiffInfo
+
 type TgtDiffInfo struct {
 	ReplicationStatus       string `json:"rStatus,omitempty"`  // target replication status
 	DeleteReplicationStatus string `json:"drStatus,omitempty"` // target delete replication status
@@ -43,6 +49,8 @@ type TgtDiffInfo struct {
 
 // DiffInfo represents relevant replication status and last attempt to replicate
 // for the replication targets configured for the bucket
+//msgp:ignore DiffInfo
+
 type DiffInfo struct {
 	Object                  string                 `json:"object"`
 	VersionID               string                 `json:"versionId"`
@@ -108,4 +116,61 @@ func (adm *AdminClient) BucketReplicationDiff(ctx context.Context, bucketName st
 	}(diffCh)
 	// Returns the diff channel, for caller to start reading from.
 	return diffCh
+}
+
+// ReplicationMRF represents MRF backlog for a bucket
+type ReplicationMRF struct {
+	NodeName   string `json:"nodeName" msg:"n"`
+	Bucket     string `json:"bucket" msg:"b"`
+	Object     string `json:"object" msg:"o"`
+	VersionID  string `json:"versionId" msg:"v"`
+	RetryCount int    `json:"retryCount" msg:"rc"`
+	Err        string `json:"error,omitempty" msg:"err"`
+}
+
+// BucketReplicationMRF - gets MRF entries for bucket and node. Return MRF across buckets if bucket is empty, across nodes
+// if node is `all`
+func (adm *AdminClient) BucketReplicationMRF(ctx context.Context, bucketName string, node string) <-chan ReplicationMRF {
+	mrfCh := make(chan ReplicationMRF)
+
+	// start a routine to start reading line by line.
+	go func(mrfCh chan<- ReplicationMRF) {
+		defer close(mrfCh)
+		queryValues := url.Values{}
+		queryValues.Set("bucket", bucketName)
+		if node != "" {
+			queryValues.Set("node", node)
+		}
+		reqData := requestData{
+			relPath:     adminAPIPrefix + "/replication/mrf",
+			queryValues: queryValues,
+		}
+
+		// Execute GET on /minio/admin/v3/replication/mrf to get mrf backlog for a bucket.
+		resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+		if err != nil {
+			mrfCh <- ReplicationMRF{Err: err.Error()}
+			return
+		}
+		defer closeResponse(resp)
+
+		if resp.StatusCode != http.StatusOK {
+			mrfCh <- ReplicationMRF{Err: httpRespToErrorResponse(resp).Error()}
+			return
+		}
+		dec := json.NewDecoder(resp.Body)
+		for {
+			var bk ReplicationMRF
+			if err = dec.Decode(&bk); err != nil {
+				break
+			}
+			select {
+			case <-ctx.Done():
+				return
+			case mrfCh <- bk:
+			}
+		}
+	}(mrfCh)
+	// Returns the mrf backlog channel, for caller to start reading from.
+	return mrfCh
 }
