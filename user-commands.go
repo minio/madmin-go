@@ -124,8 +124,32 @@ const (
 	AccountDisabled AccountStatus = "disabled"
 )
 
+// UserAuthType indicates the type of authentication for the user.
+type UserAuthType string
+
+// Valid values for UserAuthType.
+const (
+	BuiltinUserAuthType UserAuthType = "builtin"
+	LDAPUserAuthType                 = "ldap"
+)
+
+// UserAuthInfo contains info about how the user is authenticated.
+type UserAuthInfo struct {
+	Type UserAuthType `json:"type"`
+
+	// Specifies the external server that authenticated the server (empty for
+	// builtin IDP)
+	AuthServer string `json:"authServer,omitempty"`
+
+	// Specifies the user ID as present in the external auth server (e.g. in
+	// OIDC could be the email of the user). For builtin, this would be the same
+	// as the access key.
+	AuthServerUserID string `json:"authServerUserID,omitempty"`
+}
+
 // UserInfo carries information about long term users.
 type UserInfo struct {
+	AuthInfo   *UserAuthInfo `json:"userAuthInfo,omitempty"`
 	SecretKey  string        `json:"secretKey,omitempty"`
 	PolicyName string        `json:"policyName,omitempty"`
 	Status     AccountStatus `json:"status"`
