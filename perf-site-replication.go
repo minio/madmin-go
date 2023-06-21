@@ -28,7 +28,7 @@ import (
 )
 
 // SiteReplicationperfNodeResult - stats from each server
-type SiteReplicationperfNodeResult struct {
+type SiteReplicationPerfNodeResult struct {
 	Endpoint string `json:"endpoint"`
 	TX       uint64 `json:"tx"`
 	RX       uint64 `json:"rx"`
