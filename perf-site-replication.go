@@ -27,7 +27,7 @@ import (
 	"time"
 )
 
-// SiteReplicationperfNodeResult - stats from each server
+// SiteReplicationPerfNodeResult - stats from each server
 type SiteReplicationPerfNodeResult struct {
 	Endpoint string `json:"endpoint"`
 	TX       uint64 `json:"tx"`
@@ -35,13 +35,13 @@ type SiteReplicationPerfNodeResult struct {
 	Error    string `json:"error,omitempty"`
 }
 
-// SiteReplicationperfResult - aggregate results from all servers
+// SiteReplicationPerfResult - aggregate results from all servers
 type SiteReplicationPerfResult struct {
 	NodeResults []SiteReplicationPerfNodeResult `json:"nodeResults"`
 }
 
 // SiteReplicationPerf - perform site-replication on the MinIO servers
-func (adm *AdminClient) SiteReplicationPerf(ctx context.Context, duration time.Duration) (result SiteReplicationPerfNodeResult, err error) {
+func (adm *AdminClient) SiteReplicationPerf(ctx context.Context, duration time.Duration) (result SiteReplicationPerfResult, err error) {
 	queryVals := make(url.Values)
 	queryVals.Set("duration", duration.String())
 
