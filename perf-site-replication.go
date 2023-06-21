@@ -37,11 +37,11 @@ type SiteReplicationPerfNodeResult struct {
 
 // SiteReplicationperfResult - aggregate results from all servers
 type SiteReplicationPerfResult struct {
-	NodeResults []SiteReplicationperfNodeResult `json:"nodeResults"`
+	NodeResults []SiteReplicationPerfNodeResult `json:"nodeResults"`
 }
 
 // SiteReplicationPerf - perform site-replication on the MinIO servers
-func (adm *AdminClient) SiteReplicationPerf(ctx context.Context, duration time.Duration) (result SiteReplicationperfResult, err error) {
+func (adm *AdminClient) SiteReplicationPerf(ctx context.Context, duration time.Duration) (result SiteReplicationPerfNodeResult, err error) {
 	queryVals := make(url.Values)
 	queryVals.Set("duration", duration.String())
 
