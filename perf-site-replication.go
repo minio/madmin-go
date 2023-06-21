@@ -36,7 +36,7 @@ type SiteReplicationPerfNodeResult struct {
 }
 
 // SiteReplicationperfResult - aggregate results from all servers
-type SiteReplicationperfResult struct {
+type SiteReplicationPerfResult struct {
 	NodeResults []SiteReplicationperfNodeResult `json:"nodeResults"`
 }
 
