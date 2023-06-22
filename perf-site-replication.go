@@ -27,27 +27,27 @@ import (
 	"time"
 )
 
-// SiteReplicationPerfNodeResult - stats from each server
-type SiteReplicationPerfNodeResult struct {
+// SiteNetPerfNodeResult  - stats from each server
+type SiteNetPerfNodeResult struct {
 	Endpoint string `json:"endpoint"`
 	TX       uint64 `json:"tx"`
 	RX       uint64 `json:"rx"`
 	Error    string `json:"error,omitempty"`
 }
 
-// SiteReplicationPerfResult - aggregate results from all servers
-type SiteReplicationPerfResult struct {
-	NodeResults []SiteReplicationPerfNodeResult `json:"nodeResults"`
+// SiteNetPerfResult  - aggregate results from all servers
+type SiteNetPerfResult struct {
+	NodeResults []SiteNetPerfNodeResult `json:"nodeResults"`
 }
 
 // SiteReplicationPerf - perform site-replication on the MinIO servers
-func (adm *AdminClient) SiteReplicationPerf(ctx context.Context, duration time.Duration) (result SiteReplicationPerfResult, err error) {
+func (adm *AdminClient) SiteReplicationPerf(ctx context.Context, duration time.Duration) (result SiteNetPerfResult, err error) {
 	queryVals := make(url.Values)
 	queryVals.Set("duration", duration.String())
 
 	resp, err := adm.executeMethod(ctx,
 		http.MethodPost, requestData{
-			relPath:     adminAPIPrefix + "/speedtest/site-replication",
+			relPath:     adminAPIPrefix + "/speedtest/site",
 			queryValues: queryVals,
 		})
 	if err != nil {
