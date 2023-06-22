@@ -29,13 +29,10 @@ import (
 
 // NetperfNodeResult - stats from each server
 type NetperfNodeResult struct {
-	Endpoint  string `json:"endpoint"`
-	TX        uint64 `json:"tx"`
-	TxDurMs   uint64 `json:"txDurMs"`
-	RX        uint64 `json:"rx"`
-	RxDurMs   uint64 `json:"rxDurMs"`
-	TotalConn uint64 `json:"totalConn"`
-	Error     string `json:"error,omitempty"`
+	Endpoint string `json:"endpoint"`
+	TX       uint64 `json:"tx"`
+	RX       uint64 `json:"rx"`
+	Error    string `json:"error,omitempty"`
 }
 
 // NetperfResult - aggregate results from all servers
