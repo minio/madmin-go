@@ -54,7 +54,7 @@ const BatchJobReplicateTemplate = `replicate:
     type: TYPE # valid values are "s3" or "minio"
     bucket: BUCKET
     prefix: PREFIX # 'PREFIX' is optional
-    # If your source is the "local" alias specified to `mc batch start`, then the `endpoint` and `credentials` fields are optional and can be omitted
+    # If your source is the 'local' alias specified to 'mc batch start', then the 'endpoint' and 'credentials' fields are optional and can be omitted
     # Either the 'source' or 'remote' *must* be the "local" deployment
     endpoint: "http[s]://HOSTNAME:PORT" 
     # path: "on|off|auto" # "on" enables path-style bucket lookup. "off" enables virtual host (DNS)-style bucket lookup. Defaults to "auto"
