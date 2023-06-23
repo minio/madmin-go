@@ -32,7 +32,7 @@ type SiteNetPerfNodeResult struct {
 	Endpoint  string `json:"endpoint"`
 	TX        uint64 `json:"tx"`
 	TXTotalDuration   time.Duration `json:"txTotalDuration"`
-	RX        uint64 `json:"rx"`
+	RX        uint64 `json:"rx"` // received rate in bytes 
 	RXTotalDuration   time.Duration `json:"rxTotalDuration"`
 	TotalConn uint64 `json:"totalConn"`
 	Error     string `json:"error,omitempty"`
