@@ -29,13 +29,13 @@ import (
 
 // SiteNetPerfNodeResult  - stats from each server
 type SiteNetPerfNodeResult struct {
-	Endpoint  string `json:"endpoint"`
-	TX        uint64 `json:"tx"` // transfer rate in bytes
-	TXTotalDuration   time.Duration `json:"txTotalDuration"`
-	RX        uint64 `json:"rx"` // received rate in bytes 
-	RXTotalDuration   time.Duration `json:"rxTotalDuration"`
-	TotalConn uint64 `json:"totalConn"`
-	Error     string `json:"error,omitempty"`
+	Endpoint        string        `json:"endpoint"`
+	TX              uint64        `json:"tx"` // transfer rate in bytes
+	TXTotalDuration time.Duration `json:"txTotalDuration"`
+	RX              uint64        `json:"rx"` // received rate in bytes
+	RXTotalDuration time.Duration `json:"rxTotalDuration"`
+	TotalConn       uint64        `json:"totalConn"`
+	Error           string        `json:"error,omitempty"`
 }
 
 // SiteNetPerfResult  - aggregate results from all servers
