@@ -51,27 +51,31 @@ const BatchJobReplicateTemplate = `replicate:
   apiVersion: v1
   # source of the objects to be replicated
   source:
-    type: TYPE # valid values are "minio"
+    type: TYPE # valid values are "s3" or "minio"
     bucket: BUCKET
     prefix: PREFIX # 'PREFIX' is optional
-    # NOTE: if source is remote then target must be "local"
-    # endpoint: ENDPOINT
-    # credentials:
-    #   accessKey: ACCESS-KEY
-    #   secretKey: SECRET-KEY
-    #   sessionToken: SESSION-TOKEN # Optional only available when rotating credentials are used
+    # If your source is the "local" alias specified to `mc batch start`, then the `endpoint` and `credentials` fields are optional and can be omitted
+    # Either the 'source' or 'remote' *must* be the "local" deployment
+    endpoint: "http[s]://HOSTNAME:PORT" 
+    # path: "on|off|auto" # "on" enables path-style bucket lookup. "off" enables virtual host (DNS)-style bucket lookup. Defaults to "auto"
+    credentials:
+      accessKey: ACCESS-KEY # Required
+      secretKey: SECRET-KEY # Required
+    # sessionToken: SESSION-TOKEN # Optional only available when rotating credentials are used
 
   # target where the objects must be replicated
   target:
-    type: TYPE # valid values are "minio"
+    type: TYPE # valid values are "s3" or "minio"
     bucket: BUCKET
     prefix: PREFIX # 'PREFIX' is optional
-    # NOTE: if target is remote then source must be "local"
-    # endpoint: ENDPOINT
-    # credentials:
-    #   accessKey: ACCESS-KEY
-    #   secretKey: SECRET-KEY
-    #   sessionToken: SESSION-TOKEN # Optional only available when rotating credentials are used
+    # If your remote is the "local" alias specified to `mc batch start`, then the `endpoint` and `credentials` fields are optional and can be omitted
+    # Either the 'source' or 'remote' *must* be the "local" deployment
+    endpoint: "http[s]://HOSTNAME:PORT"
+    # path: "on|off|auto" # "on" enables path-style bucket lookup. "off" enables virtual host (DNS)-style bucket lookup. Defaults to "auto"
+    credentials:
+      accessKey: ACCESS-KEY
+      secretKey: SECRET-KEY
+    # sessionToken: SESSION-TOKEN # Optional only available when rotating credentials are used
 
   # NOTE: All flags are optional
   # - filtering criteria only applies for all source objects match the criteria
