@@ -31,7 +31,7 @@ import (
 type SiteNetPerfNodeResult struct {
 	Endpoint  string `json:"endpoint"`
 	TX        uint64 `json:"tx"`
-	TxDurMs   uint64 `json:"txDurMs"`
+	TXTotalDuration   time.Duration `json:"txTotalDuration"`
 	RX        uint64 `json:"rx"`
 	RxDurMs   uint64 `json:"rxDurMs"`
 	TotalConn uint64 `json:"totalConn"`
