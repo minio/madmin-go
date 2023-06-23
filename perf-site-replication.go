@@ -33,7 +33,7 @@ type SiteNetPerfNodeResult struct {
 	TX        uint64 `json:"tx"`
 	TXTotalDuration   time.Duration `json:"txTotalDuration"`
 	RX        uint64 `json:"rx"`
-	RxDurMs   uint64 `json:"rxDurMs"`
+	RXTotalDuration   time.Duration `json:"rxTotalDuration"`
 	TotalConn uint64 `json:"totalConn"`
 	Error     string `json:"error,omitempty"`
 }
