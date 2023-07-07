@@ -275,7 +275,8 @@ func (info InfoMessage) StandardParity() int {
 
 // Services contains different services information
 type Services struct {
-	KMS           KMS                           `json:"kms,omitempty"`
+	KMS           KMS                           `json:"kms,omitempty"` // deprecated july 2023
+	KMSStatus     []KMS                         `json:"kmsStatus,omitempty"`
 	LDAP          LDAP                          `json:"ldap,omitempty"`
 	Logger        []Logger                      `json:"logger,omitempty"`
 	Audit         []Audit                       `json:"audit,omitempty"`
@@ -316,9 +317,11 @@ type TierStats struct {
 
 // KMS contains KMS status information
 type KMS struct {
-	Status  string `json:"status,omitempty"`
-	Encrypt string `json:"encrypt,omitempty"`
-	Decrypt string `json:"decrypt,omitempty"`
+	Status   string `json:"status,omitempty"`
+	Encrypt  string `json:"encrypt,omitempty"`
+	Decrypt  string `json:"decrypt,omitempty"`
+	Endpoint string `json:"endpoint,omitempty"`
+	Version  string `json:"version,omitempty"`
 }
 
 // LDAP contains ldap status
