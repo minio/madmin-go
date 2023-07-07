@@ -36,6 +36,11 @@ type PoolDecommissionInfo struct {
 	Complete    bool      `json:"complete"`
 	Failed      bool      `json:"failed"`
 	Canceled    bool      `json:"canceled"`
+
+	ObjectsDecommissioned     int64 `json:"objectsDecommissioned"`
+	ObjectsDecommissionFailed int64 `json:"objectsDecommissionedFailed"`
+	BytesDone                 int64 `json:"bytesDecommissioned"`
+	BytesFailed               int64 `json:"bytesDecommissionedFailed"`
 }
 
 // PoolStatus captures current pool status
