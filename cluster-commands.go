@@ -252,11 +252,12 @@ func (adm *AdminClient) SRPeerBucketOps(ctx context.Context, bucket string, op B
 // SRIAMItem.Type constants.
 const (
 	SRIAMItemPolicy        = "policy"
+	SRIAMItemPolicyMapping = "policy-mapping"
+	SRIAMItemGroupInfo     = "group-info"
+	SRIAMItemCredential    = "credential"
 	SRIAMItemSvcAcc        = "service-account"
 	SRIAMItemSTSAcc        = "sts-account"
-	SRIAMItemPolicyMapping = "policy-mapping"
 	SRIAMItemIAMUser       = "iam-user"
-	SRIAMItemGroupInfo     = "group-info"
 )
 
 // SRSvcAccCreate - create operation
@@ -328,6 +329,21 @@ type SRGroupInfo struct {
 	UpdateReq GroupAddRemove `json:"updateReq"`
 }
 
+// SRCredInfo - represents a credential change (create/update/delete) to be
+// replicated. This replaces `SvcAccChange`, `STSCredential` and `IAMUser` and
+// will DEPRECATE them.
+type SRCredInfo struct {
+	AccessKey string `json:"accessKey"`
+
+	// This type corresponds to github.com/minio/minio/cmd.IAMUserType
+	IAMUserType int `json:"iamUserType"`
+
+	IsDeleteReq bool `json:"isDeleteReq,omitempty"`
+
+	// This is the JSON encoded value of github.com/minio/minio/cmd.UserIdentity
+	UserIdentityJSON json.RawMessage `json:"userIdentityJSON"`
+}
+
 // SRIAMItem - represents an IAM object that will be copied to a peer.
 type SRIAMItem struct {
 	Type string `json:"type"`
@@ -339,6 +355,12 @@ type SRIAMItem struct {
 	// Used when Type == SRIAMItemPolicyMapping
 	PolicyMapping *SRPolicyMapping `json:"policyMapping"`
 
+	// Used when Type = SRIAMItemGroupInfo
+	GroupInfo *SRGroupInfo `json:"groupInfo"`
+
+	// Used when Type = SRIAMItemCredential
+	CredentialInfo *SRCredInfo `json:"credentialChange"`
+
 	// Used when Type == SRIAMItemSvcAcc
 	SvcAccChange *SRSvcAccChange `json:"serviceAccountChange"`
 
@@ -347,9 +369,6 @@ type SRIAMItem struct {
 
 	// Used when Type = SRIAMItemIAMUser
 	IAMUser *SRIAMUser `json:"iamUser"`
-
-	// Used when Type = SRIAMItemGroupInfo
-	GroupInfo *SRGroupInfo `json:"groupInfo"`
 
 	// UpdatedAt - timestamp of last update
 	UpdatedAt time.Time `json:"updatedAt,omitempty"`
