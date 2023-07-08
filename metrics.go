@@ -24,7 +24,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/prometheus/procfs"
 	"io"
 	"net/http"
 	"net/url"
@@ -32,6 +31,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/prometheus/procfs"
 )
 
 // MetricType is a bitfield representation of different metric types.
