@@ -566,7 +566,10 @@ type NetMetrics struct {
 	CollectedAt time.Time `json:"collected"`
 
 	// EndPoint
-	EndPoint string `json:"endPoint"`
+	EndPoint string `json:"endpoint"`
+
+	// Host
+	Host string `json:"host"`
 
 	// net of Interface
 	InterfaceName string `json:"interface_name"`
