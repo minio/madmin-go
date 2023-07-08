@@ -45,6 +45,7 @@ const (
 	MetricsOS
 	MetricsBatchJobs
 	MetricsSiteResync
+	MetricNet
 
 	// MetricsAll must be last.
 	// Enables all metrics.
