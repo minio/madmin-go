@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/prometheus/procfs"
 	"io"
 	"net/http"
 	"net/url"
@@ -570,35 +571,5 @@ type NetMetrics struct {
 	// net of Interface
 	InterfaceName string `json:"interface_name"`
 
-	NetStats NetStats `json:"netstats"`
-}
-
-// NetStats - is for net stats, include Receive and Transmit
-type NetStats struct {
-	Receive  *ReceiveNetStats
-	Transmit *TransmitNetStats
-}
-
-// ReceiveNetStats - is for net stats for Receive
-type ReceiveNetStats struct {
-	Bytes      uint64
-	Packets    uint64
-	Errs       uint64
-	Drop       uint64
-	Fifo       uint64
-	Frame      uint64
-	Compressed uint64
-	Multicast  uint64
-}
-
-// TransmitNetStats - is for net stats for Transmit
-type TransmitNetStats struct {
-	Bytes      uint64
-	Packets    uint64
-	Errs       uint64
-	Drop       uint64
-	Fifo       uint64
-	Colls      uint64
-	Carrier    uint64
-	Compressed uint64
+	NetStats procfs.NetDevLine `json:"netstats"`
 }
