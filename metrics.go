@@ -136,6 +136,7 @@ type RealtimeMetrics struct {
 	Aggregated Metrics               `json:"aggregated"`
 	ByHost     map[string]Metrics    `json:"by_host,omitempty"`
 	ByDisk     map[string]DiskMetric `json:"by_disk,omitempty"`
+	ByNet      map[string]NetMetrics `json:"by_net,omitempty"`
 	// Final indicates whether this is the final packet and the receiver can exit.
 	Final bool `json:"final"`
 }
@@ -206,6 +207,14 @@ func (r *RealtimeMetrics) Merge(other *RealtimeMetrics) {
 	}
 	for disk, metrics := range other.ByDisk {
 		r.ByDisk[disk] = metrics
+	}
+
+	// merge NetStats
+	if r.ByNet == nil && len(other.ByNet) > 0 {
+		r.ByNet = make(map[string]NetMetrics, len(other.ByNet))
+	}
+	for disk, metrics := range other.ByNet {
+		r.ByNet[disk] = metrics
 	}
 }
 
@@ -549,4 +558,47 @@ func (o *SiteResyncMetrics) Merge(other *SiteResyncMetrics) {
 		// Use latest
 		*o = *other
 	}
+}
+
+type NetMetrics struct {
+	// Time these metrics were collected
+	CollectedAt time.Time `json:"collected"`
+
+	// EndPoint
+	EndPoint string `json:"endPoint"`
+
+	// net of Interface
+	InterfaceName string `json:"interface_name"`
+
+	NetStats NetStats `json:"netstats"`
+}
+
+// NetStats - is for net stats, include Receive and Transmit
+type NetStats struct {
+	Receive  *ReceiveNetStats
+	Transmit *TransmitNetStats
+}
+
+// ReceiveNetStats - is for net stats for Receive
+type ReceiveNetStats struct {
+	Bytes      uint64
+	Packets    uint64
+	Errs       uint64
+	Drop       uint64
+	Fifo       uint64
+	Frame      uint64
+	Compressed uint64
+	Multicast  uint64
+}
+
+// TransmitNetStats - is for net stats for Transmit
+type TransmitNetStats struct {
+	Bytes      uint64
+	Packets    uint64
+	Errs       uint64
+	Drop       uint64
+	Fifo       uint64
+	Colls      uint64
+	Carrier    uint64
+	Compressed uint64
 }
