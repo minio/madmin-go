@@ -566,14 +566,8 @@ type NetMetrics struct {
 	// Time these metrics were collected
 	CollectedAt time.Time `json:"collected"`
 
-	// EndPoint
-	EndPoint string `json:"endpoint"`
-
-	// Host
-	Host string `json:"host"`
-
 	// net of Interface
-	InterfaceName string `json:"interface_name"`
+	InterfaceName string `json:"interfaceName"`
 
 	NetStats procfs.NetDevLine `json:"netstats"`
 }
