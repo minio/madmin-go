@@ -180,6 +180,11 @@ func (r *Metrics) Merge(other *Metrics) {
 		r.SiteResync = &SiteResyncMetrics{}
 	}
 	r.SiteResync.Merge(other.SiteResync)
+
+	if r.Net == nil && other.Net != nil {
+		r.Net = &NetMetrics{}
+	}
+	r.Net.Merge(other.Net)
 }
 
 // Merge will merge other into r.
@@ -562,4 +567,15 @@ type NetMetrics struct {
 	InterfaceName string `json:"interfaceName"`
 
 	NetStats procfs.NetDevLine `json:"netstats"`
+}
+
+// Merge other into 'o'.
+func (n *NetMetrics) Merge(other *NetMetrics) {
+	if other == nil {
+		return
+	}
+	if n.CollectedAt.Before(other.CollectedAt) {
+		// Use latest
+		*n = *other
+	}
 }
