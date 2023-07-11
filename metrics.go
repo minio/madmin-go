@@ -138,7 +138,6 @@ type RealtimeMetrics struct {
 	Aggregated Metrics               `json:"aggregated"`
 	ByHost     map[string]Metrics    `json:"by_host,omitempty"`
 	ByDisk     map[string]DiskMetric `json:"by_disk,omitempty"`
-	ByNet      map[string]NetMetrics `json:"by_net,omitempty"`
 	// Final indicates whether this is the final packet and the receiver can exit.
 	Final bool `json:"final"`
 }
@@ -150,6 +149,7 @@ type Metrics struct {
 	OS         *OSMetrics         `json:"os,omitempty"`
 	BatchJobs  *BatchJobMetrics   `json:"batchJobs,omitempty"`
 	SiteResync *SiteResyncMetrics `json:"siteResync,omitempty"`
+	Net        *NetMetrics        `json:"net,omitempty"`
 }
 
 // Merge other into r.
@@ -209,14 +209,6 @@ func (r *RealtimeMetrics) Merge(other *RealtimeMetrics) {
 	}
 	for disk, metrics := range other.ByDisk {
 		r.ByDisk[disk] = metrics
-	}
-
-	// merge NetStats
-	if r.ByNet == nil && len(other.ByNet) > 0 {
-		r.ByNet = make(map[string]NetMetrics, len(other.ByNet))
-	}
-	for disk, metrics := range other.ByNet {
-		r.ByNet[disk] = metrics
 	}
 }
 
