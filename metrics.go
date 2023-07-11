@@ -31,6 +31,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/prometheus/procfs"
 )
 
 // MetricType is a bitfield representation of different metric types.
@@ -45,6 +47,7 @@ const (
 	MetricsOS
 	MetricsBatchJobs
 	MetricsSiteResync
+	MetricNet
 
 	// MetricsAll must be last.
 	// Enables all metrics.
@@ -146,6 +149,7 @@ type Metrics struct {
 	OS         *OSMetrics         `json:"os,omitempty"`
 	BatchJobs  *BatchJobMetrics   `json:"batchJobs,omitempty"`
 	SiteResync *SiteResyncMetrics `json:"siteResync,omitempty"`
+	Net        *NetMetrics        `json:"net,omitempty"`
 }
 
 // Merge other into r.
@@ -176,6 +180,11 @@ func (r *Metrics) Merge(other *Metrics) {
 		r.SiteResync = &SiteResyncMetrics{}
 	}
 	r.SiteResync.Merge(other.SiteResync)
+
+	if r.Net == nil && other.Net != nil {
+		r.Net = &NetMetrics{}
+	}
+	r.Net.Merge(other.Net)
 }
 
 // Merge will merge other into r.
@@ -548,4 +557,41 @@ func (o *SiteResyncMetrics) Merge(other *SiteResyncMetrics) {
 		// Use latest
 		*o = *other
 	}
+}
+
+type NetMetrics struct {
+	// Time these metrics were collected
+	CollectedAt time.Time `json:"collected"`
+
+	// net of Interface
+	InterfaceName string `json:"interfaceName"`
+
+	NetStats procfs.NetDevLine `json:"netstats"`
+}
+
+// Merge other into 'o'.
+func (n *NetMetrics) Merge(other *NetMetrics) {
+	if other == nil {
+		return
+	}
+	if n.CollectedAt.Before(other.CollectedAt) {
+		// Use latest timestamp
+		n.CollectedAt = other.CollectedAt
+	}
+	n.NetStats.RxBytes += other.NetStats.RxBytes
+	n.NetStats.RxPackets += other.NetStats.RxPackets
+	n.NetStats.RxErrors += other.NetStats.RxErrors
+	n.NetStats.RxDropped += other.NetStats.RxDropped
+	n.NetStats.RxFIFO += other.NetStats.RxFIFO
+	n.NetStats.RxFrame += other.NetStats.RxFrame
+	n.NetStats.RxCompressed += other.NetStats.RxCompressed
+	n.NetStats.RxMulticast += other.NetStats.RxMulticast
+	n.NetStats.TxBytes += other.NetStats.TxBytes
+	n.NetStats.TxPackets += other.NetStats.TxPackets
+	n.NetStats.TxErrors += other.NetStats.TxErrors
+	n.NetStats.TxDropped += other.NetStats.TxDropped
+	n.NetStats.TxFIFO += other.NetStats.TxFIFO
+	n.NetStats.TxCollisions += other.NetStats.TxCollisions
+	n.NetStats.TxCarrier += other.NetStats.TxCarrier
+	n.NetStats.TxCompressed += other.NetStats.TxCompressed
 }
