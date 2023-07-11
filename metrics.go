@@ -575,7 +575,23 @@ func (n *NetMetrics) Merge(other *NetMetrics) {
 		return
 	}
 	if n.CollectedAt.Before(other.CollectedAt) {
-		// Use latest
-		*n = *other
+		// Use latest timestamp
+		n.CollectedAt = other.CollectedAt
 	}
+	n.NetStats.RxBytes += other.NetStats.RxBytes
+	n.NetStats.RxPackets += other.NetStats.RxPackets
+	n.NetStats.RxErrors += other.NetStats.RxErrors
+	n.NetStats.RxDropped += other.NetStats.RxDropped
+	n.NetStats.RxFIFO += other.NetStats.RxFIFO
+	n.NetStats.RxFrame += other.NetStats.RxFrame
+	n.NetStats.RxCompressed += other.NetStats.RxCompressed
+	n.NetStats.RxMulticast += other.NetStats.RxMulticast
+	n.NetStats.TxBytes += other.NetStats.TxBytes
+	n.NetStats.TxPackets += other.NetStats.TxPackets
+	n.NetStats.TxErrors += other.NetStats.TxErrors
+	n.NetStats.TxDropped += other.NetStats.TxDropped
+	n.NetStats.TxFIFO += other.NetStats.TxFIFO
+	n.NetStats.TxCollisions += other.NetStats.TxCollisions
+	n.NetStats.TxCarrier += other.NetStats.TxCarrier
+	n.NetStats.TxCompressed += other.NetStats.TxCompressed
 }
