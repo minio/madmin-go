@@ -151,6 +151,7 @@ type BucketUsageInfo struct {
 
 	VersionsCount           uint64            `json:"versionsCount"`
 	ObjectsCount            uint64            `json:"objectsCount"`
+	DeleteMarkersCount      uint64            `json:"deleteMarkersCount"`
 	ObjectSizesHistogram    map[string]uint64 `json:"objectsSizesHistogram"`
 	ObjectVersionsHistogram map[string]uint64 `json:"objectsVersionsHistogram"`
 }
@@ -225,29 +226,31 @@ func (adm *AdminClient) DataUsageInfo(ctx context.Context) (DataUsageInfo, error
 
 // ErasureSetInfo provides information per erasure set
 type ErasureSetInfo struct {
-	ID            int    `json:"id"`
-	RawUsage      uint64 `json:"rawUsage"`
-	RawCapacity   uint64 `json:"rawCapacity"`
-	Usage         uint64 `json:"usage"`
-	ObjectsCount  uint64 `json:"objectsCount"`
-	VersionsCount uint64 `json:"versionsCount"`
-	HealDisks     int    `json:"healDisks"`
+	ID                 int    `json:"id"`
+	RawUsage           uint64 `json:"rawUsage"`
+	RawCapacity        uint64 `json:"rawCapacity"`
+	Usage              uint64 `json:"usage"`
+	ObjectsCount       uint64 `json:"objectsCount"`
+	VersionsCount      uint64 `json:"versionsCount"`
+	DeleteMarkersCount uint64 `json:"deleteMarkersCount"`
+	HealDisks          int    `json:"healDisks"`
 }
 
 // InfoMessage container to hold server admin related information.
 type InfoMessage struct {
-	Mode         string             `json:"mode,omitempty"`
-	Domain       []string           `json:"domain,omitempty"`
-	Region       string             `json:"region,omitempty"`
-	SQSARN       []string           `json:"sqsARN,omitempty"`
-	DeploymentID string             `json:"deploymentID,omitempty"`
-	Buckets      Buckets            `json:"buckets,omitempty"`
-	Objects      Objects            `json:"objects,omitempty"`
-	Versions     Versions           `json:"versions,omitempty"`
-	Usage        Usage              `json:"usage,omitempty"`
-	Services     Services           `json:"services,omitempty"`
-	Backend      ErasureBackend     `json:"backend,omitempty"`
-	Servers      []ServerProperties `json:"servers,omitempty"`
+	Mode          string             `json:"mode,omitempty"`
+	Domain        []string           `json:"domain,omitempty"`
+	Region        string             `json:"region,omitempty"`
+	SQSARN        []string           `json:"sqsARN,omitempty"`
+	DeploymentID  string             `json:"deploymentID,omitempty"`
+	Buckets       Buckets            `json:"buckets,omitempty"`
+	Objects       Objects            `json:"objects,omitempty"`
+	Versions      Versions           `json:"versions,omitempty"`
+	DeleteMarkers DeleteMarkers      `json:"deletemarkers,omitempty"`
+	Usage         Usage              `json:"usage,omitempty"`
+	Services      Services           `json:"services,omitempty"`
+	Backend       ErasureBackend     `json:"backend,omitempty"`
+	Servers       []ServerProperties `json:"servers,omitempty"`
 
 	Pools map[int]map[int]ErasureSetInfo `json:"pools,omitempty"`
 }
@@ -297,6 +300,12 @@ type Objects struct {
 
 // Versions contains the number of versions
 type Versions struct {
+	Count uint64 `json:"count"`
+	Error string `json:"error,omitempty"`
+}
+
+// DeleteMarkers contains the number of delete markers
+type DeleteMarkers struct {
 	Count uint64 `json:"count"`
 	Error string `json:"error,omitempty"`
 }
