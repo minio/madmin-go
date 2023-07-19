@@ -95,7 +95,7 @@ type BucketTarget struct {
 	API                 string        `json:"api,omitempty"`
 	Arn                 string        `json:"arn,omitempty"`
 	Type                ServiceType   `json:"type"`
-	Region              string        `json:"omitempty"`
+	Region              string        `json:"region,omitempty"`
 	BandwidthLimit      int64         `json:"bandwidthlimit,omitempty"`
 	ReplicationSync     bool          `json:"replicationSync"`
 	StorageClass        string        `json:"storageclass,omitempty"`
