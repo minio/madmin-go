@@ -174,3 +174,40 @@ func (adm *AdminClient) BucketReplicationMRF(ctx context.Context, bucketName str
 	// Returns the mrf backlog channel, for caller to start reading from.
 	return mrfCh
 }
+
+// LatencyStat represents replication link latency statistics
+type LatencyStat struct {
+	Curr time.Duration `json:"curr"`
+	Avg  time.Duration `json:"avg"`
+	Max  time.Duration `json:"max"`
+}
+
+// TimedErrStats has failed replication stats across time windows
+type TimedErrStats struct {
+	LastMinute RStat `json:"lastMinute"`
+	LastHour   RStat `json:"lastHour"`
+	Totals     RStat `json:"totals"`
+}
+
+// Add - adds two TimedErrStats
+func (te TimedErrStats) Add(o TimedErrStats) TimedErrStats {
+	return TimedErrStats{
+		LastMinute: te.LastMinute.Add(o.LastMinute),
+		LastHour:   te.LastHour.Add(o.LastHour),
+		Totals:     te.Totals.Add(o.Totals),
+	}
+}
+
+// RStat represents count and bytes replicated/failed
+type RStat struct {
+	Count float64 `json:"count"`
+	Bytes int64   `json:"bytes"`
+}
+
+// Add - adds two RStats
+func (r RStat) Add(r1 RStat) RStat {
+	return RStat{
+		Count: r.Count + r1.Count,
+		Bytes: r.Bytes + r1.Bytes,
+	}
+}
