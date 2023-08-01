@@ -407,6 +407,10 @@ type ServerProperties struct {
 type DiskMetrics struct {
 	LastMinute map[string]TimedAction `json:"lastMinute,omitempty"`
 	APICalls   map[string]uint64      `json:"apiCalls,omitempty"`
+	// Captures all data availability errors such as permission denied, faulty disk and timeout errors.
+	TotalErrorsAvailability uint64 `json:"totalErrorsAvailability,omitempty"`
+	// Captures all timeout only errors
+	TotalErrorsTimeout uint64 `json:"totalErrorsTimeout,omitempty"`
 
 	// Deprecated: Use LastMinute instead. Not populated from servers after July 2022.
 	APILatencies map[string]interface{} `json:"apiLatencies,omitempty"`
