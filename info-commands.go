@@ -76,14 +76,18 @@ type BackendInfo struct {
 	OfflineDisks BackendDisks // Offline disks during server startup.
 
 	// Following fields are only meaningful if BackendType is Erasure.
-	StandardSCData   []int // Data disks for currently configured Standard storage class.
-	StandardSCParity int   // Parity disks for currently configured Standard storage class.
-	RRSCData         []int // Data disks for currently configured Reduced Redundancy storage class.
-	RRSCParity       int   // Parity disks for currently configured Reduced Redundancy storage class.
+	StandardSCData     []int // Data disks for currently configured Standard storage class.
+	StandardSCParities []int // Parity disks per pool for currently configured Standard storage class
+	RRSCData           []int // Data disks for currently configured Reduced Redundancy storage class.
+	RRSCParities       []int // Parity disks per pool for currently configured Reduced Redundancy storage class.
 
 	// Adds number of erasure sets and drives per set.
 	TotalSets    []int // Each index value corresponds to per pool
 	DrivesPerSet []int // Each index value corresponds to per pool
+
+	// Deprecated Aug 2023
+	StandardSCParity int // Parity disks for currently configured Standard storage class.
+	RRSCParity       int // Parity disks for currently configured Reduced Redundancy storage class.
 }
 
 // BackendDisks - represents the map of endpoint-disks.
