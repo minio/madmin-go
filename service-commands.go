@@ -105,6 +105,8 @@ type ServiceTraceOpts struct {
 	Healing           bool
 	BatchReplication  bool
 	BatchKeyRotation  bool
+	BatchExpire       bool
+	BatchAll          bool
 	Rebalance         bool
 	ReplicationResync bool
 	Bootstrap         bool
@@ -124,8 +126,16 @@ func (t ServiceTraceOpts) TraceTypes() TraceType {
 	tt.SetIf(t.Scanner, TraceScanner)
 	tt.SetIf(t.Decommission, TraceDecommission)
 	tt.SetIf(t.Healing, TraceHealing)
-	tt.SetIf(t.BatchReplication, TraceBatchReplication)
-	tt.SetIf(t.BatchKeyRotation, TraceBatchKeyRotation)
+	if t.BatchAll {
+		tt.SetIf(true, TraceBatchReplication)
+		tt.SetIf(true, TraceBatchKeyRotation)
+		tt.SetIf(true, TraceBatchExpire)
+	} else {
+		tt.SetIf(t.BatchReplication, TraceBatchReplication)
+		tt.SetIf(t.BatchKeyRotation, TraceBatchKeyRotation)
+		tt.SetIf(t.BatchExpire, TraceBatchExpire)
+	}
+
 	tt.SetIf(t.Rebalance, TraceRebalance)
 	tt.SetIf(t.ReplicationResync, TraceReplicationResync)
 	tt.SetIf(t.Bootstrap, TraceBootstrap)
@@ -149,6 +159,12 @@ func (t ServiceTraceOpts) AddParams(u url.Values) {
 	u.Set("healing", strconv.FormatBool(t.Healing))
 	u.Set("batch-replication", strconv.FormatBool(t.BatchReplication))
 	u.Set("batch-keyrotation", strconv.FormatBool(t.BatchKeyRotation))
+	u.Set("batch-expire", strconv.FormatBool(t.BatchExpire))
+	if t.BatchAll {
+		u.Set("batch-replication", "true")
+		u.Set("batch-keyrotation", "true")
+		u.Set("batch-expire", "true")
+	}
 	u.Set("rebalance", strconv.FormatBool(t.Rebalance))
 	u.Set("replication-resync", strconv.FormatBool(t.ReplicationResync))
 	u.Set("bootstrap", strconv.FormatBool(t.Bootstrap))
@@ -165,6 +181,7 @@ func (t *ServiceTraceOpts) ParseParams(r *http.Request) (err error) {
 	t.Healing = r.Form.Get("healing") == "true"
 	t.BatchReplication = r.Form.Get("batch-replication") == "true"
 	t.BatchKeyRotation = r.Form.Get("batch-keyrotation") == "true"
+	t.BatchExpire = r.Form.Get("batch-expire") == "true"
 	t.Rebalance = r.Form.Get("rebalance") == "true"
 	t.Storage = r.Form.Get("storage") == "true"
 	t.Internal = r.Form.Get("internal") == "true"

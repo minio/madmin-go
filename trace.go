@@ -49,6 +49,8 @@ const (
 	TraceBatchReplication
 	// TraceBatchKeyRotation will trace batch keyrotation operations.
 	TraceBatchKeyRotation
+	// TraceBatchExpire will trace batch expiration operations.
+	TraceBatchExpire
 	// TraceRebalance will trace rebalance operations
 	TraceRebalance
 	// TraceReplicationResync will trace replication resync operations.
@@ -64,6 +66,11 @@ const (
 	// TraceAll contains all valid trace modes.
 	// This *must* be the last entry.
 	TraceAll TraceType = (1 << iota) - 1
+)
+
+const (
+	// TraceBatch will trace all batch operations.
+	TraceBatch = TraceBatchReplication | TraceBatchKeyRotation | TraceBatchExpire // |TraceBatch<NextFeature>
 )
 
 // Contains returns whether all flags in other is present in t.

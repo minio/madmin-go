@@ -36,12 +36,14 @@ type BatchJobType string
 const (
 	BatchJobReplicate BatchJobType = "replicate"
 	BatchJobKeyRotate BatchJobType = "keyrotate"
+	BatchJobExpire    BatchJobType = "expire"
 )
 
 // SupportedJobTypes supported job types
 var SupportedJobTypes = []BatchJobType{
 	BatchJobReplicate,
 	BatchJobKeyRotate,
+	BatchJobExpire,
 	// add new job types
 }
 
@@ -142,6 +144,51 @@ const BatchJobKeyRotateTemplate = `keyrotate:
       delay: "500ms" # least amount of delay between each retry
 `
 
+// BatchJobExpireTemplate provides a sample template
+// for batch expiring objects
+const BatchJobExpireTemplate = `expire:
+  apiVersion: v1
+  bucket: BUCKET
+  prefix: PREFIX
+  # optional flags
+  flags:
+    filter:
+      olderThan: "7d" # match objects older than this value (e.g. 7d10h31s)
+      createdBefore: "date" # match objects created before "date"
+
+      tags:
+        - key: "name"
+          value: "pick*" # match objects with tag 'name', all values starting with 'pick'
+
+      metadata:
+        - key: "content-type"
+          value: "image/*" # match objects with 'content-type', all values starting with 'image/'
+
+      size:
+        lesserThan:  "" # match objects with size lesser than this value (e.g. 10KiB)
+        greaterThan: "" # match objects with size greater than this value (e.g. 10KiB)
+
+      name:
+        endsWith:   "" # match objects ending with this string
+        contains:   "" # match objects that contain this string
+        startsWith: "" # match objects starting with this string
+
+      # number of versions to retain
+      # e.g.
+      # maxVersions: 0  # expire all versions
+      # maxVersions: 1  # expire all versions except latest
+      # maxVersions: 10 # expire all versions higher than 10
+      maxVersions: 0 # default
+
+    notify:
+      endpoint: "https://notify.endpoint" # notification endpoint to receive job completion status
+      token: "Bearer xxxxx" # optional authentication token for the notification endpoint
+
+    retry:
+      attempts: 10 # number of retries for the job before giving up
+      delay: "500ms" # least amount of delay between each retry
+`
+
 // BatchJobResult returned by StartBatchJob
 type BatchJobResult struct {
 	ID      string        `json:"id"`
@@ -211,14 +258,16 @@ type GenerateBatchJobOpts struct {
 // GenerateBatchJob creates a new job template from standard template
 // TODO: allow configuring yaml values
 func (adm *AdminClient) GenerateBatchJob(_ context.Context, opts GenerateBatchJobOpts) (string, error) {
+	// TODO: allow configuring the template to fill values from GenerateBatchJobOpts
 	switch opts.Type {
 	case BatchJobReplicate:
-		// TODO: allow configuring the template to fill values from GenerateBatchJobOpts
 		return BatchJobReplicateTemplate, nil
 	case BatchJobKeyRotate:
 		return BatchJobKeyRotateTemplate, nil
+	case BatchJobExpire:
+		return BatchJobExpireTemplate, nil
 	}
-	return "", fmt.Errorf("unsupported batch type requested: %s", opts.Type)
+	return "", fmt.Errorf("unknown batch job requested: %s", opts.Type)
 }
 
 // ListBatchJobsResult contains entries for all current jobs.
