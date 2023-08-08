@@ -475,6 +475,7 @@ type JobMetric struct {
 	// Specific job type data:
 	Replicate *ReplicateInfo   `json:"replicate,omitempty"`
 	KeyRotate *KeyRotationInfo `json:"rotation,omitempty"`
+	Expired   *ExpirationInfo  `json:"expired,omitempty"`
 }
 
 type ReplicateInfo struct {
@@ -487,6 +488,16 @@ type ReplicateInfo struct {
 	ObjectsFailed    int64 `json:"objectsFailed"`
 	BytesTransferred int64 `json:"bytesTransferred"`
 	BytesFailed      int64 `json:"bytesFailed"`
+}
+
+type ExpirationInfo struct {
+	// Last bucket/object key rotated
+	Bucket string `json:"lastBucket"`
+	Object string `json:"lastObject"`
+
+	// Verbose information
+	Objects       int64 `json:"objects"`
+	ObjectsFailed int64 `json:"objectsFailed"`
 }
 
 type KeyRotationInfo struct {
