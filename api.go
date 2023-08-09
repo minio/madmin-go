@@ -215,6 +215,7 @@ type requestData struct {
 	queryValues   url.Values
 	relPath       string // URL path relative to admin API base endpoint
 	content       []byte
+	contentReader io.Reader
 	// endpointOverride overrides target URL with anonymousClient
 	endpointOverride *url.URL
 	// isKMS replaces URL prefix with /kms
@@ -524,7 +525,11 @@ func (adm AdminClient) newRequest(ctx context.Context, method string, reqData re
 	}
 	sum := sha256.Sum256(reqData.content)
 	req.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sum[:]))
-	req.Body = ioutil.NopCloser(bytes.NewReader(reqData.content))
+	if reqData.contentReader != nil {
+		req.Body = ioutil.NopCloser(reqData.contentReader)
+	} else {
+		req.Body = ioutil.NopCloser(bytes.NewReader(reqData.content))
+	}
 
 	req = signer.SignV4(*req, accessKeyID, secretAccessKey, sessionToken, location)
 	return req, nil
