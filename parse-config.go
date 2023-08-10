@@ -52,6 +52,7 @@ const (
 	CrawlerSubSys        = "crawler"
 	SubnetSubSys         = "subnet"
 	CallhomeSubSys       = "callhome"
+	BatchSubSys          = "batch"
 
 	NotifyKafkaSubSys    = "notify_kafka"
 	NotifyMQTTSubSys     = "notify_mqtt"
@@ -91,6 +92,7 @@ var SubSystems = set.CreateStringSet(
 	CrawlerSubSys,
 	SubnetSubSys,
 	CallhomeSubSys,
+	BatchSubSys,
 	NotifyKafkaSubSys,
 	NotifyMQTTSubSys,
 	NotifyMySQLSubSys,
