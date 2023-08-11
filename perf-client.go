@@ -93,7 +93,6 @@ func (adm *AdminClient) ClientPerf(ctx context.Context, dur time.Duration) (resu
 	}
 	ctx, cancel := context.WithTimeout(ctx, dur)
 	defer cancel()
-	result.Endpoint = adm.endpointURL.String()
 	queryVals := make(url.Values)
 	reader := &clientPerfReader{}
 	reader.Start()
@@ -131,5 +130,6 @@ func (adm *AdminClient) ClientPerf(ctx context.Context, dur time.Duration) (resu
 		BytesSend: reader.count,
 		TimeSpent: durSpend,
 		Error:     "",
+		Endpoint:  adm.endpointURL.String(),
 	}, err
 }
