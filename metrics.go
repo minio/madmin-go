@@ -234,14 +234,12 @@ type ScannerMetrics struct {
 	// Time these metrics were collected
 	CollectedAt time.Time `json:"collected"`
 
-	// Current scanner cycle
-	CurrentCycle uint64 `json:"current_cycle"`
+	CurrentCycle      uint64      `json:"current_cycle"`        // Deprecated Mar 2024
+	CurrentStarted    time.Time   `json:"current_started"`      // Deprecated Mar 2024
+	CyclesCompletedAt []time.Time `json:"cycle_complete_times"` // Deprecated Mar 2024
 
-	// Start time of current cycle
-	CurrentStarted time.Time `json:"current_started"`
-
-	// History of when last cycles completed
-	CyclesCompletedAt []time.Time `json:"cycle_complete_times"`
+	// Number of buckets currently scanning
+	OngoingBuckets int `json:"ongoing_buckets"`
 
 	// Number of accumulated operations by type since server restart.
 	LifeTimeOps map[string]uint64 `json:"life_time_ops,omitempty"`
@@ -296,10 +294,16 @@ func (s *ScannerMetrics) Merge(other *ScannerMetrics) {
 	if other == nil {
 		return
 	}
+
 	if s.CollectedAt.Before(other.CollectedAt) {
 		// Use latest timestamp
 		s.CollectedAt = other.CollectedAt
 	}
+
+	if s.OngoingBuckets < other.OngoingBuckets {
+		s.OngoingBuckets = other.OngoingBuckets
+	}
+
 	if s.CurrentCycle < other.CurrentCycle {
 		s.CurrentCycle = other.CurrentCycle
 		s.CyclesCompletedAt = other.CyclesCompletedAt
