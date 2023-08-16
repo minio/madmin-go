@@ -648,6 +648,8 @@ type SRStatusInfo struct {
 	// GroupStats map of group to slice of deployment IDs with stats. This is populated only if there are
 	// mismatches or if a specific bucket's stats are requested
 	GroupStats map[string]map[string]SRGroupStatsSummary
+	// Metrics summary of SRMetrics
+	Metrics SRMetricsSummary // metrics summary. This is populated if buckets/bucket entity requested
 }
 
 // SRPolicyStatsSummary has status of policy replication misses
@@ -750,6 +752,7 @@ type SRStatusOptions struct {
 	Policies    bool
 	Users       bool
 	Groups      bool
+	Metrics     bool
 	Entity      SREntityType
 	EntityValue string
 	ShowDeleted bool
@@ -788,6 +791,7 @@ func (o *SRStatusOptions) getURLValues() url.Values {
 	urlValues.Set("users", strconv.FormatBool(o.Users))
 	urlValues.Set("groups", strconv.FormatBool(o.Groups))
 	urlValues.Set("showDeleted", strconv.FormatBool(o.ShowDeleted))
+	urlValues.Set("metrics", strconv.FormatBool(o.Metrics))
 
 	if o.IsEntitySet() {
 		urlValues.Set("entityvalue", o.EntityValue)
@@ -1031,4 +1035,65 @@ func (adm *AdminClient) SiteReplicationResyncOp(ctx context.Context, site PeerIn
 	var res SRResyncOpStatus
 	err = json.NewDecoder(resp.Body).Decode(&res)
 	return res, err
+}
+
+// SRMetric - captures replication metrics for a site replication peer
+type SRMetric struct {
+	DeploymentID  string        `json:"deploymentID"`
+	Endpoint      string        `json:"endpoint"`
+	TotalDowntime time.Duration `json:"totalDowntime"`
+	LastOnline    time.Time     `json:"lastOnline"`
+	Online        bool          `json:"isOnline"`
+	Latency       LatencyStat   `json:"latency"`
+
+	// replication metrics across buckets roll up
+	ReplicatedSize int64 `json:"replicatedSize"`
+	// Total number of completed operations
+	ReplicatedCount int64 `json:"replicatedCount"`
+	// ReplicationErrorStats captures replication errors
+	Failed TimedErrStats `json:"failed,omitempty"`
+	// XferStats captures transfer stats
+	XferStats map[replication.MetricName]replication.XferStats `json:"transferSummary"`
+}
+
+// WorkerStat captures number of replication workers
+type WorkerStat struct {
+	Curr int     `json:"curr"`
+	Avg  float32 `json:"avg"`
+	Max  int     `json:"max"`
+}
+
+// InQueueMetric holds stats for objects in replication queue
+type InQueueMetric struct {
+	Curr QStat `json:"curr" msg:"cq"`
+	Avg  QStat `json:"avg" msg:"aq"`
+	Max  QStat `json:"max" msg:"pq"`
+}
+
+// QStat represents number of objects and bytes in queue
+type QStat struct {
+	Count float64 `json:"count"`
+	Bytes float64 `json:"bytes"`
+}
+
+// Add two QStat
+func (q *QStat) Add(o QStat) QStat {
+	return QStat{Bytes: q.Bytes + o.Bytes, Count: q.Count + o.Count}
+}
+
+// SRMetricsSummary captures summary of replication counts across buckets on site
+// along with op metrics rollup.
+type SRMetricsSummary struct {
+	// op metrics roll up
+	ActiveWorkers WorkerStat `json:"activeWorkers"`
+	// Total Replica size in bytes
+	ReplicaSize int64 `json:"replicaSize"`
+	// Total count of replica received
+	ReplicaCount int64 `json:"replicaCount"`
+	// queue metrics
+	Queued InQueueMetric `json:"queued"`
+	// replication metrics summary for each site replication peer
+	Metrics map[string]SRMetric `json:"replMetrics"`
+	// uptime of node being queried for site replication metrics
+	Uptime int64 `json:"uptime"`
 }
