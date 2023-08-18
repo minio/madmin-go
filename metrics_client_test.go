@@ -114,7 +114,6 @@ func TestGetPrometheusTokenReturnsValidJwtTokenFromAccessAndSecretKey(t *testing
 		}
 		return []byte(secretKey), nil
 	})
-
 	if err != nil {
 		t.Errorf("error not expected, got: %v", err)
 	}

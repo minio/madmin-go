@@ -27,8 +27,7 @@ import (
 )
 
 func TestParsePrometheusResultsReturnsPrometheusObjectsFromStringReader(t *testing.T) {
-	prometheusResults :=
-		`# HELP go_gc_duration_seconds A summary of the pause duration of garbage collection cycles.
+	prometheusResults := `# HELP go_gc_duration_seconds A summary of the pause duration of garbage collection cycles.
 		# TYPE go_gc_duration_seconds summary
 		go_gc_duration_seconds_sum 0.248349766
 		go_gc_duration_seconds_count 397
