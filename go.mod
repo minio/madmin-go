@@ -6,15 +6,15 @@ require (
 	github.com/cespare/xxhash/v2 v2.2.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/golang-jwt/jwt/v4 v4.5.0
-	github.com/minio/minio-go/v7 v7.0.49
+	github.com/minio/minio-go/v7 v7.0.62
 	github.com/prometheus/client_model v0.4.0
 	github.com/prometheus/procfs v0.9.0
 	github.com/prometheus/prom2json v1.3.3
 	github.com/secure-io/sio-go v0.3.1
 	github.com/shirou/gopsutil/v3 v3.23.1
 	github.com/tinylib/msgp v1.1.8
-	golang.org/x/crypto v0.11.0
-	golang.org/x/net v0.12.0
+	golang.org/x/crypto v0.12.0
+	golang.org/x/net v0.14.0
 )
 
 require (
@@ -36,9 +36,7 @@ require (
 	github.com/tklauser/numcpus v0.6.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.2 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.10.0 // indirect
+	golang.org/x/sys v0.11.0 // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 )
-
-replace github.com/minio/minio-go/v7 => github.com/poornas/minio-go/v7 v7.0.0-20230816201254-210e170bdc4c
