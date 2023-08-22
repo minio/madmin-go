@@ -1054,6 +1054,8 @@ type SRMetric struct {
 	Failed TimedErrStats `json:"failed,omitempty"`
 	// XferStats captures transfer stats
 	XferStats map[replication.MetricName]replication.XferStats `json:"transferSummary"`
+	// MRFStats captures current backlog entries in the last 5 minutes
+	MRFStats replication.ReplMRFStats `json:"mrfStats"`
 }
 
 // WorkerStat captures number of replication workers
