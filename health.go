@@ -543,7 +543,12 @@ type MemInfo struct {
 	NodeCommon
 
 	Total          uint64 `json:"total,omitempty"`
+	Used           uint64 `json:"used,omitempty"`
+	Free           uint64 `json:"free,omitempty"`
 	Available      uint64 `json:"available,omitempty"`
+	Shared         uint64 `json:"shared,omitempty"`
+	Cache          uint64 `json:"cache,omitempty"`
+	Buffers        uint64 `json:"buffer,omitempty"`
 	SwapSpaceTotal uint64 `json:"swap_space_total,omitempty"`
 	SwapSpaceFree  uint64 `json:"swap_space_free,omitempty"`
 	// Limit will store cgroup limit if configured and
@@ -593,7 +598,12 @@ func GetMemInfo(ctx context.Context, addr string) MemInfo {
 	return MemInfo{
 		NodeCommon:     NodeCommon{Addr: addr},
 		Total:          meminfo.Total,
+		Used:           meminfo.Used,
+		Free:           meminfo.Free,
 		Available:      meminfo.Available,
+		Shared:         meminfo.Shared,
+		Cache:          meminfo.Cached,
+		Buffers:        meminfo.Buffers,
 		SwapSpaceTotal: swapinfo.Total,
 		SwapSpaceFree:  swapinfo.Free,
 		Limit:          getMemoryLimit(meminfo.Total),
