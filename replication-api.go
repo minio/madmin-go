@@ -187,14 +187,25 @@ type TimedErrStats struct {
 	LastMinute RStat `json:"lastMinute"`
 	LastHour   RStat `json:"lastHour"`
 	Totals     RStat `json:"totals"`
+	// ErrCounts is a map of error codes to count of errors since server start - tracks
+	// only AccessDenied errors for now.
+	ErrCounts map[string]int `json:"errCounts,omitempty"`
 }
 
 // Add - adds two TimedErrStats
 func (te TimedErrStats) Add(o TimedErrStats) TimedErrStats {
+	m := make(map[string]int)
+	for k, v := range te.ErrCounts {
+		m[k] = v
+	}
+	for k, v := range o.ErrCounts {
+		m[k] += v
+	}
 	return TimedErrStats{
 		LastMinute: te.LastMinute.Add(o.LastMinute),
 		LastHour:   te.LastHour.Add(o.LastHour),
 		Totals:     te.Totals.Add(o.Totals),
+		ErrCounts:  m,
 	}
 }
 
