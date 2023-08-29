@@ -22,6 +22,8 @@ package madmin
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"time"
@@ -29,13 +31,22 @@ import (
 
 // SiteNetPerfNodeResult  - stats from each server
 type SiteNetPerfNodeResult struct {
-	Endpoint        string        `json:"endpoint"`
-	TX              uint64        `json:"tx"` // transfer rate in bytes
-	TXTotalDuration time.Duration `json:"txTotalDuration"`
-	RX              uint64        `json:"rx"` // received rate in bytes
-	RXTotalDuration time.Duration `json:"rxTotalDuration"`
-	TotalConn       uint64        `json:"totalConn"`
-	Error           string        `json:"error,omitempty"`
+	Endpoint        string                       `json:"endpoint"`
+	TX              uint64                       `json:"tx"` // transfer rate in bytes
+	TXTotalDuration time.Duration                `json:"txTotalDuration"`
+	RX              uint64                       `json:"rx"` // received rate in bytes
+	RXTotalDuration time.Duration                `json:"rxTotalDuration"`
+	TotalConn       uint64                       `json:"totalConn"`
+	Error           string                       `json:"error,omitempty"`
+	Latency         SiteNetPerfNodeLatencyResult `json:"latency"`
+}
+
+type SiteNetPerfNodeLatencyResult struct {
+	Error             string        `json:"error,omitempty"`
+	Endpoint          string        `json:"endpoint"`
+	TotalResponseTime time.Duration `json:"totalResponseTime,omitempty"`
+	TimeToFirstByte   time.Duration `json:"timeToFirstByte,omitempty"`
+	TotalRequest      int           `json:"totalRequest"`
 }
 
 // SiteNetPerfResult  - aggregate results from all servers
@@ -63,3 +74,40 @@ func (adm *AdminClient) SiteReplicationPerf(ctx context.Context, duration time.D
 	err = json.NewDecoder(resp.Body).Decode(&result)
 	return result, err
 }
+
+// SiteNetPerfReader - for TTFB and TotalResponseTime reader (4KB stream)
+type SiteNetPerfReader struct {
+	TimeToFirstByte   time.Duration
+	TotalResponseTime time.Duration
+	buf               []byte
+	startTime         time.Time
+	readCounter       uint64
+}
+
+func (s *SiteNetPerfReader) Start() {
+	// transform 4kb
+	buf := make([]byte, 4*1024)
+	rand.Read(buf)
+	s.buf = buf
+	s.startTime = time.Now()
+}
+
+func (s *SiteNetPerfReader) Read(p []byte) (n int, err error) {
+	s.readCounter++
+	switch s.readCounter {
+	case 1:
+		firstN := copy(p, s.buf[:1])
+		s.TimeToFirstByte = time.Since(s.startTime)
+		n = copy(p, s.buf[1:])
+		n += firstN
+	default:
+		return 0, io.EOF
+	}
+	return n, nil
+}
+
+func (s *SiteNetPerfReader) End() {
+	s.TotalResponseTime = time.Since(s.startTime)
+}
+
+var _ io.Reader = &SiteNetPerfReader{}
