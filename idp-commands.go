@@ -35,6 +35,7 @@ import (
 // AddOrUpdateIDPConfig - creates a new or updates an existing IDP
 // configuration on the server.
 func (adm *AdminClient) AddOrUpdateIDPConfig(ctx context.Context, cfgType, cfgName, cfgData string, update bool) (restart bool, err error) {
+	fmt.Println("AddOrUpdateIDPConfig")
 	encBytes, err := EncryptData(adm.getSecretKey(), []byte(cfgData))
 	if err != nil {
 		return false, err
