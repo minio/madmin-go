@@ -59,7 +59,7 @@ func (adm *AdminClient) AddOrUpdateIDPConfig(ctx context.Context, cfgType, cfgNa
 	}
 	fmt.Println("h", h)
 	fmt.Println("reqData", reqData.relPath)
-	fmt.Println("content", reqData.content)
+	fmt.Println("content", string(reqData.content))
 
 	resp, err := adm.executeMethod(ctx, method, reqData)
 	defer closeResponse(resp)
