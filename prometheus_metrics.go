@@ -74,6 +74,26 @@ func (client *MetricsClient) ClusterMetrics(ctx context.Context) ([]*prom2json.F
 	return parsePrometheusResults(io.LimitReader(resp.Body, metricsRespBodyLimit))
 }
 
+// BucketMetrics - returns Bucket Metrics in Prometheus format
+func (client *MetricsClient) BucketMetrics(ctx context.Context) ([]*prom2json.Family, error) {
+	reqData := metricsRequestData{
+		relativePath: "/v2/metrics/bucket",
+	}
+
+	// Execute GET on /minio/v2/metrics/bucket
+	resp, err := client.executeRequest(ctx, reqData)
+	if err != nil {
+		return nil, err
+	}
+	defer closeResponse(resp)
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+
+	return parsePrometheusResults(io.LimitReader(resp.Body, metricsRespBodyLimit))
+}
+
 func parsePrometheusResults(reader io.Reader) (results []*prom2json.Family, err error) {
 	mfChan := make(chan *dto.MetricFamily)
 	errChan := make(chan error)
