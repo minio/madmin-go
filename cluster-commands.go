@@ -1037,6 +1037,56 @@ func (adm *AdminClient) SiteReplicationResyncOp(ctx context.Context, site PeerIn
 	return res, err
 }
 
+// SRResyncInfo status of resync of bucket for a specific target
+type SRResyncInfo struct {
+	StartTime  time.Time `json:"startTime" msg:"st"`
+	LastUpdate time.Time `json:"lastUpdated" msg:"lst"`
+	// Resync ID assigned to this reset
+	ResyncID string `json:"resyncID" msg:"id"`
+	// ResyncBeforeDate - resync all objects created prior to this date
+	ResyncBeforeDate time.Time `json:"resyncBeforeDate" msg:"rdt"`
+	// Status of resync operation
+	ResyncStatus string `json:"status" msg:"rss"`
+	// Failed size in bytes
+	FailedSize int64 `json:"failedReplicationSize"  msg:"fs"`
+	// Total number of failed operations
+	FailedCount int64 `json:"failedReplicationCount"  msg:"frc"`
+	// Completed size in bytes
+	ReplicatedSize int64 `json:"completedReplicationSize"  msg:"rs"`
+	// Total number of failed operations
+	ReplicatedCount int64 `json:"replicationCount"  msg:"rrc"`
+	// Last bucket/object replicated.
+	Bucket string `json:"-" msg:"bkt"`
+	Object string `json:"-" msg:"obj"`
+	Error  error  `json:"-" msg:"-"`
+}
+
+// SiteReplicationResyncInfo - fetches info on whether site replication resync is in progress
+func (adm *AdminClient) SiteReplicationResyncInfo(ctx context.Context, peerID string) (SRResyncInfo, error) {
+	v := url.Values{}
+	v.Set("id", peerID)
+	v.Set("api-version", SiteReplAPIVersion)
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/site-replication/resync/info",
+		queryValues: v,
+	}
+
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return SRResyncInfo{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return SRResyncInfo{}, httpRespToErrorResponse(resp)
+	}
+
+	var res SRResyncInfo
+	err = json.NewDecoder(resp.Body).Decode(&res)
+	return res, err
+}
+
 // SRMetric - captures replication metrics for a site replication peer
 type SRMetric struct {
 	DeploymentID  string        `json:"deploymentID"`
