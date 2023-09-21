@@ -96,7 +96,6 @@ const BatchJobReplicateTemplate = `replicate:
       #   - key: "name"
       #     value: "pick*" # match objects with tag 'name', with all values starting with 'pick'
 
-      ## NOTE: metadata filter not supported when "source" is non MinIO.
       # metadata:
       #   - key: "content-type"
       #     value: "image/*" # match objects with 'content-type', with all values starting with 'image/'
