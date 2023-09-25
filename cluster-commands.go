@@ -151,8 +151,16 @@ type PeerInfo struct {
 	Name     string `json:"name"`
 	// Deployment ID is useful as it is immutable - though endpoint may
 	// change.
-	DeploymentID string     `json:"deploymentID"`
-	SyncState    SyncStatus `json:"sync"` // whether to enable| disable synchronous replication
+	DeploymentID     string          `json:"deploymentID"`
+	SyncState        SyncStatus      `json:"sync"`             // whether to enable| disable synchronous replication
+	DefaultBandwidth BucketBandwidth `json:"defaultbandwidth"` // bandwidth limit per bucket in bytes/sec
+}
+
+// BucketBandwidth has default bandwidth limit per bucket in bytes/sec
+type BucketBandwidth struct {
+	Limit     uint64    `json:"bandwidthLimitPerBucket"`
+	IsSet     bool      `json:"set"`
+	UpdatedAt time.Time `json:"updatedAt,omitempty"`
 }
 
 type SyncStatus string // change in sync state
