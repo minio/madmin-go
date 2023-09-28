@@ -73,6 +73,7 @@ const (
 
 const (
 	sysClassBlock = "/sys/class/block"
+	runDevDataPfx = "/run/udev/data/b"
 	devDir        = "/dev/"
 	devLoopDir    = "/dev/loop"
 )
@@ -252,31 +253,34 @@ func getDeviceModel(partDevice string) (string, error) {
 	var model string
 
 	partDevName := strings.ReplaceAll(partDevice, devDir, "")
-	partDevPath := path.Join(sysClassBlock, partDevName)
-	devPath, err := os.Readlink(partDevPath)
+	devPath := path.Join(sysClassBlock, partDevName, "dev")
+
+	_, err := os.Stat(devPath)
 	if err != nil {
 		return model, err
 	}
 
-	if !path.IsAbs(devPath) {
-		devPath = path.Join(sysClassBlock, devPath)
-	}
-
-	devModelPath := path.Join(devPath, "device", "model")
-
-	_, err = os.Stat(devModelPath)
+	data, err := ioutil.ReadFile(devPath)
 	if err != nil {
-		// check parent dir
-		devModelPath = path.Join(devPath, "..", "device", "model")
-		_, err = os.Stat(devModelPath)
-		if err != nil {
-			return model, err
-		}
+		return model, err
 	}
 
-	data, err := ioutil.ReadFile(devModelPath)
-	if err == nil {
-		model = strings.TrimSpace(string(data))
+	majorMinor := strings.TrimSpace(string(data))
+	driveInfoPath := runDevDataPfx + majorMinor
+
+	f, err := os.Open(driveInfoPath)
+	if err != nil {
+		return model, err
+	}
+	defer f.Close()
+
+	buf := bufio.NewScanner(f)
+	for buf.Scan() {
+		field := strings.SplitN(buf.Text(), "=", 2)
+		if len(field) == 2 && field[0] == "E:ID_MODEL" {
+			model = field[1]
+			break
+		}
 	}
 
 	return model, err
