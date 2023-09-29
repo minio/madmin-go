@@ -25,10 +25,12 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -67,6 +69,13 @@ const (
 const (
 	SrvSELinux      = "selinux"
 	SrvNotInstalled = "not-installed"
+)
+
+const (
+	sysClassBlock = "/sys/class/block"
+	runDevDataPfx = "/run/udev/data/b"
+	devDir        = "/dev/"
+	devLoopDir    = "/dev/loop"
 )
 
 // NodeInfo - Interface to abstract any struct that contains address/endpoint and error fields
@@ -222,6 +231,7 @@ type Partition struct {
 	Error string `json:"error,omitempty"`
 
 	Device       string `json:"device,omitempty"`
+	Model        string `json:"model,omitempty"`
 	Mountpoint   string `json:"mountpoint,omitempty"`
 	FSType       string `json:"fs_type,omitempty"`
 	MountOptions string `json:"mount_options,omitempty"`
@@ -237,6 +247,43 @@ type Partitions struct {
 	NodeCommon
 
 	Partitions []Partition `json:"partitions,omitempty"`
+}
+
+func getDeviceModel(partDevice string) (string, error) {
+	var model string
+
+	partDevName := strings.ReplaceAll(partDevice, devDir, "")
+	devPath := path.Join(sysClassBlock, partDevName, "dev")
+
+	_, err := os.Stat(devPath)
+	if err != nil {
+		return model, err
+	}
+
+	data, err := ioutil.ReadFile(devPath)
+	if err != nil {
+		return model, err
+	}
+
+	majorMinor := strings.TrimSpace(string(data))
+	driveInfoPath := runDevDataPfx + majorMinor
+
+	f, err := os.Open(driveInfoPath)
+	if err != nil {
+		return model, err
+	}
+	defer f.Close()
+
+	buf := bufio.NewScanner(f)
+	for buf.Scan() {
+		field := strings.SplitN(buf.Text(), "=", 2)
+		if len(field) == 2 && field[0] == "E:ID_MODEL" {
+			model = field[1]
+			break
+		}
+	}
+
+	return model, err
 }
 
 // GetPartitions returns all disk partitions information of a node running linux only operating system.
@@ -270,8 +317,15 @@ func GetPartitions(ctx context.Context, addr string) Partitions {
 				Error:  err.Error(),
 			})
 		} else {
+			var model string
+			device := parts[i].Device
+			if strings.HasPrefix(device, devDir) && !strings.HasPrefix(device, devLoopDir) {
+				// ignore any error in finding device model
+				model, _ = getDeviceModel(device)
+			}
+
 			partitions = append(partitions, Partition{
-				Device:       parts[i].Device,
+				Device:       device,
 				Mountpoint:   parts[i].Mountpoint,
 				FSType:       parts[i].Fstype,
 				MountOptions: strings.Join(parts[i].Opts, ","),
@@ -280,6 +334,7 @@ func GetPartitions(ctx context.Context, addr string) Partitions {
 				SpaceFree:    usage.Free,
 				InodeTotal:   usage.InodesTotal,
 				InodeFree:    usage.InodesFree,
+				Model:        model,
 			})
 		}
 	}
