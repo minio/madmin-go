@@ -41,7 +41,7 @@ func (client *MetricsClient) NodeMetrics(ctx context.Context) ([]*prom2json.Fami
 	}
 
 	// Execute GET on /minio/v2/metrics/node
-	resp, err := client.executeRequest(ctx, reqData)
+	resp, err := client.executeGetRequest(ctx, reqData)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +61,7 @@ func (client *MetricsClient) ClusterMetrics(ctx context.Context) ([]*prom2json.F
 	}
 
 	// Execute GET on /minio/v2/metrics/cluster
-	resp, err := client.executeRequest(ctx, reqData)
+	resp, err := client.executeGetRequest(ctx, reqData)
 	if err != nil {
 		return nil, err
 	}
@@ -81,7 +81,27 @@ func (client *MetricsClient) BucketMetrics(ctx context.Context) ([]*prom2json.Fa
 	}
 
 	// Execute GET on /minio/v2/metrics/bucket
-	resp, err := client.executeRequest(ctx, reqData)
+	resp, err := client.executeGetRequest(ctx, reqData)
+	if err != nil {
+		return nil, err
+	}
+	defer closeResponse(resp)
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+
+	return parsePrometheusResults(io.LimitReader(resp.Body, metricsRespBodyLimit))
+}
+
+// ResourceMetrics - returns Resource Metrics in Prometheus format
+func (client *MetricsClient) ResourceMetrics(ctx context.Context) ([]*prom2json.Family, error) {
+	reqData := metricsRequestData{
+		relativePath: "/v2/metrics/resource",
+	}
+
+	// Execute GET on /minio/v2/metrics/resource
+	resp, err := client.executeGetRequest(ctx, reqData)
 	if err != nil {
 		return nil, err
 	}
