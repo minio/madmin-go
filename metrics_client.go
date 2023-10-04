@@ -98,8 +98,8 @@ func privateNewMetricsClient(endpointURL *url.URL, jwtToken string, secure bool)
 	return clnt, nil
 }
 
-// executeRequest - instantiates a Get method and performs the request
-func (client MetricsClient) executeRequest(ctx context.Context, reqData metricsRequestData) (res *http.Response, err error) {
+// executeGetRequest - instantiates a Get method and performs the request
+func (client MetricsClient) executeGetRequest(ctx context.Context, reqData metricsRequestData) (res *http.Response, err error) {
 	req, err := client.newGetRequest(ctx, reqData)
 	if err != nil {
 		return nil, err

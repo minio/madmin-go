@@ -36,52 +36,32 @@ const (
 //
 //	The client needs to be configured with the endpoint of the desired node
 func (client *MetricsClient) NodeMetrics(ctx context.Context) ([]*prom2json.Family, error) {
-	reqData := metricsRequestData{
-		relativePath: "/v2/metrics/node",
-	}
-
-	// Execute GET on /minio/v2/metrics/node
-	resp, err := client.executeRequest(ctx, reqData)
-	if err != nil {
-		return nil, err
-	}
-	defer closeResponse(resp)
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, httpRespToErrorResponse(resp)
-	}
-
-	return parsePrometheusResults(io.LimitReader(resp.Body, metricsRespBodyLimit))
+	return client.fetchMetrics(ctx, "node")
 }
 
 // ClusterMetrics - returns Cluster Metrics in Prometheus format
 func (client *MetricsClient) ClusterMetrics(ctx context.Context) ([]*prom2json.Family, error) {
-	reqData := metricsRequestData{
-		relativePath: "/v2/metrics/cluster",
-	}
-
-	// Execute GET on /minio/v2/metrics/cluster
-	resp, err := client.executeRequest(ctx, reqData)
-	if err != nil {
-		return nil, err
-	}
-	defer closeResponse(resp)
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, httpRespToErrorResponse(resp)
-	}
-
-	return parsePrometheusResults(io.LimitReader(resp.Body, metricsRespBodyLimit))
+	return client.fetchMetrics(ctx, "cluster")
 }
 
 // BucketMetrics - returns Bucket Metrics in Prometheus format
 func (client *MetricsClient) BucketMetrics(ctx context.Context) ([]*prom2json.Family, error) {
+	return client.fetchMetrics(ctx, "bucket")
+}
+
+// ResourceMetrics - returns Resource Metrics in Prometheus format
+func (client *MetricsClient) ResourceMetrics(ctx context.Context) ([]*prom2json.Family, error) {
+	return client.fetchMetrics(ctx, "resource")
+}
+
+// fetchMetrics - returns Metrics of given subsystem in Prometheus format
+func (client *MetricsClient) fetchMetrics(ctx context.Context, subSystem string) ([]*prom2json.Family, error) {
 	reqData := metricsRequestData{
-		relativePath: "/v2/metrics/bucket",
+		relativePath: "/v2/metrics/" + subSystem,
 	}
 
-	// Execute GET on /minio/v2/metrics/bucket
-	resp, err := client.executeRequest(ctx, reqData)
+	// Execute GET on /minio/v2/metrics/<subSys>
+	resp, err := client.executeGetRequest(ctx, reqData)
 	if err != nil {
 		return nil, err
 	}
