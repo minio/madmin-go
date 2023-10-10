@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2023 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -232,6 +232,7 @@ type Partition struct {
 
 	Device       string `json:"device,omitempty"`
 	Model        string `json:"model,omitempty"`
+	Revision     string `json:"revision,omitempty"`
 	Mountpoint   string `json:"mountpoint,omitempty"`
 	FSType       string `json:"fs_type,omitempty"`
 	MountOptions string `json:"mount_options,omitempty"`
@@ -242,6 +243,14 @@ type Partition struct {
 	InodeFree    uint64 `json:"inode_free,omitempty"`
 }
 
+// NetInfo contains information about a network inerface
+type NetInfo struct {
+	NodeCommon
+	Interface       string `json:"interface,omitempty"`
+	Driver          string `json:"driver,omitempty"`
+	FirmwareVersion string `json:"firmware_version,omitempty"`
+}
+
 // Partitions contains all disk partitions information of a node.
 type Partitions struct {
 	NodeCommon
@@ -249,41 +258,48 @@ type Partitions struct {
 	Partitions []Partition `json:"partitions,omitempty"`
 }
 
-func getDeviceModel(partDevice string) (string, error) {
-	var model string
-
+func getDeviceInfo(partDevice string) (model string, revision string, err error) {
 	partDevName := strings.ReplaceAll(partDevice, devDir, "")
 	devPath := path.Join(sysClassBlock, partDevName, "dev")
 
-	_, err := os.Stat(devPath)
+	_, err = os.Stat(devPath)
 	if err != nil {
-		return model, err
+		return
 	}
 
-	data, err := ioutil.ReadFile(devPath)
+	var data []byte
+	data, err = ioutil.ReadFile(devPath)
 	if err != nil {
-		return model, err
+		return
 	}
 
 	majorMinor := strings.TrimSpace(string(data))
 	driveInfoPath := runDevDataPfx + majorMinor
 
-	f, err := os.Open(driveInfoPath)
+	var f *os.File
+	f, err = os.Open(driveInfoPath)
 	if err != nil {
-		return model, err
+		return
 	}
 	defer f.Close()
 
 	buf := bufio.NewScanner(f)
 	for buf.Scan() {
 		field := strings.SplitN(buf.Text(), "=", 2)
-		if len(field) == 2 && field[0] == "E:ID_MODEL" {
-			model = field[1]
-			break
+		if len(field) == 2 {
+			if field[0] == "E:ID_MODEL" {
+				model = field[1]
+			}
+			if field[0] == "E:ID_REVISION" {
+				revision = field[1]
+			}
+			if len(model) > 0 && len(revision) > 0 {
+				break
+			}
 		}
 	}
 
-	return model, err
+	return
 }
 
 // GetPartitions returns all disk partitions information of a node running linux only operating system.
@@ -317,11 +333,11 @@ func GetPartitions(ctx context.Context, addr string) Partitions {
 				Error:  err.Error(),
 			})
 		} else {
-			var model string
+			var model, revision string
 			device := parts[i].Device
 			if strings.HasPrefix(device, devDir) && !strings.HasPrefix(device, devLoopDir) {
 				// ignore any error in finding device model
-				model, _ = getDeviceModel(device)
+				model, revision, _ = getDeviceInfo(device)
 			}
 
 			partitions = append(partitions, Partition{
@@ -335,6 +351,7 @@ func GetPartitions(ctx context.Context, addr string) Partitions {
 				InodeTotal:   usage.InodesTotal,
 				InodeFree:    usage.InodesFree,
 				Model:        model,
+				Revision:     revision,
 			})
 		}
 	}
@@ -885,6 +902,7 @@ type SysInfo struct {
 	OSInfo         []OSInfo       `json:"osinfo,omitempty"`
 	MemInfo        []MemInfo      `json:"meminfo,omitempty"`
 	ProcInfo       []ProcInfo     `json:"procinfo,omitempty"`
+	NetInfo        []NetInfo      `json:"netinfo,omitempty"`
 	SysErrs        []SysErrors    `json:"errors,omitempty"`
 	SysServices    []SysServices  `json:"services,omitempty"`
 	SysConfig      []SysConfig    `json:"config,omitempty"`
