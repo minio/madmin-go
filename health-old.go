@@ -51,16 +51,6 @@ type HealthInfoV2 struct {
 	Minio     MinioHealthInfo `json:"minio,omitempty"`
 }
 
-// HealthInfoV3 - MinIO cluster's health Info version 3
-type HealthInfoV3 struct {
-	Version string `json:"version"`
-	Error   string `json:"error,omitempty"`
-
-	TimeStamp time.Time       `json:"timestamp,omitempty"`
-	Sys       SysInfoV1       `json:"sys,omitempty"`
-	Minio     MinioHealthInfo `json:"minio,omitempty"`
-}
-
 func (info HealthInfoV2) String() string {
 	data, err := json.Marshal(info)
 	if err != nil {
@@ -93,6 +83,51 @@ func (info HealthInfoV2) GetStatus() string {
 
 // GetTimestamp - returns timestamp from the cluster health info v2
 func (info HealthInfoV2) GetTimestamp() time.Time {
+	return info.TimeStamp
+}
+
+// HealthInfoV3 - MinIO cluster's health Info version 3
+type HealthInfoV3 struct {
+	Version string `json:"version"`
+	Error   string `json:"error,omitempty"`
+
+	TimeStamp time.Time       `json:"timestamp,omitempty"`
+	Sys       SysInfoV1       `json:"sys,omitempty"`
+	Minio     MinioHealthInfo `json:"minio,omitempty"`
+}
+
+func (info HealthInfoV3) String() string {
+	data, err := json.Marshal(info)
+	if err != nil {
+		panic(err) // This never happens.
+	}
+	return string(data)
+}
+
+// JSON returns this structure as JSON formatted string.
+func (info HealthInfoV3) JSON() string {
+	data, err := json.MarshalIndent(info, " ", "    ")
+	if err != nil {
+		panic(err) // This never happens.
+	}
+	return string(data)
+}
+
+// GetError - returns error from the cluster health info
+func (info HealthInfoV3) GetError() string {
+	return info.Error
+}
+
+// GetStatus - returns status of the cluster health info
+func (info HealthInfoV3) GetStatus() string {
+	if info.Error != "" {
+		return "error"
+	}
+	return "success"
+}
+
+// GetTimestamp - returns timestamp from the cluster health info
+func (info HealthInfoV3) GetTimestamp() time.Time {
 	return info.TimeStamp
 }
 
