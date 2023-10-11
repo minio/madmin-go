@@ -431,7 +431,7 @@ const (
 	SRBucketMetaTypeObjectLockConfig = "object-lock-config"
 	SRBucketMetaTypeSSEConfig        = "sse-config"
 	SRBucketMetaTypeQuotaConfig      = "quota-config"
-	SRBucketMetaExpLCConfig          = "exp-lc-config"
+	SRBucketMetaLCConfig             = "lc-config"
 )
 
 // SRBucketMeta - represents a bucket metadata change that will be copied to a peer.
@@ -465,6 +465,9 @@ type SRBucketMeta struct {
 
 	// UpdatedAt - timestamp of last update
 	UpdatedAt time.Time `json:"updatedAt,omitempty"`
+
+	// ExpiryUPdatedAt - timestamp of last update of expiry rule
+	ExpiryUpdatedAt time.Time `json:"expiryUpdatedAt,omitempty"`
 }
 
 // SRPeerReplicateBucketMeta - copies a bucket metadata change to a peer cluster.
@@ -523,7 +526,7 @@ type SRBucketInfo struct {
 
 	// Since Expiry Licfecycle config does not have a json representation, we use its xml
 	// byte representation
-	ExpiryLCConfig *string `kson:"expLCConfig,omitempty"`
+	ExpiryLCConfig *string `json:"expLCConfig,omitempty"`
 
 	// time stamps of bucket metadata updates
 	PolicyUpdatedAt            time.Time `json:"policyTimestamp,omitempty"`
