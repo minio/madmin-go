@@ -1158,7 +1158,7 @@ func (adm *AdminClient) ServerHealthInfo(ctx context.Context, types []HealthData
 	}
 
 	switch version.Version {
-	case "", HealthInfoVersion2, HealthInfoVersion:
+	case "", HealthInfoVersion3, HealthInfoVersion2, HealthInfoVersion:
 	default:
 		closeResponse(resp)
 		return nil, "", errors.New("Upgrade Minio Client to support health info version " + version.Version)
