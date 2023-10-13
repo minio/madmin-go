@@ -466,7 +466,7 @@ type SRBucketMeta struct {
 	// UpdatedAt - timestamp of last update
 	UpdatedAt time.Time `json:"updatedAt,omitempty"`
 
-	// ExpiryUPdatedAt - timestamp of last update of expiry rule
+	// ExpiryUpdatedAt - timestamp of last update of expiry rule
 	ExpiryUpdatedAt time.Time `json:"expiryUpdatedAt,omitempty"`
 }
 
@@ -873,7 +873,7 @@ type ReplicateEditStatus struct {
 	ErrDetail string `json:"errorDetail,omitempty"`
 }
 
-// SREditOptions holds SR Add options
+// SREditOptions holds SR Edit options
 type SREditOptions struct {
 	DisableILMExpiryReplication bool
 }
