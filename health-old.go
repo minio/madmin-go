@@ -46,18 +46,8 @@ type HealthInfoV2 struct {
 	Error   string `json:"error,omitempty"`
 
 	TimeStamp time.Time       `json:"timestamp,omitempty"`
-	Sys       SysInfoV1       `json:"sys,omitempty"`
+	Sys       SysInfo         `json:"sys,omitempty"`
 	Perf      PerfInfo        `json:"perf,omitempty"`
-	Minio     MinioHealthInfo `json:"minio,omitempty"`
-}
-
-// HealthInfoV3 - MinIO cluster's health Info version 3
-type HealthInfoV3 struct {
-	Version string `json:"version"`
-	Error   string `json:"error,omitempty"`
-
-	TimeStamp time.Time       `json:"timestamp,omitempty"`
-	Sys       SysInfoV1       `json:"sys,omitempty"`
 	Minio     MinioHealthInfo `json:"minio,omitempty"`
 }
 
@@ -433,17 +423,4 @@ type NetPerfInfoV0 struct {
 	Latency    NetLatency    `json:"latency,omitempty"`
 	Throughput NetThroughput `json:"throughput,omitempty"`
 	Error      string        `json:"error,omitempty"`
-}
-
-// SysInfoV1 - Includes hardware and system information of the MinIO cluster V1
-type SysInfoV1 struct {
-	CPUInfo        []CPUs         `json:"cpus,omitempty"`
-	Partitions     []Partitions   `json:"partitions,omitempty"`
-	OSInfo         []OSInfo       `json:"osinfo,omitempty"`
-	MemInfo        []MemInfo      `json:"meminfo,omitempty"`
-	ProcInfo       []ProcInfo     `json:"procinfo,omitempty"`
-	SysErrs        []SysErrors    `json:"errors,omitempty"`
-	SysServices    []SysServices  `json:"services,omitempty"`
-	SysConfig      []SysConfig    `json:"config,omitempty"`
-	KubernetesInfo KubernetesInfo `json:"kubernetes"`
 }
