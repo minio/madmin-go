@@ -586,7 +586,7 @@ func isKauditdRunning() (bool, error) {
 	}
 	for _, proc := range procs {
 		pname, err := proc.Name()
-		if err != nil && pname == "kauditd" {
+		if err == nil && pname == "kauditd" {
 			return true, nil
 		}
 	}
