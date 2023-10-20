@@ -876,11 +876,13 @@ type ReplicateEditStatus struct {
 // SREditOptions holds SR Edit options
 type SREditOptions struct {
 	DisableILMExpiryReplication bool
+	EnableILMExpiryReplication  bool
 }
 
 func (o *SREditOptions) getURLValues() url.Values {
 	urlValues := make(url.Values)
 	urlValues.Set("disableILMExpiryReplication", strconv.FormatBool(o.DisableILMExpiryReplication))
+	urlValues.Set("enableILMExpiryReplication", strconv.FormatBool(o.EnableILMExpiryReplication))
 	return urlValues
 }
 
