@@ -151,10 +151,11 @@ func (adm *AdminClient) SiteReplicationInfo(ctx context.Context) (info SiteRepli
 
 // SRPeerJoinReq - arg body for SRPeerJoin
 type SRPeerJoinReq struct {
-	SvcAcctAccessKey string              `json:"svcAcctAccessKey"`
-	SvcAcctSecretKey string              `json:"svcAcctSecretKey"`
-	SvcAcctParent    string              `json:"svcAcctParent"`
-	Peers            map[string]PeerInfo `json:"peers"`
+	SvcAcctAccessKey   string              `json:"svcAcctAccessKey"`
+	SvcAcctSecretKey   string              `json:"svcAcctSecretKey"`
+	SvcAcctParent      string              `json:"svcAcctParent"`
+	Peers              map[string]PeerInfo `json:"peers"`
+	ReplicateILMExpiry bool                `json:"replicate-ilm-expiry"`
 }
 
 // PeerInfo - contains some properties of a cluster peer.
@@ -163,9 +164,10 @@ type PeerInfo struct {
 	Name     string `json:"name"`
 	// Deployment ID is useful as it is immutable - though endpoint may
 	// change.
-	DeploymentID     string          `json:"deploymentID"`
-	SyncState        SyncStatus      `json:"sync"`             // whether to enable| disable synchronous replication
-	DefaultBandwidth BucketBandwidth `json:"defaultbandwidth"` // bandwidth limit per bucket in bytes/sec
+	DeploymentID       string          `json:"deploymentID"`
+	SyncState          SyncStatus      `json:"sync"`             // whether to enable| disable synchronous replication
+	DefaultBandwidth   BucketBandwidth `json:"defaultbandwidth"` // bandwidth limit per bucket in bytes/sec
+	ReplicateILMExpiry bool            `json:"replicate-ilm-expiry"`
 }
 
 // BucketBandwidth has default bandwidth limit per bucket in bytes/sec
