@@ -99,7 +99,7 @@ func privateNewMetricsClient(endpointURL *url.URL, jwtToken string, secure bool)
 }
 
 // executeGetRequest - instantiates a Get method and performs the request
-func (client MetricsClient) executeGetRequest(ctx context.Context, reqData metricsRequestData) (res *http.Response, err error) {
+func (client *MetricsClient) executeGetRequest(ctx context.Context, reqData metricsRequestData) (res *http.Response, err error) {
 	req, err := client.newGetRequest(ctx, reqData)
 	if err != nil {
 		return nil, err
@@ -109,7 +109,7 @@ func (client MetricsClient) executeGetRequest(ctx context.Context, reqData metri
 }
 
 // newGetRequest - instantiate a new HTTP GET request
-func (client MetricsClient) newGetRequest(ctx context.Context, reqData metricsRequestData) (req *http.Request, err error) {
+func (client *MetricsClient) newGetRequest(ctx context.Context, reqData metricsRequestData) (req *http.Request, err error) {
 	targetURL, err := client.makeTargetURL(reqData)
 	if err != nil {
 		return nil, err
@@ -119,7 +119,7 @@ func (client MetricsClient) newGetRequest(ctx context.Context, reqData metricsRe
 }
 
 // makeTargetURL make a new target url.
-func (client MetricsClient) makeTargetURL(r metricsRequestData) (*url.URL, error) {
+func (client *MetricsClient) makeTargetURL(r metricsRequestData) (*url.URL, error) {
 	if client.endpointURL == nil {
 		return nil, fmt.Errorf("enpointURL cannot be nil")
 	}
@@ -130,4 +130,25 @@ func (client MetricsClient) makeTargetURL(r metricsRequestData) (*url.URL, error
 
 	urlStr := scheme + "://" + host + prefix + r.relativePath
 	return url.Parse(urlStr)
+}
+
+// SetCustomTransport - set new custom transport.
+func (client *MetricsClient) SetCustomTransport(customHTTPTransport http.RoundTripper) {
+	// Set this to override default transport
+	// ``http.DefaultTransport``.
+	//
+	// This transport is usually needed for debugging OR to add your
+	// own custom TLS certificates on the client transport, for custom
+	// CA's and certs which are not part of standard certificate
+	// authority follow this example :-
+	//
+	//   tr := &http.Transport{
+	//           TLSClientConfig:    &tls.Config{RootCAs: pool},
+	//           DisableCompression: true,
+	//   }
+	//   api.SetTransport(tr)
+	//
+	if client.httpClient != nil {
+		client.httpClient.Transport = customHTTPTransport
+	}
 }
