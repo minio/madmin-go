@@ -258,7 +258,13 @@ type Partitions struct {
 	Partitions []Partition `json:"partitions,omitempty"`
 }
 
-func getDeviceInfo(partDevice string) (model string, revision string, err error) {
+// driveHwInfo contains hardware information about a drive
+type driveHwInfo struct {
+	Model    string
+	Revision string
+}
+
+func getDriveHwInfo(partDevice string) (info driveHwInfo, err error) {
 	partDevName := strings.ReplaceAll(partDevice, devDir, "")
 	devPath := path.Join(sysClassBlock, partDevName, "dev")
 
@@ -288,12 +294,12 @@ func getDeviceInfo(partDevice string) (model string, revision string, err error)
 		field := strings.SplitN(buf.Text(), "=", 2)
 		if len(field) == 2 {
 			if field[0] == "E:ID_MODEL" {
-				model = field[1]
+				info.Model = field[1]
 			}
 			if field[0] == "E:ID_REVISION" {
-				revision = field[1]
+				info.Revision = field[1]
 			}
-			if len(model) > 0 && len(revision) > 0 {
+			if len(info.Model) > 0 && len(info.Revision) > 0 {
 				break
 			}
 		}
@@ -333,11 +339,11 @@ func GetPartitions(ctx context.Context, addr string) Partitions {
 				Error:  err.Error(),
 			})
 		} else {
-			var model, revision string
+			var di driveHwInfo
 			device := parts[i].Device
 			if strings.HasPrefix(device, devDir) && !strings.HasPrefix(device, devLoopDir) {
 				// ignore any error in finding device model
-				model, revision, _ = getDeviceInfo(device)
+				di, _ = getDriveHwInfo(device)
 			}
 
 			partitions = append(partitions, Partition{
@@ -350,8 +356,8 @@ func GetPartitions(ctx context.Context, addr string) Partitions {
 				SpaceFree:    usage.Free,
 				InodeTotal:   usage.InodesTotal,
 				InodeFree:    usage.InodesFree,
-				Model:        model,
-				Revision:     revision,
+				Model:        di.Model,
+				Revision:     di.Revision,
 			})
 		}
 	}
