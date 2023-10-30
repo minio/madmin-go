@@ -72,6 +72,30 @@ func (z *TierS3) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "AWSRole")
 				return
 			}
+		case "AWSRoleWebIdentityTokenFile":
+			z.AWSRoleWebIdentityTokenFile, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "AWSRoleWebIdentityTokenFile")
+				return
+			}
+		case "AWSRoleARN":
+			z.AWSRoleARN, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "AWSRoleARN")
+				return
+			}
+		case "AWSRoleSessionName":
+			z.AWSRoleSessionName, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "AWSRoleSessionName")
+				return
+			}
+		case "AWSRoleDurationSeconds":
+			z.AWSRoleDurationSeconds, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "AWSRoleDurationSeconds")
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -85,9 +109,9 @@ func (z *TierS3) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *TierS3) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 8
+	// map header, size 12
 	// write "Endpoint"
-	err = en.Append(0x88, 0xa8, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74)
+	err = en.Append(0x8c, 0xa8, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74)
 	if err != nil {
 		return
 	}
@@ -166,15 +190,55 @@ func (z *TierS3) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "AWSRole")
 		return
 	}
+	// write "AWSRoleWebIdentityTokenFile"
+	err = en.Append(0xbb, 0x41, 0x57, 0x53, 0x52, 0x6f, 0x6c, 0x65, 0x57, 0x65, 0x62, 0x49, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x46, 0x69, 0x6c, 0x65)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.AWSRoleWebIdentityTokenFile)
+	if err != nil {
+		err = msgp.WrapError(err, "AWSRoleWebIdentityTokenFile")
+		return
+	}
+	// write "AWSRoleARN"
+	err = en.Append(0xaa, 0x41, 0x57, 0x53, 0x52, 0x6f, 0x6c, 0x65, 0x41, 0x52, 0x4e)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.AWSRoleARN)
+	if err != nil {
+		err = msgp.WrapError(err, "AWSRoleARN")
+		return
+	}
+	// write "AWSRoleSessionName"
+	err = en.Append(0xb2, 0x41, 0x57, 0x53, 0x52, 0x6f, 0x6c, 0x65, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x4e, 0x61, 0x6d, 0x65)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.AWSRoleSessionName)
+	if err != nil {
+		err = msgp.WrapError(err, "AWSRoleSessionName")
+		return
+	}
+	// write "AWSRoleDurationSeconds"
+	err = en.Append(0xb6, 0x41, 0x57, 0x53, 0x52, 0x6f, 0x6c, 0x65, 0x44, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x53, 0x65, 0x63, 0x6f, 0x6e, 0x64, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt(z.AWSRoleDurationSeconds)
+	if err != nil {
+		err = msgp.WrapError(err, "AWSRoleDurationSeconds")
+		return
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z *TierS3) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 8
+	// map header, size 12
 	// string "Endpoint"
-	o = append(o, 0x88, 0xa8, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74)
+	o = append(o, 0x8c, 0xa8, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74)
 	o = msgp.AppendString(o, z.Endpoint)
 	// string "AccessKey"
 	o = append(o, 0xa9, 0x41, 0x63, 0x63, 0x65, 0x73, 0x73, 0x4b, 0x65, 0x79)
@@ -197,6 +261,18 @@ func (z *TierS3) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "AWSRole"
 	o = append(o, 0xa7, 0x41, 0x57, 0x53, 0x52, 0x6f, 0x6c, 0x65)
 	o = msgp.AppendBool(o, z.AWSRole)
+	// string "AWSRoleWebIdentityTokenFile"
+	o = append(o, 0xbb, 0x41, 0x57, 0x53, 0x52, 0x6f, 0x6c, 0x65, 0x57, 0x65, 0x62, 0x49, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x79, 0x54, 0x6f, 0x6b, 0x65, 0x6e, 0x46, 0x69, 0x6c, 0x65)
+	o = msgp.AppendString(o, z.AWSRoleWebIdentityTokenFile)
+	// string "AWSRoleARN"
+	o = append(o, 0xaa, 0x41, 0x57, 0x53, 0x52, 0x6f, 0x6c, 0x65, 0x41, 0x52, 0x4e)
+	o = msgp.AppendString(o, z.AWSRoleARN)
+	// string "AWSRoleSessionName"
+	o = append(o, 0xb2, 0x41, 0x57, 0x53, 0x52, 0x6f, 0x6c, 0x65, 0x53, 0x65, 0x73, 0x73, 0x69, 0x6f, 0x6e, 0x4e, 0x61, 0x6d, 0x65)
+	o = msgp.AppendString(o, z.AWSRoleSessionName)
+	// string "AWSRoleDurationSeconds"
+	o = append(o, 0xb6, 0x41, 0x57, 0x53, 0x52, 0x6f, 0x6c, 0x65, 0x44, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x53, 0x65, 0x63, 0x6f, 0x6e, 0x64, 0x73)
+	o = msgp.AppendInt(o, z.AWSRoleDurationSeconds)
 	return
 }
 
@@ -266,6 +342,30 @@ func (z *TierS3) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "AWSRole")
 				return
 			}
+		case "AWSRoleWebIdentityTokenFile":
+			z.AWSRoleWebIdentityTokenFile, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "AWSRoleWebIdentityTokenFile")
+				return
+			}
+		case "AWSRoleARN":
+			z.AWSRoleARN, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "AWSRoleARN")
+				return
+			}
+		case "AWSRoleSessionName":
+			z.AWSRoleSessionName, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "AWSRoleSessionName")
+				return
+			}
+		case "AWSRoleDurationSeconds":
+			z.AWSRoleDurationSeconds, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "AWSRoleDurationSeconds")
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -280,6 +380,6 @@ func (z *TierS3) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *TierS3) Msgsize() (s int) {
-	s = 1 + 9 + msgp.StringPrefixSize + len(z.Endpoint) + 10 + msgp.StringPrefixSize + len(z.AccessKey) + 10 + msgp.StringPrefixSize + len(z.SecretKey) + 7 + msgp.StringPrefixSize + len(z.Bucket) + 7 + msgp.StringPrefixSize + len(z.Prefix) + 7 + msgp.StringPrefixSize + len(z.Region) + 13 + msgp.StringPrefixSize + len(z.StorageClass) + 8 + msgp.BoolSize
+	s = 1 + 9 + msgp.StringPrefixSize + len(z.Endpoint) + 10 + msgp.StringPrefixSize + len(z.AccessKey) + 10 + msgp.StringPrefixSize + len(z.SecretKey) + 7 + msgp.StringPrefixSize + len(z.Bucket) + 7 + msgp.StringPrefixSize + len(z.Prefix) + 7 + msgp.StringPrefixSize + len(z.Region) + 13 + msgp.StringPrefixSize + len(z.StorageClass) + 8 + msgp.BoolSize + 28 + msgp.StringPrefixSize + len(z.AWSRoleWebIdentityTokenFile) + 11 + msgp.StringPrefixSize + len(z.AWSRoleARN) + 19 + msgp.StringPrefixSize + len(z.AWSRoleSessionName) + 23 + msgp.IntSize
 	return
 }

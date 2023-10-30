@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2023 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -23,14 +23,18 @@ package madmin
 
 // TierS3 represents the remote tier configuration for AWS S3 compatible backend.
 type TierS3 struct {
-	Endpoint     string `json:",omitempty"`
-	AccessKey    string `json:",omitempty"`
-	SecretKey    string `json:",omitempty"`
-	Bucket       string `json:",omitempty"`
-	Prefix       string `json:",omitempty"`
-	Region       string `json:",omitempty"`
-	StorageClass string `json:",omitempty"`
-	AWSRole      bool   `json:",omitempty"`
+	Endpoint                    string `json:",omitempty"`
+	AccessKey                   string `json:",omitempty"`
+	SecretKey                   string `json:",omitempty"`
+	Bucket                      string `json:",omitempty"`
+	Prefix                      string `json:",omitempty"`
+	Region                      string `json:",omitempty"`
+	StorageClass                string `json:",omitempty"`
+	AWSRole                     bool   `json:",omitempty"`
+	AWSRoleWebIdentityTokenFile string `json:",omitempty"`
+	AWSRoleARN                  string `json:",omitempty"`
+	AWSRoleSessionName          string `json:",omitempty"`
+	AWSRoleDurationSeconds      int    `json:",omitempty"`
 }
 
 // S3Options supports NewTierS3 to take variadic options
@@ -72,6 +76,38 @@ func S3StorageClass(storageClass string) func(s3 *TierS3) error {
 func S3AWSRole() func(s3 *TierS3) error {
 	return func(s3 *TierS3) error {
 		s3.AWSRole = true
+		return nil
+	}
+}
+
+// S3AWSRoleWebIdentityTokenFile helper to use optional AWS Role token file to NewTierS3
+func S3AWSRoleWebIdentityTokenFile(tokenFile string) func(s3 *TierS3) error {
+	return func(s3 *TierS3) error {
+		s3.AWSRoleWebIdentityTokenFile = tokenFile
+		return nil
+	}
+}
+
+// S3AWSRoleARN helper to use optional AWS RoleARN to NewTierS3
+func S3AWSRoleARN(roleARN string) func(s3 *TierS3) error {
+	return func(s3 *TierS3) error {
+		s3.AWSRoleARN = roleARN
+		return nil
+	}
+}
+
+// S3AWSRoleSessionName helper to use optional AWS RoleSessionName to NewTierS3
+func S3AWSRoleSessionName(roleSessionName string) func(s3 *TierS3) error {
+	return func(s3 *TierS3) error {
+		s3.AWSRoleSessionName = roleSessionName
+		return nil
+	}
+}
+
+// S3AWSRoleDurationSeconds helper to use optional token duration to NewTierS3
+func S3AWSRoleDurationSeconds(dsecs int) func(s3 *TierS3) error {
+	return func(s3 *TierS3) error {
+		s3.AWSRoleDurationSeconds = dsecs
 		return nil
 	}
 }
