@@ -638,6 +638,36 @@ func (z *TimedErrStats) DecodeMsg(dc *msgp.Reader) (err error) {
 					}
 				}
 			}
+		case "ErrCounts":
+			var zb0005 uint32
+			zb0005, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "ErrCounts")
+				return
+			}
+			if z.ErrCounts == nil {
+				z.ErrCounts = make(map[string]int, zb0005)
+			} else if len(z.ErrCounts) > 0 {
+				for key := range z.ErrCounts {
+					delete(z.ErrCounts, key)
+				}
+			}
+			for zb0005 > 0 {
+				zb0005--
+				var za0001 string
+				var za0002 int
+				za0001, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "ErrCounts")
+					return
+				}
+				za0002, err = dc.ReadInt()
+				if err != nil {
+					err = msgp.WrapError(err, "ErrCounts", za0001)
+					return
+				}
+				z.ErrCounts[za0001] = za0002
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -651,9 +681,9 @@ func (z *TimedErrStats) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *TimedErrStats) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 3
+	// map header, size 4
 	// write "LastMinute"
-	err = en.Append(0x83, 0xaa, 0x4c, 0x61, 0x73, 0x74, 0x4d, 0x69, 0x6e, 0x75, 0x74, 0x65)
+	err = en.Append(0x84, 0xaa, 0x4c, 0x61, 0x73, 0x74, 0x4d, 0x69, 0x6e, 0x75, 0x74, 0x65)
 	if err != nil {
 		return
 	}
@@ -730,15 +760,37 @@ func (z *TimedErrStats) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "Totals", "Bytes")
 		return
 	}
+	// write "ErrCounts"
+	err = en.Append(0xa9, 0x45, 0x72, 0x72, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteMapHeader(uint32(len(z.ErrCounts)))
+	if err != nil {
+		err = msgp.WrapError(err, "ErrCounts")
+		return
+	}
+	for za0001, za0002 := range z.ErrCounts {
+		err = en.WriteString(za0001)
+		if err != nil {
+			err = msgp.WrapError(err, "ErrCounts")
+			return
+		}
+		err = en.WriteInt(za0002)
+		if err != nil {
+			err = msgp.WrapError(err, "ErrCounts", za0001)
+			return
+		}
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z *TimedErrStats) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 3
+	// map header, size 4
 	// string "LastMinute"
-	o = append(o, 0x83, 0xaa, 0x4c, 0x61, 0x73, 0x74, 0x4d, 0x69, 0x6e, 0x75, 0x74, 0x65)
+	o = append(o, 0x84, 0xaa, 0x4c, 0x61, 0x73, 0x74, 0x4d, 0x69, 0x6e, 0x75, 0x74, 0x65)
 	// map header, size 2
 	// string "Count"
 	o = append(o, 0x82, 0xa5, 0x43, 0x6f, 0x75, 0x6e, 0x74)
@@ -764,6 +816,13 @@ func (z *TimedErrStats) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "Bytes"
 	o = append(o, 0xa5, 0x42, 0x79, 0x74, 0x65, 0x73)
 	o = msgp.AppendInt64(o, z.Totals.Bytes)
+	// string "ErrCounts"
+	o = append(o, 0xa9, 0x45, 0x72, 0x72, 0x43, 0x6f, 0x75, 0x6e, 0x74, 0x73)
+	o = msgp.AppendMapHeader(o, uint32(len(z.ErrCounts)))
+	for za0001, za0002 := range z.ErrCounts {
+		o = msgp.AppendString(o, za0001)
+		o = msgp.AppendInt(o, za0002)
+	}
 	return
 }
 
@@ -890,6 +949,36 @@ func (z *TimedErrStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					}
 				}
 			}
+		case "ErrCounts":
+			var zb0005 uint32
+			zb0005, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ErrCounts")
+				return
+			}
+			if z.ErrCounts == nil {
+				z.ErrCounts = make(map[string]int, zb0005)
+			} else if len(z.ErrCounts) > 0 {
+				for key := range z.ErrCounts {
+					delete(z.ErrCounts, key)
+				}
+			}
+			for zb0005 > 0 {
+				var za0001 string
+				var za0002 int
+				zb0005--
+				za0001, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "ErrCounts")
+					return
+				}
+				za0002, bts, err = msgp.ReadIntBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "ErrCounts", za0001)
+					return
+				}
+				z.ErrCounts[za0001] = za0002
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -904,6 +993,12 @@ func (z *TimedErrStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *TimedErrStats) Msgsize() (s int) {
-	s = 1 + 11 + 1 + 6 + msgp.Float64Size + 6 + msgp.Int64Size + 9 + 1 + 6 + msgp.Float64Size + 6 + msgp.Int64Size + 7 + 1 + 6 + msgp.Float64Size + 6 + msgp.Int64Size
+	s = 1 + 11 + 1 + 6 + msgp.Float64Size + 6 + msgp.Int64Size + 9 + 1 + 6 + msgp.Float64Size + 6 + msgp.Int64Size + 7 + 1 + 6 + msgp.Float64Size + 6 + msgp.Int64Size + 10 + msgp.MapHeaderSize
+	if z.ErrCounts != nil {
+		for za0001, za0002 := range z.ErrCounts {
+			_ = za0002
+			s += msgp.StringPrefixSize + len(za0001) + msgp.IntSize
+		}
+	}
 	return
 }

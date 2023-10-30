@@ -33,6 +33,12 @@ jobs:
          curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
          $(go env GOPATH)/bin/golangci-lint run --config ./.golangci.yml
          go vet ./...
+         go install -v github.com/tinylib/msgp@latest
+         go install -v golang.org/x/tools/cmd/stringer@latest
+         export PATH=${PATH}:$(go env GOPATH)/bin
+         go generate ./... >/dev/null
+         (! git diff --name-only | grep '_gen.go$$') || (echo "Non-committed changes in auto-generated code is detected, please commit them to proceed." && false)
+
   test:
     name: Testing Go ${{ matrix.go-version }} on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -60,4 +66,6 @@ jobs:
       if: matrix.os != 'ubuntu-latest'
       run: |
          go test -v -race ./...
+
+
 
