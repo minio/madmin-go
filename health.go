@@ -1099,9 +1099,10 @@ type HealthInfoVersionStruct struct {
 
 // ServerHealthInfo - Connect to a minio server and call Health Info Management API
 // to fetch server's information represented by HealthInfo structure
-func (adm *AdminClient) ServerHealthInfo(ctx context.Context, types []HealthDataType, deadline time.Duration) (*http.Response, string, error) {
+func (adm *AdminClient) ServerHealthInfo(ctx context.Context, types []HealthDataType, deadline time.Duration, anonymize string) (*http.Response, string, error) {
 	v := url.Values{}
 	v.Set("deadline", deadline.Truncate(1*time.Second).String())
+	v.Set("anonymize", anonymize)
 	for _, d := range HealthDataTypesList { // Init all parameters to false.
 		v.Set(string(d), "false")
 	}
