@@ -433,6 +433,47 @@ func (adm *AdminClient) AddServiceAccount(ctx context.Context, opts AddServiceAc
 	return serviceAccountResp.Credentials, nil
 }
 
+// AddServiceAccountLDAP - AddServiceAccount with extra featurs, restricted to LDAP users.
+func (adm *AdminClient) AddServiceAccountLDAP(ctx context.Context, opts AddServiceAccountReq) (Credentials, error) {
+	if err := opts.Validate(); err != nil {
+		return Credentials{}, err
+	}
+	data, err := json.Marshal(opts)
+	if err != nil {
+		return Credentials{}, err
+	}
+
+	econfigBytes, err := EncryptData(adm.getSecretKey(), data)
+	if err != nil {
+		return Credentials{}, err
+	}
+
+	reqData := requestData{
+		relPath: adminAPIPrefix + "/ldap/add-service-account",
+		content: econfigBytes,
+	}
+	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return Credentials{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return Credentials{}, httpRespToErrorResponse(resp)
+	}
+
+	data, err = DecryptData(adm.getSecretKey(), resp.Body)
+	if err != nil {
+		return Credentials{}, err
+	}
+
+	var serviceAccountResp AddServiceAccountResp
+	if err = json.Unmarshal(data, &serviceAccountResp); err != nil {
+		return Credentials{}, err
+	}
+	return serviceAccountResp.Credentials, nil
+}
+
 // UpdateServiceAccountReq is the request options of the edit service account admin call
 type UpdateServiceAccountReq struct {
 	NewPolicy      json.RawMessage `json:"newPolicy,omitempty"` // Parsed policy from iam/policy.Parse
