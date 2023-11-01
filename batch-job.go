@@ -96,7 +96,6 @@ const BatchJobReplicateTemplate = `replicate:
       #   - key: "name"
       #     value: "pick*" # match objects with tag 'name', with all values starting with 'pick'
 
-      ## NOTE: metadata filter not supported when "source" is non MinIO.
       # metadata:
       #   - key: "content-type"
       #     value: "image/*" # match objects with 'content-type', with all values starting with 'image/'
@@ -148,45 +147,41 @@ const BatchJobKeyRotateTemplate = `keyrotate:
 // for batch expiring objects
 const BatchJobExpireTemplate = `expire:
   apiVersion: v1
-  bucket: BUCKET
-  prefix: PREFIX
-  # optional flags
-  flags:
-    filter:
-      olderThan: "7d" # match objects older than this value (e.g. 7d10h31s)
-      createdBefore: "date" # match objects created before "date"
-
+  bucket: mybucket # Bucket where this job will expire matching objects from
+  prefix: myprefix # (Optional) Prefix under which this job will expire objects matching the rules below.
+  rules:
+    - type: object  # objects with zero ore more older versions
+      name: NAME # match object names that satisfy the wildcard expression.
+      olderThan: 70h # match objects older than this value
+      createdBefore: "2006-01-02T15:04:05.00Z" # match objects created before "date"
       tags:
-        - key: "name"
-          value: "pick*" # match objects with tag 'name', all values starting with 'pick'
-
+        - key: name
+          value: pick* # match objects with tag 'name', all values starting with 'pick'
       metadata:
-        - key: "content-type"
-          value: "image/*" # match objects with 'content-type', all values starting with 'image/'
-
+        - key: content-type
+          value: image/* # match objects with 'content-type', all values starting with 'image/'
       size:
-        lesserThan:  "" # match objects with size lesser than this value (e.g. 10KiB)
-        greaterThan: "" # match objects with size greater than this value (e.g. 10KiB)
+        lesserThan: 10MiB # match objects with size lesser than this value (e.g. 10MiB)
+        greaterThan: 1MiB # match objects with size greater than this value (e.g. 1MiB)
+      purge:
+          # retainVersions: 0 # (default) delete all versions of the object. This option is the fastest.
+          # retainVersions: 5 # keep the latest 5 versions of the object.
 
-      name:
-        endsWith:   "" # match objects ending with this string
-        contains:   "" # match objects that contain this string
-        startsWith: "" # match objects starting with this string
+    - type: deleted # objects with delete marker as their latest version
+      name: NAME # match object names that satisfy the wildcard expression.
+      olderThan: 10h # match objects older than this value (e.g. 7d10h31s)
+      createdBefore: "2006-01-02T15:04:05.00Z" # match objects created before "date"
+      purge:
+          # retainVersions: 0 # (default) delete all versions of the object. This option is the fastest.
+          # retainVersions: 5 # keep the latest 5 versions of the object including delete markers.
 
-      # number of versions to retain
-      # e.g.
-      # maxVersions: 0  # expire all versions
-      # maxVersions: 1  # expire all versions except latest
-      # maxVersions: 10 # expire all versions higher than 10
-      maxVersions: 0 # default
+  notify:
+    endpoint: https://notify.endpoint # notification endpoint to receive job completion status
+    token: Bearer xxxxx # optional authentication token for the notification endpoint
 
-    notify:
-      endpoint: "https://notify.endpoint" # notification endpoint to receive job completion status
-      token: "Bearer xxxxx" # optional authentication token for the notification endpoint
-
-    retry:
-      attempts: 10 # number of retries for the job before giving up
-      delay: "500ms" # least amount of delay between each retry
+  retry:
+    attempts: 10 # number of retries for the job before giving up
+    delay: 500ms # least amount of delay between each retry
 `
 
 // BatchJobResult returned by StartBatchJob

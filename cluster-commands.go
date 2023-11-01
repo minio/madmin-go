@@ -57,8 +57,19 @@ type ReplicateAddStatus struct {
 	InitialSyncErrorMessage string `json:"initialSyncErrorMessage,omitempty"`
 }
 
+// SRAddOptions holds SR Add options
+type SRAddOptions struct {
+	ReplicateILMExpiry bool
+}
+
+func (o *SRAddOptions) getURLValues() url.Values {
+	urlValues := make(url.Values)
+	urlValues.Set("replicateILMExpiry", strconv.FormatBool(o.ReplicateILMExpiry))
+	return urlValues
+}
+
 // SiteReplicationAdd - sends the SR add API call.
-func (adm *AdminClient) SiteReplicationAdd(ctx context.Context, sites []PeerSite) (ReplicateAddStatus, error) {
+func (adm *AdminClient) SiteReplicationAdd(ctx context.Context, sites []PeerSite, opts SRAddOptions) (ReplicateAddStatus, error) {
 	sitesBytes, err := json.Marshal(sites)
 	if err != nil {
 		return ReplicateAddStatus{}, nil
@@ -68,7 +79,7 @@ func (adm *AdminClient) SiteReplicationAdd(ctx context.Context, sites []PeerSite
 		return ReplicateAddStatus{}, err
 	}
 
-	q := make(url.Values)
+	q := opts.getURLValues()
 	q.Set("api-version", SiteReplAPIVersion)
 
 	reqData := requestData{
@@ -106,6 +117,7 @@ type SiteReplicationInfo struct {
 	Name                    string     `json:"name,omitempty"`
 	Sites                   []PeerInfo `json:"sites,omitempty"`
 	ServiceAccountAccessKey string     `json:"serviceAccountAccessKey,omitempty"`
+	ReplicateILMExpiry      bool       `json:"replicate-ilm-expiry"`
 }
 
 // SiteReplicationInfo - returns cluster replication information.
@@ -139,10 +151,11 @@ func (adm *AdminClient) SiteReplicationInfo(ctx context.Context) (info SiteRepli
 
 // SRPeerJoinReq - arg body for SRPeerJoin
 type SRPeerJoinReq struct {
-	SvcAcctAccessKey string              `json:"svcAcctAccessKey"`
-	SvcAcctSecretKey string              `json:"svcAcctSecretKey"`
-	SvcAcctParent    string              `json:"svcAcctParent"`
-	Peers            map[string]PeerInfo `json:"peers"`
+	SvcAcctAccessKey   string              `json:"svcAcctAccessKey"`
+	SvcAcctSecretKey   string              `json:"svcAcctSecretKey"`
+	SvcAcctParent      string              `json:"svcAcctParent"`
+	Peers              map[string]PeerInfo `json:"peers"`
+	ReplicateILMExpiry bool                `json:"replicate-ilm-expiry"`
 }
 
 // PeerInfo - contains some properties of a cluster peer.
@@ -151,8 +164,17 @@ type PeerInfo struct {
 	Name     string `json:"name"`
 	// Deployment ID is useful as it is immutable - though endpoint may
 	// change.
-	DeploymentID string     `json:"deploymentID"`
-	SyncState    SyncStatus `json:"sync"` // whether to enable| disable synchronous replication
+	DeploymentID       string          `json:"deploymentID"`
+	SyncState          SyncStatus      `json:"sync"`             // whether to enable| disable synchronous replication
+	DefaultBandwidth   BucketBandwidth `json:"defaultbandwidth"` // bandwidth limit per bucket in bytes/sec
+	ReplicateILMExpiry bool            `json:"replicate-ilm-expiry"`
+}
+
+// BucketBandwidth has default bandwidth limit per bucket in bytes/sec
+type BucketBandwidth struct {
+	Limit     uint64    `json:"bandwidthLimitPerBucket"`
+	IsSet     bool      `json:"set"`
+	UpdatedAt time.Time `json:"updatedAt,omitempty"`
 }
 
 type SyncStatus string // change in sync state
@@ -411,6 +433,7 @@ const (
 	SRBucketMetaTypeObjectLockConfig = "object-lock-config"
 	SRBucketMetaTypeSSEConfig        = "sse-config"
 	SRBucketMetaTypeQuotaConfig      = "quota-config"
+	SRBucketMetaLCConfig             = "lc-config"
 )
 
 // SRBucketMeta - represents a bucket metadata change that will be copied to a peer.
@@ -438,8 +461,15 @@ type SRBucketMeta struct {
 	// Quota has a json representation use it as is.
 	Quota json.RawMessage `json:"quota,omitempty"`
 
+	// Since Expiry Lifecycle config does not have a json representation, we use its xml
+	// byte respresentation.
+	ExpiryLCConfig *string `json:"expLCConfig,omitempty"`
+
 	// UpdatedAt - timestamp of last update
 	UpdatedAt time.Time `json:"updatedAt,omitempty"`
+
+	// ExpiryUpdatedAt - timestamp of last update of expiry rule
+	ExpiryUpdatedAt time.Time `json:"expiryUpdatedAt,omitempty"`
 }
 
 // SRPeerReplicateBucketMeta - copies a bucket metadata change to a peer cluster.
@@ -496,6 +526,10 @@ type SRBucketInfo struct {
 	// quota config in json representation
 	QuotaConfig *string `json:"quotaConfig,omitempty"`
 
+	// Since Expiry Licfecycle config does not have a json representation, we use its xml
+	// byte representation
+	ExpiryLCConfig *string `json:"expLCConfig,omitempty"`
+
 	// time stamps of bucket metadata updates
 	PolicyUpdatedAt            time.Time `json:"policyTimestamp,omitempty"`
 	TagConfigUpdatedAt         time.Time `json:"tagTimestamp,omitempty"`
@@ -504,6 +538,7 @@ type SRBucketInfo struct {
 	VersioningConfigUpdatedAt  time.Time `json:"versioningTimestamp,omitempty"`
 	ReplicationConfigUpdatedAt time.Time `json:"replicationConfigTimestamp,omitempty"`
 	QuotaConfigUpdatedAt       time.Time `json:"quotaTimestamp,omitempty"`
+	ExpiryLCConfigUpdatedAt    time.Time `json:"expLCTimestamp,omitempty"`
 	CreatedAt                  time.Time `json:"bucketTimestamp,omitempty"`
 	DeletedAt                  time.Time `json:"bucketDeletedTimestamp,omitempty"`
 	Location                   string    `json:"location,omitempty"`
@@ -589,18 +624,26 @@ type SRIAMPolicy struct {
 	UpdatedAt time.Time       `json:"updatedAt,omitempty"`
 }
 
+// ILMExpiryRule - represents an ILM expiry rule
+type ILMExpiryRule struct {
+	ILMRule   string    `json:"ilm-rule"`
+	Bucket    string    `json:"bucket"`
+	UpdatedAt time.Time `json:"updatedAt,omitempty"`
+}
+
 // SRInfo gets replication metadata for a site
 type SRInfo struct {
 	Enabled        bool
 	Name           string
 	DeploymentID   string
 	Buckets        map[string]SRBucketInfo       // map of bucket metadata info
-	Policies       map[string]SRIAMPolicy        //  map of IAM policy name to content
+	Policies       map[string]SRIAMPolicy        // map of IAM policy name to content
 	UserPolicies   map[string]SRPolicyMapping    // map of username -> user policy mapping
 	UserInfoMap    map[string]UserInfo           // map of user name to UserInfo
 	GroupDescMap   map[string]GroupDesc          // map of group name to GroupDesc
 	GroupPolicies  map[string]SRPolicyMapping    // map of groupname -> group policy mapping
 	ReplicationCfg map[string]replication.Config // map of bucket -> replication config
+	ILMExpiryRules map[string]ILMExpiryRule      // map of ILM Expiry rule to content
 }
 
 // SRMetaInfo - returns replication metadata info for a site.
@@ -629,13 +672,14 @@ func (adm *AdminClient) SRMetaInfo(ctx context.Context, opts SRStatusOptions) (i
 
 // SRStatusInfo returns detailed status on site replication status
 type SRStatusInfo struct {
-	Enabled      bool
-	MaxBuckets   int                      // maximum buckets seen across sites
-	MaxUsers     int                      // maximum users seen across sites
-	MaxGroups    int                      // maximum groups seen across sites
-	MaxPolicies  int                      // maximum policies across sites
-	Sites        map[string]PeerInfo      // deployment->sitename
-	StatsSummary map[string]SRSiteSummary // map of deployment id -> site stat
+	Enabled           bool
+	MaxBuckets        int                      // maximum buckets seen across sites
+	MaxUsers          int                      // maximum users seen across sites
+	MaxGroups         int                      // maximum groups seen across sites
+	MaxPolicies       int                      // maximum policies across sites
+	MaxILMExpiryRules int                      // maxmimum ILM Expiry rules across sites
+	Sites             map[string]PeerInfo      // deployment->sitename
+	StatsSummary      map[string]SRSiteSummary // map of deployment id -> site stat
 	// BucketStats map of bucket to slice of deployment IDs with stats. This is populated only if there are
 	// mismatches or if a specific bucket's stats are requested
 	BucketStats map[string]map[string]SRBucketStatsSummary
@@ -650,6 +694,9 @@ type SRStatusInfo struct {
 	GroupStats map[string]map[string]SRGroupStatsSummary
 	// Metrics summary of SRMetrics
 	Metrics SRMetricsSummary // metrics summary. This is populated if buckets/bucket entity requested
+	// ILMExpiryStats map of ILM Expiry rules to slice of deployment IDs with stats. This is populated if there
+	// are mismatches or if a specific ILM expiry rule's stats are requested
+	ILMExpiryStats map[string]map[string]SRILMExpiryStatsSummary
 }
 
 // SRPolicyStatsSummary has status of policy replication misses
@@ -697,6 +744,13 @@ type SRBucketStatsSummary struct {
 	HasQuotaCfgSet           bool
 }
 
+// SRILMExpiryStatsSummary has status of ILM Expiry rules metadata replication misses
+type SRILMExpiryStatsSummary struct {
+	DeploymentID          string
+	ILMExpiryRuleMismatch bool
+	HasILMExpiryRules     bool
+}
+
 // SRSiteSummary holds the count of replicated items in site replication
 type SRSiteSummary struct {
 	ReplicatedBuckets             int // count of buckets replicated across sites
@@ -711,6 +765,7 @@ type SRSiteSummary struct {
 	ReplicatedQuotaConfig         int // count of bucket with quota config replicated across sites
 	ReplicatedUserPolicyMappings  int // count of user policy mappings replicated across sites
 	ReplicatedGroupPolicyMappings int // count of group policy mappings replicated across sites
+	ReplicatedILMExpiryRules      int // count of ILM expiry rules replicated across sites
 
 	TotalBucketsCount            int // total buckets on this site
 	TotalTagsCount               int // total count of buckets with tags on this site
@@ -724,6 +779,7 @@ type SRSiteSummary struct {
 	TotalGroupsCount             int // total number of groups seen on this site
 	TotalUserPolicyMappingCount  int // total number of user policy mappings seen on this site
 	TotalGroupPolicyMappingCount int // total number of group policy mappings seen on this site
+	TotalILMExpiryRulesCount     int // total number of ILM expiry rules seen on the site
 }
 
 // SREntityType specifies type of entity
@@ -744,24 +800,28 @@ const (
 
 	// SRGroupEntity Group entity type
 	SRGroupEntity
+
+	// SRILMExpiryRuleEntity ILM expiry rule entity type
+	SRILMExpiryRuleEntity
 )
 
 // SRStatusOptions holds SR status options
 type SRStatusOptions struct {
-	Buckets     bool
-	Policies    bool
-	Users       bool
-	Groups      bool
-	Metrics     bool
-	Entity      SREntityType
-	EntityValue string
-	ShowDeleted bool
+	Buckets        bool
+	Policies       bool
+	Users          bool
+	Groups         bool
+	Metrics        bool
+	ILMExpiryRules bool
+	Entity         SREntityType
+	EntityValue    string
+	ShowDeleted    bool
 }
 
 // IsEntitySet returns true if entity option is set
 func (o *SRStatusOptions) IsEntitySet() bool {
 	switch o.Entity {
-	case SRBucketEntity, SRPolicyEntity, SRUserEntity, SRGroupEntity:
+	case SRBucketEntity, SRPolicyEntity, SRUserEntity, SRGroupEntity, SRILMExpiryRuleEntity:
 		return true
 	default:
 		return false
@@ -779,6 +839,8 @@ func GetSREntityType(name string) SREntityType {
 		return SRGroupEntity
 	case "policy":
 		return SRPolicyEntity
+	case "ilm-expiry-rule":
+		return SRILMExpiryRuleEntity
 	default:
 		return Unspecified
 	}
@@ -792,6 +854,7 @@ func (o *SRStatusOptions) getURLValues() url.Values {
 	urlValues.Set("groups", strconv.FormatBool(o.Groups))
 	urlValues.Set("showDeleted", strconv.FormatBool(o.ShowDeleted))
 	urlValues.Set("metrics", strconv.FormatBool(o.Metrics))
+	urlValues.Set("ilm-expiry-rules", strconv.FormatBool(o.ILMExpiryRules))
 
 	if o.IsEntitySet() {
 		urlValues.Set("entityvalue", o.EntityValue)
@@ -804,6 +867,8 @@ func (o *SRStatusOptions) getURLValues() url.Values {
 			urlValues.Set("entity", "user")
 		case SRGroupEntity:
 			urlValues.Set("entity", "group")
+		case SRILMExpiryRuleEntity:
+			urlValues.Set("entity", "ilm-expiry-rule")
 		}
 	}
 	return urlValues
@@ -840,8 +905,21 @@ type ReplicateEditStatus struct {
 	ErrDetail string `json:"errorDetail,omitempty"`
 }
 
+// SREditOptions holds SR Edit options
+type SREditOptions struct {
+	DisableILMExpiryReplication bool
+	EnableILMExpiryReplication  bool
+}
+
+func (o *SREditOptions) getURLValues() url.Values {
+	urlValues := make(url.Values)
+	urlValues.Set("disableILMExpiryReplication", strconv.FormatBool(o.DisableILMExpiryReplication))
+	urlValues.Set("enableILMExpiryReplication", strconv.FormatBool(o.EnableILMExpiryReplication))
+	return urlValues
+}
+
 // SiteReplicationEdit - sends the SR edit API call.
-func (adm *AdminClient) SiteReplicationEdit(ctx context.Context, site PeerInfo) (ReplicateEditStatus, error) {
+func (adm *AdminClient) SiteReplicationEdit(ctx context.Context, site PeerInfo, opts SREditOptions) (ReplicateEditStatus, error) {
 	sitesBytes, err := json.Marshal(site)
 	if err != nil {
 		return ReplicateEditStatus{}, nil
@@ -851,7 +929,7 @@ func (adm *AdminClient) SiteReplicationEdit(ctx context.Context, site PeerInfo) 
 		return ReplicateEditStatus{}, err
 	}
 
-	q := make(url.Values)
+	q := opts.getURLValues()
 	q.Set("api-version", SiteReplAPIVersion)
 
 	reqData := requestData{

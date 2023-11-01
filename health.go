@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2023 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -25,10 +25,12 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -67,6 +69,13 @@ const (
 const (
 	SrvSELinux      = "selinux"
 	SrvNotInstalled = "not-installed"
+)
+
+const (
+	sysClassBlock = "/sys/class/block"
+	runDevDataPfx = "/run/udev/data/b"
+	devDir        = "/dev/"
+	devLoopDir    = "/dev/loop"
 )
 
 // NodeInfo - Interface to abstract any struct that contains address/endpoint and error fields
@@ -222,6 +231,8 @@ type Partition struct {
 	Error string `json:"error,omitempty"`
 
 	Device       string `json:"device,omitempty"`
+	Model        string `json:"model,omitempty"`
+	Revision     string `json:"revision,omitempty"`
 	Mountpoint   string `json:"mountpoint,omitempty"`
 	FSType       string `json:"fs_type,omitempty"`
 	MountOptions string `json:"mount_options,omitempty"`
@@ -232,11 +243,69 @@ type Partition struct {
 	InodeFree    uint64 `json:"inode_free,omitempty"`
 }
 
+// NetInfo contains information about a network inerface
+type NetInfo struct {
+	NodeCommon
+	Interface       string `json:"interface,omitempty"`
+	Driver          string `json:"driver,omitempty"`
+	FirmwareVersion string `json:"firmware_version,omitempty"`
+}
+
 // Partitions contains all disk partitions information of a node.
 type Partitions struct {
 	NodeCommon
 
 	Partitions []Partition `json:"partitions,omitempty"`
+}
+
+// driveHwInfo contains hardware information about a drive
+type driveHwInfo struct {
+	Model    string
+	Revision string
+}
+
+func getDriveHwInfo(partDevice string) (info driveHwInfo, err error) {
+	partDevName := strings.ReplaceAll(partDevice, devDir, "")
+	devPath := path.Join(sysClassBlock, partDevName, "dev")
+
+	_, err = os.Stat(devPath)
+	if err != nil {
+		return
+	}
+
+	var data []byte
+	data, err = ioutil.ReadFile(devPath)
+	if err != nil {
+		return
+	}
+
+	majorMinor := strings.TrimSpace(string(data))
+	driveInfoPath := runDevDataPfx + majorMinor
+
+	var f *os.File
+	f, err = os.Open(driveInfoPath)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+
+	buf := bufio.NewScanner(f)
+	for buf.Scan() {
+		field := strings.SplitN(buf.Text(), "=", 2)
+		if len(field) == 2 {
+			if field[0] == "E:ID_MODEL" {
+				info.Model = field[1]
+			}
+			if field[0] == "E:ID_REVISION" {
+				info.Revision = field[1]
+			}
+			if len(info.Model) > 0 && len(info.Revision) > 0 {
+				break
+			}
+		}
+	}
+
+	return
 }
 
 // GetPartitions returns all disk partitions information of a node running linux only operating system.
@@ -270,8 +339,15 @@ func GetPartitions(ctx context.Context, addr string) Partitions {
 				Error:  err.Error(),
 			})
 		} else {
+			var di driveHwInfo
+			device := parts[i].Device
+			if strings.HasPrefix(device, devDir) && !strings.HasPrefix(device, devLoopDir) {
+				// ignore any error in finding device model
+				di, _ = getDriveHwInfo(device)
+			}
+
 			partitions = append(partitions, Partition{
-				Device:       parts[i].Device,
+				Device:       device,
 				Mountpoint:   parts[i].Mountpoint,
 				FSType:       parts[i].Fstype,
 				MountOptions: strings.Join(parts[i].Opts, ","),
@@ -280,6 +356,8 @@ func GetPartitions(ctx context.Context, addr string) Partitions {
 				SpaceFree:    usage.Free,
 				InodeTotal:   usage.InodesTotal,
 				InodeFree:    usage.InodesFree,
+				Model:        di.Model,
+				Revision:     di.Revision,
 			})
 		}
 	}
@@ -531,7 +609,7 @@ func isKauditdRunning() (bool, error) {
 	}
 	for _, proc := range procs {
 		pname, err := proc.Name()
-		if err != nil && pname == "kauditd" {
+		if err == nil && pname == "kauditd" {
 			return true, nil
 		}
 	}
@@ -543,7 +621,12 @@ type MemInfo struct {
 	NodeCommon
 
 	Total          uint64 `json:"total,omitempty"`
+	Used           uint64 `json:"used,omitempty"`
+	Free           uint64 `json:"free,omitempty"`
 	Available      uint64 `json:"available,omitempty"`
+	Shared         uint64 `json:"shared,omitempty"`
+	Cache          uint64 `json:"cache,omitempty"`
+	Buffers        uint64 `json:"buffer,omitempty"`
 	SwapSpaceTotal uint64 `json:"swap_space_total,omitempty"`
 	SwapSpaceFree  uint64 `json:"swap_space_free,omitempty"`
 	// Limit will store cgroup limit if configured and
@@ -593,7 +676,12 @@ func GetMemInfo(ctx context.Context, addr string) MemInfo {
 	return MemInfo{
 		NodeCommon:     NodeCommon{Addr: addr},
 		Total:          meminfo.Total,
+		Used:           meminfo.Used,
+		Free:           meminfo.Free,
 		Available:      meminfo.Available,
+		Shared:         meminfo.Shared,
+		Cache:          meminfo.Cached,
+		Buffers:        meminfo.Buffers,
 		SwapSpaceTotal: swapinfo.Total,
 		SwapSpaceFree:  swapinfo.Free,
 		Limit:          getMemoryLimit(meminfo.Total),
@@ -820,6 +908,7 @@ type SysInfo struct {
 	OSInfo         []OSInfo       `json:"osinfo,omitempty"`
 	MemInfo        []MemInfo      `json:"meminfo,omitempty"`
 	ProcInfo       []ProcInfo     `json:"procinfo,omitempty"`
+	NetInfo        []NetInfo      `json:"netinfo,omitempty"`
 	SysErrs        []SysErrors    `json:"errors,omitempty"`
 	SysServices    []SysServices  `json:"services,omitempty"`
 	SysConfig      []SysConfig    `json:"config,omitempty"`
@@ -1034,9 +1123,10 @@ type HealthInfoVersionStruct struct {
 
 // ServerHealthInfo - Connect to a minio server and call Health Info Management API
 // to fetch server's information represented by HealthInfo structure
-func (adm *AdminClient) ServerHealthInfo(ctx context.Context, types []HealthDataType, deadline time.Duration) (*http.Response, string, error) {
+func (adm *AdminClient) ServerHealthInfo(ctx context.Context, types []HealthDataType, deadline time.Duration, anonymize string) (*http.Response, string, error) {
 	v := url.Values{}
 	v.Set("deadline", deadline.Truncate(1*time.Second).String())
+	v.Set("anonymize", anonymize)
 	for _, d := range HealthDataTypesList { // Init all parameters to false.
 		v.Set(string(d), "false")
 	}

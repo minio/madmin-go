@@ -33,6 +33,8 @@ import (
 	"time"
 
 	"github.com/prometheus/procfs"
+	"github.com/shirou/gopsutil/v3/cpu"
+	"github.com/shirou/gopsutil/v3/load"
 )
 
 // MetricType is a bitfield representation of different metric types.
@@ -48,6 +50,8 @@ const (
 	MetricsBatchJobs
 	MetricsSiteResync
 	MetricNet
+	MetricsMem
+	MetricsCPU
 
 	// MetricsAll must be last.
 	// Enables all metrics.
@@ -150,6 +154,8 @@ type Metrics struct {
 	BatchJobs  *BatchJobMetrics   `json:"batchJobs,omitempty"`
 	SiteResync *SiteResyncMetrics `json:"siteResync,omitempty"`
 	Net        *NetMetrics        `json:"net,omitempty"`
+	Mem        *MemMetrics        `json:"mem,omitempty"`
+	CPU        *CPUMetrics        `json:"cpu,omitempty"`
 }
 
 // Merge other into r.
@@ -605,4 +611,55 @@ func (n *NetMetrics) Merge(other *NetMetrics) {
 	n.NetStats.TxCollisions += other.NetStats.TxCollisions
 	n.NetStats.TxCarrier += other.NetStats.TxCarrier
 	n.NetStats.TxCompressed += other.NetStats.TxCompressed
+}
+
+type MemMetrics struct {
+	// Time these metrics were collected
+	CollectedAt time.Time `json:"collected"`
+
+	Info MemInfo `json:"memInfo"`
+}
+
+// Merge other into 'm'.
+func (m *MemMetrics) Merge(other *MemMetrics) {
+	if m.CollectedAt.Before(other.CollectedAt) {
+		// Use latest timestamp
+		m.CollectedAt = other.CollectedAt
+	}
+
+	m.Info.Total += other.Info.Total
+	m.Info.Available += other.Info.Available
+	m.Info.SwapSpaceTotal += other.Info.SwapSpaceTotal
+	m.Info.SwapSpaceFree += other.Info.SwapSpaceFree
+	m.Info.Limit += other.Info.Limit
+}
+
+type CPUMetrics struct {
+	// Time these metrics were collected
+	CollectedAt time.Time `json:"collected"`
+
+	TimesStat *cpu.TimesStat `json:"timesStat"`
+	LoadStat  *load.AvgStat  `json:"loadStat"`
+}
+
+// Merge other into 'm'.
+func (m *CPUMetrics) Merge(other *CPUMetrics) {
+	if m.CollectedAt.Before(other.CollectedAt) {
+		// Use latest timestamp
+		m.CollectedAt = other.CollectedAt
+	}
+	m.TimesStat.User += other.TimesStat.User
+	m.TimesStat.System += other.TimesStat.System
+	m.TimesStat.Idle += other.TimesStat.Idle
+	m.TimesStat.Nice += other.TimesStat.Nice
+	m.TimesStat.Iowait += other.TimesStat.Iowait
+	m.TimesStat.Irq += other.TimesStat.Irq
+	m.TimesStat.Softirq += other.TimesStat.Softirq
+	m.TimesStat.Steal += other.TimesStat.Steal
+	m.TimesStat.Guest += other.TimesStat.Guest
+	m.TimesStat.GuestNice += other.TimesStat.GuestNice
+
+	m.LoadStat.Load1 += other.LoadStat.Load1
+	m.LoadStat.Load5 += other.LoadStat.Load5
+	m.LoadStat.Load15 += other.LoadStat.Load15
 }
