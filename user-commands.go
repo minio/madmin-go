@@ -572,6 +572,46 @@ func (adm *AdminClient) ListServiceAccounts(ctx context.Context, user string) (L
 	return listResp, nil
 }
 
+// ListAccessKeysLDAPResp is the response body of the list service accounts call
+type ListAccessKeysLDAPResp struct {
+	ServiceAccounts []ServiceAccountInfo `json:"serviceAccounts"`
+	STSKeys         []ServiceAccountInfo `json:"stsKeys"`
+}
+
+// ListAccessKeysLDAP - list service accounts belonging to the specified user
+func (adm *AdminClient) ListAccessKeysLDAP(ctx context.Context, user string, listType string) (ListAccessKeysLDAPResp, error) {
+	queryValues := url.Values{}
+	queryValues.Set("user", user)
+	queryValues.Set("listType", listType)
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/ldap/list-access-keys",
+		queryValues: queryValues,
+	}
+
+	// Execute GET on /minio/admin/v3/list-service-accounts
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return ListAccessKeysLDAPResp{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return ListAccessKeysLDAPResp{}, httpRespToErrorResponse(resp)
+	}
+
+	data, err := DecryptData(adm.getSecretKey(), resp.Body)
+	if err != nil {
+		return ListAccessKeysLDAPResp{}, err
+	}
+
+	var listResp ListAccessKeysLDAPResp
+	if err = json.Unmarshal(data, &listResp); err != nil {
+		return ListAccessKeysLDAPResp{}, err
+	}
+	return listResp, nil
+}
+
 // InfoServiceAccountResp is the response body of the info service account call
 type InfoServiceAccountResp struct {
 	ParentUser    string     `json:"parentUser"`
