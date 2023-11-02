@@ -579,10 +579,10 @@ type ListAccessKeysLDAPResp struct {
 }
 
 // ListAccessKeysLDAP - list service accounts belonging to the specified user
-func (adm *AdminClient) ListAccessKeysLDAP(ctx context.Context, user string, listType string) (ListAccessKeysLDAPResp, error) {
+func (adm *AdminClient) ListAccessKeysLDAP(ctx context.Context, userDN string, listType string) (ListAccessKeysLDAPResp, error) {
 	queryValues := url.Values{}
-	queryValues.Set("user", user)
 	queryValues.Set("listType", listType)
+	queryValues.Set("userDN", userDN)
 
 	reqData := requestData{
 		relPath:     adminAPIPrefix + "/ldap/list-access-keys",
