@@ -433,7 +433,7 @@ func (adm *AdminClient) AddServiceAccount(ctx context.Context, opts AddServiceAc
 	return serviceAccountResp.Credentials, nil
 }
 
-// AddServiceAccountLDAP - AddServiceAccount with extra featurs, restricted to LDAP users.
+// AddServiceAccountLDAP - AddServiceAccount with extra features, restricted to LDAP users.
 func (adm *AdminClient) AddServiceAccountLDAP(ctx context.Context, opts AddServiceAccountReq) (Credentials, error) {
 	if err := opts.Validate(); err != nil {
 		return Credentials{}, err
