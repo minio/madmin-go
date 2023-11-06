@@ -643,6 +643,7 @@ type SRInfo struct {
 	GroupPolicies  map[string]SRPolicyMapping    // map of groupname -> group policy mapping
 	ReplicationCfg map[string]replication.Config // map of bucket -> replication config
 	ILMExpiryRules map[string]ILMExpiryRule      // map of ILM Expiry rule to content
+	State          SRStateInfo                   // peer state
 }
 
 // SRMetaInfo - returns replication metadata info for a site.
@@ -812,6 +813,7 @@ type SRStatusOptions struct {
 	Groups         bool
 	Metrics        bool
 	ILMExpiryRules bool
+	PeerState      bool
 	Entity         SREntityType
 	EntityValue    string
 	ShowDeleted    bool
@@ -854,6 +856,7 @@ func (o *SRStatusOptions) getURLValues() url.Values {
 	urlValues.Set("showDeleted", strconv.FormatBool(o.ShowDeleted))
 	urlValues.Set("metrics", strconv.FormatBool(o.Metrics))
 	urlValues.Set("ilm-expiry-rules", strconv.FormatBool(o.ILMExpiryRules))
+	urlValues.Set("peer-state", strconv.FormatBool(o.PeerState))
 
 	if o.IsEntitySet() {
 		urlValues.Set("entityvalue", o.EntityValue)
@@ -1084,6 +1087,13 @@ type SRRemoveReq struct {
 
 // SRStateEditReq - arg body for SRStateEditReq
 type SRStateEditReq struct {
+	Peers     map[string]PeerInfo `json:"peers"`
+	UpdatedAt time.Time           `json:"updatedAt"`
+}
+
+// SRStateInfo - site replication state information
+type SRStateInfo struct {
+	Name      string              `json:"name"`
 	Peers     map[string]PeerInfo `json:"peers"`
 	UpdatedAt time.Time           `json:"updatedAt"`
 }
