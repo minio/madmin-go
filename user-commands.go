@@ -449,7 +449,7 @@ func (adm *AdminClient) AddServiceAccountLDAP(ctx context.Context, opts AddServi
 	}
 
 	reqData := requestData{
-		relPath: adminAPIPrefix + "/ldap/add-service-account",
+		relPath: adminAPIPrefix + "/idp/ldap/add-service-account",
 		content: econfigBytes,
 	}
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
@@ -585,7 +585,7 @@ func (adm *AdminClient) ListAccessKeysLDAP(ctx context.Context, userDN string, l
 	queryValues.Set("userDN", userDN)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefix + "/ldap/list-access-keys",
+		relPath:     adminAPIPrefix + "/idp/ldap/list-access-keys",
 		queryValues: queryValues,
 	}
 
