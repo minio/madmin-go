@@ -433,6 +433,47 @@ func (adm *AdminClient) AddServiceAccount(ctx context.Context, opts AddServiceAc
 	return serviceAccountResp.Credentials, nil
 }
 
+// AddServiceAccountLDAP - AddServiceAccount with extra features, restricted to LDAP users.
+func (adm *AdminClient) AddServiceAccountLDAP(ctx context.Context, opts AddServiceAccountReq) (Credentials, error) {
+	if err := opts.Validate(); err != nil {
+		return Credentials{}, err
+	}
+	data, err := json.Marshal(opts)
+	if err != nil {
+		return Credentials{}, err
+	}
+
+	econfigBytes, err := EncryptData(adm.getSecretKey(), data)
+	if err != nil {
+		return Credentials{}, err
+	}
+
+	reqData := requestData{
+		relPath: adminAPIPrefix + "/idp/ldap/add-service-account",
+		content: econfigBytes,
+	}
+	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return Credentials{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return Credentials{}, httpRespToErrorResponse(resp)
+	}
+
+	data, err = DecryptData(adm.getSecretKey(), resp.Body)
+	if err != nil {
+		return Credentials{}, err
+	}
+
+	var serviceAccountResp AddServiceAccountResp
+	if err = json.Unmarshal(data, &serviceAccountResp); err != nil {
+		return Credentials{}, err
+	}
+	return serviceAccountResp.Credentials, nil
+}
+
 // UpdateServiceAccountReq is the request options of the edit service account admin call
 type UpdateServiceAccountReq struct {
 	NewPolicy      json.RawMessage `json:"newPolicy,omitempty"` // Parsed policy from iam/policy.Parse
@@ -527,6 +568,46 @@ func (adm *AdminClient) ListServiceAccounts(ctx context.Context, user string) (L
 	var listResp ListServiceAccountsResp
 	if err = json.Unmarshal(data, &listResp); err != nil {
 		return ListServiceAccountsResp{}, err
+	}
+	return listResp, nil
+}
+
+// ListAccessKeysLDAPResp is the response body of the list service accounts call
+type ListAccessKeysLDAPResp struct {
+	ServiceAccounts []ServiceAccountInfo `json:"serviceAccounts"`
+	STSKeys         []ServiceAccountInfo `json:"stsKeys"`
+}
+
+// ListAccessKeysLDAP - list service accounts belonging to the specified user
+func (adm *AdminClient) ListAccessKeysLDAP(ctx context.Context, userDN string, listType string) (ListAccessKeysLDAPResp, error) {
+	queryValues := url.Values{}
+	queryValues.Set("listType", listType)
+	queryValues.Set("userDN", userDN)
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/idp/ldap/list-access-keys",
+		queryValues: queryValues,
+	}
+
+	// Execute GET on /minio/admin/v3/list-service-accounts
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return ListAccessKeysLDAPResp{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return ListAccessKeysLDAPResp{}, httpRespToErrorResponse(resp)
+	}
+
+	data, err := DecryptData(adm.getSecretKey(), resp.Body)
+	if err != nil {
+		return ListAccessKeysLDAPResp{}, err
+	}
+
+	var listResp ListAccessKeysLDAPResp
+	if err = json.Unmarshal(data, &listResp); err != nil {
+		return ListAccessKeysLDAPResp{}, err
 	}
 	return listResp, nil
 }
