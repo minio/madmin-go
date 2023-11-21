@@ -117,7 +117,6 @@ type SiteReplicationInfo struct {
 	Name                    string     `json:"name,omitempty"`
 	Sites                   []PeerInfo `json:"sites,omitempty"`
 	ServiceAccountAccessKey string     `json:"serviceAccountAccessKey,omitempty"`
-	ReplicateILMExpiry      bool       `json:"replicate-ilm-expiry"`
 }
 
 // SiteReplicationInfo - returns cluster replication information.
@@ -151,11 +150,11 @@ func (adm *AdminClient) SiteReplicationInfo(ctx context.Context) (info SiteRepli
 
 // SRPeerJoinReq - arg body for SRPeerJoin
 type SRPeerJoinReq struct {
-	SvcAcctAccessKey   string              `json:"svcAcctAccessKey"`
-	SvcAcctSecretKey   string              `json:"svcAcctSecretKey"`
-	SvcAcctParent      string              `json:"svcAcctParent"`
-	Peers              map[string]PeerInfo `json:"peers"`
-	ReplicateILMExpiry bool                `json:"replicate-ilm-expiry"`
+	SvcAcctAccessKey string              `json:"svcAcctAccessKey"`
+	SvcAcctSecretKey string              `json:"svcAcctSecretKey"`
+	SvcAcctParent    string              `json:"svcAcctParent"`
+	Peers            map[string]PeerInfo `json:"peers"`
+	UpdatedAt        time.Time           `json:"updatedAt"`
 }
 
 // PeerInfo - contains some properties of a cluster peer.
@@ -644,6 +643,7 @@ type SRInfo struct {
 	GroupPolicies  map[string]SRPolicyMapping    // map of groupname -> group policy mapping
 	ReplicationCfg map[string]replication.Config // map of bucket -> replication config
 	ILMExpiryRules map[string]ILMExpiryRule      // map of ILM Expiry rule to content
+	State          SRStateInfo                   // peer state
 }
 
 // SRMetaInfo - returns replication metadata info for a site.
@@ -813,6 +813,7 @@ type SRStatusOptions struct {
 	Groups         bool
 	Metrics        bool
 	ILMExpiryRules bool
+	PeerState      bool
 	Entity         SREntityType
 	EntityValue    string
 	ShowDeleted    bool
@@ -855,6 +856,7 @@ func (o *SRStatusOptions) getURLValues() url.Values {
 	urlValues.Set("showDeleted", strconv.FormatBool(o.ShowDeleted))
 	urlValues.Set("metrics", strconv.FormatBool(o.Metrics))
 	urlValues.Set("ilm-expiry-rules", strconv.FormatBool(o.ILMExpiryRules))
+	urlValues.Set("peer-state", strconv.FormatBool(o.PeerState))
 
 	if o.IsEntitySet() {
 		urlValues.Set("entityvalue", o.EntityValue)
@@ -983,6 +985,36 @@ func (adm *AdminClient) SRPeerEdit(ctx context.Context, pi PeerInfo) error {
 	return nil
 }
 
+// SRStateEdit - used only by minio server to update peer state
+// for a server already in the site replication setup
+func (adm *AdminClient) SRStateEdit(ctx context.Context, state SRStateEditReq) error {
+	b, err := json.Marshal(state)
+	if err != nil {
+		return err
+	}
+
+	q := make(url.Values)
+	q.Set("api-version", SiteReplAPIVersion)
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/site-replication/state/edit",
+		content:     b,
+		queryValues: q,
+	}
+
+	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+
+	return nil
+}
+
 // SiteReplicationRemove - unlinks a site from site replication
 func (adm *AdminClient) SiteReplicationRemove(ctx context.Context, removeReq SRRemoveReq) (st ReplicateRemoveStatus, err error) {
 	rmvBytes, err := json.Marshal(removeReq)
@@ -1051,6 +1083,19 @@ type SRRemoveReq struct {
 	RequestingDepID string   `json:"requestingDepID"`
 	SiteNames       []string `json:"sites"`
 	RemoveAll       bool     `json:"all"` // true if all sites are to be removed.
+}
+
+// SRStateEditReq - arg body for SRStateEditReq
+type SRStateEditReq struct {
+	Peers     map[string]PeerInfo `json:"peers"`
+	UpdatedAt time.Time           `json:"updatedAt"`
+}
+
+// SRStateInfo - site replication state information
+type SRStateInfo struct {
+	Name      string              `json:"name"`
+	Peers     map[string]PeerInfo `json:"peers"`
+	UpdatedAt time.Time           `json:"updatedAt"`
 }
 
 const (
