@@ -64,6 +64,13 @@ const BatchJobReplicateTemplate = `replicate:
       accessKey: ACCESS-KEY # Required
       secretKey: SECRET-KEY # Required
     # sessionToken: SESSION-TOKEN # Optional only available when rotating credentials are used
+    snowball: # automatically activated if the source is local
+      disable: false # optionally turn-off snowball archive transfer
+      batch: 100 # upto this many objects per archive
+      inmemory: true # indicates if the archive must be staged locally or in-memory
+      compress: false # S2/Snappy compressed archive
+      smallerThan: 5MiB # create archive for all objects smaller than 5MiB
+      skipErrs: false # skips any source side read() errors
 
   # target where the objects must be replicated
   target:
