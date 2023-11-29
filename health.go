@@ -1006,6 +1006,7 @@ type TLSCert struct {
 	SignatureAlgo string    `json:"signature_algo"`
 	NotBefore     time.Time `json:"not_before"`
 	NotAfter      time.Time `json:"not_after"`
+	Checksum      string    `json:"checksum"`
 }
 
 // MinioHealthInfo - Includes MinIO confifuration information
