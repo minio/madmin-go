@@ -40,13 +40,20 @@ func (t QuotaType) IsValid() bool {
 	return t == HardQuota
 }
 
+// BucketThrottleRule holds a bucket throttle rule
+type BucketThrottleRule struct {
+	ConcurrentRequestsCount uint64   `json:"concurrentRequestsCount"` // indicates no of concurrent requests
+	APIs                    []string `json:"apis"`                    // indicates list of APIs
+}
+
 // BucketQuota holds bucket quota restrictions
 type BucketQuota struct {
-	Quota    uint64    `json:"quota"`    // Deprecated Aug 2023
-	Size     uint64    `json:"size"`     // Indicates maximum size allowed per bucket
-	Rate     uint64    `json:"rate"`     // Indicates bandwidth rate allocated per bucket
-	Requests uint64    `json:"requests"` // Indicates number of requests allocated per bucket
-	Type     QuotaType `json:"quotatype,omitempty"`
+	Quota         uint64               `json:"quota"`    // Deprecated Aug 2023
+	Size          uint64               `json:"size"`     // Indicates maximum size allowed per bucket
+	Rate          uint64               `json:"rate"`     // Indicates bandwidth rate allocated per bucket
+	Requests      uint64               `json:"requests"` // Indicates number of requests allocated per bucket
+	Type          QuotaType            `json:"quotatype,omitempty"`
+	ThrottleRules []BucketThrottleRule `json:"throttleRules"` // indocates list of throttle rules per bucket
 }
 
 // IsValid returns false if quota is invalid
@@ -54,6 +61,14 @@ type BucketQuota struct {
 func (q BucketQuota) IsValid() bool {
 	if q.Quota > 0 {
 		return q.Type.IsValid()
+	}
+	if len(q.ThrottleRules) > 0 {
+		// if any throttle rule invalid, return false
+		for _, rule := range q.ThrottleRules {
+			if rule.ConcurrentRequestsCount <= 0 || len(rule.APIs) <= 0 {
+				return false
+			}
+		}
 	}
 	// Empty configs are valid.
 	return true
