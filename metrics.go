@@ -640,6 +640,7 @@ type CPUMetrics struct {
 
 	TimesStat *cpu.TimesStat `json:"timesStat"`
 	LoadStat  *load.AvgStat  `json:"loadStat"`
+	Count     int            `json:"count"`
 }
 
 // Merge other into 'm'.
