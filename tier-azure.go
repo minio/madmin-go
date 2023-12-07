@@ -21,6 +21,13 @@ package madmin
 
 //go:generate msgp -file $GOFILE
 
+// ServicePrincipalAuth holds fields for a successful SP authentication with Azure
+type ServicePrincipalAuth struct {
+	TenantID     string `json:",omitempty"`
+	ClientID     string `json:",omitempty"`
+	ClientSecret string `json:",omitempty"`
+}
+
 // TierAzure represents the remote tier configuration for Azure Blob Storage.
 type TierAzure struct {
 	Endpoint     string `json:",omitempty"`
@@ -30,10 +37,27 @@ type TierAzure struct {
 	Prefix       string `json:",omitempty"`
 	Region       string `json:",omitempty"`
 	StorageClass string `json:",omitempty"`
+
+	SPAuth ServicePrincipalAuth `json:",omitempty"`
+}
+
+// IsSPEnabled returns true if some SP related fields are provided
+func (ti TierAzure) IsSPEnabled() bool {
+	return ti.SPAuth.TenantID != "" || ti.SPAuth.ClientID != "" || ti.SPAuth.ClientSecret != ""
 }
 
 // AzureOptions supports NewTierAzure to take variadic options
 type AzureOptions func(*TierAzure) error
+
+// AzureServicePrincipal helper to supply optional service principal credentials
+func AzureServicePrincipal(tenantID, clientID, clientSecret string) func(az *TierAzure) error {
+	return func(az *TierAzure) error {
+		az.SPAuth.TenantID = tenantID
+		az.SPAuth.ClientID = clientID
+		az.SPAuth.ClientSecret = clientSecret
+		return nil
+	}
+}
 
 // AzurePrefix helper to supply optional object prefix to NewTierAzure
 func AzurePrefix(prefix string) func(az *TierAzure) error {

@@ -7,6 +7,159 @@ import (
 )
 
 // DecodeMsg implements msgp.Decodable
+func (z *ServicePrincipalAuth) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "TenantID":
+			z.TenantID, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "TenantID")
+				return
+			}
+		case "ClientID":
+			z.ClientID, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "ClientID")
+				return
+			}
+		case "ClientSecret":
+			z.ClientSecret, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "ClientSecret")
+				return
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z ServicePrincipalAuth) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 3
+	// write "TenantID"
+	err = en.Append(0x83, 0xa8, 0x54, 0x65, 0x6e, 0x61, 0x6e, 0x74, 0x49, 0x44)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.TenantID)
+	if err != nil {
+		err = msgp.WrapError(err, "TenantID")
+		return
+	}
+	// write "ClientID"
+	err = en.Append(0xa8, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x49, 0x44)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.ClientID)
+	if err != nil {
+		err = msgp.WrapError(err, "ClientID")
+		return
+	}
+	// write "ClientSecret"
+	err = en.Append(0xac, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.ClientSecret)
+	if err != nil {
+		err = msgp.WrapError(err, "ClientSecret")
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z ServicePrincipalAuth) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 3
+	// string "TenantID"
+	o = append(o, 0x83, 0xa8, 0x54, 0x65, 0x6e, 0x61, 0x6e, 0x74, 0x49, 0x44)
+	o = msgp.AppendString(o, z.TenantID)
+	// string "ClientID"
+	o = append(o, 0xa8, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x49, 0x44)
+	o = msgp.AppendString(o, z.ClientID)
+	// string "ClientSecret"
+	o = append(o, 0xac, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74)
+	o = msgp.AppendString(o, z.ClientSecret)
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *ServicePrincipalAuth) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "TenantID":
+			z.TenantID, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "TenantID")
+				return
+			}
+		case "ClientID":
+			z.ClientID, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ClientID")
+				return
+			}
+		case "ClientSecret":
+			z.ClientSecret, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ClientSecret")
+				return
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z ServicePrincipalAuth) Msgsize() (s int) {
+	s = 1 + 9 + msgp.StringPrefixSize + len(z.TenantID) + 9 + msgp.StringPrefixSize + len(z.ClientID) + 13 + msgp.StringPrefixSize + len(z.ClientSecret)
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *TierAzure) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
@@ -66,6 +219,47 @@ func (z *TierAzure) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "StorageClass")
 				return
 			}
+		case "SPAuth":
+			var zb0002 uint32
+			zb0002, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "SPAuth")
+				return
+			}
+			for zb0002 > 0 {
+				zb0002--
+				field, err = dc.ReadMapKeyPtr()
+				if err != nil {
+					err = msgp.WrapError(err, "SPAuth")
+					return
+				}
+				switch msgp.UnsafeString(field) {
+				case "TenantID":
+					z.SPAuth.TenantID, err = dc.ReadString()
+					if err != nil {
+						err = msgp.WrapError(err, "SPAuth", "TenantID")
+						return
+					}
+				case "ClientID":
+					z.SPAuth.ClientID, err = dc.ReadString()
+					if err != nil {
+						err = msgp.WrapError(err, "SPAuth", "ClientID")
+						return
+					}
+				case "ClientSecret":
+					z.SPAuth.ClientSecret, err = dc.ReadString()
+					if err != nil {
+						err = msgp.WrapError(err, "SPAuth", "ClientSecret")
+						return
+					}
+				default:
+					err = dc.Skip()
+					if err != nil {
+						err = msgp.WrapError(err, "SPAuth")
+						return
+					}
+				}
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -79,9 +273,9 @@ func (z *TierAzure) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *TierAzure) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 7
+	// map header, size 8
 	// write "Endpoint"
-	err = en.Append(0x87, 0xa8, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74)
+	err = en.Append(0x88, 0xa8, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74)
 	if err != nil {
 		return
 	}
@@ -150,15 +344,51 @@ func (z *TierAzure) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "StorageClass")
 		return
 	}
+	// write "SPAuth"
+	err = en.Append(0xa6, 0x53, 0x50, 0x41, 0x75, 0x74, 0x68)
+	if err != nil {
+		return
+	}
+	// map header, size 3
+	// write "TenantID"
+	err = en.Append(0x83, 0xa8, 0x54, 0x65, 0x6e, 0x61, 0x6e, 0x74, 0x49, 0x44)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.SPAuth.TenantID)
+	if err != nil {
+		err = msgp.WrapError(err, "SPAuth", "TenantID")
+		return
+	}
+	// write "ClientID"
+	err = en.Append(0xa8, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x49, 0x44)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.SPAuth.ClientID)
+	if err != nil {
+		err = msgp.WrapError(err, "SPAuth", "ClientID")
+		return
+	}
+	// write "ClientSecret"
+	err = en.Append(0xac, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.SPAuth.ClientSecret)
+	if err != nil {
+		err = msgp.WrapError(err, "SPAuth", "ClientSecret")
+		return
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z *TierAzure) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 7
+	// map header, size 8
 	// string "Endpoint"
-	o = append(o, 0x87, 0xa8, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74)
+	o = append(o, 0x88, 0xa8, 0x45, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74)
 	o = msgp.AppendString(o, z.Endpoint)
 	// string "AccountName"
 	o = append(o, 0xab, 0x41, 0x63, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x4e, 0x61, 0x6d, 0x65)
@@ -178,6 +408,18 @@ func (z *TierAzure) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "StorageClass"
 	o = append(o, 0xac, 0x53, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x43, 0x6c, 0x61, 0x73, 0x73)
 	o = msgp.AppendString(o, z.StorageClass)
+	// string "SPAuth"
+	o = append(o, 0xa6, 0x53, 0x50, 0x41, 0x75, 0x74, 0x68)
+	// map header, size 3
+	// string "TenantID"
+	o = append(o, 0x83, 0xa8, 0x54, 0x65, 0x6e, 0x61, 0x6e, 0x74, 0x49, 0x44)
+	o = msgp.AppendString(o, z.SPAuth.TenantID)
+	// string "ClientID"
+	o = append(o, 0xa8, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x49, 0x44)
+	o = msgp.AppendString(o, z.SPAuth.ClientID)
+	// string "ClientSecret"
+	o = append(o, 0xac, 0x43, 0x6c, 0x69, 0x65, 0x6e, 0x74, 0x53, 0x65, 0x63, 0x72, 0x65, 0x74)
+	o = msgp.AppendString(o, z.SPAuth.ClientSecret)
 	return
 }
 
@@ -241,6 +483,47 @@ func (z *TierAzure) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "StorageClass")
 				return
 			}
+		case "SPAuth":
+			var zb0002 uint32
+			zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "SPAuth")
+				return
+			}
+			for zb0002 > 0 {
+				zb0002--
+				field, bts, err = msgp.ReadMapKeyZC(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "SPAuth")
+					return
+				}
+				switch msgp.UnsafeString(field) {
+				case "TenantID":
+					z.SPAuth.TenantID, bts, err = msgp.ReadStringBytes(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "SPAuth", "TenantID")
+						return
+					}
+				case "ClientID":
+					z.SPAuth.ClientID, bts, err = msgp.ReadStringBytes(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "SPAuth", "ClientID")
+						return
+					}
+				case "ClientSecret":
+					z.SPAuth.ClientSecret, bts, err = msgp.ReadStringBytes(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "SPAuth", "ClientSecret")
+						return
+					}
+				default:
+					bts, err = msgp.Skip(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "SPAuth")
+						return
+					}
+				}
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -255,6 +538,6 @@ func (z *TierAzure) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *TierAzure) Msgsize() (s int) {
-	s = 1 + 9 + msgp.StringPrefixSize + len(z.Endpoint) + 12 + msgp.StringPrefixSize + len(z.AccountName) + 11 + msgp.StringPrefixSize + len(z.AccountKey) + 7 + msgp.StringPrefixSize + len(z.Bucket) + 7 + msgp.StringPrefixSize + len(z.Prefix) + 7 + msgp.StringPrefixSize + len(z.Region) + 13 + msgp.StringPrefixSize + len(z.StorageClass)
+	s = 1 + 9 + msgp.StringPrefixSize + len(z.Endpoint) + 12 + msgp.StringPrefixSize + len(z.AccountName) + 11 + msgp.StringPrefixSize + len(z.AccountKey) + 7 + msgp.StringPrefixSize + len(z.Bucket) + 7 + msgp.StringPrefixSize + len(z.Prefix) + 7 + msgp.StringPrefixSize + len(z.Region) + 13 + msgp.StringPrefixSize + len(z.StorageClass) + 7 + 1 + 9 + msgp.StringPrefixSize + len(z.SPAuth.TenantID) + 9 + msgp.StringPrefixSize + len(z.SPAuth.ClientID) + 13 + msgp.StringPrefixSize + len(z.SPAuth.ClientSecret)
 	return
 }
