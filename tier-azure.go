@@ -19,6 +19,8 @@
 
 package madmin
 
+import "errors"
+
 //go:generate msgp -file $GOFILE
 
 // ServicePrincipalAuth holds fields for a successful SP authentication with Azure
@@ -41,9 +43,9 @@ type TierAzure struct {
 	SPAuth ServicePrincipalAuth `json:",omitempty"`
 }
 
-// IsSPEnabled returns true if some SP related fields are provided
+// IsSPEnabled returns true if all SP related fields are provided
 func (ti TierAzure) IsSPEnabled() bool {
-	return ti.SPAuth.TenantID != "" || ti.SPAuth.ClientID != "" || ti.SPAuth.ClientSecret != ""
+	return ti.SPAuth.TenantID != "" && ti.SPAuth.ClientID != "" && ti.SPAuth.ClientSecret != ""
 }
 
 // AzureOptions supports NewTierAzure to take variadic options
@@ -52,6 +54,15 @@ type AzureOptions func(*TierAzure) error
 // AzureServicePrincipal helper to supply optional service principal credentials
 func AzureServicePrincipal(tenantID, clientID, clientSecret string) func(az *TierAzure) error {
 	return func(az *TierAzure) error {
+		if tenantID == "" {
+			return errors.New("empty tenant ID unsupported")
+		}
+		if clientID == "" {
+			return errors.New("empty client ID unsupported")
+		}
+		if clientSecret == "" {
+			return errors.New("empty client secret unsupported")
+		}
 		az.SPAuth.TenantID = tenantID
 		az.SPAuth.ClientID = clientID
 		az.SPAuth.ClientSecret = clientSecret
