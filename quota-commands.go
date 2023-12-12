@@ -53,7 +53,7 @@ type BucketQuota struct {
 	Rate          uint64               `json:"rate"`     // Indicates bandwidth rate allocated per bucket
 	Requests      uint64               `json:"requests"` // Indicates number of requests allocated per bucket
 	Type          QuotaType            `json:"quotatype,omitempty"`
-	ThrottleRules []BucketThrottleRule `json:"throttleRules"` // indocates list of throttle rules per bucket
+	ThrottleRules []BucketThrottleRule `json:"throttleRules"` // indicates list of throttle rules per bucket
 }
 
 // IsValid returns false if quota is invalid
@@ -72,6 +72,11 @@ func (q BucketQuota) IsValid() bool {
 	}
 	// Empty configs are valid.
 	return true
+}
+
+// IsBucketThrottled returns true if throttle rules set for the bucket
+func (q BucketQuota) IsBucketThrottled() bool {
+	return len(q.ThrottleRules) > 0
 }
 
 // GetBucketQuota - get info on a user
