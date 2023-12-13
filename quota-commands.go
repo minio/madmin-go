@@ -25,6 +25,8 @@ import (
 	"io/ioutil"
 	"net/http"
 	"net/url"
+	"strconv"
+	"strings"
 )
 
 // QuotaType represents bucket quota type
@@ -40,8 +42,22 @@ func (t QuotaType) IsValid() bool {
 	return t == HardQuota
 }
 
+// SetBucketQuotaOptions holds set bucket quota options
+type SetBucketQuotaOptions struct {
+	CreateNewRule bool
+	Update        bool
+}
+
+func (o *SetBucketQuotaOptions) getURLValues() url.Values {
+	urlValues := make(url.Values)
+	urlValues.Set("createNewRule", strconv.FormatBool(o.CreateNewRule))
+	urlValues.Set("update", strconv.FormatBool(o.Update))
+	return urlValues
+}
+
 // BucketThrottleRule holds a bucket throttle rule
 type BucketThrottleRule struct {
+	ID                      string   `json:id`                        // indicates unique id of rule
 	ConcurrentRequestsCount uint64   `json:"concurrentRequestsCount"` // indicates no of concurrent requests
 	APIs                    []string `json:"apis"`                    // indicates list of APIs
 }
@@ -79,6 +95,40 @@ func (q BucketQuota) IsBucketThrottled() bool {
 	return len(q.ThrottleRules) > 0
 }
 
+// HasDuplicateThrottleRules returns true if throttle rules set more than once
+// for same APIs
+func (q BucketQuota) HasDuplicateThrottleRules() (bool, string, string) {
+	rulesMap := make(map[string]BucketThrottleRule)
+	for _, rule := range q.ThrottleRules {
+		for _, api := range rule.APIs {
+			if eRule, ok := rulesMap[strings.ToLower(api)]; ok {
+				return true, api, eRule.ID
+			} else {
+				rulesMap[strings.ToLower(api)] = rule
+			}
+		}
+	}
+	return false, "", ""
+}
+
+// ThrottleRulesMap returns a map of APIs to applicable rule
+func (q BucketQuota) ThrottleRulesMap() map[string]BucketThrottleRule {
+	rulesMap := make(map[string]BucketThrottleRule)
+	for _, rule := range q.ThrottleRules {
+		for _, api := range rule.APIs {
+			if eRule, ok := rulesMap[api]; ok {
+				// apply the smaller value for the concurrent request count for the API
+				if eRule.ConcurrentRequestsCount > rule.ConcurrentRequestsCount {
+					rulesMap[api] = rule
+				}
+			} else {
+				rulesMap[api] = rule
+			}
+		}
+	}
+	return rulesMap
+}
+
 // GetBucketQuota - get info on a user
 func (adm *AdminClient) GetBucketQuota(ctx context.Context, bucket string) (q BucketQuota, err error) {
 	queryValues := url.Values{}
@@ -114,13 +164,13 @@ func (adm *AdminClient) GetBucketQuota(ctx context.Context, bucket string) (q Bu
 
 // SetBucketQuota - sets a bucket's quota, if quota is set to '0'
 // quota is disabled.
-func (adm *AdminClient) SetBucketQuota(ctx context.Context, bucket string, quota *BucketQuota) error {
+func (adm *AdminClient) SetBucketQuota(ctx context.Context, bucket string, quota *BucketQuota, opts SetBucketQuotaOptions) error {
 	data, err := json.Marshal(quota)
 	if err != nil {
 		return err
 	}
 
-	queryValues := url.Values{}
+	queryValues := opts.getURLValues()
 	queryValues.Set("bucket", bucket)
 
 	reqData := requestData{
