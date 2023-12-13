@@ -57,7 +57,7 @@ func (o *SetBucketQuotaOptions) getURLValues() url.Values {
 
 // BucketThrottleRule holds a bucket throttle rule
 type BucketThrottleRule struct {
-	ID                      string   `json:id`                        // indicates unique id of rule
+	ID                      string   `json:"id"`                      // indicates unique id of rule
 	ConcurrentRequestsCount uint64   `json:"concurrentRequestsCount"` // indicates no of concurrent requests
 	APIs                    []string `json:"apis"`                    // indicates list of APIs
 }
@@ -103,9 +103,8 @@ func (q BucketQuota) HasDuplicateThrottleRules() (bool, string, string) {
 		for _, api := range rule.APIs {
 			if eRule, ok := rulesMap[strings.ToLower(api)]; ok {
 				return true, api, eRule.ID
-			} else {
-				rulesMap[strings.ToLower(api)] = rule
 			}
+			rulesMap[strings.ToLower(api)] = rule
 		}
 	}
 	return false, "", ""
