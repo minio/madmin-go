@@ -67,6 +67,8 @@ const (
 	NotifyWebhookSubSys  = "notify_webhook"
 
 	LambdaWebhookSubSys = "lambda_webhook"
+
+	BrowserSubSys = "browser"
 )
 
 // SubSystems - list of all subsystems in MinIO
@@ -106,6 +108,7 @@ var SubSystems = set.CreateStringSet(
 	NotifyRedisSubSys,
 	NotifyWebhookSubSys,
 	LambdaWebhookSubSys,
+	BrowserSubSys,
 )
 
 // Standard config keys and values.
