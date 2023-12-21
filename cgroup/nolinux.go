@@ -24,6 +24,6 @@ package cgroup
 import "errors"
 
 // GetMemoryLimit - Not implemented in non-linux platforms
-func GetMemoryLimit(pid int) (limit uint64, err error) {
+func GetMemoryLimit(_ int) (limit uint64, err error) {
 	return limit, errors.New("Not implemented for non-linux platforms")
 }

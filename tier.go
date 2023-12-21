@@ -111,8 +111,14 @@ func (adm *AdminClient) ListTiers(ctx context.Context) ([]*TierConfig, error) {
 type TierCreds struct {
 	AccessKey string `json:"access,omitempty"`
 	SecretKey string `json:"secret,omitempty"`
+
+	AWSRole                     bool   `json:"awsrole"`
+	AWSRoleWebIdentityTokenFile string `json:"awsroleWebIdentity,omitempty"`
+	AWSRoleARN                  string `json:"awsroleARN,omitempty"`
+
+	AzSP ServicePrincipalAuth `json:"azSP,omitempty"`
+
 	CredsJSON []byte `json:"creds,omitempty"`
-	AWSRole   bool   `json:"awsrole"`
 }
 
 // EditTier supports updating credentials for the remote tier identified by tierName.
