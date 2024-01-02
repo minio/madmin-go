@@ -396,6 +396,17 @@ type XFSErrorConfig struct {
 	MaxRetries int    `json:"max_retries"`
 }
 
+// THPConfigs - stores transparent huge pages (THP) related configs
+type THPConfigs struct {
+	// /sys/kernel/mm/transparent_hugepage/enabled
+	Enabled string `json:"enabled"`
+	// /sys/kernel/mm/transparent_hugepage/defrag
+	Defrag string `json:"defrag"`
+	// /sys/kernel/mm/transparent_hugepage/khugepaged/max_ptes_none
+	MaxPtesNone int    `json:"max_ptes_none"`
+	Error       string `json:"error,omitempty"`
+}
+
 // GetOSInfo returns linux only operating system's information.
 func GetOSInfo(ctx context.Context, addr string) OSInfo {
 	if runtime.GOOS != "linux" {
@@ -467,6 +478,8 @@ func GetSysConfig(_ context.Context, addr string) SysConfig {
 		sc.Config["xfs-error-config"] = xfsErrorConfigs
 	}
 
+	sc.Config["thp-config"] = getTHPConfigs()
+
 	return sc
 }
 
@@ -485,6 +498,31 @@ func readIntFromFile(filePath string) (num int, err error) {
 	}
 
 	return strconv.Atoi(strings.TrimSpace(string(data)))
+}
+
+func getTHPConfigs() THPConfigs {
+	data, err := os.ReadFile("/sys/kernel/mm/transparent_hugepage/enabled")
+	if err != nil {
+		return THPConfigs{Error: err.Error()}
+	}
+	configs := THPConfigs{Enabled: strings.TrimSpace(string(data))}
+
+	data, err = os.ReadFile("/sys/kernel/mm/transparent_hugepage/defrag")
+	if err != nil {
+		return THPConfigs{Error: err.Error()}
+	}
+	configs.Defrag = strings.TrimSpace(string(data))
+
+	data, err = os.ReadFile("/sys/kernel/mm/transparent_hugepage/khugepaged/max_ptes_none")
+	if err != nil {
+		return THPConfigs{Error: err.Error()}
+	}
+
+	configs.MaxPtesNone, err = strconv.Atoi(strings.TrimSpace(string(data)))
+	if err != nil {
+		return THPConfigs{Error: err.Error()}
+	}
+	return configs
 }
 
 func getXFSErrorMaxRetries() XFSErrorConfigs {
