@@ -493,24 +493,26 @@ func getTHPConfigs() map[string]interface{} {
 	configs := map[string]interface{}{}
 	data, err := os.ReadFile("/sys/kernel/mm/transparent_hugepage/enabled")
 	if err != nil {
-		return map[string]interface{}{"error": err.Error()}
+		configs["enabled_error"] = err.Error()
+	} else {
+		configs["enabled"] = strings.TrimSpace(string(data))
 	}
-	configs["enabled"] = strings.TrimSpace(string(data))
 
 	data, err = os.ReadFile("/sys/kernel/mm/transparent_hugepage/defrag")
 	if err != nil {
-		return map[string]interface{}{"error": err.Error()}
+		configs["defrag_error"] = err.Error()
+	} else {
+		configs["defrag"] = strings.TrimSpace(string(data))
 	}
-	configs["defrag"] = strings.TrimSpace(string(data))
 
 	data, err = os.ReadFile("/sys/kernel/mm/transparent_hugepage/khugepaged/max_ptes_none")
 	if err != nil {
-		return map[string]interface{}{"error": err.Error()}
-	}
-
-	configs["max_ptes_none"], err = strconv.Atoi(strings.TrimSpace(string(data)))
-	if err != nil {
-		return map[string]interface{}{"error": err.Error()}
+		configs["max_ptes_none_error"] = err.Error()
+	} else {
+		configs["max_ptes_none"], err = strconv.Atoi(strings.TrimSpace(string(data)))
+		if err != nil {
+			configs["max_ptes_none_error"] = err.Error()
+		}
 	}
 
 	return configs
