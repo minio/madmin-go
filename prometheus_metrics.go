@@ -71,10 +71,11 @@ func (client *MetricsClient) fetchMetrics(ctx context.Context, subSystem string)
 		return nil, httpRespToErrorResponse(resp)
 	}
 
-	return parsePrometheusResults(io.LimitReader(resp.Body, metricsRespBodyLimit))
+	return ParsePrometheusResults(io.LimitReader(resp.Body, metricsRespBodyLimit))
 }
 
-func parsePrometheusResults(reader io.Reader) (results []*prom2json.Family, err error) {
+// ParsePrometheusResults Returns Prometheus objects from string reader
+func ParsePrometheusResults(reader io.Reader) (results []*prom2json.Family, err error) {
 	mfChan := make(chan *dto.MetricFamily)
 	errChan := make(chan error)
 
