@@ -411,10 +411,24 @@ type ServerProperties struct {
 type DiskMetrics struct {
 	LastMinute map[string]TimedAction `json:"lastMinute,omitempty"`
 	APICalls   map[string]uint64      `json:"apiCalls,omitempty"`
-	// Captures all data availability errors such as permission denied, faulty disk and timeout errors.
+
+	// TotalTokens set per drive max concurrent I/O.
+	TotalTokens uint32 `json:"totalTokens,omitempty"`
+	// TotalWaiting the amount of concurrent I/O waiting on disk
+	TotalWaiting uint32 `json:"totalWaiting,omitempty"`
+
+	// Captures all data availability errors such as
+	// permission denied, faulty disk and timeout errors.
 	TotalErrorsAvailability uint64 `json:"totalErrorsAvailability,omitempty"`
 	// Captures all timeout only errors
 	TotalErrorsTimeout uint64 `json:"totalErrorsTimeout,omitempty"`
+
+	// Total writes on disk (could be empty if the feature
+	// is not enabled on the server)
+	TotalWrites uint64 `json:"totalWrites,omitempty"`
+	// Total deletes on disk (could be empty if the feature
+	// is not enabled on the server)
+	TotalDeletes uint64 `json:"totalDeletes,omitempty"`
 
 	// Deprecated: Use LastMinute instead. Not populated from servers after July 2022.
 	APILatencies map[string]interface{} `json:"apiLatencies,omitempty"`

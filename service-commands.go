@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -31,22 +31,26 @@ import (
 
 // ServiceRestart - restarts the MinIO cluster
 func (adm *AdminClient) ServiceRestart(ctx context.Context) error {
-	return adm.serviceCallAction(ctx, ServiceActionRestart)
+	_, err := adm.serviceCallActionV2(ctx, ServiceActionOpts{Action: ServiceActionRestart})
+	return err
 }
 
 // ServiceStop - stops the MinIO cluster
 func (adm *AdminClient) ServiceStop(ctx context.Context) error {
-	return adm.serviceCallAction(ctx, ServiceActionStop)
+	_, err := adm.serviceCallActionV2(ctx, ServiceActionOpts{Action: ServiceActionStop})
+	return err
 }
 
 // ServiceFreeze - freezes all incoming S3 API calls on MinIO cluster
 func (adm *AdminClient) ServiceFreeze(ctx context.Context) error {
-	return adm.serviceCallAction(ctx, ServiceActionFreeze)
+	_, err := adm.serviceCallActionV2(ctx, ServiceActionOpts{Action: ServiceActionFreeze})
+	return err
 }
 
 // ServiceUnfreeze - un-freezes all incoming S3 API calls on MinIO cluster
 func (adm *AdminClient) ServiceUnfreeze(ctx context.Context) error {
-	return adm.serviceCallAction(ctx, ServiceActionUnfreeze)
+	_, err := adm.serviceCallActionV2(ctx, ServiceActionOpts{Action: ServiceActionUnfreeze})
+	return err
 }
 
 // ServiceAction - type to restrict service-action values
@@ -63,10 +67,42 @@ const (
 	ServiceActionUnfreeze = "unfreeze"
 )
 
-// serviceCallAction - call service restart/update/stop API.
-func (adm *AdminClient) serviceCallAction(ctx context.Context, action ServiceAction) error {
+// ServiceActionOpts specifies the action that the service is requested
+// to take, dryRun indicates if the action is a no-op, force indicates
+// that server must make best effort to restart the process.
+type ServiceActionOpts struct {
+	Action ServiceAction
+	DryRun bool
+	Force  bool
+}
+
+// ServiceActionPeerResult service peer result
+type ServiceActionPeerResult struct {
+	Host          string                 `json:"host"`
+	Err           string                 `json:"err,omitempty"`
+	WaitingDrives map[string]DiskMetrics `json:"waitingDrives,omitempty"`
+}
+
+// ServiceActionResult service action result
+type ServiceActionResult struct {
+	Action  ServiceAction             `json:"action"`
+	Forced  bool                      `json:"forced"`
+	DryRun  bool                      `json:"dryRun"`
+	Results []ServiceActionPeerResult `json:"results,omitempty"`
+}
+
+// ServiceAction - specify the type of service action that we are requesting the server to perform
+func (adm *AdminClient) ServiceAction(ctx context.Context, opts ServiceActionOpts) (ServiceActionResult, error) {
+	return adm.serviceCallActionV2(ctx, opts)
+}
+
+// serviceCallActionV2 - call service restart/stop/freeze/unfreeze
+func (adm *AdminClient) serviceCallActionV2(ctx context.Context, opts ServiceActionOpts) (ServiceActionResult, error) {
 	queryValues := url.Values{}
-	queryValues.Set("action", string(action))
+	queryValues.Set("action", string(opts.Action))
+	queryValues.Set("dry-run", strconv.FormatBool(opts.DryRun))
+	queryValues.Set("force", strconv.FormatBool(opts.Force))
+	queryValues.Set("type", "2")
 
 	// Request API to Restart server
 	resp, err := adm.executeMethod(ctx,
@@ -77,14 +113,20 @@ func (adm *AdminClient) serviceCallAction(ctx context.Context, action ServiceAct
 	)
 	defer closeResponse(resp)
 	if err != nil {
-		return err
+		return ServiceActionResult{}, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return httpRespToErrorResponse(resp)
+		return ServiceActionResult{}, httpRespToErrorResponse(resp)
 	}
 
-	return nil
+	srvRes := ServiceActionResult{}
+	dec := json.NewDecoder(resp.Body)
+	if err = dec.Decode(&srvRes); err != nil {
+		return ServiceActionResult{}, err
+	}
+
+	return srvRes, nil
 }
 
 // ServiceTraceInfo holds http trace
