@@ -489,33 +489,22 @@ func readIntFromFile(filePath string) (num int, err error) {
 	return strconv.Atoi(strings.TrimSpace(string(data)))
 }
 
-func getTHPConfigs() map[string]interface{} {
-	configs := map[string]interface{}{}
-	data, err := os.ReadFile("/sys/kernel/mm/transparent_hugepage/enabled")
-	if err != nil {
-		configs["enabled_error"] = err.Error()
-	} else {
-		configs["enabled"] = strings.TrimSpace(string(data))
-	}
-
-	data, err = os.ReadFile("/sys/kernel/mm/transparent_hugepage/defrag")
-	if err != nil {
-		configs["defrag_error"] = err.Error()
-	} else {
-		configs["defrag"] = strings.TrimSpace(string(data))
-	}
-
-	data, err = os.ReadFile("/sys/kernel/mm/transparent_hugepage/khugepaged/max_ptes_none")
-	if err != nil {
-		configs["max_ptes_none_error"] = err.Error()
-	} else {
-		configs["max_ptes_none"], err = strconv.Atoi(strings.TrimSpace(string(data)))
-		if err != nil {
-			configs["max_ptes_none_error"] = err.Error()
-		}
-	}
-
+func getTHPConfigs() map[string]string {
+	configs := map[string]string{}
+	captureTHPConfig(configs, "/sys/kernel/mm/transparent_hugepage/enabled", "enabled")
+	captureTHPConfig(configs, "/sys/kernel/mm/transparent_hugepage/defrag", "defrag")
+	captureTHPConfig(configs, "/sys/kernel/mm/transparent_hugepage/khugepaged/max_ptes_none", "max_ptes_none")
 	return configs
+}
+
+func captureTHPConfig(configs map[string]string, filePath string, cfgName string) {
+	errFieldName := "cfgName" + "_error"
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		configs[errFieldName] = err.Error()
+		return
+	}
+	configs[cfgName] = strings.TrimSpace(string(data))
 }
 
 func getXFSErrorMaxRetries() XFSErrorConfigs {
