@@ -467,6 +467,8 @@ func GetSysConfig(_ context.Context, addr string) SysConfig {
 		sc.Config["xfs-error-config"] = xfsErrorConfigs
 	}
 
+	sc.Config["thp-config"] = getTHPConfigs()
+
 	return sc
 }
 
@@ -485,6 +487,24 @@ func readIntFromFile(filePath string) (num int, err error) {
 	}
 
 	return strconv.Atoi(strings.TrimSpace(string(data)))
+}
+
+func getTHPConfigs() map[string]string {
+	configs := map[string]string{}
+	captureTHPConfig(configs, "/sys/kernel/mm/transparent_hugepage/enabled", "enabled")
+	captureTHPConfig(configs, "/sys/kernel/mm/transparent_hugepage/defrag", "defrag")
+	captureTHPConfig(configs, "/sys/kernel/mm/transparent_hugepage/khugepaged/max_ptes_none", "max_ptes_none")
+	return configs
+}
+
+func captureTHPConfig(configs map[string]string, filePath string, cfgName string) {
+	errFieldName := cfgName + "_error"
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		configs[errFieldName] = err.Error()
+		return
+	}
+	configs[cfgName] = strings.TrimSpace(string(data))
 }
 
 func getXFSErrorMaxRetries() XFSErrorConfigs {
