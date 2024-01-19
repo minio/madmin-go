@@ -21,10 +21,11 @@ package madmin
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 
-	dto "github.com/prometheus/client_model/go"
+	"github.com/prometheus/common/expfmt"
 	"github.com/prometheus/prom2json"
 )
 
@@ -71,26 +72,21 @@ func (client *MetricsClient) fetchMetrics(ctx context.Context, subSystem string)
 		return nil, httpRespToErrorResponse(resp)
 	}
 
-	return parsePrometheusResults(io.LimitReader(resp.Body, metricsRespBodyLimit))
+	return ParsePrometheusResults(io.LimitReader(resp.Body, metricsRespBodyLimit))
 }
 
-func parsePrometheusResults(reader io.Reader) (results []*prom2json.Family, err error) {
-	mfChan := make(chan *dto.MetricFamily)
-	errChan := make(chan error)
-
-	go func() {
-		defer close(errChan)
-		err = prom2json.ParseReader(reader, mfChan)
-		if err != nil {
-			errChan <- err
-		}
-	}()
-
-	for mf := range mfChan {
-		results = append(results, prom2json.NewFamily(mf))
+func ParsePrometheusResults(reader io.Reader) (results []*prom2json.Family, err error) {
+	// We could do further content-type checks here, but the
+	// fallback for now will anyway be the text format
+	// version 0.0.4, so just go for it and see if it works.
+	var parser expfmt.TextParser
+	metricFamilies, err := parser.TextToMetricFamilies(reader)
+	if err != nil {
+		return nil, fmt.Errorf("reading text format failed: %v", err)
 	}
-	if err := <-errChan; err != nil {
-		return nil, err
+	results = make([]*prom2json.Family, 0, len(metricFamilies))
+	for _, mf := range metricFamilies {
+		results = append(results, prom2json.NewFamily(mf))
 	}
 	return results, nil
 }
