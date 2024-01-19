@@ -498,7 +498,7 @@ func getTHPConfigs() map[string]string {
 }
 
 func captureTHPConfig(configs map[string]string, filePath string, cfgName string) {
-	errFieldName := "cfgName" + "_error"
+	errFieldName := cfgName + "_error"
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		configs[errFieldName] = err.Error()
