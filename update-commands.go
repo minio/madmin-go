@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"strconv"
 )
 
 // ServerPeerUpdateStatus server update peer binary update result
@@ -41,12 +42,22 @@ type ServerUpdateStatusV2 struct {
 	Results []ServerPeerUpdateStatus `json:"results,omitempty"`
 }
 
+// ServerUpdateOpts specifies the URL (optionally to download the binary from)
+// also allows a dry-run, the new API is idempotent which means you can
+// run it as many times as you want and any server that is not upgraded
+// automatically does get upgraded eventually to the relevant version.
+type ServerUpdateOpts struct {
+	UpdateURL string
+	DryRun    bool
+}
+
 // ServerUpdateV2 - updates and restarts the MinIO cluster to latest version.
 // optionally takes an input URL to specify a custom update binary link
-func (adm *AdminClient) ServerUpdateV2(ctx context.Context, updateURL string) (us ServerUpdateStatusV2, err error) {
+func (adm *AdminClient) ServerUpdateV2(ctx context.Context, opts ServerUpdateOpts) (us ServerUpdateStatusV2, err error) {
 	queryValues := url.Values{}
-	queryValues.Set("updateURL", updateURL)
 	queryValues.Set("type", "2")
+	queryValues.Set("updateURL", opts.UpdateURL)
+	queryValues.Set("dry-run", strconv.FormatBool(opts.DryRun))
 
 	// Request API to Restart server
 	resp, err := adm.executeMethod(ctx,

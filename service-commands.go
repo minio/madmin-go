@@ -73,7 +73,6 @@ const (
 type ServiceActionOpts struct {
 	Action ServiceAction
 	DryRun bool
-	Force  bool
 }
 
 // ServiceActionPeerResult service peer result
@@ -86,7 +85,6 @@ type ServiceActionPeerResult struct {
 // ServiceActionResult service action result
 type ServiceActionResult struct {
 	Action  ServiceAction             `json:"action"`
-	Forced  bool                      `json:"forced"`
 	DryRun  bool                      `json:"dryRun"`
 	Results []ServiceActionPeerResult `json:"results,omitempty"`
 }
@@ -101,7 +99,6 @@ func (adm *AdminClient) serviceCallActionV2(ctx context.Context, opts ServiceAct
 	queryValues := url.Values{}
 	queryValues.Set("action", string(opts.Action))
 	queryValues.Set("dry-run", strconv.FormatBool(opts.DryRun))
-	queryValues.Set("force", strconv.FormatBool(opts.Force))
 	queryValues.Set("type", "2")
 
 	// Request API to Restart server
