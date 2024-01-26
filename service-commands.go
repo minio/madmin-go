@@ -29,26 +29,26 @@ import (
 	"time"
 )
 
-// ServiceRestart - restarts the MinIO cluster
-func (adm *AdminClient) ServiceRestart(ctx context.Context) error {
+// ServiceRestartV2 - restarts the MinIO cluster
+func (adm *AdminClient) ServiceRestartV2(ctx context.Context) error {
 	_, err := adm.serviceCallActionV2(ctx, ServiceActionOpts{Action: ServiceActionRestart})
 	return err
 }
 
 // ServiceStop - stops the MinIO cluster
-func (adm *AdminClient) ServiceStop(ctx context.Context) error {
+func (adm *AdminClient) ServiceStopV2(ctx context.Context) error {
 	_, err := adm.serviceCallActionV2(ctx, ServiceActionOpts{Action: ServiceActionStop})
 	return err
 }
 
 // ServiceFreeze - freezes all incoming S3 API calls on MinIO cluster
-func (adm *AdminClient) ServiceFreeze(ctx context.Context) error {
+func (adm *AdminClient) ServiceFreezeV2(ctx context.Context) error {
 	_, err := adm.serviceCallActionV2(ctx, ServiceActionOpts{Action: ServiceActionFreeze})
 	return err
 }
 
 // ServiceUnfreeze - un-freezes all incoming S3 API calls on MinIO cluster
-func (adm *AdminClient) ServiceUnfreeze(ctx context.Context) error {
+func (adm *AdminClient) ServiceUnfreezeV2(ctx context.Context) error {
 	_, err := adm.serviceCallActionV2(ctx, ServiceActionOpts{Action: ServiceActionUnfreeze})
 	return err
 }
