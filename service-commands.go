@@ -35,19 +35,19 @@ func (adm *AdminClient) ServiceRestartV2(ctx context.Context) error {
 	return err
 }
 
-// ServiceStop - stops the MinIO cluster
+// ServiceStopV2 - stops the MinIO cluster
 func (adm *AdminClient) ServiceStopV2(ctx context.Context) error {
 	_, err := adm.serviceCallActionV2(ctx, ServiceActionOpts{Action: ServiceActionStop})
 	return err
 }
 
-// ServiceFreeze - freezes all incoming S3 API calls on MinIO cluster
+// ServiceFreezeV2 - freezes all incoming S3 API calls on MinIO cluster
 func (adm *AdminClient) ServiceFreezeV2(ctx context.Context) error {
 	_, err := adm.serviceCallActionV2(ctx, ServiceActionOpts{Action: ServiceActionFreeze})
 	return err
 }
 
-// ServiceUnfreeze - un-freezes all incoming S3 API calls on MinIO cluster
+// ServiceUnfreezeV2 - un-freezes all incoming S3 API calls on MinIO cluster
 func (adm *AdminClient) ServiceUnfreezeV2(ctx context.Context) error {
 	_, err := adm.serviceCallActionV2(ctx, ServiceActionOpts{Action: ServiceActionUnfreeze})
 	return err

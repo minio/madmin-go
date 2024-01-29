@@ -25,12 +25,17 @@ import (
 	"net/url"
 )
 
-// Deprecated: ServiceRestart - restarts the MinIO cluster
+// ServiceRestart - Deprecated: restarts the MinIO cluster
 func (adm *AdminClient) ServiceRestart(ctx context.Context) error {
 	return adm.serviceCallAction(ctx, ServiceActionRestart)
 }
 
-// Deprecated: ServiceUnfreeze - un-freezes all incoming S3 API calls on MinIO cluster
+// ServiceStop - Deprecated: stops the MinIO cluster
+func (adm *AdminClient) ServiceStop(ctx context.Context) error {
+	return adm.serviceCallAction(ctx, ServiceActionStop)
+}
+
+// ServiceUnfreeze - Deprecated: un-freezes all incoming S3 API calls on MinIO cluster
 func (adm *AdminClient) ServiceUnfreeze(ctx context.Context) error {
 	return adm.serviceCallAction(ctx, ServiceActionUnfreeze)
 }
