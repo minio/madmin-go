@@ -31,8 +31,16 @@ import (
 type LogMask uint64
 
 const (
-	LogMaskMinIO LogMask = 1 << iota
-	LogMaskApplication
+	// LogMaskMinIO - mask for MinIO type log
+	LogMaskMinIO LogMask = 1 << iota // Deprecated Jan 2024
+	// LogMaskApplication - mask for MinIO type log
+	LogMaskApplication // Deprecated Jan 2024
+
+	LogMaskFatal
+	LogMaskWarning
+	LogMaskError
+	LogMaskEvent
+	LogMaskInfo
 
 	// LogMaskAll must be the last.
 	LogMaskAll LogMask = (1 << iota) - 1
@@ -52,12 +60,18 @@ func (m LogMask) Contains(other LogMask) bool {
 type LogKind string
 
 const (
-	// LogKindMinio Minio errors
-	LogKindMinio LogKind = "MINIO"
-	// LogKindApplication Application errors
-	LogKindApplication LogKind = "APPLICATION"
-	// LogKindAll All errors
-	LogKindAll LogKind = "ALL"
+	// LogKindMinio - MinIO log type
+	LogKindMinio LogKind = "MINIO" // Deprecated Jan 2024
+	// LogKindApplication - Application log type
+	LogKindApplication LogKind = "APPLICATION" // Deprecated Jan 2024
+	// LogKindAll - all logs type
+	LogKindAll LogKind = "ALL" // Deprecated Jan 2024
+
+	LogKindFatal   LogKind = "FATAL"
+	LogKindWarning LogKind = "WARNING"
+	LogKindError   LogKind = "ERROR"
+	LogKindEvent   LogKind = "EVENT"
+	LogKindInfo    LogKind = "INFO"
 )
 
 // LogMask returns the mask based on the kind.
@@ -67,10 +81,18 @@ func (l LogKind) LogMask() LogMask {
 		return LogMaskMinIO
 	case LogKindApplication:
 		return LogMaskApplication
-	case LogKindAll:
-		return LogMaskAll
+	case LogKindFatal:
+		return LogMaskFatal
+	case LogKindWarning:
+		return LogMaskWarning
+	case LogKindError:
+		return LogMaskError
+	case LogKindEvent:
+		return LogMaskEvent
+	case LogKindInfo:
+		return LogMaskInfo
 	}
-	return 0
+	return LogMaskAll
 }
 
 func (l LogKind) String() string {
