@@ -1217,8 +1217,38 @@ type SRMetricsSummary struct {
 	ReplicaCount int64 `json:"replicaCount"`
 	// queue metrics
 	Queued InQueueMetric `json:"queued"`
+	// proxied metrics
+	Proxied ReplProxyMetric `json:"proxied"`
 	// replication metrics summary for each site replication peer
 	Metrics map[string]SRMetric `json:"replMetrics"`
 	// uptime of node being queried for site replication metrics
 	Uptime int64 `json:"uptime"`
+}
+
+// ReplProxyMetric holds stats for replication proxying
+type ReplProxyMetric struct {
+	PutTagTotal       uint64 `json:"putTaggingProxyTotal" msg:"ptc"`
+	GetTagTotal       uint64 `json:"getTaggingProxyTotal" msg:"gtc"`
+	RmvTagTotal       uint64 `json:"removeTaggingProxyTotal" msg:"rtc"`
+	GetTotal          uint64 `json:"getProxyTotal" msg:"gc"`
+	HeadTotal         uint64 `json:"headProxyTotal" msg:"hc"`
+	PutTagFailedTotal uint64 `json:"putTaggingProxyFailed" msg:"ptc"`
+	GetTagFailedTotal uint64 `json:"getTaggingProxyFailed" msg:"gtc"`
+	RmvTagFailedTotal uint64 `json:"removeTaggingProxyFailed" msg:"rtc"`
+	GetFailedTotal    uint64 `json:"getProxyFailed" msg:"gc"`
+	HeadFailedTotal   uint64 `json:"headProxyFailed" msg:"hc"`
+}
+
+// Add updates proxy metrics
+func (p *ReplProxyMetric) Add(p2 ReplProxyMetric) {
+	p.GetTagTotal += p2.GetTagTotal
+	p.PutTagTotal += p2.PutTagTotal
+	p.RmvTagTotal += p2.RmvTagTotal
+	p.GetTotal += p2.GetTotal
+	p.HeadTotal += p2.HeadTotal
+	p.PutTagFailedTotal += p2.PutTagFailedTotal
+	p.GetTagFailedTotal += p2.GetTagFailedTotal
+	p.RmvTagFailedTotal += p2.RmvTagFailedTotal
+	p.GetFailedTotal += p2.GetFailedTotal
+	p.HeadFailedTotal += p2.HeadFailedTotal
 }
