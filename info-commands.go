@@ -23,6 +23,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -204,11 +205,22 @@ type DataUsageInfo struct {
 
 	// Deprecated kept here for backward compatibility reasons.
 	BucketSizes map[string]uint64 `json:"bucketsSizes"`
+
+	// Server capacity related data
+	TotalCapacity     uint64 `json:"capacity"`
+	TotalFreeCapacity uint64 `json:"freeCapacity"`
+	TotalUsedCapacity uint64 `json:"usedCapacity"`
 }
 
 // DataUsageInfo - returns data usage of the current object API
 func (adm *AdminClient) DataUsageInfo(ctx context.Context) (DataUsageInfo, error) {
-	resp, err := adm.executeMethod(ctx, http.MethodGet, requestData{relPath: adminAPIPrefix + "/datausageinfo"})
+	values := make(url.Values)
+	values.Set("capacity", "true") // We can make this configurable in future but for now its fine.
+
+	resp, err := adm.executeMethod(ctx, http.MethodGet, requestData{
+		relPath:     adminAPIPrefix + "/datausageinfo",
+		queryValues: values,
+	})
 	defer closeResponse(resp)
 	if err != nil {
 		return DataUsageInfo{}, err
