@@ -28,9 +28,9 @@ type logArgs struct {
 
 // Trace - defines the trace.
 type logTrace struct {
-	Message   string            `json:"message,omitempty"`
-	Source    []string          `json:"source,omitempty"`
-	Variables map[string]string `json:"variables,omitempty"`
+	Message   string                 `json:"message,omitempty"`
+	Source    []string               `json:"source,omitempty"`
+	Variables map[string]interface{} `json:"variables,omitempty"`
 }
 
 // API - defines the api type and its args.
