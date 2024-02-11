@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"strconv"
 	"time"
 )
 
@@ -477,13 +478,36 @@ type Disk struct {
 	DiskIndex int `json:"disk_index"`
 }
 
+// ServerInfoOpts ask for additional data from the server
+type ServerInfoOpts struct {
+	Metrics bool
+}
+
+// WithDriveMetrics asks server to return additional metrics per drive
+func WithDriveMetrics(metrics bool) func(*ServerInfoOpts) {
+	return func(opts *ServerInfoOpts) {
+		opts.Metrics = metrics
+	}
+}
+
 // ServerInfo - Connect to a minio server and call Server Admin Info Management API
 // to fetch server's information represented by infoMessage structure
-func (adm *AdminClient) ServerInfo(ctx context.Context) (InfoMessage, error) {
+func (adm *AdminClient) ServerInfo(ctx context.Context, options ...func(*ServerInfoOpts)) (InfoMessage, error) {
+	srvOpts := &ServerInfoOpts{}
+
+	for _, o := range options {
+		o(srvOpts)
+	}
+
+	values := make(url.Values)
+	values.Set("metrics", strconv.FormatBool(srvOpts.Metrics))
+
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
-		requestData{relPath: adminAPIPrefix + "/info"},
-	)
+		requestData{
+			relPath:     adminAPIPrefix + "/info",
+			queryValues: values,
+		})
 	defer closeResponse(resp)
 	if err != nil {
 		return InfoMessage{}, err
