@@ -54,6 +54,7 @@ const (
 	CallhomeSubSys       = "callhome"
 	BatchSubSys          = "batch"
 	DriveSubSys          = "drive"
+	ILMSubsys            = "ilm"
 
 	NotifyKafkaSubSys    = "notify_kafka"
 	NotifyMQTTSubSys     = "notify_mqtt"
@@ -97,6 +98,7 @@ var SubSystems = set.CreateStringSet(
 	CallhomeSubSys,
 	BatchSubSys,
 	DriveSubSys,
+	ILMSubsys,
 	NotifyKafkaSubSys,
 	NotifyMQTTSubSys,
 	NotifyMySQLSubSys,
