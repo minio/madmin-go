@@ -358,10 +358,12 @@ type HealingDisk struct {
 	ObjectsTotalCount uint64 `json:"objects_total_count"`
 	ObjectsTotalSize  uint64 `json:"objects_total_size"`
 
-	ItemsHealed uint64 `json:"items_healed"`
-	ItemsFailed uint64 `json:"items_failed"`
-	BytesDone   uint64 `json:"bytes_done"`
-	BytesFailed uint64 `json:"bytes_failed"`
+	ItemsHealed  uint64 `json:"items_healed"`
+	ItemsFailed  uint64 `json:"items_failed"`
+	ItemsSkipped uint64 `json:"items_skipped"`
+	BytesDone    uint64 `json:"bytes_done"`
+	BytesFailed  uint64 `json:"bytes_failed"`
+	BytesSkipped uint64 `json:"bytes_skipped"`
 
 	ObjectsHealed uint64 `json:"objects_healed"` // Deprecated July 2021
 	ObjectsFailed uint64 `json:"objects_failed"` // Deprecated July 2021
