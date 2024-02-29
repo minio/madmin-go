@@ -471,6 +471,7 @@ type Disk struct {
 	HealInfo        *HealingDisk `json:"heal_info,omitempty"`
 	UsedInodes      uint64       `json:"used_inodes"`
 	FreeInodes      uint64       `json:"free_inodes,omitempty"`
+	Local           bool         `json:"local,omitempty"`
 
 	// Indexes, will be -1 until assigned a set.
 	PoolIndex int `json:"pool_index"`
