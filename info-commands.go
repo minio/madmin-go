@@ -409,7 +409,8 @@ type ServerProperties struct {
 	CommitID       string            `json:"commitID,omitempty"`
 	Network        map[string]string `json:"network,omitempty"`
 	Disks          []Disk            `json:"drives,omitempty"`
-	PoolNumber     int               `json:"poolNumber,omitempty"`
+	PoolNumber     int               `json:"poolNumber,omitempty"` // Only set if len(PoolNumbers) == 1
+	PoolNumbers    []int             `json:"poolNumbers,omitempty"`
 	MemStats       MemStats          `json:"mem_stats"`
 	GoMaxProcs     int               `json:"go_max_procs,omitempty"`
 	NumCPU         int               `json:"num_cpu,omitempty"`
