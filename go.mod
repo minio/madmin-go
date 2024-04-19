@@ -1,6 +1,6 @@
 module github.com/minio/madmin-go/v3
 
-go 1.17
+go 1.21
 
 require (
 	github.com/cespare/xxhash/v2 v2.2.0
@@ -14,8 +14,8 @@ require (
 	github.com/secure-io/sio-go v0.3.1
 	github.com/shirou/gopsutil/v3 v3.23.12
 	github.com/tinylib/msgp v1.1.8
-	golang.org/x/crypto v0.12.0
-	golang.org/x/net v0.14.0
+	golang.org/x/crypto v0.22.0
+	golang.org/x/net v0.24.0
 )
 
 require (
@@ -38,7 +38,7 @@ require (
 	github.com/tklauser/numcpus v0.6.1 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
-	google.golang.org/protobuf v1.30.0 // indirect
+	golang.org/x/sys v0.19.0 // indirect
+	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/ini.v1 v1.67.0 // indirect
 )
