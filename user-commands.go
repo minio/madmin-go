@@ -381,6 +381,9 @@ func (r *AddServiceAccountReq) Validate() error {
 	if err != nil {
 		return err
 	}
+	if r.Expiration != nil && r.Expiration.Before(time.Now()) {
+		return errors.New("the expiration time should be in the future")
+	}
 	return validateSADescription(r.Description)
 }
 
@@ -487,6 +490,10 @@ type UpdateServiceAccountReq struct {
 func (u *UpdateServiceAccountReq) Validate() error {
 	if err := validateSAName(u.NewName); err != nil {
 		return err
+	}
+
+	if u.NewExpiration != nil && u.NewExpiration.Before(time.Now()) {
+		return errors.New("the expiration time should be in the future")
 	}
 	return validateSADescription(u.NewDescription)
 }
