@@ -30,7 +30,7 @@ import (
 
 // InfoCannedPolicy - expand canned policy into JSON structure.
 //
-// To be DEPRECATED in favor of the implementation in InfoCannedPolicyV2
+// Deprecated: Use InfoCannedPolicyV2 instead.
 func (adm *AdminClient) InfoCannedPolicy(ctx context.Context, policyName string) ([]byte, error) {
 	queryValues := url.Values{}
 	queryValues.Set("name", policyName)
@@ -198,6 +198,11 @@ func (adm *AdminClient) AddCannedPolicy(ctx context.Context, policyName string, 
 }
 
 // SetPolicy - sets the policy for a user or a group.
+//
+// Deprecated: Use AttachPolicy/DetachPolicy to update builtin user policies
+// instead. Use AttachPolicyLDAP/DetachPolicyLDAP to update LDAP user policies.
+// This function and the corresponding server API will be removed in future
+// releases.
 func (adm *AdminClient) SetPolicy(ctx context.Context, policyName, entityName string, isGroup bool) error {
 	queryValues := url.Values{}
 	queryValues.Set("policyName", policyName)
