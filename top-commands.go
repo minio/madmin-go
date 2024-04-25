@@ -22,7 +22,7 @@ package madmin
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -116,7 +116,7 @@ func (adm *AdminClient) TopLocksWithOpts(ctx context.Context, opts TopLockOpts) 
 		return nil, httpRespToErrorResponse(resp)
 	}
 
-	response, err := ioutil.ReadAll(resp.Body)
+	response, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return LockEntries{}, err
 	}

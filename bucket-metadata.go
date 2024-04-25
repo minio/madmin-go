@@ -23,7 +23,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 )
@@ -77,7 +76,7 @@ type BucketMetaImportErrs struct {
 
 // ImportBucketMetadata makes an admin call to set bucket metadata of a bucket from imported content
 func (adm *AdminClient) ImportBucketMetadata(ctx context.Context, bucket string, contentReader io.ReadCloser) (r BucketMetaImportErrs, err error) {
-	content, err := ioutil.ReadAll(contentReader)
+	content, err := io.ReadAll(contentReader)
 	if err != nil {
 		return r, err
 	}

@@ -22,7 +22,7 @@ package madmin
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -52,7 +52,7 @@ func (adm *AdminClient) InfoCannedPolicy(ctx context.Context, policyName string)
 		return nil, httpRespToErrorResponse(resp)
 	}
 
-	return ioutil.ReadAll(resp.Body)
+	return io.ReadAll(resp.Body)
 }
 
 // PolicyInfo contains information on a policy.
@@ -101,7 +101,7 @@ func (adm *AdminClient) InfoCannedPolicyV2(ctx context.Context, policyName strin
 		return nil, httpRespToErrorResponse(resp)
 	}
 
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -129,7 +129,7 @@ func (adm *AdminClient) ListCannedPolicies(ctx context.Context) (map[string]json
 		return nil, httpRespToErrorResponse(resp)
 	}
 
-	respBytes, err := ioutil.ReadAll(resp.Body)
+	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}

@@ -25,7 +25,6 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"unicode/utf8"
 )
@@ -76,7 +75,7 @@ func httpRespToErrorResponse(resp *http.Response) error {
 
 	defer closeResponse(resp)
 	// Limit to 100K
-	body, err := ioutil.ReadAll(io.LimitReader(resp.Body, 100<<10))
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 100<<10))
 	if err != nil {
 		return ErrorResponse{
 			Code:    resp.Status,
