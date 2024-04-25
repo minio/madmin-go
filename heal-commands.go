@@ -23,7 +23,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"sort"
@@ -278,7 +278,7 @@ func (adm *AdminClient) Heal(ctx context.Context, bucket, prefix string,
 		return healStart, healTaskStatus, httpRespToErrorResponse(resp)
 	}
 
-	respBytes, err := ioutil.ReadAll(resp.Body)
+	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return healStart, healTaskStatus, err
 	}
@@ -445,7 +445,7 @@ func (adm *AdminClient) BackgroundHealStatus(ctx context.Context) (BgHealState, 
 		return BgHealState{}, httpRespToErrorResponse(resp)
 	}
 
-	respBytes, err := ioutil.ReadAll(resp.Body)
+	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return BgHealState{}, err
 	}

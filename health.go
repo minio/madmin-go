@@ -25,7 +25,6 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"os"
@@ -274,7 +273,7 @@ func getDriveHwInfo(partDevice string) (info driveHwInfo, err error) {
 	}
 
 	var data []byte
-	data, err = ioutil.ReadFile(devPath)
+	data, err = os.ReadFile(devPath)
 	if err != nil {
 		return
 	}

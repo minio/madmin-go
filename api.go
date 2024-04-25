@@ -27,7 +27,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"net/http/cookiejar"
@@ -420,7 +419,7 @@ func (adm AdminClient) executeMethod(ctx context.Context, method string, reqData
 		}
 
 		// Read the body to be saved later.
-		errBodyBytes, err := ioutil.ReadAll(res.Body)
+		errBodyBytes, err := io.ReadAll(res.Body)
 		// res.Body should be closed
 		closeResponse(res)
 		if err != nil {
@@ -429,14 +428,14 @@ func (adm AdminClient) executeMethod(ctx context.Context, method string, reqData
 
 		// Save the body.
 		errBodySeeker := bytes.NewReader(errBodyBytes)
-		res.Body = ioutil.NopCloser(errBodySeeker)
+		res.Body = io.NopCloser(errBodySeeker)
 
 		// For errors verify if its retryable otherwise fail quickly.
 		errResponse := ToErrorResponse(httpRespToErrorResponse(res))
 
 		// Save the body back again.
 		errBodySeeker.Seek(0, 0) // Seek back to starting point.
-		res.Body = ioutil.NopCloser(errBodySeeker)
+		res.Body = io.NopCloser(errBodySeeker)
 
 		// Verify if error response code is retryable.
 		if isAdminErrCodeRetryable(errResponse.Code) {
@@ -534,9 +533,9 @@ func (adm AdminClient) newRequest(ctx context.Context, method string, reqData re
 	sum := sha256.Sum256(reqData.content)
 	req.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sum[:]))
 	if reqData.contentReader != nil {
-		req.Body = ioutil.NopCloser(reqData.contentReader)
+		req.Body = io.NopCloser(reqData.contentReader)
 	} else {
-		req.Body = ioutil.NopCloser(bytes.NewReader(reqData.content))
+		req.Body = io.NopCloser(bytes.NewReader(reqData.content))
 	}
 
 	req = signer.SignV4(*req, accessKeyID, secretAccessKey, sessionToken, location)

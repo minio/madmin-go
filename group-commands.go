@@ -22,7 +22,7 @@ package madmin
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -94,7 +94,7 @@ func (adm *AdminClient) GetGroupDescription(ctx context.Context, group string) (
 		return nil, httpRespToErrorResponse(resp)
 	}
 
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -123,7 +123,7 @@ func (adm *AdminClient) ListGroups(ctx context.Context) ([]string, error) {
 		return nil, httpRespToErrorResponse(resp)
 	}
 
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}

@@ -29,7 +29,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -168,7 +167,7 @@ func GetMemoryLimit(pid int) (limit uint64, err error) {
 		// might not be installed. We fallback to using the the sysfs
 		// path instead to lookup memory limits.
 		var b []byte
-		b, err = ioutil.ReadFile(getMemoryLimitFilePath(path))
+		b, err = os.ReadFile(getMemoryLimitFilePath(path))
 		if err != nil {
 			return 0, err
 		}

@@ -22,7 +22,7 @@ package madmin
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"time"
 )
@@ -72,7 +72,7 @@ func (adm *AdminClient) RebalanceStart(ctx context.Context) (id string, err erro
 	var rebalInfo struct {
 		ID string `json:"id"`
 	}
-	respBytes, err := ioutil.ReadAll(resp.Body)
+	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return id, err
 	}
@@ -99,7 +99,7 @@ func (adm *AdminClient) RebalanceStatus(ctx context.Context) (r RebalanceStatus,
 		return r, httpRespToErrorResponse(resp)
 	}
 
-	respBytes, err := ioutil.ReadAll(resp.Body)
+	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return r, err
 	}
