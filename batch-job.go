@@ -225,6 +225,39 @@ func (adm *AdminClient) StartBatchJob(ctx context.Context, job string) (BatchJob
 	return res, nil
 }
 
+// BatchJobStatus contains the last batch job metric
+type BatchJobStatus struct {
+	LastMetric JobMetric
+}
+
+// BatchJobStatus returns the status of the given job.
+func (adm *AdminClient) BatchJobStatus(ctx context.Context, jobID string) (BatchJobStatus, error) {
+	values := make(url.Values)
+	values.Set("jobId", jobID)
+
+	resp, err := adm.executeMethod(ctx, http.MethodGet,
+		requestData{
+			relPath:     adminAPIPrefix + "/status-job",
+			queryValues: values,
+		},
+	)
+	if err != nil {
+		return BatchJobStatus{}, err
+	}
+	defer closeResponse(resp)
+	if resp.StatusCode != http.StatusOK {
+		return BatchJobStatus{}, httpRespToErrorResponse(resp)
+	}
+
+	res := BatchJobStatus{}
+	dec := json.NewDecoder(resp.Body)
+	if err = dec.Decode(&res); err != nil {
+		return res, err
+	}
+
+	return res, nil
+}
+
 // DescribeBatchJob - describes a currently running Job.
 func (adm *AdminClient) DescribeBatchJob(ctx context.Context, jobID string) (string, error) {
 	values := make(url.Values)
