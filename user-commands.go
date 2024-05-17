@@ -381,7 +381,7 @@ func (r *AddServiceAccountReq) Validate() error {
 	if err != nil {
 		return err
 	}
-	if r.Expiration != nil && r.Expiration.Before(time.Now()) {
+	if r.Expiration != nil && !r.Expiration.UTC().IsZero() && !r.Expiration.UTC().Equal(time.Unix(0, 0)) && r.Expiration.Before(time.Now()) {
 		return errors.New("the expiration time should be in the future")
 	}
 	return validateSADescription(r.Description)
@@ -492,7 +492,7 @@ func (u *UpdateServiceAccountReq) Validate() error {
 		return err
 	}
 
-	if u.NewExpiration != nil && u.NewExpiration.Before(time.Now()) {
+	if u.NewExpiration != nil && !u.NewExpiration.UTC().IsZero() && !u.NewExpiration.UTC().Equal(time.Unix(0, 0)) && u.NewExpiration.Before(time.Now()) {
 		return errors.New("the expiration time should be in the future")
 	}
 	return validateSADescription(u.NewDescription)
