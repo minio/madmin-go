@@ -375,14 +375,27 @@ func validateSADescription(desc string) error {
 	return nil
 }
 
+var timeSentinel = time.Unix(0, 0).UTC()
+
+func validateSAExpiration(expiration *time.Time) error {
+	// Zero value is valid, it means no expiration.
+	if expiration == nil || expiration.UTC().IsZero() || expiration.UTC().Equal(timeSentinel) {
+		return nil
+	}
+	if expiration.Before(time.Now()) {
+		return errors.New("the expiration time should be in the future")
+	}
+	return nil
+}
+
 // Validate validates the request parameters.
 func (r *AddServiceAccountReq) Validate() error {
-	err := validateSAName(r.Name)
-	if err != nil {
+	if err := validateSAName(r.Name); err != nil {
 		return err
 	}
-	if r.Expiration != nil && !r.Expiration.UTC().IsZero() && !r.Expiration.UTC().Equal(time.Unix(0, 0)) && r.Expiration.Before(time.Now()) {
-		return errors.New("the expiration time should be in the future")
+
+	if err := validateSAExpiration(r.Expiration); err != nil {
+		return err
 	}
 	return validateSADescription(r.Description)
 }
@@ -492,8 +505,8 @@ func (u *UpdateServiceAccountReq) Validate() error {
 		return err
 	}
 
-	if u.NewExpiration != nil && !u.NewExpiration.UTC().IsZero() && !u.NewExpiration.UTC().Equal(time.Unix(0, 0)) && u.NewExpiration.Before(time.Now()) {
-		return errors.New("the expiration time should be in the future")
+	if err := validateSAExpiration(u.NewExpiration); err != nil {
+		return err
 	}
 	return validateSADescription(u.NewDescription)
 }
