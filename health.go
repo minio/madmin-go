@@ -451,8 +451,9 @@ func GetSysConfig(_ context.Context, addr string) SysConfig {
 		limits, err := proc.Limits()
 		if err != nil {
 			sc.Error = "rlimit: " + err.Error()
+		} else {
+			sc.Config["rlimit-max"] = limits.OpenFiles
 		}
-		sc.Config["rlimit-max"] = limits.OpenFiles
 	}
 
 	zone, _ := time.Now().Zone()
@@ -467,6 +468,18 @@ func GetSysConfig(_ context.Context, addr string) SysConfig {
 	}
 
 	sc.Config["thp-config"] = getTHPConfigs()
+
+	procCmdLine, err := getProcCmdLine()
+	if err != nil {
+		errMsg := "proc-cmdline: " + err.Error()
+		if len(sc.Error) == 0 {
+			sc.Error = errMsg
+		} else {
+			sc.Error = sc.Error + ", " + errMsg
+		}
+	} else {
+		sc.Config["proc-cmdline"] = procCmdLine
+	}
 
 	return sc
 }
@@ -494,6 +507,14 @@ func getTHPConfigs() map[string]string {
 	captureTHPConfig(configs, "/sys/kernel/mm/transparent_hugepage/defrag", "defrag")
 	captureTHPConfig(configs, "/sys/kernel/mm/transparent_hugepage/khugepaged/max_ptes_none", "max_ptes_none")
 	return configs
+}
+
+func getProcCmdLine() ([]string, error) {
+	fs, err := procfs.NewDefaultFS()
+	if err != nil {
+		return nil, err
+	}
+	return fs.CmdLine()
 }
 
 func captureTHPConfig(configs map[string]string, filePath string, cfgName string) {
