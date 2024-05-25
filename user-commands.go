@@ -625,11 +625,11 @@ func (adm *AdminClient) ListAccessKeysLDAP(ctx context.Context, userDN string, l
 }
 
 // ListAccessKeysLDAPV2 - list service accounts belonging to the given users or all users
-func (adm *AdminClient) ListAccessKeysLDAPv2(ctx context.Context, userDNs []string, listType string, all bool) (map[string]ListAccessKeysLDAPResp, error) {
+func (adm *AdminClient) ListAccessKeysLDAPv2(ctx context.Context, userDNs []string, listType string, self bool) (map[string]ListAccessKeysLDAPResp, error) {
 	queryValues := url.Values{}
 	queryValues.Set("listType", listType)
 	queryValues["userDNs"] = userDNs
-	if all {
+	if self {
 		queryValues.Set("all", "true")
 	}
 
