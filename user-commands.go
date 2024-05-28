@@ -624,12 +624,23 @@ func (adm *AdminClient) ListAccessKeysLDAP(ctx context.Context, userDN string, l
 	return listResp, nil
 }
 
+const (
+	AccessKeyListUsersOnly  = "users-only"
+	AccessKeyListSTSOnly    = "sts-only"
+	AccessKeyListSvcaccOnly = "svcacc-only"
+	AccessKeyListAll        = "all"
+)
+
 // ListAccessKeysLDAPV2 - list service accounts belonging to the given users or all users
-func (adm *AdminClient) ListAccessKeysLDAPv2(ctx context.Context, userDNs []string, listType string, self bool) (map[string]ListAccessKeysLDAPResp, error) {
+func (adm *AdminClient) ListAccessKeysLDAPv2(ctx context.Context, userDNs []string, listType string, all bool) (map[string]ListAccessKeysLDAPResp, error) {
+	if len(userDNs) > 0 && all {
+		return nil, errors.New("user DNs cannot be specified with --all")
+	}
+
 	queryValues := url.Values{}
-	queryValues.Set("listType", listType)
+	queryValues.Set("listType", string(listType))
 	queryValues["userDNs"] = userDNs
-	if self {
+	if all {
 		queryValues.Set("all", "true")
 	}
 
