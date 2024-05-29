@@ -631,7 +631,7 @@ const (
 	AccessKeyListAll        = "all"
 )
 
-// ListAccessKeysLDAPv2 - list service accounts belonging to the given users or all users
+// ListAccessKeysLDAPBulk - list service accounts belonging to the given users or all users
 func (adm *AdminClient) ListAccessKeysLDAPBulk(ctx context.Context, users []string, listType string, all bool) (map[string]ListAccessKeysLDAPResp, error) {
 	if len(users) > 0 && all {
 		return nil, errors.New("either specify userDNs or all, not both")
