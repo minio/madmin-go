@@ -634,7 +634,7 @@ const (
 // ListAccessKeysLDAPV2 - list service accounts belonging to the given users or all users
 func (adm *AdminClient) ListAccessKeysLDAPv2(ctx context.Context, userDNs []string, listType string, all bool) (map[string]ListAccessKeysLDAPResp, error) {
 	if len(userDNs) > 0 && all {
-		return nil, errors.New("user DNs cannot be specified with --all")
+		return nil, errors.New("either specify userDNs or all, not both")
 	}
 
 	queryValues := url.Values{}
