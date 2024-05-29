@@ -116,6 +116,7 @@ type TraceInfo struct {
 	Time     time.Time     `json:"time"`
 	Path     string        `json:"path"`
 	Duration time.Duration `json:"dur"`
+	Bytes    int64         `json:"bytes,omitempty"`
 
 	Message    string            `json:"msg,omitempty"`
 	Error      string            `json:"error,omitempty"`
