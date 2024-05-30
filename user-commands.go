@@ -645,11 +645,11 @@ func (adm *AdminClient) ListAccessKeysLDAPBulk(ctx context.Context, users []stri
 	}
 
 	reqData := requestData{
-		relPath:     adminAPIPrefix + "/idp/ldap/list-access-keys-v2",
+		relPath:     adminAPIPrefix + "/idp/ldap/list-access-keys-bulk",
 		queryValues: queryValues,
 	}
 
-	// Execute GET on /minio/admin/v3/idp/ldap/list-access-keys-v2
+	// Execute GET on /minio/admin/v3/idp/ldap/list-access-keys-bulk
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 	defer closeResponse(resp)
 	if err != nil {
