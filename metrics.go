@@ -690,7 +690,7 @@ type RPCMetrics struct {
 
 // Merge other into 'm'.
 func (m *RPCMetrics) Merge(other *RPCMetrics) {
-	if m == nil {
+	if m == nil || other == nil {
 		return
 	}
 	if m.CollectedAt.Before(other.CollectedAt) {
