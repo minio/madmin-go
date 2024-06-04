@@ -52,6 +52,7 @@ const (
 	MetricNet
 	MetricsMem
 	MetricsCPU
+	MetricsRPC
 
 	// MetricsAll must be last.
 	// Enables all metrics.
@@ -156,6 +157,7 @@ type Metrics struct {
 	Net        *NetMetrics        `json:"net,omitempty"`
 	Mem        *MemMetrics        `json:"mem,omitempty"`
 	CPU        *CPUMetrics        `json:"cpu,omitempty"`
+	RPC        *RPCMetrics        `json:"rpc,omitempty"`
 }
 
 // Merge other into r.
@@ -191,6 +193,10 @@ func (r *Metrics) Merge(other *Metrics) {
 		r.Net = &NetMetrics{}
 	}
 	r.Net.Merge(other.Net)
+	if r.RPC == nil && other.RPC != nil {
+		r.RPC = &RPCMetrics{}
+	}
+	r.RPC.Merge(other.RPC)
 }
 
 // Merge will merge other into r.
@@ -663,4 +669,52 @@ func (m *CPUMetrics) Merge(other *CPUMetrics) {
 	m.LoadStat.Load1 += other.LoadStat.Load1
 	m.LoadStat.Load5 += other.LoadStat.Load5
 	m.LoadStat.Load15 += other.LoadStat.Load15
+}
+
+// RPCMetrics contains metrics for RPC operations.
+type RPCMetrics struct {
+	CollectedAt      time.Time `json:"collectedAt"`
+	Connected        int       `json:"connected"`
+	Disconnected     int       `json:"disconnected"`
+	OutgoingStreams  int       `json:"outgoingStreams"`
+	IncomingStreams  int       `json:"incomingStreams"`
+	OutgoingBytes    int64     `json:"outgoingBytes"`
+	IncomingBytes    int64     `json:"incomingBytes"`
+	OutgoingMessages int64     `json:"outgoingMessages"`
+	IncomingMessages int64     `json:"incomingMessages"`
+	OutQueue         int       `json:"outQueue"`
+	LastPongTime     time.Time `json:"lastPongTime"`
+
+	ByDestination map[string]RPCMetrics `json:"byDestination,omitempty"`
+}
+
+// Merge other into 'm'.
+func (m *RPCMetrics) Merge(other *RPCMetrics) {
+	if m == nil || other == nil {
+		return
+	}
+	if m.CollectedAt.Before(other.CollectedAt) {
+		// Use latest timestamp
+		m.CollectedAt = other.CollectedAt
+	}
+	m.Connected += other.Connected
+	m.Disconnected += other.Disconnected
+	m.OutgoingStreams += other.OutgoingStreams
+	m.IncomingStreams += other.IncomingStreams
+	m.OutgoingBytes += other.OutgoingBytes
+	m.IncomingBytes += other.IncomingBytes
+	m.OutgoingMessages += other.OutgoingMessages
+	m.IncomingMessages += other.IncomingMessages
+	m.OutQueue += other.OutQueue
+	if m.LastPongTime.Before(other.LastPongTime) {
+		m.LastPongTime = other.LastPongTime
+	}
+	for k, v := range other.ByDestination {
+		if m.ByDestination == nil {
+			m.ByDestination = make(map[string]RPCMetrics, len(other.ByDestination))
+		}
+		existing := m.ByDestination[k]
+		existing.Merge(&v)
+		m.ByDestination[k] = existing
+	}
 }
