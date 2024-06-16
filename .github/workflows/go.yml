@@ -3,13 +3,13 @@ name: Go
 on:
   pull_request:
     branches:
-    - main
-    - master
+      - main
+      - master
 
   push:
     branches:
-    - main
-    - master
+      - main
+      - master
 
 jobs:
   build:
@@ -17,21 +17,24 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: [1.21.x]
+        go-version: [1.21.x, 1.22.x]
     steps:
     - name: Set up Go ${{ matrix.go-version }}
-      uses: actions/setup-go@v1
+      uses: actions/setup-go@v5
       with:
         go-version: ${{ matrix.go-version }}
       id: go
 
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v1
+      uses: actions/checkout@v4
 
-    - name: Build
+    - name: Check lint
+      uses: golangci/golangci-lint-action@v6
+      with:
+        version: v1.58
+
+    - name: Regenerate, vet and test
       run: |
-         curl -sfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin
-         $(go env GOPATH)/bin/golangci-lint run --config ./.golangci.yml
          go vet ./...
          go install -v github.com/tinylib/msgp@latest
          go install -v golang.org/x/tools/cmd/stringer@latest
@@ -44,7 +47,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        go-version: [1.21.x]
+        go-version: [1.21.x, 1.22.x]
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
     - name: Set up Go ${{ matrix.go-version }} on ${{ matrix.os }}
@@ -66,6 +69,3 @@ jobs:
       if: matrix.os != 'ubuntu-latest'
       run: |
          go test -v -race ./...
-
-
-
