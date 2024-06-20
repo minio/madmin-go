@@ -72,6 +72,7 @@ const (
 
 const (
 	sysClassBlock = "/sys/class/block"
+	sysClassDMI   = "/sys/class/dmi"
 	runDevDataPfx = "/run/udev/data/b"
 	devDir        = "/dev/"
 	devLoopDir    = "/dev/loop"
@@ -553,6 +554,41 @@ func getXFSErrorMaxRetries() XFSErrorConfigs {
 	}
 }
 
+// ProductInfo defines a host's product information
+type ProductInfo struct {
+	NodeCommon
+
+	Family       string `json:"family"`
+	Name         string `json:"name"`
+	Vendor       string `json:"vendor"`
+	SerialNumber string `json:"serial_number"`
+	UUID         string `json:"uuid"`
+	SKU          string `json:"sku"`
+	Version      string `json:"version"`
+}
+
+func getDMIInfo(ask string) string {
+	value, err := os.ReadFile(path.Join(sysClassDMI, "id", ask))
+	if err != nil {
+		return "unknown"
+	}
+	return strings.TrimSpace(string(value))
+}
+
+// GetProductInfo returns a host's product information
+func GetProductInfo(addr string) ProductInfo {
+	return ProductInfo{
+		NodeCommon:   NodeCommon{Addr: addr},
+		Family:       getDMIInfo("product_family"),
+		Name:         getDMIInfo("product_name"),
+		Vendor:       getDMIInfo("sys_vendor"),
+		SerialNumber: getDMIInfo("product_serial"),
+		UUID:         getDMIInfo("product_uuid"),
+		SKU:          getDMIInfo("product_sku"),
+		Version:      getDMIInfo("product_version"),
+	}
+}
+
 // GetSysServices returns info of sys services that affect minio
 func GetSysServices(_ context.Context, addr string) SysServices {
 	ss := SysServices{
@@ -952,6 +988,7 @@ type SysInfo struct {
 	SysErrs        []SysErrors    `json:"errors,omitempty"`
 	SysServices    []SysServices  `json:"services,omitempty"`
 	SysConfig      []SysConfig    `json:"config,omitempty"`
+	ProductInfo    []ProductInfo  `json:"productinfo,omitempty"`
 	KubernetesInfo KubernetesInfo `json:"kubernetes"`
 }
 
