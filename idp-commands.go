@@ -285,8 +285,9 @@ type PolicyEntitiesResult struct {
 
 // UserPolicyEntities - user -> policies mapping
 type UserPolicyEntities struct {
-	User     string   `json:"user"`
-	Policies []string `json:"policies"`
+	User             string                `json:"user"`
+	Policies         []string              `json:"policies"`
+	MemberOfMappings []GroupPolicyEntities `json:"memberOfMappings,omitempty"`
 }
 
 // GroupPolicyEntities - group -> policies mapping

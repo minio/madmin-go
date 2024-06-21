@@ -637,6 +637,54 @@ func (adm *AdminClient) ListAccessKeysLDAP(ctx context.Context, userDN string, l
 	return listResp, nil
 }
 
+const (
+	AccessKeyListUsersOnly  = "users-only"
+	AccessKeyListSTSOnly    = "sts-only"
+	AccessKeyListSvcaccOnly = "svcacc-only"
+	AccessKeyListAll        = "all"
+)
+
+// ListAccessKeysLDAPBulk - list service accounts belonging to the given users or all users
+func (adm *AdminClient) ListAccessKeysLDAPBulk(ctx context.Context, users []string, listType string, all bool) (map[string]ListAccessKeysLDAPResp, error) {
+	if len(users) > 0 && all {
+		return nil, errors.New("either specify userDNs or all, not both")
+	}
+
+	queryValues := url.Values{}
+	queryValues.Set("listType", listType)
+	queryValues["userDNs"] = users
+	if all {
+		queryValues.Set("all", "true")
+	}
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/idp/ldap/list-access-keys-bulk",
+		queryValues: queryValues,
+	}
+
+	// Execute GET on /minio/admin/v3/idp/ldap/list-access-keys-bulk
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+
+	data, err := DecryptData(adm.getSecretKey(), resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	listResp := make(map[string]ListAccessKeysLDAPResp)
+	if err = json.Unmarshal(data, &listResp); err != nil {
+		return nil, err
+	}
+	return listResp, nil
+}
+
 // InfoServiceAccountResp is the response body of the info service account call
 type InfoServiceAccountResp struct {
 	ParentUser    string     `json:"parentUser"`
