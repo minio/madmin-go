@@ -433,6 +433,7 @@ const (
 	SRBucketMetaTypeSSEConfig        = "sse-config"
 	SRBucketMetaTypeQuotaConfig      = "quota-config"
 	SRBucketMetaLCConfig             = "lc-config"
+	SRBucketMetaTypeCorsConfig       = "cors-config"
 )
 
 // SRBucketMeta - represents a bucket metadata change that will be copied to a peer.
@@ -469,6 +470,9 @@ type SRBucketMeta struct {
 
 	// ExpiryUpdatedAt - timestamp of last update of expiry rule
 	ExpiryUpdatedAt time.Time `json:"expiryUpdatedAt,omitempty"`
+
+	// Cors is base64 XML representation of CORS config
+	Cors *string `json:"cors,omitempty"`
 }
 
 // SRPeerReplicateBucketMeta - copies a bucket metadata change to a peer cluster.
@@ -529,6 +533,8 @@ type SRBucketInfo struct {
 	// byte representation
 	ExpiryLCConfig *string `json:"expLCConfig,omitempty"`
 
+	CorsConfig *string `json:"corsConfig,omitempty"`
+
 	// time stamps of bucket metadata updates
 	PolicyUpdatedAt            time.Time `json:"policyTimestamp,omitempty"`
 	TagConfigUpdatedAt         time.Time `json:"tagTimestamp,omitempty"`
@@ -540,6 +546,7 @@ type SRBucketInfo struct {
 	ExpiryLCConfigUpdatedAt    time.Time `json:"expLCTimestamp,omitempty"`
 	CreatedAt                  time.Time `json:"bucketTimestamp,omitempty"`
 	DeletedAt                  time.Time `json:"bucketDeletedTimestamp,omitempty"`
+	CorsConfigUpdatedAt        time.Time `json:"corsTimestamp,omitempty"`
 	Location                   string    `json:"location,omitempty"`
 }
 
@@ -736,12 +743,14 @@ type SRBucketStatsSummary struct {
 	SSEConfigMismatch        bool
 	ReplicationCfgMismatch   bool
 	QuotaCfgMismatch         bool
+	CorsCfgMismatch          bool
 	HasTagsSet               bool
 	HasOLockConfigSet        bool
 	HasPolicySet             bool
 	HasSSECfgSet             bool
 	HasReplicationCfg        bool
 	HasQuotaCfgSet           bool
+	HasCorsCfgSet            bool
 }
 
 // SRILMExpiryStatsSummary has status of ILM Expiry rules metadata replication misses
@@ -766,6 +775,7 @@ type SRSiteSummary struct {
 	ReplicatedUserPolicyMappings  int // count of user policy mappings replicated across sites
 	ReplicatedGroupPolicyMappings int // count of group policy mappings replicated across sites
 	ReplicatedILMExpiryRules      int // count of ILM expiry rules replicated across sites
+	ReplicatedCorsConfig          int // count of CORS config replicated across sites
 
 	TotalBucketsCount            int // total buckets on this site
 	TotalTagsCount               int // total count of buckets with tags on this site
@@ -780,6 +790,7 @@ type SRSiteSummary struct {
 	TotalUserPolicyMappingCount  int // total number of user policy mappings seen on this site
 	TotalGroupPolicyMappingCount int // total number of group policy mappings seen on this site
 	TotalILMExpiryRulesCount     int // total number of ILM expiry rules seen on the site
+	TotalCorsConfigCount         int // total number of CORS config seen on the site
 }
 
 // SREntityType specifies type of entity
