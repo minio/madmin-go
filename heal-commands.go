@@ -118,6 +118,7 @@ const (
 	DriveStateMissing            = "missing"
 	DriveStatePermission         = "permission-denied"
 	DriveStateFaulty             = "faulty"
+	DriveStateRootMount          = "root-mount"
 	DriveStateUnknown            = "unknown"
 	DriveStateUnformatted        = "unformatted" // only returned by disk
 )
