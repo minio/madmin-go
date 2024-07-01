@@ -53,6 +53,11 @@ type HealOpts struct {
 	ScanMode     HealScanMode `json:"scanMode"`
 	UpdateParity bool         `json:"updateParity"` // Update the parity of the existing object with a new one
 	NoLock       bool         `json:"nolock"`
+
+	// Pool to heal. nil indicates "all pools" (and sets).
+	Pool *int `json:"pool,omitempty"`
+	// Set to heal. nil indicates "all sets". Should always be nil if Pool is nil.
+	Set *int `json:"set,omitempty"`
 }
 
 // Equal returns true if no is same as o.
