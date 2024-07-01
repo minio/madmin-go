@@ -53,6 +53,9 @@ type HealOpts struct {
 	ScanMode     HealScanMode `json:"scanMode"`
 	UpdateParity bool         `json:"updateParity"` // Update the parity of the existing object with a new one
 	NoLock       bool         `json:"nolock"`
+
+	Pool *int `json:"pool,omitempty"`
+	Set  *int `json:"set,omitempty"`
 }
 
 // Equal returns true if no is same as o.
