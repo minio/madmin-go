@@ -26,6 +26,7 @@ import (
 	"time"
 )
 
+// BucketScanInfo contains information of a bucket scan in a given pool/set
 type BucketScanInfo struct {
 	Pool, Set   int
 	Cycle       uint64
@@ -34,6 +35,7 @@ type BucketScanInfo struct {
 	Completed   []time.Time
 }
 
+// BucketScanInfo returns information of a bucket scan in all pools/sets
 func (adm *AdminClient) BucketScanInfo(ctx context.Context, bucket string) ([]BucketScanInfo, error) {
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
