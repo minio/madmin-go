@@ -694,6 +694,7 @@ type RPCMetrics struct {
 	LastConnectTime  time.Time `json:"lastConnectTime"`
 
 	ByDestination map[string]RPCMetrics `json:"byDestination,omitempty"`
+	ByCaller      map[string]RPCMetrics `json:"byCaller,omitempty"`
 }
 
 // Merge other into 'm'.
@@ -732,5 +733,13 @@ func (m *RPCMetrics) Merge(other *RPCMetrics) {
 		existing := m.ByDestination[k]
 		existing.Merge(&v)
 		m.ByDestination[k] = existing
+	}
+	for k, v := range other.ByCaller {
+		if m.ByCaller == nil {
+			m.ByCaller = make(map[string]RPCMetrics, len(other.ByCaller))
+		}
+		existing := m.ByCaller[k]
+		existing.Merge(&v)
+		m.ByCaller[k] = existing
 	}
 }
