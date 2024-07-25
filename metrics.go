@@ -679,6 +679,7 @@ func (m *CPUMetrics) Merge(other *CPUMetrics) {
 type RPCMetrics struct {
 	CollectedAt      time.Time `json:"collectedAt"`
 	Connected        int       `json:"connected"`
+	ReconnectCount   int       `json:"reconnectCount"`
 	Disconnected     int       `json:"disconnected"`
 	OutgoingStreams  int       `json:"outgoingStreams"`
 	IncomingStreams  int       `json:"incomingStreams"`
@@ -688,6 +689,7 @@ type RPCMetrics struct {
 	IncomingMessages int64     `json:"incomingMessages"`
 	OutQueue         int       `json:"outQueue"`
 	LastPongTime     time.Time `json:"lastPongTime"`
+	LastConnectTime  time.Time `json:"lastConnectTime"`
 
 	ByDestination map[string]RPCMetrics `json:"byDestination,omitempty"`
 }
@@ -701,8 +703,12 @@ func (m *RPCMetrics) Merge(other *RPCMetrics) {
 		// Use latest timestamp
 		m.CollectedAt = other.CollectedAt
 	}
+	if m.LastConnectTime.Before(other.LastConnectTime) {
+		m.LastConnectTime = other.LastConnectTime
+	}
 	m.Connected += other.Connected
 	m.Disconnected += other.Disconnected
+	m.ReconnectCount += other.ReconnectCount
 	m.OutgoingStreams += other.OutgoingStreams
 	m.IncomingStreams += other.IncomingStreams
 	m.OutgoingBytes += other.OutgoingBytes
