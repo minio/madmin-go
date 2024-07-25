@@ -690,10 +690,11 @@ type RPCMetrics struct {
 	OutQueue         int       `json:"outQueue"`
 	LastPongTime     time.Time `json:"lastPongTime"`
 	LastPingMS       float64   `json:"lastPingMS"`
-	Max1MinPingMS    float64   `json:"max1MinPingMS"`
+	MaxPingDurMS     float64   `json:"maxPingDurMS"` // Maximum across all merged entries.
 	LastConnectTime  time.Time `json:"lastConnectTime"`
 
 	ByDestination map[string]RPCMetrics `json:"byDestination,omitempty"`
+	ByCaller      map[string]RPCMetrics `json:"byCaller,omitempty"`
 }
 
 // Merge other into 'm'.
@@ -722,8 +723,8 @@ func (m *RPCMetrics) Merge(other *RPCMetrics) {
 		m.LastPongTime = other.LastPongTime
 		m.LastPingMS = other.LastPingMS
 	}
-	if m.Max1MinPingMS < other.Max1MinPingMS {
-		m.Max1MinPingMS = other.Max1MinPingMS
+	if m.MaxPingDurMS < other.MaxPingDurMS {
+		m.MaxPingDurMS = other.MaxPingDurMS
 	}
 	for k, v := range other.ByDestination {
 		if m.ByDestination == nil {
@@ -732,5 +733,13 @@ func (m *RPCMetrics) Merge(other *RPCMetrics) {
 		existing := m.ByDestination[k]
 		existing.Merge(&v)
 		m.ByDestination[k] = existing
+	}
+	for k, v := range other.ByCaller {
+		if m.ByCaller == nil {
+			m.ByCaller = make(map[string]RPCMetrics, len(other.ByCaller))
+		}
+		existing := m.ByCaller[k]
+		existing.Merge(&v)
+		m.ByCaller[k] = existing
 	}
 }
