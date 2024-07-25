@@ -689,6 +689,7 @@ type RPCMetrics struct {
 	IncomingMessages int64     `json:"incomingMessages"`
 	OutQueue         int       `json:"outQueue"`
 	LastPongTime     time.Time `json:"lastPongTime"`
+	LastPongMS       float64   `json:"lastPongMS"`
 	LastConnectTime  time.Time `json:"lastConnectTime"`
 
 	ByDestination map[string]RPCMetrics `json:"byDestination,omitempty"`
@@ -718,6 +719,7 @@ func (m *RPCMetrics) Merge(other *RPCMetrics) {
 	m.OutQueue += other.OutQueue
 	if m.LastPongTime.Before(other.LastPongTime) {
 		m.LastPongTime = other.LastPongTime
+		m.LastPongMS = other.LastPongMS
 	}
 	for k, v := range other.ByDestination {
 		if m.ByDestination == nil {
