@@ -1066,7 +1066,7 @@ type MinioInfo struct {
 	Objects      Objects          `json:"objects,omitempty"`
 	Usage        Usage            `json:"usage,omitempty"`
 	Services     Services         `json:"services,omitempty"`
-	Backend      interface{}      `json:"backend,omitempty"`
+	Backend      BackendInfo      `json:"backend,omitempty"`
 	Servers      []ServerInfo     `json:"servers,omitempty"`
 	TLS          *TLSInfo         `json:"tls"`
 	IsKubernetes *bool            `json:"is_kubernetes"`
