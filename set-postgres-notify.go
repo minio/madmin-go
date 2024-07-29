@@ -60,7 +60,6 @@ func (adm *AdminClient) SetPostgresqlNotify(ctx context.Context, opts *Postgresq
 
 func buildPostgresqlConfigString(opts *PostgresqlNotifyOptions) string {
 	var stringBuilder strings.Builder
-	//	"notify_postgres:minio-postgreslol connection_string=\"user=postgres password=5432 host=postgres dbname=postgres port=5432 sslmode=disable\" table=\"images\" format=\"namespace\""
 
 	// build notify config string
 	stringBuilder.WriteString(fmt.Sprintf("notify_postgres:%s%s", opts.Identifier, delimiter))
