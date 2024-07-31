@@ -66,6 +66,7 @@ type BucketStatus struct {
 	Lifecycle    MetaStatus `json:"lifecycle"`
 	Notification MetaStatus `json:"notification"`
 	Quota        MetaStatus `json:"quota"`
+	Cors         MetaStatus `json:"cors"`
 	Err          string     `json:"error,omitempty"`
 }
 
