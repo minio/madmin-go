@@ -437,3 +437,123 @@ func (adm *AdminClient) attachOrDetachPolicyLDAP(ctx context.Context, isAttach b
 	err = json.Unmarshal(content, &r)
 	return r, err
 }
+
+// ListAccessKeysLDAPResp is the response body of the list service accounts call
+type ListAccessKeysLDAPResp ListAccessKeysResp
+
+// ListAccessKeysLDAP - list service accounts belonging to the specified user
+func (adm *AdminClient) ListAccessKeysLDAP(ctx context.Context, userDN string, listType string) (ListAccessKeysLDAPResp, error) {
+	queryValues := url.Values{}
+	queryValues.Set("listType", listType)
+	queryValues.Set("userDN", userDN)
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/idp/ldap/list-access-keys",
+		queryValues: queryValues,
+	}
+
+	// Execute GET on /minio/admin/v3/list-service-accounts
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return ListAccessKeysLDAPResp{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return ListAccessKeysLDAPResp{}, httpRespToErrorResponse(resp)
+	}
+
+	data, err := DecryptData(adm.getSecretKey(), resp.Body)
+	if err != nil {
+		return ListAccessKeysLDAPResp{}, err
+	}
+
+	var listResp ListAccessKeysLDAPResp
+	if err = json.Unmarshal(data, &listResp); err != nil {
+		return ListAccessKeysLDAPResp{}, err
+	}
+	return listResp, nil
+}
+
+const (
+	AccessKeyListUsersOnly  = "users-only"
+	AccessKeyListSTSOnly    = "sts-only"
+	AccessKeyListSvcaccOnly = "svcacc-only"
+	AccessKeyListAll        = "all"
+)
+
+// ListAccessKeysLDAPBulk - list service accounts belonging to the given users or all users
+func (adm *AdminClient) ListAccessKeysLDAPBulk(ctx context.Context, users []string, listType string, all bool) (map[string]ListAccessKeysLDAPResp, error) {
+	if len(users) > 0 && all {
+		return nil, errors.New("either specify userDNs or all, not both")
+	}
+
+	queryValues := url.Values{}
+	queryValues.Set("listType", listType)
+	queryValues["userDNs"] = users
+	if all {
+		queryValues.Set("all", "true")
+	}
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/idp/ldap/list-access-keys-bulk",
+		queryValues: queryValues,
+	}
+
+	// Execute GET on /minio/admin/v3/idp/ldap/list-access-keys-bulk
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+
+	data, err := DecryptData(adm.getSecretKey(), resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	listResp := make(map[string]ListAccessKeysLDAPResp)
+	if err = json.Unmarshal(data, &listResp); err != nil {
+		return nil, err
+	}
+	return listResp, nil
+}
+
+type InfoAccessKeyLDAPResp InfoAccessKeyResp
+
+// InfoAccessKey - returns the info of the given access key (sts or service account)
+func (adm *AdminClient) InfoAccessKeyLDAP(ctx context.Context, accessKey string) (InfoAccessKeyLDAPResp, error) {
+	queryValues := url.Values{}
+	queryValues.Set("accessKey", accessKey)
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/idp/ldap/info-access-key",
+		queryValues: queryValues,
+	}
+
+	// Execute GET on /minio/admin/v3/info-access-key
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return InfoAccessKeyLDAPResp{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return InfoAccessKeyLDAPResp{}, httpRespToErrorResponse(resp)
+	}
+
+	data, err := DecryptData(adm.getSecretKey(), resp.Body)
+	if err != nil {
+		return InfoAccessKeyLDAPResp{}, err
+	}
+
+	var infoResp InfoAccessKeyLDAPResp
+	if err = json.Unmarshal(data, &infoResp); err != nil {
+		return InfoAccessKeyLDAPResp{}, err
+	}
+	return infoResp, nil
+}

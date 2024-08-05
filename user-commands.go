@@ -597,72 +597,30 @@ func (adm *AdminClient) ListServiceAccounts(ctx context.Context, user string) (L
 	return listResp, nil
 }
 
-// ListAccessKeysLDAPResp is the response body of the list service accounts call
-type ListAccessKeysLDAPResp struct {
+type ListAccessKeysResp struct {
 	ServiceAccounts []ServiceAccountInfo `json:"serviceAccounts"`
 	STSKeys         []ServiceAccountInfo `json:"stsKeys"`
 }
 
-// ListAccessKeysLDAP - list service accounts belonging to the specified user
-func (adm *AdminClient) ListAccessKeysLDAP(ctx context.Context, userDN string, listType string) (ListAccessKeysLDAPResp, error) {
-	queryValues := url.Values{}
-	queryValues.Set("listType", listType)
-	queryValues.Set("userDN", userDN)
-
-	reqData := requestData{
-		relPath:     adminAPIPrefix + "/idp/ldap/list-access-keys",
-		queryValues: queryValues,
-	}
-
-	// Execute GET on /minio/admin/v3/list-service-accounts
-	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
-	defer closeResponse(resp)
-	if err != nil {
-		return ListAccessKeysLDAPResp{}, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return ListAccessKeysLDAPResp{}, httpRespToErrorResponse(resp)
-	}
-
-	data, err := DecryptData(adm.getSecretKey(), resp.Body)
-	if err != nil {
-		return ListAccessKeysLDAPResp{}, err
-	}
-
-	var listResp ListAccessKeysLDAPResp
-	if err = json.Unmarshal(data, &listResp); err != nil {
-		return ListAccessKeysLDAPResp{}, err
-	}
-	return listResp, nil
-}
-
-const (
-	AccessKeyListUsersOnly  = "users-only"
-	AccessKeyListSTSOnly    = "sts-only"
-	AccessKeyListSvcaccOnly = "svcacc-only"
-	AccessKeyListAll        = "all"
-)
-
 // ListAccessKeysLDAPBulk - list service accounts belonging to the given users or all users
-func (adm *AdminClient) ListAccessKeysLDAPBulk(ctx context.Context, users []string, listType string, all bool) (map[string]ListAccessKeysLDAPResp, error) {
+func (adm *AdminClient) ListAccessKeysBulk(ctx context.Context, users []string, listType string, all bool) (map[string]ListAccessKeysResp, error) {
 	if len(users) > 0 && all {
-		return nil, errors.New("either specify userDNs or all, not both")
+		return nil, errors.New("either specify users or all, not both")
 	}
 
 	queryValues := url.Values{}
 	queryValues.Set("listType", listType)
-	queryValues["userDNs"] = users
+	queryValues["users"] = users
 	if all {
 		queryValues.Set("all", "true")
 	}
 
 	reqData := requestData{
-		relPath:     adminAPIPrefix + "/idp/ldap/list-access-keys-bulk",
+		relPath:     adminAPIPrefix + "/list-access-keys-bulk",
 		queryValues: queryValues,
 	}
 
-	// Execute GET on /minio/admin/v3/idp/ldap/list-access-keys-bulk
+	// Execute GET on /minio/admin/v3/list-access-keys-bulk
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 	defer closeResponse(resp)
 	if err != nil {
@@ -678,11 +636,55 @@ func (adm *AdminClient) ListAccessKeysLDAPBulk(ctx context.Context, users []stri
 		return nil, err
 	}
 
-	listResp := make(map[string]ListAccessKeysLDAPResp)
+	listResp := make(map[string]ListAccessKeysResp)
 	if err = json.Unmarshal(data, &listResp); err != nil {
 		return nil, err
 	}
 	return listResp, nil
+}
+
+type InfoAccessKeyResp struct {
+	Type          string     `json:"type"`
+	ParentUser    string     `json:"parentUser"`
+	AccountStatus string     `json:"accountStatus"`
+	ImpliedPolicy bool       `json:"impliedPolicy"`
+	Policy        string     `json:"policy"`
+	Name          string     `json:"name,omitempty"`
+	Description   string     `json:"description,omitempty"`
+	Expiration    *time.Time `json:"expiration,omitempty"`
+}
+
+// InfoAccessKey - returns the info of the given access key (sts or service account)
+func (adm *AdminClient) InfoAccessKey(ctx context.Context, accessKey string) (InfoAccessKeyResp, error) {
+	queryValues := url.Values{}
+	queryValues.Set("accessKey", accessKey)
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/info-access-key",
+		queryValues: queryValues,
+	}
+
+	// Execute GET on /minio/admin/v3/info-access-key
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return InfoAccessKeyResp{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return InfoAccessKeyResp{}, httpRespToErrorResponse(resp)
+	}
+
+	data, err := DecryptData(adm.getSecretKey(), resp.Body)
+	if err != nil {
+		return InfoAccessKeyResp{}, err
+	}
+
+	var infoResp InfoAccessKeyResp
+	if err = json.Unmarshal(data, &infoResp); err != nil {
+		return InfoAccessKeyResp{}, err
+	}
+	return infoResp, nil
 }
 
 // InfoServiceAccountResp is the response body of the info service account call
