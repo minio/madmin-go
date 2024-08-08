@@ -55,32 +55,32 @@ type KMSState struct {
 
 // KMSKeyInfo contains key metadata
 type KMSKeyInfo struct {
-	CreatedAt string `json:"createdAt"`
-	CreatedBy string `json:"createdBy"`
-	Name      string `json:"name"`
+	CreatedAt time.Time `json:"createdAt"`
+	CreatedBy string    `json:"createdBy"`
+	Name      string    `json:"name"`
 }
 
 // KMSPolicyInfo contains policy metadata
 type KMSPolicyInfo struct {
-	CreatedAt string `json:"created_at"`
-	CreatedBy string `json:"created_by"`
-	Name      string `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
+	CreatedBy string    `json:"created_by"`
+	Name      string    `json:"name"`
 }
 
 // KMSIdentityInfo contains policy metadata
 type KMSIdentityInfo struct {
-	CreatedAt string `json:"createdAt"`
-	CreatedBy string `json:"createdBy"`
-	Identity  string `json:"identity"`
-	Policy    string `json:"policy"`
-	Error     string `json:"error"`
+	CreatedAt time.Time `json:"createdAt"`
+	CreatedBy string    `json:"createdBy"`
+	Identity  string    `json:"identity"`
+	Policy    string    `json:"policy"`
+	Error     string    `json:"error"`
 }
 
 // KMSDescribePolicy contains policy metadata
 type KMSDescribePolicy struct {
-	Name      string `json:"name"`
-	CreatedAt string `json:"created_at"`
-	CreatedBy string `json:"created_by"`
+	Name      string    `json:"name"`
+	CreatedAt time.Time `json:"created_at"`
+	CreatedBy string    `json:"created_by"`
 }
 
 // KMSPolicy represents a KMS policy
@@ -91,11 +91,11 @@ type KMSPolicy struct {
 
 // KMSDescribeIdentity contains identity metadata
 type KMSDescribeIdentity struct {
-	Policy    string `json:"policy"`
-	Identity  string `json:"identity"`
-	IsAdmin   bool   `json:"isAdmin"`
-	CreatedAt string `json:"createdAt"`
-	CreatedBy string `json:"createdBy"`
+	Policy    string    `json:"policy"`
+	Identity  string    `json:"identity"`
+	IsAdmin   bool      `json:"isAdmin"`
+	CreatedAt time.Time `json:"createdAt"`
+	CreatedBy string    `json:"createdBy"`
 }
 
 // KMSDescribeSelfIdentity describes the identity issuing the request
