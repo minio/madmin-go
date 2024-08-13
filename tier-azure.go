@@ -114,7 +114,7 @@ func NewTierAzure(name, accountName, accountKey, bucket string, options ...Azure
 		AccountKey:  accountKey,
 		Bucket:      bucket,
 		// Defaults
-		Endpoint:     "http://blob.core.windows.net",
+		Endpoint:     "",
 		Prefix:       "",
 		Region:       "",
 		StorageClass: "",
