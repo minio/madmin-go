@@ -380,9 +380,12 @@ type HealingDisk struct {
 
 	// Filled on startup/restarts.
 	QueuedBuckets []string `json:"queued_buckets"`
-
 	// Filled during heal.
 	HealedBuckets []string `json:"healed_buckets"`
+
+	// Healing of this drive is finished, successfully or not
+	Finished bool `json:"finished"`
+
 	// future add more tracking capabilities
 }
 
