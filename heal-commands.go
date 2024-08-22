@@ -361,6 +361,8 @@ type HealingDisk struct {
 	Started    time.Time `json:"started"`
 	LastUpdate time.Time `json:"last_update"`
 
+	RetryAttempts uint64 `json:"retry_attempts"`
+
 	ObjectsTotalCount uint64 `json:"objects_total_count"`
 	ObjectsTotalSize  uint64 `json:"objects_total_size"`
 
