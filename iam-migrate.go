@@ -21,9 +21,15 @@ package madmin
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"net/http"
 )
+
+type SkippedIAMEntities struct {
+	SkippedAccessKeys []string `json:"skippedAccessKeys,omitempty"`
+	SkippedDN         []string `json:"skippedDN,omitempty"`
+}
 
 // ExportIAM makes an admin call to export IAM data
 func (adm *AdminClient) ExportIAM(ctx context.Context) (io.ReadCloser, error) {
@@ -46,10 +52,10 @@ func (adm *AdminClient) ExportIAM(ctx context.Context) (io.ReadCloser, error) {
 }
 
 // ImportIAM makes an admin call to setup IAM  from imported content
-func (adm *AdminClient) ImportIAM(ctx context.Context, contentReader io.ReadCloser) error {
+func (adm *AdminClient) ImportIAM(ctx context.Context, contentReader io.ReadCloser) (sam SkippedIAMEntities, err error) {
 	content, err := io.ReadAll(contentReader)
 	if err != nil {
-		return err
+		return sam, err
 	}
 
 	path := adminAPIPrefix + "/import-iam"
@@ -61,11 +67,21 @@ func (adm *AdminClient) ImportIAM(ctx context.Context, contentReader io.ReadClos
 	)
 	defer closeResponse(resp)
 	if err != nil {
-		return err
+		return sam, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return httpRespToErrorResponse(resp)
+		return sam, httpRespToErrorResponse(resp)
 	}
-	return nil
+
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return sam, err
+	}
+
+	if err = json.Unmarshal(b, &sam); err != nil {
+		return sam, err
+	}
+
+	return sam, nil
 }
