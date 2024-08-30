@@ -361,6 +361,8 @@ type HealingDisk struct {
 	Started    time.Time `json:"started"`
 	LastUpdate time.Time `json:"last_update"`
 
+	RetryAttempts uint64 `json:"retry_attempts"`
+
 	ObjectsTotalCount uint64 `json:"objects_total_count"`
 	ObjectsTotalSize  uint64 `json:"objects_total_size"`
 
@@ -380,9 +382,12 @@ type HealingDisk struct {
 
 	// Filled on startup/restarts.
 	QueuedBuckets []string `json:"queued_buckets"`
-
 	// Filled during heal.
 	HealedBuckets []string `json:"healed_buckets"`
+
+	// Healing of this drive is finished, successfully or not
+	Finished bool `json:"finished"`
+
 	// future add more tracking capabilities
 }
 
