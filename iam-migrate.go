@@ -52,13 +52,39 @@ func (adm *AdminClient) ExportIAM(ctx context.Context) (io.ReadCloser, error) {
 }
 
 // ImportIAM makes an admin call to setup IAM  from imported content
-func (adm *AdminClient) ImportIAM(ctx context.Context, contentReader io.ReadCloser) (sam SkippedIAMEntities, err error) {
+func (adm *AdminClient) ImportIAM(ctx context.Context, contentReader io.ReadCloser) error {
+	content, err := io.ReadAll(contentReader)
+	if err != nil {
+		return err
+	}
+
+	path := adminAPIPrefix + "/import-iam"
+	resp, err := adm.executeMethod(ctx,
+		http.MethodPut, requestData{
+			relPath: path,
+			content: content,
+		},
+	)
+	defer closeResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+
+	return nil
+}
+
+// ImportIAMV2 makes an admin call to setup IAM  from imported content
+func (adm *AdminClient) ImportIAMV2(ctx context.Context, contentReader io.ReadCloser) (sam SkippedIAMEntities, err error) {
 	content, err := io.ReadAll(contentReader)
 	if err != nil {
 		return sam, err
 	}
 
-	path := adminAPIPrefix + "/import-iam"
+	path := adminAPIPrefix + "/import-iam-v2"
 	resp, err := adm.executeMethod(ctx,
 		http.MethodPut, requestData{
 			relPath: path,
