@@ -26,9 +26,11 @@ import (
 	"net/http"
 )
 
-type SkippedIAMEntities struct {
-	SkippedAccessKeys []string `json:"skippedAccessKeys,omitempty"`
-	SkippedDN         []string `json:"skippedDN,omitempty"`
+type ImportIAMResult struct {
+	Skipped []string `json:"skipped,omitempty"`
+	Removed []string `json:"removed,omitempty"`
+	Added   []string `json:"added,omitmepty"`
+	Failed  []string `json:"failed,omitmpty"`
 }
 
 // ExportIAM makes an admin call to export IAM data
@@ -78,10 +80,10 @@ func (adm *AdminClient) ImportIAM(ctx context.Context, contentReader io.ReadClos
 }
 
 // ImportIAMV2 makes an admin call to setup IAM  from imported content
-func (adm *AdminClient) ImportIAMV2(ctx context.Context, contentReader io.ReadCloser) (sam SkippedIAMEntities, err error) {
+func (adm *AdminClient) ImportIAMV2(ctx context.Context, contentReader io.ReadCloser) (iamr ImportIAMResult, err error) {
 	content, err := io.ReadAll(contentReader)
 	if err != nil {
-		return sam, err
+		return iamr, err
 	}
 
 	path := adminAPIPrefix + "/import-iam-v2"
@@ -93,21 +95,21 @@ func (adm *AdminClient) ImportIAMV2(ctx context.Context, contentReader io.ReadCl
 	)
 	defer closeResponse(resp)
 	if err != nil {
-		return sam, err
+		return iamr, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return sam, httpRespToErrorResponse(resp)
+		return iamr, httpRespToErrorResponse(resp)
 	}
 
 	b, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return sam, err
+		return iamr, err
 	}
 
-	if err = json.Unmarshal(b, &sam); err != nil {
-		return sam, err
+	if err = json.Unmarshal(b, &iamr); err != nil {
+		return iamr, err
 	}
 
-	return sam, nil
+	return iamr, nil
 }
