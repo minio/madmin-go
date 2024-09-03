@@ -27,10 +27,40 @@ import (
 )
 
 type ImportIAMResult struct {
-	Skipped []string `json:"skipped,omitempty"`
-	Removed []string `json:"removed,omitempty"`
-	Added   []string `json:"added,omitmepty"`
-	Failed  []string `json:"failed,omitmpty"`
+	Skipped IAMEntities    `json:"skipped,omitempty"`
+	Removed IAMEntities    `json:"removed,omitempty"`
+	Added   IAMEntities    `json:"added,omitmepty"`
+	Failed  IAMErrEntities `json:"failed,omitmpty"`
+}
+
+type IAMEntities struct {
+	Policies        []string              `json:"policies,omitmepty"`
+	Users           []string              `json:"users,omitmepty"`
+	Groups          []string              `json:"groups,omitempty"`
+	ServiceAccounts []string              `json:"serviceAccounts,omitempty"`
+	UserPolicies    []map[string][]string `json:"userPolicies,omitempty"`
+	GroupPolicies   []map[string][]string `json:"groupPolicies,omitempty"`
+	STSPolicies     []map[string][]string `json:"stsPolicies,omitempty"`
+}
+
+type IAMErrEntities struct {
+	Policies        []ErrEntity    `json:"policies,omitempty"`
+	Users           []ErrEntity    `json:"users,omitempty"`
+	Groups          []ErrEntity    `json:"groups,omitempty"`
+	ServiceAccounts []ErrEntity    `json:"serviceAccounts,omitempty"`
+	UserPolicies    []ErrPolEntity `json:"userPolicies,omitempty"`
+	GroupPolicies   []ErrPolEntity `json:"groupPolicies,omitempty"`
+	STSPolicies     []ErrPolEntity `json:"stsPolicies,omitempty"`
+}
+
+type ErrEntity struct {
+	Name  string `json:"name,omitempty"`
+	Error error  `json:"error,omitempty"`
+}
+
+type ErrPolEntity struct {
+	PolicyMap map[string][]string `json:"policyMap,omitempty"`
+	Error     error               `json:"error,omitempty"`
 }
 
 // ExportIAM makes an admin call to export IAM data
