@@ -177,6 +177,40 @@ func (adm *AdminClient) RemoveTier(ctx context.Context, tierName string) error {
 	return nil
 }
 
+// RemoveTierOpts - options for a remote tiering removal
+type RemoveTierOpts struct {
+	Force bool
+}
+
+// RemoveTierV2 removes an empty tier identified by tierName, the tier is not
+// required to be reachable or empty if force flag is set to true.
+func (adm *AdminClient) RemoveTierV2(ctx context.Context, tierName string, opts RemoveTierOpts) error {
+	if tierName == "" {
+		return ErrTierNameEmpty
+	}
+
+	queryVals := url.Values{}
+	queryVals.Set("force", strconv.FormatBool(opts.Force))
+
+	reqData := requestData{
+		relPath:     path.Join(adminAPIPrefix, tierAPI, tierName),
+		queryValues: queryVals,
+	}
+
+	// Execute DELETE on /minio/admin/v3/tier/tierName to remove an empty tier.
+	resp, err := adm.executeMethod(ctx, http.MethodDelete, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusNoContent {
+		return httpRespToErrorResponse(resp)
+	}
+
+	return nil
+}
+
 // VerifyTier verifies tierName's remote tier config
 func (adm *AdminClient) VerifyTier(ctx context.Context, tierName string) error {
 	if tierName == "" {
