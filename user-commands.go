@@ -602,7 +602,7 @@ type ListAccessKeysResp struct {
 	STSKeys         []ServiceAccountInfo `json:"stsKeys"`
 }
 
-// ListAccessKeysLDAPBulk - list service accounts belonging to the given users or all users
+// ListAccessKeysBulk - list service accounts belonging to the given users or all users
 func (adm *AdminClient) ListAccessKeysBulk(ctx context.Context, users []string, listType string, all bool) (map[string]ListAccessKeysResp, error) {
 	if len(users) > 0 && all {
 		return nil, errors.New("either specify users or all, not both")
@@ -641,50 +641,6 @@ func (adm *AdminClient) ListAccessKeysBulk(ctx context.Context, users []string, 
 		return nil, err
 	}
 	return listResp, nil
-}
-
-type InfoAccessKeyResp struct {
-	Type          string     `json:"type"`
-	ParentUser    string     `json:"parentUser"`
-	AccountStatus string     `json:"accountStatus"`
-	ImpliedPolicy bool       `json:"impliedPolicy"`
-	Policy        string     `json:"policy"`
-	Name          string     `json:"name,omitempty"`
-	Description   string     `json:"description,omitempty"`
-	Expiration    *time.Time `json:"expiration,omitempty"`
-}
-
-// InfoAccessKey - returns the info of the given access key (sts or service account)
-func (adm *AdminClient) InfoAccessKey(ctx context.Context, accessKey string) (InfoAccessKeyResp, error) {
-	queryValues := url.Values{}
-	queryValues.Set("accessKey", accessKey)
-
-	reqData := requestData{
-		relPath:     adminAPIPrefix + "/info-access-key",
-		queryValues: queryValues,
-	}
-
-	// Execute GET on /minio/admin/v3/info-access-key
-	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
-	defer closeResponse(resp)
-	if err != nil {
-		return InfoAccessKeyResp{}, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return InfoAccessKeyResp{}, httpRespToErrorResponse(resp)
-	}
-
-	data, err := DecryptData(adm.getSecretKey(), resp.Body)
-	if err != nil {
-		return InfoAccessKeyResp{}, err
-	}
-
-	var infoResp InfoAccessKeyResp
-	if err = json.Unmarshal(data, &infoResp); err != nil {
-		return InfoAccessKeyResp{}, err
-	}
-	return infoResp, nil
 }
 
 // InfoServiceAccountResp is the response body of the info service account call

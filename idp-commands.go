@@ -522,38 +522,3 @@ func (adm *AdminClient) ListAccessKeysLDAPBulk(ctx context.Context, users []stri
 	}
 	return listResp, nil
 }
-
-type InfoAccessKeyLDAPResp InfoAccessKeyResp
-
-// InfoAccessKey - returns the info of the given access key (sts or service account)
-func (adm *AdminClient) InfoAccessKeyLDAP(ctx context.Context, accessKey string) (InfoAccessKeyLDAPResp, error) {
-	queryValues := url.Values{}
-	queryValues.Set("accessKey", accessKey)
-
-	reqData := requestData{
-		relPath:     adminAPIPrefix + "/idp/ldap/info-access-key",
-		queryValues: queryValues,
-	}
-
-	// Execute GET on /minio/admin/v3/info-access-key
-	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
-	defer closeResponse(resp)
-	if err != nil {
-		return InfoAccessKeyLDAPResp{}, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return InfoAccessKeyLDAPResp{}, httpRespToErrorResponse(resp)
-	}
-
-	data, err := DecryptData(adm.getSecretKey(), resp.Body)
-	if err != nil {
-		return InfoAccessKeyLDAPResp{}, err
-	}
-
-	var infoResp InfoAccessKeyLDAPResp
-	if err = json.Unmarshal(data, &infoResp); err != nil {
-		return InfoAccessKeyLDAPResp{}, err
-	}
-	return infoResp, nil
-}
