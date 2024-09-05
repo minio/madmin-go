@@ -442,6 +442,8 @@ func (adm *AdminClient) attachOrDetachPolicyLDAP(ctx context.Context, isAttach b
 type ListAccessKeysLDAPResp ListAccessKeysResp
 
 // ListAccessKeysLDAP - list service accounts belonging to the specified user
+//
+// Deprecated: Use ListAccessKeysLDAP instead.
 func (adm *AdminClient) ListAccessKeysLDAP(ctx context.Context, userDN string, listType string) (ListAccessKeysLDAPResp, error) {
 	queryValues := url.Values{}
 	queryValues.Set("listType", listType)
@@ -452,7 +454,7 @@ func (adm *AdminClient) ListAccessKeysLDAP(ctx context.Context, userDN string, l
 		queryValues: queryValues,
 	}
 
-	// Execute GET on /minio/admin/v3/list-service-accounts
+	// Execute GET on /minio/admin/v3/idp/ldap/list-access-keys
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 	defer closeResponse(resp)
 	if err != nil {
@@ -475,23 +477,16 @@ func (adm *AdminClient) ListAccessKeysLDAP(ctx context.Context, userDN string, l
 	return listResp, nil
 }
 
-const (
-	AccessKeyListUsersOnly  = "users-only"
-	AccessKeyListSTSOnly    = "sts-only"
-	AccessKeyListSvcaccOnly = "svcacc-only"
-	AccessKeyListAll        = "all"
-)
-
-// ListAccessKeysLDAPBulk - list service accounts belonging to the given users or all users
-func (adm *AdminClient) ListAccessKeysLDAPBulk(ctx context.Context, users []string, listType string, all bool) (map[string]ListAccessKeysLDAPResp, error) {
-	if len(users) > 0 && all {
+// ListAccessKeysLDAPBulk - list access keys belonging to the given users or all users
+func (adm *AdminClient) ListAccessKeysLDAPBulk(ctx context.Context, users []string, opts ListAccessKeysOpts) (map[string]ListAccessKeysLDAPResp, error) {
+	if len(users) > 0 && opts.All {
 		return nil, errors.New("either specify userDNs or all, not both")
 	}
 
 	queryValues := url.Values{}
-	queryValues.Set("listType", listType)
+	queryValues.Set("listType", opts.ListType)
 	queryValues["userDNs"] = users
-	if all {
+	if opts.All {
 		queryValues.Set("all", "true")
 	}
 

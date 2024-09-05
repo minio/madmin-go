@@ -602,16 +602,29 @@ type ListAccessKeysResp struct {
 	STSKeys         []ServiceAccountInfo `json:"stsKeys"`
 }
 
-// ListAccessKeysBulk - list service accounts belonging to the given users or all users
-func (adm *AdminClient) ListAccessKeysBulk(ctx context.Context, users []string, listType string, all bool) (map[string]ListAccessKeysResp, error) {
-	if len(users) > 0 && all {
+const (
+	AccessKeyListUsersOnly  = "users-only"
+	AccessKeyListSTSOnly    = "sts-only"
+	AccessKeyListSvcaccOnly = "svcacc-only"
+	AccessKeyListAll        = "all"
+)
+
+// ListAccessKeysOpts - options for listing access keys
+type ListAccessKeysOpts struct {
+	ListType string
+	All      bool
+}
+
+// ListAccessKeysBulk - list access keys belonging to the given users or all users
+func (adm *AdminClient) ListAccessKeysBulk(ctx context.Context, users []string, opts ListAccessKeysOpts) (map[string]ListAccessKeysResp, error) {
+	if len(users) > 0 && opts.All {
 		return nil, errors.New("either specify users or all, not both")
 	}
 
 	queryValues := url.Values{}
-	queryValues.Set("listType", listType)
+	queryValues.Set("listType", opts.ListType)
 	queryValues["users"] = users
-	if all {
+	if opts.All {
 		queryValues.Set("all", "true")
 	}
 
