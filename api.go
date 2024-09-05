@@ -404,8 +404,9 @@ func (adm AdminClient) executeMethod(ctx context.Context, method string, reqData
 			if errors.Is(err, syscall.ECONNREFUSED) {
 				return nil, err
 			}
-			if err == context.Canceled || err == context.DeadlineExceeded {
-				return nil, err
+			// Give up if caller canceled.
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
 			}
 			// retry all network errors.
 			continue

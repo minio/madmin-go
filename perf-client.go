@@ -102,7 +102,7 @@ func (adm *AdminClient) ClientPerf(ctx context.Context, dur time.Duration) (resu
 		contentReader: reader,
 	})
 	reader.End()
-	if errors.Is(err, context.DeadlineExceeded) {
+	if errors.Is(err, context.DeadlineExceeded) && ctx.Err() != nil {
 		err = nil
 	}
 
