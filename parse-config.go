@@ -44,6 +44,7 @@ const (
 	StorageClassSubSys   = "storage_class"
 	APISubSys            = "api"
 	CompressionSubSys    = "compression"
+	EventQueueSubSys     = "event_queue"
 	LoggerWebhookSubSys  = "logger_webhook"
 	AuditWebhookSubSys   = "audit_webhook"
 	AuditKafkaSubSys     = "audit_kafka"
@@ -88,6 +89,7 @@ var SubSystems = set.CreateStringSet(
 	StorageClassSubSys,
 	APISubSys,
 	CompressionSubSys,
+	EventQueueSubSys,
 	LoggerWebhookSubSys,
 	AuditWebhookSubSys,
 	AuditKafkaSubSys,
