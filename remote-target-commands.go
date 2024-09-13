@@ -108,6 +108,7 @@ type BucketTarget struct {
 	Online              bool          `json:"isOnline"`
 	Latency             LatencyStat   `json:"latency"`
 	DeploymentID        string        `json:"deploymentID,omitempty"`
+	Edge                bool          `json:"edge"` // target is recipient of edge traffic
 }
 
 // Clone returns shallow clone of BucketTarget without secret key in credentials
@@ -135,6 +136,7 @@ func (t *BucketTarget) Clone() BucketTarget {
 		Online:              t.Online,
 		Latency:             t.Latency,
 		DeploymentID:        t.DeploymentID,
+		Edge:                t.Edge,
 	}
 }
 
@@ -270,6 +272,8 @@ const (
 	PathUpdateType
 	// ResetUpdateType sets ResetBeforeDate and ResetID on a bucket target
 	ResetUpdateType
+	// EdgeUpdateType sets bucket target as a recipent of edge traffic
+	EdgeUpdateType
 )
 
 // GetTargetUpdateOps returns a slice of update operations being
@@ -296,6 +300,9 @@ func GetTargetUpdateOps(values url.Values) []TargetUpdateType {
 	}
 	if values.Get("path") == "true" {
 		ops = append(ops, PathUpdateType)
+	}
+	if values.Get("edge") == "true" {
+		ops = append(ops, EdgeUpdateType)
 	}
 	return ops
 }
@@ -331,6 +338,8 @@ func (adm *AdminClient) UpdateRemoteTarget(ctx context.Context, target *BucketTa
 			queryValues.Set("healthcheck", "true")
 		case PathUpdateType:
 			queryValues.Set("path", "true")
+		case EdgeUpdateType:
+			queryValues.Set("edge", "true")
 		}
 	}
 
