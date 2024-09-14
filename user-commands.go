@@ -597,44 +597,9 @@ func (adm *AdminClient) ListServiceAccounts(ctx context.Context, user string) (L
 	return listResp, nil
 }
 
-// ListAccessKeysLDAPResp is the response body of the list service accounts call
-type ListAccessKeysLDAPResp struct {
+type ListAccessKeysResp struct {
 	ServiceAccounts []ServiceAccountInfo `json:"serviceAccounts"`
 	STSKeys         []ServiceAccountInfo `json:"stsKeys"`
-}
-
-// ListAccessKeysLDAP - list service accounts belonging to the specified user
-func (adm *AdminClient) ListAccessKeysLDAP(ctx context.Context, userDN string, listType string) (ListAccessKeysLDAPResp, error) {
-	queryValues := url.Values{}
-	queryValues.Set("listType", listType)
-	queryValues.Set("userDN", userDN)
-
-	reqData := requestData{
-		relPath:     adminAPIPrefix + "/idp/ldap/list-access-keys",
-		queryValues: queryValues,
-	}
-
-	// Execute GET on /minio/admin/v3/list-service-accounts
-	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
-	defer closeResponse(resp)
-	if err != nil {
-		return ListAccessKeysLDAPResp{}, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return ListAccessKeysLDAPResp{}, httpRespToErrorResponse(resp)
-	}
-
-	data, err := DecryptData(adm.getSecretKey(), resp.Body)
-	if err != nil {
-		return ListAccessKeysLDAPResp{}, err
-	}
-
-	var listResp ListAccessKeysLDAPResp
-	if err = json.Unmarshal(data, &listResp); err != nil {
-		return ListAccessKeysLDAPResp{}, err
-	}
-	return listResp, nil
 }
 
 const (
@@ -644,25 +609,31 @@ const (
 	AccessKeyListAll        = "all"
 )
 
-// ListAccessKeysLDAPBulk - list service accounts belonging to the given users or all users
-func (adm *AdminClient) ListAccessKeysLDAPBulk(ctx context.Context, users []string, listType string, all bool) (map[string]ListAccessKeysLDAPResp, error) {
-	if len(users) > 0 && all {
-		return nil, errors.New("either specify userDNs or all, not both")
+// ListAccessKeysOpts - options for listing access keys
+type ListAccessKeysOpts struct {
+	ListType string
+	All      bool
+}
+
+// ListAccessKeysBulk - list access keys belonging to the given users or all users
+func (adm *AdminClient) ListAccessKeysBulk(ctx context.Context, users []string, opts ListAccessKeysOpts) (map[string]ListAccessKeysResp, error) {
+	if len(users) > 0 && opts.All {
+		return nil, errors.New("either specify users or all, not both")
 	}
 
 	queryValues := url.Values{}
-	queryValues.Set("listType", listType)
-	queryValues["userDNs"] = users
-	if all {
+	queryValues.Set("listType", opts.ListType)
+	queryValues["users"] = users
+	if opts.All {
 		queryValues.Set("all", "true")
 	}
 
 	reqData := requestData{
-		relPath:     adminAPIPrefix + "/idp/ldap/list-access-keys-bulk",
+		relPath:     adminAPIPrefix + "/list-access-keys-bulk",
 		queryValues: queryValues,
 	}
 
-	// Execute GET on /minio/admin/v3/idp/ldap/list-access-keys-bulk
+	// Execute GET on /minio/admin/v3/list-access-keys-bulk
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 	defer closeResponse(resp)
 	if err != nil {
@@ -678,7 +649,7 @@ func (adm *AdminClient) ListAccessKeysLDAPBulk(ctx context.Context, users []stri
 		return nil, err
 	}
 
-	listResp := make(map[string]ListAccessKeysLDAPResp)
+	listResp := make(map[string]ListAccessKeysResp)
 	if err = json.Unmarshal(data, &listResp); err != nil {
 		return nil, err
 	}
