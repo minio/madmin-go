@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: [1.21.x, 1.22.x]
+        go-version: [1.22.x]
     steps:
     - name: Set up Go ${{ matrix.go-version }}
       uses: actions/setup-go@v5
@@ -31,7 +31,7 @@ jobs:
     - name: Check lint
       uses: golangci/golangci-lint-action@v6
       with:
-        version: v1.58
+        version: v1.61
 
     - name: Regenerate, vet and test
       run: |
@@ -47,17 +47,17 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        go-version: [1.21.x, 1.22.x]
+        go-version: [1.22.x]
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
     - name: Set up Go ${{ matrix.go-version }} on ${{ matrix.os }}
-      uses: actions/setup-go@v1
+      uses: actions/setup-go@v5
       with:
         go-version: ${{ matrix.go-version }}
       id: go
 
     - name: Check out code into the Go module directory
-      uses: actions/checkout@v1
+      uses: actions/checkout@v4
 
     - name: Test on ${{ matrix.os }}
       if: matrix.os == 'ubuntu-latest'
