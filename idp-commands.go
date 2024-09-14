@@ -478,7 +478,12 @@ func (adm *AdminClient) ListAccessKeysLDAP(ctx context.Context, userDN string, l
 }
 
 // ListAccessKeysLDAPBulk - list access keys belonging to the given users or all users
-func (adm *AdminClient) ListAccessKeysLDAPBulk(ctx context.Context, users []string, opts ListAccessKeysOpts) (map[string]ListAccessKeysLDAPResp, error) {
+func (adm *AdminClient) ListAccessKeysLDAPBulk(ctx context.Context, users []string, listType string, all bool) (map[string]ListAccessKeysLDAPResp, error) {
+	return adm.ListAccessKeysLDAPBulkWithOpts(ctx, users, ListAccessKeysOpts{ListType: listType, All: all})
+}
+
+// ListAccessKeysLDAPBulkWithOpts - list access keys belonging to the given users or all users
+func (adm *AdminClient) ListAccessKeysLDAPBulkWithOpts(ctx context.Context, users []string, opts ListAccessKeysOpts) (map[string]ListAccessKeysLDAPResp, error) {
 	if len(users) > 0 && opts.All {
 		return nil, errors.New("either specify userDNs or all, not both")
 	}
