@@ -25,6 +25,8 @@ github.com/lufia/plan9stats v0.0.0-20240909124753-873cd0166683 h1:7UMa6KCCMjZEMD
 github.com/lufia/plan9stats v0.0.0-20240909124753-873cd0166683/go.mod h1:ilwx/Dta8jXAgpFYFvSWEMwxmbWXyiUHkd5FwyKhb5k=
 github.com/matttproud/golang_protobuf_extensions v1.0.4 h1:mmDVorXM7PCGKw94cs5zkfA9PSy5pEvNWRP0ET0TIVo=
 github.com/matttproud/golang_protobuf_extensions v1.0.4/go.mod h1:BSXmuO+STAnVfrANrmjBb36TMTDstsz7MSK+HVaYKv4=
+github.com/minio/madmin-go/v3 v3.0.68 h1:YiWSboJiFylXkRIwQTCSYbPMI2iiZ1GpWzw/E6T91GA=
+github.com/minio/madmin-go/v3 v3.0.68/go.mod h1:TOTc96ZkMknNhl+ReO/V68bQfgRGfH+8iy7YaDzHdXA=
 github.com/minio/md5-simd v1.1.2 h1:Gdi1DZK69+ZVMoNHRXJyNcxrMA4dSxoYHZSQbirFg34=
 github.com/minio/md5-simd v1.1.2/go.mod h1:MzdKDxYpY2BT9XQFocsiZf/NKVtR7nkE4RoEpN+20RM=
 github.com/minio/minio-go/v7 v7.0.76 h1:9nxHH2XDai61cT/EFhyIw/wW4vJfpPNvl7lSFpRt+Ng=
@@ -43,8 +45,8 @@ github.com/prometheus/common v0.59.1 h1:LXb1quJHWm1P6wq/U824uxYi4Sg0oGvNeUm1z5dJ
 github.com/prometheus/common v0.59.1/go.mod h1:GpWM7dewqmVYcd7SmRaiWVe9SSqjf0UrwnYnpEZNuT0=
 github.com/prometheus/procfs v0.15.1 h1:YagwOFzUgYfKKHX6Dr+sHT7km/hxC76UB0learggepc=
 github.com/prometheus/procfs v0.15.1/go.mod h1:fB45yRUv8NstnjriLhBQLuOUt+WW4BsoGhij/e3PBqk=
-github.com/prometheus/prom2json v1.4.0 h1:2AEOsd1ebqql/p9u0IWgCpUAteAAf9Lnf/SVyieqer4=
-github.com/prometheus/prom2json v1.4.0/go.mod h1:DmcIMPspQD/fMyFCYti5qJJbuEnqDh3DGoooO0sgr4w=
+github.com/prometheus/prom2json v1.4.1 h1:7McxdrHgPEOtMwWjkKtd0v5AhpR2Q6QAnlHKVxq0+tQ=
+github.com/prometheus/prom2json v1.4.1/go.mod h1:CzOQykSKFxXuC7ELUZHOHQvwKesQ3eN0p2PWLhFitQM=
 github.com/prometheus/prometheus v0.54.1 h1:vKuwQNjnYN2/mDoWfHXDhAsz/68q/dQDb+YbcEqU7MQ=
 github.com/prometheus/prometheus v0.54.1/go.mod h1:xlLByHhk2g3ycakQGrMaU8K7OySZx98BzeCR99991NY=
 github.com/rs/xid v1.6.0 h1:fV591PaemRlL6JfRxGDEPl69wICngIQ3shQtzfy2gxU=

@@ -1,15 +1,16 @@
-module github.com/minio/madmin-go/v3
+module github.com/zveinn/madmin-go/v4
 
-go 1.22
+go 1.22.4
 
 require (
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/golang-jwt/jwt/v4 v4.5.0
+	github.com/minio/madmin-go/v3 v3.0.68
 	github.com/minio/minio-go/v7 v7.0.76
 	github.com/prometheus/common v0.59.1
 	github.com/prometheus/procfs v0.15.1
-	github.com/prometheus/prom2json v1.4.0
+	github.com/prometheus/prom2json v1.4.1
 	github.com/safchain/ethtool v0.4.1
 	github.com/secure-io/sio-go v0.3.1
 	github.com/shirou/gopsutil/v3 v3.24.5
