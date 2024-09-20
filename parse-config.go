@@ -69,7 +69,8 @@ const (
 
 	LambdaWebhookSubSys = "lambda_webhook"
 
-	BrowserSubSys = "browser"
+	BrowserSubSys         = "browser"
+	AuditEventQueueSubSys = "audit_event_queue"
 )
 
 // SubSystems - list of all subsystems in MinIO
@@ -111,6 +112,7 @@ var SubSystems = set.CreateStringSet(
 	NotifyWebhookSubSys,
 	LambdaWebhookSubSys,
 	BrowserSubSys,
+	AuditEventQueueSubSys,
 )
 
 // Standard config keys and values.
