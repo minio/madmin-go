@@ -69,7 +69,8 @@ const (
 
 	LambdaWebhookSubSys = "lambda_webhook"
 
-	BrowserSubSys = "browser"
+	BrowserSubSys         = "browser"
+	AuditEventQueueSubSys = "audit_event_queue"
 )
 
 // SubSystems - list of all subsystems in MinIO
@@ -111,6 +112,48 @@ var SubSystems = set.CreateStringSet(
 	NotifyWebhookSubSys,
 	LambdaWebhookSubSys,
 	BrowserSubSys,
+)
+
+// EOSSubSystems - list of all subsystems for EOS
+var EOSSubSystems = set.CreateStringSet(
+	CredentialsSubSys,
+	PolicyOPASubSys,
+	PolicyPluginSubSys,
+	IdentityOpenIDSubSys,
+	IdentityLDAPSubSys,
+	IdentityTLSSubSys,
+	IdentityPluginSubSys,
+	CacheSubSys,
+	SiteSubSys,
+	RegionSubSys,
+	EtcdSubSys,
+	StorageClassSubSys,
+	APISubSys,
+	CompressionSubSys,
+	LoggerWebhookSubSys,
+	AuditWebhookSubSys,
+	AuditKafkaSubSys,
+	HealSubSys,
+	ScannerSubSys,
+	CrawlerSubSys,
+	SubnetSubSys,
+	CallhomeSubSys,
+	BatchSubSys,
+	DriveSubSys,
+	ILMSubsys,
+	NotifyKafkaSubSys,
+	NotifyMQTTSubSys,
+	NotifyMySQLSubSys,
+	NotifyNATSSubSys,
+	NotifyNSQSubSys,
+	NotifyESSubSys,
+	NotifyAMQPSubSys,
+	NotifyPostgresSubSys,
+	NotifyRedisSubSys,
+	NotifyWebhookSubSys,
+	LambdaWebhookSubSys,
+	BrowserSubSys,
+	AuditEventQueueSubSys,
 )
 
 // Standard config keys and values.
