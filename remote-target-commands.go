@@ -86,57 +86,59 @@ func ParseARN(s string) (*ARN, error) {
 
 // BucketTarget represents the target bucket and site association.
 type BucketTarget struct {
-	SourceBucket        string        `json:"sourcebucket"`
-	Endpoint            string        `json:"endpoint"`
-	Credentials         *Credentials  `json:"credentials"`
-	TargetBucket        string        `json:"targetbucket"`
-	Secure              bool          `json:"secure"`
-	Path                string        `json:"path,omitempty"`
-	API                 string        `json:"api,omitempty"`
-	Arn                 string        `json:"arn,omitempty"`
-	Type                ServiceType   `json:"type"`
-	Region              string        `json:"region,omitempty"`
-	BandwidthLimit      int64         `json:"bandwidthlimit,omitempty"`
-	ReplicationSync     bool          `json:"replicationSync"`
-	StorageClass        string        `json:"storageclass,omitempty"`
-	HealthCheckDuration time.Duration `json:"healthCheckDuration,omitempty"`
-	DisableProxy        bool          `json:"disableProxy"`
-	ResetBeforeDate     time.Time     `json:"resetBeforeDate,omitempty"`
-	ResetID             string        `json:"resetID,omitempty"`
-	TotalDowntime       time.Duration `json:"totalDowntime"`
-	LastOnline          time.Time     `json:"lastOnline"`
-	Online              bool          `json:"isOnline"`
-	Latency             LatencyStat   `json:"latency"`
-	DeploymentID        string        `json:"deploymentID,omitempty"`
-	Edge                bool          `json:"edge"` // target is recipient of edge traffic
+	SourceBucket         string        `json:"sourcebucket"`
+	Endpoint             string        `json:"endpoint"`
+	Credentials          *Credentials  `json:"credentials"`
+	TargetBucket         string        `json:"targetbucket"`
+	Secure               bool          `json:"secure"`
+	Path                 string        `json:"path,omitempty"`
+	API                  string        `json:"api,omitempty"`
+	Arn                  string        `json:"arn,omitempty"`
+	Type                 ServiceType   `json:"type"`
+	Region               string        `json:"region,omitempty"`
+	BandwidthLimit       int64         `json:"bandwidthlimit,omitempty"`
+	ReplicationSync      bool          `json:"replicationSync"`
+	StorageClass         string        `json:"storageclass,omitempty"`
+	HealthCheckDuration  time.Duration `json:"healthCheckDuration,omitempty"`
+	DisableProxy         bool          `json:"disableProxy"`
+	ResetBeforeDate      time.Time     `json:"resetBeforeDate,omitempty"`
+	ResetID              string        `json:"resetID,omitempty"`
+	TotalDowntime        time.Duration `json:"totalDowntime"`
+	LastOnline           time.Time     `json:"lastOnline"`
+	Online               bool          `json:"isOnline"`
+	Latency              LatencyStat   `json:"latency"`
+	DeploymentID         string        `json:"deploymentID,omitempty"`
+	Edge                 bool          `json:"edge"`                 // target is recipient of edge traffic
+	EdgeSyncBeforeExpiry bool          `json:"edgeSyncBeforeExpiry"` // must replicate to edge before expiry
 }
 
 // Clone returns shallow clone of BucketTarget without secret key in credentials
 func (t *BucketTarget) Clone() BucketTarget {
 	return BucketTarget{
-		SourceBucket:        t.SourceBucket,
-		Endpoint:            t.Endpoint,
-		TargetBucket:        t.TargetBucket,
-		Credentials:         &Credentials{AccessKey: t.Credentials.AccessKey},
-		Secure:              t.Secure,
-		Path:                t.Path,
-		API:                 t.API,
-		Arn:                 t.Arn,
-		Type:                t.Type,
-		Region:              t.Region,
-		BandwidthLimit:      t.BandwidthLimit,
-		ReplicationSync:     t.ReplicationSync,
-		StorageClass:        t.StorageClass, // target storage class
-		HealthCheckDuration: t.HealthCheckDuration,
-		DisableProxy:        t.DisableProxy,
-		ResetBeforeDate:     t.ResetBeforeDate,
-		ResetID:             t.ResetID,
-		TotalDowntime:       t.TotalDowntime,
-		LastOnline:          t.LastOnline,
-		Online:              t.Online,
-		Latency:             t.Latency,
-		DeploymentID:        t.DeploymentID,
-		Edge:                t.Edge,
+		SourceBucket:         t.SourceBucket,
+		Endpoint:             t.Endpoint,
+		TargetBucket:         t.TargetBucket,
+		Credentials:          &Credentials{AccessKey: t.Credentials.AccessKey},
+		Secure:               t.Secure,
+		Path:                 t.Path,
+		API:                  t.API,
+		Arn:                  t.Arn,
+		Type:                 t.Type,
+		Region:               t.Region,
+		BandwidthLimit:       t.BandwidthLimit,
+		ReplicationSync:      t.ReplicationSync,
+		StorageClass:         t.StorageClass, // target storage class
+		HealthCheckDuration:  t.HealthCheckDuration,
+		DisableProxy:         t.DisableProxy,
+		ResetBeforeDate:      t.ResetBeforeDate,
+		ResetID:              t.ResetID,
+		TotalDowntime:        t.TotalDowntime,
+		LastOnline:           t.LastOnline,
+		Online:               t.Online,
+		Latency:              t.Latency,
+		DeploymentID:         t.DeploymentID,
+		Edge:                 t.Edge,
+		EdgeSyncBeforeExpiry: t.EdgeSyncBeforeExpiry,
 	}
 }
 
@@ -274,6 +276,8 @@ const (
 	ResetUpdateType
 	// EdgeUpdateType sets bucket target as a recipent of edge traffic
 	EdgeUpdateType
+	// EdgeExpiryUpdateType sets bucket target to sync before expiry
+	EdgeExpiryUpdateType
 )
 
 // GetTargetUpdateOps returns a slice of update operations being
@@ -303,6 +307,9 @@ func GetTargetUpdateOps(values url.Values) []TargetUpdateType {
 	}
 	if values.Get("edge") == "true" {
 		ops = append(ops, EdgeUpdateType)
+	}
+	if values.Get("edgeSyncBeforeExpiry") == "true" {
+		ops = append(ops, EdgeExpiryUpdateType)
 	}
 	return ops
 }
@@ -340,6 +347,8 @@ func (adm *AdminClient) UpdateRemoteTarget(ctx context.Context, target *BucketTa
 			queryValues.Set("path", "true")
 		case EdgeUpdateType:
 			queryValues.Set("edge", "true")
+		case EdgeExpiryUpdateType:
+			queryValues.Set("edgeSyncBeforeExpiry", "true")
 		}
 	}
 
