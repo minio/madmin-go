@@ -77,7 +77,7 @@ type AdminClient struct {
 // Global constants.
 const (
 	libraryName    = "madmin-go"
-	libraryVersion = "2.0.0"
+	libraryVersion = "3.0.70"
 
 	libraryAdminURLPrefix = "/minio/admin"
 	libraryKMSURLPrefix   = "/minio/kms"
