@@ -30,6 +30,7 @@ import (
 type BucketScanInfo struct {
 	Pool, Set   int
 	Cycle       uint64
+	Ongoing     bool
 	LastUpdate  time.Time
 	LastStarted time.Time
 	Completed   []time.Time

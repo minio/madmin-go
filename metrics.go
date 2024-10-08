@@ -241,6 +241,9 @@ type ScannerMetrics struct {
 	// Number of buckets currently scanning
 	OngoingBuckets int `json:"ongoing_buckets"`
 
+	// Stats per bucket, a map between bucket name and scan stats in all erasure sets
+	PerBucketStats map[string][]BucketScanInfo `json:"per_bucket_stats,omitempty"`
+
 	// Number of accumulated operations by type since server restart.
 	LifeTimeOps map[string]uint64 `json:"life_time_ops,omitempty"`
 
@@ -302,6 +305,19 @@ func (s *ScannerMetrics) Merge(other *ScannerMetrics) {
 
 	if s.OngoingBuckets < other.OngoingBuckets {
 		s.OngoingBuckets = other.OngoingBuckets
+	}
+
+	if s.PerBucketStats == nil {
+		s.PerBucketStats = make(map[string][]BucketScanInfo)
+	}
+	for bucket, otherSt := range other.PerBucketStats {
+		if len(otherSt) == 0 {
+			continue
+		}
+		_, ok := s.PerBucketStats[bucket]
+		if !ok {
+			s.PerBucketStats[bucket] = otherSt
+		}
 	}
 
 	if s.CurrentCycle < other.CurrentCycle {
