@@ -117,6 +117,7 @@ type SiteReplicationInfo struct {
 	Name                    string     `json:"name,omitempty"`
 	Sites                   []PeerInfo `json:"sites,omitempty"`
 	ServiceAccountAccessKey string     `json:"serviceAccountAccessKey,omitempty"`
+	APIVersion              string     `json:"apiVersion,omitempty"`
 }
 
 // SiteReplicationInfo - returns cluster replication information.
@@ -167,6 +168,7 @@ type PeerInfo struct {
 	SyncState          SyncStatus      `json:"sync"`             // whether to enable| disable synchronous replication
 	DefaultBandwidth   BucketBandwidth `json:"defaultbandwidth"` // bandwidth limit per bucket in bytes/sec
 	ReplicateILMExpiry bool            `json:"replicate-ilm-expiry"`
+	APIVersion         string          `json:"apiVersion,omitempty"`
 }
 
 // BucketBandwidth has default bandwidth limit per bucket in bytes/sec
@@ -293,6 +295,7 @@ type SRSvcAccCreate struct {
 	Name          string                 `json:"name"`
 	Description   string                 `json:"description"`
 	Expiration    *time.Time             `json:"expiration,omitempty"`
+	APIVersion    string                 `json:"apiVersion,omitempty"`
 }
 
 // SRSvcAccUpdate - update operation
@@ -304,18 +307,21 @@ type SRSvcAccUpdate struct {
 	Description   string          `json:"description"`
 	SessionPolicy json.RawMessage `json:"sessionPolicy"`
 	Expiration    *time.Time      `json:"expiration,omitempty"`
+	APIVersion    string          `json:"apiVersion,omitempty"`
 }
 
 // SRSvcAccDelete - delete operation
 type SRSvcAccDelete struct {
-	AccessKey string `json:"accessKey"`
+	AccessKey  string `json:"accessKey"`
+	APIVersion string `json:"apiVersion,omitempty"`
 }
 
 // SRSvcAccChange - sum-type to represent an svc account change.
 type SRSvcAccChange struct {
-	Create *SRSvcAccCreate `json:"crSvcAccCreate"`
-	Update *SRSvcAccUpdate `json:"crSvcAccUpdate"`
-	Delete *SRSvcAccDelete `json:"crSvcAccDelete"`
+	Create     *SRSvcAccCreate `json:"crSvcAccCreate"`
+	Update     *SRSvcAccUpdate `json:"crSvcAccUpdate"`
+	Delete     *SRSvcAccDelete `json:"crSvcAccDelete"`
+	APIVersion string          `json:"apiVersion,omitempty"`
 }
 
 // SRPolicyMapping - represents mapping of a policy to a user or group.
@@ -326,6 +332,7 @@ type SRPolicyMapping struct {
 	Policy      string    `json:"policy"`
 	CreatedAt   time.Time `json:"createdAt,omitempty"`
 	UpdatedAt   time.Time `json:"updatedAt,omitempty"`
+	APIVersion  string    `json:"apiVersion,omitempty"`
 }
 
 // SRSTSCredential - represents an STS credential to be replicated.
@@ -335,6 +342,7 @@ type SRSTSCredential struct {
 	SessionToken        string `json:"sessionToken"`
 	ParentUser          string `json:"parentUser"`
 	ParentPolicyMapping string `json:"parentPolicyMapping,omitempty"`
+	APIVersion          string `json:"apiVersion,omitempty"`
 }
 
 // SRIAMUser - represents a regular (IAM) user to be replicated. A nil UserReq
@@ -343,11 +351,13 @@ type SRIAMUser struct {
 	AccessKey   string              `json:"accessKey"`
 	IsDeleteReq bool                `json:"isDeleteReq"`
 	UserReq     *AddOrUpdateUserReq `json:"userReq"`
+	APIVersion  string              `json:"apiVersion,omitempty"`
 }
 
 // SRGroupInfo - represents a regular (IAM) user to be replicated.
 type SRGroupInfo struct {
-	UpdateReq GroupAddRemove `json:"updateReq"`
+	UpdateReq  GroupAddRemove `json:"updateReq"`
+	APIVersion string         `json:"apiVersion,omitempty"`
 }
 
 // SRCredInfo - represents a credential change (create/update/delete) to be
@@ -363,6 +373,7 @@ type SRCredInfo struct {
 
 	// This is the JSON encoded value of github.com/minio/minio/cmd.UserIdentity
 	UserIdentityJSON json.RawMessage `json:"userIdentityJSON"`
+	APIVersion       string          `json:"apiVersion,omitempty"`
 }
 
 // SRIAMItem - represents an IAM object that will be copied to a peer.
@@ -392,7 +403,8 @@ type SRIAMItem struct {
 	IAMUser *SRIAMUser `json:"iamUser"`
 
 	// UpdatedAt - timestamp of last update
-	UpdatedAt time.Time `json:"updatedAt,omitempty"`
+	UpdatedAt  time.Time `json:"updatedAt,omitempty"`
+	APIVersion string    `json:"apiVersion,omitempty"`
 }
 
 // SRPeerReplicateIAMItem - copies an IAM object to a peer cluster.
@@ -472,7 +484,8 @@ type SRBucketMeta struct {
 	ExpiryUpdatedAt time.Time `json:"expiryUpdatedAt,omitempty"`
 
 	// Cors is base64 XML representation of CORS config
-	Cors *string `json:"cors,omitempty"`
+	Cors       *string `json:"cors,omitempty"`
+	APIVersion string  `json:"apiVersion,omitempty"`
 }
 
 // SRPeerReplicateBucketMeta - copies a bucket metadata change to a peer cluster.
@@ -548,6 +561,7 @@ type SRBucketInfo struct {
 	DeletedAt                  time.Time `json:"bucketDeletedTimestamp,omitempty"`
 	CorsConfigUpdatedAt        time.Time `json:"corsTimestamp,omitempty"`
 	Location                   string    `json:"location,omitempty"`
+	APIVersion                 string    `json:"apiVersion,omitempty"`
 }
 
 // OpenIDProviderSettings contains info on a particular OIDC based provider.
@@ -626,15 +640,17 @@ func (adm *AdminClient) SRPeerGetIDPSettings(ctx context.Context) (info IDPSetti
 
 // SRIAMPolicy - represents an IAM policy.
 type SRIAMPolicy struct {
-	Policy    json.RawMessage `json:"policy"`
-	UpdatedAt time.Time       `json:"updatedAt,omitempty"`
+	Policy     json.RawMessage `json:"policy"`
+	UpdatedAt  time.Time       `json:"updatedAt,omitempty"`
+	APIVersion string          `json:"apiVersion,omitempty"`
 }
 
 // ILMExpiryRule - represents an ILM expiry rule
 type ILMExpiryRule struct {
-	ILMRule   string    `json:"ilm-rule"`
-	Bucket    string    `json:"bucket"`
-	UpdatedAt time.Time `json:"updatedAt,omitempty"`
+	ILMRule    string    `json:"ilm-rule"`
+	Bucket     string    `json:"bucket"`
+	UpdatedAt  time.Time `json:"updatedAt,omitempty"`
+	APIVersion string    `json:"apiVersion,omitempty"`
 }
 
 // SRInfo gets replication metadata for a site
@@ -651,6 +667,7 @@ type SRInfo struct {
 	ReplicationCfg map[string]replication.Config // map of bucket -> replication config
 	ILMExpiryRules map[string]ILMExpiryRule      // map of ILM Expiry rule to content
 	State          SRStateInfo                   // peer state
+	APIVersion     string                        `json:"apiVersion,omitempty"`
 }
 
 // SRMetaInfo - returns replication metadata info for a site.
@@ -704,6 +721,7 @@ type SRStatusInfo struct {
 	// ILMExpiryStats map of ILM Expiry rules to slice of deployment IDs with stats. This is populated if there
 	// are mismatches or if a specific ILM expiry rule's stats are requested
 	ILMExpiryStats map[string]map[string]SRILMExpiryStatsSummary
+	APIVersion     string `json:"apiVersion,omitempty"`
 }
 
 // SRPolicyStatsSummary has status of policy replication misses
@@ -711,6 +729,7 @@ type SRPolicyStatsSummary struct {
 	DeploymentID   string
 	PolicyMismatch bool
 	HasPolicy      bool
+	APIVersion     string
 }
 
 // SRUserStatsSummary has status of user replication misses
@@ -720,6 +739,7 @@ type SRUserStatsSummary struct {
 	UserInfoMismatch bool
 	HasUser          bool
 	HasPolicyMapping bool
+	APIVersion       string
 }
 
 // SRGroupStatsSummary has status of group replication misses
@@ -729,6 +749,7 @@ type SRGroupStatsSummary struct {
 	HasGroup          bool
 	GroupDescMismatch bool
 	HasPolicyMapping  bool
+	APIVersion        string
 }
 
 // SRBucketStatsSummary has status of bucket metadata replication misses
@@ -751,6 +772,7 @@ type SRBucketStatsSummary struct {
 	HasReplicationCfg        bool
 	HasQuotaCfgSet           bool
 	HasCorsCfgSet            bool
+	APIVersion               string
 }
 
 // SRILMExpiryStatsSummary has status of ILM Expiry rules metadata replication misses
@@ -758,6 +780,7 @@ type SRILMExpiryStatsSummary struct {
 	DeploymentID          string
 	ILMExpiryRuleMismatch bool
 	HasILMExpiryRules     bool
+	APIVersion            string
 }
 
 // SRSiteSummary holds the count of replicated items in site replication
@@ -791,6 +814,7 @@ type SRSiteSummary struct {
 	TotalGroupPolicyMappingCount int // total number of group policy mappings seen on this site
 	TotalILMExpiryRulesCount     int // total number of ILM expiry rules seen on the site
 	TotalCorsConfigCount         int // total number of CORS config seen on the site
+	APIVersion                   string
 }
 
 // SREntityType specifies type of entity
@@ -828,6 +852,7 @@ type SRStatusOptions struct {
 	Entity         SREntityType
 	EntityValue    string
 	ShowDeleted    bool
+	APIVersion     string
 }
 
 // IsEntitySet returns true if entity option is set
@@ -1085,8 +1110,9 @@ func (adm *AdminClient) SRPeerRemove(ctx context.Context, removeReq SRRemoveReq)
 
 // ReplicateRemoveStatus - returns status of unlink request.
 type ReplicateRemoveStatus struct {
-	Status    string `json:"status"`
-	ErrDetail string `json:"errorDetail,omitempty"`
+	Status     string `json:"status"`
+	ErrDetail  string `json:"errorDetail,omitempty"`
+	APIVersion string `json:"apiVersion,omitempty"`
 }
 
 // SRRemoveReq - arg body for SRRemoveReq
@@ -1104,9 +1130,10 @@ type SRStateEditReq struct {
 
 // SRStateInfo - site replication state information
 type SRStateInfo struct {
-	Name      string              `json:"name"`
-	Peers     map[string]PeerInfo `json:"peers"`
-	UpdatedAt time.Time           `json:"updatedAt"`
+	Name       string              `json:"name"`
+	Peers      map[string]PeerInfo `json:"peers"`
+	UpdatedAt  time.Time           `json:"updatedAt"`
+	APIVersion string              `json:"apiVersion,omitempty"`
 }
 
 const (
