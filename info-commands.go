@@ -448,6 +448,15 @@ type DiskMetrics struct {
 	APILatencies map[string]interface{} `json:"apiLatencies,omitempty"`
 }
 
+// CacheStats drive cache stats
+type CacheStats struct {
+	Hits       int64 `json:"hits"`
+	Misses     int64 `json:"misses"`
+	DelHits    int64 `json:"delHits"`
+	DelMisses  int64 `json:"delMisses"`
+	Collisions int64 `json:"collisions"`
+}
+
 // Disk holds Disk information
 type Disk struct {
 	Endpoint        string       `json:"endpoint,omitempty"`
@@ -473,6 +482,7 @@ type Disk struct {
 	UsedInodes      uint64       `json:"used_inodes"`
 	FreeInodes      uint64       `json:"free_inodes,omitempty"`
 	Local           bool         `json:"local,omitempty"`
+	Cache           *CacheStats  `json:"cacheStats,omitempty"`
 
 	// Indexes, will be -1 until assigned a set.
 	PoolIndex int `json:"pool_index"`
