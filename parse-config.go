@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -71,6 +71,7 @@ const (
 
 	BrowserSubSys         = "browser"
 	AuditEventQueueSubSys = "audit_event_queue"
+	ErasureSubSys         = "erasure"
 )
 
 // SubSystems - list of all subsystems in MinIO
@@ -154,6 +155,7 @@ var EOSSubSystems = set.CreateStringSet(
 	LambdaWebhookSubSys,
 	BrowserSubSys,
 	AuditEventQueueSubSys,
+	ErasureSubSys,
 )
 
 // Standard config keys and values.
