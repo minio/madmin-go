@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -450,6 +450,8 @@ type DiskMetrics struct {
 
 // CacheStats drive cache stats
 type CacheStats struct {
+	Capacity   int64 `json:"capacity"`
+	Used       int64 `json:"used"`
 	Hits       int64 `json:"hits"`
 	Misses     int64 `json:"misses"`
 	DelHits    int64 `json:"delHits"`
