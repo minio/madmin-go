@@ -5,7 +5,7 @@ go 1.22
 require (
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/dustin/go-humanize v1.0.1
-	github.com/golang-jwt/jwt/v4 v4.5.0
+	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/minio/minio-go/v7 v7.0.76
 	github.com/minio/pkg/v3 v3.0.20
 	github.com/prometheus/common v0.59.1

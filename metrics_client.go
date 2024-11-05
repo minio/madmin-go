@@ -26,7 +26,7 @@ import (
 	"net/url"
 	"time"
 
-	jwtgo "github.com/golang-jwt/jwt/v4"
+	jwtgo "github.com/golang-jwt/jwt/v5"
 	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
