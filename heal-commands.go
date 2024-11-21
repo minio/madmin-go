@@ -30,6 +30,10 @@ import (
 	"time"
 )
 
+//msgp:clearomitted
+//msgp:tag json
+//go:generate msgp
+
 // HealScanMode represents the type of healing scan
 type HealScanMode int
 

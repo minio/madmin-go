@@ -28,6 +28,10 @@ import (
 	"time"
 )
 
+//msgp:clearomitted
+//msgp:tag json
+//go:generate msgp
+
 // BackendType - represents different backend types.
 type BackendType int
 
@@ -369,6 +373,8 @@ type Logger map[string]Status
 // TargetIDStatus containsid and status
 type TargetIDStatus map[string]Status
 
+//msgp:replace backendType with:string
+
 // backendType - indicates the type of backend storage
 type backendType string
 
@@ -417,6 +423,24 @@ type ServerProperties struct {
 	RuntimeVersion string            `json:"runtime_version,omitempty"`
 	GCStats        *GCStats          `json:"gc_stats,omitempty"`
 	MinioEnvVars   map[string]string `json:"minio_env_vars,omitempty"`
+}
+
+// MemStats is strip down version of runtime.MemStats containing memory stats of MinIO server.
+type MemStats struct {
+	Alloc      uint64
+	TotalAlloc uint64
+	Mallocs    uint64
+	Frees      uint64
+	HeapAlloc  uint64
+}
+
+// GCStats collect information about recent garbage collections.
+type GCStats struct {
+	LastGC     time.Time       `json:"last_gc"`     // time of last collection
+	NumGC      int64           `json:"num_gc"`      // number of garbage collections
+	PauseTotal time.Duration   `json:"pause_total"` // total pause for all collections
+	Pause      []time.Duration `json:"pause"`       // pause history, most recent first
+	PauseEnd   []time.Time     `json:"pause_end"`   // pause end times history, most recent first
 }
 
 // DiskMetrics has the information about XL Storage APIs

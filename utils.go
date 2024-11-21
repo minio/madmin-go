@@ -25,9 +25,14 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/minio/minio-go/v7/pkg/s3utils"
 )
+
+//msgp:clearomitted
+//msgp:tag json
+//go:generate msgp
 
 // AdminAPIVersion - admin api version used in the request.
 const (
@@ -118,4 +123,55 @@ func closeResponse(resp *http.Response) {
 		io.Copy(io.Discard, resp.Body)
 		resp.Body.Close()
 	}
+}
+
+// TimedAction contains a number of actions and their accumulated duration in nanoseconds.
+type TimedAction struct {
+	Count   uint64 `json:"count"`
+	AccTime uint64 `json:"acc_time_ns"`
+	Bytes   uint64 `json:"bytes,omitempty"`
+}
+
+// Avg returns the average time spent on the action.
+func (t TimedAction) Avg() time.Duration {
+	if t.Count == 0 {
+		return 0
+	}
+	return time.Duration(t.AccTime / t.Count)
+}
+
+// AvgBytes returns the average time spent on the action.
+func (t TimedAction) AvgBytes() uint64 {
+	if t.Count == 0 {
+		return 0
+	}
+	return t.Bytes / t.Count
+}
+
+// Merge other into t.
+func (t *TimedAction) Merge(other TimedAction) {
+	t.Count += other.Count
+	t.AccTime += other.AccTime
+	t.Bytes += other.Bytes
+}
+
+// NodeCommon - Common fields across most node-specific health structs
+type NodeCommon struct {
+	Addr  string `json:"addr"`
+	Error string `json:"error,omitempty"`
+}
+
+// GetAddr - return the address of the node
+func (n *NodeCommon) GetAddr() string {
+	return n.Addr
+}
+
+// SetAddr - set the address of the node
+func (n *NodeCommon) SetAddr(addr string) {
+	n.Addr = addr
+}
+
+// SetError - set the address of the node
+func (n *NodeCommon) SetError(err string) {
+	n.Error = err
 }

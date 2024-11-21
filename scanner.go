@@ -26,14 +26,18 @@ import (
 	"time"
 )
 
+//msgp:clearomitted
+//go:generate msgp
+
 // BucketScanInfo contains information of a bucket scan in a given pool/set
 type BucketScanInfo struct {
-	Pool, Set   int
-	Cycle       uint64
-	Ongoing     bool
-	LastUpdate  time.Time
-	LastStarted time.Time
-	Completed   []time.Time
+	Pool        int         `msg:"pool"`
+	Set         int         `msg:"set"`
+	Cycle       uint64      `msg:"cycle"`
+	Ongoing     bool        `msg:"ongoing"`
+	LastUpdate  time.Time   `msg:"last_update"`
+	LastStarted time.Time   `msg:"last_started"`
+	Completed   []time.Time `msg:"completed,omitempty"`
 }
 
 // BucketScanInfo returns information of a bucket scan in all pools/sets
