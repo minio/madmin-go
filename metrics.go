@@ -37,6 +37,10 @@ import (
 	"github.com/shirou/gopsutil/v3/load"
 )
 
+//msgp:clearomitted
+//msgp:tag json
+//go:generate msgp
+
 // MetricType is a bitfield representation of different metric types.
 type MetricType uint32
 
@@ -260,36 +264,6 @@ type ScannerMetrics struct {
 
 	// Currently active path(s) being scanned.
 	ActivePaths []string `json:"active,omitempty"`
-}
-
-// TimedAction contains a number of actions and their accumulated duration in nanoseconds.
-type TimedAction struct {
-	Count   uint64 `json:"count"`
-	AccTime uint64 `json:"acc_time_ns"`
-	Bytes   uint64 `json:"bytes,omitempty"`
-}
-
-// Avg returns the average time spent on the action.
-func (t TimedAction) Avg() time.Duration {
-	if t.Count == 0 {
-		return 0
-	}
-	return time.Duration(t.AccTime / t.Count)
-}
-
-// AvgBytes returns the average time spent on the action.
-func (t TimedAction) AvgBytes() uint64 {
-	if t.Count == 0 {
-		return 0
-	}
-	return t.Bytes / t.Count
-}
-
-// Merge other into t.
-func (t *TimedAction) Merge(other TimedAction) {
-	t.Count += other.Count
-	t.AccTime += other.AccTime
-	t.Bytes += other.Bytes
 }
 
 // Merge other into 's'.
@@ -612,6 +586,8 @@ type NetMetrics struct {
 	NetStats procfs.NetDevLine `json:"netstats"`
 }
 
+//msgp:replace procfs.NetDevLine with:procfsNetDevLine
+
 // Merge other into 'o'.
 func (n *NetMetrics) Merge(other *NetMetrics) {
 	if other == nil {
@@ -639,6 +615,24 @@ func (n *NetMetrics) Merge(other *NetMetrics) {
 	n.NetStats.TxCompressed += other.NetStats.TxCompressed
 }
 
+// MemInfo contains system's RAM and swap information.
+type MemInfo struct {
+	NodeCommon
+
+	Total          uint64 `json:"total,omitempty"`
+	Used           uint64 `json:"used,omitempty"`
+	Free           uint64 `json:"free,omitempty"`
+	Available      uint64 `json:"available,omitempty"`
+	Shared         uint64 `json:"shared,omitempty"`
+	Cache          uint64 `json:"cache,omitempty"`
+	Buffers        uint64 `json:"buffer,omitempty"`
+	SwapSpaceTotal uint64 `json:"swap_space_total,omitempty"`
+	SwapSpaceFree  uint64 `json:"swap_space_free,omitempty"`
+	// Limit will store cgroup limit if configured and
+	// less than Total, otherwise same as Total
+	Limit uint64 `json:"limit,omitempty"`
+}
+
 type MemMetrics struct {
 	// Time these metrics were collected
 	CollectedAt time.Time `json:"collected"`
@@ -659,6 +653,9 @@ func (m *MemMetrics) Merge(other *MemMetrics) {
 	m.Info.SwapSpaceFree += other.Info.SwapSpaceFree
 	m.Info.Limit += other.Info.Limit
 }
+
+//msgp:replace cpu.TimesStat with:cpuTimesStat
+//msgp:replace load.AvgStat with:loadAvgStat
 
 type CPUMetrics struct {
 	// Time these metrics were collected

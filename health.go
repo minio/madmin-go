@@ -85,27 +85,6 @@ type NodeInfo interface {
 	SetError(err string)
 }
 
-// NodeCommon - Common fields across most node-specific health structs
-type NodeCommon struct {
-	Addr  string `json:"addr"`
-	Error string `json:"error,omitempty"`
-}
-
-// GetAddr - return the address of the node
-func (n *NodeCommon) GetAddr() string {
-	return n.Addr
-}
-
-// SetAddr - set the address of the node
-func (n *NodeCommon) SetAddr(addr string) {
-	n.Addr = addr
-}
-
-// SetError - set the address of the node
-func (n *NodeCommon) SetError(err string) {
-	n.Error = err
-}
-
 // SysErrors - contains a system error
 type SysErrors struct {
 	NodeCommon
@@ -692,24 +671,6 @@ func isKauditdRunning() (bool, error) {
 	return false, nil
 }
 
-// MemInfo contains system's RAM and swap information.
-type MemInfo struct {
-	NodeCommon
-
-	Total          uint64 `json:"total,omitempty"`
-	Used           uint64 `json:"used,omitempty"`
-	Free           uint64 `json:"free,omitempty"`
-	Available      uint64 `json:"available,omitempty"`
-	Shared         uint64 `json:"shared,omitempty"`
-	Cache          uint64 `json:"cache,omitempty"`
-	Buffers        uint64 `json:"buffer,omitempty"`
-	SwapSpaceTotal uint64 `json:"swap_space_total,omitempty"`
-	SwapSpaceFree  uint64 `json:"swap_space_free,omitempty"`
-	// Limit will store cgroup limit if configured and
-	// less than Total, otherwise same as Total
-	Limit uint64 `json:"limit,omitempty"`
-}
-
 // Get the final system memory limit chosen by the user.
 // by default without any configuration on a vanilla Linux
 // system you would see physical RAM limit. If cgroup
@@ -1016,24 +977,6 @@ type MinioConfig struct {
 	Error string `json:"error,omitempty"`
 
 	Config interface{} `json:"config,omitempty"`
-}
-
-// MemStats is strip down version of runtime.MemStats containing memory stats of MinIO server.
-type MemStats struct {
-	Alloc      uint64
-	TotalAlloc uint64
-	Mallocs    uint64
-	Frees      uint64
-	HeapAlloc  uint64
-}
-
-// GCStats collect information about recent garbage collections.
-type GCStats struct {
-	LastGC     time.Time       `json:"last_gc"`     // time of last collection
-	NumGC      int64           `json:"num_gc"`      // number of garbage collections
-	PauseTotal time.Duration   `json:"pause_total"` // total pause for all collections
-	Pause      []time.Duration `json:"pause"`       // pause history, most recent first
-	PauseEnd   []time.Time     `json:"pause_end"`   // pause end times history, most recent first
 }
 
 // ServerInfo holds server information
