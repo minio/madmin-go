@@ -281,6 +281,7 @@ const (
 	SRIAMItemSvcAcc        = "service-account"
 	SRIAMItemSTSAcc        = "sts-account"
 	SRIAMItemIAMUser       = "iam-user"
+	SRIAMItemExternalUser  = "external-user"
 )
 
 // SRSvcAccCreate - create operation
@@ -345,6 +346,27 @@ type SRSTSCredential struct {
 	APIVersion          string `json:"apiVersion,omitempty"`
 }
 
+// OpenIDUserAccessInfo contains information to access and refresh the token
+// that is used to access to UserInfo OpenID endpoint.
+type OpenIDUserAccessInfo struct {
+	RefreshToken string `json:"refreshToken,omitempty"`
+	AccessToken  string `json:"accessToken,omitempty"`
+}
+
+// OpenIDUser holds information to maintain an virtual user in OpenID
+type OpenIDUser struct {
+	AccessInfo OpenIDUserAccessInfo `json:"accessInfo,omitempty"`
+}
+
+// SRExternalUser - represents an external user information to be replicated.
+type SRExternalUser struct {
+	APIVersion  string `json:"apiVersion,omitempty"`
+	Name        string `json:"name"`
+	IsDeleteReq bool   `json:"isDeleteReq"`
+
+	OpenIDUser *OpenIDUser `json:"openIDUser,omitempty"`
+}
+
 // SRIAMUser - represents a regular (IAM) user to be replicated. A nil UserReq
 // implies that a user delete operation should be replicated on the peer cluster.
 type SRIAMUser struct {
@@ -401,6 +423,9 @@ type SRIAMItem struct {
 
 	// Used when Type = SRIAMItemIAMUser
 	IAMUser *SRIAMUser `json:"iamUser"`
+
+	// Used when Type = SRIAMItemExternalUser
+	ExternalUser *SRExternalUser `json:"externalUser"`
 
 	// UpdatedAt - timestamp of last update
 	UpdatedAt  time.Time `json:"updatedAt,omitempty"`
