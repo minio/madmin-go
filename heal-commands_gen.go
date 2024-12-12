@@ -927,114 +927,115 @@ func (z *HealOpts) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	if zb0001Len == 0 {
-		return
-	}
-	// write "recursive"
-	err = en.Append(0xa9, 0x72, 0x65, 0x63, 0x75, 0x72, 0x73, 0x69, 0x76, 0x65)
-	if err != nil {
-		return
-	}
-	err = en.WriteBool(z.Recursive)
-	if err != nil {
-		err = msgp.WrapError(err, "Recursive")
-		return
-	}
-	// write "dryRun"
-	err = en.Append(0xa6, 0x64, 0x72, 0x79, 0x52, 0x75, 0x6e)
-	if err != nil {
-		return
-	}
-	err = en.WriteBool(z.DryRun)
-	if err != nil {
-		err = msgp.WrapError(err, "DryRun")
-		return
-	}
-	// write "remove"
-	err = en.Append(0xa6, 0x72, 0x65, 0x6d, 0x6f, 0x76, 0x65)
-	if err != nil {
-		return
-	}
-	err = en.WriteBool(z.Remove)
-	if err != nil {
-		err = msgp.WrapError(err, "Remove")
-		return
-	}
-	// write "recreate"
-	err = en.Append(0xa8, 0x72, 0x65, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65)
-	if err != nil {
-		return
-	}
-	err = en.WriteBool(z.Recreate)
-	if err != nil {
-		err = msgp.WrapError(err, "Recreate")
-		return
-	}
-	// write "scanMode"
-	err = en.Append(0xa8, 0x73, 0x63, 0x61, 0x6e, 0x4d, 0x6f, 0x64, 0x65)
-	if err != nil {
-		return
-	}
-	err = en.WriteInt(int(z.ScanMode))
-	if err != nil {
-		err = msgp.WrapError(err, "ScanMode")
-		return
-	}
-	// write "updateParity"
-	err = en.Append(0xac, 0x75, 0x70, 0x64, 0x61, 0x74, 0x65, 0x50, 0x61, 0x72, 0x69, 0x74, 0x79)
-	if err != nil {
-		return
-	}
-	err = en.WriteBool(z.UpdateParity)
-	if err != nil {
-		err = msgp.WrapError(err, "UpdateParity")
-		return
-	}
-	// write "nolock"
-	err = en.Append(0xa6, 0x6e, 0x6f, 0x6c, 0x6f, 0x63, 0x6b)
-	if err != nil {
-		return
-	}
-	err = en.WriteBool(z.NoLock)
-	if err != nil {
-		err = msgp.WrapError(err, "NoLock")
-		return
-	}
-	if (zb0001Mask & 0x80) == 0 { // if not omitted
-		// write "pool"
-		err = en.Append(0xa4, 0x70, 0x6f, 0x6f, 0x6c)
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// write "recursive"
+		err = en.Append(0xa9, 0x72, 0x65, 0x63, 0x75, 0x72, 0x73, 0x69, 0x76, 0x65)
 		if err != nil {
 			return
 		}
-		if z.Pool == nil {
-			err = en.WriteNil()
-			if err != nil {
-				return
-			}
-		} else {
-			err = en.WriteInt(*z.Pool)
-			if err != nil {
-				err = msgp.WrapError(err, "Pool")
-				return
-			}
+		err = en.WriteBool(z.Recursive)
+		if err != nil {
+			err = msgp.WrapError(err, "Recursive")
+			return
 		}
-	}
-	if (zb0001Mask & 0x100) == 0 { // if not omitted
-		// write "set"
-		err = en.Append(0xa3, 0x73, 0x65, 0x74)
+		// write "dryRun"
+		err = en.Append(0xa6, 0x64, 0x72, 0x79, 0x52, 0x75, 0x6e)
 		if err != nil {
 			return
 		}
-		if z.Set == nil {
-			err = en.WriteNil()
+		err = en.WriteBool(z.DryRun)
+		if err != nil {
+			err = msgp.WrapError(err, "DryRun")
+			return
+		}
+		// write "remove"
+		err = en.Append(0xa6, 0x72, 0x65, 0x6d, 0x6f, 0x76, 0x65)
+		if err != nil {
+			return
+		}
+		err = en.WriteBool(z.Remove)
+		if err != nil {
+			err = msgp.WrapError(err, "Remove")
+			return
+		}
+		// write "recreate"
+		err = en.Append(0xa8, 0x72, 0x65, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65)
+		if err != nil {
+			return
+		}
+		err = en.WriteBool(z.Recreate)
+		if err != nil {
+			err = msgp.WrapError(err, "Recreate")
+			return
+		}
+		// write "scanMode"
+		err = en.Append(0xa8, 0x73, 0x63, 0x61, 0x6e, 0x4d, 0x6f, 0x64, 0x65)
+		if err != nil {
+			return
+		}
+		err = en.WriteInt(int(z.ScanMode))
+		if err != nil {
+			err = msgp.WrapError(err, "ScanMode")
+			return
+		}
+		// write "updateParity"
+		err = en.Append(0xac, 0x75, 0x70, 0x64, 0x61, 0x74, 0x65, 0x50, 0x61, 0x72, 0x69, 0x74, 0x79)
+		if err != nil {
+			return
+		}
+		err = en.WriteBool(z.UpdateParity)
+		if err != nil {
+			err = msgp.WrapError(err, "UpdateParity")
+			return
+		}
+		// write "nolock"
+		err = en.Append(0xa6, 0x6e, 0x6f, 0x6c, 0x6f, 0x63, 0x6b)
+		if err != nil {
+			return
+		}
+		err = en.WriteBool(z.NoLock)
+		if err != nil {
+			err = msgp.WrapError(err, "NoLock")
+			return
+		}
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
+			// write "pool"
+			err = en.Append(0xa4, 0x70, 0x6f, 0x6f, 0x6c)
 			if err != nil {
 				return
 			}
-		} else {
-			err = en.WriteInt(*z.Set)
+			if z.Pool == nil {
+				err = en.WriteNil()
+				if err != nil {
+					return
+				}
+			} else {
+				err = en.WriteInt(*z.Pool)
+				if err != nil {
+					err = msgp.WrapError(err, "Pool")
+					return
+				}
+			}
+		}
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
+			// write "set"
+			err = en.Append(0xa3, 0x73, 0x65, 0x74)
 			if err != nil {
-				err = msgp.WrapError(err, "Set")
 				return
+			}
+			if z.Set == nil {
+				err = en.WriteNil()
+				if err != nil {
+					return
+				}
+			} else {
+				err = en.WriteInt(*z.Set)
+				if err != nil {
+					err = msgp.WrapError(err, "Set")
+					return
+				}
 			}
 		}
 	}
@@ -1058,46 +1059,47 @@ func (z *HealOpts) MarshalMsg(b []byte) (o []byte, err error) {
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
-	if zb0001Len == 0 {
-		return
-	}
-	// string "recursive"
-	o = append(o, 0xa9, 0x72, 0x65, 0x63, 0x75, 0x72, 0x73, 0x69, 0x76, 0x65)
-	o = msgp.AppendBool(o, z.Recursive)
-	// string "dryRun"
-	o = append(o, 0xa6, 0x64, 0x72, 0x79, 0x52, 0x75, 0x6e)
-	o = msgp.AppendBool(o, z.DryRun)
-	// string "remove"
-	o = append(o, 0xa6, 0x72, 0x65, 0x6d, 0x6f, 0x76, 0x65)
-	o = msgp.AppendBool(o, z.Remove)
-	// string "recreate"
-	o = append(o, 0xa8, 0x72, 0x65, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65)
-	o = msgp.AppendBool(o, z.Recreate)
-	// string "scanMode"
-	o = append(o, 0xa8, 0x73, 0x63, 0x61, 0x6e, 0x4d, 0x6f, 0x64, 0x65)
-	o = msgp.AppendInt(o, int(z.ScanMode))
-	// string "updateParity"
-	o = append(o, 0xac, 0x75, 0x70, 0x64, 0x61, 0x74, 0x65, 0x50, 0x61, 0x72, 0x69, 0x74, 0x79)
-	o = msgp.AppendBool(o, z.UpdateParity)
-	// string "nolock"
-	o = append(o, 0xa6, 0x6e, 0x6f, 0x6c, 0x6f, 0x63, 0x6b)
-	o = msgp.AppendBool(o, z.NoLock)
-	if (zb0001Mask & 0x80) == 0 { // if not omitted
-		// string "pool"
-		o = append(o, 0xa4, 0x70, 0x6f, 0x6f, 0x6c)
-		if z.Pool == nil {
-			o = msgp.AppendNil(o)
-		} else {
-			o = msgp.AppendInt(o, *z.Pool)
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// string "recursive"
+		o = append(o, 0xa9, 0x72, 0x65, 0x63, 0x75, 0x72, 0x73, 0x69, 0x76, 0x65)
+		o = msgp.AppendBool(o, z.Recursive)
+		// string "dryRun"
+		o = append(o, 0xa6, 0x64, 0x72, 0x79, 0x52, 0x75, 0x6e)
+		o = msgp.AppendBool(o, z.DryRun)
+		// string "remove"
+		o = append(o, 0xa6, 0x72, 0x65, 0x6d, 0x6f, 0x76, 0x65)
+		o = msgp.AppendBool(o, z.Remove)
+		// string "recreate"
+		o = append(o, 0xa8, 0x72, 0x65, 0x63, 0x72, 0x65, 0x61, 0x74, 0x65)
+		o = msgp.AppendBool(o, z.Recreate)
+		// string "scanMode"
+		o = append(o, 0xa8, 0x73, 0x63, 0x61, 0x6e, 0x4d, 0x6f, 0x64, 0x65)
+		o = msgp.AppendInt(o, int(z.ScanMode))
+		// string "updateParity"
+		o = append(o, 0xac, 0x75, 0x70, 0x64, 0x61, 0x74, 0x65, 0x50, 0x61, 0x72, 0x69, 0x74, 0x79)
+		o = msgp.AppendBool(o, z.UpdateParity)
+		// string "nolock"
+		o = append(o, 0xa6, 0x6e, 0x6f, 0x6c, 0x6f, 0x63, 0x6b)
+		o = msgp.AppendBool(o, z.NoLock)
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
+			// string "pool"
+			o = append(o, 0xa4, 0x70, 0x6f, 0x6f, 0x6c)
+			if z.Pool == nil {
+				o = msgp.AppendNil(o)
+			} else {
+				o = msgp.AppendInt(o, *z.Pool)
+			}
 		}
-	}
-	if (zb0001Mask & 0x100) == 0 { // if not omitted
-		// string "set"
-		o = append(o, 0xa3, 0x73, 0x65, 0x74)
-		if z.Set == nil {
-			o = msgp.AppendNil(o)
-		} else {
-			o = msgp.AppendInt(o, *z.Set)
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
+			// string "set"
+			o = append(o, 0xa3, 0x73, 0x65, 0x74)
+			if z.Set == nil {
+				o = msgp.AppendNil(o)
+			} else {
+				o = msgp.AppendInt(o, *z.Set)
+			}
 		}
 	}
 	return
@@ -1528,220 +1530,221 @@ func (z *HealResultItem) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	if zb0001Len == 0 {
-		return
-	}
-	// write "resultId"
-	err = en.Append(0xa8, 0x72, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x49, 0x64)
-	if err != nil {
-		return
-	}
-	err = en.WriteInt64(z.ResultIndex)
-	if err != nil {
-		err = msgp.WrapError(err, "ResultIndex")
-		return
-	}
-	// write "type"
-	err = en.Append(0xa4, 0x74, 0x79, 0x70, 0x65)
-	if err != nil {
-		return
-	}
-	err = en.WriteString(string(z.Type))
-	if err != nil {
-		err = msgp.WrapError(err, "Type")
-		return
-	}
-	// write "bucket"
-	err = en.Append(0xa6, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74)
-	if err != nil {
-		return
-	}
-	err = en.WriteString(z.Bucket)
-	if err != nil {
-		err = msgp.WrapError(err, "Bucket")
-		return
-	}
-	// write "object"
-	err = en.Append(0xa6, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74)
-	if err != nil {
-		return
-	}
-	err = en.WriteString(z.Object)
-	if err != nil {
-		err = msgp.WrapError(err, "Object")
-		return
-	}
-	// write "versionId"
-	err = en.Append(0xa9, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x64)
-	if err != nil {
-		return
-	}
-	err = en.WriteString(z.VersionID)
-	if err != nil {
-		err = msgp.WrapError(err, "VersionID")
-		return
-	}
-	// write "detail"
-	err = en.Append(0xa6, 0x64, 0x65, 0x74, 0x61, 0x69, 0x6c)
-	if err != nil {
-		return
-	}
-	err = en.WriteString(z.Detail)
-	if err != nil {
-		err = msgp.WrapError(err, "Detail")
-		return
-	}
-	if (zb0001Mask & 0x40) == 0 { // if not omitted
-		// write "parityBlocks"
-		err = en.Append(0xac, 0x70, 0x61, 0x72, 0x69, 0x74, 0x79, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x73)
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// write "resultId"
+		err = en.Append(0xa8, 0x72, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x49, 0x64)
 		if err != nil {
 			return
 		}
-		err = en.WriteInt(z.ParityBlocks)
+		err = en.WriteInt64(z.ResultIndex)
 		if err != nil {
-			err = msgp.WrapError(err, "ParityBlocks")
+			err = msgp.WrapError(err, "ResultIndex")
 			return
 		}
-	}
-	if (zb0001Mask & 0x80) == 0 { // if not omitted
-		// write "dataBlocks"
-		err = en.Append(0xaa, 0x64, 0x61, 0x74, 0x61, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x73)
+		// write "type"
+		err = en.Append(0xa4, 0x74, 0x79, 0x70, 0x65)
 		if err != nil {
 			return
 		}
-		err = en.WriteInt(z.DataBlocks)
+		err = en.WriteString(string(z.Type))
 		if err != nil {
-			err = msgp.WrapError(err, "DataBlocks")
+			err = msgp.WrapError(err, "Type")
 			return
 		}
-	}
-	// write "diskCount"
-	err = en.Append(0xa9, 0x64, 0x69, 0x73, 0x6b, 0x43, 0x6f, 0x75, 0x6e, 0x74)
-	if err != nil {
-		return
-	}
-	err = en.WriteInt(z.DiskCount)
-	if err != nil {
-		err = msgp.WrapError(err, "DiskCount")
-		return
-	}
-	// write "setCount"
-	err = en.Append(0xa8, 0x73, 0x65, 0x74, 0x43, 0x6f, 0x75, 0x6e, 0x74)
-	if err != nil {
-		return
-	}
-	err = en.WriteInt(z.SetCount)
-	if err != nil {
-		err = msgp.WrapError(err, "SetCount")
-		return
-	}
-	// write "before"
-	err = en.Append(0xa6, 0x62, 0x65, 0x66, 0x6f, 0x72, 0x65)
-	if err != nil {
-		return
-	}
-	// map header, size 1
-	// write "drives"
-	err = en.Append(0x81, 0xa6, 0x64, 0x72, 0x69, 0x76, 0x65, 0x73)
-	if err != nil {
-		return
-	}
-	err = en.WriteArrayHeader(uint32(len(z.Before.Drives)))
-	if err != nil {
-		err = msgp.WrapError(err, "Before", "Drives")
-		return
-	}
-	for za0001 := range z.Before.Drives {
-		// map header, size 3
-		// write "uuid"
-		err = en.Append(0x83, 0xa4, 0x75, 0x75, 0x69, 0x64)
+		// write "bucket"
+		err = en.Append(0xa6, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74)
 		if err != nil {
 			return
 		}
-		err = en.WriteString(z.Before.Drives[za0001].UUID)
+		err = en.WriteString(z.Bucket)
 		if err != nil {
-			err = msgp.WrapError(err, "Before", "Drives", za0001, "UUID")
+			err = msgp.WrapError(err, "Bucket")
 			return
 		}
-		// write "endpoint"
-		err = en.Append(0xa8, 0x65, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74)
-		if err != nil {
-			return
-		}
-		err = en.WriteString(z.Before.Drives[za0001].Endpoint)
-		if err != nil {
-			err = msgp.WrapError(err, "Before", "Drives", za0001, "Endpoint")
-			return
-		}
-		// write "state"
-		err = en.Append(0xa5, 0x73, 0x74, 0x61, 0x74, 0x65)
+		// write "object"
+		err = en.Append(0xa6, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74)
 		if err != nil {
 			return
 		}
-		err = en.WriteString(z.Before.Drives[za0001].State)
+		err = en.WriteString(z.Object)
 		if err != nil {
-			err = msgp.WrapError(err, "Before", "Drives", za0001, "State")
+			err = msgp.WrapError(err, "Object")
 			return
 		}
-	}
-	// write "after"
-	err = en.Append(0xa5, 0x61, 0x66, 0x74, 0x65, 0x72)
-	if err != nil {
-		return
-	}
-	// map header, size 1
-	// write "drives"
-	err = en.Append(0x81, 0xa6, 0x64, 0x72, 0x69, 0x76, 0x65, 0x73)
-	if err != nil {
-		return
-	}
-	err = en.WriteArrayHeader(uint32(len(z.After.Drives)))
-	if err != nil {
-		err = msgp.WrapError(err, "After", "Drives")
-		return
-	}
-	for za0002 := range z.After.Drives {
-		// map header, size 3
-		// write "uuid"
-		err = en.Append(0x83, 0xa4, 0x75, 0x75, 0x69, 0x64)
+		// write "versionId"
+		err = en.Append(0xa9, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x64)
 		if err != nil {
 			return
 		}
-		err = en.WriteString(z.After.Drives[za0002].UUID)
+		err = en.WriteString(z.VersionID)
 		if err != nil {
-			err = msgp.WrapError(err, "After", "Drives", za0002, "UUID")
+			err = msgp.WrapError(err, "VersionID")
 			return
 		}
-		// write "endpoint"
-		err = en.Append(0xa8, 0x65, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74)
-		if err != nil {
-			return
-		}
-		err = en.WriteString(z.After.Drives[za0002].Endpoint)
-		if err != nil {
-			err = msgp.WrapError(err, "After", "Drives", za0002, "Endpoint")
-			return
-		}
-		// write "state"
-		err = en.Append(0xa5, 0x73, 0x74, 0x61, 0x74, 0x65)
+		// write "detail"
+		err = en.Append(0xa6, 0x64, 0x65, 0x74, 0x61, 0x69, 0x6c)
 		if err != nil {
 			return
 		}
-		err = en.WriteString(z.After.Drives[za0002].State)
+		err = en.WriteString(z.Detail)
 		if err != nil {
-			err = msgp.WrapError(err, "After", "Drives", za0002, "State")
+			err = msgp.WrapError(err, "Detail")
 			return
 		}
-	}
-	// write "objectSize"
-	err = en.Append(0xaa, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x53, 0x69, 0x7a, 0x65)
-	if err != nil {
-		return
-	}
-	err = en.WriteInt64(z.ObjectSize)
-	if err != nil {
-		err = msgp.WrapError(err, "ObjectSize")
-		return
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
+			// write "parityBlocks"
+			err = en.Append(0xac, 0x70, 0x61, 0x72, 0x69, 0x74, 0x79, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt(z.ParityBlocks)
+			if err != nil {
+				err = msgp.WrapError(err, "ParityBlocks")
+				return
+			}
+		}
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
+			// write "dataBlocks"
+			err = en.Append(0xaa, 0x64, 0x61, 0x74, 0x61, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt(z.DataBlocks)
+			if err != nil {
+				err = msgp.WrapError(err, "DataBlocks")
+				return
+			}
+		}
+		// write "diskCount"
+		err = en.Append(0xa9, 0x64, 0x69, 0x73, 0x6b, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+		if err != nil {
+			return
+		}
+		err = en.WriteInt(z.DiskCount)
+		if err != nil {
+			err = msgp.WrapError(err, "DiskCount")
+			return
+		}
+		// write "setCount"
+		err = en.Append(0xa8, 0x73, 0x65, 0x74, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+		if err != nil {
+			return
+		}
+		err = en.WriteInt(z.SetCount)
+		if err != nil {
+			err = msgp.WrapError(err, "SetCount")
+			return
+		}
+		// write "before"
+		err = en.Append(0xa6, 0x62, 0x65, 0x66, 0x6f, 0x72, 0x65)
+		if err != nil {
+			return
+		}
+		// map header, size 1
+		// write "drives"
+		err = en.Append(0x81, 0xa6, 0x64, 0x72, 0x69, 0x76, 0x65, 0x73)
+		if err != nil {
+			return
+		}
+		err = en.WriteArrayHeader(uint32(len(z.Before.Drives)))
+		if err != nil {
+			err = msgp.WrapError(err, "Before", "Drives")
+			return
+		}
+		for za0001 := range z.Before.Drives {
+			// map header, size 3
+			// write "uuid"
+			err = en.Append(0x83, 0xa4, 0x75, 0x75, 0x69, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.Before.Drives[za0001].UUID)
+			if err != nil {
+				err = msgp.WrapError(err, "Before", "Drives", za0001, "UUID")
+				return
+			}
+			// write "endpoint"
+			err = en.Append(0xa8, 0x65, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.Before.Drives[za0001].Endpoint)
+			if err != nil {
+				err = msgp.WrapError(err, "Before", "Drives", za0001, "Endpoint")
+				return
+			}
+			// write "state"
+			err = en.Append(0xa5, 0x73, 0x74, 0x61, 0x74, 0x65)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.Before.Drives[za0001].State)
+			if err != nil {
+				err = msgp.WrapError(err, "Before", "Drives", za0001, "State")
+				return
+			}
+		}
+		// write "after"
+		err = en.Append(0xa5, 0x61, 0x66, 0x74, 0x65, 0x72)
+		if err != nil {
+			return
+		}
+		// map header, size 1
+		// write "drives"
+		err = en.Append(0x81, 0xa6, 0x64, 0x72, 0x69, 0x76, 0x65, 0x73)
+		if err != nil {
+			return
+		}
+		err = en.WriteArrayHeader(uint32(len(z.After.Drives)))
+		if err != nil {
+			err = msgp.WrapError(err, "After", "Drives")
+			return
+		}
+		for za0002 := range z.After.Drives {
+			// map header, size 3
+			// write "uuid"
+			err = en.Append(0x83, 0xa4, 0x75, 0x75, 0x69, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.After.Drives[za0002].UUID)
+			if err != nil {
+				err = msgp.WrapError(err, "After", "Drives", za0002, "UUID")
+				return
+			}
+			// write "endpoint"
+			err = en.Append(0xa8, 0x65, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.After.Drives[za0002].Endpoint)
+			if err != nil {
+				err = msgp.WrapError(err, "After", "Drives", za0002, "Endpoint")
+				return
+			}
+			// write "state"
+			err = en.Append(0xa5, 0x73, 0x74, 0x61, 0x74, 0x65)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.After.Drives[za0002].State)
+			if err != nil {
+				err = msgp.WrapError(err, "After", "Drives", za0002, "State")
+				return
+			}
+		}
+		// write "objectSize"
+		err = en.Append(0xaa, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x53, 0x69, 0x7a, 0x65)
+		if err != nil {
+			return
+		}
+		err = en.WriteInt64(z.ObjectSize)
+		if err != nil {
+			err = msgp.WrapError(err, "ObjectSize")
+			return
+		}
 	}
 	return
 }
@@ -1763,82 +1766,83 @@ func (z *HealResultItem) MarshalMsg(b []byte) (o []byte, err error) {
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
-	if zb0001Len == 0 {
-		return
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// string "resultId"
+		o = append(o, 0xa8, 0x72, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x49, 0x64)
+		o = msgp.AppendInt64(o, z.ResultIndex)
+		// string "type"
+		o = append(o, 0xa4, 0x74, 0x79, 0x70, 0x65)
+		o = msgp.AppendString(o, string(z.Type))
+		// string "bucket"
+		o = append(o, 0xa6, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74)
+		o = msgp.AppendString(o, z.Bucket)
+		// string "object"
+		o = append(o, 0xa6, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74)
+		o = msgp.AppendString(o, z.Object)
+		// string "versionId"
+		o = append(o, 0xa9, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x64)
+		o = msgp.AppendString(o, z.VersionID)
+		// string "detail"
+		o = append(o, 0xa6, 0x64, 0x65, 0x74, 0x61, 0x69, 0x6c)
+		o = msgp.AppendString(o, z.Detail)
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
+			// string "parityBlocks"
+			o = append(o, 0xac, 0x70, 0x61, 0x72, 0x69, 0x74, 0x79, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x73)
+			o = msgp.AppendInt(o, z.ParityBlocks)
+		}
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
+			// string "dataBlocks"
+			o = append(o, 0xaa, 0x64, 0x61, 0x74, 0x61, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x73)
+			o = msgp.AppendInt(o, z.DataBlocks)
+		}
+		// string "diskCount"
+		o = append(o, 0xa9, 0x64, 0x69, 0x73, 0x6b, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+		o = msgp.AppendInt(o, z.DiskCount)
+		// string "setCount"
+		o = append(o, 0xa8, 0x73, 0x65, 0x74, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+		o = msgp.AppendInt(o, z.SetCount)
+		// string "before"
+		o = append(o, 0xa6, 0x62, 0x65, 0x66, 0x6f, 0x72, 0x65)
+		// map header, size 1
+		// string "drives"
+		o = append(o, 0x81, 0xa6, 0x64, 0x72, 0x69, 0x76, 0x65, 0x73)
+		o = msgp.AppendArrayHeader(o, uint32(len(z.Before.Drives)))
+		for za0001 := range z.Before.Drives {
+			// map header, size 3
+			// string "uuid"
+			o = append(o, 0x83, 0xa4, 0x75, 0x75, 0x69, 0x64)
+			o = msgp.AppendString(o, z.Before.Drives[za0001].UUID)
+			// string "endpoint"
+			o = append(o, 0xa8, 0x65, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74)
+			o = msgp.AppendString(o, z.Before.Drives[za0001].Endpoint)
+			// string "state"
+			o = append(o, 0xa5, 0x73, 0x74, 0x61, 0x74, 0x65)
+			o = msgp.AppendString(o, z.Before.Drives[za0001].State)
+		}
+		// string "after"
+		o = append(o, 0xa5, 0x61, 0x66, 0x74, 0x65, 0x72)
+		// map header, size 1
+		// string "drives"
+		o = append(o, 0x81, 0xa6, 0x64, 0x72, 0x69, 0x76, 0x65, 0x73)
+		o = msgp.AppendArrayHeader(o, uint32(len(z.After.Drives)))
+		for za0002 := range z.After.Drives {
+			// map header, size 3
+			// string "uuid"
+			o = append(o, 0x83, 0xa4, 0x75, 0x75, 0x69, 0x64)
+			o = msgp.AppendString(o, z.After.Drives[za0002].UUID)
+			// string "endpoint"
+			o = append(o, 0xa8, 0x65, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74)
+			o = msgp.AppendString(o, z.After.Drives[za0002].Endpoint)
+			// string "state"
+			o = append(o, 0xa5, 0x73, 0x74, 0x61, 0x74, 0x65)
+			o = msgp.AppendString(o, z.After.Drives[za0002].State)
+		}
+		// string "objectSize"
+		o = append(o, 0xaa, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x53, 0x69, 0x7a, 0x65)
+		o = msgp.AppendInt64(o, z.ObjectSize)
 	}
-	// string "resultId"
-	o = append(o, 0xa8, 0x72, 0x65, 0x73, 0x75, 0x6c, 0x74, 0x49, 0x64)
-	o = msgp.AppendInt64(o, z.ResultIndex)
-	// string "type"
-	o = append(o, 0xa4, 0x74, 0x79, 0x70, 0x65)
-	o = msgp.AppendString(o, string(z.Type))
-	// string "bucket"
-	o = append(o, 0xa6, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74)
-	o = msgp.AppendString(o, z.Bucket)
-	// string "object"
-	o = append(o, 0xa6, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74)
-	o = msgp.AppendString(o, z.Object)
-	// string "versionId"
-	o = append(o, 0xa9, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x64)
-	o = msgp.AppendString(o, z.VersionID)
-	// string "detail"
-	o = append(o, 0xa6, 0x64, 0x65, 0x74, 0x61, 0x69, 0x6c)
-	o = msgp.AppendString(o, z.Detail)
-	if (zb0001Mask & 0x40) == 0 { // if not omitted
-		// string "parityBlocks"
-		o = append(o, 0xac, 0x70, 0x61, 0x72, 0x69, 0x74, 0x79, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x73)
-		o = msgp.AppendInt(o, z.ParityBlocks)
-	}
-	if (zb0001Mask & 0x80) == 0 { // if not omitted
-		// string "dataBlocks"
-		o = append(o, 0xaa, 0x64, 0x61, 0x74, 0x61, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x73)
-		o = msgp.AppendInt(o, z.DataBlocks)
-	}
-	// string "diskCount"
-	o = append(o, 0xa9, 0x64, 0x69, 0x73, 0x6b, 0x43, 0x6f, 0x75, 0x6e, 0x74)
-	o = msgp.AppendInt(o, z.DiskCount)
-	// string "setCount"
-	o = append(o, 0xa8, 0x73, 0x65, 0x74, 0x43, 0x6f, 0x75, 0x6e, 0x74)
-	o = msgp.AppendInt(o, z.SetCount)
-	// string "before"
-	o = append(o, 0xa6, 0x62, 0x65, 0x66, 0x6f, 0x72, 0x65)
-	// map header, size 1
-	// string "drives"
-	o = append(o, 0x81, 0xa6, 0x64, 0x72, 0x69, 0x76, 0x65, 0x73)
-	o = msgp.AppendArrayHeader(o, uint32(len(z.Before.Drives)))
-	for za0001 := range z.Before.Drives {
-		// map header, size 3
-		// string "uuid"
-		o = append(o, 0x83, 0xa4, 0x75, 0x75, 0x69, 0x64)
-		o = msgp.AppendString(o, z.Before.Drives[za0001].UUID)
-		// string "endpoint"
-		o = append(o, 0xa8, 0x65, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74)
-		o = msgp.AppendString(o, z.Before.Drives[za0001].Endpoint)
-		// string "state"
-		o = append(o, 0xa5, 0x73, 0x74, 0x61, 0x74, 0x65)
-		o = msgp.AppendString(o, z.Before.Drives[za0001].State)
-	}
-	// string "after"
-	o = append(o, 0xa5, 0x61, 0x66, 0x74, 0x65, 0x72)
-	// map header, size 1
-	// string "drives"
-	o = append(o, 0x81, 0xa6, 0x64, 0x72, 0x69, 0x76, 0x65, 0x73)
-	o = msgp.AppendArrayHeader(o, uint32(len(z.After.Drives)))
-	for za0002 := range z.After.Drives {
-		// map header, size 3
-		// string "uuid"
-		o = append(o, 0x83, 0xa4, 0x75, 0x75, 0x69, 0x64)
-		o = msgp.AppendString(o, z.After.Drives[za0002].UUID)
-		// string "endpoint"
-		o = append(o, 0xa8, 0x65, 0x6e, 0x64, 0x70, 0x6f, 0x69, 0x6e, 0x74)
-		o = msgp.AppendString(o, z.After.Drives[za0002].Endpoint)
-		// string "state"
-		o = append(o, 0xa5, 0x73, 0x74, 0x61, 0x74, 0x65)
-		o = msgp.AppendString(o, z.After.Drives[za0002].State)
-	}
-	// string "objectSize"
-	o = append(o, 0xaa, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x53, 0x69, 0x7a, 0x65)
-	o = msgp.AppendInt64(o, z.ObjectSize)
 	return
 }
 
@@ -2554,11 +2558,10 @@ func (z *HealTaskStatus) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x1 {
-		if (zb0001Mask & 0x1) == 0 {
-			z.Items = nil
-		}
+	if (zb0001Mask & 0x1) == 0 {
+		z.Items = nil
 	}
+
 	return
 }
 
@@ -2577,65 +2580,66 @@ func (z *HealTaskStatus) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	if zb0001Len == 0 {
-		return
-	}
-	// write "summary"
-	err = en.Append(0xa7, 0x73, 0x75, 0x6d, 0x6d, 0x61, 0x72, 0x79)
-	if err != nil {
-		return
-	}
-	err = en.WriteString(z.Summary)
-	if err != nil {
-		err = msgp.WrapError(err, "Summary")
-		return
-	}
-	// write "detail"
-	err = en.Append(0xa6, 0x64, 0x65, 0x74, 0x61, 0x69, 0x6c)
-	if err != nil {
-		return
-	}
-	err = en.WriteString(z.FailureDetail)
-	if err != nil {
-		err = msgp.WrapError(err, "FailureDetail")
-		return
-	}
-	// write "startTime"
-	err = en.Append(0xa9, 0x73, 0x74, 0x61, 0x72, 0x74, 0x54, 0x69, 0x6d, 0x65)
-	if err != nil {
-		return
-	}
-	err = en.WriteTime(z.StartTime)
-	if err != nil {
-		err = msgp.WrapError(err, "StartTime")
-		return
-	}
-	// write "settings"
-	err = en.Append(0xa8, 0x73, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x73)
-	if err != nil {
-		return
-	}
-	err = z.HealSettings.EncodeMsg(en)
-	if err != nil {
-		err = msgp.WrapError(err, "HealSettings")
-		return
-	}
-	if (zb0001Mask & 0x10) == 0 { // if not omitted
-		// write "items"
-		err = en.Append(0xa5, 0x69, 0x74, 0x65, 0x6d, 0x73)
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// write "summary"
+		err = en.Append(0xa7, 0x73, 0x75, 0x6d, 0x6d, 0x61, 0x72, 0x79)
 		if err != nil {
 			return
 		}
-		err = en.WriteArrayHeader(uint32(len(z.Items)))
+		err = en.WriteString(z.Summary)
 		if err != nil {
-			err = msgp.WrapError(err, "Items")
+			err = msgp.WrapError(err, "Summary")
 			return
 		}
-		for za0001 := range z.Items {
-			err = z.Items[za0001].EncodeMsg(en)
+		// write "detail"
+		err = en.Append(0xa6, 0x64, 0x65, 0x74, 0x61, 0x69, 0x6c)
+		if err != nil {
+			return
+		}
+		err = en.WriteString(z.FailureDetail)
+		if err != nil {
+			err = msgp.WrapError(err, "FailureDetail")
+			return
+		}
+		// write "startTime"
+		err = en.Append(0xa9, 0x73, 0x74, 0x61, 0x72, 0x74, 0x54, 0x69, 0x6d, 0x65)
+		if err != nil {
+			return
+		}
+		err = en.WriteTime(z.StartTime)
+		if err != nil {
+			err = msgp.WrapError(err, "StartTime")
+			return
+		}
+		// write "settings"
+		err = en.Append(0xa8, 0x73, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x73)
+		if err != nil {
+			return
+		}
+		err = z.HealSettings.EncodeMsg(en)
+		if err != nil {
+			err = msgp.WrapError(err, "HealSettings")
+			return
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// write "items"
+			err = en.Append(0xa5, 0x69, 0x74, 0x65, 0x6d, 0x73)
 			if err != nil {
-				err = msgp.WrapError(err, "Items", za0001)
 				return
+			}
+			err = en.WriteArrayHeader(uint32(len(z.Items)))
+			if err != nil {
+				err = msgp.WrapError(err, "Items")
+				return
+			}
+			for za0001 := range z.Items {
+				err = z.Items[za0001].EncodeMsg(en)
+				if err != nil {
+					err = msgp.WrapError(err, "Items", za0001)
+					return
+				}
 			}
 		}
 	}
@@ -2655,34 +2659,35 @@ func (z *HealTaskStatus) MarshalMsg(b []byte) (o []byte, err error) {
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
-	if zb0001Len == 0 {
-		return
-	}
-	// string "summary"
-	o = append(o, 0xa7, 0x73, 0x75, 0x6d, 0x6d, 0x61, 0x72, 0x79)
-	o = msgp.AppendString(o, z.Summary)
-	// string "detail"
-	o = append(o, 0xa6, 0x64, 0x65, 0x74, 0x61, 0x69, 0x6c)
-	o = msgp.AppendString(o, z.FailureDetail)
-	// string "startTime"
-	o = append(o, 0xa9, 0x73, 0x74, 0x61, 0x72, 0x74, 0x54, 0x69, 0x6d, 0x65)
-	o = msgp.AppendTime(o, z.StartTime)
-	// string "settings"
-	o = append(o, 0xa8, 0x73, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x73)
-	o, err = z.HealSettings.MarshalMsg(o)
-	if err != nil {
-		err = msgp.WrapError(err, "HealSettings")
-		return
-	}
-	if (zb0001Mask & 0x10) == 0 { // if not omitted
-		// string "items"
-		o = append(o, 0xa5, 0x69, 0x74, 0x65, 0x6d, 0x73)
-		o = msgp.AppendArrayHeader(o, uint32(len(z.Items)))
-		for za0001 := range z.Items {
-			o, err = z.Items[za0001].MarshalMsg(o)
-			if err != nil {
-				err = msgp.WrapError(err, "Items", za0001)
-				return
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// string "summary"
+		o = append(o, 0xa7, 0x73, 0x75, 0x6d, 0x6d, 0x61, 0x72, 0x79)
+		o = msgp.AppendString(o, z.Summary)
+		// string "detail"
+		o = append(o, 0xa6, 0x64, 0x65, 0x74, 0x61, 0x69, 0x6c)
+		o = msgp.AppendString(o, z.FailureDetail)
+		// string "startTime"
+		o = append(o, 0xa9, 0x73, 0x74, 0x61, 0x72, 0x74, 0x54, 0x69, 0x6d, 0x65)
+		o = msgp.AppendTime(o, z.StartTime)
+		// string "settings"
+		o = append(o, 0xa8, 0x73, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x73)
+		o, err = z.HealSettings.MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "HealSettings")
+			return
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// string "items"
+			o = append(o, 0xa5, 0x69, 0x74, 0x65, 0x6d, 0x73)
+			o = msgp.AppendArrayHeader(o, uint32(len(z.Items)))
+			for za0001 := range z.Items {
+				o, err = z.Items[za0001].MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "Items", za0001)
+					return
+				}
 			}
 		}
 	}
@@ -2762,11 +2767,10 @@ func (z *HealTaskStatus) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x1 {
-		if (zb0001Mask & 0x1) == 0 {
-			z.Items = nil
-		}
+	if (zb0001Mask & 0x1) == 0 {
+		z.Items = nil
 	}
+
 	o = bts
 	return
 }

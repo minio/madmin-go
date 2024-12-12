@@ -129,6 +129,8 @@ func closeResponse(resp *http.Response) {
 type TimedAction struct {
 	Count   uint64 `json:"count"`
 	AccTime uint64 `json:"acc_time_ns"`
+	MinTime uint64 `json:"min_ns,omitempty"`
+	MaxTime uint64 `json:"max_ns,omitempty"`
 	Bytes   uint64 `json:"bytes,omitempty"`
 }
 
@@ -153,6 +155,13 @@ func (t *TimedAction) Merge(other TimedAction) {
 	t.Count += other.Count
 	t.AccTime += other.AccTime
 	t.Bytes += other.Bytes
+	if t.Count == 0 {
+		t.MinTime = other.MinTime
+	}
+	if other.Count > 0 {
+		t.MinTime = min(t.MinTime, other.MinTime)
+	}
+	t.MaxTime = max(t.MaxTime, other.MaxTime)
 }
 
 // NodeCommon - Common fields across most node-specific health structs

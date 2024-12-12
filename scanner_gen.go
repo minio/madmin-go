@@ -93,11 +93,10 @@ func (z *BucketScanInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x1 {
-		if (zb0001Mask & 0x1) == 0 {
-			z.Completed = nil
-		}
+	if (zb0001Mask & 0x1) == 0 {
+		z.Completed = nil
 	}
+
 	return
 }
 
@@ -116,85 +115,86 @@ func (z *BucketScanInfo) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	if zb0001Len == 0 {
-		return
-	}
-	// write "pool"
-	err = en.Append(0xa4, 0x70, 0x6f, 0x6f, 0x6c)
-	if err != nil {
-		return
-	}
-	err = en.WriteInt(z.Pool)
-	if err != nil {
-		err = msgp.WrapError(err, "Pool")
-		return
-	}
-	// write "set"
-	err = en.Append(0xa3, 0x73, 0x65, 0x74)
-	if err != nil {
-		return
-	}
-	err = en.WriteInt(z.Set)
-	if err != nil {
-		err = msgp.WrapError(err, "Set")
-		return
-	}
-	// write "cycle"
-	err = en.Append(0xa5, 0x63, 0x79, 0x63, 0x6c, 0x65)
-	if err != nil {
-		return
-	}
-	err = en.WriteUint64(z.Cycle)
-	if err != nil {
-		err = msgp.WrapError(err, "Cycle")
-		return
-	}
-	// write "ongoing"
-	err = en.Append(0xa7, 0x6f, 0x6e, 0x67, 0x6f, 0x69, 0x6e, 0x67)
-	if err != nil {
-		return
-	}
-	err = en.WriteBool(z.Ongoing)
-	if err != nil {
-		err = msgp.WrapError(err, "Ongoing")
-		return
-	}
-	// write "last_update"
-	err = en.Append(0xab, 0x6c, 0x61, 0x73, 0x74, 0x5f, 0x75, 0x70, 0x64, 0x61, 0x74, 0x65)
-	if err != nil {
-		return
-	}
-	err = en.WriteTime(z.LastUpdate)
-	if err != nil {
-		err = msgp.WrapError(err, "LastUpdate")
-		return
-	}
-	// write "last_started"
-	err = en.Append(0xac, 0x6c, 0x61, 0x73, 0x74, 0x5f, 0x73, 0x74, 0x61, 0x72, 0x74, 0x65, 0x64)
-	if err != nil {
-		return
-	}
-	err = en.WriteTime(z.LastStarted)
-	if err != nil {
-		err = msgp.WrapError(err, "LastStarted")
-		return
-	}
-	if (zb0001Mask & 0x40) == 0 { // if not omitted
-		// write "completed"
-		err = en.Append(0xa9, 0x63, 0x6f, 0x6d, 0x70, 0x6c, 0x65, 0x74, 0x65, 0x64)
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// write "pool"
+		err = en.Append(0xa4, 0x70, 0x6f, 0x6f, 0x6c)
 		if err != nil {
 			return
 		}
-		err = en.WriteArrayHeader(uint32(len(z.Completed)))
+		err = en.WriteInt(z.Pool)
 		if err != nil {
-			err = msgp.WrapError(err, "Completed")
+			err = msgp.WrapError(err, "Pool")
 			return
 		}
-		for za0001 := range z.Completed {
-			err = en.WriteTime(z.Completed[za0001])
+		// write "set"
+		err = en.Append(0xa3, 0x73, 0x65, 0x74)
+		if err != nil {
+			return
+		}
+		err = en.WriteInt(z.Set)
+		if err != nil {
+			err = msgp.WrapError(err, "Set")
+			return
+		}
+		// write "cycle"
+		err = en.Append(0xa5, 0x63, 0x79, 0x63, 0x6c, 0x65)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint64(z.Cycle)
+		if err != nil {
+			err = msgp.WrapError(err, "Cycle")
+			return
+		}
+		// write "ongoing"
+		err = en.Append(0xa7, 0x6f, 0x6e, 0x67, 0x6f, 0x69, 0x6e, 0x67)
+		if err != nil {
+			return
+		}
+		err = en.WriteBool(z.Ongoing)
+		if err != nil {
+			err = msgp.WrapError(err, "Ongoing")
+			return
+		}
+		// write "last_update"
+		err = en.Append(0xab, 0x6c, 0x61, 0x73, 0x74, 0x5f, 0x75, 0x70, 0x64, 0x61, 0x74, 0x65)
+		if err != nil {
+			return
+		}
+		err = en.WriteTime(z.LastUpdate)
+		if err != nil {
+			err = msgp.WrapError(err, "LastUpdate")
+			return
+		}
+		// write "last_started"
+		err = en.Append(0xac, 0x6c, 0x61, 0x73, 0x74, 0x5f, 0x73, 0x74, 0x61, 0x72, 0x74, 0x65, 0x64)
+		if err != nil {
+			return
+		}
+		err = en.WriteTime(z.LastStarted)
+		if err != nil {
+			err = msgp.WrapError(err, "LastStarted")
+			return
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
+			// write "completed"
+			err = en.Append(0xa9, 0x63, 0x6f, 0x6d, 0x70, 0x6c, 0x65, 0x74, 0x65, 0x64)
 			if err != nil {
-				err = msgp.WrapError(err, "Completed", za0001)
 				return
+			}
+			err = en.WriteArrayHeader(uint32(len(z.Completed)))
+			if err != nil {
+				err = msgp.WrapError(err, "Completed")
+				return
+			}
+			for za0001 := range z.Completed {
+				err = en.WriteTime(z.Completed[za0001])
+				if err != nil {
+					err = msgp.WrapError(err, "Completed", za0001)
+					return
+				}
 			}
 		}
 	}
@@ -214,33 +214,34 @@ func (z *BucketScanInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
-	if zb0001Len == 0 {
-		return
-	}
-	// string "pool"
-	o = append(o, 0xa4, 0x70, 0x6f, 0x6f, 0x6c)
-	o = msgp.AppendInt(o, z.Pool)
-	// string "set"
-	o = append(o, 0xa3, 0x73, 0x65, 0x74)
-	o = msgp.AppendInt(o, z.Set)
-	// string "cycle"
-	o = append(o, 0xa5, 0x63, 0x79, 0x63, 0x6c, 0x65)
-	o = msgp.AppendUint64(o, z.Cycle)
-	// string "ongoing"
-	o = append(o, 0xa7, 0x6f, 0x6e, 0x67, 0x6f, 0x69, 0x6e, 0x67)
-	o = msgp.AppendBool(o, z.Ongoing)
-	// string "last_update"
-	o = append(o, 0xab, 0x6c, 0x61, 0x73, 0x74, 0x5f, 0x75, 0x70, 0x64, 0x61, 0x74, 0x65)
-	o = msgp.AppendTime(o, z.LastUpdate)
-	// string "last_started"
-	o = append(o, 0xac, 0x6c, 0x61, 0x73, 0x74, 0x5f, 0x73, 0x74, 0x61, 0x72, 0x74, 0x65, 0x64)
-	o = msgp.AppendTime(o, z.LastStarted)
-	if (zb0001Mask & 0x40) == 0 { // if not omitted
-		// string "completed"
-		o = append(o, 0xa9, 0x63, 0x6f, 0x6d, 0x70, 0x6c, 0x65, 0x74, 0x65, 0x64)
-		o = msgp.AppendArrayHeader(o, uint32(len(z.Completed)))
-		for za0001 := range z.Completed {
-			o = msgp.AppendTime(o, z.Completed[za0001])
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// string "pool"
+		o = append(o, 0xa4, 0x70, 0x6f, 0x6f, 0x6c)
+		o = msgp.AppendInt(o, z.Pool)
+		// string "set"
+		o = append(o, 0xa3, 0x73, 0x65, 0x74)
+		o = msgp.AppendInt(o, z.Set)
+		// string "cycle"
+		o = append(o, 0xa5, 0x63, 0x79, 0x63, 0x6c, 0x65)
+		o = msgp.AppendUint64(o, z.Cycle)
+		// string "ongoing"
+		o = append(o, 0xa7, 0x6f, 0x6e, 0x67, 0x6f, 0x69, 0x6e, 0x67)
+		o = msgp.AppendBool(o, z.Ongoing)
+		// string "last_update"
+		o = append(o, 0xab, 0x6c, 0x61, 0x73, 0x74, 0x5f, 0x75, 0x70, 0x64, 0x61, 0x74, 0x65)
+		o = msgp.AppendTime(o, z.LastUpdate)
+		// string "last_started"
+		o = append(o, 0xac, 0x6c, 0x61, 0x73, 0x74, 0x5f, 0x73, 0x74, 0x61, 0x72, 0x74, 0x65, 0x64)
+		o = msgp.AppendTime(o, z.LastStarted)
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
+			// string "completed"
+			o = append(o, 0xa9, 0x63, 0x6f, 0x6d, 0x70, 0x6c, 0x65, 0x74, 0x65, 0x64)
+			o = msgp.AppendArrayHeader(o, uint32(len(z.Completed)))
+			for za0001 := range z.Completed {
+				o = msgp.AppendTime(o, z.Completed[za0001])
+			}
 		}
 	}
 	return
@@ -331,11 +332,10 @@ func (z *BucketScanInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x1 {
-		if (zb0001Mask & 0x1) == 0 {
-			z.Completed = nil
-		}
+	if (zb0001Mask & 0x1) == 0 {
+		z.Completed = nil
 	}
+
 	o = bts
 	return
 }
