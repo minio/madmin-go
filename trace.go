@@ -22,6 +22,7 @@ package madmin
 import (
 	"math/bits"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -61,6 +62,8 @@ const (
 	TraceFTP
 	// TraceILM will trace events during MinIO ILM operations
 	TraceILM
+	// TraceKMS are traces for interactions with KMS.
+	TraceKMS
 	// Add more here...
 
 	// TraceAll contains all valid trace modes.
@@ -72,6 +75,23 @@ const (
 	// TraceBatch will trace all batch operations.
 	TraceBatch = TraceBatchReplication | TraceBatchKeyRotation | TraceBatchExpire // |TraceBatch<NextFeature>
 )
+
+// FindTraceType will find a single trace type from a string,
+// as returned by String(). Matching is not case sensitive.
+// Will return 0 if not found.
+func FindTraceType(s string) TraceType {
+	bitIdx := uint(0)
+	for {
+		idx := TraceType(1 << bitIdx)
+		if idx > TraceAll {
+			return 0
+		}
+		if strings.EqualFold(idx.String(), s) {
+			return idx
+		}
+		bitIdx++
+	}
+}
 
 // Contains returns whether all flags in other is present in t.
 func (t TraceType) Contains(other TraceType) bool {
