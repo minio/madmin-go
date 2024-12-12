@@ -129,8 +129,8 @@ func closeResponse(resp *http.Response) {
 type TimedAction struct {
 	Count   uint64 `json:"count"`
 	AccTime uint64 `json:"acc_time_ns"`
-	MinTime uint64 `json:"min_ns"`
-	MaxTime uint64 `json:"max_ns"`
+	MinTime uint64 `json:"min_ns,omitempty"`
+	MaxTime uint64 `json:"max_ns,omitempty"`
 	Bytes   uint64 `json:"bytes,omitempty"`
 }
 
