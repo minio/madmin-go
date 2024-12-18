@@ -773,7 +773,7 @@ type localF64H struct {
 }
 
 // RuntimeMetrics contains metrics for the go runtime.
-// See more at https://pkg.go.dev/runtime/metric
+// See more at https://pkg.go.dev/runtime/metrics
 type RuntimeMetrics struct {
 	// UintMetrics contains KindUint64 values
 	UintMetrics map[string]uint64 `json:"uintMetrics,omitempty"`
