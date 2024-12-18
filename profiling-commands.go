@@ -55,8 +55,9 @@ type StartProfilingResult struct {
 	Error    string `json:"error"`
 }
 
-// StartProfiling makes an admin call to remotely start profiling on a standalone
-// server or the whole cluster in case of a distributed setup.
+// StartProfiling makes an admin call to remotely start profiling on a
+// standalone server or the whole cluster in case of a distributed setup.
+//
 // Deprecated: use Profile API instead
 func (adm *AdminClient) StartProfiling(ctx context.Context, profiler ProfilerType) ([]StartProfilingResult, error) {
 	v := url.Values{}
@@ -90,8 +91,9 @@ func (adm *AdminClient) StartProfiling(ctx context.Context, profiler ProfilerTyp
 	return startResults, nil
 }
 
-// DownloadProfilingData makes an admin call to download profiling data of a standalone
-// server or of the whole cluster in case of a distributed setup.
+// DownloadProfilingData makes an admin call to download profiling data of a
+// standalone server or of the whole cluster in case of a distributed setup.
+//
 // Deprecated: use Profile API instead
 func (adm *AdminClient) DownloadProfilingData(ctx context.Context) (io.ReadCloser, error) {
 	path := fmt.Sprintf(adminAPIPrefix + "/profiling/download")

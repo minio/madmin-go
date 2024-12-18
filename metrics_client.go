@@ -73,6 +73,7 @@ func NewMetricsClientWithOptions(endpoint string, opts *Options) (*MetricsClient
 }
 
 // NewMetricsClient - instantiate minio metrics client honoring Prometheus format
+//
 // Deprecated: please use NewMetricsClientWithOptions
 func NewMetricsClient(endpoint string, accessKeyID, secretAccessKey string, secure bool) (*MetricsClient, error) {
 	return NewMetricsClientWithOptions(endpoint, &Options{
@@ -164,6 +165,7 @@ func (client *MetricsClient) makeTargetURL(r metricsRequestData) (*url.URL, erro
 }
 
 // SetCustomTransport - set new custom transport.
+//
 // Deprecated: please use Options{Transport: tr} to provide custom transport.
 func (client *MetricsClient) SetCustomTransport(customHTTPTransport http.RoundTripper) {
 	// Set this to override default transport

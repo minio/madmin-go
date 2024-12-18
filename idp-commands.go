@@ -443,7 +443,7 @@ type ListAccessKeysLDAPResp ListAccessKeysResp
 
 // ListAccessKeysLDAP - list service accounts belonging to the specified user
 //
-// Deprecated: Use ListAccessKeysLDAP instead.
+// Deprecated: Use ListAccessKeysLDAPBulk instead.
 func (adm *AdminClient) ListAccessKeysLDAP(ctx context.Context, userDN string, listType string) (ListAccessKeysLDAPResp, error) {
 	queryValues := url.Values{}
 	queryValues.Set("listType", listType)
