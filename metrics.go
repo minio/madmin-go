@@ -794,13 +794,13 @@ func (m *RuntimeMetrics) Merge(other *RuntimeMetrics) {
 		return
 	}
 	if m.UintMetrics == nil {
-		m.UintMetrics = make(map[string]uint64)
+		m.UintMetrics = make(map[string]uint64, len(other.UintMetrics))
 	}
 	if m.FloatMetrics == nil {
-		m.UintMetrics = make(map[string]uint64)
+		m.FloatMetrics = make(map[string]float64, len(other.FloatMetrics))
 	}
-	if m.FloatMetrics == nil {
-		m.UintMetrics = make(map[string]uint64)
+	if m.HistMetrics == nil {
+		m.HistMetrics = make(map[string]metrics.Float64Histogram, len(other.HistMetrics))
 	}
 	for k, v := range other.UintMetrics {
 		m.UintMetrics[k] += v
