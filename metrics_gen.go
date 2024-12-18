@@ -3268,7 +3268,7 @@ func (z *Metrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint16 /* 9 bits */
+	var zb0001Mask uint16 /* 10 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -3513,6 +3513,25 @@ func (z *Metrics) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 			}
 			zb0001Mask |= 0x100
+		case "go":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "Go")
+					return
+				}
+				z.Go = nil
+			} else {
+				if z.Go == nil {
+					z.Go = new(RuntimeMetrics)
+				}
+				err = z.Go.DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "Go")
+					return
+				}
+			}
+			zb0001Mask |= 0x200
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -3522,7 +3541,7 @@ func (z *Metrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x1ff {
+	if zb0001Mask != 0x3ff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Scanner = nil
 		}
@@ -3550,6 +3569,9 @@ func (z *Metrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		if (zb0001Mask & 0x100) == 0 {
 			z.RPC = nil
 		}
+		if (zb0001Mask & 0x200) == 0 {
+			z.Go = nil
+		}
 	}
 	return
 }
@@ -3557,8 +3579,8 @@ func (z *Metrics) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *Metrics) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(9)
-	var zb0001Mask uint16 /* 9 bits */
+	zb0001Len := uint32(10)
+	var zb0001Mask uint16 /* 10 bits */
 	_ = zb0001Mask
 	if z.Scanner == nil {
 		zb0001Len--
@@ -3595,6 +3617,10 @@ func (z *Metrics) EncodeMsg(en *msgp.Writer) (err error) {
 	if z.RPC == nil {
 		zb0001Len--
 		zb0001Mask |= 0x100
+	}
+	if z.Go == nil {
+		zb0001Len--
+		zb0001Mask |= 0x200
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -3817,6 +3843,25 @@ func (z *Metrics) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
+			// write "go"
+			err = en.Append(0xa2, 0x67, 0x6f)
+			if err != nil {
+				return
+			}
+			if z.Go == nil {
+				err = en.WriteNil()
+				if err != nil {
+					return
+				}
+			} else {
+				err = z.Go.EncodeMsg(en)
+				if err != nil {
+					err = msgp.WrapError(err, "Go")
+					return
+				}
+			}
+		}
 	}
 	return
 }
@@ -3825,8 +3870,8 @@ func (z *Metrics) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *Metrics) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(9)
-	var zb0001Mask uint16 /* 9 bits */
+	zb0001Len := uint32(10)
+	var zb0001Mask uint16 /* 10 bits */
 	_ = zb0001Mask
 	if z.Scanner == nil {
 		zb0001Len--
@@ -3863,6 +3908,10 @@ func (z *Metrics) MarshalMsg(b []byte) (o []byte, err error) {
 	if z.RPC == nil {
 		zb0001Len--
 		zb0001Mask |= 0x100
+	}
+	if z.Go == nil {
+		zb0001Len--
+		zb0001Mask |= 0x200
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -4001,6 +4050,19 @@ func (z *Metrics) MarshalMsg(b []byte) (o []byte, err error) {
 				}
 			}
 		}
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
+			// string "go"
+			o = append(o, 0xa2, 0x67, 0x6f)
+			if z.Go == nil {
+				o = msgp.AppendNil(o)
+			} else {
+				o, err = z.Go.MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "Go")
+					return
+				}
+			}
+		}
 	}
 	return
 }
@@ -4015,7 +4077,7 @@ func (z *Metrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint16 /* 9 bits */
+	var zb0001Mask uint16 /* 10 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -4251,6 +4313,24 @@ func (z *Metrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 			}
 			zb0001Mask |= 0x100
+		case "go":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.Go = nil
+			} else {
+				if z.Go == nil {
+					z.Go = new(RuntimeMetrics)
+				}
+				bts, err = z.Go.UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Go")
+					return
+				}
+			}
+			zb0001Mask |= 0x200
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -4260,7 +4340,7 @@ func (z *Metrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x1ff {
+	if zb0001Mask != 0x3ff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Scanner = nil
 		}
@@ -4287,6 +4367,9 @@ func (z *Metrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 		if (zb0001Mask & 0x100) == 0 {
 			z.RPC = nil
+		}
+		if (zb0001Mask & 0x200) == 0 {
+			z.Go = nil
 		}
 	}
 	o = bts
@@ -4348,6 +4431,12 @@ func (z *Metrics) Msgsize() (s int) {
 		s += msgp.NilSize
 	} else {
 		s += z.RPC.Msgsize()
+	}
+	s += 3
+	if z.Go == nil {
+		s += msgp.NilSize
+	} else {
+		s += z.Go.Msgsize()
 	}
 	return
 }

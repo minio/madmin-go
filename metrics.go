@@ -780,8 +780,8 @@ type RuntimeMetrics struct {
 
 	// FloatMetrics contains KindFloat64 values
 	FloatMetrics map[string]float64 `json:"floatMetrics,omitempty"`
-	// HistMetrics contains KindFloat64Histogram values
 
+	// HistMetrics contains KindFloat64Histogram values
 	HistMetrics map[string]metrics.Float64Histogram `json:"histMetrics,omitempty"`
 
 	// N tracks the number of merged entries.
