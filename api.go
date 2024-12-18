@@ -101,6 +101,7 @@ type Options struct {
 }
 
 // New - instantiate minio admin client
+//
 // Deprecated: please use NewWithOptions
 func New(endpoint string, accessKeyID, secretAccessKey string, secure bool) (*AdminClient, error) {
 	creds := credentials.NewStaticV4(accessKeyID, secretAccessKey, "")
