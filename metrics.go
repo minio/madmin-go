@@ -27,6 +27,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"runtime/metrics"
 	"sort"
 	"strconv"
 	"strings"
@@ -39,7 +40,7 @@ import (
 
 //msgp:clearomitted
 //msgp:tag json
-//go:generate msgp
+//go:generate msgp -unexported
 
 // MetricType is a bitfield representation of different metric types.
 type MetricType uint32
@@ -57,6 +58,7 @@ const (
 	MetricsMem
 	MetricsCPU
 	MetricsRPC
+	MetricsRuntime
 
 	// MetricsAll must be last.
 	// Enables all metrics.
@@ -162,6 +164,7 @@ type Metrics struct {
 	Mem        *MemMetrics        `json:"mem,omitempty"`
 	CPU        *CPUMetrics        `json:"cpu,omitempty"`
 	RPC        *RPCMetrics        `json:"rpc,omitempty"`
+	Go         *RuntimeMetrics    `json:"go,omitempty"`
 }
 
 // Merge other into r.
@@ -201,6 +204,10 @@ func (r *Metrics) Merge(other *Metrics) {
 		r.RPC = &RPCMetrics{}
 	}
 	r.RPC.Merge(other.RPC)
+	if r.Go == nil && other.Go != nil {
+		r.Go = &RuntimeMetrics{}
+	}
+	r.Go.Merge(other.Go)
 }
 
 // Merge will merge other into r.
@@ -755,4 +762,65 @@ func (m *RPCMetrics) Merge(other *RPCMetrics) {
 		existing.Merge(&v)
 		m.ByCaller[k] = existing
 	}
+}
+
+//msgp:replace metrics.Float64Histogram with:localF64H
+
+// local copy of localF64H, can be casted to/from metrics.Float64Histogram
+type localF64H struct {
+	Counts  []uint64  `json:"counts,omitempty"`
+	Buckets []float64 `json:"buckets,omitempty"`
+}
+
+// RuntimeMetrics contains metrics for the go runtime.
+// See more at https://pkg.go.dev/runtime/metrics
+type RuntimeMetrics struct {
+	// UintMetrics contains KindUint64 values
+	UintMetrics map[string]uint64 `json:"uintMetrics,omitempty"`
+
+	// FloatMetrics contains KindFloat64 values
+	FloatMetrics map[string]float64 `json:"floatMetrics,omitempty"`
+
+	// HistMetrics contains KindFloat64Histogram values
+	HistMetrics map[string]metrics.Float64Histogram `json:"histMetrics,omitempty"`
+
+	// N tracks the number of merged entries.
+	N int `json:"n"`
+}
+
+// Merge other into 'm'.
+func (m *RuntimeMetrics) Merge(other *RuntimeMetrics) {
+	if m == nil || other == nil {
+		return
+	}
+	if m.UintMetrics == nil {
+		m.UintMetrics = make(map[string]uint64, len(other.UintMetrics))
+	}
+	if m.FloatMetrics == nil {
+		m.FloatMetrics = make(map[string]float64, len(other.FloatMetrics))
+	}
+	if m.HistMetrics == nil {
+		m.HistMetrics = make(map[string]metrics.Float64Histogram, len(other.HistMetrics))
+	}
+	for k, v := range other.UintMetrics {
+		m.UintMetrics[k] += v
+	}
+	for k, v := range other.FloatMetrics {
+		m.FloatMetrics[k] += v
+	}
+	for k, v := range other.HistMetrics {
+		existing := m.HistMetrics[k]
+		if len(existing.Buckets) == 0 {
+			m.HistMetrics[k] = v
+			continue
+		}
+		// TODO: Technically, I guess we may have differing buckets,
+		// but they should be the same for the runtime.
+		if len(existing.Buckets) == len(v.Buckets) {
+			for i, count := range v.Counts {
+				existing.Counts[i] += count
+			}
+		}
+	}
+	m.N += other.N
 }
