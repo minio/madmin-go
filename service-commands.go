@@ -151,8 +151,10 @@ type ServiceTraceOpts struct {
 	Bootstrap         bool
 	FTP               bool
 	ILM               bool
-	OnlyErrors        bool
-	Threshold         time.Duration
+	KMS               bool
+
+	OnlyErrors bool
+	Threshold  time.Duration
 }
 
 // TraceTypes returns the enabled traces as a bitfield value.
@@ -165,21 +167,16 @@ func (t ServiceTraceOpts) TraceTypes() TraceType {
 	tt.SetIf(t.Scanner, TraceScanner)
 	tt.SetIf(t.Decommission, TraceDecommission)
 	tt.SetIf(t.Healing, TraceHealing)
-	if t.BatchAll {
-		tt.SetIf(true, TraceBatchReplication)
-		tt.SetIf(true, TraceBatchKeyRotation)
-		tt.SetIf(true, TraceBatchExpire)
-	} else {
-		tt.SetIf(t.BatchReplication, TraceBatchReplication)
-		tt.SetIf(t.BatchKeyRotation, TraceBatchKeyRotation)
-		tt.SetIf(t.BatchExpire, TraceBatchExpire)
-	}
+	tt.SetIf(t.BatchAll || t.BatchReplication, TraceBatchReplication)
+	tt.SetIf(t.BatchAll || t.BatchKeyRotation, TraceBatchKeyRotation)
+	tt.SetIf(t.BatchAll || t.BatchExpire, TraceBatchExpire)
 
 	tt.SetIf(t.Rebalance, TraceRebalance)
 	tt.SetIf(t.ReplicationResync, TraceReplicationResync)
 	tt.SetIf(t.Bootstrap, TraceBootstrap)
 	tt.SetIf(t.FTP, TraceFTP)
 	tt.SetIf(t.ILM, TraceILM)
+	tt.SetIf(t.KMS, TraceKMS)
 
 	return tt
 }
@@ -196,19 +193,15 @@ func (t ServiceTraceOpts) AddParams(u url.Values) {
 	u.Set("scanner", strconv.FormatBool(t.Scanner))
 	u.Set("decommission", strconv.FormatBool(t.Decommission))
 	u.Set("healing", strconv.FormatBool(t.Healing))
-	u.Set("batch-replication", strconv.FormatBool(t.BatchReplication))
-	u.Set("batch-keyrotation", strconv.FormatBool(t.BatchKeyRotation))
-	u.Set("batch-expire", strconv.FormatBool(t.BatchExpire))
-	if t.BatchAll {
-		u.Set("batch-replication", "true")
-		u.Set("batch-keyrotation", "true")
-		u.Set("batch-expire", "true")
-	}
+	u.Set("batch-replication", strconv.FormatBool(t.BatchAll || t.BatchReplication))
+	u.Set("batch-keyrotation", strconv.FormatBool(t.BatchAll || t.BatchKeyRotation))
+	u.Set("batch-expire", strconv.FormatBool(t.BatchAll || t.BatchExpire))
 	u.Set("rebalance", strconv.FormatBool(t.Rebalance))
 	u.Set("replication-resync", strconv.FormatBool(t.ReplicationResync))
 	u.Set("bootstrap", strconv.FormatBool(t.Bootstrap))
 	u.Set("ftp", strconv.FormatBool(t.FTP))
 	u.Set("ilm", strconv.FormatBool(t.ILM))
+	u.Set("kms", strconv.FormatBool(t.KMS))
 }
 
 // ParseParams will parse parameters and set them to t.
@@ -229,6 +222,7 @@ func (t *ServiceTraceOpts) ParseParams(r *http.Request) (err error) {
 	t.Bootstrap = r.Form.Get("bootstrap") == "true"
 	t.FTP = r.Form.Get("ftp") == "true"
 	t.ILM = r.Form.Get("ilm") == "true"
+	t.KMS = r.Form.Get("kms") == "true"
 
 	if th := r.Form.Get("threshold"); th != "" {
 		d, err := time.ParseDuration(th)
