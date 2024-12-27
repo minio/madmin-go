@@ -470,7 +470,7 @@ func (adm AdminClient) setUserAgent(req *http.Request) {
 
 // GetAccessAndSecretKey - retrieves the access and secret keys.
 func (adm AdminClient) GetAccessAndSecretKey() (string, string) {
-	value, err := adm.credsProvider.Get()
+	value, err := adm.credsProvider.GetWithContext(adm.CredContext())
 	if err != nil {
 		return "", ""
 	}
@@ -483,7 +483,7 @@ func (adm AdminClient) GetEndpointURL() *url.URL {
 }
 
 func (adm AdminClient) getSecretKey() string {
-	value, err := adm.credsProvider.Get()
+	value, err := adm.credsProvider.GetWithContext(adm.CredContext())
 	if err != nil {
 		// Return empty, call will fail.
 		return ""
@@ -514,7 +514,7 @@ func (adm AdminClient) newRequest(ctx context.Context, method string, reqData re
 		return nil, err
 	}
 
-	value, err := adm.credsProvider.Get()
+	value, err := adm.credsProvider.GetWithContext(adm.CredContext())
 	if err != nil {
 		return nil, err
 	}
@@ -563,4 +563,11 @@ func (adm AdminClient) makeTargetURL(r requestData) (*url.URL, error) {
 		return nil, err
 	}
 	return u, nil
+}
+
+// CredContext returns the context for fetching credentials
+func (adm AdminClient) CredContext() *credentials.CredContext {
+	return &credentials.CredContext{
+		Client: adm.httpClient,
+	}
 }
