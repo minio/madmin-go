@@ -121,7 +121,7 @@ func (client *MetricsClient) executeGetRequest(ctx context.Context, reqData metr
 		return nil, err
 	}
 
-	v, err := client.creds.Get()
+	v, err := client.creds.GetWithContext(client.CredContext())
 	if err != nil {
 		return nil, err
 	}
@@ -184,5 +184,12 @@ func (client *MetricsClient) SetCustomTransport(customHTTPTransport http.RoundTr
 	//
 	if client.httpClient != nil {
 		client.httpClient.Transport = customHTTPTransport
+	}
+}
+
+// CredContext returns the context for fetching credentials
+func (client *MetricsClient) CredContext() *credentials.CredContext {
+	return &credentials.CredContext{
+		Client: client.httpClient,
 	}
 }
