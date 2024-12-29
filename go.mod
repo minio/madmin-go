@@ -7,7 +7,6 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/golang-jwt/jwt/v4 v4.5.0
 	github.com/minio/minio-go/v7 v7.0.83-0.20241227013127-4a691e1603a5
-	github.com/minio/pkg/v3 v3.0.20
 	github.com/prometheus/common v0.59.1
 	github.com/prometheus/procfs v0.15.1
 	github.com/prometheus/prom2json v1.4.0
@@ -17,6 +16,7 @@ require (
 	github.com/tinylib/msgp v1.2.5
 	golang.org/x/crypto v0.31.0
 	golang.org/x/net v0.33.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -27,6 +27,7 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/klauspost/compress v1.17.11 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.9 // indirect
+	github.com/kr/pretty v0.2.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20240909124753-873cd0166683 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
@@ -45,5 +46,4 @@ require (
 	golang.org/x/sys v0.28.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
