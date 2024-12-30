@@ -6,7 +6,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/golang-jwt/jwt/v4 v4.5.0
-	github.com/minio/minio-go/v7 v7.0.83-0.20241227013127-4a691e1603a5
+	github.com/minio/minio-go/v7 v7.0.83-0.20241230094935-5757f2c8544a
 	github.com/prometheus/common v0.59.1
 	github.com/prometheus/procfs v0.15.1
 	github.com/prometheus/prom2json v1.4.0
