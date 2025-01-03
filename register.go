@@ -44,6 +44,7 @@ type ClusterInfo struct {
 	NoOfObjects     uint64 `json:"no_of_objects"`
 	TotalDriveSpace uint64 `json:"total_drive_space"`
 	UsedDriveSpace  uint64 `json:"used_drive_space"`
+	IsAIStor        *bool  `json:"is_aistor,omitempty"`
 }
 
 // SubnetLoginReq - JSON payload of the SUBNET login api
