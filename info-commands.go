@@ -423,7 +423,7 @@ type ServerProperties struct {
 	RuntimeVersion string            `json:"runtime_version,omitempty"`
 	GCStats        *GCStats          `json:"gc_stats,omitempty"`
 	MinioEnvVars   map[string]string `json:"minio_env_vars,omitempty"`
-	IsAIStor       *bool             `json:"is_aistor,omitempty"`
+	Edition        string            `json:"edition"`
 }
 
 // MemStats is strip down version of runtime.MemStats containing memory stats of MinIO server.

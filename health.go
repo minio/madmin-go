@@ -996,7 +996,7 @@ type ServerInfo struct {
 	RuntimeVersion string            `json:"runtime_version"`
 	GCStats        *GCStats          `json:"gc_stats,omitempty"`
 	MinioEnvVars   map[string]string `json:"minio_env_vars,omitempty"`
-	IsAIStor       *bool             `json:"is_aistor,omitempty"`
+	Edition        string            `json:"edition"`
 }
 
 // MinioInfo contains MinIO server and object storage information.
