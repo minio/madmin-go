@@ -169,7 +169,7 @@ func (adm *AdminClient) RemoveCannedPolicy(ctx context.Context, policyName strin
 
 // AddCannedPolicy - adds a policy for a canned.
 func (adm *AdminClient) AddCannedPolicy(ctx context.Context, policyName string, policy []byte) error {
-	if policy == nil {
+	if len(policy) == 0 {
 		return ErrInvalidArgument("policy input cannot be empty")
 	}
 
