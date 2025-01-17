@@ -69,9 +69,10 @@ const (
 
 	LambdaWebhookSubSys = "lambda_webhook"
 
-	BrowserSubSys         = "browser"
-	AuditEventQueueSubSys = "audit_event_queue"
-	ErasureSubSys         = "erasure"
+	BrowserSubSys          = "browser"
+	AuditEventQueueSubSys  = "audit_event_queue"
+	ErasureSubSys          = "erasure"
+	BucketEventQueueSubSys = "bucket_event_queue"
 )
 
 // SubSystems - list of all subsystems in MinIO
@@ -156,6 +157,7 @@ var EOSSubSystems = set.CreateStringSet(
 	BrowserSubSys,
 	AuditEventQueueSubSys,
 	ErasureSubSys,
+	BucketEventQueueSubSys,
 )
 
 // Standard config keys and values.
