@@ -9019,6 +9019,12 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 				z.MinioEnvVars[za0005] = za0006
 			}
 			zb0001Mask |= 0x4000
+		case "edition":
+			z.Edition, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "Edition")
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -9081,8 +9087,8 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(16)
-	var zb0001Mask uint16 /* 16 bits */
+	zb0001Len := uint32(17)
+	var zb0001Mask uint32 /* 17 bits */
 	_ = zb0001Mask
 	if z.State == "" {
 		zb0001Len--
@@ -9387,6 +9393,16 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
+		// write "edition"
+		err = en.Append(0xa7, 0x65, 0x64, 0x69, 0x74, 0x69, 0x6f, 0x6e)
+		if err != nil {
+			return
+		}
+		err = en.WriteString(z.Edition)
+		if err != nil {
+			err = msgp.WrapError(err, "Edition")
+			return
+		}
 	}
 	return
 }
@@ -9395,8 +9411,8 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(16)
-	var zb0001Mask uint16 /* 16 bits */
+	zb0001Len := uint32(17)
+	var zb0001Mask uint32 /* 17 bits */
 	_ = zb0001Mask
 	if z.State == "" {
 		zb0001Len--
@@ -9571,6 +9587,9 @@ func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 				o = msgp.AppendString(o, za0006)
 			}
 		}
+		// string "edition"
+		o = append(o, 0xa7, 0x65, 0x64, 0x69, 0x74, 0x69, 0x6f, 0x6e)
+		o = msgp.AppendString(o, z.Edition)
 	}
 	return
 }
@@ -9791,6 +9810,12 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				z.MinioEnvVars[za0005] = za0006
 			}
 			zb0001Mask |= 0x4000
+		case "edition":
+			z.Edition, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Edition")
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -9877,6 +9902,7 @@ func (z *ServerProperties) Msgsize() (s int) {
 			s += msgp.StringPrefixSize + len(za0005) + msgp.StringPrefixSize + len(za0006)
 		}
 	}
+	s += 8 + msgp.StringPrefixSize + len(z.Edition)
 	return
 }
 
