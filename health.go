@@ -47,6 +47,27 @@ import (
 	"github.com/shirou/gopsutil/v3/process"
 )
 
+// NodeCommon - Common fields across most node-specific health structs
+type NodeCommon struct {
+	Addr  string `json:"addr"`
+	Error string `json:"error,omitempty"`
+}
+
+// GetAddr - return the address of the node
+func (n *NodeCommon) GetAddr() string {
+	return n.Addr
+}
+
+// SetAddr - set the address of the node
+func (n *NodeCommon) SetAddr(addr string) {
+	n.Addr = addr
+}
+
+// SetError - set the address of the node
+func (n *NodeCommon) SetError(err string) {
+	n.Error = err
+}
+
 const (
 	// HealthInfoVersion0 is version 0
 	HealthInfoVersion0 = ""
