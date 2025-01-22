@@ -2507,7 +2507,7 @@ func (z *MemInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 		switch msgp.UnsafeString(field) {
 		case "NodeCommon":
-			err = z.NodeCommon.DecodeMsg(dc)
+			err = (*nodeCommon)(&z.NodeCommon).DecodeMsg(dc)
 			if err != nil {
 				err = msgp.WrapError(err, "NodeCommon")
 				return
@@ -2685,7 +2685,7 @@ func (z *MemInfo) EncodeMsg(en *msgp.Writer) (err error) {
 		if err != nil {
 			return
 		}
-		err = z.NodeCommon.EncodeMsg(en)
+		err = (*nodeCommon)(&z.NodeCommon).EncodeMsg(en)
 		if err != nil {
 			err = msgp.WrapError(err, "NodeCommon")
 			return
@@ -2868,7 +2868,7 @@ func (z *MemInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	if zb0001Len != 0 {
 		// string "NodeCommon"
 		o = append(o, 0xaa, 0x4e, 0x6f, 0x64, 0x65, 0x43, 0x6f, 0x6d, 0x6d, 0x6f, 0x6e)
-		o, err = z.NodeCommon.MarshalMsg(o)
+		o, err = (*nodeCommon)(&z.NodeCommon).MarshalMsg(o)
 		if err != nil {
 			err = msgp.WrapError(err, "NodeCommon")
 			return
@@ -2948,7 +2948,7 @@ func (z *MemInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 		switch msgp.UnsafeString(field) {
 		case "NodeCommon":
-			bts, err = z.NodeCommon.UnmarshalMsg(bts)
+			bts, err = (*nodeCommon)(&z.NodeCommon).UnmarshalMsg(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "NodeCommon")
 				return
@@ -3070,7 +3070,7 @@ func (z *MemInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *MemInfo) Msgsize() (s int) {
-	s = 1 + 11 + z.NodeCommon.Msgsize() + 6 + msgp.Uint64Size + 5 + msgp.Uint64Size + 5 + msgp.Uint64Size + 10 + msgp.Uint64Size + 7 + msgp.Uint64Size + 6 + msgp.Uint64Size + 7 + msgp.Uint64Size + 17 + msgp.Uint64Size + 16 + msgp.Uint64Size + 6 + msgp.Uint64Size
+	s = 1 + 11 + (*nodeCommon)(&z.NodeCommon).Msgsize() + 6 + msgp.Uint64Size + 5 + msgp.Uint64Size + 5 + msgp.Uint64Size + 10 + msgp.Uint64Size + 7 + msgp.Uint64Size + 6 + msgp.Uint64Size + 7 + msgp.Uint64Size + 17 + msgp.Uint64Size + 16 + msgp.Uint64Size + 6 + msgp.Uint64Size
 	return
 }
 
@@ -9320,5 +9320,182 @@ func (z *localF64H) UnmarshalMsg(bts []byte) (o []byte, err error) {
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *localF64H) Msgsize() (s int) {
 	s = 1 + 7 + msgp.ArrayHeaderSize + (len(z.Counts) * (msgp.Uint64Size)) + 8 + msgp.ArrayHeaderSize + (len(z.Buckets) * (msgp.Float64Size))
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *nodeCommon) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 1 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "addr":
+			z.Addr, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "Addr")
+				return
+			}
+		case "error":
+			z.Error, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "Error")
+				return
+			}
+			zb0001Mask |= 0x1
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if (zb0001Mask & 0x1) == 0 {
+		z.Error = ""
+	}
+
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z nodeCommon) EncodeMsg(en *msgp.Writer) (err error) {
+	// check for omitted fields
+	zb0001Len := uint32(2)
+	var zb0001Mask uint8 /* 2 bits */
+	_ = zb0001Mask
+	if z.Error == "" {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	// variable map header, size zb0001Len
+	err = en.Append(0x80 | uint8(zb0001Len))
+	if err != nil {
+		return
+	}
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// write "addr"
+		err = en.Append(0xa4, 0x61, 0x64, 0x64, 0x72)
+		if err != nil {
+			return
+		}
+		err = en.WriteString(z.Addr)
+		if err != nil {
+			err = msgp.WrapError(err, "Addr")
+			return
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// write "error"
+			err = en.Append(0xa5, 0x65, 0x72, 0x72, 0x6f, 0x72)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.Error)
+			if err != nil {
+				err = msgp.WrapError(err, "Error")
+				return
+			}
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z nodeCommon) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// check for omitted fields
+	zb0001Len := uint32(2)
+	var zb0001Mask uint8 /* 2 bits */
+	_ = zb0001Mask
+	if z.Error == "" {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	// variable map header, size zb0001Len
+	o = append(o, 0x80|uint8(zb0001Len))
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// string "addr"
+		o = append(o, 0xa4, 0x61, 0x64, 0x64, 0x72)
+		o = msgp.AppendString(o, z.Addr)
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// string "error"
+			o = append(o, 0xa5, 0x65, 0x72, 0x72, 0x6f, 0x72)
+			o = msgp.AppendString(o, z.Error)
+		}
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *nodeCommon) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 1 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "addr":
+			z.Addr, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Addr")
+				return
+			}
+		case "error":
+			z.Error, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Error")
+				return
+			}
+			zb0001Mask |= 0x1
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if (zb0001Mask & 0x1) == 0 {
+		z.Error = ""
+	}
+
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z nodeCommon) Msgsize() (s int) {
+	s = 1 + 5 + msgp.StringPrefixSize + len(z.Addr) + 6 + msgp.StringPrefixSize + len(z.Error)
 	return
 }

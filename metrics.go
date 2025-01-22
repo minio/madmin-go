@@ -622,6 +622,15 @@ func (n *NetMetrics) Merge(other *NetMetrics) {
 	n.NetStats.TxCompressed += other.NetStats.TxCompressed
 }
 
+//msgp:replace NodeCommon with:nodeCommon
+
+// nodeCommon - use as replacement for NodeCommon
+// We do not want to give NodeCommon codegen, since it is used for embedding.
+type nodeCommon struct {
+	Addr  string `json:"addr"`
+	Error string `json:"error,omitempty"`
+}
+
 // MemInfo contains system's RAM and swap information.
 type MemInfo struct {
 	NodeCommon
