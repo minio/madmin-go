@@ -611,8 +611,9 @@ const (
 
 // ListAccessKeysOpts - options for listing access keys
 type ListAccessKeysOpts struct {
-	ListType string
-	All      bool
+	ListType   string
+	All        bool
+	ConfigName string // For OpenID
 }
 
 // ListAccessKeysBulk - list access keys belonging to the given users or all users
@@ -650,6 +651,59 @@ func (adm *AdminClient) ListAccessKeysBulk(ctx context.Context, users []string, 
 	}
 
 	listResp := make(map[string]ListAccessKeysResp)
+	if err = json.Unmarshal(data, &listResp); err != nil {
+		return nil, err
+	}
+	return listResp, nil
+}
+
+type OpenIDUserAccessKeys struct {
+	Sub             string               `json:"sub"`
+	ReadableName    string               `json:"readableName"`
+	ServiceAccounts []ServiceAccountInfo `json:"serviceAccounts"`
+	STSKeys         []ServiceAccountInfo `json:"stsKeys"`
+}
+
+type ListAccessKeysOpenIDResp map[string]OpenIDUserAccessKeys
+
+// ListAccessKeysOpenIDBulk - list access keys belonging to the given users or all users
+func (adm *AdminClient) ListAccessKeysOpenIDBulk(ctx context.Context, users []string, opts ListAccessKeysOpts) (map[string]ListAccessKeysOpenIDResp, error) {
+	if len(users) > 0 && opts.All {
+		return nil, errors.New("either specify users or all, not both")
+	}
+
+	queryValues := url.Values{}
+	queryValues.Set("listType", opts.ListType)
+	queryValues["users"] = users
+	if opts.All {
+		queryValues.Set("all", "true")
+	}
+	if opts.ConfigName != "" {
+		queryValues.Set("configName", opts.ConfigName)
+	}
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/idp/openid/list-access-keys-bulk",
+		queryValues: queryValues,
+	}
+
+	// Execute GET on /minio/admin/v3/list-access-keys-bulk
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+
+	data, err := DecryptData(adm.getSecretKey(), resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	listResp := make(map[string]ListAccessKeysOpenIDResp)
 	if err = json.Unmarshal(data, &listResp); err != nil {
 		return nil, err
 	}
