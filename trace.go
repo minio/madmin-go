@@ -64,6 +64,8 @@ const (
 	TraceILM
 	// TraceKMS are traces for interactions with KMS.
 	TraceKMS
+	// TraceFormatting will trace formatting events
+	TraceFormatting
 	// Add more here...
 
 	// TraceAll contains all valid trace modes.

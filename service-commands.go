@@ -152,6 +152,7 @@ type ServiceTraceOpts struct {
 	FTP               bool
 	ILM               bool
 	KMS               bool
+	Formatting        bool
 
 	OnlyErrors bool
 	Threshold  time.Duration
@@ -177,6 +178,7 @@ func (t ServiceTraceOpts) TraceTypes() TraceType {
 	tt.SetIf(t.FTP, TraceFTP)
 	tt.SetIf(t.ILM, TraceILM)
 	tt.SetIf(t.KMS, TraceKMS)
+	tt.SetIf(t.Formatting, TraceFormatting)
 
 	return tt
 }
@@ -202,6 +204,7 @@ func (t ServiceTraceOpts) AddParams(u url.Values) {
 	u.Set("ftp", strconv.FormatBool(t.FTP))
 	u.Set("ilm", strconv.FormatBool(t.ILM))
 	u.Set("kms", strconv.FormatBool(t.KMS))
+	u.Set("formatting", strconv.FormatBool(t.Formatting))
 }
 
 // ParseParams will parse parameters and set them to t.
@@ -223,6 +226,7 @@ func (t *ServiceTraceOpts) ParseParams(r *http.Request) (err error) {
 	t.FTP = r.Form.Get("ftp") == "true"
 	t.ILM = r.Form.Get("ilm") == "true"
 	t.KMS = r.Form.Get("kms") == "true"
+	t.Formatting = r.Form.Get("formatting") == "true"
 
 	if th := r.Form.Get("threshold"); th != "" {
 		d, err := time.ParseDuration(th)
