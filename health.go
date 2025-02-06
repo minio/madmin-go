@@ -1097,9 +1097,10 @@ type HealthInfo struct {
 	Version string `json:"version"`
 	Error   string `json:"error,omitempty"`
 
-	TimeStamp time.Time       `json:"timestamp,omitempty"`
-	Sys       SysInfo         `json:"sys,omitempty"`
-	Minio     MinioHealthInfo `json:"minio,omitempty"`
+	TimeStamp   time.Time       `json:"timestamp,omitempty"`
+	Sys         SysInfo         `json:"sys,omitempty"`
+	Minio       MinioHealthInfo `json:"minio,omitempty"`
+	Replication ReplicationInfo `json:"replication,omitempty"`
 }
 
 func (info HealthInfo) String() string {
@@ -1153,6 +1154,7 @@ const (
 	HealthDataTypeSysErrors   HealthDataType = "syserrors"
 	HealthDataTypeSysServices HealthDataType = "sysservices"
 	HealthDataTypeSysConfig   HealthDataType = "sysconfig"
+	HealthDataTypeReplication HealthDataType = "replication"
 )
 
 // HealthDataTypesMap - Map of Health datatypes
@@ -1168,6 +1170,7 @@ var HealthDataTypesMap = map[string]HealthDataType{
 	"syserrors":   HealthDataTypeSysErrors,
 	"sysservices": HealthDataTypeSysServices,
 	"sysconfig":   HealthDataTypeSysConfig,
+	"replication": HealthDataTypeReplication,
 }
 
 // HealthDataTypesList - List of health datatypes
@@ -1183,6 +1186,7 @@ var HealthDataTypesList = []HealthDataType{
 	HealthDataTypeSysErrors,
 	HealthDataTypeSysServices,
 	HealthDataTypeSysConfig,
+	HealthDataTypeReplication,
 }
 
 // HealthInfoVersionStruct - struct for health info version
