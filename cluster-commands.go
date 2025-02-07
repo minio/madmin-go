@@ -60,11 +60,14 @@ type ReplicateAddStatus struct {
 // SRAddOptions holds SR Add options
 type SRAddOptions struct {
 	ReplicateILMExpiry bool
+	Force              bool
 }
 
 func (o *SRAddOptions) getURLValues() url.Values {
 	urlValues := make(url.Values)
 	urlValues.Set("replicateILMExpiry", strconv.FormatBool(o.ReplicateILMExpiry))
+	urlValues.Set("force", strconv.FormatBool(o.Force))
+
 	return urlValues
 }
 
