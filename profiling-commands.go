@@ -64,7 +64,7 @@ func (adm *AdminClient) StartProfiling(ctx context.Context, profiler ProfilerTyp
 	v.Set("profilerType", string(profiler))
 	resp, err := adm.executeMethod(ctx,
 		http.MethodPost, requestData{
-			relPath:     adminAPIPrefix + "/profiling/start",
+			relPath:     adminAPIPrefixV3 + "/profiling/start",
 			queryValues: v,
 		},
 	)
@@ -96,7 +96,7 @@ func (adm *AdminClient) StartProfiling(ctx context.Context, profiler ProfilerTyp
 //
 // Deprecated: use Profile API instead
 func (adm *AdminClient) DownloadProfilingData(ctx context.Context) (io.ReadCloser, error) {
-	path := fmt.Sprintf(adminAPIPrefix + "/profiling/download")
+	path := fmt.Sprintf(adminAPIPrefixV3 + "/profiling/download")
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet, requestData{
 			relPath: path,
@@ -126,7 +126,7 @@ func (adm *AdminClient) Profile(ctx context.Context, profiler ProfilerType, dura
 	v.Set("duration", duration.String())
 	resp, err := adm.executeMethod(ctx,
 		http.MethodPost, requestData{
-			relPath:     adminAPIPrefix + "/profile",
+			relPath:     adminAPIPrefixV3 + "/profile",
 			queryValues: v,
 		},
 	)

@@ -134,6 +134,8 @@ type SysService struct {
 }
 
 // CPU contains system's CPU information.
+//
+//msgp:ignore CPU
 type CPU struct {
 	VendorID   string   `json:"vendor_id"`
 	Family     string   `json:"family"`
@@ -1180,7 +1182,7 @@ func (adm *AdminClient) ServerHealthInfo(ctx context.Context, types []HealthData
 
 	resp, err := adm.executeMethod(
 		ctx, "GET", requestData{
-			relPath:     adminAPIPrefix + "/healthinfo",
+			relPath:     adminAPIPrefixV3 + "/healthinfo",
 			queryValues: v,
 		},
 	)

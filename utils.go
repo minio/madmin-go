@@ -32,15 +32,20 @@ import (
 
 //msgp:clearomitted
 //msgp:tag json
-//go:generate msgp
+//go:generate msgp -file $GOFILE
 
 // AdminAPIVersion - admin api version used in the request.
 const (
-	AdminAPIVersion   = "v3"
+	AdminAPIVersion   = "v4"
+	AdminAPIVersionV3 = "v3"
 	AdminAPIVersionV2 = "v2"
-	adminAPIPrefix    = "/" + AdminAPIVersion
-	kmsAPIVersion     = "v1"
-	kmsAPIPrefix      = "/" + kmsAPIVersion
+
+	// Admin API version prefix
+	adminAPIPrefixV4 = "/" + AdminAPIVersion
+	adminAPIPrefixV3 = "/" + AdminAPIVersionV3
+
+	kmsAPIVersion = "v1"
+	kmsAPIPrefix  = "/" + kmsAPIVersion
 )
 
 // getEndpointURL - construct a new endpoint.

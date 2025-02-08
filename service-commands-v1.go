@@ -54,7 +54,7 @@ func (adm *AdminClient) serviceCallAction(ctx context.Context, action ServiceAct
 	// Request API to Restart server
 	resp, err := adm.executeMethod(ctx,
 		http.MethodPost, requestData{
-			relPath:     adminAPIPrefix + "/service",
+			relPath:     adminAPIPrefixV3 + "/service",
 			queryValues: queryValues,
 		},
 	)

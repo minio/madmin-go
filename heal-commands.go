@@ -32,7 +32,7 @@ import (
 
 //msgp:clearomitted
 //msgp:tag json
-//go:generate msgp
+//go:generate msgp -file $GOFILE
 
 // HealScanMode represents the type of healing scan
 type HealScanMode int
@@ -254,7 +254,7 @@ func (adm *AdminClient) Heal(ctx context.Context, bucket, prefix string,
 		return healStart, healTaskStatus, err
 	}
 
-	path := fmt.Sprintf(adminAPIPrefix+"/heal/%s", bucket)
+	path := fmt.Sprintf(adminAPIPrefixV3+"/heal/%s", bucket)
 	if bucket != "" && prefix != "" {
 		path += "/" + prefix
 	}
@@ -450,7 +450,7 @@ func (adm *AdminClient) BackgroundHealStatus(ctx context.Context) (BgHealState, 
 	// Execute POST request to background heal status api
 	resp, err := adm.executeMethod(ctx,
 		http.MethodPost,
-		requestData{relPath: adminAPIPrefix + "/background-heal/status"})
+		requestData{relPath: adminAPIPrefixV3 + "/background-heal/status"})
 	if err != nil {
 		return BgHealState{}, err
 	}

@@ -85,7 +85,7 @@ func (adm *AdminClient) AccountInfo(ctx context.Context, opts AccountOpts) (Acco
 	}
 	resp, err := adm.executeMethod(ctx, http.MethodGet,
 		requestData{
-			relPath:     adminAPIPrefix + "/accountinfo",
+			relPath:     adminAPIPrefixV3 + "/accountinfo",
 			queryValues: q,
 		},
 	)
@@ -163,7 +163,7 @@ func (adm *AdminClient) RemoveUser(ctx context.Context, accessKey string) error 
 	queryValues.Set("accessKey", accessKey)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefix + "/remove-user",
+		relPath:     adminAPIPrefixV3 + "/remove-user",
 		queryValues: queryValues,
 	}
 
@@ -185,7 +185,7 @@ func (adm *AdminClient) RemoveUser(ctx context.Context, accessKey string) error 
 // ListUsers - list all users.
 func (adm *AdminClient) ListUsers(ctx context.Context) (map[string]UserInfo, error) {
 	reqData := requestData{
-		relPath: adminAPIPrefix + "/list-users",
+		relPath: adminAPIPrefixV3 + "/list-users",
 	}
 
 	// Execute GET on /minio/admin/v3/list-users
@@ -219,7 +219,7 @@ func (adm *AdminClient) GetUserInfo(ctx context.Context, name string) (u UserInf
 	queryValues.Set("accessKey", name)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefix + "/user-info",
+		relPath:     adminAPIPrefixV3 + "/user-info",
 		queryValues: queryValues,
 	}
 
@@ -273,7 +273,7 @@ func (adm *AdminClient) SetUserReq(ctx context.Context, accessKey string, req Ad
 	queryValues.Set("accessKey", accessKey)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefix + "/add-user",
+		relPath:     adminAPIPrefixV3 + "/add-user",
 		queryValues: queryValues,
 		content:     econfigBytes,
 	}
@@ -313,7 +313,7 @@ func (adm *AdminClient) SetUserStatus(ctx context.Context, accessKey string, sta
 	queryValues.Set("status", string(status))
 
 	reqData := requestData{
-		relPath:     adminAPIPrefix + "/set-user-status",
+		relPath:     adminAPIPrefixV3 + "/set-user-status",
 		queryValues: queryValues,
 	}
 
@@ -422,7 +422,7 @@ func (adm *AdminClient) AddServiceAccount(ctx context.Context, opts AddServiceAc
 	}
 
 	reqData := requestData{
-		relPath: adminAPIPrefix + "/add-service-account",
+		relPath: adminAPIPrefixV3 + "/add-service-account",
 		content: econfigBytes,
 	}
 
@@ -465,7 +465,7 @@ func (adm *AdminClient) AddServiceAccountLDAP(ctx context.Context, opts AddServi
 	}
 
 	reqData := requestData{
-		relPath: adminAPIPrefix + "/idp/ldap/add-service-account",
+		relPath: adminAPIPrefixV3 + "/idp/ldap/add-service-account",
 		content: econfigBytes,
 	}
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
@@ -530,7 +530,7 @@ func (adm *AdminClient) UpdateServiceAccount(ctx context.Context, accessKey stri
 	queryValues.Set("accessKey", accessKey)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefix + "/update-service-account",
+		relPath:     adminAPIPrefixV3 + "/update-service-account",
 		content:     econfigBytes,
 		queryValues: queryValues,
 	}
@@ -570,7 +570,7 @@ func (adm *AdminClient) ListServiceAccounts(ctx context.Context, user string) (L
 	queryValues.Set("user", user)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefix + "/list-service-accounts",
+		relPath:     adminAPIPrefixV3 + "/list-service-accounts",
 		queryValues: queryValues,
 	}
 
@@ -629,7 +629,7 @@ func (adm *AdminClient) ListAccessKeysBulk(ctx context.Context, users []string, 
 	}
 
 	reqData := requestData{
-		relPath:     adminAPIPrefix + "/list-access-keys-bulk",
+		relPath:     adminAPIPrefixV3 + "/list-access-keys-bulk",
 		queryValues: queryValues,
 	}
 
@@ -673,7 +673,7 @@ func (adm *AdminClient) InfoServiceAccount(ctx context.Context, accessKey string
 	queryValues.Set("accessKey", accessKey)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefix + "/info-service-account",
+		relPath:     adminAPIPrefixV3 + "/info-service-account",
 		queryValues: queryValues,
 	}
 
@@ -707,7 +707,7 @@ func (adm *AdminClient) DeleteServiceAccount(ctx context.Context, serviceAccount
 	queryValues.Set("accessKey", serviceAccount)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefix + "/delete-service-account",
+		relPath:     adminAPIPrefixV3 + "/delete-service-account",
 		queryValues: queryValues,
 	}
 
@@ -734,7 +734,7 @@ func (adm *AdminClient) TemporaryAccountInfo(ctx context.Context, accessKey stri
 	queryValues.Set("accessKey", accessKey)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefix + "/temporary-account-info",
+		relPath:     adminAPIPrefixV3 + "/temporary-account-info",
 		queryValues: queryValues,
 	}
 

@@ -31,7 +31,7 @@ func (adm *AdminClient) GetConfig(ctx context.Context) ([]byte, error) {
 	// Execute GET on /minio/admin/v3/config to get config of a setup.
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
-		requestData{relPath: adminAPIPrefix + "/config"})
+		requestData{relPath: adminAPIPrefixV3 + "/config"})
 	defer closeResponse(resp)
 	if err != nil {
 		return nil, err
@@ -64,7 +64,7 @@ func (adm *AdminClient) SetConfig(ctx context.Context, config io.Reader) (err er
 	}
 
 	reqData := requestData{
-		relPath: adminAPIPrefix + "/config",
+		relPath: adminAPIPrefixV3 + "/config",
 		content: econfigBytes,
 	}
 

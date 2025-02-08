@@ -104,7 +104,7 @@ func (adm *AdminClient) serviceCallActionV2(ctx context.Context, opts ServiceAct
 	// Request API to Restart server
 	resp, err := adm.executeMethod(ctx,
 		http.MethodPost, requestData{
-			relPath:     adminAPIPrefix + "/service",
+			relPath:     adminAPIPrefixV3 + "/service",
 			queryValues: queryValues,
 		},
 	)
@@ -249,7 +249,7 @@ func (adm AdminClient) ServiceTrace(ctx context.Context, opts ServiceTraceOpts) 
 			opts.AddParams(urlValues)
 
 			reqData := requestData{
-				relPath:     adminAPIPrefix + "/trace",
+				relPath:     adminAPIPrefixV3 + "/trace",
 				queryValues: urlValues,
 			}
 			// Execute GET to call trace handler

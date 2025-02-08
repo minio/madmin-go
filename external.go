@@ -24,7 +24,7 @@ package madmin
 
 //msgp:clearomitted
 //msgp:tag json
-//go:generate msgp -unexported
+//go:generate msgp -unexported -file $GOFILE
 
 type cpuTimesStat struct {
 	CPU       string  `json:"cpu"`
