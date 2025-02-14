@@ -49,5 +49,25 @@ func GetNetInfo(addr string, iface string) (ni NetInfo) {
 	ni.Driver = di.Driver
 	ni.FirmwareVersion = di.FwVersion
 
+	ring, err := ethHandle.GetRing(ni.Interface)
+	if err != nil {
+		ni.Error = fmt.Sprintf("Error getting ring parameters for %s: %s", ni.Interface, err.Error())
+		return
+	}
+
+	ni.Settings = &NetSettings{
+		RxMaxPending: ring.RxMaxPending,
+		TxMaxPending: ring.TxMaxPending,
+		RxPending:    ring.RxPending,
+		TxPending:    ring.TxPending,
+	}
+
+	channels, err := ethHandle.GetChannels(iface)
+	if err != nil {
+		ni.Error = fmt.Sprintf("Error getting channels for %s: %s", ni.Interface, err.Error())
+	}
+	ni.Settings.CombinedCount = channels.CombinedCount
+	ni.Settings.MaxCombined = channels.MaxCombined
+
 	return
 }

@@ -243,12 +243,26 @@ type Partition struct {
 	InodeFree    uint64 `json:"inode_free,omitempty"`
 }
 
+// NetSettings - rx/tx settings of an interface
+type NetSettings struct {
+	// hardware capacity
+	RxMaxPending uint32 `json:"rx_max_pending"`
+	TxMaxPending uint32 `json:"tx_max_pending"`
+	MaxCombined  uint32 `json:"max_combined"`
+
+	// configured limits
+	RxPending     uint32 `json:"rx_pending"`
+	TxPending     uint32 `json:"tx_pending"`
+	CombinedCount uint32 `json:"combined_count"`
+}
+
 // NetInfo contains information about a network inerface
 type NetInfo struct {
 	NodeCommon
-	Interface       string `json:"interface,omitempty"`
-	Driver          string `json:"driver,omitempty"`
-	FirmwareVersion string `json:"firmware_version,omitempty"`
+	Interface       string       `json:"interface,omitempty"`
+	Driver          string       `json:"driver,omitempty"`
+	FirmwareVersion string       `json:"firmware_version,omitempty"`
+	Settings        *NetSettings `json:"settings,omitempty"`
 }
 
 // Partitions contains all disk partitions information of a node.
