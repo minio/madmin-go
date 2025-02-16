@@ -7,6 +7,344 @@ import (
 )
 
 // DecodeMsg implements msgp.Decodable
+func (z *DowntimeInfo) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "Duration":
+			var zb0002 uint32
+			zb0002, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "Duration")
+				return
+			}
+			for zb0002 > 0 {
+				zb0002--
+				field, err = dc.ReadMapKeyPtr()
+				if err != nil {
+					err = msgp.WrapError(err, "Duration")
+					return
+				}
+				switch msgp.UnsafeString(field) {
+				case "Total":
+					z.Duration.Total, err = dc.ReadInt64()
+					if err != nil {
+						err = msgp.WrapError(err, "Duration", "Total")
+						return
+					}
+				case "Avg":
+					z.Duration.Avg, err = dc.ReadInt64()
+					if err != nil {
+						err = msgp.WrapError(err, "Duration", "Avg")
+						return
+					}
+				case "Max":
+					z.Duration.Max, err = dc.ReadInt64()
+					if err != nil {
+						err = msgp.WrapError(err, "Duration", "Max")
+						return
+					}
+				default:
+					err = dc.Skip()
+					if err != nil {
+						err = msgp.WrapError(err, "Duration")
+						return
+					}
+				}
+			}
+		case "Count":
+			var zb0003 uint32
+			zb0003, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "Count")
+				return
+			}
+			for zb0003 > 0 {
+				zb0003--
+				field, err = dc.ReadMapKeyPtr()
+				if err != nil {
+					err = msgp.WrapError(err, "Count")
+					return
+				}
+				switch msgp.UnsafeString(field) {
+				case "Total":
+					z.Count.Total, err = dc.ReadInt64()
+					if err != nil {
+						err = msgp.WrapError(err, "Count", "Total")
+						return
+					}
+				case "Avg":
+					z.Count.Avg, err = dc.ReadInt64()
+					if err != nil {
+						err = msgp.WrapError(err, "Count", "Avg")
+						return
+					}
+				case "Max":
+					z.Count.Max, err = dc.ReadInt64()
+					if err != nil {
+						err = msgp.WrapError(err, "Count", "Max")
+						return
+					}
+				default:
+					err = dc.Skip()
+					if err != nil {
+						err = msgp.WrapError(err, "Count")
+						return
+					}
+				}
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *DowntimeInfo) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 2
+	// write "Duration"
+	err = en.Append(0x82, 0xa8, 0x44, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e)
+	if err != nil {
+		return
+	}
+	// map header, size 3
+	// write "Total"
+	err = en.Append(0x83, 0xa5, 0x54, 0x6f, 0x74, 0x61, 0x6c)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt64(z.Duration.Total)
+	if err != nil {
+		err = msgp.WrapError(err, "Duration", "Total")
+		return
+	}
+	// write "Avg"
+	err = en.Append(0xa3, 0x41, 0x76, 0x67)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt64(z.Duration.Avg)
+	if err != nil {
+		err = msgp.WrapError(err, "Duration", "Avg")
+		return
+	}
+	// write "Max"
+	err = en.Append(0xa3, 0x4d, 0x61, 0x78)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt64(z.Duration.Max)
+	if err != nil {
+		err = msgp.WrapError(err, "Duration", "Max")
+		return
+	}
+	// write "Count"
+	err = en.Append(0xa5, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+	if err != nil {
+		return
+	}
+	// map header, size 3
+	// write "Total"
+	err = en.Append(0x83, 0xa5, 0x54, 0x6f, 0x74, 0x61, 0x6c)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt64(z.Count.Total)
+	if err != nil {
+		err = msgp.WrapError(err, "Count", "Total")
+		return
+	}
+	// write "Avg"
+	err = en.Append(0xa3, 0x41, 0x76, 0x67)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt64(z.Count.Avg)
+	if err != nil {
+		err = msgp.WrapError(err, "Count", "Avg")
+		return
+	}
+	// write "Max"
+	err = en.Append(0xa3, 0x4d, 0x61, 0x78)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt64(z.Count.Max)
+	if err != nil {
+		err = msgp.WrapError(err, "Count", "Max")
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *DowntimeInfo) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 2
+	// string "Duration"
+	o = append(o, 0x82, 0xa8, 0x44, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e)
+	// map header, size 3
+	// string "Total"
+	o = append(o, 0x83, 0xa5, 0x54, 0x6f, 0x74, 0x61, 0x6c)
+	o = msgp.AppendInt64(o, z.Duration.Total)
+	// string "Avg"
+	o = append(o, 0xa3, 0x41, 0x76, 0x67)
+	o = msgp.AppendInt64(o, z.Duration.Avg)
+	// string "Max"
+	o = append(o, 0xa3, 0x4d, 0x61, 0x78)
+	o = msgp.AppendInt64(o, z.Duration.Max)
+	// string "Count"
+	o = append(o, 0xa5, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+	// map header, size 3
+	// string "Total"
+	o = append(o, 0x83, 0xa5, 0x54, 0x6f, 0x74, 0x61, 0x6c)
+	o = msgp.AppendInt64(o, z.Count.Total)
+	// string "Avg"
+	o = append(o, 0xa3, 0x41, 0x76, 0x67)
+	o = msgp.AppendInt64(o, z.Count.Avg)
+	// string "Max"
+	o = append(o, 0xa3, 0x4d, 0x61, 0x78)
+	o = msgp.AppendInt64(o, z.Count.Max)
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *DowntimeInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "Duration":
+			var zb0002 uint32
+			zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Duration")
+				return
+			}
+			for zb0002 > 0 {
+				zb0002--
+				field, bts, err = msgp.ReadMapKeyZC(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Duration")
+					return
+				}
+				switch msgp.UnsafeString(field) {
+				case "Total":
+					z.Duration.Total, bts, err = msgp.ReadInt64Bytes(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "Duration", "Total")
+						return
+					}
+				case "Avg":
+					z.Duration.Avg, bts, err = msgp.ReadInt64Bytes(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "Duration", "Avg")
+						return
+					}
+				case "Max":
+					z.Duration.Max, bts, err = msgp.ReadInt64Bytes(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "Duration", "Max")
+						return
+					}
+				default:
+					bts, err = msgp.Skip(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "Duration")
+						return
+					}
+				}
+			}
+		case "Count":
+			var zb0003 uint32
+			zb0003, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Count")
+				return
+			}
+			for zb0003 > 0 {
+				zb0003--
+				field, bts, err = msgp.ReadMapKeyZC(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Count")
+					return
+				}
+				switch msgp.UnsafeString(field) {
+				case "Total":
+					z.Count.Total, bts, err = msgp.ReadInt64Bytes(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "Count", "Total")
+						return
+					}
+				case "Avg":
+					z.Count.Avg, bts, err = msgp.ReadInt64Bytes(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "Count", "Avg")
+						return
+					}
+				case "Max":
+					z.Count.Max, bts, err = msgp.ReadInt64Bytes(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "Count", "Max")
+						return
+					}
+				default:
+					bts, err = msgp.Skip(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "Count")
+						return
+					}
+				}
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *DowntimeInfo) Msgsize() (s int) {
+	s = 1 + 9 + 1 + 6 + msgp.Int64Size + 4 + msgp.Int64Size + 4 + msgp.Int64Size + 6 + 1 + 6 + msgp.Int64Size + 4 + msgp.Int64Size + 4 + msgp.Int64Size
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *LatencyStat) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
@@ -512,6 +850,159 @@ func (z *ReplicationMRF) UnmarshalMsg(bts []byte) (o []byte, err error) {
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *ReplicationMRF) Msgsize() (s int) {
 	s = 1 + 2 + msgp.StringPrefixSize + len(z.NodeName) + 2 + msgp.StringPrefixSize + len(z.Bucket) + 2 + msgp.StringPrefixSize + len(z.Object) + 2 + msgp.StringPrefixSize + len(z.VersionID) + 3 + msgp.IntSize + 4 + msgp.StringPrefixSize + len(z.Err)
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *StatRecorder) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "Total":
+			z.Total, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "Total")
+				return
+			}
+		case "Avg":
+			z.Avg, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "Avg")
+				return
+			}
+		case "Max":
+			z.Max, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "Max")
+				return
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z StatRecorder) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 3
+	// write "Total"
+	err = en.Append(0x83, 0xa5, 0x54, 0x6f, 0x74, 0x61, 0x6c)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt64(z.Total)
+	if err != nil {
+		err = msgp.WrapError(err, "Total")
+		return
+	}
+	// write "Avg"
+	err = en.Append(0xa3, 0x41, 0x76, 0x67)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt64(z.Avg)
+	if err != nil {
+		err = msgp.WrapError(err, "Avg")
+		return
+	}
+	// write "Max"
+	err = en.Append(0xa3, 0x4d, 0x61, 0x78)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt64(z.Max)
+	if err != nil {
+		err = msgp.WrapError(err, "Max")
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z StatRecorder) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 3
+	// string "Total"
+	o = append(o, 0x83, 0xa5, 0x54, 0x6f, 0x74, 0x61, 0x6c)
+	o = msgp.AppendInt64(o, z.Total)
+	// string "Avg"
+	o = append(o, 0xa3, 0x41, 0x76, 0x67)
+	o = msgp.AppendInt64(o, z.Avg)
+	// string "Max"
+	o = append(o, 0xa3, 0x4d, 0x61, 0x78)
+	o = msgp.AppendInt64(o, z.Max)
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *StatRecorder) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "Total":
+			z.Total, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Total")
+				return
+			}
+		case "Avg":
+			z.Avg, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Avg")
+				return
+			}
+		case "Max":
+			z.Max, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Max")
+				return
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z StatRecorder) Msgsize() (s int) {
+	s = 1 + 6 + msgp.Int64Size + 4 + msgp.Int64Size + 4 + msgp.Int64Size
 	return
 }
 
