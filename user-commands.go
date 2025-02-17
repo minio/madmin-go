@@ -658,16 +658,20 @@ func (adm *AdminClient) ListAccessKeysBulk(ctx context.Context, users []string, 
 }
 
 type OpenIDUserAccessKeys struct {
+	UserID          string               `json:"accessKey"`
 	Sub             string               `json:"sub"`
 	ReadableName    string               `json:"readableName"`
 	ServiceAccounts []ServiceAccountInfo `json:"serviceAccounts"`
 	STSKeys         []ServiceAccountInfo `json:"stsKeys"`
 }
 
-type ListAccessKeysOpenIDResp map[string]OpenIDUserAccessKeys
+type ListAccessKeysOpenIDResp struct {
+	ConfigName string                 `json:"configName"`
+	Users      []OpenIDUserAccessKeys `json:"users"`
+}
 
 // ListAccessKeysOpenIDBulk - list access keys belonging to the given users or all users
-func (adm *AdminClient) ListAccessKeysOpenIDBulk(ctx context.Context, users []string, opts ListAccessKeysOpts) (map[string]ListAccessKeysOpenIDResp, error) {
+func (adm *AdminClient) ListAccessKeysOpenIDBulk(ctx context.Context, users []string, opts ListAccessKeysOpts) ([]ListAccessKeysOpenIDResp, error) {
 	if len(users) > 0 && opts.All {
 		return nil, errors.New("either specify users or all, not both")
 	}
@@ -703,7 +707,7 @@ func (adm *AdminClient) ListAccessKeysOpenIDBulk(ctx context.Context, users []st
 		return nil, err
 	}
 
-	listResp := make(map[string]ListAccessKeysOpenIDResp)
+	var listResp []ListAccessKeysOpenIDResp
 	if err = json.Unmarshal(data, &listResp); err != nil {
 		return nil, err
 	}
