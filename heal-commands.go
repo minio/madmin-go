@@ -377,9 +377,6 @@ type HealingDisk struct {
 	BytesFailed  uint64 `json:"bytes_failed"`
 	BytesSkipped uint64 `json:"bytes_skipped"`
 
-	ObjectsHealed uint64 `json:"objects_healed"` // Deprecated July 2021
-	ObjectsFailed uint64 `json:"objects_failed"` // Deprecated July 2021
-
 	// Last object scanned.
 	Bucket string `json:"current_bucket"`
 	Object string `json:"current_object"`

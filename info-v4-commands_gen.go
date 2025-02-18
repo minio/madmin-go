@@ -679,7 +679,7 @@ func (z *PoolInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Index")
 				return
 			}
-		case "Nodes":
+		case "nodes":
 			var zb0002 uint32
 			zb0002, err = dc.ReadMapHeader()
 			if err != nil {
@@ -837,8 +837,8 @@ func (z *PoolInfo) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "Index")
 			return
 		}
-		// write "Nodes"
-		err = en.Append(0xa5, 0x4e, 0x6f, 0x64, 0x65, 0x73)
+		// write "nodes"
+		err = en.Append(0xa5, 0x6e, 0x6f, 0x64, 0x65, 0x73)
 		if err != nil {
 			return
 		}
@@ -971,8 +971,8 @@ func (z *PoolInfo) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "index"
 		o = append(o, 0xa5, 0x69, 0x6e, 0x64, 0x65, 0x78)
 		o = msgp.AppendInt(o, z.Index)
-		// string "Nodes"
-		o = append(o, 0xa5, 0x4e, 0x6f, 0x64, 0x65, 0x73)
+		// string "nodes"
+		o = append(o, 0xa5, 0x6e, 0x6f, 0x64, 0x65, 0x73)
 		// map header, size 2
 		// string "total"
 		o = append(o, 0x82, 0xa5, 0x74, 0x6f, 0x74, 0x61, 0x6c)
@@ -1039,7 +1039,7 @@ func (z *PoolInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "Index")
 				return
 			}
-		case "Nodes":
+		case "nodes":
 			var zb0002 uint32
 			zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
 			if err != nil {

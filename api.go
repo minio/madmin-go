@@ -175,28 +175,6 @@ func (adm *AdminClient) SetAppInfo(appName string, appVersion string) {
 	}
 }
 
-// SetCustomTransport - set new custom transport.
-// Deprecated: please use Options{Transport: tr} to provide custom transport.
-func (adm *AdminClient) SetCustomTransport(customHTTPTransport http.RoundTripper) {
-	// Set this to override default transport
-	// ``http.DefaultTransport``.
-	//
-	// This transport is usually needed for debugging OR to add your
-	// own custom TLS certificates on the client transport, for custom
-	// CA's and certs which are not part of standard certificate
-	// authority follow this example :-
-	//
-	//   tr := &http.Transport{
-	//           TLSClientConfig:    &tls.Config{RootCAs: pool},
-	//           DisableCompression: true,
-	//   }
-	//   api.SetTransport(tr)
-	//
-	if adm.httpClient != nil {
-		adm.httpClient.Transport = customHTTPTransport
-	}
-}
-
 // TraceOn - enable HTTP tracing.
 func (adm *AdminClient) TraceOn(outputStream io.Writer) {
 	// if outputStream is nil then default to os.Stdout.

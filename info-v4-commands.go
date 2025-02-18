@@ -63,7 +63,7 @@ type PoolInfo struct {
 	Nodes struct {
 		Total   int `msg:"total"`
 		Offline int `msg:"offline"`
-	} `msg: "nodes"`
+	} `msg:"nodes"`
 	Drives struct {
 		PerNodeTotal   int `msg:"perNode"`
 		PerNodeOffline int `msg:"perNodeOffline"`

@@ -37,8 +37,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/minio/madmin-go/v3/cgroup"
-	"github.com/minio/madmin-go/v3/kernel"
+	"github.com/minio/madmin-go/v4/cgroup"
+	"github.com/minio/madmin-go/v4/kernel"
 	"github.com/prometheus/procfs"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"

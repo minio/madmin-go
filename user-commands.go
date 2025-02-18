@@ -345,9 +345,6 @@ type AddServiceAccountReq struct {
 	Description string `json:"description,omitempty"`
 	// Time at which this access key expires
 	Expiration *time.Time `json:"expiration,omitempty"`
-
-	// Deprecated: use description instead
-	Comment string `json:"comment,omitempty"`
 }
 
 var serviceAcctValidNameRegex = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]*`)

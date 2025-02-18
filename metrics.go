@@ -245,10 +245,6 @@ type ScannerMetrics struct {
 	// Time these metrics were collected
 	CollectedAt time.Time `json:"collected"`
 
-	CurrentCycle      uint64      `json:"current_cycle"`        // Deprecated Mar 2024
-	CurrentStarted    time.Time   `json:"current_started"`      // Deprecated Mar 2024
-	CyclesCompletedAt []time.Time `json:"cycle_complete_times"` // Deprecated Mar 2024
-
 	// Number of buckets currently scanning
 	OngoingBuckets int `json:"ongoing_buckets"`
 
@@ -299,15 +295,6 @@ func (s *ScannerMetrics) Merge(other *ScannerMetrics) {
 		if !ok {
 			s.PerBucketStats[bucket] = otherSt
 		}
-	}
-
-	if s.CurrentCycle < other.CurrentCycle {
-		s.CurrentCycle = other.CurrentCycle
-		s.CyclesCompletedAt = other.CyclesCompletedAt
-		s.CurrentStarted = other.CurrentStarted
-	}
-	if len(other.CyclesCompletedAt) > len(s.CyclesCompletedAt) {
-		s.CyclesCompletedAt = other.CyclesCompletedAt
 	}
 
 	// Regular ops

@@ -30,7 +30,7 @@ type ClusterRegistrationInfo struct {
 	DeploymentID string `json:"deployment_id"`
 	ClusterName  string `json:"cluster_name"`
 	UsedCapacity uint64 `json:"used_capacity"`
-	//The "info" sub-node of the cluster registration information struct
+	// The "info" sub-node of the cluster registration information struct
 	// Intended to be extensible i.e. more fields will be added as and when required
 	Info struct {
 		MinioVersion    string `json:"minio_version"`

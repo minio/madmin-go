@@ -29,27 +29,27 @@ import (
 	"time"
 )
 
-// ServiceRestartV2 - restarts the MinIO cluster
-func (adm *AdminClient) ServiceRestartV2(ctx context.Context) error {
-	_, err := adm.serviceCallActionV2(ctx, ServiceActionOpts{Action: ServiceActionRestart})
+// ServiceRestart - restarts the MinIO cluster
+func (adm *AdminClient) ServiceRestart(ctx context.Context) error {
+	_, err := adm.serviceCallAction(ctx, ServiceActionOpts{Action: ServiceActionRestart})
 	return err
 }
 
-// ServiceStopV2 - stops the MinIO cluster
-func (adm *AdminClient) ServiceStopV2(ctx context.Context) error {
-	_, err := adm.serviceCallActionV2(ctx, ServiceActionOpts{Action: ServiceActionStop})
+// ServiceStop - stops the MinIO cluster
+func (adm *AdminClient) ServiceStop(ctx context.Context) error {
+	_, err := adm.serviceCallAction(ctx, ServiceActionOpts{Action: ServiceActionStop})
 	return err
 }
 
-// ServiceFreezeV2 - freezes all incoming S3 API calls on MinIO cluster
-func (adm *AdminClient) ServiceFreezeV2(ctx context.Context) error {
-	_, err := adm.serviceCallActionV2(ctx, ServiceActionOpts{Action: ServiceActionFreeze})
+// ServiceFreeze - freezes all incoming S3 API calls on MinIO cluster
+func (adm *AdminClient) ServiceFreeze(ctx context.Context) error {
+	_, err := adm.serviceCallAction(ctx, ServiceActionOpts{Action: ServiceActionFreeze})
 	return err
 }
 
-// ServiceUnfreezeV2 - un-freezes all incoming S3 API calls on MinIO cluster
-func (adm *AdminClient) ServiceUnfreezeV2(ctx context.Context) error {
-	_, err := adm.serviceCallActionV2(ctx, ServiceActionOpts{Action: ServiceActionUnfreeze})
+// ServiceUnfreeze - un-freezes all incoming S3 API calls on MinIO cluster
+func (adm *AdminClient) ServiceUnfreeze(ctx context.Context) error {
+	_, err := adm.serviceCallAction(ctx, ServiceActionOpts{Action: ServiceActionUnfreeze})
 	return err
 }
 
@@ -91,11 +91,11 @@ type ServiceActionResult struct {
 
 // ServiceAction - specify the type of service action that we are requesting the server to perform
 func (adm *AdminClient) ServiceAction(ctx context.Context, opts ServiceActionOpts) (ServiceActionResult, error) {
-	return adm.serviceCallActionV2(ctx, opts)
+	return adm.serviceCallAction(ctx, opts)
 }
 
-// serviceCallActionV2 - call service restart/stop/freeze/unfreeze
-func (adm *AdminClient) serviceCallActionV2(ctx context.Context, opts ServiceActionOpts) (ServiceActionResult, error) {
+// serviceCallAction - call service restart/stop/freeze/unfreeze
+func (adm *AdminClient) serviceCallAction(ctx context.Context, opts ServiceActionOpts) (ServiceActionResult, error) {
 	queryValues := url.Values{}
 	queryValues.Set("action", string(opts.Action))
 	queryValues.Set("dry-run", strconv.FormatBool(opts.DryRun))
@@ -289,7 +289,6 @@ func (adm AdminClient) ServiceTrace(ctx context.Context, opts ServiceTraceOpts) 
 						info.HTTP.RespInfo = *info.RespInfo
 					}
 					if info.CallStats != nil {
-						info.Duration = info.CallStats.Latency
 						info.HTTP.CallStats = *info.CallStats
 					}
 				}

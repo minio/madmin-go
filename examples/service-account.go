@@ -29,7 +29,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/minio/madmin-go/v3"
+	"github.com/minio/madmin-go/v4"
 )
 
 func main() {

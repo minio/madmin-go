@@ -90,10 +90,6 @@ type BackendInfo struct {
 	// Adds number of erasure sets and drives per set.
 	TotalSets    []int // Each index value corresponds to per pool
 	DrivesPerSet []int // Each index value corresponds to per pool
-
-	// Deprecated Aug 2023
-	StandardSCParity int // Parity disks for currently configured Standard storage class.
-	RRSCParity       int // Parity disks for currently configured Reduced Redundancy storage class.
 }
 
 // BackendDisks - represents the map of endpoint-disks.
@@ -207,9 +203,6 @@ type DataUsageInfo struct {
 
 	// TierStats holds per-tier stats like bytes tiered, etc.
 	TierStats map[string]TierStats `json:"tierStats"`
-
-	// Deprecated kept here for backward compatibility reasons.
-	BucketSizes map[string]uint64 `json:"bucketsSizes"`
 
 	// Server capacity related data
 	TotalCapacity     uint64 `json:"capacity"`
@@ -468,9 +461,6 @@ type DiskMetrics struct {
 	// Total deletes on disk (could be empty if the feature
 	// is not enabled on the server)
 	TotalDeletes uint64 `json:"totalDeletes,omitempty"`
-
-	// Deprecated: Use LastMinute instead. Not populated from servers after July 2022.
-	APILatencies map[string]interface{} `json:"apiLatencies,omitempty"`
 }
 
 // CacheStats drive cache stats

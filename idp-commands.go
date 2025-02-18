@@ -441,42 +441,6 @@ func (adm *AdminClient) attachOrDetachPolicyLDAP(ctx context.Context, isAttach b
 // ListAccessKeysLDAPResp is the response body of the list service accounts call
 type ListAccessKeysLDAPResp ListAccessKeysResp
 
-// ListAccessKeysLDAP - list service accounts belonging to the specified user
-//
-// Deprecated: Use ListAccessKeysLDAPBulk instead.
-func (adm *AdminClient) ListAccessKeysLDAP(ctx context.Context, userDN string, listType string) (ListAccessKeysLDAPResp, error) {
-	queryValues := url.Values{}
-	queryValues.Set("listType", listType)
-	queryValues.Set("userDN", userDN)
-
-	reqData := requestData{
-		relPath:     adminAPIPrefixV3 + "/idp/ldap/list-access-keys",
-		queryValues: queryValues,
-	}
-
-	// Execute GET on /minio/admin/v3/idp/ldap/list-access-keys
-	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
-	defer closeResponse(resp)
-	if err != nil {
-		return ListAccessKeysLDAPResp{}, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return ListAccessKeysLDAPResp{}, httpRespToErrorResponse(resp)
-	}
-
-	data, err := DecryptData(adm.getSecretKey(), resp.Body)
-	if err != nil {
-		return ListAccessKeysLDAPResp{}, err
-	}
-
-	var listResp ListAccessKeysLDAPResp
-	if err = json.Unmarshal(data, &listResp); err != nil {
-		return ListAccessKeysLDAPResp{}, err
-	}
-	return listResp, nil
-}
-
 // ListAccessKeysLDAPBulk - list access keys belonging to the given users or all users
 func (adm *AdminClient) ListAccessKeysLDAPBulk(ctx context.Context, users []string, listType string, all bool) (map[string]ListAccessKeysLDAPResp, error) {
 	return adm.ListAccessKeysLDAPBulkWithOpts(ctx, users, ListAccessKeysOpts{ListType: listType, All: all})
