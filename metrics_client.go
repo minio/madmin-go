@@ -72,16 +72,6 @@ func NewMetricsClientWithOptions(endpoint string, opts *Options) (*MetricsClient
 	return clnt, nil
 }
 
-// NewMetricsClient - instantiate minio metrics client honoring Prometheus format
-//
-// Deprecated: please use NewMetricsClientWithOptions
-func NewMetricsClient(endpoint string, accessKeyID, secretAccessKey string, secure bool) (*MetricsClient, error) {
-	return NewMetricsClientWithOptions(endpoint, &Options{
-		Creds:  credentials.NewStaticV4(accessKeyID, secretAccessKey, ""),
-		Secure: secure,
-	})
-}
-
 // getPrometheusToken creates a JWT from MinIO access and secret keys
 func getPrometheusToken(accessKey, secretKey string) (string, error) {
 	jwt := jwtgo.NewWithClaims(jwtgo.SigningMethodHS512, jwtgo.RegisteredClaims{
@@ -162,29 +152,6 @@ func (client *MetricsClient) makeTargetURL(r metricsRequestData) (*url.URL, erro
 
 	urlStr := scheme + "://" + host + prefix + r.relativePath
 	return url.Parse(urlStr)
-}
-
-// SetCustomTransport - set new custom transport.
-//
-// Deprecated: please use Options{Transport: tr} to provide custom transport.
-func (client *MetricsClient) SetCustomTransport(customHTTPTransport http.RoundTripper) {
-	// Set this to override default transport
-	// ``http.DefaultTransport``.
-	//
-	// This transport is usually needed for debugging OR to add your
-	// own custom TLS certificates on the client transport, for custom
-	// CA's and certs which are not part of standard certificate
-	// authority follow this example :-
-	//
-	//   tr := &http.Transport{
-	//           TLSClientConfig:    &tls.Config{RootCAs: pool},
-	//           DisableCompression: true,
-	//   }
-	//   api.SetTransport(tr)
-	//
-	if client.httpClient != nil {
-		client.httpClient.Transport = customHTTPTransport
-	}
 }
 
 // CredContext returns the context for fetching credentials

@@ -40,7 +40,7 @@ import (
 
 //msgp:clearomitted
 //msgp:tag json
-//go:generate msgp -unexported
+//go:generate msgp -unexported -file $GOFILE
 
 // MetricType is a bitfield representation of different metric types.
 type MetricType uint32
@@ -81,7 +81,7 @@ type MetricsOptions struct {
 // Metrics makes an admin call to retrieve metrics.
 // The provided function is called for each received entry.
 func (adm *AdminClient) Metrics(ctx context.Context, o MetricsOptions, out func(RealtimeMetrics)) (err error) {
-	path := fmt.Sprintf(adminAPIPrefix + "/metrics")
+	path := fmt.Sprintf(adminAPIPrefixV3 + "/metrics")
 	q := make(url.Values)
 	q.Set("types", strconv.FormatUint(uint64(o.Type), 10))
 	q.Set("n", strconv.Itoa(o.N))
@@ -245,10 +245,6 @@ type ScannerMetrics struct {
 	// Time these metrics were collected
 	CollectedAt time.Time `json:"collected"`
 
-	CurrentCycle      uint64      `json:"current_cycle"`        // Deprecated Mar 2024
-	CurrentStarted    time.Time   `json:"current_started"`      // Deprecated Mar 2024
-	CyclesCompletedAt []time.Time `json:"cycle_complete_times"` // Deprecated Mar 2024
-
 	// Number of buckets currently scanning
 	OngoingBuckets int `json:"ongoing_buckets"`
 
@@ -299,15 +295,6 @@ func (s *ScannerMetrics) Merge(other *ScannerMetrics) {
 		if !ok {
 			s.PerBucketStats[bucket] = otherSt
 		}
-	}
-
-	if s.CurrentCycle < other.CurrentCycle {
-		s.CurrentCycle = other.CurrentCycle
-		s.CyclesCompletedAt = other.CyclesCompletedAt
-		s.CurrentStarted = other.CurrentStarted
-	}
-	if len(other.CyclesCompletedAt) > len(s.CyclesCompletedAt) {
-		s.CyclesCompletedAt = other.CyclesCompletedAt
 	}
 
 	// Regular ops

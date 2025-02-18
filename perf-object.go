@@ -107,7 +107,7 @@ func (adm *AdminClient) Speedtest(ctx context.Context, opts SpeedtestOpts) (chan
 	}
 	resp, err := adm.executeMethod(ctx,
 		http.MethodPost, requestData{
-			relPath:     adminAPIPrefix + "/speedtest",
+			relPath:     adminAPIPrefixV3 + "/speedtest",
 			queryValues: queryVals,
 		})
 	if err != nil {

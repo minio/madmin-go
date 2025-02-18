@@ -28,7 +28,7 @@ import (
 )
 
 //msgp:clearomitted
-//go:generate msgp
+//go:generate msgp -file $GOFILE
 
 // BucketScanInfo contains information of a bucket scan in a given pool/set
 type BucketScanInfo struct {
@@ -45,7 +45,7 @@ type BucketScanInfo struct {
 func (adm *AdminClient) BucketScanInfo(ctx context.Context, bucket string) ([]BucketScanInfo, error) {
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
-		requestData{relPath: adminAPIPrefix + "/scanner/status/" + bucket})
+		requestData{relPath: adminAPIPrefixV3 + "/scanner/status/" + bucket})
 	if err != nil {
 		return nil, err
 	}

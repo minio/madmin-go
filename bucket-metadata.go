@@ -29,7 +29,7 @@ import (
 
 // ExportBucketMetadata makes an admin call to export bucket metadata of a bucket
 func (adm *AdminClient) ExportBucketMetadata(ctx context.Context, bucket string) (io.ReadCloser, error) {
-	path := adminAPIPrefix + "/export-bucket-metadata"
+	path := adminAPIPrefixV3 + "/export-bucket-metadata"
 	queryValues := url.Values{}
 	queryValues.Set("bucket", bucket)
 
@@ -82,7 +82,7 @@ func (adm *AdminClient) ImportBucketMetadata(ctx context.Context, bucket string,
 		return r, err
 	}
 
-	path := adminAPIPrefix + "/import-bucket-metadata"
+	path := adminAPIPrefixV3 + "/import-bucket-metadata"
 	queryValues := url.Values{}
 	queryValues.Set("bucket", bucket)
 
