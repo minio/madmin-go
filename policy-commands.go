@@ -28,33 +28,6 @@ import (
 	"time"
 )
 
-// InfoCannedPolicy - expand canned policy into JSON structure.
-//
-// Deprecated: Use InfoCannedPolicyV2 instead.
-func (adm *AdminClient) InfoCannedPolicy(ctx context.Context, policyName string) ([]byte, error) {
-	queryValues := url.Values{}
-	queryValues.Set("name", policyName)
-
-	reqData := requestData{
-		relPath:     adminAPIPrefix + "/info-canned-policy",
-		queryValues: queryValues,
-	}
-
-	// Execute GET on /minio/admin/v3/info-canned-policy
-	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
-
-	defer closeResponse(resp)
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, httpRespToErrorResponse(resp)
-	}
-
-	return io.ReadAll(resp.Body)
-}
-
 // PolicyInfo contains information on a policy.
 type PolicyInfo struct {
 	PolicyName string
@@ -78,14 +51,14 @@ func (pi PolicyInfo) MarshalJSON() ([]byte, error) {
 	return json.Marshal(aliasPolicyInfo(pi))
 }
 
-// InfoCannedPolicyV2 - get info on a policy including timestamps and policy json.
-func (adm *AdminClient) InfoCannedPolicyV2(ctx context.Context, policyName string) (*PolicyInfo, error) {
+// InfoCannedPolicy - get info on a policy including timestamps and policy json.
+func (adm *AdminClient) InfoCannedPolicy(ctx context.Context, policyName string) (*PolicyInfo, error) {
 	queryValues := url.Values{}
 	queryValues.Set("name", policyName)
 	queryValues.Set("v", "2")
 
 	reqData := requestData{
-		relPath:     adminAPIPrefix + "/info-canned-policy",
+		relPath:     adminAPIPrefixV3 + "/info-canned-policy",
 		queryValues: queryValues,
 	}
 
@@ -114,7 +87,7 @@ func (adm *AdminClient) InfoCannedPolicyV2(ctx context.Context, policyName strin
 // ListCannedPolicies - list all configured canned policies.
 func (adm *AdminClient) ListCannedPolicies(ctx context.Context) (map[string]json.RawMessage, error) {
 	reqData := requestData{
-		relPath: adminAPIPrefix + "/list-canned-policies",
+		relPath: adminAPIPrefixV3 + "/list-canned-policies",
 	}
 
 	// Execute GET on /minio/admin/v3/list-canned-policies
@@ -148,7 +121,7 @@ func (adm *AdminClient) RemoveCannedPolicy(ctx context.Context, policyName strin
 	queryValues.Set("name", policyName)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefix + "/remove-canned-policy",
+		relPath:     adminAPIPrefixV3 + "/remove-canned-policy",
 		queryValues: queryValues,
 	}
 
@@ -177,7 +150,7 @@ func (adm *AdminClient) AddCannedPolicy(ctx context.Context, policyName string, 
 	queryValues.Set("name", policyName)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefix + "/add-canned-policy",
+		relPath:     adminAPIPrefixV3 + "/add-canned-policy",
 		queryValues: queryValues,
 		content:     policy,
 	}
@@ -194,40 +167,6 @@ func (adm *AdminClient) AddCannedPolicy(ctx context.Context, policyName string, 
 		return httpRespToErrorResponse(resp)
 	}
 
-	return nil
-}
-
-// SetPolicy - sets the policy for a user or a group.
-//
-// Deprecated: Use AttachPolicy/DetachPolicy to update builtin user policies
-// instead. Use AttachPolicyLDAP/DetachPolicyLDAP to update LDAP user policies.
-// This function and the corresponding server API will be removed in future
-// releases.
-func (adm *AdminClient) SetPolicy(ctx context.Context, policyName, entityName string, isGroup bool) error {
-	queryValues := url.Values{}
-	queryValues.Set("policyName", policyName)
-	queryValues.Set("userOrGroup", entityName)
-	groupStr := "false"
-	if isGroup {
-		groupStr = "true"
-	}
-	queryValues.Set("isGroup", groupStr)
-
-	reqData := requestData{
-		relPath:     adminAPIPrefix + "/set-user-or-group-policy",
-		queryValues: queryValues,
-	}
-
-	// Execute PUT on /minio/admin/v3/set-user-or-group-policy to set policy.
-	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
-	defer closeResponse(resp)
-	if err != nil {
-		return err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return httpRespToErrorResponse(resp)
-	}
 	return nil
 }
 
@@ -257,7 +196,7 @@ func (adm *AdminClient) attachOrDetachPolicyBuiltin(ctx context.Context, isAttac
 	h.Add("Content-Type", "application/octet-stream")
 	reqData := requestData{
 		customHeaders: h,
-		relPath:       adminAPIPrefix + "/idp/builtin/policy/" + suffix,
+		relPath:       adminAPIPrefixV3 + "/idp/builtin/policy/" + suffix,
 		content:       encBytes,
 	}
 
@@ -310,7 +249,7 @@ func (adm *AdminClient) GetPolicyEntities(ctx context.Context, q PolicyEntitiesQ
 	params["policy"] = q.Policy
 
 	reqData := requestData{
-		relPath:     adminAPIPrefix + "/idp/builtin/policy-entities",
+		relPath:     adminAPIPrefixV3 + "/idp/builtin/policy-entities",
 		queryValues: params,
 	}
 

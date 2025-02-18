@@ -59,7 +59,7 @@ func (adm *AdminClient) RebalanceStart(ctx context.Context) (id string, err erro
 	var resp *http.Response
 	resp, err = adm.executeMethod(ctx,
 		http.MethodPost,
-		requestData{relPath: adminAPIPrefix + "/rebalance/start"})
+		requestData{relPath: adminAPIPrefixV3 + "/rebalance/start"})
 	defer closeResponse(resp)
 	if err != nil {
 		return id, err
@@ -89,7 +89,7 @@ func (adm *AdminClient) RebalanceStatus(ctx context.Context) (r RebalanceStatus,
 	// Execute GET on /minio/admin/v3/rebalance/status to get status of an ongoing rebalance operation.
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
-		requestData{relPath: adminAPIPrefix + "/rebalance/status"})
+		requestData{relPath: adminAPIPrefixV3 + "/rebalance/status"})
 	defer closeResponse(resp)
 	if err != nil {
 		return r, err
@@ -116,7 +116,7 @@ func (adm *AdminClient) RebalanceStop(ctx context.Context) error {
 	// Execute POST on /minio/admin/v3/rebalance/stop to stop an ongoing rebalance operation.
 	resp, err := adm.executeMethod(ctx,
 		http.MethodPost,
-		requestData{relPath: adminAPIPrefix + "/rebalance/stop"})
+		requestData{relPath: adminAPIPrefixV3 + "/rebalance/stop"})
 	defer closeResponse(resp)
 	if err != nil {
 		return err
