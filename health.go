@@ -37,8 +37,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/minio/madmin-go/v3/cgroup"
-	"github.com/minio/madmin-go/v3/kernel"
+	"github.com/minio/madmin-go/v4/cgroup"
+	"github.com/minio/madmin-go/v4/kernel"
 	"github.com/prometheus/procfs"
 	"github.com/shirou/gopsutil/v3/cpu"
 	"github.com/shirou/gopsutil/v3/disk"
@@ -134,6 +134,8 @@ type SysService struct {
 }
 
 // CPU contains system's CPU information.
+//
+//msgp:ignore CPU
 type CPU struct {
 	VendorID   string   `json:"vendor_id"`
 	Family     string   `json:"family"`
@@ -1194,7 +1196,7 @@ func (adm *AdminClient) ServerHealthInfo(ctx context.Context, types []HealthData
 
 	resp, err := adm.executeMethod(
 		ctx, "GET", requestData{
-			relPath:     adminAPIPrefix + "/healthinfo",
+			relPath:     adminAPIPrefixV3 + "/healthinfo",
 			queryValues: v,
 		},
 	)

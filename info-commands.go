@@ -30,7 +30,7 @@ import (
 
 //msgp:clearomitted
 //msgp:tag json
-//go:generate msgp
+//go:generate msgp -file $GOFILE
 
 // BackendType - represents different backend types.
 type BackendType int
@@ -90,10 +90,6 @@ type BackendInfo struct {
 	// Adds number of erasure sets and drives per set.
 	TotalSets    []int // Each index value corresponds to per pool
 	DrivesPerSet []int // Each index value corresponds to per pool
-
-	// Deprecated Aug 2023
-	StandardSCParity int // Parity disks for currently configured Standard storage class.
-	RRSCParity       int // Parity disks for currently configured Reduced Redundancy storage class.
 }
 
 // BackendDisks - represents the map of endpoint-disks.
@@ -126,7 +122,7 @@ func (d1 BackendDisks) Merge(d2 BackendDisks) BackendDisks {
 // StorageInfo - Connect to a minio server and call Storage Info Management API
 // to fetch server's information represented by StorageInfo structure
 func (adm *AdminClient) StorageInfo(ctx context.Context) (StorageInfo, error) {
-	resp, err := adm.executeMethod(ctx, http.MethodGet, requestData{relPath: adminAPIPrefix + "/storageinfo"})
+	resp, err := adm.executeMethod(ctx, http.MethodGet, requestData{relPath: adminAPIPrefixV3 + "/storageinfo"})
 	defer closeResponse(resp)
 	if err != nil {
 		return StorageInfo{}, err
@@ -208,9 +204,6 @@ type DataUsageInfo struct {
 	// TierStats holds per-tier stats like bytes tiered, etc.
 	TierStats map[string]TierStats `json:"tierStats"`
 
-	// Deprecated kept here for backward compatibility reasons.
-	BucketSizes map[string]uint64 `json:"bucketsSizes"`
-
 	// Server capacity related data
 	TotalCapacity     uint64 `json:"capacity"`
 	TotalFreeCapacity uint64 `json:"freeCapacity"`
@@ -223,7 +216,7 @@ func (adm *AdminClient) DataUsageInfo(ctx context.Context) (DataUsageInfo, error
 	values.Set("capacity", "true") // We can make this configurable in future but for now its fine.
 
 	resp, err := adm.executeMethod(ctx, http.MethodGet, requestData{
-		relPath:     adminAPIPrefix + "/datausageinfo",
+		relPath:     adminAPIPrefixV3 + "/datausageinfo",
 		queryValues: values,
 	})
 	defer closeResponse(resp)
@@ -468,9 +461,6 @@ type DiskMetrics struct {
 	// Total deletes on disk (could be empty if the feature
 	// is not enabled on the server)
 	TotalDeletes uint64 `json:"totalDeletes,omitempty"`
-
-	// Deprecated: Use LastMinute instead. Not populated from servers after July 2022.
-	APILatencies map[string]interface{} `json:"apiLatencies,omitempty"`
 }
 
 // CacheStats drive cache stats
@@ -544,7 +534,7 @@ func (adm *AdminClient) ServerInfo(ctx context.Context, options ...func(*ServerI
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
-			relPath:     adminAPIPrefix + "/info",
+			relPath:     adminAPIPrefixV3 + "/info",
 			queryValues: values,
 		})
 	defer closeResponse(resp)

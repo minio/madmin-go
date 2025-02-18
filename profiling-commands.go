@@ -57,14 +57,13 @@ type StartProfilingResult struct {
 
 // StartProfiling makes an admin call to remotely start profiling on a
 // standalone server or the whole cluster in case of a distributed setup.
-//
-// Deprecated: use Profile API instead
+// NOTE: For simpler use cases use Profile() API.
 func (adm *AdminClient) StartProfiling(ctx context.Context, profiler ProfilerType) ([]StartProfilingResult, error) {
 	v := url.Values{}
 	v.Set("profilerType", string(profiler))
 	resp, err := adm.executeMethod(ctx,
 		http.MethodPost, requestData{
-			relPath:     adminAPIPrefix + "/profiling/start",
+			relPath:     adminAPIPrefixV3 + "/profiling/start",
 			queryValues: v,
 		},
 	)
@@ -93,10 +92,9 @@ func (adm *AdminClient) StartProfiling(ctx context.Context, profiler ProfilerTyp
 
 // DownloadProfilingData makes an admin call to download profiling data of a
 // standalone server or of the whole cluster in case of a distributed setup.
-//
-// Deprecated: use Profile API instead
+// NOTE: For simpler use cases use Profile() API, must be
 func (adm *AdminClient) DownloadProfilingData(ctx context.Context) (io.ReadCloser, error) {
-	path := fmt.Sprintf(adminAPIPrefix + "/profiling/download")
+	path := fmt.Sprintf(adminAPIPrefixV3 + "/profiling/download")
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet, requestData{
 			relPath: path,
@@ -126,7 +124,7 @@ func (adm *AdminClient) Profile(ctx context.Context, profiler ProfilerType, dura
 	v.Set("duration", duration.String())
 	resp, err := adm.executeMethod(ctx,
 		http.MethodPost, requestData{
-			relPath:     adminAPIPrefix + "/profile",
+			relPath:     adminAPIPrefixV3 + "/profile",
 			queryValues: v,
 		},
 	)

@@ -84,7 +84,7 @@ func (adm *AdminClient) BucketReplicationDiff(ctx context.Context, bucketName st
 		}
 
 		reqData := requestData{
-			relPath:     adminAPIPrefix + "/replication/diff",
+			relPath:     adminAPIPrefixV3 + "/replication/diff",
 			queryValues: queryValues,
 		}
 
@@ -142,7 +142,7 @@ func (adm *AdminClient) BucketReplicationMRF(ctx context.Context, bucketName str
 			queryValues.Set("node", node)
 		}
 		reqData := requestData{
-			relPath:     adminAPIPrefix + "/replication/mrf",
+			relPath:     adminAPIPrefixV3 + "/replication/mrf",
 			queryValues: queryValues,
 		}
 

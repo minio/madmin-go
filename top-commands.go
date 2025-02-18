@@ -75,7 +75,7 @@ func (adm *AdminClient) ForceUnlock(ctx context.Context, paths ...string) error 
 	resp, err := adm.executeMethod(ctx,
 		http.MethodPost,
 		requestData{
-			relPath:     adminAPIPrefix + "/force-unlock",
+			relPath:     adminAPIPrefixV3 + "/force-unlock",
 			queryValues: queryVals,
 		},
 	)
@@ -103,7 +103,7 @@ func (adm *AdminClient) TopLocksWithOpts(ctx context.Context, opts TopLockOpts) 
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
-			relPath:     adminAPIPrefix + "/top/locks",
+			relPath:     adminAPIPrefixV3 + "/top/locks",
 			queryValues: queryVals,
 		},
 	)

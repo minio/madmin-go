@@ -33,7 +33,7 @@ func (adm *AdminClient) DelConfigKV(ctx context.Context, k string) (restart bool
 	}
 
 	reqData := requestData{
-		relPath: adminAPIPrefix + "/del-config-kv",
+		relPath: adminAPIPrefixV3 + "/del-config-kv",
 		content: econfigBytes,
 	}
 
@@ -68,7 +68,7 @@ func (adm *AdminClient) SetConfigKV(ctx context.Context, kv string) (restart boo
 	}
 
 	reqData := requestData{
-		relPath: adminAPIPrefix + "/set-config-kv",
+		relPath: adminAPIPrefixV3 + "/set-config-kv",
 		content: econfigBytes,
 	}
 
@@ -96,7 +96,7 @@ func (adm *AdminClient) GetConfigKV(ctx context.Context, key string) ([]byte, er
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
-			relPath:     adminAPIPrefix + "/get-config-kv",
+			relPath:     adminAPIPrefixV3 + "/get-config-kv",
 			queryValues: v,
 		})
 	defer closeResponse(resp)
@@ -128,7 +128,7 @@ func (adm *AdminClient) GetConfigKVWithOptions(ctx context.Context, key string, 
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
-			relPath:     adminAPIPrefix + "/get-config-kv",
+			relPath:     adminAPIPrefixV3 + "/get-config-kv",
 			queryValues: v,
 		})
 	defer closeResponse(resp)
