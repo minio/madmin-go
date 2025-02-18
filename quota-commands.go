@@ -42,21 +42,10 @@ func (t QuotaType) IsValid() bool {
 
 // BucketQuota holds bucket quota restrictions
 type BucketQuota struct {
-	Quota    uint64    `json:"quota"`    // Deprecated Aug 2023
 	Size     uint64    `json:"size"`     // Indicates maximum size allowed per bucket
 	Rate     uint64    `json:"rate"`     // Indicates bandwidth rate allocated per bucket
 	Requests uint64    `json:"requests"` // Indicates number of requests allocated per bucket
 	Type     QuotaType `json:"quotatype,omitempty"`
-}
-
-// IsValid returns false if quota is invalid
-// empty quota when Quota == 0 is always true.
-func (q BucketQuota) IsValid() bool {
-	if q.Quota > 0 {
-		return q.Type.IsValid()
-	}
-	// Empty configs are valid.
-	return true
 }
 
 // GetBucketQuota - get info on a user
@@ -65,7 +54,7 @@ func (adm *AdminClient) GetBucketQuota(ctx context.Context, bucket string) (q Bu
 	queryValues.Set("bucket", bucket)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefix + "/get-bucket-quota",
+		relPath:     adminAPIPrefixV3 + "/get-bucket-quota",
 		queryValues: queryValues,
 	}
 
@@ -104,7 +93,7 @@ func (adm *AdminClient) SetBucketQuota(ctx context.Context, bucket string, quota
 	queryValues.Set("bucket", bucket)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefix + "/set-bucket-quota",
+		relPath:     adminAPIPrefixV3 + "/set-bucket-quota",
 		queryValues: queryValues,
 		content:     data,
 	}

@@ -2910,18 +2910,6 @@ func (z *HealingDisk) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "BytesSkipped")
 				return
 			}
-		case "objects_healed":
-			z.ObjectsHealed, err = dc.ReadUint64()
-			if err != nil {
-				err = msgp.WrapError(err, "ObjectsHealed")
-				return
-			}
-		case "objects_failed":
-			z.ObjectsFailed, err = dc.ReadUint64()
-			if err != nil {
-				err = msgp.WrapError(err, "ObjectsFailed")
-				return
-			}
 		case "current_bucket":
 			z.Bucket, err = dc.ReadString()
 			if err != nil {
@@ -3182,26 +3170,6 @@ func (z *HealingDisk) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "BytesSkipped")
 		return
 	}
-	// write "objects_healed"
-	err = en.Append(0xae, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x5f, 0x68, 0x65, 0x61, 0x6c, 0x65, 0x64)
-	if err != nil {
-		return
-	}
-	err = en.WriteUint64(z.ObjectsHealed)
-	if err != nil {
-		err = msgp.WrapError(err, "ObjectsHealed")
-		return
-	}
-	// write "objects_failed"
-	err = en.Append(0xae, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x5f, 0x66, 0x61, 0x69, 0x6c, 0x65, 0x64)
-	if err != nil {
-		return
-	}
-	err = en.WriteUint64(z.ObjectsFailed)
-	if err != nil {
-		err = msgp.WrapError(err, "ObjectsFailed")
-		return
-	}
 	// write "current_bucket"
 	err = en.Append(0xae, 0x63, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74, 0x5f, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74)
 	if err != nil {
@@ -3337,12 +3305,6 @@ func (z *HealingDisk) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "bytes_skipped"
 	o = append(o, 0xad, 0x62, 0x79, 0x74, 0x65, 0x73, 0x5f, 0x73, 0x6b, 0x69, 0x70, 0x70, 0x65, 0x64)
 	o = msgp.AppendUint64(o, z.BytesSkipped)
-	// string "objects_healed"
-	o = append(o, 0xae, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x5f, 0x68, 0x65, 0x61, 0x6c, 0x65, 0x64)
-	o = msgp.AppendUint64(o, z.ObjectsHealed)
-	// string "objects_failed"
-	o = append(o, 0xae, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x5f, 0x66, 0x61, 0x69, 0x6c, 0x65, 0x64)
-	o = msgp.AppendUint64(o, z.ObjectsFailed)
 	// string "current_bucket"
 	o = append(o, 0xae, 0x63, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74, 0x5f, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74)
 	o = msgp.AppendString(o, z.Bucket)
@@ -3496,18 +3458,6 @@ func (z *HealingDisk) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "BytesSkipped")
 				return
 			}
-		case "objects_healed":
-			z.ObjectsHealed, bts, err = msgp.ReadUint64Bytes(bts)
-			if err != nil {
-				err = msgp.WrapError(err, "ObjectsHealed")
-				return
-			}
-		case "objects_failed":
-			z.ObjectsFailed, bts, err = msgp.ReadUint64Bytes(bts)
-			if err != nil {
-				err = msgp.WrapError(err, "ObjectsFailed")
-				return
-			}
 		case "current_bucket":
 			z.Bucket, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
@@ -3588,7 +3538,7 @@ func (z *HealingDisk) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *HealingDisk) Msgsize() (s int) {
-	s = 3 + 3 + msgp.StringPrefixSize + len(z.ID) + 8 + msgp.StringPrefixSize + len(z.HealID) + 11 + msgp.IntSize + 10 + msgp.IntSize + 11 + msgp.IntSize + 9 + msgp.StringPrefixSize + len(z.Endpoint) + 5 + msgp.StringPrefixSize + len(z.Path) + 8 + msgp.TimeSize + 12 + msgp.TimeSize + 15 + msgp.Uint64Size + 20 + msgp.Uint64Size + 19 + msgp.Uint64Size + 13 + msgp.Uint64Size + 13 + msgp.Uint64Size + 14 + msgp.Uint64Size + 11 + msgp.Uint64Size + 13 + msgp.Uint64Size + 14 + msgp.Uint64Size + 15 + msgp.Uint64Size + 15 + msgp.Uint64Size + 15 + msgp.StringPrefixSize + len(z.Bucket) + 15 + msgp.StringPrefixSize + len(z.Object) + 15 + msgp.ArrayHeaderSize
+	s = 3 + 3 + msgp.StringPrefixSize + len(z.ID) + 8 + msgp.StringPrefixSize + len(z.HealID) + 11 + msgp.IntSize + 10 + msgp.IntSize + 11 + msgp.IntSize + 9 + msgp.StringPrefixSize + len(z.Endpoint) + 5 + msgp.StringPrefixSize + len(z.Path) + 8 + msgp.TimeSize + 12 + msgp.TimeSize + 15 + msgp.Uint64Size + 20 + msgp.Uint64Size + 19 + msgp.Uint64Size + 13 + msgp.Uint64Size + 13 + msgp.Uint64Size + 14 + msgp.Uint64Size + 11 + msgp.Uint64Size + 13 + msgp.Uint64Size + 14 + msgp.Uint64Size + 15 + msgp.StringPrefixSize + len(z.Bucket) + 15 + msgp.StringPrefixSize + len(z.Object) + 15 + msgp.ArrayHeaderSize
 	for za0001 := range z.QueuedBuckets {
 		s += msgp.StringPrefixSize + len(z.QueuedBuckets[za0001])
 	}

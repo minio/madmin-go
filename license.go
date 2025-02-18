@@ -47,7 +47,7 @@ func (adm *AdminClient) GetLicenseInfo(ctx context.Context) (*LicenseInfo, error
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
-			relPath: adminAPIPrefix + "/license-info",
+			relPath: adminAPIPrefixV3 + "/license-info",
 		})
 	defer closeResponse(resp)
 	if err != nil {

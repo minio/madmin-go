@@ -188,10 +188,8 @@ type TraceHTTPStats struct {
 
 // TraceCallStats records request stats
 type TraceCallStats struct {
-	InputBytes  int `json:"inputbytes"`
-	OutputBytes int `json:"outputbytes"`
-	// Deprecated: Use TraceInfo.Duration (June 2022)
-	Latency         time.Duration `json:"latency"`
+	InputBytes      int           `json:"inputbytes"`
+	OutputBytes     int           `json:"outputbytes"`
 	TimeToFirstByte time.Duration `json:"timetofirstbyte"`
 }
 

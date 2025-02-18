@@ -31,12 +31,7 @@ import (
 type LogMask uint64
 
 const (
-	// LogMaskMinIO - mask for MinIO type log
-	LogMaskMinIO LogMask = 1 << iota // Deprecated Jan 2024
-	// LogMaskApplication - mask for MinIO type log
-	LogMaskApplication // Deprecated Jan 2024
-
-	LogMaskFatal
+	LogMaskFatal LogMask = 1 << iota
 	LogMaskWarning
 	LogMaskError
 	LogMaskEvent
@@ -60,13 +55,6 @@ func (m LogMask) Contains(other LogMask) bool {
 type LogKind string
 
 const (
-	// LogKindMinio - MinIO log type
-	LogKindMinio LogKind = "MINIO" // Deprecated Jan 2024
-	// LogKindApplication - Application log type
-	LogKindApplication LogKind = "APPLICATION" // Deprecated Jan 2024
-	// LogKindAll - all logs type
-	LogKindAll LogKind = "ALL" // Deprecated Jan 2024
-
 	LogKindFatal   LogKind = "FATAL"
 	LogKindWarning LogKind = "WARNING"
 	LogKindError   LogKind = "ERROR"
@@ -77,10 +65,6 @@ const (
 // LogMask returns the mask based on the kind.
 func (l LogKind) LogMask() LogMask {
 	switch l {
-	case LogKindMinio:
-		return LogMaskMinIO
-	case LogKindApplication:
-		return LogMaskApplication
 	case LogKindFatal:
 		return LogMaskFatal
 	case LogKindWarning:
@@ -120,7 +104,7 @@ func (adm AdminClient) GetLogs(ctx context.Context, node string, lineCnt int, lo
 		urlValues.Set("logType", logKind)
 		for {
 			reqData := requestData{
-				relPath:     adminAPIPrefix + "/log",
+				relPath:     adminAPIPrefixV3 + "/log",
 				queryValues: urlValues,
 			}
 			// Execute GET to call log handler
