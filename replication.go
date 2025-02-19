@@ -26,14 +26,16 @@ import (
 )
 
 type ReplicationInfo struct {
-	Error         string            `json:"error,omitempty"`
-	ActiveWorkers WorkerStat        `json:"active_workers,omitempty"`
-	Queued        InQueueMetric     `json:"queued,omitempty"`
-	ReplicaCount  int64             `json:"replica_count,omitempty"`
-	ReplicaSize   int64             `json:"replica_size,omitempty"`
-	Proxying      bool              `json:"proxying,omitempty"`
-	Proxied       ReplProxyMetric   `json:"proxied,omitempty"`
-	Sites         []ReplicationSite `json:"sites,omitempty"`
+	Error             string             `json:"error,omitempty"`
+	SREnabled         bool               `json:"site_replication_enabled"`
+	ActiveWorkers     WorkerStat         `json:"active_workers,omitempty"`
+	Queued            InQueueMetric      `json:"queued,omitempty"`
+	ReplicaCount      int64              `json:"replica_count,omitempty"`
+	ReplicaSize       int64              `json:"replica_size,omitempty"`
+	Proxying          bool               `json:"proxying,omitempty"`
+	Proxied           ReplProxyMetric    `json:"proxied,omitempty"`
+	Sites             []ReplicationSite  `json:"sites,omitempty"`
+	ReplicatedBuckets []ReplicatedBucket `json:"replicated_buckets,omitempty"`
 }
 
 type ReplicationSite struct {
@@ -52,10 +54,8 @@ type SiteReplicationSiteInfo struct {
 	ILMEnabled           bool                `json:"ilm_enabled,omitempty"`
 	EncryptionEnabled    bool                `json:"encryption_enabled,omitempty"`
 	ILMExpiryReplication bool                `json:"ilm_expiry_replication,omitempty"`
-	ReplicatedBuckets    []ReplicatedBucket  `json:"replicated_buckets,omitempty"`
 	ObjetLocking         ObjectLockingInfo   `json:"object_locking,omitempty"`
 	Throttle             ReplicationThrottle `json:"throttle,omitempty"`
-	ReplicationTargets   []ReplicationTarget `json:"replication_targets,omitempty"`
 	ReplicatedCount      int64               `json:"replicated_count,omitempty"`
 	ReplicatedSize       int64               `json:"replicated_size,omitempty"`
 }
@@ -73,8 +73,9 @@ type MinIONode struct {
 }
 
 type ReplicatedBucket struct {
-	Name            string                `json:"name,omitempty"`
-	ReplicationInfo BucketReplicationInfo `json:"replication_info,omitempty"`
+	Name               string                `json:"name,omitempty"`
+	ReplicationInfo    BucketReplicationInfo `json:"replication_info,omitempty"`
+	ReplicationTargets []ReplicationTarget   `json:"replication_targets,omitempty"`
 }
 
 type MissingReplicationInfo struct {
@@ -88,27 +89,28 @@ type ObjectLockingInfo struct {
 }
 
 type ReplicationTarget struct {
-	SourceBucket      string            `json:"source_bucket,omitempty"`
-	TargetBucket      string            `json:"target_bucket,omitempty"`
-	Addr              string            `json:"addr,omitempty"`
-	Online            bool              `json:"online,omitempty"`
-	TotalDowntime     int64             `json:"total_downtime,omitempty"`
-	CurrentDowntime   int64             `json:"current_downtime,omitempty"`
-	AdminPermissions  bool              `json:"admin_permissions,omitempty"`
-	SyncReplication   bool              `json:"sync_replication,omitempty"`
-	HeartbeatErrCount int64             `json:"heartbeat_err_count,omitempty"`
-	BandwidthLimit    uint64            `json:"bandwidth_limit,omitempty"`
-	Latency           TransferLatency   `json:"xfer_rate,omitempty"`
-	Edge              bool              `json:"edge,omitempty"`
-	LBEndpoint        bool              `json:"lb_endpoint,omitempty"`
-	HeathCheck        HeathCheckDetails `json:"heath_check,omitempty"`
+	SourceBucket        string        `json:"source_bucket,omitempty"`
+	TargetBucket        string        `json:"target_bucket,omitempty"`
+	Addr                string        `json:"addr,omitempty"`
+	Online              bool          `json:"online,omitempty"`
+	TotalDowntime       time.Duration `json:"total_downtime,omitempty"`
+	CurrentDowntime     time.Duration `json:"current_downtime,omitempty"`
+	AdminPermissions    bool          `json:"admin_permissions,omitempty"`
+	SyncReplication     bool          `json:"sync_replication,omitempty"`
+	HeartbeatErrCount   int64         `json:"heartbeat_err_count,omitempty"`
+	BandwidthLimit      uint64        `json:"bandwidth_limit,omitempty"`
+	Latency             LatencyStat   `json:"xfer_rate,omitempty"`
+	Edge                bool          `json:"edge,omitempty"`
+	LBEndpoint          bool          `json:"lb_endpoint,omitempty"`
+	HealthCheckDuration time.Duration `json:"heath_check,omitempty"`
+	DisableProxying     bool          `json:"disable_proxying"`
 }
 
-type TransferLatency struct {
-	Current time.Duration `json:"current,omitempty"`
-	Average time.Duration `json:"avg,omitempty"`
-	Maximum time.Duration `json:"max,omitempty"`
-}
+// type TransferLatency struct {
+// 	Current time.Duration `json:"current,omitempty"`
+// 	Average time.Duration `json:"avg,omitempty"`
+// 	Maximum time.Duration `json:"max,omitempty"`
+// }
 
 type HeathCheckDetails struct {
 	Timestamp time.Time     `json:"timestamp,omitempty"`
@@ -117,9 +119,9 @@ type HeathCheckDetails struct {
 }
 
 type BucketReplicationInfo struct {
-	VersionEnabled          bool                `json:"version_enabled,omitempty"`
-	ObjectLocking           bool                `json:"object_locking,omitempty"`
-	Edge                    bool                `json:"edge,omitempty"`
+	VersionEnabled bool `json:"version_enabled,omitempty"`
+	ObjectLocking  bool `json:"object_locking,omitempty"`
+	// Edge                    bool                `json:"edge,omitempty"`
 	ExcludedPrefixes        []string            `json:"excluded_prefixes,omitempty"`
 	DeleteReplication       bool                `json:"delete_replication,omitempty"`
 	DeleteMarkerReplication bool                `json:"delete_marker_replication,omitempty"`
