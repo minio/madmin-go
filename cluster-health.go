@@ -25,6 +25,7 @@ import (
 	"net/http/httptrace"
 	"net/url"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 )
@@ -134,6 +135,7 @@ type AliveResult struct {
 	DNSResolveTime time.Duration `json:"dnsResolveTime"`
 	Online         bool          `json:"online"` // captures x-minio-server-status
 	Error          error         `json:"error"`
+	IsLBEndpoint   bool          `json:"isLBEndpoint"`
 }
 
 // Alive will hit `/minio/health/live` to check if server is reachable, optionally returns
@@ -211,6 +213,13 @@ func (an *AnonymousClient) alive(ctx context.Context, u *url.URL, resource strin
 		relPath:          resource,
 		endpointOverride: u,
 	}, trace)
+	isLBEndpoint := false
+	for name, _ := range resp.Header {
+		if strings.HasPrefix(name, "X-Forwarded") || strings.HasPrefix(name, "X-Real-IP") {
+			isLBEndpoint = true
+			break
+		}
+	}
 	closeResponse(resp)
 	var respTime time.Duration
 	if firstByteTime.IsZero() {
@@ -223,6 +232,7 @@ func (an *AnonymousClient) alive(ctx context.Context, u *url.URL, resource strin
 		Endpoint:       u,
 		ResponseTime:   respTime,
 		DNSResolveTime: dnsDoneTime.Sub(dnsStartTime),
+		IsLBEndpoint:   isLBEndpoint,
 	}
 	if err != nil {
 		result.Error = err
