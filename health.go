@@ -231,6 +231,8 @@ type Partition struct {
 	Error string `json:"error,omitempty"`
 
 	Device       string `json:"device,omitempty"`
+	Major        uint32 `json:"major"`
+	Minor        uint32 `json:"minor"`
 	Model        string `json:"model,omitempty"`
 	Revision     string `json:"revision,omitempty"`
 	Mountpoint   string `json:"mountpoint,omitempty"`
@@ -276,6 +278,8 @@ type Partitions struct {
 type driveHwInfo struct {
 	Model    string
 	Revision string
+	Major    uint32
+	Minor    uint32
 }
 
 func getDriveHwInfo(partDevice string) (info driveHwInfo, err error) {
@@ -294,6 +298,16 @@ func getDriveHwInfo(partDevice string) (info driveHwInfo, err error) {
 	}
 
 	majorMinor := strings.TrimSpace(string(data))
+	mm := strings.SplitN(majorMinor, ":", 2)
+	major, err := strconv.ParseUint(mm[0], 10, 32)
+	if err == nil {
+		info.Major = uint32(major)
+	}
+	minor, err := strconv.ParseUint(mm[1], 10, 32)
+	if err == nil {
+		info.Minor = uint32(minor)
+	}
+
 	driveInfoPath := runDevDataPfx + majorMinor
 
 	var f *os.File
@@ -372,6 +386,8 @@ func GetPartitions(ctx context.Context, addr string) Partitions {
 				InodeFree:    usage.InodesFree,
 				Model:        di.Model,
 				Revision:     di.Revision,
+				Major:        di.Major,
+				Minor:        di.Minor,
 			})
 		}
 	}
@@ -1051,6 +1067,7 @@ type MinioInfo struct {
 	IsKubernetes *bool            `json:"is_kubernetes"`
 	IsDocker     *bool            `json:"is_docker"`
 	Metrics      *RealtimeMetrics `json:"metrics,omitempty"`
+	TierConfigs  []TierConfig     `json:"tier_configs,omitempty"`
 }
 
 type TLSInfo struct {
