@@ -39,8 +39,9 @@ type ReplicationInfo struct {
 }
 
 type ReplicationSite struct {
-	Addr string                  `json:"addr,omitempty"`
-	Info SiteReplicationSiteInfo `json:"info,omitempty"`
+	Addr         string                  `json:"addr,omitempty"`
+	DeploymentID string                  `json:"deployment_id"`
+	Info         SiteReplicationSiteInfo `json:"info,omitempty"`
 }
 
 type SiteReplicationSiteInfo struct {
@@ -58,6 +59,7 @@ type SiteReplicationSiteInfo struct {
 	Throttle             ReplicationThrottle `json:"throttle,omitempty"`
 	ReplicatedCount      int64               `json:"replicated_count,omitempty"`
 	ReplicatedSize       int64               `json:"replicated_size,omitempty"`
+	ResyncStatus         string              `json:"resync_status"`
 }
 
 type MinIONode struct {
