@@ -5,11 +5,13 @@ on:
     branches:
       - main
       - master
+      - v3
 
   push:
     branches:
       - main
       - master
+      - v3
 
 jobs:
   build:
