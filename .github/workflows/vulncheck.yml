@@ -4,10 +4,14 @@ on:
     branches:
     - master
     - main
+    - v3
+
   push:
     branches:
     - master
     - main
+    v3
+
 jobs:
   vulncheck:
     name: Analysis
