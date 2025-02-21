@@ -25,7 +25,6 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
-	"strings"
 	"time"
 )
 
@@ -267,44 +266,17 @@ func (adm AdminClient) ServiceTrace(ctx context.Context, opts ServiceTraceOpts) 
 
 			dec := json.NewDecoder(resp.Body)
 			for {
-				var info traceInfoLegacy
+				var info TraceInfo
 				if err = dec.Decode(&info); err != nil {
 					closeResponse(resp)
 					traceInfoCh <- ServiceTraceInfo{Err: err}
 					break
 				}
-				// Convert if legacy...
-				if info.TraceType == TraceType(0) {
-					if strings.HasPrefix(info.FuncName, "s3.") {
-						info.TraceType = TraceS3
-					} else {
-						info.TraceType = TraceInternal
-					}
-					info.HTTP = &TraceHTTPStats{}
-					if info.ReqInfo != nil {
-						info.Path = info.ReqInfo.Path
-						info.HTTP.ReqInfo = *info.ReqInfo
-					}
-					if info.RespInfo != nil {
-						info.HTTP.RespInfo = *info.RespInfo
-					}
-					if info.CallStats != nil {
-						info.HTTP.CallStats = *info.CallStats
-					}
-				}
-				if info.TraceType == TraceOS && info.OSStats != nil {
-					info.Path = info.OSStats.Path
-					info.Duration = info.OSStats.Duration
-				}
-				if info.TraceType == TraceStorage && info.StorageStats != nil {
-					info.Path = info.StorageStats.Path
-					info.Duration = info.StorageStats.Duration
-				}
 				select {
 				case <-ctx.Done():
 					closeResponse(resp)
 					return
-				case traceInfoCh <- ServiceTraceInfo{Trace: info.TraceInfo}:
+				case traceInfoCh <- ServiceTraceInfo{Trace: info}:
 				}
 			}
 		}

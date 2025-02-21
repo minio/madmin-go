@@ -160,26 +160,6 @@ func (t TraceInfo) Mask() uint64 {
 	return t.TraceType.Mask()
 }
 
-// traceInfoLegacy - represents a trace record, additionally
-// also reports errors if any while listening on trace.
-// For minio versions before July 2022.
-type traceInfoLegacy struct {
-	TraceInfo
-
-	ReqInfo   *TraceRequestInfo  `json:"request"`
-	RespInfo  *TraceResponseInfo `json:"response"`
-	CallStats *TraceCallStats    `json:"stats"`
-
-	StorageStats *struct {
-		Path     string        `json:"path"`
-		Duration time.Duration `json:"duration"`
-	} `json:"storageStats"`
-	OSStats *struct {
-		Path     string        `json:"path"`
-		Duration time.Duration `json:"duration"`
-	} `json:"osStats"`
-}
-
 type TraceHTTPStats struct {
 	ReqInfo   TraceRequestInfo  `json:"request"`
 	RespInfo  TraceResponseInfo `json:"response"`
