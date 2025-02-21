@@ -69,7 +69,7 @@ const BatchJobReplicateTemplate = `replicate:
       batch: 100 # upto this many objects per archive
       inmemory: true # indicates if the archive must be staged locally or in-memory
       compress: false # S2/Snappy compressed archive
-      smallerThan: 5MiB # create archive for all objects smaller than 5MiB
+      smallerThan: 256KiB # create archive for all objects smaller than 256KiB
       skipErrs: false # skips any source side read() errors
 
   # target where the objects must be replicated
