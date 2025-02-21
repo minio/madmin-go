@@ -20,8 +20,10 @@
 package madmin
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
@@ -287,6 +289,25 @@ const (
 	SRIAMItemExternalUser  = "external-user"
 )
 
+// SRSessionPolicy - represents a session policy to be replicated.
+type SRSessionPolicy json.RawMessage
+
+func (s SRSessionPolicy) MarshalJSON() ([]byte, error) {
+	return json.RawMessage(s).MarshalJSON()
+}
+
+func (s *SRSessionPolicy) UnmarshalJSON(data []byte) error {
+	if s == nil {
+		return errors.New("json.RawMessage: UnmarshalJSON on nil pointer")
+	}
+	if bytes.Equal(data, []byte("null")) {
+		*s = nil
+	} else {
+		*s = append((*s)[0:0], data...)
+	}
+	return nil
+}
+
 // SRSvcAccCreate - create operation
 type SRSvcAccCreate struct {
 	Parent        string                 `json:"parent"`
@@ -294,7 +315,7 @@ type SRSvcAccCreate struct {
 	SecretKey     string                 `json:"secretKey"`
 	Groups        []string               `json:"groups"`
 	Claims        map[string]interface{} `json:"claims"`
-	SessionPolicy json.RawMessage        `json:"sessionPolicy"`
+	SessionPolicy SRSessionPolicy        `json:"sessionPolicy"`
 	Status        string                 `json:"status"`
 	Name          string                 `json:"name"`
 	Description   string                 `json:"description"`
@@ -309,7 +330,7 @@ type SRSvcAccUpdate struct {
 	Status        string          `json:"status"`
 	Name          string          `json:"name"`
 	Description   string          `json:"description"`
-	SessionPolicy json.RawMessage `json:"sessionPolicy"`
+	SessionPolicy SRSessionPolicy `json:"sessionPolicy"`
 	Expiration    *time.Time      `json:"expiration,omitempty"`
 	APIVersion    string          `json:"apiVersion,omitempty"`
 }
