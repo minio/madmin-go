@@ -27,6 +27,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -37,13 +38,35 @@ const (
 	BatchJobReplicate BatchJobType = "replicate"
 	BatchJobKeyRotate BatchJobType = "keyrotate"
 	BatchJobExpire    BatchJobType = "expire"
+	BatchJobCatalog   BatchJobType = "catalog"
 )
 
 // SupportedJobTypes supported job types
+//
+// Deprecated: Use ClientSupportedJobTypes instead.
 var SupportedJobTypes = []BatchJobType{
 	BatchJobReplicate,
 	BatchJobKeyRotate,
 	BatchJobExpire,
+	// add new job types
+}
+
+// OSSupportedJobTypes contains the default job types supported by open-source
+// MinIO. It is used only when .ListBatchJobTypes() returns an empty list.
+var OSSupportedJobTypes = []BatchJobType{
+	BatchJobReplicate,
+	BatchJobKeyRotate,
+	BatchJobExpire,
+}
+
+// ClientSupportedJobTypes supported job types for client - here client refers
+// to `mc` or any application that is a client in the MinIO server's
+// perspective. It is not expected to be used by MinIO server.
+var ClientSupportedJobTypes = []BatchJobType{
+	BatchJobReplicate,
+	BatchJobKeyRotate,
+	BatchJobExpire,
+	BatchJobCatalog,
 	// add new job types
 }
 
@@ -58,7 +81,7 @@ const BatchJobReplicateTemplate = `replicate:
     prefix: PREFIX # 'PREFIX' is optional
     # If your source is the 'local' alias specified to 'mc batch start', then the 'endpoint' and 'credentials' fields are optional and can be omitted
     # Either the 'source' or 'remote' *must* be the "local" deployment
-    endpoint: "http[s]://HOSTNAME:PORT" 
+    endpoint: "http[s]://HOSTNAME:PORT"
     # path: "on|off|auto" # "on" enables path-style bucket lookup. "off" enables virtual host (DNS)-style bucket lookup. Defaults to "auto"
     credentials:
       accessKey: ACCESS-KEY # Required
@@ -191,6 +214,123 @@ const BatchJobExpireTemplate = `expire:
     delay: 500ms # least amount of delay between each retry
 `
 
+const BatchJobCatalogTemplate = `catalog:
+  apiVersion: v1
+
+  # The source bucket to list and catalog.
+  bucket: mysourcebucket
+
+  # destination info for catalog output objects.
+  destination:
+    bucket: mybucket
+    prefix: myprefix # optional prefix ('/' will be appended if not present)
+    format: ndjson # csv or ndjson (newline delimited json)
+
+  # scheduling info for the catalog job: valid values are:
+  #   "once"
+  #
+  # once: starts immediately and runs only once. It is the default schedule.
+  #
+  # (Later support will be added for "daily|weekly|monthly|yearly" as well where:
+  # daily: runs every day at roughly the same time
+  # weekly: runs every sunday at roughly the same time
+  # monthly: runs on first sunday of every month
+  # yearly: runs on first sunday of January every year)
+  #
+  # schedule: "once"
+
+  # Mode provides a tradeoff between speed and consistency:
+  #   "fast" -> use fewer resources and complete faster, but some output data
+  #     may be stale. This is better for tasks where approximate results are
+  #     acceptable. For example: storage usage
+  #   "strict" -> use more resources and complete slower, but avoids returning
+  #     stale data.
+  # In either case, objects modified (created, replaced, removed) during the
+  # catalog job run may not be included in the output.
+  #
+  # The default mode is "fast".
+  #
+  # mode: fast
+
+  # "versions" specifies if only current or all versions of each object should
+  # be processed and output.
+  # Valid values are "current" and "all".
+  # "current" -> only current versions of objects are processed and output.
+  # "all" -> all versions of objects are processed and output.
+  versions: current
+
+  # The list of optional output fields to include. Please refer to documentation
+  # for the full list of default and optional fields available.
+  includeFields:
+    - ETag
+    - IsMultipartUploaded
+
+  filters:
+    # All specified filters must match for an object-version to be output.
+
+    lastModified:
+      # use "olderThan"/"newerThan" to specify time relative to current time
+      # for example:
+      olderThan: 1d
+      newerThan: 1w
+      #
+      # Allowed units are "s" (seconds), "m" (minutes), "h" (hours),
+      # "d" (days), "w" (weeks) and "y" (years).
+      #
+      # Alternatively, use "before"/"after" for absolute time using RFC3339 format.
+      # # before: 2024-01-01T00:00:00Z
+      # # after: 2023-01-01T00:00:00Z
+
+    size:
+      # Byte units can be used below.
+      lessThan: 1000MB
+      greaterThan: 10 # Assumes unit is bytes
+      # equalTo: 100MiB
+
+    # Filter on the number of versions of an object.
+    versionsCount:
+      lessThan: 100
+      greaterThan: 10
+      # equalTo: 100
+
+    # Filter on the name (key) of an object. An object in included in the output when
+    # any one of the filters in the list matches.
+    name:
+      # Glob matcher - same as golang's filepath.Match (see its doc for full details), where
+      # "*" -> matches 0 or more non-"/" characters
+      # "?" -> matches any single non-"/" character
+      - match: "images/*.png"
+      # Substring match.
+      - contains: "images/"
+      # Regular expression match - same as golang's regexp.MatchString
+      - regex: "^images/.*\.png$"
+
+    # Filter based on object tag constraints.
+    tags:
+      # Specify the operation to combine the constraints with. Can be "and" or "or".
+      and:
+        - key: mytagkey1
+          # Use at most one of "valueString" or "valueNum". If neither is specified,
+          # only existence is checked.
+
+          # "valueString" specifies a list of conditions, such that at least one must match ("OR"ed together)
+          valueString:
+            # Same as for "name" filter above.
+            - match: "images/*.png"
+            - contains: "images/"
+            - regex: "^images/.*\.png$"
+
+          # "valueNum" converts the tag's value into a number and then matches the value.
+          valueNum:
+            lessThan: 100
+            greaterThan: 50
+            # equal: 75
+
+    # Filter based on user metadata key-value pairs for the object. The filter conditions are same as for
+    # the tags filters above.
+    userMetadata:
+`
+
 // BatchJobResult returned by StartBatchJob
 type BatchJobResult struct {
 	ID      string        `json:"id"`
@@ -301,6 +441,8 @@ func (adm *AdminClient) GenerateBatchJob(_ context.Context, opts GenerateBatchJo
 		return BatchJobKeyRotateTemplate, nil
 	case BatchJobExpire:
 		return BatchJobExpireTemplate, nil
+	case BatchJobCatalog:
+		return BatchJobCatalogTemplate, nil
 	}
 	return "", fmt.Errorf("unknown batch job requested: %s", opts.Type)
 }
@@ -347,6 +489,42 @@ func (adm *AdminClient) ListBatchJobs(ctx context.Context, fl *ListBatchJobsFilt
 	}
 
 	return result, nil
+}
+
+// SupportedBatchJobsHeader is the header key for supported batch jobs included
+// by the server in the list batch jobs response.
+const SupportedBatchJobsHeader = "X-Minio-Supported-Batch-Jobs"
+
+// ListBatchJobTypes lists the supported batch job types.
+func (adm *AdminClient) ListBatchJobTypes(ctx context.Context) ([]BatchJobType, error) {
+	resp, err := adm.executeMethod(ctx, http.MethodHead,
+		requestData{
+			relPath: adminAPIPrefix + "/list-jobs",
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer closeResponse(resp)
+
+	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusUpgradeRequired {
+			// This is the status code returned by community MinIO server (which
+			// does not support HEAD request for this API endpoint). In this
+			// case, we return an empty list of batch job types.
+			return []BatchJobType{}, nil
+		}
+		return nil, httpRespToErrorResponse(resp)
+	}
+
+	supportedBatchJobs := resp.Header.Get(SupportedBatchJobsHeader)
+	supportedBatchJobTypeStrs := strings.Split(supportedBatchJobs, ",")
+	supportedBatchJobTypes := make([]BatchJobType, len(supportedBatchJobTypeStrs))
+	for i, jobTypeStr := range supportedBatchJobTypeStrs {
+		supportedBatchJobTypes[i] = BatchJobType(jobTypeStr)
+	}
+
+	return supportedBatchJobTypes, nil
 }
 
 // CancelBatchJob cancels ongoing batch job.
