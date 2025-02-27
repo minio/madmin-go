@@ -760,3 +760,29 @@ func (adm *AdminClient) TemporaryAccountInfo(ctx context.Context, accessKey stri
 	}
 	return infoResp, nil
 }
+
+// RevokeTokens - rovkes tokens for the specified user
+func (adm *AdminClient) RevokeTokens(ctx context.Context, user, userProvider, tokenType string) error {
+	queryValues := url.Values{}
+	queryValues.Set("user", user)
+	queryValues.Set("userProvider", userProvider)
+	queryValues.Set("tokenType", tokenType)
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/revoke-tokens",
+		queryValues: queryValues,
+	}
+
+	// Execute DELETE on /minio/admin/v3/revoke-tokens
+	resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusNoContent {
+		return httpRespToErrorResponse(resp)
+	}
+
+	return nil
+}
