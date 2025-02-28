@@ -66,11 +66,11 @@ func (adm *AdminClient) HelpConfigKV(ctx context.Context, subSys, key string, en
 	}
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV3 + "/help-config-kv",
+		relPath:     adminAPIPrefixV4 + "/help-config-kv",
 		queryValues: v,
 	}
 
-	// Execute GET on /minio/admin/v3/help-config-kv
+	// Execute GET on /minio/admin/v4/help-config-kv
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 	if err != nil {
 		return Help{}, err

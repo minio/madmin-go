@@ -53,12 +53,12 @@ func (adm *AdminClient) addTier(ctx context.Context, cfg *TierConfig, ignoreInUs
 	queryVals := url.Values{}
 	queryVals.Set("force", strconv.FormatBool(ignoreInUse))
 	reqData := requestData{
-		relPath:     path.Join(adminAPIPrefixV3, tierAPI),
+		relPath:     path.Join(adminAPIPrefixV4, tierAPI),
 		content:     encData,
 		queryValues: queryVals,
 	}
 
-	// Execute PUT on /minio/admin/v3/tier to add a remote tier
+	// Execute PUT on /minio/admin/v4/tier to add a remote tier
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
 	defer closeResponse(resp)
 	if err != nil {
@@ -79,10 +79,10 @@ func (adm *AdminClient) AddTier(ctx context.Context, cfg *TierConfig) error {
 // ListTiers returns a list of remote tiers configured.
 func (adm *AdminClient) ListTiers(ctx context.Context) ([]*TierConfig, error) {
 	reqData := requestData{
-		relPath: path.Join(adminAPIPrefixV3, tierAPI),
+		relPath: path.Join(adminAPIPrefixV4, tierAPI),
 	}
 
-	// Execute GET on /minio/admin/v3/tier to list remote tiers configured.
+	// Execute GET on /minio/admin/v4/tier to list remote tiers configured.
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 	defer closeResponse(resp)
 	if err != nil {
@@ -135,11 +135,11 @@ func (adm *AdminClient) EditTier(ctx context.Context, tierName string, creds Tie
 	}
 
 	reqData := requestData{
-		relPath: path.Join(adminAPIPrefixV3, tierAPI, tierName),
+		relPath: path.Join(adminAPIPrefixV4, tierAPI, tierName),
 		content: encData,
 	}
 
-	// Execute POST on /minio/admin/v3/tier/tierName to edit a tier
+	// Execute POST on /minio/admin/v4/tier/tierName to edit a tier
 	// configured.
 	resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
 	defer closeResponse(resp)
@@ -160,10 +160,10 @@ func (adm *AdminClient) RemoveTier(ctx context.Context, tierName string) error {
 		return ErrTierNameEmpty
 	}
 	reqData := requestData{
-		relPath: path.Join(adminAPIPrefixV3, tierAPI, tierName),
+		relPath: path.Join(adminAPIPrefixV4, tierAPI, tierName),
 	}
 
-	// Execute DELETE on /minio/admin/v3/tier/tierName to remove an empty tier.
+	// Execute DELETE on /minio/admin/v4/tier/tierName to remove an empty tier.
 	resp, err := adm.executeMethod(ctx, http.MethodDelete, reqData)
 	defer closeResponse(resp)
 	if err != nil {
@@ -193,11 +193,11 @@ func (adm *AdminClient) RemoveTierV2(ctx context.Context, tierName string, opts 
 	queryVals.Set("force", strconv.FormatBool(opts.Force))
 
 	reqData := requestData{
-		relPath:     path.Join(adminAPIPrefixV3, tierAPI, tierName),
+		relPath:     path.Join(adminAPIPrefixV4, tierAPI, tierName),
 		queryValues: queryVals,
 	}
 
-	// Execute DELETE on /minio/admin/v3/tier/tierName to remove an empty tier.
+	// Execute DELETE on /minio/admin/v4/tier/tierName to remove an empty tier.
 	resp, err := adm.executeMethod(ctx, http.MethodDelete, reqData)
 	defer closeResponse(resp)
 	if err != nil {
@@ -217,10 +217,10 @@ func (adm *AdminClient) VerifyTier(ctx context.Context, tierName string) error {
 		return ErrTierNameEmpty
 	}
 	reqData := requestData{
-		relPath: path.Join(adminAPIPrefixV3, tierAPI, tierName),
+		relPath: path.Join(adminAPIPrefixV4, tierAPI, tierName),
 	}
 
-	// Execute GET on /minio/admin/v3/tier/tierName to verify tierName's config.
+	// Execute GET on /minio/admin/v4/tier/tierName to verify tierName's config.
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 	defer closeResponse(resp)
 	if err != nil {
@@ -251,10 +251,10 @@ type DailyTierStats struct {
 // hot-tier)
 func (adm *AdminClient) TierStats(ctx context.Context) ([]TierInfo, error) {
 	reqData := requestData{
-		relPath: path.Join(adminAPIPrefixV3, "tier-stats"),
+		relPath: path.Join(adminAPIPrefixV4, "tier-stats"),
 	}
 
-	// Execute GET on /minio/admin/v3/tier-stats to list tier-stats.
+	// Execute GET on /minio/admin/v4/tier-stats to list tier-stats.
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 	defer closeResponse(resp)
 	if err != nil {

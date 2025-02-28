@@ -35,11 +35,11 @@ func (adm *AdminClient) ClearConfigHistoryKV(ctx context.Context, restoreID stri
 	v := url.Values{}
 	v.Set("restoreId", restoreID)
 	reqData := requestData{
-		relPath:     adminAPIPrefixV3 + "/clear-config-history-kv",
+		relPath:     adminAPIPrefixV4 + "/clear-config-history-kv",
 		queryValues: v,
 	}
 
-	// Execute DELETE on /minio/admin/v3/clear-config-history-kv
+	// Execute DELETE on /minio/admin/v4/clear-config-history-kv
 	resp, err := adm.executeMethod(ctx, http.MethodDelete, reqData)
 
 	defer closeResponse(resp)
@@ -60,11 +60,11 @@ func (adm *AdminClient) RestoreConfigHistoryKV(ctx context.Context, restoreID st
 	v := url.Values{}
 	v.Set("restoreId", restoreID)
 	reqData := requestData{
-		relPath:     adminAPIPrefixV3 + "/restore-config-history-kv",
+		relPath:     adminAPIPrefixV4 + "/restore-config-history-kv",
 		queryValues: v,
 	}
 
-	// Execute PUT on /minio/admin/v3/set-config-kv to set config key/value.
+	// Execute PUT on /minio/admin/v4/set-config-kv to set config key/value.
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
 
 	defer closeResponse(resp)
@@ -100,11 +100,11 @@ func (adm *AdminClient) ListConfigHistoryKV(ctx context.Context, count int) ([]C
 	v := url.Values{}
 	v.Set("count", strconv.Itoa(count))
 
-	// Execute GET on /minio/admin/v3/list-config-history-kv
+	// Execute GET on /minio/admin/v4/list-config-history-kv
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
-			relPath:     adminAPIPrefixV3 + "/list-config-history-kv",
+			relPath:     adminAPIPrefixV4 + "/list-config-history-kv",
 			queryValues: v,
 		})
 	defer closeResponse(resp)

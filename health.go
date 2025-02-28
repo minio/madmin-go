@@ -1212,7 +1212,7 @@ func (adm *AdminClient) ServerHealthInfo(ctx context.Context, types []HealthData
 
 	resp, err := adm.executeMethod(
 		ctx, "GET", requestData{
-			relPath:     adminAPIPrefixV3 + "/healthinfo",
+			relPath:     adminAPIPrefixV4 + "/healthinfo",
 			queryValues: v,
 		},
 	)

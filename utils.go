@@ -37,12 +37,10 @@ import (
 // AdminAPIVersion - admin api version used in the request.
 const (
 	// MinIO only supports last two versions
-	AdminAPIVersion   = "v4"
-	AdminAPIVersionV3 = "v3"
+	AdminAPIVersion = "v4"
 
 	// Admin API version prefix
 	adminAPIPrefixV4 = "/" + AdminAPIVersion
-	adminAPIPrefixV3 = "/" + AdminAPIVersionV3
 
 	kmsAPIVersion = "v1"
 	kmsAPIPrefix  = "/" + kmsAPIVersion

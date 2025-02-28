@@ -104,7 +104,7 @@ func (adm AdminClient) GetLogs(ctx context.Context, node string, lineCnt int, lo
 		urlValues.Set("logType", logKind)
 		for {
 			reqData := requestData{
-				relPath:     adminAPIPrefixV3 + "/log",
+				relPath:     adminAPIPrefixV4 + "/log",
 				queryValues: urlValues,
 			}
 			// Execute GET to call log handler

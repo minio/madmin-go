@@ -50,7 +50,7 @@ func (adm *AdminClient) Inspect(ctx context.Context, d InspectOptions) (key []by
 
 	method := ""
 	reqData := requestData{
-		relPath: fmt.Sprintf(adminAPIPrefixV3 + "/inspect-data"),
+		relPath: fmt.Sprintf(adminAPIPrefixV4 + "/inspect-data"),
 	}
 
 	// If the public-key is specified, create a POST request and send
