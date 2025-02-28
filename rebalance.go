@@ -55,11 +55,11 @@ type RebalanceStatus struct {
 
 // RebalanceStart starts a rebalance operation if one isn't in progress already
 func (adm *AdminClient) RebalanceStart(ctx context.Context) (id string, err error) {
-	// Execute POST on /minio/admin/v3/rebalance/start to start a rebalance operation.
+	// Execute POST on /minio/admin/v4/rebalance/start to start a rebalance operation.
 	var resp *http.Response
 	resp, err = adm.executeMethod(ctx,
 		http.MethodPost,
-		requestData{relPath: adminAPIPrefixV3 + "/rebalance/start"})
+		requestData{relPath: adminAPIPrefixV4 + "/rebalance/start"})
 	defer closeResponse(resp)
 	if err != nil {
 		return id, err
@@ -86,10 +86,10 @@ func (adm *AdminClient) RebalanceStart(ctx context.Context) (id string, err erro
 }
 
 func (adm *AdminClient) RebalanceStatus(ctx context.Context) (r RebalanceStatus, err error) {
-	// Execute GET on /minio/admin/v3/rebalance/status to get status of an ongoing rebalance operation.
+	// Execute GET on /minio/admin/v4/rebalance/status to get status of an ongoing rebalance operation.
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
-		requestData{relPath: adminAPIPrefixV3 + "/rebalance/status"})
+		requestData{relPath: adminAPIPrefixV4 + "/rebalance/status"})
 	defer closeResponse(resp)
 	if err != nil {
 		return r, err
@@ -113,10 +113,10 @@ func (adm *AdminClient) RebalanceStatus(ctx context.Context) (r RebalanceStatus,
 }
 
 func (adm *AdminClient) RebalanceStop(ctx context.Context) error {
-	// Execute POST on /minio/admin/v3/rebalance/stop to stop an ongoing rebalance operation.
+	// Execute POST on /minio/admin/v4/rebalance/stop to stop an ongoing rebalance operation.
 	resp, err := adm.executeMethod(ctx,
 		http.MethodPost,
-		requestData{relPath: adminAPIPrefixV3 + "/rebalance/stop"})
+		requestData{relPath: adminAPIPrefixV4 + "/rebalance/stop"})
 	defer closeResponse(resp)
 	if err != nil {
 		return err

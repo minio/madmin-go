@@ -46,11 +46,11 @@ func (adm *AdminClient) UpdateGroupMembers(ctx context.Context, g GroupAddRemove
 	}
 
 	reqData := requestData{
-		relPath: adminAPIPrefixV3 + "/update-group-members",
+		relPath: adminAPIPrefixV4 + "/update-group-members",
 		content: data,
 	}
 
-	// Execute PUT on /minio/admin/v3/update-group-members
+	// Execute PUT on /minio/admin/v4/update-group-members
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
 
 	defer closeResponse(resp)
@@ -80,7 +80,7 @@ func (adm *AdminClient) GetGroupDescription(ctx context.Context, group string) (
 	v := url.Values{}
 	v.Set("group", group)
 	reqData := requestData{
-		relPath:     adminAPIPrefixV3 + "/group",
+		relPath:     adminAPIPrefixV4 + "/group",
 		queryValues: v,
 	}
 
@@ -110,7 +110,7 @@ func (adm *AdminClient) GetGroupDescription(ctx context.Context, group string) (
 // ListGroups - lists all groups names present on the server.
 func (adm *AdminClient) ListGroups(ctx context.Context) ([]string, error) {
 	reqData := requestData{
-		relPath: adminAPIPrefixV3 + "/groups",
+		relPath: adminAPIPrefixV4 + "/groups",
 	}
 
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
@@ -152,7 +152,7 @@ func (adm *AdminClient) SetGroupStatus(ctx context.Context, group string, status
 	v.Set("status", string(status))
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV3 + "/set-group-status",
+		relPath:     adminAPIPrefixV4 + "/set-group-status",
 		queryValues: v,
 	}
 

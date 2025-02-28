@@ -58,11 +58,11 @@ func (adm *AdminClient) InfoCannedPolicy(ctx context.Context, policyName string)
 	queryValues.Set("v", "2")
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV3 + "/info-canned-policy",
+		relPath:     adminAPIPrefixV4 + "/info-canned-policy",
 		queryValues: queryValues,
 	}
 
-	// Execute GET on /minio/admin/v3/info-canned-policy
+	// Execute GET on /minio/admin/v4/info-canned-policy
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 
 	defer closeResponse(resp)
@@ -87,10 +87,10 @@ func (adm *AdminClient) InfoCannedPolicy(ctx context.Context, policyName string)
 // ListCannedPolicies - list all configured canned policies.
 func (adm *AdminClient) ListCannedPolicies(ctx context.Context) (map[string]json.RawMessage, error) {
 	reqData := requestData{
-		relPath: adminAPIPrefixV3 + "/list-canned-policies",
+		relPath: adminAPIPrefixV4 + "/list-canned-policies",
 	}
 
-	// Execute GET on /minio/admin/v3/list-canned-policies
+	// Execute GET on /minio/admin/v4/list-canned-policies
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 
 	defer closeResponse(resp)
@@ -121,11 +121,11 @@ func (adm *AdminClient) RemoveCannedPolicy(ctx context.Context, policyName strin
 	queryValues.Set("name", policyName)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV3 + "/remove-canned-policy",
+		relPath:     adminAPIPrefixV4 + "/remove-canned-policy",
 		queryValues: queryValues,
 	}
 
-	// Execute DELETE on /minio/admin/v3/remove-canned-policy to remove policy.
+	// Execute DELETE on /minio/admin/v4/remove-canned-policy to remove policy.
 	resp, err := adm.executeMethod(ctx, http.MethodDelete, reqData)
 
 	defer closeResponse(resp)
@@ -150,12 +150,12 @@ func (adm *AdminClient) AddCannedPolicy(ctx context.Context, policyName string, 
 	queryValues.Set("name", policyName)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV3 + "/add-canned-policy",
+		relPath:     adminAPIPrefixV4 + "/add-canned-policy",
 		queryValues: queryValues,
 		content:     policy,
 	}
 
-	// Execute PUT on /minio/admin/v3/add-canned-policy to set policy.
+	// Execute PUT on /minio/admin/v4/add-canned-policy to set policy.
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
 
 	defer closeResponse(resp)
@@ -196,7 +196,7 @@ func (adm *AdminClient) attachOrDetachPolicyBuiltin(ctx context.Context, isAttac
 	h.Add("Content-Type", "application/octet-stream")
 	reqData := requestData{
 		customHeaders: h,
-		relPath:       adminAPIPrefixV3 + "/idp/builtin/policy/" + suffix,
+		relPath:       adminAPIPrefixV4 + "/idp/builtin/policy/" + suffix,
 		content:       encBytes,
 	}
 
@@ -249,7 +249,7 @@ func (adm *AdminClient) GetPolicyEntities(ctx context.Context, q PolicyEntitiesQ
 	params["policy"] = q.Policy
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV3 + "/idp/builtin/policy-entities",
+		relPath:     adminAPIPrefixV4 + "/idp/builtin/policy-entities",
 		queryValues: params,
 	}
 

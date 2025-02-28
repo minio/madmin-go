@@ -281,7 +281,7 @@ func (adm *AdminClient) ListKeys(ctx context.Context, pattern string) ([]KMSKeyI
 
 // GetKeyStatus requests status information about the key referenced by keyID
 // from the KMS connected to a MinIO by performing a Admin-API request.
-// It basically hits the `/minio/admin/v3/kms/key/status` API endpoint.
+// It basically hits the `/minio/admin/v4/kms/key/status` API endpoint.
 func (adm *AdminClient) GetKeyStatus(ctx context.Context, keyID string) (*KMSKeyStatus, error) {
 	// GET /minio/kms/v1/key/status?key-id=<keyID>
 	resp, err := adm.doKMSRequest(ctx, "/key/status", http.MethodGet, nil, map[string]string{"key-id": keyID})

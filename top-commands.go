@@ -69,13 +69,13 @@ type TopLockOpts struct {
 
 // ForceUnlock force unlocks input paths...
 func (adm *AdminClient) ForceUnlock(ctx context.Context, paths ...string) error {
-	// Execute POST on /minio/admin/v3/force-unlock
+	// Execute POST on /minio/admin/v4/force-unlock
 	queryVals := make(url.Values)
 	queryVals.Set("paths", strings.Join(paths, ","))
 	resp, err := adm.executeMethod(ctx,
 		http.MethodPost,
 		requestData{
-			relPath:     adminAPIPrefixV3 + "/force-unlock",
+			relPath:     adminAPIPrefixV4 + "/force-unlock",
 			queryValues: queryVals,
 		},
 	)
@@ -94,7 +94,7 @@ func (adm *AdminClient) ForceUnlock(ctx context.Context, paths ...string) error 
 // TopLocksWithOpts - returns the count number of oldest locks currently active on the server.
 // additionally we can also enable `stale` to get stale locks currently present on server.
 func (adm *AdminClient) TopLocksWithOpts(ctx context.Context, opts TopLockOpts) (LockEntries, error) {
-	// Execute GET on /minio/admin/v3/top/locks?count=10
+	// Execute GET on /minio/admin/v4/top/locks?count=10
 	// to get the 'count' number of oldest locks currently
 	// active on the server.
 	queryVals := make(url.Values)
@@ -103,7 +103,7 @@ func (adm *AdminClient) TopLocksWithOpts(ctx context.Context, opts TopLockOpts) 
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
-			relPath:     adminAPIPrefixV3 + "/top/locks",
+			relPath:     adminAPIPrefixV4 + "/top/locks",
 			queryValues: queryVals,
 		},
 	)
