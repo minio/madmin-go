@@ -149,31 +149,31 @@ func (z *ClusterInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				switch msgp.UnsafeString(field) {
 				case "buckets":
-					z.Metrics.Buckets, err = dc.ReadInt()
+					z.Metrics.Buckets, err = dc.ReadUint64()
 					if err != nil {
 						err = msgp.WrapError(err, "Metrics", "Buckets")
 						return
 					}
 				case "objects":
-					z.Metrics.Objects, err = dc.ReadInt()
+					z.Metrics.Objects, err = dc.ReadUint64()
 					if err != nil {
 						err = msgp.WrapError(err, "Metrics", "Objects")
 						return
 					}
 				case "versions":
-					z.Metrics.Versions, err = dc.ReadInt()
+					z.Metrics.Versions, err = dc.ReadUint64()
 					if err != nil {
 						err = msgp.WrapError(err, "Metrics", "Versions")
 						return
 					}
 				case "deleteMarkers":
-					z.Metrics.DeleteMarkers, err = dc.ReadInt()
+					z.Metrics.DeleteMarkers, err = dc.ReadUint64()
 					if err != nil {
 						err = msgp.WrapError(err, "Metrics", "DeleteMarkers")
 						return
 					}
 				case "usage":
-					z.Metrics.Usage, err = dc.ReadInt64()
+					z.Metrics.Usage, err = dc.ReadUint64()
 					if err != nil {
 						err = msgp.WrapError(err, "Metrics", "Usage")
 						return
@@ -331,7 +331,7 @@ func (z *ClusterInfo) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteInt(z.Metrics.Buckets)
+	err = en.WriteUint64(z.Metrics.Buckets)
 	if err != nil {
 		err = msgp.WrapError(err, "Metrics", "Buckets")
 		return
@@ -341,7 +341,7 @@ func (z *ClusterInfo) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteInt(z.Metrics.Objects)
+	err = en.WriteUint64(z.Metrics.Objects)
 	if err != nil {
 		err = msgp.WrapError(err, "Metrics", "Objects")
 		return
@@ -351,7 +351,7 @@ func (z *ClusterInfo) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteInt(z.Metrics.Versions)
+	err = en.WriteUint64(z.Metrics.Versions)
 	if err != nil {
 		err = msgp.WrapError(err, "Metrics", "Versions")
 		return
@@ -361,7 +361,7 @@ func (z *ClusterInfo) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteInt(z.Metrics.DeleteMarkers)
+	err = en.WriteUint64(z.Metrics.DeleteMarkers)
 	if err != nil {
 		err = msgp.WrapError(err, "Metrics", "DeleteMarkers")
 		return
@@ -371,7 +371,7 @@ func (z *ClusterInfo) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteInt64(z.Metrics.Usage)
+	err = en.WriteUint64(z.Metrics.Usage)
 	if err != nil {
 		err = msgp.WrapError(err, "Metrics", "Usage")
 		return
@@ -431,19 +431,19 @@ func (z *ClusterInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	// map header, size 5
 	// string "buckets"
 	o = append(o, 0x85, 0xa7, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73)
-	o = msgp.AppendInt(o, z.Metrics.Buckets)
+	o = msgp.AppendUint64(o, z.Metrics.Buckets)
 	// string "objects"
 	o = append(o, 0xa7, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73)
-	o = msgp.AppendInt(o, z.Metrics.Objects)
+	o = msgp.AppendUint64(o, z.Metrics.Objects)
 	// string "versions"
 	o = append(o, 0xa8, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
-	o = msgp.AppendInt(o, z.Metrics.Versions)
+	o = msgp.AppendUint64(o, z.Metrics.Versions)
 	// string "deleteMarkers"
 	o = append(o, 0xad, 0x64, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x72, 0x73)
-	o = msgp.AppendInt(o, z.Metrics.DeleteMarkers)
+	o = msgp.AppendUint64(o, z.Metrics.DeleteMarkers)
 	// string "usage"
 	o = append(o, 0xa5, 0x75, 0x73, 0x61, 0x67, 0x65)
-	o = msgp.AppendInt64(o, z.Metrics.Usage)
+	o = msgp.AppendUint64(o, z.Metrics.Usage)
 	return
 }
 
@@ -590,31 +590,31 @@ func (z *ClusterInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				switch msgp.UnsafeString(field) {
 				case "buckets":
-					z.Metrics.Buckets, bts, err = msgp.ReadIntBytes(bts)
+					z.Metrics.Buckets, bts, err = msgp.ReadUint64Bytes(bts)
 					if err != nil {
 						err = msgp.WrapError(err, "Metrics", "Buckets")
 						return
 					}
 				case "objects":
-					z.Metrics.Objects, bts, err = msgp.ReadIntBytes(bts)
+					z.Metrics.Objects, bts, err = msgp.ReadUint64Bytes(bts)
 					if err != nil {
 						err = msgp.WrapError(err, "Metrics", "Objects")
 						return
 					}
 				case "versions":
-					z.Metrics.Versions, bts, err = msgp.ReadIntBytes(bts)
+					z.Metrics.Versions, bts, err = msgp.ReadUint64Bytes(bts)
 					if err != nil {
 						err = msgp.WrapError(err, "Metrics", "Versions")
 						return
 					}
 				case "deleteMarkers":
-					z.Metrics.DeleteMarkers, bts, err = msgp.ReadIntBytes(bts)
+					z.Metrics.DeleteMarkers, bts, err = msgp.ReadUint64Bytes(bts)
 					if err != nil {
 						err = msgp.WrapError(err, "Metrics", "DeleteMarkers")
 						return
 					}
 				case "usage":
-					z.Metrics.Usage, bts, err = msgp.ReadInt64Bytes(bts)
+					z.Metrics.Usage, bts, err = msgp.ReadUint64Bytes(bts)
 					if err != nil {
 						err = msgp.WrapError(err, "Metrics", "Usage")
 						return
@@ -649,7 +649,7 @@ func (z *ClusterInfo) Msgsize() (s int) {
 	for za0002 := range z.Pools {
 		s += z.Pools[za0002].Msgsize()
 	}
-	s += 8 + 1 + 8 + msgp.IntSize + 8 + msgp.IntSize + 9 + msgp.IntSize + 14 + msgp.IntSize + 6 + msgp.Int64Size
+	s += 8 + 1 + 8 + msgp.Uint64Size + 8 + msgp.Uint64Size + 9 + msgp.Uint64Size + 14 + msgp.Uint64Size + 6 + msgp.Uint64Size
 	return
 }
 
