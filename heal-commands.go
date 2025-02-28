@@ -254,7 +254,7 @@ func (adm *AdminClient) Heal(ctx context.Context, bucket, prefix string,
 		return healStart, healTaskStatus, err
 	}
 
-	path := fmt.Sprintf(adminAPIPrefixV3+"/heal/%s", bucket)
+	path := fmt.Sprintf(adminAPIPrefixV4+"/heal/%s", bucket)
 	if bucket != "" && prefix != "" {
 		path += "/" + prefix
 	}
@@ -447,7 +447,7 @@ func (adm *AdminClient) BackgroundHealStatus(ctx context.Context) (BgHealState, 
 	// Execute POST request to background heal status api
 	resp, err := adm.executeMethod(ctx,
 		http.MethodPost,
-		requestData{relPath: adminAPIPrefixV3 + "/background-heal/status"})
+		requestData{relPath: adminAPIPrefixV4 + "/background-heal/status"})
 	if err != nil {
 		return BgHealState{}, err
 	}

@@ -39,11 +39,11 @@ type LicenseInfo struct {
 
 // GetLicenseInfo - returns the license info
 func (adm *AdminClient) GetLicenseInfo(ctx context.Context) (*LicenseInfo, error) {
-	// Execute GET on /minio/admin/v3/licenseinfo to get license info.
+	// Execute GET on /minio/admin/v4/licenseinfo to get license info.
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
-			relPath: adminAPIPrefixV3 + "/license-info",
+			relPath: adminAPIPrefixV4 + "/license-info",
 		})
 	defer closeResponse(resp)
 	if err != nil {

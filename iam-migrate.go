@@ -105,7 +105,7 @@ type IAMErrPolicyEntity struct {
 
 // ExportIAM makes an admin call to export IAM data
 func (adm *AdminClient) ExportIAM(ctx context.Context) (io.ReadCloser, error) {
-	path := adminAPIPrefixV3 + "/export-iam"
+	path := adminAPIPrefixV4 + "/export-iam"
 
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet, requestData{
@@ -130,7 +130,7 @@ func (adm *AdminClient) ImportIAM(ctx context.Context, contentReader io.ReadClos
 		return err
 	}
 
-	path := adminAPIPrefixV3 + "/import-iam"
+	path := adminAPIPrefixV4 + "/import-iam"
 	resp, err := adm.executeMethod(ctx,
 		http.MethodPut, requestData{
 			relPath: path,
@@ -156,7 +156,7 @@ func (adm *AdminClient) ImportIAMV2(ctx context.Context, contentReader io.ReadCl
 		return iamr, err
 	}
 
-	path := adminAPIPrefixV3 + "/import-iam-v2"
+	path := adminAPIPrefixV4 + "/import-iam-v2"
 	resp, err := adm.executeMethod(ctx,
 		http.MethodPut, requestData{
 			relPath: path,

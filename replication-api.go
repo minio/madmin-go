@@ -84,11 +84,11 @@ func (adm *AdminClient) BucketReplicationDiff(ctx context.Context, bucketName st
 		}
 
 		reqData := requestData{
-			relPath:     adminAPIPrefixV3 + "/replication/diff",
+			relPath:     adminAPIPrefixV4 + "/replication/diff",
 			queryValues: queryValues,
 		}
 
-		// Execute PUT on /minio/admin/v3/diff to set quota for a bucket.
+		// Execute PUT on /minio/admin/v4/diff to set quota for a bucket.
 		resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
 		if err != nil {
 			diffCh <- DiffInfo{Err: err}
@@ -142,11 +142,11 @@ func (adm *AdminClient) BucketReplicationMRF(ctx context.Context, bucketName str
 			queryValues.Set("node", node)
 		}
 		reqData := requestData{
-			relPath:     adminAPIPrefixV3 + "/replication/mrf",
+			relPath:     adminAPIPrefixV4 + "/replication/mrf",
 			queryValues: queryValues,
 		}
 
-		// Execute GET on /minio/admin/v3/replication/mrf to get mrf backlog for a bucket.
+		// Execute GET on /minio/admin/v4/replication/mrf to get mrf backlog for a bucket.
 		resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 		if err != nil {
 			mrfCh <- ReplicationMRF{Err: err.Error()}

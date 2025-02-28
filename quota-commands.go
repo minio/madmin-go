@@ -54,11 +54,11 @@ func (adm *AdminClient) GetBucketQuota(ctx context.Context, bucket string) (q Bu
 	queryValues.Set("bucket", bucket)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV3 + "/get-bucket-quota",
+		relPath:     adminAPIPrefixV4 + "/get-bucket-quota",
 		queryValues: queryValues,
 	}
 
-	// Execute GET on /minio/admin/v3/get-quota
+	// Execute GET on /minio/admin/v4/get-quota
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 
 	defer closeResponse(resp)
@@ -93,12 +93,12 @@ func (adm *AdminClient) SetBucketQuota(ctx context.Context, bucket string, quota
 	queryValues.Set("bucket", bucket)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV3 + "/set-bucket-quota",
+		relPath:     adminAPIPrefixV4 + "/set-bucket-quota",
 		queryValues: queryValues,
 		content:     data,
 	}
 
-	// Execute PUT on /minio/admin/v3/set-bucket-quota to set quota for a bucket.
+	// Execute PUT on /minio/admin/v4/set-bucket-quota to set quota for a bucket.
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
 
 	defer closeResponse(resp)

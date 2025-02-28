@@ -85,7 +85,7 @@ func (adm *AdminClient) AccountInfo(ctx context.Context, opts AccountOpts) (Acco
 	}
 	resp, err := adm.executeMethod(ctx, http.MethodGet,
 		requestData{
-			relPath:     adminAPIPrefixV3 + "/accountinfo",
+			relPath:     adminAPIPrefixV4 + "/accountinfo",
 			queryValues: q,
 		},
 	)
@@ -163,11 +163,11 @@ func (adm *AdminClient) RemoveUser(ctx context.Context, accessKey string) error 
 	queryValues.Set("accessKey", accessKey)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV3 + "/remove-user",
+		relPath:     adminAPIPrefixV4 + "/remove-user",
 		queryValues: queryValues,
 	}
 
-	// Execute DELETE on /minio/admin/v3/remove-user to remove a user.
+	// Execute DELETE on /minio/admin/v4/remove-user to remove a user.
 	resp, err := adm.executeMethod(ctx, http.MethodDelete, reqData)
 
 	defer closeResponse(resp)
@@ -185,10 +185,10 @@ func (adm *AdminClient) RemoveUser(ctx context.Context, accessKey string) error 
 // ListUsers - list all users.
 func (adm *AdminClient) ListUsers(ctx context.Context) (map[string]UserInfo, error) {
 	reqData := requestData{
-		relPath: adminAPIPrefixV3 + "/list-users",
+		relPath: adminAPIPrefixV4 + "/list-users",
 	}
 
-	// Execute GET on /minio/admin/v3/list-users
+	// Execute GET on /minio/admin/v4/list-users
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 
 	defer closeResponse(resp)
@@ -219,11 +219,11 @@ func (adm *AdminClient) GetUserInfo(ctx context.Context, name string) (u UserInf
 	queryValues.Set("accessKey", name)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV3 + "/user-info",
+		relPath:     adminAPIPrefixV4 + "/user-info",
 		queryValues: queryValues,
 	}
 
-	// Execute GET on /minio/admin/v3/user-info
+	// Execute GET on /minio/admin/v4/user-info
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 
 	defer closeResponse(resp)
@@ -273,12 +273,12 @@ func (adm *AdminClient) SetUserReq(ctx context.Context, accessKey string, req Ad
 	queryValues.Set("accessKey", accessKey)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV3 + "/add-user",
+		relPath:     adminAPIPrefixV4 + "/add-user",
 		queryValues: queryValues,
 		content:     econfigBytes,
 	}
 
-	// Execute PUT on /minio/admin/v3/add-user to set a user.
+	// Execute PUT on /minio/admin/v4/add-user to set a user.
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
 
 	defer closeResponse(resp)
@@ -313,11 +313,11 @@ func (adm *AdminClient) SetUserStatus(ctx context.Context, accessKey string, sta
 	queryValues.Set("status", string(status))
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV3 + "/set-user-status",
+		relPath:     adminAPIPrefixV4 + "/set-user-status",
 		queryValues: queryValues,
 	}
 
-	// Execute PUT on /minio/admin/v3/set-user-status to set status.
+	// Execute PUT on /minio/admin/v4/set-user-status to set status.
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
 
 	defer closeResponse(resp)
@@ -419,11 +419,11 @@ func (adm *AdminClient) AddServiceAccount(ctx context.Context, opts AddServiceAc
 	}
 
 	reqData := requestData{
-		relPath: adminAPIPrefixV3 + "/add-service-account",
+		relPath: adminAPIPrefixV4 + "/add-service-account",
 		content: econfigBytes,
 	}
 
-	// Execute PUT on /minio/admin/v3/add-service-account to set a user.
+	// Execute PUT on /minio/admin/v4/add-service-account to set a user.
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
 	defer closeResponse(resp)
 	if err != nil {
@@ -462,7 +462,7 @@ func (adm *AdminClient) AddServiceAccountLDAP(ctx context.Context, opts AddServi
 	}
 
 	reqData := requestData{
-		relPath: adminAPIPrefixV3 + "/idp/ldap/add-service-account",
+		relPath: adminAPIPrefixV4 + "/idp/ldap/add-service-account",
 		content: econfigBytes,
 	}
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
@@ -527,12 +527,12 @@ func (adm *AdminClient) UpdateServiceAccount(ctx context.Context, accessKey stri
 	queryValues.Set("accessKey", accessKey)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV3 + "/update-service-account",
+		relPath:     adminAPIPrefixV4 + "/update-service-account",
 		content:     econfigBytes,
 		queryValues: queryValues,
 	}
 
-	// Execute POST on /minio/admin/v3/update-service-account to edit a service account
+	// Execute POST on /minio/admin/v4/update-service-account to edit a service account
 	resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
 	defer closeResponse(resp)
 	if err != nil {
@@ -567,11 +567,11 @@ func (adm *AdminClient) ListServiceAccounts(ctx context.Context, user string) (L
 	queryValues.Set("user", user)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV3 + "/list-service-accounts",
+		relPath:     adminAPIPrefixV4 + "/list-service-accounts",
 		queryValues: queryValues,
 	}
 
-	// Execute GET on /minio/admin/v3/list-service-accounts
+	// Execute GET on /minio/admin/v4/list-service-accounts
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 	defer closeResponse(resp)
 	if err != nil {
@@ -626,11 +626,11 @@ func (adm *AdminClient) ListAccessKeysBulk(ctx context.Context, users []string, 
 	}
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV3 + "/list-access-keys-bulk",
+		relPath:     adminAPIPrefixV4 + "/list-access-keys-bulk",
 		queryValues: queryValues,
 	}
 
-	// Execute GET on /minio/admin/v3/list-access-keys-bulk
+	// Execute GET on /minio/admin/v4/list-access-keys-bulk
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 	defer closeResponse(resp)
 	if err != nil {
@@ -670,11 +670,11 @@ func (adm *AdminClient) InfoServiceAccount(ctx context.Context, accessKey string
 	queryValues.Set("accessKey", accessKey)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV3 + "/info-service-account",
+		relPath:     adminAPIPrefixV4 + "/info-service-account",
 		queryValues: queryValues,
 	}
 
-	// Execute GET on /minio/admin/v3/info-service-account
+	// Execute GET on /minio/admin/v4/info-service-account
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 	defer closeResponse(resp)
 	if err != nil {
@@ -704,11 +704,11 @@ func (adm *AdminClient) DeleteServiceAccount(ctx context.Context, serviceAccount
 	queryValues.Set("accessKey", serviceAccount)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV3 + "/delete-service-account",
+		relPath:     adminAPIPrefixV4 + "/delete-service-account",
 		queryValues: queryValues,
 	}
 
-	// Execute DELETE on /minio/admin/v3/delete-service-account
+	// Execute DELETE on /minio/admin/v4/delete-service-account
 	resp, err := adm.executeMethod(ctx, http.MethodDelete, reqData)
 	defer closeResponse(resp)
 	if err != nil {
@@ -731,11 +731,11 @@ func (adm *AdminClient) TemporaryAccountInfo(ctx context.Context, accessKey stri
 	queryValues.Set("accessKey", accessKey)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV3 + "/temporary-account-info",
+		relPath:     adminAPIPrefixV4 + "/temporary-account-info",
 		queryValues: queryValues,
 	}
 
-	// Execute GET on /minio/admin/v3/temporary-account-info
+	// Execute GET on /minio/admin/v4/temporary-account-info
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 	defer closeResponse(resp)
 	if err != nil {

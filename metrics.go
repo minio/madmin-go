@@ -81,7 +81,7 @@ type MetricsOptions struct {
 // Metrics makes an admin call to retrieve metrics.
 // The provided function is called for each received entry.
 func (adm *AdminClient) Metrics(ctx context.Context, o MetricsOptions, out func(RealtimeMetrics)) (err error) {
-	path := fmt.Sprintf(adminAPIPrefixV3 + "/metrics")
+	path := fmt.Sprintf(adminAPIPrefixV4 + "/metrics")
 	q := make(url.Values)
 	q.Set("types", strconv.FormatUint(uint64(o.Type), 10))
 	q.Set("n", strconv.Itoa(o.N))

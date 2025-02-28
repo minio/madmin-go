@@ -98,7 +98,7 @@ func (adm *AdminClient) ClientPerf(ctx context.Context, dur time.Duration) (resu
 	reader.Start()
 	_, err = adm.executeMethod(ctx, http.MethodPost, requestData{
 		queryValues:   queryVals,
-		relPath:       adminAPIPrefixV3 + "/speedtest/client/devnull",
+		relPath:       adminAPIPrefixV4 + "/speedtest/client/devnull",
 		contentReader: reader,
 	})
 	reader.End()
@@ -108,7 +108,7 @@ func (adm *AdminClient) ClientPerf(ctx context.Context, dur time.Duration) (resu
 
 	resp, err := adm.executeMethod(context.Background(), http.MethodPost, requestData{
 		queryValues: queryVals,
-		relPath:     adminAPIPrefixV3 + "/speedtest/client/devnull/extratime",
+		relPath:     adminAPIPrefixV4 + "/speedtest/client/devnull/extratime",
 	})
 	if err != nil {
 		return ClientPerfResult{}, err

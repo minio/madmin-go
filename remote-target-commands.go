@@ -77,11 +77,11 @@ func (adm *AdminClient) ListRemoteTargets(ctx context.Context, bucket, arnType s
 	queryValues.Set("type", arnType)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV3 + "/list-remote-targets",
+		relPath:     adminAPIPrefixV4 + "/list-remote-targets",
 		queryValues: queryValues,
 	}
 
-	// Execute GET on /minio/admin/v3/list-remote-targets
+	// Execute GET on /minio/admin/v4/list-remote-targets
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 
 	defer closeResponse(resp)
@@ -117,12 +117,12 @@ func (adm *AdminClient) SetRemoteTarget(ctx context.Context, bucket string, targ
 	queryValues.Set("bucket", bucket)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV3 + "/set-remote-target",
+		relPath:     adminAPIPrefixV4 + "/set-remote-target",
 		queryValues: queryValues,
 		content:     encData,
 	}
 
-	// Execute PUT on /minio/admin/v3/set-remote-target to set a target for this bucket of specific arn type.
+	// Execute PUT on /minio/admin/v4/set-remote-target to set a target for this bucket of specific arn type.
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
 
 	defer closeResponse(resp)
@@ -241,12 +241,12 @@ func (adm *AdminClient) UpdateRemoteTarget(ctx context.Context, target *BucketTa
 	}
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV3 + "/set-remote-target",
+		relPath:     adminAPIPrefixV4 + "/set-remote-target",
 		queryValues: queryValues,
 		content:     encData,
 	}
 
-	// Execute PUT on /minio/admin/v3/set-remote-target to set a target for this bucket of specific arn type.
+	// Execute PUT on /minio/admin/v4/set-remote-target to set a target for this bucket of specific arn type.
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
 
 	defer closeResponse(resp)
@@ -275,11 +275,11 @@ func (adm *AdminClient) RemoveRemoteTarget(ctx context.Context, bucket, arn stri
 	queryValues.Set("arn", arn)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV3 + "/remove-remote-target",
+		relPath:     adminAPIPrefixV4 + "/remove-remote-target",
 		queryValues: queryValues,
 	}
 
-	// Execute PUT on /minio/admin/v3/remove-remote-target to remove a target for this bucket
+	// Execute PUT on /minio/admin/v4/remove-remote-target to remove a target for this bucket
 	// with specific ARN
 	resp, err := adm.executeMethod(ctx, http.MethodDelete, reqData)
 	defer closeResponse(resp)
