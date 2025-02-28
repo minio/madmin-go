@@ -49,11 +49,11 @@ type ClusterInfo struct {
 	Domain   []string   `msg:"domain"`
 	Pools    []PoolInfo `msg:"pools"`
 	Metrics  struct {
-		Buckets       int   `msg:"buckets"`
-		Objects       int   `msg:"objects"`
-		Versions      int   `msg:"versions"`
-		DeleteMarkers int   `msg:"deleteMarkers"`
-		Usage         int64 `msg:"usage"`
+		Buckets       uint64 `msg:"buckets"`
+		Objects       uint64 `msg:"objects"`
+		Versions      uint64 `msg:"versions"`
+		DeleteMarkers uint64 `msg:"deleteMarkers"`
+		Usage         uint64 `msg:"usage"`
 	} `msg:"metrics"`
 }
 
