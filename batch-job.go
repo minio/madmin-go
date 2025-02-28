@@ -27,6 +27,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -37,13 +38,25 @@ const (
 	BatchJobReplicate BatchJobType = "replicate"
 	BatchJobKeyRotate BatchJobType = "keyrotate"
 	BatchJobExpire    BatchJobType = "expire"
+	BatchJobCatalog   BatchJobType = "catalog"
 )
 
 // SupportedJobTypes supported job types
+//
+// Deprecated: Use ClientSupportedJobTypes instead.
 var SupportedJobTypes = []BatchJobType{
 	BatchJobReplicate,
 	BatchJobKeyRotate,
 	BatchJobExpire,
+	// add new job types
+}
+
+// ClientSupportedJobTypes supported job types for client
+var ClientSupportedJobTypes = []BatchJobType{
+	BatchJobReplicate,
+	BatchJobKeyRotate,
+	BatchJobExpire,
+	BatchJobCatalog,
 	// add new job types
 }
 
@@ -58,7 +71,7 @@ const BatchJobReplicateTemplate = `replicate:
     prefix: PREFIX # 'PREFIX' is optional
     # If your source is the 'local' alias specified to 'mc batch start', then the 'endpoint' and 'credentials' fields are optional and can be omitted
     # Either the 'source' or 'remote' *must* be the "local" deployment
-    endpoint: "http[s]://HOSTNAME:PORT" 
+    endpoint: "http[s]://HOSTNAME:PORT"
     # path: "on|off|auto" # "on" enables path-style bucket lookup. "off" enables virtual host (DNS)-style bucket lookup. Defaults to "auto"
     credentials:
       accessKey: ACCESS-KEY # Required
@@ -191,6 +204,57 @@ const BatchJobExpireTemplate = `expire:
     delay: 500ms # least amount of delay between each retry
 `
 
+const BatchJobCatalogTemplate = `catalog:
+  apiVersion: v1
+  id: mycatjob # unique identifier for the catalog job
+
+  # The source bucket to list and catalog.
+  bucket: mysourcebucket
+
+  # destination info for catalog output objects.
+  destination:
+    bucket: mybucket
+    prefix: myprefix # optional prefix ('/' will be appended if not present)
+    format: ndjson # csv or ndjson (newline delimited json)
+
+  # scheduling info for the catalog job: valid values are:
+  #   "once|daily|weekly|monthly|yearly"
+  #
+  # once: starts immediately and runs only once
+  #
+  # All the following schedules do not start the job immediately on submission.
+  # daily: runs every day at roughly the same time
+  # weekly: runs every sunday at roughly the same time
+  # monthly: runs on first sunday of every month.
+  # yearly: runs on first sunday of January every year.
+	#
+  # FIXME: only once supported for initial implementation
+  schedule: "once"
+
+  # Mode provides a tradeoff between speed and consistency:
+  #   "fast" -> use fewer resources and complete faster, but some output data
+  #     may be stale. This is better for tasks where approximate results are
+  #     acceptable. For example: storage usage
+  #   "strict" -> use more resources and complete slower, but avoids returning
+  #     stale data.
+  # In either case, objects modified (created, replaced, removed) during the
+  # catalog job run may not be included in the output.
+  mode: fast
+
+  # "versions" specifies if only current or all versions of each object should
+  # be processed.
+  versions: current # Other valid value is "all"
+
+  # The list of optional output fields to include. Please refer to documentation
+  # for the full list of default and optional fields available.
+  includeFields:
+    - ETag
+    - IsMultipartUpload
+
+  filters:
+    - Not yet implemented.
+`
+
 // BatchJobResult returned by StartBatchJob
 type BatchJobResult struct {
 	ID      string        `json:"id"`
@@ -301,6 +365,8 @@ func (adm *AdminClient) GenerateBatchJob(_ context.Context, opts GenerateBatchJo
 		return BatchJobKeyRotateTemplate, nil
 	case BatchJobExpire:
 		return BatchJobExpireTemplate, nil
+	case BatchJobCatalog:
+		return BatchJobCatalogTemplate, nil
 	}
 	return "", fmt.Errorf("unknown batch job requested: %s", opts.Type)
 }
@@ -347,6 +413,38 @@ func (adm *AdminClient) ListBatchJobs(ctx context.Context, fl *ListBatchJobsFilt
 	}
 
 	return result, nil
+}
+
+// SupportedBatchJobsHeader is the header key for supported batch jobs included
+// by the server in the list batch jobs response.
+const SupportedBatchJobsHeader = "X-MinIO-Supported-Batch-Jobs"
+
+// ListBatchJobTypes lists the supported batch job types.
+func (adm *AdminClient) ListBatchJobTypes(ctx context.Context) ([]string, error) {
+	resp, err := adm.executeMethod(ctx, http.MethodHead,
+		requestData{
+			relPath: adminAPIPrefix + "/list-jobs",
+		},
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer closeResponse(resp)
+
+	if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode == http.StatusUpgradeRequired {
+			// This is the status code returned by community MinIO server (which
+			// does not support HEAD request for this API endpoint). In this
+			// case, we return an empty list of batch job types.
+			return []string{}, nil
+		}
+		return nil, httpRespToErrorResponse(resp)
+	}
+
+	supportedBatchJobs := resp.Header.Get(SupportedBatchJobsHeader)
+	supportedBatchJobTypes := strings.Split(supportedBatchJobs, ",")
+
+	return supportedBatchJobTypes, nil
 }
 
 // CancelBatchJob cancels ongoing batch job.

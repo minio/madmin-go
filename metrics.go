@@ -489,6 +489,7 @@ type JobMetric struct {
 	Replicate *ReplicateInfo   `json:"replicate,omitempty"`
 	KeyRotate *KeyRotationInfo `json:"rotation,omitempty"`
 	Expired   *ExpirationInfo  `json:"expired,omitempty"`
+	Catalog   *CatalogInfo     `json:"catalog,omitempty"`
 }
 
 type ReplicateInfo struct {
@@ -521,6 +522,22 @@ type KeyRotationInfo struct {
 	// Verbose information
 	Objects       int64 `json:"objects"`
 	ObjectsFailed int64 `json:"objectsFailed"`
+}
+
+type CatalogInfo struct {
+	LastBucketScanned string `json:"lastBucketScanned"`
+	LastObjectScanned string `json:"lastObjectScanned"`
+	LastBucketMatched string `json:"lastBucketMatched"`
+	LastObjectMatched string `json:"lastObjectMatched"`
+
+	ObjectsScannedCount uint64 `json:"objectsScannedCount"`
+	ObjectsMatchedCount uint64 `json:"objectsMatchedCount"`
+
+	// Represents the number of objects' metadata that were written to output
+	// objects.
+	RecordsWrittenCount uint64 `json:"recordsWrittenCount"`
+	// Represents the number of output objects created.
+	OutputObjectsCount uint64 `json:"outputObjectsCount"`
 }
 
 // Merge other into 'o'.
