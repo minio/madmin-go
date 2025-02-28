@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/minio/madmin-go/v3"
+	"github.com/minio/madmin-go/v4"
 )
 
 // ObjectVersion object version key/versionId
