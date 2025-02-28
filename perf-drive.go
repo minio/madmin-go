@@ -62,7 +62,7 @@ func (adm *AdminClient) DriveSpeedtest(ctx context.Context, opts DriveSpeedTestO
 	queryVals.Set("filesize", strconv.FormatUint(opts.FileSize, 10))
 	resp, err := adm.executeMethod(ctx,
 		http.MethodPost, requestData{
-			relPath:     adminAPIPrefixV3 + "/speedtest/drive",
+			relPath:     adminAPIPrefixV4 + "/speedtest/drive",
 			queryValues: queryVals,
 		})
 	if err != nil {

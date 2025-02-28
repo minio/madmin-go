@@ -28,10 +28,10 @@ import (
 
 // GetConfig - returns the config.json of a minio setup, incoming data is encrypted.
 func (adm *AdminClient) GetConfig(ctx context.Context) ([]byte, error) {
-	// Execute GET on /minio/admin/v3/config to get config of a setup.
+	// Execute GET on /minio/admin/v4/config to get config of a setup.
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
-		requestData{relPath: adminAPIPrefixV3 + "/config"})
+		requestData{relPath: adminAPIPrefixV4 + "/config"})
 	defer closeResponse(resp)
 	if err != nil {
 		return nil, err
@@ -64,11 +64,11 @@ func (adm *AdminClient) SetConfig(ctx context.Context, config io.Reader) (err er
 	}
 
 	reqData := requestData{
-		relPath: adminAPIPrefixV3 + "/config",
+		relPath: adminAPIPrefixV4 + "/config",
 		content: econfigBytes,
 	}
 
-	// Execute PUT on /minio/admin/v3/config to set config.
+	// Execute PUT on /minio/admin/v4/config to set config.
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
 
 	defer closeResponse(resp)

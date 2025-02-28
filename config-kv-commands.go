@@ -33,11 +33,11 @@ func (adm *AdminClient) DelConfigKV(ctx context.Context, k string) (restart bool
 	}
 
 	reqData := requestData{
-		relPath: adminAPIPrefixV3 + "/del-config-kv",
+		relPath: adminAPIPrefixV4 + "/del-config-kv",
 		content: econfigBytes,
 	}
 
-	// Execute DELETE on /minio/admin/v3/del-config-kv to delete config key.
+	// Execute DELETE on /minio/admin/v4/del-config-kv to delete config key.
 	resp, err := adm.executeMethod(ctx, http.MethodDelete, reqData)
 
 	defer closeResponse(resp)
@@ -68,11 +68,11 @@ func (adm *AdminClient) SetConfigKV(ctx context.Context, kv string) (restart boo
 	}
 
 	reqData := requestData{
-		relPath: adminAPIPrefixV3 + "/set-config-kv",
+		relPath: adminAPIPrefixV4 + "/set-config-kv",
 		content: econfigBytes,
 	}
 
-	// Execute PUT on /minio/admin/v3/set-config-kv to set config key/value.
+	// Execute PUT on /minio/admin/v4/set-config-kv to set config key/value.
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
 
 	defer closeResponse(resp)
@@ -92,11 +92,11 @@ func (adm *AdminClient) GetConfigKV(ctx context.Context, key string) ([]byte, er
 	v := url.Values{}
 	v.Set("key", key)
 
-	// Execute GET on /minio/admin/v3/get-config-kv?key={key} to get value of key.
+	// Execute GET on /minio/admin/v4/get-config-kv?key={key} to get value of key.
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
-			relPath:     adminAPIPrefixV3 + "/get-config-kv",
+			relPath:     adminAPIPrefixV4 + "/get-config-kv",
 			queryValues: v,
 		})
 	defer closeResponse(resp)
@@ -124,11 +124,11 @@ func (adm *AdminClient) GetConfigKVWithOptions(ctx context.Context, key string, 
 		v.Set("env", "")
 	}
 
-	// Execute GET on /minio/admin/v3/get-config-kv?key={key} to get value of key.
+	// Execute GET on /minio/admin/v4/get-config-kv?key={key} to get value of key.
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
-			relPath:     adminAPIPrefixV3 + "/get-config-kv",
+			relPath:     adminAPIPrefixV4 + "/get-config-kv",
 			queryValues: v,
 		})
 	defer closeResponse(resp)
