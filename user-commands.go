@@ -658,8 +658,8 @@ func (adm *AdminClient) ListAccessKeysBulk(ctx context.Context, users []string, 
 }
 
 type OpenIDUserAccessKeys struct {
-	UserID          string               `json:"accessKey"`
-	Sub             string               `json:"sub"`
+	MinioAccessKey  string               `json:"minioAccessKey"`
+	ID              string               `json:"ID"`
 	ReadableName    string               `json:"readableName"`
 	ServiceAccounts []ServiceAccountInfo `json:"serviceAccounts"`
 	STSKeys         []ServiceAccountInfo `json:"stsKeys"`
