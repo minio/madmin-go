@@ -200,3 +200,56 @@ func (adm *AdminClient) PoolInfo(ctx context.Context, poolIndex int, options ...
 
 	return info, nil
 }
+
+// SetInfoOpts ask for additional data from the server
+// this is not used at the moment, kept here for future
+// extensibility.
+//
+//msgp:ignore SetInfoOpts
+type SetInfoOpts struct{}
+
+// ExtendedErasureSetInfo provides information per erasure set
+type ExtendedErasureSetInfo struct {
+	ID                 int    `json:"id"`
+	RawUsage           uint64 `json:"rawUsage"`
+	RawCapacity        uint64 `json:"rawCapacity"`
+	Usage              uint64 `json:"usage"`
+	ObjectsCount       uint64 `json:"objectsCount"`
+	VersionsCount      uint64 `json:"versionsCount"`
+	DeleteMarkersCount uint64 `json:"deleteMarkersCount"`
+	HealDisks          int    `json:"healDisks"`
+	Drives             []Disk `json:"drives,omitempty"`
+}
+
+func (adm *AdminClient) SetInfo(ctx context.Context, poolIndex int, setIndex int, options ...func(*SetInfoOpts)) (ExtendedErasureSetInfo, error) {
+	srvOpts := &SetInfoOpts{}
+
+	for _, o := range options {
+		o(srvOpts)
+	}
+
+	values := make(url.Values)
+	resp, err := adm.executeMethod(ctx,
+		http.MethodGet,
+		requestData{
+			relPath:     adminAPIPrefixV4 + fmt.Sprintf("/set/%d/%d", poolIndex, setIndex),
+			queryValues: values,
+		})
+	defer closeResponse(resp)
+	if err != nil {
+		return ExtendedErasureSetInfo{}, err
+	}
+
+	// Check response http status code
+	if resp.StatusCode != http.StatusOK {
+		return ExtendedErasureSetInfo{}, httpRespToErrorResponse(resp)
+	}
+
+	// Unmarshal the server's msgp response
+	var info ExtendedErasureSetInfo
+	if err = info.DecodeMsg(msgp.NewReader(resp.Body)); err != nil {
+		return ExtendedErasureSetInfo{}, err
+	}
+
+	return info, nil
+}
