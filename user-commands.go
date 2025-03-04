@@ -761,15 +761,23 @@ func (adm *AdminClient) TemporaryAccountInfo(ctx context.Context, accessKey stri
 	return infoResp, nil
 }
 
-// RevokeTokens - rovkes tokens for the specified user
-func (adm *AdminClient) RevokeTokens(ctx context.Context, user, userProvider, tokenType string) error {
+const (
+	// User provider types
+	InternalProvider    = "internal"
+	LDAPProvider        = "ldap"
+	OpenIDProvider      = "openid"
+	K8SProvider         = "k8s"
+	CertificateProvider = "tls"
+	CustomTokenProvider = "custom"
+)
+
+func (adm *AdminClient) revokeTokens(ctx context.Context, user, tokenType string, provider string) error {
 	queryValues := url.Values{}
 	queryValues.Set("user", user)
-	queryValues.Set("userProvider", userProvider)
-	queryValues.Set("tokenType", tokenType)
+	queryValues.Set("revokeType", tokenType)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefix + "/revoke-tokens",
+		relPath:     adminAPIPrefix + "/revoke-tokens/" + provider,
 		queryValues: queryValues,
 	}
 
@@ -785,4 +793,35 @@ func (adm *AdminClient) RevokeTokens(ctx context.Context, user, userProvider, to
 	}
 
 	return nil
+}
+
+// RevokeTokens - rovkes tokens for the specified internal user, or
+// for an external user being sent by one of its STS credentials.
+func (adm *AdminClient) RevokeTokens(ctx context.Context, user, tokenType string) error {
+	return adm.revokeTokens(ctx, user, tokenType, InternalProvider)
+}
+
+// RevokeLDAPTokens - revokes tokens for the specified LDAP user.
+func (adm *AdminClient) RevokeLDAPTokens(ctx context.Context, user, tokenType string) error {
+	return adm.revokeTokens(ctx, user, tokenType, LDAPProvider)
+}
+
+// RevokeOpenIDTokens - revokes tokens for the specified OpenID user.
+func (adm *AdminClient) RevokeOpenIDTokens(ctx context.Context, user, tokenType string) error {
+	return adm.revokeTokens(ctx, user, tokenType, OpenIDProvider)
+}
+
+// RevokeK8STokens - revokes tokens for the specified K8S user.
+func (adm *AdminClient) RevokeK8STokens(ctx context.Context, user, tokenType string) error {
+	return adm.revokeTokens(ctx, user, tokenType, K8SProvider)
+}
+
+// RevokeCertificateTokens - revokes tokens for the specified TLS user.
+func (adm *AdminClient) RevokeCertificateTokens(ctx context.Context, user, tokenType string) error {
+	return adm.revokeTokens(ctx, user, tokenType, CertificateProvider)
+}
+
+// RevokeCustomTokens - revokes tokens for the specified custom token user.
+func (adm *AdminClient) RevokeCustomTokens(ctx context.Context, user, tokenType string) error {
+	return adm.revokeTokens(ctx, user, tokenType, CustomTokenProvider)
 }
