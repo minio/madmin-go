@@ -210,15 +210,15 @@ type SetInfoOpts struct{}
 
 // ExtendedErasureSetInfo provides information per erasure set
 type ExtendedErasureSetInfo struct {
-	ID                 int     `json:"id"`
-	RawUsage           uint64  `json:"rawUsage"`
-	RawCapacity        uint64  `json:"rawCapacity"`
-	Usage              uint64  `json:"usage"`
-	ObjectsCount       uint64  `json:"objectsCount"`
-	VersionsCount      uint64  `json:"versionsCount"`
-	DeleteMarkersCount uint64  `json:"deleteMarkersCount"`
-	HealDisks          int     `json:"healDisks"`
-	Drives             []*Disk `json:"drives,omitempty"`
+	ID                 int    `json:"id"`
+	RawUsage           uint64 `json:"rawUsage"`
+	RawCapacity        uint64 `json:"rawCapacity"`
+	Usage              uint64 `json:"usage"`
+	ObjectsCount       uint64 `json:"objectsCount"`
+	VersionsCount      uint64 `json:"versionsCount"`
+	DeleteMarkersCount uint64 `json:"deleteMarkersCount"`
+	HealDisks          int    `json:"healDisks"`
+	Drives             []Disk `json:"drives,omitempty"`
 }
 
 func (adm *AdminClient) SetInfo(ctx context.Context, poolIndex int, setIndex int, options ...func(*SetInfoOpts)) (ExtendedErasureSetInfo, error) {

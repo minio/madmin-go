@@ -731,25 +731,13 @@ func (z *ExtendedErasureSetInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 			if cap(z.Drives) >= int(zb0002) {
 				z.Drives = (z.Drives)[:zb0002]
 			} else {
-				z.Drives = make([]*Disk, zb0002)
+				z.Drives = make([]Disk, zb0002)
 			}
 			for za0001 := range z.Drives {
-				if dc.IsNil() {
-					err = dc.ReadNil()
-					if err != nil {
-						err = msgp.WrapError(err, "Drives", za0001)
-						return
-					}
-					z.Drives[za0001] = nil
-				} else {
-					if z.Drives[za0001] == nil {
-						z.Drives[za0001] = new(Disk)
-					}
-					err = z.Drives[za0001].DecodeMsg(dc)
-					if err != nil {
-						err = msgp.WrapError(err, "Drives", za0001)
-						return
-					}
+				err = z.Drives[za0001].DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "Drives", za0001)
+					return
 				}
 			}
 			zb0001Mask |= 0x1
@@ -879,17 +867,10 @@ func (z *ExtendedErasureSetInfo) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 			for za0001 := range z.Drives {
-				if z.Drives[za0001] == nil {
-					err = en.WriteNil()
-					if err != nil {
-						return
-					}
-				} else {
-					err = z.Drives[za0001].EncodeMsg(en)
-					if err != nil {
-						err = msgp.WrapError(err, "Drives", za0001)
-						return
-					}
+				err = z.Drives[za0001].EncodeMsg(en)
+				if err != nil {
+					err = msgp.WrapError(err, "Drives", za0001)
+					return
 				}
 			}
 		}
@@ -942,14 +923,10 @@ func (z *ExtendedErasureSetInfo) MarshalMsg(b []byte) (o []byte, err error) {
 			o = append(o, 0xa6, 0x64, 0x72, 0x69, 0x76, 0x65, 0x73)
 			o = msgp.AppendArrayHeader(o, uint32(len(z.Drives)))
 			for za0001 := range z.Drives {
-				if z.Drives[za0001] == nil {
-					o = msgp.AppendNil(o)
-				} else {
-					o, err = z.Drives[za0001].MarshalMsg(o)
-					if err != nil {
-						err = msgp.WrapError(err, "Drives", za0001)
-						return
-					}
+				o, err = z.Drives[za0001].MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "Drives", za0001)
+					return
 				}
 			}
 		}
@@ -1035,24 +1012,13 @@ func (z *ExtendedErasureSetInfo) UnmarshalMsg(bts []byte) (o []byte, err error) 
 			if cap(z.Drives) >= int(zb0002) {
 				z.Drives = (z.Drives)[:zb0002]
 			} else {
-				z.Drives = make([]*Disk, zb0002)
+				z.Drives = make([]Disk, zb0002)
 			}
 			for za0001 := range z.Drives {
-				if msgp.IsNil(bts) {
-					bts, err = msgp.ReadNilBytes(bts)
-					if err != nil {
-						return
-					}
-					z.Drives[za0001] = nil
-				} else {
-					if z.Drives[za0001] == nil {
-						z.Drives[za0001] = new(Disk)
-					}
-					bts, err = z.Drives[za0001].UnmarshalMsg(bts)
-					if err != nil {
-						err = msgp.WrapError(err, "Drives", za0001)
-						return
-					}
+				bts, err = z.Drives[za0001].UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Drives", za0001)
+					return
 				}
 			}
 			zb0001Mask |= 0x1
@@ -1077,11 +1043,7 @@ func (z *ExtendedErasureSetInfo) UnmarshalMsg(bts []byte) (o []byte, err error) 
 func (z *ExtendedErasureSetInfo) Msgsize() (s int) {
 	s = 1 + 3 + msgp.IntSize + 9 + msgp.Uint64Size + 12 + msgp.Uint64Size + 6 + msgp.Uint64Size + 13 + msgp.Uint64Size + 14 + msgp.Uint64Size + 19 + msgp.Uint64Size + 10 + msgp.IntSize + 7 + msgp.ArrayHeaderSize
 	for za0001 := range z.Drives {
-		if z.Drives[za0001] == nil {
-			s += msgp.NilSize
-		} else {
-			s += z.Drives[za0001].Msgsize()
-		}
+		s += z.Drives[za0001].Msgsize()
 	}
 	return
 }
@@ -1609,90 +1571,5 @@ func (z *PoolInfo) Msgsize() (s int) {
 	for za0001 := range z.Hosts {
 		s += msgp.StringPrefixSize + len(z.Hosts[za0001])
 	}
-	return
-}
-
-// DecodeMsg implements msgp.Decodable
-func (z *SetInfoOpts) DecodeMsg(dc *msgp.Reader) (err error) {
-	var field []byte
-	_ = field
-	var zb0001 uint32
-	zb0001, err = dc.ReadMapHeader()
-	if err != nil {
-		err = msgp.WrapError(err)
-		return
-	}
-	for zb0001 > 0 {
-		zb0001--
-		field, err = dc.ReadMapKeyPtr()
-		if err != nil {
-			err = msgp.WrapError(err)
-			return
-		}
-		switch msgp.UnsafeString(field) {
-		default:
-			err = dc.Skip()
-			if err != nil {
-				err = msgp.WrapError(err)
-				return
-			}
-		}
-	}
-	return
-}
-
-// EncodeMsg implements msgp.Encodable
-func (z SetInfoOpts) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 0
-	_ = z
-	err = en.Append(0x80)
-	if err != nil {
-		return
-	}
-	return
-}
-
-// MarshalMsg implements msgp.Marshaler
-func (z SetInfoOpts) MarshalMsg(b []byte) (o []byte, err error) {
-	o = msgp.Require(b, z.Msgsize())
-	// map header, size 0
-	_ = z
-	o = append(o, 0x80)
-	return
-}
-
-// UnmarshalMsg implements msgp.Unmarshaler
-func (z *SetInfoOpts) UnmarshalMsg(bts []byte) (o []byte, err error) {
-	var field []byte
-	_ = field
-	var zb0001 uint32
-	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
-	if err != nil {
-		err = msgp.WrapError(err)
-		return
-	}
-	for zb0001 > 0 {
-		zb0001--
-		field, bts, err = msgp.ReadMapKeyZC(bts)
-		if err != nil {
-			err = msgp.WrapError(err)
-			return
-		}
-		switch msgp.UnsafeString(field) {
-		default:
-			bts, err = msgp.Skip(bts)
-			if err != nil {
-				err = msgp.WrapError(err)
-				return
-			}
-		}
-	}
-	o = bts
-	return
-}
-
-// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
-func (z SetInfoOpts) Msgsize() (s int) {
-	s = 1
 	return
 }
