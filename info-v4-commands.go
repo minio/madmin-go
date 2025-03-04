@@ -201,14 +201,14 @@ func (adm *AdminClient) PoolInfo(ctx context.Context, poolIndex int, options ...
 	return info, nil
 }
 
-// PoolInfoOpts ask for additional data from the server
+// SetInfoOpts ask for additional data from the server
 // this is not used at the moment, kept here for future
 // extensibility.
 //
-//msgp:ignore PoolInfoOpts
+//msgp:ignore SetInfoOpts
 type SetInfoOpts struct{}
 
-// ErasureSetInfo provides information per erasure set
+// ExtendedErasureSetInfo provides information per erasure set
 type ExtendedErasureSetInfo struct {
 	ID                 int     `json:"id"`
 	RawUsage           uint64  `json:"rawUsage"`
