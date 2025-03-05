@@ -654,6 +654,401 @@ func (z *ClusterInfo) Msgsize() (s int) {
 }
 
 // DecodeMsg implements msgp.Decodable
+func (z *ExtendedErasureSetInfo) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 1 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "id":
+			z.ID, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "ID")
+				return
+			}
+		case "rawUsage":
+			z.RawUsage, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "RawUsage")
+				return
+			}
+		case "rawCapacity":
+			z.RawCapacity, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "RawCapacity")
+				return
+			}
+		case "usage":
+			z.Usage, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "Usage")
+				return
+			}
+		case "objectsCount":
+			z.ObjectsCount, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "ObjectsCount")
+				return
+			}
+		case "versionsCount":
+			z.VersionsCount, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "VersionsCount")
+				return
+			}
+		case "deleteMarkersCount":
+			z.DeleteMarkersCount, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "DeleteMarkersCount")
+				return
+			}
+		case "healDisks":
+			z.HealDisks, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "HealDisks")
+				return
+			}
+		case "drives":
+			var zb0002 uint32
+			zb0002, err = dc.ReadArrayHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "Drives")
+				return
+			}
+			if cap(z.Drives) >= int(zb0002) {
+				z.Drives = (z.Drives)[:zb0002]
+			} else {
+				z.Drives = make([]Disk, zb0002)
+			}
+			for za0001 := range z.Drives {
+				err = z.Drives[za0001].DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "Drives", za0001)
+					return
+				}
+			}
+			zb0001Mask |= 0x1
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if (zb0001Mask & 0x1) == 0 {
+		z.Drives = nil
+	}
+
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *ExtendedErasureSetInfo) EncodeMsg(en *msgp.Writer) (err error) {
+	// check for omitted fields
+	zb0001Len := uint32(9)
+	var zb0001Mask uint16 /* 9 bits */
+	_ = zb0001Mask
+	if z.Drives == nil {
+		zb0001Len--
+		zb0001Mask |= 0x100
+	}
+	// variable map header, size zb0001Len
+	err = en.Append(0x80 | uint8(zb0001Len))
+	if err != nil {
+		return
+	}
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// write "id"
+		err = en.Append(0xa2, 0x69, 0x64)
+		if err != nil {
+			return
+		}
+		err = en.WriteInt(z.ID)
+		if err != nil {
+			err = msgp.WrapError(err, "ID")
+			return
+		}
+		// write "rawUsage"
+		err = en.Append(0xa8, 0x72, 0x61, 0x77, 0x55, 0x73, 0x61, 0x67, 0x65)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint64(z.RawUsage)
+		if err != nil {
+			err = msgp.WrapError(err, "RawUsage")
+			return
+		}
+		// write "rawCapacity"
+		err = en.Append(0xab, 0x72, 0x61, 0x77, 0x43, 0x61, 0x70, 0x61, 0x63, 0x69, 0x74, 0x79)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint64(z.RawCapacity)
+		if err != nil {
+			err = msgp.WrapError(err, "RawCapacity")
+			return
+		}
+		// write "usage"
+		err = en.Append(0xa5, 0x75, 0x73, 0x61, 0x67, 0x65)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint64(z.Usage)
+		if err != nil {
+			err = msgp.WrapError(err, "Usage")
+			return
+		}
+		// write "objectsCount"
+		err = en.Append(0xac, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint64(z.ObjectsCount)
+		if err != nil {
+			err = msgp.WrapError(err, "ObjectsCount")
+			return
+		}
+		// write "versionsCount"
+		err = en.Append(0xad, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint64(z.VersionsCount)
+		if err != nil {
+			err = msgp.WrapError(err, "VersionsCount")
+			return
+		}
+		// write "deleteMarkersCount"
+		err = en.Append(0xb2, 0x64, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x72, 0x73, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint64(z.DeleteMarkersCount)
+		if err != nil {
+			err = msgp.WrapError(err, "DeleteMarkersCount")
+			return
+		}
+		// write "healDisks"
+		err = en.Append(0xa9, 0x68, 0x65, 0x61, 0x6c, 0x44, 0x69, 0x73, 0x6b, 0x73)
+		if err != nil {
+			return
+		}
+		err = en.WriteInt(z.HealDisks)
+		if err != nil {
+			err = msgp.WrapError(err, "HealDisks")
+			return
+		}
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
+			// write "drives"
+			err = en.Append(0xa6, 0x64, 0x72, 0x69, 0x76, 0x65, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteArrayHeader(uint32(len(z.Drives)))
+			if err != nil {
+				err = msgp.WrapError(err, "Drives")
+				return
+			}
+			for za0001 := range z.Drives {
+				err = z.Drives[za0001].EncodeMsg(en)
+				if err != nil {
+					err = msgp.WrapError(err, "Drives", za0001)
+					return
+				}
+			}
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *ExtendedErasureSetInfo) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// check for omitted fields
+	zb0001Len := uint32(9)
+	var zb0001Mask uint16 /* 9 bits */
+	_ = zb0001Mask
+	if z.Drives == nil {
+		zb0001Len--
+		zb0001Mask |= 0x100
+	}
+	// variable map header, size zb0001Len
+	o = append(o, 0x80|uint8(zb0001Len))
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// string "id"
+		o = append(o, 0xa2, 0x69, 0x64)
+		o = msgp.AppendInt(o, z.ID)
+		// string "rawUsage"
+		o = append(o, 0xa8, 0x72, 0x61, 0x77, 0x55, 0x73, 0x61, 0x67, 0x65)
+		o = msgp.AppendUint64(o, z.RawUsage)
+		// string "rawCapacity"
+		o = append(o, 0xab, 0x72, 0x61, 0x77, 0x43, 0x61, 0x70, 0x61, 0x63, 0x69, 0x74, 0x79)
+		o = msgp.AppendUint64(o, z.RawCapacity)
+		// string "usage"
+		o = append(o, 0xa5, 0x75, 0x73, 0x61, 0x67, 0x65)
+		o = msgp.AppendUint64(o, z.Usage)
+		// string "objectsCount"
+		o = append(o, 0xac, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+		o = msgp.AppendUint64(o, z.ObjectsCount)
+		// string "versionsCount"
+		o = append(o, 0xad, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+		o = msgp.AppendUint64(o, z.VersionsCount)
+		// string "deleteMarkersCount"
+		o = append(o, 0xb2, 0x64, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x72, 0x73, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+		o = msgp.AppendUint64(o, z.DeleteMarkersCount)
+		// string "healDisks"
+		o = append(o, 0xa9, 0x68, 0x65, 0x61, 0x6c, 0x44, 0x69, 0x73, 0x6b, 0x73)
+		o = msgp.AppendInt(o, z.HealDisks)
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
+			// string "drives"
+			o = append(o, 0xa6, 0x64, 0x72, 0x69, 0x76, 0x65, 0x73)
+			o = msgp.AppendArrayHeader(o, uint32(len(z.Drives)))
+			for za0001 := range z.Drives {
+				o, err = z.Drives[za0001].MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "Drives", za0001)
+					return
+				}
+			}
+		}
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *ExtendedErasureSetInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 1 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "id":
+			z.ID, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ID")
+				return
+			}
+		case "rawUsage":
+			z.RawUsage, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "RawUsage")
+				return
+			}
+		case "rawCapacity":
+			z.RawCapacity, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "RawCapacity")
+				return
+			}
+		case "usage":
+			z.Usage, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Usage")
+				return
+			}
+		case "objectsCount":
+			z.ObjectsCount, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ObjectsCount")
+				return
+			}
+		case "versionsCount":
+			z.VersionsCount, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "VersionsCount")
+				return
+			}
+		case "deleteMarkersCount":
+			z.DeleteMarkersCount, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "DeleteMarkersCount")
+				return
+			}
+		case "healDisks":
+			z.HealDisks, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "HealDisks")
+				return
+			}
+		case "drives":
+			var zb0002 uint32
+			zb0002, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Drives")
+				return
+			}
+			if cap(z.Drives) >= int(zb0002) {
+				z.Drives = (z.Drives)[:zb0002]
+			} else {
+				z.Drives = make([]Disk, zb0002)
+			}
+			for za0001 := range z.Drives {
+				bts, err = z.Drives[za0001].UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Drives", za0001)
+					return
+				}
+			}
+			zb0001Mask |= 0x1
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if (zb0001Mask & 0x1) == 0 {
+		z.Drives = nil
+	}
+
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *ExtendedErasureSetInfo) Msgsize() (s int) {
+	s = 1 + 3 + msgp.IntSize + 9 + msgp.Uint64Size + 12 + msgp.Uint64Size + 6 + msgp.Uint64Size + 13 + msgp.Uint64Size + 14 + msgp.Uint64Size + 19 + msgp.Uint64Size + 10 + msgp.IntSize + 7 + msgp.ArrayHeaderSize
+	for za0001 := range z.Drives {
+		s += z.Drives[za0001].Msgsize()
+	}
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *PoolInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
