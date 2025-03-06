@@ -547,3 +547,25 @@ func (adm *AdminClient) CancelBatchJob(ctx context.Context, jobID string) error 
 	}
 	return nil
 }
+
+// CatalogDataFile contains information about an output file from a catalog job run.
+type CatalogDataFile struct {
+	Key         string `json:"key"`
+	Size        uint64 `json:"size"`
+	MD5Checksum string `json:"MD5Checksum"`
+}
+
+// CatalogManifestVersion represents the version of a catalog manifest.
+type CatalogManifestVersion string
+
+const (
+	CatalogManifestVersionV1 CatalogManifestVersion = "v1"
+)
+
+// CatalogManifest represents the manifest of a catalog job's result.
+type CatalogManifest struct {
+	Version        CatalogManifestVersion `json:"version"`
+	JobID          string                 `json:"jobID"`
+	StartTimestamp string                 `json:"startTimestamp"`
+	Files          []CatalogDataFile      `json:"files"`
+}

@@ -557,6 +557,12 @@ func (z *CatalogInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "ManifestPathObject")
 				return
 			}
+		case "errorMsg":
+			z.ErrorMsg, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "ErrorMsg")
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -570,9 +576,9 @@ func (z *CatalogInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *CatalogInfo) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 10
+	// map header, size 11
 	// write "lastBucketScanned"
-	err = en.Append(0x8a, 0xb1, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x53, 0x63, 0x61, 0x6e, 0x6e, 0x65, 0x64)
+	err = en.Append(0x8b, 0xb1, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x53, 0x63, 0x61, 0x6e, 0x6e, 0x65, 0x64)
 	if err != nil {
 		return
 	}
@@ -671,15 +677,25 @@ func (z *CatalogInfo) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "ManifestPathObject")
 		return
 	}
+	// write "errorMsg"
+	err = en.Append(0xa8, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x4d, 0x73, 0x67)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.ErrorMsg)
+	if err != nil {
+		err = msgp.WrapError(err, "ErrorMsg")
+		return
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z *CatalogInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 10
+	// map header, size 11
 	// string "lastBucketScanned"
-	o = append(o, 0x8a, 0xb1, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x53, 0x63, 0x61, 0x6e, 0x6e, 0x65, 0x64)
+	o = append(o, 0x8b, 0xb1, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x53, 0x63, 0x61, 0x6e, 0x6e, 0x65, 0x64)
 	o = msgp.AppendString(o, z.LastBucketScanned)
 	// string "lastObjectScanned"
 	o = append(o, 0xb1, 0x6c, 0x61, 0x73, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x53, 0x63, 0x61, 0x6e, 0x6e, 0x65, 0x64)
@@ -708,6 +724,9 @@ func (z *CatalogInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "manifestPathObject"
 	o = append(o, 0xb2, 0x6d, 0x61, 0x6e, 0x69, 0x66, 0x65, 0x73, 0x74, 0x50, 0x61, 0x74, 0x68, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74)
 	o = msgp.AppendString(o, z.ManifestPathObject)
+	// string "errorMsg"
+	o = append(o, 0xa8, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x4d, 0x73, 0x67)
+	o = msgp.AppendString(o, z.ErrorMsg)
 	return
 }
 
@@ -789,6 +808,12 @@ func (z *CatalogInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "ManifestPathObject")
 				return
 			}
+		case "errorMsg":
+			z.ErrorMsg, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ErrorMsg")
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -803,7 +828,7 @@ func (z *CatalogInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *CatalogInfo) Msgsize() (s int) {
-	s = 1 + 18 + msgp.StringPrefixSize + len(z.LastBucketScanned) + 18 + msgp.StringPrefixSize + len(z.LastObjectScanned) + 18 + msgp.StringPrefixSize + len(z.LastBucketMatched) + 18 + msgp.StringPrefixSize + len(z.LastObjectMatched) + 20 + msgp.Uint64Size + 20 + msgp.Uint64Size + 20 + msgp.Uint64Size + 19 + msgp.Uint64Size + 19 + msgp.StringPrefixSize + len(z.ManifestPathBucket) + 19 + msgp.StringPrefixSize + len(z.ManifestPathObject)
+	s = 1 + 18 + msgp.StringPrefixSize + len(z.LastBucketScanned) + 18 + msgp.StringPrefixSize + len(z.LastObjectScanned) + 18 + msgp.StringPrefixSize + len(z.LastBucketMatched) + 18 + msgp.StringPrefixSize + len(z.LastObjectMatched) + 20 + msgp.Uint64Size + 20 + msgp.Uint64Size + 20 + msgp.Uint64Size + 19 + msgp.Uint64Size + 19 + msgp.StringPrefixSize + len(z.ManifestPathBucket) + 19 + msgp.StringPrefixSize + len(z.ManifestPathObject) + 9 + msgp.StringPrefixSize + len(z.ErrorMsg)
 	return
 }
 
