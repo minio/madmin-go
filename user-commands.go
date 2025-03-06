@@ -771,17 +771,38 @@ const (
 	CustomTokenProvider = "custom"
 )
 
-func (adm *AdminClient) revokeTokens(ctx context.Context, user, tokenType string, provider string) error {
+// RevokeTokensReq is the request options of the revoke tokens admin call.
+// If User is empty and requestor is STS, the requestor's tokens are revoked.
+type RevokeTokensReq struct {
+	User            string `json:"user"`
+	TokenRevokeType string `json:"tokenRevokeType"`
+	FullRevoke      bool   `json:"fullRevoke"`
+}
+
+func (r *RevokeTokensReq) Validate() error {
+	if r.TokenRevokeType == "" && !r.FullRevoke {
+		return errors.New("one of TokenRevokeType or FullRevoke must be set")
+	}
+	if r.TokenRevokeType != "" && r.FullRevoke {
+		return errors.New("only one of TokenRevokeType or FullRevoke must be set, not both")
+	}
+	return nil
+}
+
+func (adm *AdminClient) revokeTokens(ctx context.Context, opts RevokeTokensReq, provider string) error {
 	queryValues := url.Values{}
-	queryValues.Set("user", user)
-	queryValues.Set("revokeType", tokenType)
+	queryValues.Set("user", opts.User)
+	queryValues.Set("tokenRevokeType", opts.TokenRevokeType)
+	if opts.FullRevoke {
+		queryValues.Set("fullRevoke", "true")
+	}
 
 	reqData := requestData{
 		relPath:     adminAPIPrefix + "/revoke-tokens/" + provider,
 		queryValues: queryValues,
 	}
 
-	// Execute DELETE on /minio/admin/v3/revoke-tokens
+	// Execute POST on /minio/admin/v3/revoke-tokens/{provider}
 	resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
 	defer closeResponse(resp)
 	if err != nil {
@@ -795,33 +816,13 @@ func (adm *AdminClient) revokeTokens(ctx context.Context, user, tokenType string
 	return nil
 }
 
-// RevokeTokens - rovkes tokens for the specified internal user, or
-// for an external user being sent by one of its STS credentials.
-func (adm *AdminClient) RevokeTokens(ctx context.Context, user, tokenType string) error {
-	return adm.revokeTokens(ctx, user, tokenType, InternalProvider)
+// RevokeTokens - revokes tokens for the specified internal (builtin) user, or
+// for an external (LDAP, OpenID, etc.) user being sent by one of its STS credentials.
+func (adm *AdminClient) RevokeTokens(ctx context.Context, opts RevokeTokensReq) error {
+	return adm.revokeTokens(ctx, opts, InternalProvider)
 }
 
 // RevokeLDAPTokens - revokes tokens for the specified LDAP user.
-func (adm *AdminClient) RevokeLDAPTokens(ctx context.Context, user, tokenType string) error {
-	return adm.revokeTokens(ctx, user, tokenType, LDAPProvider)
-}
-
-// RevokeOpenIDTokens - revokes tokens for the specified OpenID user.
-func (adm *AdminClient) RevokeOpenIDTokens(ctx context.Context, user, tokenType string) error {
-	return adm.revokeTokens(ctx, user, tokenType, OpenIDProvider)
-}
-
-// RevokeK8STokens - revokes tokens for the specified K8S user.
-func (adm *AdminClient) RevokeK8STokens(ctx context.Context, user, tokenType string) error {
-	return adm.revokeTokens(ctx, user, tokenType, K8SProvider)
-}
-
-// RevokeCertificateTokens - revokes tokens for the specified TLS user.
-func (adm *AdminClient) RevokeCertificateTokens(ctx context.Context, user, tokenType string) error {
-	return adm.revokeTokens(ctx, user, tokenType, CertificateProvider)
-}
-
-// RevokeCustomTokens - revokes tokens for the specified custom token user.
-func (adm *AdminClient) RevokeCustomTokens(ctx context.Context, user, tokenType string) error {
-	return adm.revokeTokens(ctx, user, tokenType, CustomTokenProvider)
+func (adm *AdminClient) RevokeLDAPTokens(ctx context.Context, opts RevokeTokensReq) error {
+	return adm.revokeTokens(ctx, opts, LDAPProvider)
 }
