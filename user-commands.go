@@ -772,7 +772,8 @@ const (
 )
 
 // RevokeTokensReq is the request options of the revoke tokens admin call.
-// If User is empty and requestor is STS, the requestor's tokens are revoked.
+// If User is empty, the requestor's tokens are revoked.
+// If requestor is STS, leaving TokenRevokeType empty revokes requestor's type of tokens.
 type RevokeTokensReq struct {
 	User            string `json:"user"`
 	TokenRevokeType string `json:"tokenRevokeType"`
@@ -780,8 +781,8 @@ type RevokeTokensReq struct {
 }
 
 func (r *RevokeTokensReq) Validate() error {
-	if r.TokenRevokeType == "" && !r.FullRevoke {
-		return errors.New("one of TokenRevokeType or FullRevoke must be set")
+	if r.User != "" && r.TokenRevokeType == "" && !r.FullRevoke {
+		return errors.New("one of TokenRevokeType or FullRevoke must be set when User is set")
 	}
 	if r.TokenRevokeType != "" && r.FullRevoke {
 		return errors.New("only one of TokenRevokeType or FullRevoke must be set, not both")
