@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2024 MinIO, Inc.
+// Copyright (c) 2015-2025 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -1147,9 +1147,7 @@ const (
 	HealthDataTypeMinioConfig HealthDataType = "minioconfig"
 	HealthDataTypeSysCPU      HealthDataType = "syscpu"
 	HealthDataTypeSysDriveHw  HealthDataType = "sysdrivehw"
-	HealthDataTypeSysDocker   HealthDataType = "sysdocker" // is this really needed?
 	HealthDataTypeSysOsInfo   HealthDataType = "sysosinfo"
-	HealthDataTypeSysLoad     HealthDataType = "sysload" // provides very little info. Making it TBD
 	HealthDataTypeSysMem      HealthDataType = "sysmem"
 	HealthDataTypeSysNet      HealthDataType = "sysnet"
 	HealthDataTypeSysProcess  HealthDataType = "sysprocess"
@@ -1164,9 +1162,7 @@ var HealthDataTypesMap = map[string]HealthDataType{
 	"minioconfig": HealthDataTypeMinioConfig,
 	"syscpu":      HealthDataTypeSysCPU,
 	"sysdrivehw":  HealthDataTypeSysDriveHw,
-	"sysdocker":   HealthDataTypeSysDocker,
 	"sysosinfo":   HealthDataTypeSysOsInfo,
-	"sysload":     HealthDataTypeSysLoad,
 	"sysmem":      HealthDataTypeSysMem,
 	"sysnet":      HealthDataTypeSysNet,
 	"sysprocess":  HealthDataTypeSysProcess,
@@ -1181,9 +1177,7 @@ var HealthDataTypesList = []HealthDataType{
 	HealthDataTypeMinioConfig,
 	HealthDataTypeSysCPU,
 	HealthDataTypeSysDriveHw,
-	HealthDataTypeSysDocker,
 	HealthDataTypeSysOsInfo,
-	HealthDataTypeSysLoad,
 	HealthDataTypeSysMem,
 	HealthDataTypeSysNet,
 	HealthDataTypeSysProcess,
