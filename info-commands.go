@@ -425,6 +425,8 @@ type ServerProperties struct {
 	MinioEnvVars   map[string]string `json:"minio_env_vars,omitempty"`
 	Edition        string            `json:"edition"`
 	License        *LicenseInfo      `json:"license,omitempty"`
+	IsLeader            bool              `json:"is_leader"`
+	ILMExpiryInProgress bool              `json:"ilm_expiry_in_progress"`
 }
 
 // MemStats is strip down version of runtime.MemStats containing memory stats of MinIO server.
