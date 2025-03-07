@@ -823,7 +823,7 @@ func (adm *AdminClient) RevokeTokens(ctx context.Context, opts RevokeTokensReq) 
 	return adm.revokeTokens(ctx, opts, InternalProvider)
 }
 
-// RevokeLDAPTokens - revokes tokens for the specified LDAP user.
-func (adm *AdminClient) RevokeLDAPTokens(ctx context.Context, opts RevokeTokensReq) error {
+// RevokeTokensLDAP - revokes tokens for the specified LDAP user.
+func (adm *AdminClient) RevokeTokensLDAP(ctx context.Context, opts RevokeTokensReq) error {
 	return adm.revokeTokens(ctx, opts, LDAPProvider)
 }
