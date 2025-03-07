@@ -407,23 +407,25 @@ type ErasureBackend struct {
 
 // ServerProperties holds server information
 type ServerProperties struct {
-	State          string            `json:"state,omitempty"`
-	Endpoint       string            `json:"endpoint,omitempty"`
-	Scheme         string            `json:"scheme,omitempty"`
-	Uptime         int64             `json:"uptime,omitempty"`
-	Version        string            `json:"version,omitempty"`
-	CommitID       string            `json:"commitID,omitempty"`
-	Network        map[string]string `json:"network,omitempty"`
-	Disks          []Disk            `json:"drives,omitempty"`
-	PoolNumber     int               `json:"poolNumber,omitempty"` // Only set if len(PoolNumbers) == 1
-	PoolNumbers    []int             `json:"poolNumbers,omitempty"`
-	MemStats       MemStats          `json:"mem_stats"`
-	GoMaxProcs     int               `json:"go_max_procs,omitempty"`
-	NumCPU         int               `json:"num_cpu,omitempty"`
-	RuntimeVersion string            `json:"runtime_version,omitempty"`
-	GCStats        *GCStats          `json:"gc_stats,omitempty"`
-	MinioEnvVars   map[string]string `json:"minio_env_vars,omitempty"`
-	Edition        string            `json:"edition"`
+	State               string            `json:"state,omitempty"`
+	Endpoint            string            `json:"endpoint,omitempty"`
+	Scheme              string            `json:"scheme,omitempty"`
+	Uptime              int64             `json:"uptime,omitempty"`
+	Version             string            `json:"version,omitempty"`
+	CommitID            string            `json:"commitID,omitempty"`
+	Network             map[string]string `json:"network,omitempty"`
+	Disks               []Disk            `json:"drives,omitempty"`
+	PoolNumber          int               `json:"poolNumber,omitempty"` // Only set if len(PoolNumbers) == 1
+	PoolNumbers         []int             `json:"poolNumbers,omitempty"`
+	MemStats            MemStats          `json:"mem_stats"`
+	GoMaxProcs          int               `json:"go_max_procs,omitempty"`
+	NumCPU              int               `json:"num_cpu,omitempty"`
+	RuntimeVersion      string            `json:"runtime_version,omitempty"`
+	GCStats             *GCStats          `json:"gc_stats,omitempty"`
+	MinioEnvVars        map[string]string `json:"minio_env_vars,omitempty"`
+	Edition             string            `json:"edition"`
+	IsLeader            bool              `json:"is_leader"`
+	ILMExpiryInProgress bool              `json:"ilm_expiry_in_progress"`
 }
 
 // MemStats is strip down version of runtime.MemStats containing memory stats of MinIO server.
