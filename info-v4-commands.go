@@ -257,11 +257,11 @@ func (adm *AdminClient) SetInfo(ctx context.Context, poolIndex int, setIndex int
 // extensibility.
 //
 //msgp:ignore DriveInfoOpts
-type DriveInfoOpts struct{}
+type DiskInfoOpts struct{}
 
-// DriveInfo returns pool information about a specific pool referenced by poolIndex
-func (adm *AdminClient) DriveInfo(ctx context.Context, poolIndex, setIndex, driveIndex int, options ...func(*DriveInfoOpts)) (Disk, error) {
-	srvOpts := &DriveInfoOpts{}
+// DiskInfo returns pool information about a specific pool referenced by poolIndex
+func (adm *AdminClient) DiskInfo(ctx context.Context, poolIndex, setIndex, diskIndex int, options ...func(*DiskInfoOpts)) (Disk, error) {
+	srvOpts := &DiskInfoOpts{}
 
 	for _, o := range options {
 		o(srvOpts)
@@ -271,7 +271,7 @@ func (adm *AdminClient) DriveInfo(ctx context.Context, poolIndex, setIndex, driv
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
-			relPath:     adminAPIPrefixV4 + fmt.Sprintf("/drive/%d/%d/%d", poolIndex, setIndex, driveIndex),
+			relPath:     adminAPIPrefixV4 + fmt.Sprintf("/drive/%d/%d/%d", poolIndex, setIndex, diskIndex),
 			queryValues: values,
 		})
 	defer closeResponse(resp)
