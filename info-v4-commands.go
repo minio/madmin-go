@@ -252,11 +252,11 @@ func (adm *AdminClient) SetInfo(ctx context.Context, poolIndex int, setIndex int
 	return info, nil
 }
 
-// DriveInfoOpts ask for additional data from the server
+// DiskInfoOpts ask for additional data from the server
 // this is not used at the moment, kept here for future
 // extensibility.
 //
-//msgp:ignore DriveInfoOpts
+//msgp:ignore DiskInfoOpts
 type DiskInfoOpts struct{}
 
 // DiskInfo returns pool information about a specific pool referenced by poolIndex
