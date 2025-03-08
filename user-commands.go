@@ -761,8 +761,8 @@ func (adm *AdminClient) TemporaryAccountInfo(ctx context.Context, accessKey stri
 	return infoResp, nil
 }
 
+// User provider types
 const (
-	// User provider types
 	InternalProvider    = "internal"
 	LDAPProvider        = "ldap"
 	OpenIDProvider      = "openid"
