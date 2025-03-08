@@ -1048,6 +1048,7 @@ type ServerInfo struct {
 	GCStats        *GCStats          `json:"gc_stats,omitempty"`
 	MinioEnvVars   map[string]string `json:"minio_env_vars,omitempty"`
 	Edition        string            `json:"edition"`
+	License        *LicenseInfo      `json:"license,omitempty"`
 }
 
 // MinioInfo contains MinIO server and object storage information.
