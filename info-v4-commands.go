@@ -105,12 +105,10 @@ func (adm *AdminClient) ClusterInfo(ctx context.Context, options ...func(*Cluste
 		return ClusterInfo{}, err
 	}
 
-	// Check response http status code
 	if resp.StatusCode != http.StatusOK {
 		return ClusterInfo{}, httpRespToErrorResponse(resp)
 	}
 
-	// Unmarshal the server's msgp response
 	var info ClusterInfo
 	if err = info.DecodeMsg(msgp.NewReader(resp.Body)); err != nil {
 		return ClusterInfo{}, err
@@ -146,12 +144,10 @@ func (adm *AdminClient) PoolList(ctx context.Context, options ...func(*PoolInfoO
 		return nil, err
 	}
 
-	// Check response http status code
 	if resp.StatusCode != http.StatusOK {
 		return nil, httpRespToErrorResponse(resp)
 	}
 
-	// Unmarshal the server's msgp response
 	mr := msgp.NewReader(resp.Body)
 	for {
 		var info PoolInfo
@@ -187,12 +183,10 @@ func (adm *AdminClient) PoolInfo(ctx context.Context, poolIndex int, options ...
 		return PoolInfo{}, err
 	}
 
-	// Check response http status code
 	if resp.StatusCode != http.StatusOK {
 		return PoolInfo{}, httpRespToErrorResponse(resp)
 	}
 
-	// Unmarshal the server's msgp response
 	var info PoolInfo
 	if err = info.DecodeMsg(msgp.NewReader(resp.Body)); err != nil {
 		return PoolInfo{}, err
@@ -206,7 +200,9 @@ func (adm *AdminClient) PoolInfo(ctx context.Context, poolIndex int, options ...
 // extensibility.
 //
 //msgp:ignore SetInfoOpts
-type SetInfoOpts struct{}
+type SetInfoOpts struct {
+	Metrics bool
+}
 
 // ExtendedErasureSetInfo provides information per erasure set
 type ExtendedErasureSetInfo struct {
@@ -218,7 +214,7 @@ type ExtendedErasureSetInfo struct {
 	VersionsCount      uint64 `json:"versionsCount"`
 	DeleteMarkersCount uint64 `json:"deleteMarkersCount"`
 	HealDisks          int    `json:"healDisks"`
-	Drives             []Disk `json:"drives,omitempty"`
+	Disks              []Disk `json:"drives,omitempty"`
 }
 
 func (adm *AdminClient) SetInfo(ctx context.Context, poolIndex int, setIndex int, options ...func(*SetInfoOpts)) (ExtendedErasureSetInfo, error) {
@@ -229,6 +225,10 @@ func (adm *AdminClient) SetInfo(ctx context.Context, poolIndex int, setIndex int
 	}
 
 	values := make(url.Values)
+	if srvOpts.Metrics {
+		values.Add("metrics", "true")
+	}
+
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
@@ -240,16 +240,53 @@ func (adm *AdminClient) SetInfo(ctx context.Context, poolIndex int, setIndex int
 		return ExtendedErasureSetInfo{}, err
 	}
 
-	// Check response http status code
 	if resp.StatusCode != http.StatusOK {
 		return ExtendedErasureSetInfo{}, httpRespToErrorResponse(resp)
 	}
 
-	// Unmarshal the server's msgp response
 	var info ExtendedErasureSetInfo
 	if err = info.DecodeMsg(msgp.NewReader(resp.Body)); err != nil {
 		return ExtendedErasureSetInfo{}, err
 	}
 
 	return info, nil
+}
+
+// DiskInfoOpts ask for additional data from the server
+// this is not used at the moment, kept here for future
+// extensibility.
+//
+//msgp:ignore DiskInfoOpts
+type DiskInfoOpts struct{}
+
+// DiskInfo returns pool information about a specific pool referenced by poolIndex
+func (adm *AdminClient) DiskInfo(ctx context.Context, poolIndex, setIndex, diskIndex int, options ...func(*DiskInfoOpts)) (Disk, error) {
+	srvOpts := &DiskInfoOpts{}
+
+	for _, o := range options {
+		o(srvOpts)
+	}
+
+	values := make(url.Values)
+	resp, err := adm.executeMethod(ctx,
+		http.MethodGet,
+		requestData{
+			relPath:     adminAPIPrefixV4 + fmt.Sprintf("/disk/%d/%d/%d", poolIndex, setIndex, diskIndex),
+			queryValues: values,
+		})
+	defer closeResponse(resp)
+	if err != nil {
+		return Disk{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return Disk{}, httpRespToErrorResponse(resp)
+	}
+
+	var disk Disk
+	if err = disk.DecodeMsg(msgp.NewReader(resp.Body)); err != nil {
+		return Disk{}, err
+	}
+
+	return disk, nil
 }
