@@ -728,13 +728,13 @@ func (z *ExtendedErasureSetInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Drives")
 				return
 			}
-			if cap(z.Drives) >= int(zb0002) {
-				z.Drives = (z.Drives)[:zb0002]
+			if cap(z.Disks) >= int(zb0002) {
+				z.Disks = (z.Disks)[:zb0002]
 			} else {
-				z.Drives = make([]Disk, zb0002)
+				z.Disks = make([]Disk, zb0002)
 			}
-			for za0001 := range z.Drives {
-				err = z.Drives[za0001].DecodeMsg(dc)
+			for za0001 := range z.Disks {
+				err = z.Disks[za0001].DecodeMsg(dc)
 				if err != nil {
 					err = msgp.WrapError(err, "Drives", za0001)
 					return
@@ -751,7 +751,7 @@ func (z *ExtendedErasureSetInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 	}
 	// Clear omitted fields.
 	if (zb0001Mask & 0x1) == 0 {
-		z.Drives = nil
+		z.Disks = nil
 	}
 
 	return
@@ -763,7 +763,7 @@ func (z *ExtendedErasureSetInfo) EncodeMsg(en *msgp.Writer) (err error) {
 	zb0001Len := uint32(9)
 	var zb0001Mask uint16 /* 9 bits */
 	_ = zb0001Mask
-	if z.Drives == nil {
+	if z.Disks == nil {
 		zb0001Len--
 		zb0001Mask |= 0x100
 	}
@@ -861,13 +861,13 @@ func (z *ExtendedErasureSetInfo) EncodeMsg(en *msgp.Writer) (err error) {
 			if err != nil {
 				return
 			}
-			err = en.WriteArrayHeader(uint32(len(z.Drives)))
+			err = en.WriteArrayHeader(uint32(len(z.Disks)))
 			if err != nil {
 				err = msgp.WrapError(err, "Drives")
 				return
 			}
-			for za0001 := range z.Drives {
-				err = z.Drives[za0001].EncodeMsg(en)
+			for za0001 := range z.Disks {
+				err = z.Disks[za0001].EncodeMsg(en)
 				if err != nil {
 					err = msgp.WrapError(err, "Drives", za0001)
 					return
@@ -885,7 +885,7 @@ func (z *ExtendedErasureSetInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	zb0001Len := uint32(9)
 	var zb0001Mask uint16 /* 9 bits */
 	_ = zb0001Mask
-	if z.Drives == nil {
+	if z.Disks == nil {
 		zb0001Len--
 		zb0001Mask |= 0x100
 	}
@@ -921,9 +921,9 @@ func (z *ExtendedErasureSetInfo) MarshalMsg(b []byte) (o []byte, err error) {
 		if (zb0001Mask & 0x100) == 0 { // if not omitted
 			// string "drives"
 			o = append(o, 0xa6, 0x64, 0x72, 0x69, 0x76, 0x65, 0x73)
-			o = msgp.AppendArrayHeader(o, uint32(len(z.Drives)))
-			for za0001 := range z.Drives {
-				o, err = z.Drives[za0001].MarshalMsg(o)
+			o = msgp.AppendArrayHeader(o, uint32(len(z.Disks)))
+			for za0001 := range z.Disks {
+				o, err = z.Disks[za0001].MarshalMsg(o)
 				if err != nil {
 					err = msgp.WrapError(err, "Drives", za0001)
 					return
@@ -1009,13 +1009,13 @@ func (z *ExtendedErasureSetInfo) UnmarshalMsg(bts []byte) (o []byte, err error) 
 				err = msgp.WrapError(err, "Drives")
 				return
 			}
-			if cap(z.Drives) >= int(zb0002) {
-				z.Drives = (z.Drives)[:zb0002]
+			if cap(z.Disks) >= int(zb0002) {
+				z.Disks = (z.Disks)[:zb0002]
 			} else {
-				z.Drives = make([]Disk, zb0002)
+				z.Disks = make([]Disk, zb0002)
 			}
-			for za0001 := range z.Drives {
-				bts, err = z.Drives[za0001].UnmarshalMsg(bts)
+			for za0001 := range z.Disks {
+				bts, err = z.Disks[za0001].UnmarshalMsg(bts)
 				if err != nil {
 					err = msgp.WrapError(err, "Drives", za0001)
 					return
@@ -1032,7 +1032,7 @@ func (z *ExtendedErasureSetInfo) UnmarshalMsg(bts []byte) (o []byte, err error) 
 	}
 	// Clear omitted fields.
 	if (zb0001Mask & 0x1) == 0 {
-		z.Drives = nil
+		z.Disks = nil
 	}
 
 	o = bts
@@ -1042,8 +1042,8 @@ func (z *ExtendedErasureSetInfo) UnmarshalMsg(bts []byte) (o []byte, err error) 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *ExtendedErasureSetInfo) Msgsize() (s int) {
 	s = 1 + 3 + msgp.IntSize + 9 + msgp.Uint64Size + 12 + msgp.Uint64Size + 6 + msgp.Uint64Size + 13 + msgp.Uint64Size + 14 + msgp.Uint64Size + 19 + msgp.Uint64Size + 10 + msgp.IntSize + 7 + msgp.ArrayHeaderSize
-	for za0001 := range z.Drives {
-		s += z.Drives[za0001].Msgsize()
+	for za0001 := range z.Disks {
+		s += z.Disks[za0001].Msgsize()
 	}
 	return
 }

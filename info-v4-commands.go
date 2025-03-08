@@ -214,7 +214,7 @@ type ExtendedErasureSetInfo struct {
 	VersionsCount      uint64 `json:"versionsCount"`
 	DeleteMarkersCount uint64 `json:"deleteMarkersCount"`
 	HealDisks          int    `json:"healDisks"`
-	Drives             []Disk `json:"drives,omitempty"`
+	Disks              []Disk `json:"drives,omitempty"`
 }
 
 func (adm *AdminClient) SetInfo(ctx context.Context, poolIndex int, setIndex int, options ...func(*SetInfoOpts)) (ExtendedErasureSetInfo, error) {
@@ -271,7 +271,7 @@ func (adm *AdminClient) DiskInfo(ctx context.Context, poolIndex, setIndex, diskI
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
-			relPath:     adminAPIPrefixV4 + fmt.Sprintf("/drive/%d/%d/%d", poolIndex, setIndex, diskIndex),
+			relPath:     adminAPIPrefixV4 + fmt.Sprintf("/disk/%d/%d/%d", poolIndex, setIndex, diskIndex),
 			queryValues: values,
 		})
 	defer closeResponse(resp)
