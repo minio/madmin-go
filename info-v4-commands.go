@@ -213,8 +213,8 @@ type ExtendedErasureSetInfo struct {
 	ObjectsCount       uint64 `json:"objectsCount"`
 	VersionsCount      uint64 `json:"versionsCount"`
 	DeleteMarkersCount uint64 `json:"deleteMarkersCount"`
-	HealDisks          int    `json:"healDisks"`
-	Disks              []Disk `json:"drives,omitempty"`
+	HealDrives         int    `json:"healDrives"`
+	Drives             []Disk `json:"drives,omitempty"`
 }
 
 func (adm *AdminClient) SetInfo(ctx context.Context, poolIndex int, setIndex int, options ...func(*SetInfoOpts)) (ExtendedErasureSetInfo, error) {
@@ -252,16 +252,16 @@ func (adm *AdminClient) SetInfo(ctx context.Context, poolIndex int, setIndex int
 	return info, nil
 }
 
-// DiskInfoOpts ask for additional data from the server
+// DriveInfoOpts ask for additional data from the server
 // this is not used at the moment, kept here for future
 // extensibility.
 //
-//msgp:ignore DiskInfoOpts
-type DiskInfoOpts struct{}
+//msgp:ignore DriveInfoOpts
+type DriveInfoOpts struct{}
 
-// DiskInfo returns pool information about a specific pool referenced by poolIndex
-func (adm *AdminClient) DiskInfo(ctx context.Context, poolIndex, setIndex, diskIndex int, options ...func(*DiskInfoOpts)) (Disk, error) {
-	srvOpts := &DiskInfoOpts{}
+// DriveInfo returns pool information about a specific pool referenced by poolIndex
+func (adm *AdminClient) DriveInfo(ctx context.Context, poolIndex, setIndex, diskIndex int, options ...func(*DriveInfoOpts)) (Disk, error) {
+	srvOpts := &DriveInfoOpts{}
 
 	for _, o := range options {
 		o(srvOpts)
