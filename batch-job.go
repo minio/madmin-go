@@ -58,7 +58,7 @@ const BatchJobReplicateTemplate = `replicate:
     prefix: PREFIX # 'PREFIX' is optional
     # If your source is the 'local' alias specified to 'mc batch start', then the 'endpoint' and 'credentials' fields are optional and can be omitted
     # Either the 'source' or 'remote' *must* be the "local" deployment
-    endpoint: "http[s]://HOSTNAME:PORT" 
+    endpoint: "http[s]://HOSTNAME:PORT"
     # path: "on|off|auto" # "on" enables path-style bucket lookup. "off" enables virtual host (DNS)-style bucket lookup. Defaults to "auto"
     credentials:
       accessKey: ACCESS-KEY # Required
@@ -303,6 +303,69 @@ func (adm *AdminClient) GenerateBatchJob(_ context.Context, opts GenerateBatchJo
 		return BatchJobExpireTemplate, nil
 	}
 	return "", fmt.Errorf("unknown batch job requested: %s", opts.Type)
+}
+
+// GetSupportedBatchJobTypes returns the list of server supported batch job
+// types.
+func (adm *AdminClient) GetSupportedBatchJobTypes(ctx context.Context) (supportedTypes []BatchJobType, apiUnavailable bool, err error) {
+	resp, err := adm.executeMethod(ctx, http.MethodGet,
+		requestData{
+			relPath: adminAPIPrefix + "/list-supported-job-types",
+		},
+	)
+	if err != nil {
+		return nil, false, err
+	}
+	defer closeResponse(resp)
+
+	var buf []byte
+	switch resp.StatusCode {
+	case http.StatusNotFound, http.StatusUpgradeRequired:
+		apiUnavailable = true
+	case http.StatusOK:
+		if buf, err = io.ReadAll(resp.Body); err == nil {
+			err = json.Unmarshal(buf, &supportedTypes)
+		}
+	default:
+		err = httpRespToErrorResponse(resp)
+	}
+	return supportedTypes, apiUnavailable, err
+}
+
+// GenerateBatchJobV2 creates a new job template by requesting the server. This
+// is an EOS only API and returns apiUnavailable=true when API is unsupported.
+func (adm *AdminClient) GenerateBatchJobV2(ctx context.Context, opts GenerateBatchJobOpts) (template string, apiUnavailable bool, err error) {
+	if opts.Type == "" {
+		err = fmt.Errorf("batch job type is required")
+		return "", false, err
+	}
+
+	values := make(url.Values)
+	values.Set("jobType", string(opts.Type))
+
+	resp, err := adm.executeMethod(ctx, http.MethodGet,
+		requestData{
+			relPath:     adminAPIPrefix + "/generate-job",
+			queryValues: values,
+		},
+	)
+	if err != nil {
+		return "", false, err
+	}
+	defer closeResponse(resp)
+
+	var buf []byte
+	switch resp.StatusCode {
+	case http.StatusNotFound, http.StatusUpgradeRequired:
+		apiUnavailable = true
+	case http.StatusOK:
+		if buf, err = io.ReadAll(resp.Body); err == nil {
+			template = string(buf)
+		}
+	default:
+		err = httpRespToErrorResponse(resp)
+	}
+	return template, apiUnavailable, err
 }
 
 // ListBatchJobsResult contains entries for all current jobs.
