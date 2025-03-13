@@ -417,6 +417,7 @@ type ServerProperties struct {
 	GCStats        *GCStats          `json:"gc_stats,omitempty"`
 	MinioEnvVars   map[string]string `json:"minio_env_vars,omitempty"`
 	Edition        string            `json:"edition"`
+	License        *LicenseInfo      `json:"license,omitempty"`
 }
 
 // MemStats is strip down version of runtime.MemStats containing memory stats of MinIO server.

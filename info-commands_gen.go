@@ -8547,7 +8547,7 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint16 /* 15 bits */
+	var zb0001Mask uint16 /* 16 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -8760,6 +8760,25 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Edition")
 				return
 			}
+		case "license":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "License")
+					return
+				}
+				z.License = nil
+			} else {
+				if z.License == nil {
+					z.License = new(LicenseInfo)
+				}
+				err = z.License.DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "License")
+					return
+				}
+			}
+			zb0001Mask |= 0x8000
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -8769,7 +8788,7 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x7fff {
+	if zb0001Mask != 0xffff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.State = ""
 		}
@@ -8815,6 +8834,9 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 		if (zb0001Mask & 0x4000) == 0 {
 			z.MinioEnvVars = nil
 		}
+		if (zb0001Mask & 0x8000) == 0 {
+			z.License = nil
+		}
 	}
 	return
 }
@@ -8822,8 +8844,8 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(17)
-	var zb0001Mask uint32 /* 17 bits */
+	zb0001Len := uint32(18)
+	var zb0001Mask uint32 /* 18 bits */
 	_ = zb0001Mask
 	if z.State == "" {
 		zb0001Len--
@@ -8884,6 +8906,10 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 	if z.MinioEnvVars == nil {
 		zb0001Len--
 		zb0001Mask |= 0x8000
+	}
+	if z.License == nil {
+		zb0001Len--
+		zb0001Mask |= 0x20000
 	}
 	// variable map header, size zb0001Len
 	err = en.WriteMapHeader(zb0001Len)
@@ -9138,6 +9164,25 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "Edition")
 			return
 		}
+		if (zb0001Mask & 0x20000) == 0 { // if not omitted
+			// write "license"
+			err = en.Append(0xa7, 0x6c, 0x69, 0x63, 0x65, 0x6e, 0x73, 0x65)
+			if err != nil {
+				return
+			}
+			if z.License == nil {
+				err = en.WriteNil()
+				if err != nil {
+					return
+				}
+			} else {
+				err = z.License.EncodeMsg(en)
+				if err != nil {
+					err = msgp.WrapError(err, "License")
+					return
+				}
+			}
+		}
 	}
 	return
 }
@@ -9146,8 +9191,8 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(17)
-	var zb0001Mask uint32 /* 17 bits */
+	zb0001Len := uint32(18)
+	var zb0001Mask uint32 /* 18 bits */
 	_ = zb0001Mask
 	if z.State == "" {
 		zb0001Len--
@@ -9208,6 +9253,10 @@ func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 	if z.MinioEnvVars == nil {
 		zb0001Len--
 		zb0001Mask |= 0x8000
+	}
+	if z.License == nil {
+		zb0001Len--
+		zb0001Mask |= 0x20000
 	}
 	// variable map header, size zb0001Len
 	o = msgp.AppendMapHeader(o, zb0001Len)
@@ -9325,6 +9374,19 @@ func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "edition"
 		o = append(o, 0xa7, 0x65, 0x64, 0x69, 0x74, 0x69, 0x6f, 0x6e)
 		o = msgp.AppendString(o, z.Edition)
+		if (zb0001Mask & 0x20000) == 0 { // if not omitted
+			// string "license"
+			o = append(o, 0xa7, 0x6c, 0x69, 0x63, 0x65, 0x6e, 0x73, 0x65)
+			if z.License == nil {
+				o = msgp.AppendNil(o)
+			} else {
+				o, err = z.License.MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "License")
+					return
+				}
+			}
+		}
 	}
 	return
 }
@@ -9339,7 +9401,7 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint16 /* 15 bits */
+	var zb0001Mask uint16 /* 16 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -9551,6 +9613,24 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "Edition")
 				return
 			}
+		case "license":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.License = nil
+			} else {
+				if z.License == nil {
+					z.License = new(LicenseInfo)
+				}
+				bts, err = z.License.UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "License")
+					return
+				}
+			}
+			zb0001Mask |= 0x8000
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -9560,7 +9640,7 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x7fff {
+	if zb0001Mask != 0xffff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.State = ""
 		}
@@ -9606,6 +9686,9 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		if (zb0001Mask & 0x4000) == 0 {
 			z.MinioEnvVars = nil
 		}
+		if (zb0001Mask & 0x8000) == 0 {
+			z.License = nil
+		}
 	}
 	o = bts
 	return
@@ -9637,7 +9720,12 @@ func (z *ServerProperties) Msgsize() (s int) {
 			s += msgp.StringPrefixSize + len(za0005) + msgp.StringPrefixSize + len(za0006)
 		}
 	}
-	s += 8 + msgp.StringPrefixSize + len(z.Edition)
+	s += 8 + msgp.StringPrefixSize + len(z.Edition) + 8
+	if z.License == nil {
+		s += msgp.NilSize
+	} else {
+		s += z.License.Msgsize()
+	}
 	return
 }
 

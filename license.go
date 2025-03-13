@@ -26,7 +26,11 @@ import (
 	"time"
 )
 
+//msgp:clearomitted
+//msgp:tag json
+//go:generate msgp
 // LicenseInfo is a structure containing MinIO license information.
+
 type LicenseInfo struct {
 	ID           string    `json:"ID"`           // The license ID
 	Organization string    `json:"Organization"` // Name of the organization using the license
