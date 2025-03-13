@@ -310,7 +310,7 @@ func (adm *AdminClient) GenerateBatchJob(_ context.Context, opts GenerateBatchJo
 func (adm *AdminClient) GetSupportedBatchJobTypes(ctx context.Context) (supportedTypes []BatchJobType, apiUnavailable bool, err error) {
 	resp, err := adm.executeMethod(ctx, http.MethodGet,
 		requestData{
-			relPath: adminAPIPrefix + "/list-supported-job-types",
+			relPath: adminAPIPrefixV4 + "/list-supported-job-types",
 		},
 	)
 	if err != nil {
@@ -345,7 +345,7 @@ func (adm *AdminClient) GenerateBatchJobV2(ctx context.Context, opts GenerateBat
 
 	resp, err := adm.executeMethod(ctx, http.MethodGet,
 		requestData{
-			relPath:     adminAPIPrefix + "/generate-job",
+			relPath:     adminAPIPrefixV4 + "/generate-job",
 			queryValues: values,
 		},
 	)
