@@ -480,6 +480,359 @@ func (z *CPUMetrics) Msgsize() (s int) {
 }
 
 // DecodeMsg implements msgp.Decodable
+func (z *CatalogInfo) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "lastBucketScanned":
+			z.LastBucketScanned, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "LastBucketScanned")
+				return
+			}
+		case "lastObjectScanned":
+			z.LastObjectScanned, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "LastObjectScanned")
+				return
+			}
+		case "lastBucketMatched":
+			z.LastBucketMatched, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "LastBucketMatched")
+				return
+			}
+		case "lastObjectMatched":
+			z.LastObjectMatched, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "LastObjectMatched")
+				return
+			}
+		case "objectsScannedCount":
+			z.ObjectsScannedCount, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "ObjectsScannedCount")
+				return
+			}
+		case "objectsMatchedCount":
+			z.ObjectsMatchedCount, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "ObjectsMatchedCount")
+				return
+			}
+		case "recordsWrittenCount":
+			z.RecordsWrittenCount, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "RecordsWrittenCount")
+				return
+			}
+		case "outputObjectsCount":
+			z.OutputObjectsCount, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "OutputObjectsCount")
+				return
+			}
+		case "manifestPathBucket":
+			z.ManifestPathBucket, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "ManifestPathBucket")
+				return
+			}
+		case "manifestPathObject":
+			z.ManifestPathObject, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "ManifestPathObject")
+				return
+			}
+		case "errorMsg":
+			z.ErrorMsg, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "ErrorMsg")
+				return
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *CatalogInfo) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 11
+	// write "lastBucketScanned"
+	err = en.Append(0x8b, 0xb1, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x53, 0x63, 0x61, 0x6e, 0x6e, 0x65, 0x64)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.LastBucketScanned)
+	if err != nil {
+		err = msgp.WrapError(err, "LastBucketScanned")
+		return
+	}
+	// write "lastObjectScanned"
+	err = en.Append(0xb1, 0x6c, 0x61, 0x73, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x53, 0x63, 0x61, 0x6e, 0x6e, 0x65, 0x64)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.LastObjectScanned)
+	if err != nil {
+		err = msgp.WrapError(err, "LastObjectScanned")
+		return
+	}
+	// write "lastBucketMatched"
+	err = en.Append(0xb1, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x65, 0x64)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.LastBucketMatched)
+	if err != nil {
+		err = msgp.WrapError(err, "LastBucketMatched")
+		return
+	}
+	// write "lastObjectMatched"
+	err = en.Append(0xb1, 0x6c, 0x61, 0x73, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x65, 0x64)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.LastObjectMatched)
+	if err != nil {
+		err = msgp.WrapError(err, "LastObjectMatched")
+		return
+	}
+	// write "objectsScannedCount"
+	err = en.Append(0xb3, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x53, 0x63, 0x61, 0x6e, 0x6e, 0x65, 0x64, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint64(z.ObjectsScannedCount)
+	if err != nil {
+		err = msgp.WrapError(err, "ObjectsScannedCount")
+		return
+	}
+	// write "objectsMatchedCount"
+	err = en.Append(0xb3, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x65, 0x64, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint64(z.ObjectsMatchedCount)
+	if err != nil {
+		err = msgp.WrapError(err, "ObjectsMatchedCount")
+		return
+	}
+	// write "recordsWrittenCount"
+	err = en.Append(0xb3, 0x72, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x73, 0x57, 0x72, 0x69, 0x74, 0x74, 0x65, 0x6e, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint64(z.RecordsWrittenCount)
+	if err != nil {
+		err = msgp.WrapError(err, "RecordsWrittenCount")
+		return
+	}
+	// write "outputObjectsCount"
+	err = en.Append(0xb2, 0x6f, 0x75, 0x74, 0x70, 0x75, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint64(z.OutputObjectsCount)
+	if err != nil {
+		err = msgp.WrapError(err, "OutputObjectsCount")
+		return
+	}
+	// write "manifestPathBucket"
+	err = en.Append(0xb2, 0x6d, 0x61, 0x6e, 0x69, 0x66, 0x65, 0x73, 0x74, 0x50, 0x61, 0x74, 0x68, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.ManifestPathBucket)
+	if err != nil {
+		err = msgp.WrapError(err, "ManifestPathBucket")
+		return
+	}
+	// write "manifestPathObject"
+	err = en.Append(0xb2, 0x6d, 0x61, 0x6e, 0x69, 0x66, 0x65, 0x73, 0x74, 0x50, 0x61, 0x74, 0x68, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.ManifestPathObject)
+	if err != nil {
+		err = msgp.WrapError(err, "ManifestPathObject")
+		return
+	}
+	// write "errorMsg"
+	err = en.Append(0xa8, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x4d, 0x73, 0x67)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.ErrorMsg)
+	if err != nil {
+		err = msgp.WrapError(err, "ErrorMsg")
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *CatalogInfo) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 11
+	// string "lastBucketScanned"
+	o = append(o, 0x8b, 0xb1, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x53, 0x63, 0x61, 0x6e, 0x6e, 0x65, 0x64)
+	o = msgp.AppendString(o, z.LastBucketScanned)
+	// string "lastObjectScanned"
+	o = append(o, 0xb1, 0x6c, 0x61, 0x73, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x53, 0x63, 0x61, 0x6e, 0x6e, 0x65, 0x64)
+	o = msgp.AppendString(o, z.LastObjectScanned)
+	// string "lastBucketMatched"
+	o = append(o, 0xb1, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x65, 0x64)
+	o = msgp.AppendString(o, z.LastBucketMatched)
+	// string "lastObjectMatched"
+	o = append(o, 0xb1, 0x6c, 0x61, 0x73, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x65, 0x64)
+	o = msgp.AppendString(o, z.LastObjectMatched)
+	// string "objectsScannedCount"
+	o = append(o, 0xb3, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x53, 0x63, 0x61, 0x6e, 0x6e, 0x65, 0x64, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+	o = msgp.AppendUint64(o, z.ObjectsScannedCount)
+	// string "objectsMatchedCount"
+	o = append(o, 0xb3, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x65, 0x64, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+	o = msgp.AppendUint64(o, z.ObjectsMatchedCount)
+	// string "recordsWrittenCount"
+	o = append(o, 0xb3, 0x72, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x73, 0x57, 0x72, 0x69, 0x74, 0x74, 0x65, 0x6e, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+	o = msgp.AppendUint64(o, z.RecordsWrittenCount)
+	// string "outputObjectsCount"
+	o = append(o, 0xb2, 0x6f, 0x75, 0x74, 0x70, 0x75, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+	o = msgp.AppendUint64(o, z.OutputObjectsCount)
+	// string "manifestPathBucket"
+	o = append(o, 0xb2, 0x6d, 0x61, 0x6e, 0x69, 0x66, 0x65, 0x73, 0x74, 0x50, 0x61, 0x74, 0x68, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74)
+	o = msgp.AppendString(o, z.ManifestPathBucket)
+	// string "manifestPathObject"
+	o = append(o, 0xb2, 0x6d, 0x61, 0x6e, 0x69, 0x66, 0x65, 0x73, 0x74, 0x50, 0x61, 0x74, 0x68, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74)
+	o = msgp.AppendString(o, z.ManifestPathObject)
+	// string "errorMsg"
+	o = append(o, 0xa8, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x4d, 0x73, 0x67)
+	o = msgp.AppendString(o, z.ErrorMsg)
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *CatalogInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "lastBucketScanned":
+			z.LastBucketScanned, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "LastBucketScanned")
+				return
+			}
+		case "lastObjectScanned":
+			z.LastObjectScanned, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "LastObjectScanned")
+				return
+			}
+		case "lastBucketMatched":
+			z.LastBucketMatched, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "LastBucketMatched")
+				return
+			}
+		case "lastObjectMatched":
+			z.LastObjectMatched, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "LastObjectMatched")
+				return
+			}
+		case "objectsScannedCount":
+			z.ObjectsScannedCount, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ObjectsScannedCount")
+				return
+			}
+		case "objectsMatchedCount":
+			z.ObjectsMatchedCount, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ObjectsMatchedCount")
+				return
+			}
+		case "recordsWrittenCount":
+			z.RecordsWrittenCount, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "RecordsWrittenCount")
+				return
+			}
+		case "outputObjectsCount":
+			z.OutputObjectsCount, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "OutputObjectsCount")
+				return
+			}
+		case "manifestPathBucket":
+			z.ManifestPathBucket, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ManifestPathBucket")
+				return
+			}
+		case "manifestPathObject":
+			z.ManifestPathObject, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ManifestPathObject")
+				return
+			}
+		case "errorMsg":
+			z.ErrorMsg, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ErrorMsg")
+				return
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *CatalogInfo) Msgsize() (s int) {
+	s = 1 + 18 + msgp.StringPrefixSize + len(z.LastBucketScanned) + 18 + msgp.StringPrefixSize + len(z.LastObjectScanned) + 18 + msgp.StringPrefixSize + len(z.LastBucketMatched) + 18 + msgp.StringPrefixSize + len(z.LastObjectMatched) + 20 + msgp.Uint64Size + 20 + msgp.Uint64Size + 20 + msgp.Uint64Size + 19 + msgp.Uint64Size + 19 + msgp.StringPrefixSize + len(z.ManifestPathBucket) + 19 + msgp.StringPrefixSize + len(z.ManifestPathObject) + 9 + msgp.StringPrefixSize + len(z.ErrorMsg)
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *DiskIOStats) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
@@ -1768,7 +2121,7 @@ func (z *JobMetric) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 3 bits */
+	var zb0001Mask uint8 /* 4 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -1877,6 +2230,25 @@ func (z *JobMetric) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 			}
 			zb0001Mask |= 0x4
+		case "catalog":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "Catalog")
+					return
+				}
+				z.Catalog = nil
+			} else {
+				if z.Catalog == nil {
+					z.Catalog = new(CatalogInfo)
+				}
+				err = z.Catalog.DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "Catalog")
+					return
+				}
+			}
+			zb0001Mask |= 0x8
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -1886,7 +2258,7 @@ func (z *JobMetric) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x7 {
+	if zb0001Mask != 0xf {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Replicate = nil
 		}
@@ -1896,6 +2268,9 @@ func (z *JobMetric) DecodeMsg(dc *msgp.Reader) (err error) {
 		if (zb0001Mask & 0x4) == 0 {
 			z.Expired = nil
 		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.Catalog = nil
+		}
 	}
 	return
 }
@@ -1903,8 +2278,8 @@ func (z *JobMetric) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *JobMetric) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(10)
-	var zb0001Mask uint16 /* 10 bits */
+	zb0001Len := uint32(11)
+	var zb0001Mask uint16 /* 11 bits */
 	_ = zb0001Mask
 	if z.Replicate == nil {
 		zb0001Len--
@@ -1917,6 +2292,10 @@ func (z *JobMetric) EncodeMsg(en *msgp.Writer) (err error) {
 	if z.Expired == nil {
 		zb0001Len--
 		zb0001Mask |= 0x200
+	}
+	if z.Catalog == nil {
+		zb0001Len--
+		zb0001Mask |= 0x400
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -2053,6 +2432,25 @@ func (z *JobMetric) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
+			// write "catalog"
+			err = en.Append(0xa7, 0x63, 0x61, 0x74, 0x61, 0x6c, 0x6f, 0x67)
+			if err != nil {
+				return
+			}
+			if z.Catalog == nil {
+				err = en.WriteNil()
+				if err != nil {
+					return
+				}
+			} else {
+				err = z.Catalog.EncodeMsg(en)
+				if err != nil {
+					err = msgp.WrapError(err, "Catalog")
+					return
+				}
+			}
+		}
 	}
 	return
 }
@@ -2061,8 +2459,8 @@ func (z *JobMetric) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *JobMetric) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(10)
-	var zb0001Mask uint16 /* 10 bits */
+	zb0001Len := uint32(11)
+	var zb0001Mask uint16 /* 11 bits */
 	_ = zb0001Mask
 	if z.Replicate == nil {
 		zb0001Len--
@@ -2075,6 +2473,10 @@ func (z *JobMetric) MarshalMsg(b []byte) (o []byte, err error) {
 	if z.Expired == nil {
 		zb0001Len--
 		zb0001Mask |= 0x200
+	}
+	if z.Catalog == nil {
+		zb0001Len--
+		zb0001Mask |= 0x400
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -2141,6 +2543,19 @@ func (z *JobMetric) MarshalMsg(b []byte) (o []byte, err error) {
 				}
 			}
 		}
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
+			// string "catalog"
+			o = append(o, 0xa7, 0x63, 0x61, 0x74, 0x61, 0x6c, 0x6f, 0x67)
+			if z.Catalog == nil {
+				o = msgp.AppendNil(o)
+			} else {
+				o, err = z.Catalog.MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "Catalog")
+					return
+				}
+			}
+		}
 	}
 	return
 }
@@ -2155,7 +2570,7 @@ func (z *JobMetric) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 3 bits */
+	var zb0001Mask uint8 /* 4 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -2261,6 +2676,24 @@ func (z *JobMetric) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 			}
 			zb0001Mask |= 0x4
+		case "catalog":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.Catalog = nil
+			} else {
+				if z.Catalog == nil {
+					z.Catalog = new(CatalogInfo)
+				}
+				bts, err = z.Catalog.UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Catalog")
+					return
+				}
+			}
+			zb0001Mask |= 0x8
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -2270,7 +2703,7 @@ func (z *JobMetric) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x7 {
+	if zb0001Mask != 0xf {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Replicate = nil
 		}
@@ -2279,6 +2712,9 @@ func (z *JobMetric) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 		if (zb0001Mask & 0x4) == 0 {
 			z.Expired = nil
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.Catalog = nil
 		}
 	}
 	o = bts
@@ -2304,6 +2740,12 @@ func (z *JobMetric) Msgsize() (s int) {
 		s += msgp.NilSize
 	} else {
 		s += z.Expired.Msgsize()
+	}
+	s += 8
+	if z.Catalog == nil {
+		s += msgp.NilSize
+	} else {
+		s += z.Catalog.Msgsize()
 	}
 	return
 }
