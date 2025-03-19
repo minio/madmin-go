@@ -757,3 +757,70 @@ func (adm *AdminClient) TemporaryAccountInfo(ctx context.Context, accessKey stri
 	}
 	return infoResp, nil
 }
+
+// User provider types
+const (
+	BuiltinProvider     = "builtin"
+	LDAPProvider        = "ldap"
+	OpenIDProvider      = "openid"
+	K8SProvider         = "k8s"
+	CertificateProvider = "tls"
+	CustomTokenProvider = "custom"
+)
+
+// RevokeTokensReq is the request options of the revoke tokens admin call.
+// If User is empty, the requestor's tokens are revoked.
+// If requestor is STS, leaving TokenRevokeType empty revokes requestor's type of tokens.
+type RevokeTokensReq struct {
+	User            string `json:"user"`
+	TokenRevokeType string `json:"tokenRevokeType"`
+	FullRevoke      bool   `json:"fullRevoke"`
+}
+
+func (r *RevokeTokensReq) Validate() error {
+	if r.User != "" && r.TokenRevokeType == "" && !r.FullRevoke {
+		return errors.New("one of TokenRevokeType or FullRevoke must be set when User is set")
+	}
+	if r.TokenRevokeType != "" && r.FullRevoke {
+		return errors.New("only one of TokenRevokeType or FullRevoke must be set, not both")
+	}
+	return nil
+}
+
+func (adm *AdminClient) revokeTokens(ctx context.Context, opts RevokeTokensReq, provider string) error {
+	queryValues := url.Values{}
+	queryValues.Set("user", opts.User)
+	queryValues.Set("tokenRevokeType", opts.TokenRevokeType)
+	if opts.FullRevoke {
+		queryValues.Set("fullRevoke", "true")
+	}
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/revoke-tokens/" + provider,
+		queryValues: queryValues,
+	}
+
+	// Execute POST on /minio/admin/v3/revoke-tokens/{provider}
+	resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusNoContent {
+		return httpRespToErrorResponse(resp)
+	}
+
+	return nil
+}
+
+// RevokeTokens - revokes tokens for the specified builtin user, or
+// for an external (LDAP, OpenID, etc.) user being sent by one of its STS credentials.
+func (adm *AdminClient) RevokeTokens(ctx context.Context, opts RevokeTokensReq) error {
+	return adm.revokeTokens(ctx, opts, BuiltinProvider)
+}
+
+// RevokeTokensLDAP - revokes tokens for the specified LDAP user.
+func (adm *AdminClient) RevokeTokensLDAP(ctx context.Context, opts RevokeTokensReq) error {
+	return adm.revokeTokens(ctx, opts, LDAPProvider)
+}
