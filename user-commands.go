@@ -832,8 +832,11 @@ const (
 
 // InfoAccessKeyResp is the response body of the info access key call
 type InfoAccessKeyResp struct {
+	AccessKey string
+
 	InfoServiceAccountResp
 
+	UserType             string            `json:"userType"`
 	UserProvider         string            `json:"userProvider"`
 	ProviderSpecificInfo map[string]string `json:"providerSpecificInfo"`
 }
