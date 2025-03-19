@@ -763,7 +763,7 @@ func (adm *AdminClient) TemporaryAccountInfo(ctx context.Context, accessKey stri
 
 // User provider types
 const (
-	InternalProvider    = "internal"
+	BuiltinProvider     = "builtin"
 	LDAPProvider        = "ldap"
 	OpenIDProvider      = "openid"
 	K8SProvider         = "k8s"
@@ -820,7 +820,7 @@ func (adm *AdminClient) revokeTokens(ctx context.Context, opts RevokeTokensReq, 
 // RevokeTokens - revokes tokens for the specified internal (builtin) user, or
 // for an external (LDAP, OpenID, etc.) user being sent by one of its STS credentials.
 func (adm *AdminClient) RevokeTokens(ctx context.Context, opts RevokeTokensReq) error {
-	return adm.revokeTokens(ctx, opts, InternalProvider)
+	return adm.revokeTokens(ctx, opts, BuiltinProvider)
 }
 
 // RevokeTokensLDAP - revokes tokens for the specified LDAP user.
