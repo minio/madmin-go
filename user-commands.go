@@ -818,3 +818,55 @@ func (adm *AdminClient) TemporaryAccountInfo(ctx context.Context, accessKey stri
 	}
 	return infoResp, nil
 }
+
+// User provider types
+// TODO - REMOVE THIS AFTER REVOKE PR IS MERGED
+const (
+	InternalProvider    = "internal"
+	LDAPProvider        = "ldap"
+	OpenIDProvider      = "openid"
+	K8SProvider         = "k8s"
+	CertificateProvider = "tls"
+	CustomTokenProvider = "custom"
+)
+
+// InfoAccessKeyResp is the response body of the info access key call
+type InfoAccessKeyResp struct {
+	InfoServiceAccountResp
+
+	UserProvider         string            `json:"userProvider"`
+	ProviderSpecificInfo map[string]string `json:"providerSpecificInfo"`
+}
+
+// InfoAccessKey - returns the info of an access key
+func (adm *AdminClient) InfoAccessKey(ctx context.Context, accessKey string) (InfoAccessKeyResp, error) {
+	queryValues := url.Values{}
+	queryValues.Set("accessKey", accessKey)
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/info-access-key",
+		queryValues: queryValues,
+	}
+
+	// Execute GET on /minio/admin/v3/info-access-key
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return InfoAccessKeyResp{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return InfoAccessKeyResp{}, httpRespToErrorResponse(resp)
+	}
+
+	data, err := DecryptData(adm.getSecretKey(), resp.Body)
+	if err != nil {
+		return InfoAccessKeyResp{}, err
+	}
+
+	var infoResp InfoAccessKeyResp
+	if err = json.Unmarshal(data, &infoResp); err != nil {
+		return InfoAccessKeyResp{}, err
+	}
+	return infoResp, nil
+}
