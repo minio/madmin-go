@@ -817,7 +817,7 @@ func (adm *AdminClient) revokeTokens(ctx context.Context, opts RevokeTokensReq, 
 	return nil
 }
 
-// RevokeTokens - revokes tokens for the specified internal (builtin) user, or
+// RevokeTokens - revokes tokens for the specified builtin user, or
 // for an external (LDAP, OpenID, etc.) user being sent by one of its STS credentials.
 func (adm *AdminClient) RevokeTokens(ctx context.Context, opts RevokeTokensReq) error {
 	return adm.revokeTokens(ctx, opts, BuiltinProvider)
