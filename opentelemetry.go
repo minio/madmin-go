@@ -33,7 +33,7 @@ type ServiceTelemetryOpts struct {
 	// Tag adds a `custom.tag` field to all traces triggered by this.
 	TagKV map[string]string `json:"tags"`
 
-	// On incoming HTTP types, apply regex to values to enable tracing.
+	// On incoming HTTP types, only trigger if substring is in request.
 	HTTPFilter struct {
 		Func      string            `json:"funcFilter"`
 		UserAgent string            `json:"userAgent"`
