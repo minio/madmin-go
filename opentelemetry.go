@@ -46,7 +46,7 @@ type ServiceTelemetryOpts struct {
 // ServiceTelemetry holds http telemetry spans, serialized and compressed.
 type ServiceTelemetry struct {
 	SpanMZ []byte // Serialized and Compressed spans.
-	Err    error  // Any error that occured
+	Err    error  // Any error that occurred
 }
 
 // ServiceTelemetryStream - gets raw stream for service telemetry.
