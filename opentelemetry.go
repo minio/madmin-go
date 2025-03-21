@@ -24,7 +24,7 @@ import (
 	"io"
 	"net/http"
 
-	"github.com/minio/madmin-go/v3/estream"
+	"github.com/minio/madmin-go/v4/estream"
 )
 
 //go:generate msgp $GOFILE
@@ -73,7 +73,7 @@ func (adm AdminClient) ServiceTelemetryStream(ctx context.Context, opts ServiceT
 		return nil, err
 	}
 	reqData := requestData{
-		relPath: adminAPIPrefix + "/telemetry",
+		relPath: adminAPIPrefixV4 + "/telemetry",
 		content: bopts,
 	}
 	// Execute GET to call trace handler
