@@ -796,7 +796,7 @@ func (adm *AdminClient) revokeTokens(ctx context.Context, opts RevokeTokensReq, 
 	}
 
 	reqData := requestData{
-		relPath:     adminAPIPrefix + "/revoke-tokens/" + provider,
+		relPath:     adminAPIPrefixV4 + "/revoke-tokens/" + provider,
 		queryValues: queryValues,
 	}
 
