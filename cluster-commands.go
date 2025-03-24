@@ -1254,7 +1254,8 @@ type SRMetric struct {
 	TotalDowntime time.Duration `json:"totalDowntime"`
 	LastOnline    time.Time     `json:"lastOnline"`
 	Online        bool          `json:"isOnline"`
-	Latency       LatencyStat   `json:"latency"`
+
+	Latency LatencyStat `json:"latency"`
 
 	// replication metrics across buckets roll up
 	ReplicatedSize int64 `json:"replicatedSize"`
@@ -1266,6 +1267,8 @@ type SRMetric struct {
 	XferStats map[replication.MetricName]replication.XferStats `json:"transferSummary"`
 	// MRFStats captures current backlog entries in the last 5 minutes
 	MRFStats replication.ReplMRFStats `json:"mrfStats"`
+	// DowntimeInfo captures the link information
+	DowntimeInfo DowntimeInfo `json:"downtimeInfo"`
 }
 
 // WorkerStat captures number of replication workers
@@ -1310,6 +1313,20 @@ type SRMetricsSummary struct {
 	Metrics map[string]SRMetric `json:"replMetrics"`
 	// uptime of node being queried for site replication metrics
 	Uptime int64 `json:"uptime"`
+	// represents the retry count
+	Retries Counter `json:"retries"`
+	// represents the error count
+	Errors Counter `json:"errors"`
+}
+
+// Counter denotes the counts
+type Counter struct {
+	// Counted last 1hr
+	Last1hr uint64 `json:"last1hr"`
+	// Counted last 1m
+	Last1m uint64 `json:"last1m"`
+	// Total count
+	Total uint64 `json:"total"`
 }
 
 // ReplProxyMetric holds stats for replication proxying
