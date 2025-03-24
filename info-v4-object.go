@@ -21,7 +21,6 @@ package madmin
 
 import (
 	"context"
-	"crypto/md5"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -30,7 +29,7 @@ import (
 	"time"
 )
 
-// ObjectInfoOptions
+// ObjectInfoOptions ...
 type ObjectInfoOptions struct {
 	Bucket, Object string
 }
@@ -71,6 +70,8 @@ func (adm *AdminClient) ObjectInfo(ctx context.Context, objOpts ObjectInfoOption
 	return
 }
 
+// ObjectInspectPart is returned from minio when calling ObjectInfo
+// It contains basic information on a part and it's xl.meta content.
 type ObjectInspectPart struct {
 	Part            int
 	Pool            int
@@ -84,6 +85,7 @@ type ObjectInspectPart struct {
 	Errors          []string
 }
 
+// ObjectInspectInfo is returned from minio when calling ObjectInfo
 type ObjectInspectInfo struct {
 	Name  string
 	Parts []*ObjectInspectPart
@@ -98,6 +100,8 @@ type xlMetaV2VersionHeader struct {
 	EcN, EcM  uint8
 }
 
+// StatInfo is returned from minio when calling ObjectInfo
+// It contains disk information about the file read.
 type StatInfo struct {
 	Size    int64     `json:"size"`
 	ModTime time.Time `json:"modTime"`
@@ -138,25 +142,4 @@ type xlMetaV2Object struct {
 	ModTime            int64             `json:"MTime"`
 	MetaSys            map[string][]byte `json:"MetaSys,omitempty"`
 	MetaUser           map[string]string `json:"MetaUsr,omitempty"`
-}
-
-func (xl *xlMetaV2Object) ToHash() string {
-	s := fmt.Sprintf("%x %x %d %d %d %+v %d %+v %+v %+v %+v %+v %+v",
-		xl.VersionID,
-		xl.DataDir,
-		xl.ErasureAlgorithm,
-		xl.ErasureM,
-		xl.ErasureN,
-		xl.ErasureDist,
-		xl.BitrotChecksumAlgo,
-		xl.PartNumbers,
-		xl.PartETags,
-		xl.PartSizes,
-		xl.PartActualSizes,
-		xl.MetaSys,
-		xl.MetaUser,
-	)
-
-	hash := md5.Sum([]byte(s))
-	return fmt.Sprintf("%x", hash)
 }
