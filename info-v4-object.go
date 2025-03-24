@@ -23,7 +23,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"time"
@@ -36,7 +35,7 @@ type ObjectInfoOptions struct {
 
 // ObjectInfo calls minio to search for all files and parts
 // related to the given object, across all disks.
-func (adm *AdminClient) ObjectInfo(ctx context.Context, objOpts ObjectInfoOptions) (files map[string]*ObjectInspectInfo, err error) {
+func (adm *AdminClient) ObjectInfo(ctx context.Context, objOpts ObjectInfoOptions) (objectInfoResponse *ObjectInfoRespose, err error) {
 	form := make(url.Values)
 	form.Add("bucket", objOpts.Bucket)
 	form.Add("object", objOpts.Object)
@@ -56,18 +55,19 @@ func (adm *AdminClient) ObjectInfo(ctx context.Context, objOpts ObjectInfoOption
 		return nil, httpRespToErrorResponse(resp)
 	}
 
-	bb, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	files = make(map[string]*ObjectInspectInfo)
-	err = json.Unmarshal(bb, &files)
+	objectInfoResponse = new(ObjectInfoRespose)
+	objectInfoResponse.files = make(map[string]*ObjectInspectInfo)
+	dec := json.NewDecoder(resp.Body)
+	err = dec.Decode(&objectInfoResponse.files)
 	if err != nil {
 		return nil, err
 	}
 
 	return
+}
+
+type ObjectInfoRespose struct {
+	files map[string]*ObjectInspectInfo
 }
 
 // ObjectInspectPart is returned from minio when calling ObjectInfo
@@ -112,18 +112,18 @@ type StatInfo struct {
 
 type xlMetaV2Version struct {
 	Type             int                   `json:"Type"`
-	ObjectV2         *xlMetaV2Object       `json:"V2Obj,omitempty"`
-	DeleteMarker     *xlMetaV2DeleteMarker `json:"DelObj,omitempty"`
-	WrittenByVersion uint64                `msg:"v"`
+	ObjectV2         *XLMetaV2Object       `json:"V2Obj,omitempty"`
+	DeleteMarker     *XLMetaV2DeleteMarker `json:"DelObj,omitempty"`
+	WrittenByVersion uint64                `json:"v"`
 }
 
-type xlMetaV2DeleteMarker struct {
+type XLMetaV2DeleteMarker struct {
 	VersionID [16]byte          `json:"ID"`
 	ModTime   int64             `json:"MTime"`
 	MetaSys   map[string][]byte `json:"MetaSys,omitempty"`
 }
 
-type xlMetaV2Object struct {
+type XLMetaV2Object struct {
 	VersionID          [16]byte          `json:"ID"`
 	DataDir            [16]byte          `json:"DDir"`
 	ErasureAlgorithm   int               `json:"EcAlgo"`
