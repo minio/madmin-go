@@ -66,6 +66,10 @@ const (
 	TraceKMS
 	// TraceFormatting will trace formatting events
 	TraceFormatting
+	// TraceAdmin will trace admin calls
+	TraceAdmin
+	// TraceObject will trade object layer operations
+	TraceObject
 	// Add more here...
 
 	// TraceAll contains all valid trace modes.
