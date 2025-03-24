@@ -819,17 +819,6 @@ func (adm *AdminClient) TemporaryAccountInfo(ctx context.Context, accessKey stri
 	return infoResp, nil
 }
 
-// User provider types
-// TODO - REMOVE THIS AFTER REVOKE PR IS MERGED
-const (
-	InternalProvider    = "internal"
-	LDAPProvider        = "ldap"
-	OpenIDProvider      = "openid"
-	K8SProvider         = "k8s"
-	CertificateProvider = "tls"
-	CustomTokenProvider = "custom"
-)
-
 // InfoAccessKeyResp is the response body of the info access key call
 type InfoAccessKeyResp struct {
 	AccessKey string
