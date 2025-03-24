@@ -886,15 +886,27 @@ func (adm *AdminClient) RevokeTokensLDAP(ctx context.Context, opts RevokeTokensR
 	return adm.revokeTokens(ctx, opts, LDAPProvider)
 }
 
+type LDAPSpecifcAccessKeyInfo struct {
+	Username string `json:"username"`
+}
+
+type OpenIDSpecificAccessKeyInfo struct {
+	ConfigName       string `json:"configName"`
+	UserID           string `json:"userID"`
+	UserIDClaim      string `json:"userIDClaim"`
+	DisplayName      string `json:"displayName,omitempty"`
+	DisplayNameClaim string `json:"displayNameClaim,omitempty"`
+}
+
 // InfoAccessKeyResp is the response body of the info access key call
 type InfoAccessKeyResp struct {
 	AccessKey string
 
 	InfoServiceAccountResp
 
-	UserType             string            `json:"userType"`
-	UserProvider         string            `json:"userProvider"`
-	ProviderSpecificInfo map[string]string `json:"providerSpecificInfo"`
+	UserType             string      `json:"userType"`
+	UserProvider         string      `json:"userProvider"`
+	ProviderSpecificInfo interface{} `json:"providerSpecificInfo,omitempty"`
 }
 
 // InfoAccessKey - returns the info of an access key
