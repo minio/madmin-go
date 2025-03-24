@@ -66,11 +66,14 @@ func (adm *AdminClient) ObjectInfo(ctx context.Context, objOpts ObjectInfoOption
 	return
 }
 
+// ObjectInfoRespose ...
+// This struct is returned from ObjectInfo
 type ObjectInfoRespose struct {
 	files map[string]*ObjectInspectInfo
 }
 
-// ObjectInspectPart is returned from minio when calling ObjectInfo
+// ObjectInspectPart ...
+// This struct is returned from minio when calling ObjectInfo.
 // It contains basic information on a part and it's xl.meta content.
 type ObjectInspectPart struct {
 	Part            int
@@ -79,25 +82,19 @@ type ObjectInspectPart struct {
 	Set             int
 	Drive           string
 	Filename        string
-	XLVersion       xlMetaV2Version
-	XLVersionHeader xlMetaV2VersionHeader
+	XLVersion       XLMetaV2Version
+	XLVersionHeader XLMetaV2VersionHeader
 	Stats           StatInfo
 	Errors          []string
 }
 
-// ObjectInspectInfo is returned from minio when calling ObjectInfo
+// ObjectInspectInfo ..
+// This struct is returned from minio when calling ObjectInfo.
+// It contains the folder name on disk which holds all the parts and xl.meta file
+// along with each part.
 type ObjectInspectInfo struct {
 	Name  string
 	Parts []*ObjectInspectPart
-}
-
-type xlMetaV2VersionHeader struct {
-	VersionID [16]byte
-	ModTime   int64
-	Signature [4]byte
-	Type      int
-	Flags     uint8
-	EcN, EcM  uint8
 }
 
 // StatInfo is returned from minio when calling ObjectInfo
@@ -110,19 +107,40 @@ type StatInfo struct {
 	Mode    uint32    `json:"mode"`
 }
 
-type xlMetaV2Version struct {
+// XLMetaV2Version ..
+// This struct is returned from minio when calling ObjectInfo.
+// It contains xl.meta information about an object part.
+type XLMetaV2Version struct {
 	Type             int                   `json:"Type"`
 	ObjectV2         *XLMetaV2Object       `json:"V2Obj,omitempty"`
 	DeleteMarker     *XLMetaV2DeleteMarker `json:"DelObj,omitempty"`
 	WrittenByVersion uint64                `json:"v"`
 }
 
+// XLMetaV2VersionHeader ..
+// This struct is returned by minio when calling ObjectInfo
+// It contains basic xl.meta information about an object part
+type XLMetaV2VersionHeader struct {
+	VersionID [16]byte
+	ModTime   int64
+	Signature [4]byte
+	Type      int
+	Flags     uint8
+	EcN, EcM  uint8
+}
+
+// XLMetaV2DeleteMarker ..
+// This struct is returned by minio when calling ObjectInfo
+// It is the same as XLMetaV2VersionHeader but for delete markers
 type XLMetaV2DeleteMarker struct {
 	VersionID [16]byte          `json:"ID"`
 	ModTime   int64             `json:"MTime"`
 	MetaSys   map[string][]byte `json:"MetaSys,omitempty"`
 }
 
+// XLMetaV2Object ...
+// This struct is returned form minio when calling ObjectInfo
+// It contains detailed information about the object part.
 type XLMetaV2Object struct {
 	VersionID          [16]byte          `json:"ID"`
 	DataDir            [16]byte          `json:"DDir"`
