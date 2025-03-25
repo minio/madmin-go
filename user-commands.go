@@ -904,9 +904,10 @@ type InfoAccessKeyResp struct {
 
 	InfoServiceAccountResp
 
-	UserType             string      `json:"userType"`
-	UserProvider         string      `json:"userProvider"`
-	ProviderSpecificInfo interface{} `json:"providerSpecificInfo,omitempty"`
+	UserType           string                      `json:"userType"`
+	UserProvider       string                      `json:"userProvider"`
+	LDAPSpecificInfo   LDAPSpecificAccessKeyInfo   `json:"ldapSpecificInfo,omitempty"`
+	OpenIDSpecificInfo OpenIDSpecificAccessKeyInfo `json:"openIDSpecificInfo,omitempty"`
 }
 
 // InfoAccessKey - returns the info of an access key
