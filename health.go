@@ -1100,7 +1100,7 @@ type HealthInfo struct {
 	TimeStamp   time.Time       `json:"timestamp,omitempty"`
 	Sys         SysInfo         `json:"sys,omitempty"`
 	Minio       MinioHealthInfo `json:"minio,omitempty"`
-	Replication ReplicationInfo `json:"replication,omitempty"`
+	Replication ReplDiagInfo    `json:"replication,omitempty"`
 }
 
 func (info HealthInfo) String() string {
