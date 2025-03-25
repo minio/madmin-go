@@ -886,7 +886,7 @@ func (adm *AdminClient) RevokeTokensLDAP(ctx context.Context, opts RevokeTokensR
 	return adm.revokeTokens(ctx, opts, LDAPProvider)
 }
 
-type LDAPSpecifcAccessKeyInfo struct {
+type LDAPSpecificAccessKeyInfo struct {
 	Username string `json:"username"`
 }
 
