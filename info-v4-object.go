@@ -28,14 +28,14 @@ import (
 	"time"
 )
 
-// ObjectInfoOptions ...
-type ObjectInfoOptions struct {
+// ObjectSummaryOptions ...
+type ObjectSummaryOptions struct {
 	Bucket, Object string
 }
 
-// ObjectInfo calls minio to search for all files and parts
+// ObjectSummary calls minio to search for all files and parts
 // related to the given object, across all disks.
-func (adm *AdminClient) ObjectInfo(ctx context.Context, objOpts ObjectInfoOptions) (objectInfoResponse *ObjectInfoRespose, err error) {
+func (adm *AdminClient) ObjectSummary(ctx context.Context, objOpts ObjectSummaryOptions) (objectSummaryResponse *ObjectSummaryRespose, err error) {
 	form := make(url.Values)
 	if objOpts.Bucket != "" {
 		form.Add("bucket", objOpts.Bucket)
@@ -59,9 +59,9 @@ func (adm *AdminClient) ObjectInfo(ctx context.Context, objOpts ObjectInfoOption
 		return nil, httpRespToErrorResponse(resp)
 	}
 
-	objectInfoResponse = new(ObjectInfoRespose)
+	objectSummaryResponse = new(ObjectSummaryRespose)
 	dec := json.NewDecoder(resp.Body)
-	err = dec.Decode(&objectInfoResponse)
+	err = dec.Decode(&objectSummaryResponse)
 	if err != nil {
 		return nil, err
 	}
@@ -69,16 +69,16 @@ func (adm *AdminClient) ObjectInfo(ctx context.Context, objOpts ObjectInfoOption
 	return
 }
 
-// ObjectInfoRespose ...
-// This struct is returned from ObjectInfo
-type ObjectInfoRespose struct {
-	Files map[string]*ObjectInspectInfo
+// ObjectSummaryRespose ...
+// This struct is returned from ObjectSummary
+type ObjectSummaryRespose struct {
+	Files map[string]*ObjectSummaryInfo
 }
 
-// ObjectInspectPart ...
-// This struct is returned from minio when calling ObjectInfo.
+// ObjectSummaryPart ...
+// This struct is returned from minio when calling ObjectSummary.
 // It contains basic information on a part and it's xl.meta content.
-type ObjectInspectPart struct {
+type ObjectSummaryPart struct {
 	Part            int
 	Pool            int
 	Host            string
@@ -91,16 +91,16 @@ type ObjectInspectPart struct {
 	Errors          []string
 }
 
-// ObjectInspectInfo ..
-// This struct is returned from minio when calling ObjectInfo.
-type ObjectInspectInfo struct {
+// ObjectSummaryInfo ..
+// This struct is returned from minio when calling ObjectSummary.
+type ObjectSummaryInfo struct {
 	// Name is the object directory name as seen on disk.
 	// More specifically the directory that contains the xl.meta file.
 	Name  string
-	Parts []*ObjectInspectPart
+	Parts []*ObjectSummaryPart
 }
 
-// StatInfo is returned from minio when calling ObjectInfo
+// StatInfo is returned from minio when calling ObjectSummary
 // It contains disk information about the file read.
 type StatInfo struct {
 	Size    int64     `json:"size"`
@@ -111,7 +111,7 @@ type StatInfo struct {
 }
 
 // XLMetaV2Version ..
-// This struct is returned from minio when calling ObjectInfo.
+// This struct is returned from minio when calling ObjectSummary.
 // It contains xl.meta information about an object part.
 type XLMetaV2Version struct {
 	Type             int                   `json:"Type"`
@@ -121,7 +121,7 @@ type XLMetaV2Version struct {
 }
 
 // XLMetaV2VersionHeader ..
-// This struct is returned by minio when calling ObjectInfo
+// This struct is returned by minio when calling ObjectSummary
 // It contains basic xl.meta information about an object part
 type XLMetaV2VersionHeader struct {
 	VersionID [16]byte
@@ -133,7 +133,7 @@ type XLMetaV2VersionHeader struct {
 }
 
 // XLMetaV2DeleteMarker ..
-// This struct is returned by minio when calling ObjectInfo
+// This struct is returned by minio when calling ObjectSummary
 // It is the same as XLMetaV2VersionHeader but for delete markers
 type XLMetaV2DeleteMarker struct {
 	VersionID [16]byte          `json:"ID"`
@@ -142,7 +142,7 @@ type XLMetaV2DeleteMarker struct {
 }
 
 // XLMetaV2Object ...
-// This struct is returned form minio when calling ObjectInfo
+// This struct is returned form minio when calling ObjectSummary
 // It contains detailed information about the object part.
 type XLMetaV2Object struct {
 	VersionID          [16]byte          `json:"ID"`
