@@ -37,8 +37,12 @@ type ObjectInfoOptions struct {
 // related to the given object, across all disks.
 func (adm *AdminClient) ObjectInfo(ctx context.Context, objOpts ObjectInfoOptions) (objectInfoResponse *ObjectInfoRespose, err error) {
 	form := make(url.Values)
-	form.Add("bucket", objOpts.Bucket)
-	form.Add("object", objOpts.Object)
+	if objOpts.Bucket != "" {
+		form.Add("bucket", objOpts.Bucket)
+	}
+	if objOpts.Object != "" {
+		form.Add("object", objOpts.Object)
+	}
 
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
@@ -56,9 +60,9 @@ func (adm *AdminClient) ObjectInfo(ctx context.Context, objOpts ObjectInfoOption
 	}
 
 	objectInfoResponse = new(ObjectInfoRespose)
-	objectInfoResponse.files = make(map[string]*ObjectInspectInfo)
+	objectInfoResponse.Files = make(map[string]*ObjectInspectInfo)
 	dec := json.NewDecoder(resp.Body)
-	err = dec.Decode(&objectInfoResponse.files)
+	err = dec.Decode(&objectInfoResponse.Files)
 	if err != nil {
 		return nil, err
 	}
@@ -69,7 +73,7 @@ func (adm *AdminClient) ObjectInfo(ctx context.Context, objOpts ObjectInfoOption
 // ObjectInfoRespose ...
 // This struct is returned from ObjectInfo
 type ObjectInfoRespose struct {
-	files map[string]*ObjectInspectInfo
+	Files map[string]*ObjectInspectInfo
 }
 
 // ObjectInspectPart ...
@@ -90,9 +94,9 @@ type ObjectInspectPart struct {
 
 // ObjectInspectInfo ..
 // This struct is returned from minio when calling ObjectInfo.
-// It contains the folder name on disk which holds all the parts and xl.meta file
-// along with each part.
 type ObjectInspectInfo struct {
+	// Name is the object directory name as seen on disk.
+	// More specifically the directory that contains the xl.meta file.
 	Name  string
 	Parts []*ObjectInspectPart
 }
