@@ -2978,6 +2978,16 @@ func (z *HealingDisk) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Finished")
 				return
 			}
+		case "reason":
+			{
+				var zb0004 int8
+				zb0004, err = dc.ReadInt8()
+				if err != nil {
+					err = msgp.WrapError(err, "Reason")
+					return
+				}
+				z.Reason = HealingDriveReason(zb0004)
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -2991,9 +3001,9 @@ func (z *HealingDisk) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *HealingDisk) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 25
+	// map header, size 26
 	// write "id"
-	err = en.Append(0xde, 0x0, 0x19, 0xa2, 0x69, 0x64)
+	err = en.Append(0xde, 0x0, 0x1a, 0xa2, 0x69, 0x64)
 	if err != nil {
 		return
 	}
@@ -3256,15 +3266,25 @@ func (z *HealingDisk) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "Finished")
 		return
 	}
+	// write "reason"
+	err = en.Append(0xa6, 0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt8(int8(z.Reason))
+	if err != nil {
+		err = msgp.WrapError(err, "Reason")
+		return
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z *HealingDisk) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 25
+	// map header, size 26
 	// string "id"
-	o = append(o, 0xde, 0x0, 0x19, 0xa2, 0x69, 0x64)
+	o = append(o, 0xde, 0x0, 0x1a, 0xa2, 0x69, 0x64)
 	o = msgp.AppendString(o, z.ID)
 	// string "heal_id"
 	o = append(o, 0xa7, 0x68, 0x65, 0x61, 0x6c, 0x5f, 0x69, 0x64)
@@ -3344,6 +3364,9 @@ func (z *HealingDisk) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "finished"
 	o = append(o, 0xa8, 0x66, 0x69, 0x6e, 0x69, 0x73, 0x68, 0x65, 0x64)
 	o = msgp.AppendBool(o, z.Finished)
+	// string "reason"
+	o = append(o, 0xa6, 0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e)
+	o = msgp.AppendInt8(o, int8(z.Reason))
 	return
 }
 
@@ -3541,6 +3564,16 @@ func (z *HealingDisk) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "Finished")
 				return
 			}
+		case "reason":
+			{
+				var zb0004 int8
+				zb0004, bts, err = msgp.ReadInt8Bytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Reason")
+					return
+				}
+				z.Reason = HealingDriveReason(zb0004)
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -3563,7 +3596,59 @@ func (z *HealingDisk) Msgsize() (s int) {
 	for za0002 := range z.HealedBuckets {
 		s += msgp.StringPrefixSize + len(z.HealedBuckets[za0002])
 	}
-	s += 9 + msgp.BoolSize
+	s += 9 + msgp.BoolSize + 7 + msgp.Int8Size
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *HealingDriveReason) DecodeMsg(dc *msgp.Reader) (err error) {
+	{
+		var zb0001 int8
+		zb0001, err = dc.ReadInt8()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		(*z) = HealingDriveReason(zb0001)
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z HealingDriveReason) EncodeMsg(en *msgp.Writer) (err error) {
+	err = en.WriteInt8(int8(z))
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z HealingDriveReason) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	o = msgp.AppendInt8(o, int8(z))
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *HealingDriveReason) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	{
+		var zb0001 int8
+		zb0001, bts, err = msgp.ReadInt8Bytes(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		(*z) = HealingDriveReason(zb0001)
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z HealingDriveReason) Msgsize() (s int) {
+	s = msgp.Int8Size
 	return
 }
 
