@@ -123,7 +123,7 @@ var ValidIDPConfigTypes = set.CreateStringSet(OpenidIDPCfg, LDAPIDPCfg)
 // GetIDPConfig - fetch IDP config from server.
 func (adm *AdminClient) GetIDPConfig(ctx context.Context, cfgType, cfgName string) (c IDPConfig, err error) {
 	if !ValidIDPConfigTypes.Contains(cfgType) {
-		return c, fmt.Errorf("Invalid config type: %s", cfgType)
+		return c, fmt.Errorf("invalid config type: %s", cfgType)
 	}
 
 	if cfgName == "" {
@@ -185,7 +185,7 @@ type IDPListItem struct {
 // ListIDPConfig - list IDP configuration on the server.
 func (adm *AdminClient) ListIDPConfig(ctx context.Context, cfgType string) ([]IDPListItem, error) {
 	if !ValidIDPConfigTypes.Contains(cfgType) {
-		return nil, fmt.Errorf("Invalid config type: %s", cfgType)
+		return nil, fmt.Errorf("invalid config type: %s", cfgType)
 	}
 
 	reqData := requestData{
