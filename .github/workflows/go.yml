@@ -31,9 +31,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Check lint
-      uses: golangci/golangci-lint-action@v6
-      with:
-        version: v1.61
+      uses: golangci/golangci-lint-action@v7
 
     - name: Regenerate, vet and test
       run: |

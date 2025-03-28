@@ -114,22 +114,22 @@ type HealItemType string
 // HealItemType constants
 const (
 	HealItemMetadata       HealItemType = "metadata"
-	HealItemBucket                      = "bucket"
-	HealItemBucketMetadata              = "bucket-metadata"
-	HealItemObject                      = "object"
+	HealItemBucket         HealItemType = "bucket"
+	HealItemBucketMetadata HealItemType = "bucket-metadata"
+	HealItemObject         HealItemType = "object"
 )
 
 // Drive state constants
 const (
 	DriveStateOk          string = "ok"
-	DriveStateOffline            = "offline"
-	DriveStateCorrupt            = "corrupt"
-	DriveStateMissing            = "missing"
-	DriveStatePermission         = "permission-denied"
-	DriveStateFaulty             = "faulty"
-	DriveStateRootMount          = "root-mount"
-	DriveStateUnknown            = "unknown"
-	DriveStateUnformatted        = "unformatted" // only returned by disk
+	DriveStateOffline     string = "offline"
+	DriveStateCorrupt     string = "corrupt"
+	DriveStateMissing     string = "missing"
+	DriveStatePermission  string = "permission-denied"
+	DriveStateFaulty      string = "faulty"
+	DriveStateRootMount   string = "root-mount"
+	DriveStateUnknown     string = "unknown"
+	DriveStateUnformatted string = "unformatted" // only returned by disk
 )
 
 // HealDriveInfo - struct for an individual drive info item.

@@ -130,7 +130,7 @@ type UserAuthType string
 // Valid values for UserAuthType.
 const (
 	BuiltinUserAuthType UserAuthType = "builtin"
-	LDAPUserAuthType                 = "ldap"
+	LDAPUserAuthType    UserAuthType = "ldap"
 )
 
 // UserAuthInfo contains info about how the user is authenticated.
