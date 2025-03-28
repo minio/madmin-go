@@ -208,8 +208,8 @@ func (adm *AdminClient) attachOrDetachPolicyBuiltin(ctx context.Context, isAttac
 
 	// Older minio does not send a response, so we handle that case.
 
-	switch {
-	case resp.StatusCode == http.StatusOK:
+	switch resp.StatusCode {
+	case http.StatusOK:
 		// Newer/current minio sends a result.
 		content, err := DecryptData(adm.getSecretKey(), resp.Body)
 		if err != nil {
@@ -220,7 +220,7 @@ func (adm *AdminClient) attachOrDetachPolicyBuiltin(ctx context.Context, isAttac
 		err = json.Unmarshal(content, &rsp)
 		return rsp, err
 
-	case resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusNoContent:
+	case http.StatusCreated, http.StatusNoContent:
 		// Older minio - no result sent. TODO(aditya): Remove this case after
 		// newer minio is released.
 		return PolicyAssociationResp{}, nil

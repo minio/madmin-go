@@ -39,19 +39,19 @@ type ImportIAMResult struct {
 	Removed IAMEntities `json:"removed,omitempty"`
 
 	// Newly added entries
-	Added IAMEntities `json:"added,omitmepty"`
+	Added IAMEntities `json:"added,omitempty"`
 
 	// Failed entries while import. This would have details of
 	// failed entities with respective errors
-	Failed IAMErrEntities `json:"failed,omitmpty"`
+	Failed IAMErrEntities `json:"failed,omitempty"`
 }
 
 // IAMEntities - represents different IAM entities
 type IAMEntities struct {
 	// List of policy names
-	Policies []string `json:"policies,omitmepty"`
+	Policies []string `json:"policies,omitempty"`
 	// List of user names
-	Users []string `json:"users,omitmepty"`
+	Users []string `json:"users,omitempty"`
 	// List of group names
 	Groups []string `json:"groups,omitempty"`
 	// List of Service Account names
