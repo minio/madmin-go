@@ -350,6 +350,15 @@ type SetStatus struct {
 	Disks        []Disk `json:"disks"`
 }
 
+type HealingDriveReason int8
+
+const (
+	// HealingReasonFreshDisk is the 0 value default, which is a fresh disk
+	HealingReasonFreshDisk HealingDriveReason = iota
+	// HealingReasonOfflineDisk means the disk was detected as being offline for too long
+	HealingReasonOfflineDisk
+)
+
 // HealingDisk contains information about
 type HealingDisk struct {
 	// Copied from cmd/background-newdisks-heal-ops.go
@@ -391,6 +400,9 @@ type HealingDisk struct {
 
 	// Healing of this drive is finished, successfully or not
 	Finished bool `json:"finished"`
+
+	// The reason the healing was started, in order to decide which drive has priority.
+	Reason HealingDriveReason `json:"reason"`
 
 	// future add more tracking capabilities
 }
