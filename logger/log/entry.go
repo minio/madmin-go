@@ -56,6 +56,7 @@ type API struct {
 type Entry struct {
 	Site         string         `json:"site,omitempty"`
 	DeploymentID string         `json:"deploymentid,omitempty"`
+	SiteName     string         `json:"siteName,omitempty"`
 	Level        madmin.LogKind `json:"level"`
 	LogKind      madmin.LogKind `json:"errKind,omitempty"` // Deprecated Jan 2024
 	Time         time.Time      `json:"time"`
