@@ -30,7 +30,7 @@ import (
 
 //go:generate msgp -unexported -file=$GOFILE
 
-// ObjectSummaryOptions ...
+// ObjectSummaryOptions provides options for ObjectSummary call.
 type ObjectSummaryOptions struct {
 	Bucket, Object string
 }
@@ -73,8 +73,7 @@ func (adm *AdminClient) ObjectSummary(ctx context.Context, objOpts ObjectSummary
 	return
 }
 
-// ObjectMetaSummary ...
-// This struct is returned from minio when calling ObjectSummary
+// ObjectMetaSummary is returned from minio when calling ObjectSummary
 // This struct gives specific information about xl.meta files
 // belonging to the object being inspected by the ObjectSummary API.
 type ObjectMetaSummary struct {
@@ -88,8 +87,7 @@ type ObjectMetaSummary struct {
 	Signature      [4]byte
 }
 
-// ObjectPartSummary ...
-// This struct is returned from minio when calling ObjectSummary.
+// ObjectPartSummary is returned from minio when calling ObjectSummary.
 // This struct gives specific information about each part of the object
 // being inspected by the ObjectSummary API.
 type ObjectPartSummary struct {
@@ -102,8 +100,7 @@ type ObjectPartSummary struct {
 	Size     int64
 }
 
-// ObjectSummary ...
-// This struct is returned from minio when calling ObjectSummary.
+// ObjectSummary is returned from minio when calling ObjectSummary.
 type ObjectSummary struct {
 	Name   string
 	Errors []string
