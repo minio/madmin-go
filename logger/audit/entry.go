@@ -29,6 +29,7 @@ type ObjectVersion struct {
 type Entry struct {
 	Version      string    `json:"version"`
 	DeploymentID string    `json:"deploymentid,omitempty"`
+	SiteName     string    `json:"siteName,omitempty"`
 	Time         time.Time `json:"time"`
 	Event        string    `json:"event"`
 

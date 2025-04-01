@@ -114,22 +114,22 @@ type HealItemType string
 // HealItemType constants
 const (
 	HealItemMetadata       HealItemType = "metadata"
-	HealItemBucket                      = "bucket"
-	HealItemBucketMetadata              = "bucket-metadata"
-	HealItemObject                      = "object"
+	HealItemBucket         HealItemType = "bucket"
+	HealItemBucketMetadata HealItemType = "bucket-metadata"
+	HealItemObject         HealItemType = "object"
 )
 
 // Drive state constants
 const (
 	DriveStateOk          string = "ok"
-	DriveStateOffline            = "offline"
-	DriveStateCorrupt            = "corrupt"
-	DriveStateMissing            = "missing"
-	DriveStatePermission         = "permission-denied"
-	DriveStateFaulty             = "faulty"
-	DriveStateRootMount          = "root-mount"
-	DriveStateUnknown            = "unknown"
-	DriveStateUnformatted        = "unformatted" // only returned by disk
+	DriveStateOffline     string = "offline"
+	DriveStateCorrupt     string = "corrupt"
+	DriveStateMissing     string = "missing"
+	DriveStatePermission  string = "permission-denied"
+	DriveStateFaulty      string = "faulty"
+	DriveStateRootMount   string = "root-mount"
+	DriveStateUnknown     string = "unknown"
+	DriveStateUnformatted string = "unformatted" // only returned by disk
 )
 
 // HealDriveInfo - struct for an individual drive info item.
@@ -350,6 +350,15 @@ type SetStatus struct {
 	Disks        []Disk `json:"disks"`
 }
 
+type HealingDriveReason int8
+
+const (
+	// HealingReasonFreshDisk is the 0 value default, which is a fresh disk
+	HealingReasonFreshDisk HealingDriveReason = iota
+	// HealingReasonOfflineDisk means the disk was detected as being offline for too long
+	HealingReasonOfflineDisk
+)
+
 // HealingDisk contains information about
 type HealingDisk struct {
 	// Copied from cmd/background-newdisks-heal-ops.go
@@ -391,6 +400,9 @@ type HealingDisk struct {
 
 	// Healing of this drive is finished, successfully or not
 	Finished bool `json:"finished"`
+
+	// The reason the healing was started, in order to decide which drive has priority.
+	Reason HealingDriveReason `json:"reason"`
 
 	// future add more tracking capabilities
 }

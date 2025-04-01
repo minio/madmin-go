@@ -42,7 +42,7 @@ func parseDuration(s string) (time.Duration, error) {
 		var err error
 
 		// The next character must be [0-9.]
-		if !(s[0] == '.' || '0' <= s[0] && s[0] <= '9') {
+		if s[0] != '.' && ('0' > s[0] || s[0] > '9') {
 			return 0, errors.New("invalid duration " + strconv.Quote(orig))
 		}
 		// Consume [0-9]*

@@ -139,18 +139,18 @@ func DecryptData(password string, data io.Reader) ([]byte, error) {
 		err    error
 		stream *sio.Stream
 	)
-	switch {
-	case id[0] == argon2idAESGCM:
+	switch id[0] {
+	case argon2idAESGCM:
 		argon2Mu.Lock()
 		key := argon2.IDKey([]byte(password), salt, argon2idTime, argon2idMemory, argon2idThreads, 32)
 		argon2Mu.Unlock()
 		stream, err = sio.AES_256_GCM.Stream(key)
-	case id[0] == argon2idChaCHa20Poly1305:
+	case argon2idChaCHa20Poly1305:
 		argon2Mu.Lock()
 		key := argon2.IDKey([]byte(password), salt, argon2idTime, argon2idMemory, argon2idThreads, 32)
 		argon2Mu.Unlock()
 		stream, err = sio.ChaCha20Poly1305.Stream(key)
-	case id[0] == pbkdf2AESGCM:
+	case pbkdf2AESGCM:
 		key := pbkdf2.Key([]byte(password), salt, pbkdf2Cost, 32, sha256.New)
 		stream, err = sio.AES_256_GCM.Stream(key)
 	default:
