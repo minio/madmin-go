@@ -53,7 +53,7 @@ type ReplDiagSiteInfo struct {
 	ILMEnabled           bool             `json:"ilm_enabled,omitempty"`
 	EncryptionEnabled    bool             `json:"encryption_enabled,omitempty"`
 	ILMExpiryReplication bool             `json:"ilm_expiry_replication,omitempty"`
-	ObjectLockingEnabled bool             `json:"object_locking_enabled,omitmepyt"`
+	ObjectLockingEnabled bool             `json:"object_locking_enabled,omitempty"`
 	Throttle             ReplDiagThrottle `json:"throttle,omitempty"`
 	ReplicatedCount      int64            `json:"replicated_count,omitempty"`
 	ReplicatedSize       int64            `json:"replicated_size,omitempty"`
