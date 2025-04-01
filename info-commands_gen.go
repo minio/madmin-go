@@ -9044,6 +9044,18 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 			}
 			zb0001Mask |= 0x8000
+		case "is_leader":
+			z.IsLeader, err = dc.ReadBool()
+			if err != nil {
+				err = msgp.WrapError(err, "IsLeader")
+				return
+			}
+		case "ilm_expiry_in_progress":
+			z.ILMExpiryInProgress, err = dc.ReadBool()
+			if err != nil {
+				err = msgp.WrapError(err, "ILMExpiryInProgress")
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -9109,8 +9121,8 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(18)
-	var zb0001Mask uint32 /* 18 bits */
+	zb0001Len := uint32(20)
+	var zb0001Mask uint32 /* 20 bits */
 	_ = zb0001Mask
 	if z.State == "" {
 		zb0001Len--
@@ -9448,6 +9460,26 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
+		// write "is_leader"
+		err = en.Append(0xa9, 0x69, 0x73, 0x5f, 0x6c, 0x65, 0x61, 0x64, 0x65, 0x72)
+		if err != nil {
+			return
+		}
+		err = en.WriteBool(z.IsLeader)
+		if err != nil {
+			err = msgp.WrapError(err, "IsLeader")
+			return
+		}
+		// write "ilm_expiry_in_progress"
+		err = en.Append(0xb6, 0x69, 0x6c, 0x6d, 0x5f, 0x65, 0x78, 0x70, 0x69, 0x72, 0x79, 0x5f, 0x69, 0x6e, 0x5f, 0x70, 0x72, 0x6f, 0x67, 0x72, 0x65, 0x73, 0x73)
+		if err != nil {
+			return
+		}
+		err = en.WriteBool(z.ILMExpiryInProgress)
+		if err != nil {
+			err = msgp.WrapError(err, "ILMExpiryInProgress")
+			return
+		}
 	}
 	return
 }
@@ -9456,8 +9488,8 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(18)
-	var zb0001Mask uint32 /* 18 bits */
+	zb0001Len := uint32(20)
+	var zb0001Mask uint32 /* 20 bits */
 	_ = zb0001Mask
 	if z.State == "" {
 		zb0001Len--
@@ -9652,6 +9684,12 @@ func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 				}
 			}
 		}
+		// string "is_leader"
+		o = append(o, 0xa9, 0x69, 0x73, 0x5f, 0x6c, 0x65, 0x61, 0x64, 0x65, 0x72)
+		o = msgp.AppendBool(o, z.IsLeader)
+		// string "ilm_expiry_in_progress"
+		o = append(o, 0xb6, 0x69, 0x6c, 0x6d, 0x5f, 0x65, 0x78, 0x70, 0x69, 0x72, 0x79, 0x5f, 0x69, 0x6e, 0x5f, 0x70, 0x72, 0x6f, 0x67, 0x72, 0x65, 0x73, 0x73)
+		o = msgp.AppendBool(o, z.ILMExpiryInProgress)
 	}
 	return
 }
@@ -9896,6 +9934,18 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 			}
 			zb0001Mask |= 0x8000
+		case "is_leader":
+			z.IsLeader, bts, err = msgp.ReadBoolBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "IsLeader")
+				return
+			}
+		case "ilm_expiry_in_progress":
+			z.ILMExpiryInProgress, bts, err = msgp.ReadBoolBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ILMExpiryInProgress")
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -9991,6 +10041,7 @@ func (z *ServerProperties) Msgsize() (s int) {
 	} else {
 		s += z.License.Msgsize()
 	}
+	s += 10 + msgp.BoolSize + 23 + msgp.BoolSize
 	return
 }
 
