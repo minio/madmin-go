@@ -1,4 +1,3 @@
-//
 // Copyright (c) 2015-2025 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
@@ -76,6 +75,8 @@ func (adm *AdminClient) ObjectSummary(ctx context.Context, objOpts ObjectSummary
 
 // ObjectMetaSummary ...
 // This struct is returned from minio when calling ObjectSummary
+// This struct gives specific information about xl.meta files
+// belonging to the object being inspected by the ObjectSummary API.
 type ObjectMetaSummary struct {
 	Filename       string
 	Host           string
@@ -89,7 +90,8 @@ type ObjectMetaSummary struct {
 
 // ObjectSummaryPart ...
 // This struct is returned from minio when calling ObjectSummary.
-// It contains basic information on a part and it's xl.meta content.
+// This struct gives specific information about each part of the object
+// being inspected by the ObjectSummary API.
 type ObjectPartSummary struct {
 	Part     int
 	Pool     int
@@ -103,10 +105,11 @@ type ObjectPartSummary struct {
 // ObjectSummaryInfo ..
 // This struct is returned from minio when calling ObjectSummary.
 type ObjectSummary struct {
-	// Name is the object directory name as seen on disk.
-	// More specifically the directory that contains the xl.meta file.
-	Name        string
-	Errors      []string
+	Name   string
+	Errors []string
+	// DataDir represents the directory on disk created using
+	// the version ID's or a random uuid if the object is not
+	// versioned.
 	DataDir     string
 	IsInline    bool
 	PartNumbers []int
