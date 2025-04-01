@@ -40,10 +40,10 @@ type ObjectSummaryOptions struct {
 func (adm *AdminClient) ObjectSummary(ctx context.Context, objOpts ObjectSummaryOptions) (objectSummary *ObjectSummary, err error) {
 	form := make(url.Values)
 	if objOpts.Bucket == "" {
-		return nil, errors.New("You must specify a bucket")
+		return nil, errors.New("no bucket speficied")
 	}
 	if objOpts.Object == "" {
-		return nil, errors.New("You must specify an object")
+		return nil, errors.New("no object speficied")
 	}
 
 	form.Add("bucket", objOpts.Bucket)
@@ -88,7 +88,7 @@ type ObjectMetaSummary struct {
 	Signature      [4]byte
 }
 
-// ObjectSummaryPart ...
+// ObjectPartSummary ...
 // This struct is returned from minio when calling ObjectSummary.
 // This struct gives specific information about each part of the object
 // being inspected by the ObjectSummary API.
@@ -102,7 +102,7 @@ type ObjectPartSummary struct {
 	Size     int64
 }
 
-// ObjectSummaryInfo ..
+// ObjectSummary ...
 // This struct is returned from minio when calling ObjectSummary.
 type ObjectSummary struct {
 	Name   string
