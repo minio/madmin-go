@@ -1088,8 +1088,9 @@ type TLSCert struct {
 type MinioHealthInfo struct {
 	Error string `json:"error,omitempty"`
 
-	Config MinioConfig `json:"config,omitempty"`
-	Info   MinioInfo   `json:"info,omitempty"`
+	Config      MinioConfig   `json:"config,omitempty"`
+	Info        MinioInfo     `json:"info,omitempty"`
+	Replication *ReplDiagInfo `json:"replication,omitempty"`
 }
 
 // HealthInfo - MinIO cluster's health Info
@@ -1097,10 +1098,9 @@ type HealthInfo struct {
 	Version string `json:"version"`
 	Error   string `json:"error,omitempty"`
 
-	TimeStamp   time.Time       `json:"timestamp,omitempty"`
-	Sys         SysInfo         `json:"sys,omitempty"`
-	Minio       MinioHealthInfo `json:"minio,omitempty"`
-	Replication ReplDiagInfo    `json:"replication,omitempty"`
+	TimeStamp time.Time       `json:"timestamp,omitempty"`
+	Sys       SysInfo         `json:"sys,omitempty"`
+	Minio     MinioHealthInfo `json:"minio,omitempty"`
 }
 
 func (info HealthInfo) String() string {
