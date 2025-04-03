@@ -444,14 +444,20 @@ type CatalogDataFile struct {
 // CatalogManifestVersion represents the version of a catalog manifest.
 type CatalogManifestVersion string
 
+// Valid values for CatalogManifestVersion.
 const (
-	CatalogManifestVersionV1 CatalogManifestVersion = "v1"
+	// We use AWS S3's manifest file version here as we are following the same
+	// format at least initially.
+	CatalogManifestVersion1 CatalogManifestVersion = "2016-11-30"
 )
 
 // CatalogManifest represents the manifest of a catalog job's result.
 type CatalogManifest struct {
-	Version        CatalogManifestVersion `json:"version"`
-	JobID          string                 `json:"jobID"`
-	StartTimestamp string                 `json:"startTimestamp"`
-	Files          []CatalogDataFile      `json:"files"`
+	SourceBucket      string                 `json:"sourceBucket"`
+	DestinationBucket string                 `json:"destinationBucket"`
+	Version           CatalogManifestVersion `json:"version"`
+	CreationTimestamp string                 `json:"creationTimestamp"`
+	FileFormat        string                 `json:"fileFormat"`
+	FileSchema        string                 `json:"fileSchema"`
+	Files             []CatalogDataFile      `json:"files"`
 }
