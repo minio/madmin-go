@@ -28,14 +28,9 @@ import (
 type ReplDiagInfo struct {
 	Error               string               `json:"error,omitempty"`
 	SREnabled           bool                 `json:"site_replication_enabled"`
-	ActiveWorkers       WorkerStat           `json:"active_workers,omitempty"`
-	Queued              InQueueMetric        `json:"queued,omitempty"`
-	ReplicaCount        int64                `json:"replica_count,omitempty"`
-	ReplicaSize         int64                `json:"replica_size,omitempty"`
-	Proxying            bool                 `json:"proxying,omitempty"`
-	Proxied             ReplProxyMetric      `json:"proxied,omitempty"`
 	Sites               []ReplDiagSite       `json:"sites,omitempty"`
 	RDReplicatedBuckets []ReplDiagReplBucket `json:"replicated_buckets,omitempty"`
+	SRMetrics           []ReplDiagSRMetric   `json:"sr_metrics,omitempty"`
 }
 
 type ReplDiagSite struct {
@@ -61,13 +56,12 @@ type ReplDiagSiteInfo struct {
 }
 
 type ReplDiagNode struct {
-	Addr         string `json:"addr,omitempty"`
-	MinIOVersion string `json:"minio_version,omitempty"`
-	Uptime       int64  `json:"uptime,omitempty"`
-	PoolID       int    `json:"poolid,omitempty"`
-	// SetID               int    `json:"setid,omitempty"`
-	IsLeader            bool `json:"is_leader,omitempty"`
-	ILMExpiryInProgress bool `json:"ilm_expiry_in_progress,omitempty"`
+	Addr                string `json:"addr,omitempty"`
+	MinIOVersion        string `json:"minio_version,omitempty"`
+	Uptime              int64  `json:"uptime,omitempty"`
+	PoolID              int    `json:"poolid,omitempty"`
+	IsLeader            bool   `json:"is_leader,omitempty"`
+	ILMExpiryInProgress bool   `json:"ilm_expiry_in_progress,omitempty"`
 }
 
 type ReplDiagReplBucket struct {
@@ -141,4 +135,14 @@ type ReplDiagBucketResyncInfo struct {
 type ReplDiagThrottle struct {
 	IsSet bool   `json:"is_set,omitempty"`
 	Limit uint64 `json:"limit,omitempty"`
+}
+
+type ReplDiagSRMetric struct {
+	Node          string          `json:"node,omitempty"`
+	ActiveWorkers WorkerStat      `json:"active_workers,omitempty"`
+	Queued        InQueueMetric   `json:"queued,omitempty"`
+	ReplicaCount  int64           `json:"replica_count,omitempty"`
+	ReplicaSize   int64           `json:"replica_size,omitempty"`
+	Proxying      bool            `json:"proxying,omitempty"`
+	Proxied       ReplProxyMetric `json:"proxied,omitempty"`
 }
