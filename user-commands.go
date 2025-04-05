@@ -827,3 +827,40 @@ func (adm *AdminClient) RevokeTokens(ctx context.Context, opts RevokeTokensReq) 
 func (adm *AdminClient) RevokeTokensLDAP(ctx context.Context, opts RevokeTokensReq) error {
 	return adm.revokeTokens(ctx, opts, LDAPProvider)
 }
+
+type CheckObjectManagePermissionsOpts struct {
+	Bucket        string
+	LockEnabled   bool
+	RetentionMode string
+	LegalHold     bool
+}
+
+func (adm *AdminClient) CheckObjectManagePermissions(ctx context.Context, opts CheckObjectManagePermissionsOpts) error {
+	queryValues := url.Values{}
+	queryValues.Set("bucket", opts.Bucket)
+	if opts.LockEnabled {
+		queryValues.Set("bucket-lock-enabled", "true")
+	}
+	queryValues.Set("retention-mode", opts.RetentionMode)
+	if opts.LegalHold {
+		queryValues.Set("legalhold", "true")
+	}
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/check-object-manage-permissions",
+		queryValues: queryValues,
+	}
+
+	// Execute GET on /minio/admin/v3/check-object-manage-permissions
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+
+	return nil
+}
