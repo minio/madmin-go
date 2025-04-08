@@ -613,13 +613,56 @@ const (
 type ListAccessKeysOpts struct {
 	ListType   string
 	All        bool
-	ConfigName string // For OpenID
+	ConfigName string // blank for default config or if AllConfigs is true
+	AllConfigs bool
+}
+
+func (opts *ListAccessKeysOpts) validate(n int) error {
+	if opts.ListType == "" {
+		opts.ListType = AccessKeyListAll
+	}
+
+	if opts.ListType != AccessKeyListUsersOnly && opts.ListType != AccessKeyListSTSOnly &&
+		opts.ListType != AccessKeyListSvcaccOnly && opts.ListType != AccessKeyListAll {
+		return errors.New("invalid list type")
+	}
+
+	if opts.All && n > 0 {
+		return errors.New("either specify users or all, not both")
+	}
+
+	return nil
+}
+
+func (opts *ListAccessKeysOpts) BuiltinValidate(n int) error {
+	if err := opts.validate(n); err != nil {
+		return err
+	}
+
+	if opts.ConfigName != "" || opts.AllConfigs {
+		return errors.New("configName and allConfigs are not supported for builtin provider")
+	}
+	return nil
+}
+
+func (opts *ListAccessKeysOpts) LDAPValidate(n int) error {
+	return opts.BuiltinValidate(n)
+}
+
+func (opts *ListAccessKeysOpts) OpenIDValidate(n int) error {
+	if err := opts.validate(n); err != nil {
+		return err
+	}
+	if opts.ConfigName != "" && opts.AllConfigs {
+		return errors.New("configName and allConfigs are mutually exclusive")
+	}
+	return nil
 }
 
 // ListAccessKeysBulk - list access keys belonging to the given users or all users
 func (adm *AdminClient) ListAccessKeysBulk(ctx context.Context, users []string, opts ListAccessKeysOpts) (map[string]ListAccessKeysResp, error) {
-	if len(users) > 0 && opts.All {
-		return nil, errors.New("either specify users or all, not both")
+	if err := opts.BuiltinValidate(len(users)); err != nil {
+		return nil, err
 	}
 
 	queryValues := url.Values{}
@@ -672,8 +715,8 @@ type ListAccessKeysOpenIDResp struct {
 
 // ListAccessKeysOpenIDBulk - list access keys belonging to the given users or all users
 func (adm *AdminClient) ListAccessKeysOpenIDBulk(ctx context.Context, users []string, opts ListAccessKeysOpts) ([]ListAccessKeysOpenIDResp, error) {
-	if len(users) > 0 && opts.All {
-		return nil, errors.New("either specify users or all, not both")
+	if err := opts.OpenIDValidate(len(users)); err != nil {
+		return nil, err
 	}
 
 	queryValues := url.Values{}
@@ -684,6 +727,9 @@ func (adm *AdminClient) ListAccessKeysOpenIDBulk(ctx context.Context, users []st
 	}
 	if opts.ConfigName != "" {
 		queryValues.Set("configName", opts.ConfigName)
+	}
+	if opts.AllConfigs {
+		queryValues.Set("allConfigs", "true")
 	}
 
 	reqData := requestData{
