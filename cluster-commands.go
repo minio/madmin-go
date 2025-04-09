@@ -1267,7 +1267,7 @@ type Endpoints []Endpoint
 
 // Endpoint - any type of endpoint.
 type Endpoint struct {
-	*url.URL
+	url.URL
 	IsLocal bool
 
 	PoolIdx, SetIdx, DiskIdx int
