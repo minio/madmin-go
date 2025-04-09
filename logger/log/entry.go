@@ -71,9 +71,8 @@ type Entry struct {
 // Info holds console log messages
 type Info struct {
 	Entry
-	ConsoleMsg string // deprecated
-	NodeName   string `json:"node"`
-	Err        error  `json:"-"`
+	NodeName string `json:"node"`
+	Err      error  `json:"-"`
 }
 
 // Mask returns the mask based on the error level.

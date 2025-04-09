@@ -86,9 +86,8 @@ func (l LogKind) String() string {
 // LogInfo holds console log messages
 type LogInfo struct {
 	logEntry
-	ConsoleMsg string // deprecated
-	NodeName   string `json:"node"`
-	Err        error  `json:"-"`
+	NodeName string `json:"node"`
+	Err      error  `json:"-"`
 }
 
 // GetLogs - listen on console log messages.
