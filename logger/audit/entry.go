@@ -59,6 +59,7 @@ type Entry struct {
 	UserAgent  string                 `json:"userAgent,omitempty"`
 	ReqPath    string                 `json:"requestPath,omitempty"`
 	ReqHost    string                 `json:"requestHost,omitempty"`
+	ReqNode    string                 `json:"requestNode,omitempty"`
 	ReqClaims  map[string]interface{} `json:"requestClaims,omitempty"`
 	ReqQuery   map[string]string      `json:"requestQuery,omitempty"`
 	ReqHeader  map[string]string      `json:"requestHeader,omitempty"`
