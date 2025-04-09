@@ -904,7 +904,7 @@ func (adm *AdminClient) revokeTokens(ctx context.Context, opts RevokeTokensReq, 
 		queryValues: queryValues,
 	}
 
-	// Execute POST on /minio/admin/v3/revoke-tokens/{provider}
+	// Execute POST on /minio/admin/v4/revoke-tokens/{provider}
 	resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
 	defer closeResponse(resp)
 	if err != nil {
