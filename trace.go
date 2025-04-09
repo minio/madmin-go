@@ -72,8 +72,6 @@ const (
 	TraceObject
 	// TraceReplication will trace replication as they are being picked up by workers
 	TraceReplication
-	// TraceTiering will trace tiering as they are being picked up by workers
-	TraceTiering
 	// TraceIAM will trace Identity and Access Management
 	TraceIAM
 	// Add more here...

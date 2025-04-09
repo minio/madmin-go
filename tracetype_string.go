@@ -28,12 +28,11 @@ func _() {
 	_ = x[TraceAdmin-131072]
 	_ = x[TraceObject-262144]
 	_ = x[TraceReplication-524288]
-	_ = x[TraceTiering-1048576]
-	_ = x[TraceIAM-2097152]
-	_ = x[TraceAll-4194303]
+	_ = x[TraceIAM-1048576]
+	_ = x[TraceAll-2097151]
 }
 
-const _TraceType_name = "OSStorageS3InternalScannerDecommissionHealingBatchReplicationBatchKeyRotationBatchExpireRebalanceReplicationResyncBootstrapFTPILMKMSFormattingAdminObjectReplicationTieringIAMAll"
+const _TraceType_name = "OSStorageS3InternalScannerDecommissionHealingBatchReplicationBatchKeyRotationBatchExpireRebalanceReplicationResyncBootstrapFTPILMKMSFormattingAdminObjectReplicationIAMAll"
 
 var _TraceType_map = map[TraceType]string{
 	1:       _TraceType_name[0:2],
@@ -56,9 +55,8 @@ var _TraceType_map = map[TraceType]string{
 	131072:  _TraceType_name[142:147],
 	262144:  _TraceType_name[147:153],
 	524288:  _TraceType_name[153:164],
-	1048576: _TraceType_name[164:171],
-	2097152: _TraceType_name[171:174],
-	4194303: _TraceType_name[174:177],
+	1048576: _TraceType_name[164:167],
+	2097151: _TraceType_name[167:170],
 }
 
 func (i TraceType) String() string {
