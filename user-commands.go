@@ -730,11 +730,11 @@ func (adm *AdminClient) ListAccessKeysOpenIDBulk(ctx context.Context, users []st
 	}
 
 	reqData := requestData{
-		relPath:     adminAPIPrefix + "/idp/openid/list-access-keys-bulk",
+		relPath:     adminAPIPrefixV4 + "/idp/openid/list-access-keys-bulk",
 		queryValues: queryValues,
 	}
 
-	// Execute GET on /minio/admin/v3/list-access-keys-bulk
+	// Execute GET on /minio/admin/v4/list-access-keys-bulk
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 	defer closeResponse(resp)
 	if err != nil {
@@ -904,7 +904,7 @@ func (adm *AdminClient) revokeTokens(ctx context.Context, opts RevokeTokensReq, 
 		queryValues: queryValues,
 	}
 
-	// Execute POST on /minio/admin/v3/revoke-tokens/{provider}
+	// Execute POST on /minio/admin/v4/revoke-tokens/{provider}
 	resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
 	defer closeResponse(resp)
 	if err != nil {
@@ -959,11 +959,11 @@ func (adm *AdminClient) InfoAccessKey(ctx context.Context, accessKey string) (In
 	queryValues.Set("accessKey", accessKey)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefix + "/info-access-key",
+		relPath:     adminAPIPrefixV4 + "/info-access-key",
 		queryValues: queryValues,
 	}
 
-	// Execute GET on /minio/admin/v3/info-access-key
+	// Execute GET on /minio/admin/v4/info-access-key
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 	defer closeResponse(resp)
 	if err != nil {
