@@ -71,7 +71,7 @@ type Entry struct {
 // Info holds console log messages
 type Info struct {
 	Entry
-	ConsoleMsg string
+	ConsoleMsg string // deprecated
 	NodeName   string `json:"node"`
 	Err        error  `json:"-"`
 }
