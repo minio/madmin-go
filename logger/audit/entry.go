@@ -71,3 +71,23 @@ type Entry struct {
 
 	Error string `json:"error,omitempty"`
 }
+
+// Event represents the audit event
+type Event struct {
+	Version      string    `json:"version"`
+	DeploymentID string    `json:"deploymentid,omitempty"`
+	SiteName     string    `json:"siteName,omitempty"`
+	Time         time.Time `json:"time"`
+	Event        string    `json:"event"`
+
+	Type string `json:"type,omitempty"`
+
+	API struct {
+		Name       string `json:"name,omitempty"`
+		Bucket     string `json:"bucket,omitempty"`
+		Object     string `json:"object,omitempty"`
+		StatusCode int    `json:"statusCode,omitempty"`
+	} `json:"api"`
+
+	Error string `json:"error,omitempty"`
+}
