@@ -70,6 +70,10 @@ const (
 	TraceAdmin
 	// TraceObject will trade object layer operations
 	TraceObject
+	// TraceReplication will trace replication as they are being picked up by workers
+	TraceReplication
+	// TraceIAM will trace Identity and Access Management
+	TraceIAM
 	// Add more here...
 
 	// TraceAll contains all valid trace modes.
