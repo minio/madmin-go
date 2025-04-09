@@ -611,14 +611,58 @@ const (
 
 // ListAccessKeysOpts - options for listing access keys
 type ListAccessKeysOpts struct {
-	ListType string
-	All      bool
+	ListType   string
+	All        bool
+	ConfigName string // blank for default config or if AllConfigs is true
+	AllConfigs bool
+}
+
+func (opts *ListAccessKeysOpts) validate(n int) error {
+	if opts.ListType == "" {
+		opts.ListType = AccessKeyListAll
+	}
+
+	if opts.ListType != AccessKeyListUsersOnly && opts.ListType != AccessKeyListSTSOnly &&
+		opts.ListType != AccessKeyListSvcaccOnly && opts.ListType != AccessKeyListAll {
+		return errors.New("invalid list type")
+	}
+
+	if opts.All && n > 0 {
+		return errors.New("either specify users or all, not both")
+	}
+
+	return nil
+}
+
+func (opts *ListAccessKeysOpts) BuiltinValidate(n int) error {
+	if err := opts.validate(n); err != nil {
+		return err
+	}
+
+	if opts.ConfigName != "" || opts.AllConfigs {
+		return errors.New("configName and allConfigs are not supported for builtin provider")
+	}
+	return nil
+}
+
+func (opts *ListAccessKeysOpts) LDAPValidate(n int) error {
+	return opts.BuiltinValidate(n)
+}
+
+func (opts *ListAccessKeysOpts) OpenIDValidate(n int) error {
+	if err := opts.validate(n); err != nil {
+		return err
+	}
+	if opts.ConfigName != "" && opts.AllConfigs {
+		return errors.New("configName and allConfigs are mutually exclusive")
+	}
+	return nil
 }
 
 // ListAccessKeysBulk - list access keys belonging to the given users or all users
 func (adm *AdminClient) ListAccessKeysBulk(ctx context.Context, users []string, opts ListAccessKeysOpts) (map[string]ListAccessKeysResp, error) {
-	if len(users) > 0 && opts.All {
-		return nil, errors.New("either specify users or all, not both")
+	if err := opts.BuiltinValidate(len(users)); err != nil {
+		return nil, err
 	}
 
 	queryValues := url.Values{}
@@ -650,6 +694,66 @@ func (adm *AdminClient) ListAccessKeysBulk(ctx context.Context, users []string, 
 	}
 
 	listResp := make(map[string]ListAccessKeysResp)
+	if err = json.Unmarshal(data, &listResp); err != nil {
+		return nil, err
+	}
+	return listResp, nil
+}
+
+type OpenIDUserAccessKeys struct {
+	MinioAccessKey  string               `json:"minioAccessKey"`
+	ID              string               `json:"ID"`
+	ReadableName    string               `json:"readableName"`
+	ServiceAccounts []ServiceAccountInfo `json:"serviceAccounts"`
+	STSKeys         []ServiceAccountInfo `json:"stsKeys"`
+}
+
+type ListAccessKeysOpenIDResp struct {
+	ConfigName string                 `json:"configName"`
+	Users      []OpenIDUserAccessKeys `json:"users"`
+}
+
+// ListAccessKeysOpenIDBulk - list access keys belonging to the given users or all users
+func (adm *AdminClient) ListAccessKeysOpenIDBulk(ctx context.Context, users []string, opts ListAccessKeysOpts) ([]ListAccessKeysOpenIDResp, error) {
+	if err := opts.OpenIDValidate(len(users)); err != nil {
+		return nil, err
+	}
+
+	queryValues := url.Values{}
+	queryValues.Set("listType", opts.ListType)
+	queryValues["users"] = users
+	if opts.All {
+		queryValues.Set("all", "true")
+	}
+	if opts.ConfigName != "" {
+		queryValues.Set("configName", opts.ConfigName)
+	}
+	if opts.AllConfigs {
+		queryValues.Set("allConfigs", "true")
+	}
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/idp/openid/list-access-keys-bulk",
+		queryValues: queryValues,
+	}
+
+	// Execute GET on /minio/admin/v3/list-access-keys-bulk
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+
+	data, err := DecryptData(adm.getSecretKey(), resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var listResp []ListAccessKeysOpenIDResp
 	if err = json.Unmarshal(data, &listResp); err != nil {
 		return nil, err
 	}
@@ -826,4 +930,61 @@ func (adm *AdminClient) RevokeTokens(ctx context.Context, opts RevokeTokensReq) 
 // RevokeTokensLDAP - revokes tokens for the specified LDAP user.
 func (adm *AdminClient) RevokeTokensLDAP(ctx context.Context, opts RevokeTokensReq) error {
 	return adm.revokeTokens(ctx, opts, LDAPProvider)
+}
+
+type LDAPSpecificAccessKeyInfo struct {
+	Username string `json:"username"`
+}
+
+type OpenIDSpecificAccessKeyInfo struct {
+	ConfigName       string `json:"configName"`
+	UserID           string `json:"userID"`
+	UserIDClaim      string `json:"userIDClaim"`
+	DisplayName      string `json:"displayName,omitempty"`
+	DisplayNameClaim string `json:"displayNameClaim,omitempty"`
+}
+
+// InfoAccessKeyResp is the response body of the info access key call
+type InfoAccessKeyResp struct {
+	AccessKey string
+
+	InfoServiceAccountResp
+
+	UserType           string                      `json:"userType"`
+	UserProvider       string                      `json:"userProvider"`
+	LDAPSpecificInfo   LDAPSpecificAccessKeyInfo   `json:"ldapSpecificInfo,omitempty"`
+	OpenIDSpecificInfo OpenIDSpecificAccessKeyInfo `json:"openIDSpecificInfo,omitempty"`
+}
+
+// InfoAccessKey - returns the info of an access key
+func (adm *AdminClient) InfoAccessKey(ctx context.Context, accessKey string) (InfoAccessKeyResp, error) {
+	queryValues := url.Values{}
+	queryValues.Set("accessKey", accessKey)
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/info-access-key",
+		queryValues: queryValues,
+	}
+
+	// Execute GET on /minio/admin/v3/info-access-key
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return InfoAccessKeyResp{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return InfoAccessKeyResp{}, httpRespToErrorResponse(resp)
+	}
+
+	data, err := DecryptData(adm.getSecretKey(), resp.Body)
+	if err != nil {
+		return InfoAccessKeyResp{}, err
+	}
+
+	var infoResp InfoAccessKeyResp
+	if err = json.Unmarshal(data, &infoResp); err != nil {
+		return InfoAccessKeyResp{}, err
+	}
+	return infoResp, nil
 }
