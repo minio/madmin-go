@@ -1251,12 +1251,12 @@ func (adm *AdminClient) SiteReplicationResyncOp(ctx context.Context, site PeerIn
 // along with its setCount and setDriveCount.
 type PoolEndpoints struct {
 	// indicates if endpoints are provided in non-ellipses style
-	Legacy       bool
-	SetCount     int
-	DrivesPerSet int
-	Endpoints    Endpoints
-	CmdLine      string
-	Platform     string
+	Legacy       bool      `json:"legacy"`
+	SetCount     int       `json:"setCount"`
+	DrivesPerSet int       `json:"drivesPerSet"`
+	Endpoints    Endpoints `json:"endpoints"`
+	CmdLine      string    `json:"cmdLine"`
+	Platform     string    `json:"platform"`
 }
 
 // EndpointServerPools - list of list of endpoints
@@ -1268,9 +1268,10 @@ type Endpoints []Endpoint
 // Endpoint - any type of endpoint.
 type Endpoint struct {
 	url.URL
-	IsLocal bool
-
-	PoolIdx, SetIdx, DiskIdx int
+	IsLocal bool `json:"isLocal"`
+	PoolIdx int  `json:"poolIdx"`
+	SetIdx  int  `json:"setIdx"`
+	DiskIdx int  `json:"diskIdx"`
 }
 
 // GetReplicatedSiteEndpointServerPools - gets a site replication site's api endpoint server pools
