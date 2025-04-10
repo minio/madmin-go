@@ -1251,27 +1251,27 @@ func (adm *AdminClient) SiteReplicationResyncOp(ctx context.Context, site PeerIn
 // along with its setCount and setDriveCount.
 type PoolEndpoints struct {
 	// indicates if endpoints are provided in non-ellipses style
-	Legacy       bool      `json:"legacy"`
-	SetCount     int       `json:"setCount"`
-	DrivesPerSet int       `json:"drivesPerSet"`
-	Endpoints    Endpoints `json:"endpoints"`
-	CmdLine      string    `json:"cmdLine"`
-	Platform     string    `json:"platform"`
+	Legacy       bool   `json:"legacy,omitempty"`
+	SetCount     int    `json:"setCount,omitempty"`
+	DrivesPerSet int    `json:"drivesPerSet,omitempty"`
+	Drives       Drives `json:"drives,omitempty"`
+	CmdLine      string `json:"cmdLine,omitempty"`
+	Platform     string `json:"platform,omitempty"`
 }
 
 // EndpointServerPools - list of list of endpoints
 type EndpointServerPools []PoolEndpoints
 
-// Endpoints - list of same type of endpoint.
-type Endpoints []Endpoint
+// Drives - list of drives
+type Drives []Drive
 
-// Endpoint - any type of endpoint.
-type Endpoint struct {
-	url.URL
-	IsLocal bool `json:"isLocal"`
-	PoolIdx int  `json:"poolIdx"`
-	SetIdx  int  `json:"setIdx"`
-	DiskIdx int  `json:"diskIdx"`
+// Drive - a drive detail
+type Drive struct {
+	UrlParts url.URL `json:"urlParts,omitempty"`
+	IsLocal  bool    `json:"isLocal,omitempty"`
+	PoolIdx  int     `json:"poolIdx,omitempty"`
+	SetIdx   int     `json:"setIdx,omitempty"`
+	DiskIdx  int     `json:"diskIdx,omitempty"`
 }
 
 // GetReplicatedSiteEndpointServerPools - gets a site replication site's api endpoint server pools
