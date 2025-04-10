@@ -1267,7 +1267,7 @@ type Drives []Drive
 
 // Drive - a drive detail
 type Drive struct {
-	UrlParts url.URL `json:"urlParts,omitempty"`
+	URLParts url.URL `json:"urlParts,omitempty"`
 	IsLocal  bool    `json:"isLocal,omitempty"`
 	PoolIdx  int     `json:"poolIdx,omitempty"`
 	SetIdx   int     `json:"setIdx,omitempty"`
