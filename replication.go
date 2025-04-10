@@ -71,25 +71,32 @@ type ReplDiagReplBucket struct {
 }
 
 type ReplDiagBucketReplTarget struct {
-	SourceBucket              string        `json:"source_bucket,omitempty"`
-	TargetBucket              string        `json:"target_bucket,omitempty"`
-	Addr                      string        `json:"addr,omitempty"`
-	Online                    bool          `json:"online,omitempty"`
-	TotalDowntime             time.Duration `json:"total_downtime,omitempty"`
-	CurrentDowntime           time.Duration `json:"current_downtime,omitempty"`
-	AdminPermissions          bool          `json:"admin_permissions,omitempty"`
-	SyncReplication           bool          `json:"sync_replication,omitempty"`
-	HeartbeatErrCount         int64         `json:"heartbeat_err_count,omitempty"`
-	BandwidthLimit            uint64        `json:"bandwidth_limit,omitempty"`
-	Latency                   LatencyStat   `json:"xfer_rate,omitempty"`
-	Edge                      bool          `json:"edge,omitempty"`
-	HealthCheckDuration       time.Duration `json:"heath_check,omitempty"`
-	DisableProxying           bool          `json:"disable_proxying"`
-	DeleteReplication         bool          `json:"delete_replication,omitempty"`
-	DeleteMarkerReplication   bool          `json:"delete_marker_replication,omitempty"`
-	ReplicationPriority       int           `json:"replication_priority,omitempty"`
-	ExistingObjectReplication bool          `json:"existing_object_replication,omitempty"`
-	MetadataSync              bool          `json:"metadata_sync,omitempty"`
+	SourceBucket              string                  `json:"source_bucket,omitempty"`
+	TargetBucket              string                  `json:"target_bucket,omitempty"`
+	Addr                      string                  `json:"addr,omitempty"`
+	Online                    bool                    `json:"online,omitempty"`
+	TotalDowntime             time.Duration           `json:"total_downtime,omitempty"`
+	CurrentDowntime           time.Duration           `json:"current_downtime,omitempty"`
+	Permissions               ObjectManagePermissions `json:"permissions,omitempty"`
+	SyncReplication           bool                    `json:"sync_replication,omitempty"`
+	HeartbeatErrCount         int64                   `json:"heartbeat_err_count,omitempty"`
+	BandwidthLimit            uint64                  `json:"bandwidth_limit,omitempty"`
+	Latency                   LatencyStat             `json:"xfer_rate,omitempty"`
+	Edge                      bool                    `json:"edge,omitempty"`
+	HealthCheckDuration       time.Duration           `json:"heath_check,omitempty"`
+	DisableProxying           bool                    `json:"disable_proxying"`
+	DeleteReplication         bool                    `json:"delete_replication,omitempty"`
+	DeleteMarkerReplication   bool                    `json:"delete_marker_replication,omitempty"`
+	ReplicationPriority       int                     `json:"replication_priority,omitempty"`
+	ExistingObjectReplication bool                    `json:"existing_object_replication,omitempty"`
+	MetadataSync              bool                    `json:"metadata_sync,omitempty"`
+}
+
+type ObjectManagePermissions struct {
+	DeleteObjectAllowed       bool `json:"delete_object_allowed,omitempty"`
+	PuObjectAllowed           bool `json:"put_object_allowed,omitempty"`
+	PutObjectRetentionAllowed bool `json:"put_object_retention_allowed,omitempty"`
+	PutObjectLegalHoldAllowed bool `json:"put_object_legal_hold_allowed,omitempty"`
 }
 
 type ReplDiagBucketReplInfo struct {
