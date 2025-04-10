@@ -998,7 +998,7 @@ type GetObjectManagePermissionsOpts struct {
 	LegalHold     bool
 }
 
-// CheckObjectManagePermissions get object management permissions details for the given bucket
+// GetObjectManagePermissions get object management permissions details for the given bucket
 func (adm *AdminClient) GetObjectManagePermissions(ctx context.Context, opts GetObjectManagePermissionsOpts) (perms ObjectManagePermissions, err error) {
 	queryValues := url.Values{}
 	queryValues.Set("bucket", opts.Bucket)
