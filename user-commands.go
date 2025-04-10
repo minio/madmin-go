@@ -989,6 +989,7 @@ func (adm *AdminClient) InfoAccessKey(ctx context.Context, accessKey string) (In
 	return infoResp, nil
 }
 
+// CheckObjectManagePermissionsOpts represents options for checking object manager permissions
 type CheckObjectManagePermissionsOpts struct {
 	Bucket        string
 	LockEnabled   bool
@@ -996,6 +997,7 @@ type CheckObjectManagePermissionsOpts struct {
 	LegalHold     bool
 }
 
+// CheckObjectManagePermissions checks object management permissions for the given bucket
 func (adm *AdminClient) CheckObjectManagePermissions(ctx context.Context, opts CheckObjectManagePermissionsOpts) error {
 	queryValues := url.Values{}
 	queryValues.Set("bucket", opts.Bucket)
