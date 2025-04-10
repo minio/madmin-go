@@ -1,4 +1,4 @@
-module github.com/zveinn/madmin-go/v4
+module github.com/minio/madmin-go/v4
 
 go 1.22.4
 
