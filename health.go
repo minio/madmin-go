@@ -40,11 +40,12 @@ import (
 	"github.com/minio/madmin-go/v4/cgroup"
 	"github.com/minio/madmin-go/v4/kernel"
 	"github.com/prometheus/procfs"
-	"github.com/shirou/gopsutil/v3/cpu"
-	"github.com/shirou/gopsutil/v3/disk"
-	"github.com/shirou/gopsutil/v3/host"
-	"github.com/shirou/gopsutil/v3/mem"
-	"github.com/shirou/gopsutil/v3/process"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/disk"
+	"github.com/shirou/gopsutil/v4/host"
+	"github.com/shirou/gopsutil/v4/mem"
+	"github.com/shirou/gopsutil/v4/process"
+	"github.com/shirou/gopsutil/v4/sensors"
 )
 
 // NodeCommon - Common fields across most node-specific health structs
@@ -404,8 +405,8 @@ func GetPartitions(ctx context.Context, addr string) Partitions {
 type OSInfo struct {
 	NodeCommon
 
-	Info    host.InfoStat          `json:"info,omitempty"`
-	Sensors []host.TemperatureStat `json:"sensors,omitempty"`
+	Info    host.InfoStat             `json:"info,omitempty"`
+	Sensors []sensors.TemperatureStat `json:"sensors,omitempty"`
 }
 
 // TimeInfo contains current time with timezone, and
@@ -465,7 +466,7 @@ func GetOSInfo(ctx context.Context, addr string) OSInfo {
 	}
 	osInfo.Info.KernelVersion = kr
 
-	osInfo.Sensors, _ = host.SensorsTemperaturesWithContext(ctx)
+	osInfo.Sensors, _ = sensors.TemperaturesWithContext(ctx)
 
 	return osInfo
 }
@@ -791,7 +792,7 @@ type ProcInfo struct {
 	CreateTime     int64                      `json:"create_time,omitempty"`
 	CWD            string                     `json:"cwd,omitempty"`
 	ExecPath       string                     `json:"exec_path,omitempty"`
-	GIDs           []int32                    `json:"gids,omitempty"`
+	GIDs           []uint32                   `json:"gids,omitempty"`
 	IOCounters     process.IOCountersStat     `json:"iocounters,omitempty"`
 	IsRunning      bool                       `json:"is_running,omitempty"`
 	MemInfo        process.MemoryInfoStat     `json:"mem_info,omitempty"`
@@ -807,7 +808,7 @@ type ProcInfo struct {
 	Status         string                     `json:"status,omitempty"`
 	TGID           int32                      `json:"tgid,omitempty"`
 	Times          cpu.TimesStat              `json:"times,omitempty"`
-	UIDs           []int32                    `json:"uids,omitempty"`
+	UIDs           []uint32                   `json:"uids,omitempty"`
 	Username       string                     `json:"username,omitempty"`
 }
 
