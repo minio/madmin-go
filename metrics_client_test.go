@@ -24,7 +24,7 @@ import (
 	"net/url"
 	"testing"
 
-	jwtgo "github.com/golang-jwt/jwt/v4"
+	jwtgo "github.com/golang-jwt/jwt/v5"
 )
 
 func TestMakeTargetUrlBuildsURLWithClientAndRelativePath(t *testing.T) {
