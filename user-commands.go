@@ -345,6 +345,8 @@ type AddServiceAccountReq struct {
 	Description string `json:"description,omitempty"`
 	// Time at which this access key expires
 	Expiration *time.Time `json:"expiration,omitempty"`
+	// ConfigName of the parent user for compatible IDPs
+	ConfigName string `json:"configName,omitempty"`
 
 	// Deprecated: use description instead
 	Comment string `json:"comment,omitempty"`
