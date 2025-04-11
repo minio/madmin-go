@@ -25,6 +25,8 @@ import (
 	"github.com/minio/minio-go/v7/pkg/replication"
 )
 
+// ReplDiagInfo represents the replication diagnostic information to ba captured
+// part of health diagnostic information
 type ReplDiagInfo struct {
 	Error               string               `json:"error,omitempty"`
 	SREnabled           bool                 `json:"site_replication_enabled"`
@@ -33,12 +35,14 @@ type ReplDiagInfo struct {
 	SRMetrics           []ReplDiagSRMetric   `json:"sr_metrics,omitempty"`
 }
 
+// ReplDiagSite represents the replication site information
 type ReplDiagSite struct {
 	Addr         string           `json:"addr,omitempty"`
 	DeploymentID string           `json:"deployment_id"`
 	Info         ReplDiagSiteInfo `json:"info,omitempty"`
 }
 
+// ReplDiagSiteInfo represents the replication diagnostic information for a site
 type ReplDiagSiteInfo struct {
 	Nodes                []ReplDiagNode   `json:"nodes,omitempty"`
 	LDAPEnabled          bool             `json:"ldap_enabled,omitempty"`
@@ -55,6 +59,8 @@ type ReplDiagSiteInfo struct {
 	ResyncStatus         string           `json:"resync_status"`
 }
 
+// ReplDiagNode represents the replication diagnostic information for a node
+// in a site
 type ReplDiagNode struct {
 	Addr                string `json:"addr,omitempty"`
 	MinIOVersion        string `json:"minio_version,omitempty"`
@@ -64,12 +70,14 @@ type ReplDiagNode struct {
 	ILMExpiryInProgress bool   `json:"ilm_expiry_in_progress,omitempty"`
 }
 
+// ReplDiagReplBucket represents the replication diagnostic information for a bucket
 type ReplDiagReplBucket struct {
 	Name               string                     `json:"name,omitempty"`
 	ReplicationInfo    ReplDiagBucketReplInfo     `json:"replication_info,omitempty"`
 	ReplicationTargets []ReplDiagBucketReplTarget `json:"replication_targets,omitempty"`
 }
 
+// ReplDiagBucketReplTarget represents the replication target information for a bucket
 type ReplDiagBucketReplTarget struct {
 	SourceBucket              string                  `json:"source_bucket,omitempty"`
 	TargetBucket              string                  `json:"target_bucket,omitempty"`
@@ -92,6 +100,7 @@ type ReplDiagBucketReplTarget struct {
 	MetadataSync              bool                    `json:"metadata_sync,omitempty"`
 }
 
+// ObjectManagePermissions represents the permissions for managing objects on a target site
 type ObjectManagePermissions struct {
 	DeleteObjectAllowed       bool `json:"delete_object_allowed,omitempty"`
 	PuObjectAllowed           bool `json:"put_object_allowed,omitempty"`
@@ -99,6 +108,7 @@ type ObjectManagePermissions struct {
 	PutObjectLegalHoldAllowed bool `json:"put_object_legal_hold_allowed,omitempty"`
 }
 
+// ReplDiagBucketReplInfo represents the metadata for a replicated bucket
 type ReplDiagBucketReplInfo struct {
 	VersionEnabled   bool                     `json:"version_enabled,omitempty"`
 	ObjectLocking    bool                     `json:"object_locking,omitempty"`
@@ -109,27 +119,32 @@ type ReplDiagBucketReplInfo struct {
 	Resync           ReplDiagBucketResyncInfo `json:"resync,omitempty"`
 }
 
+// ReplDiagILMInfo represents the ILM rules details for a replicated bucket
 type ReplDiagILMInfo struct {
 	Enabled bool              `json:"enabled,omitempty"`
 	Rules   []ReplDiagILMRule `json:"rules,omitempty"`
 }
 
+// ReplDiagILMRule represents individual ILM rule details for a replicated bucket
 type ReplDiagILMRule struct {
 	ID         string `json:"id,omitempty"`
 	Expiration bool   `json:"expiration,omitempty"`
 	Transition bool   `json:"transition,omitempty"`
 }
 
+// ReplDiagEncInfo represents the encryption information for a replicated bucket
 type ReplDiagEncInfo struct {
 	Enabled  bool            `json:"enabled,omitempty"`
 	EncRules []BucketEncInfo `json:"enc_rules,omitempty"`
 }
 
+// BucketEncInfo represents the encryption information for a replicated bucket
 type BucketEncInfo struct {
 	Algorithm string `json:"algorithm,omitempty"`
 	EncKey    string `json:"enc_key,omitempty"`
 }
 
+// ReplDiagBucketResyncInfo represents resync counters for a replicated bucket
 type ReplDiagBucketResyncInfo struct {
 	InProgress      bool      `json:"in_progress,omitempty"`
 	StartTime       time.Time `json:"start_time,omitempty"`
@@ -139,11 +154,13 @@ type ReplDiagBucketResyncInfo struct {
 	ReplicatedSize  int64     `json:"replicated_size,omitempty"`
 }
 
+// ReplDiagThrottle represents the replication throttle information
 type ReplDiagThrottle struct {
 	IsSet bool   `json:"is_set,omitempty"`
 	Limit uint64 `json:"limit,omitempty"`
 }
 
+// ReplDiagSRMetric represents the site replication metrics for a site
 type ReplDiagSRMetric struct {
 	Node          string          `json:"node,omitempty"`
 	ActiveWorkers WorkerStat      `json:"active_workers,omitempty"`

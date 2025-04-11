@@ -1259,7 +1259,7 @@ type PoolEndpoints struct {
 	Platform     string `json:"platform,omitempty"`
 }
 
-// EndpointServerPools - list of list of endpoints
+// EndpointServerPools - list of pool endpoints
 type EndpointServerPools []PoolEndpoints
 
 // Drives - list of drives
