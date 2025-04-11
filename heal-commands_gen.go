@@ -2989,9 +2989,9 @@ func (z *HealingDisk) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *HealingDisk) EncodeMsg(en *msgp.Writer) (err error) {
-
-	err = en.Append(0xde, 0x0, 0x1a, 0xa2, 0x69, 0x64)
-
+	// map header, size 24
+	// write "id"
+	err = en.Append(0xde, 0x0, 0x18, 0xa2, 0x69, 0x64)
 	if err != nil {
 		return
 	}
@@ -3250,9 +3250,9 @@ func (z *HealingDisk) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *HealingDisk) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-
-	o = append(o, 0xde, 0x0, 0x1a, 0xa2, 0x69, 0x64)
-
+	// map header, size 24
+	// string "id"
+	o = append(o, 0xde, 0x0, 0x18, 0xa2, 0x69, 0x64)
 	o = msgp.AppendString(o, z.ID)
 	// string "heal_id"
 	o = append(o, 0xa7, 0x68, 0x65, 0x61, 0x6c, 0x5f, 0x69, 0x64)
