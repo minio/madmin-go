@@ -730,8 +730,7 @@ func (adm *AdminClient) ListAccessKeysOpenIDBulk(ctx context.Context, users []st
 	}
 
 	reqData := requestData{
-
-		relPath:     adminAPIPrefix + "/idp/openid/list-access-keys-bulk",
+		relPath:     adminAPIPrefixV4 + "/idp/openid/list-access-keys-bulk",
 		queryValues: queryValues,
 	}
 
@@ -959,7 +958,7 @@ func (adm *AdminClient) InfoAccessKey(ctx context.Context, accessKey string) (In
 	queryValues.Set("accessKey", accessKey)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefix + "/info-access-key",
+		relPath:     adminAPIPrefixV4 + "/info-access-key",
 		queryValues: queryValues,
 	}
 

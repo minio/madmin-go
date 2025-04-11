@@ -73,9 +73,7 @@ func (adm AdminClient) ServiceTelemetryStream(ctx context.Context, opts ServiceT
 		return nil, err
 	}
 	reqData := requestData{
-
-		relPath: adminAPIPrefix + "/telemetry",
-
+		relPath: adminAPIPrefixV4 + "/telemetry",
 		content: bopts,
 	}
 	// Execute GET to call trace handler
