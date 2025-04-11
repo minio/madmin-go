@@ -992,6 +992,7 @@ func (adm *AdminClient) InfoAccessKey(ctx context.Context, accessKey string) (In
 
 // GetObjectManagePermissionsOpts represents options for getting object manage permissions
 type GetObjectManagePermissionsOpts struct {
+	TargetUser    string
 	Bucket        string
 	LockEnabled   bool
 	RetentionMode string
@@ -1001,6 +1002,7 @@ type GetObjectManagePermissionsOpts struct {
 // GetObjectManagePermissions get object management permissions details for the given bucket
 func (adm *AdminClient) GetObjectManagePermissions(ctx context.Context, opts GetObjectManagePermissionsOpts) (perms ObjectManagePermissions, err error) {
 	queryValues := url.Values{}
+	queryValues.Set("user", opts.TargetUser)
 	queryValues.Set("bucket", opts.Bucket)
 	queryValues.Set("bucket-lock-enabled", strconv.FormatBool(opts.LockEnabled))
 	queryValues.Set("retention-mode", opts.RetentionMode)
