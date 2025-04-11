@@ -68,7 +68,9 @@ func (r *lockedRandSource) Seed(seed int64) {
 
 // newRetryTimer creates a timer with exponentially increasing
 // delays until the maximum retry attempts are reached.
-func (adm AdminClient) newRetryTimer(ctx context.Context, maxRetry int, unit time.Duration, cp time.Duration, jitter float64) <-chan int {
+
+func (adm AdminClient) newRetryTimer(ctx context.Context, maxRetry int, unit time.Duration, capDur time.Duration, jitter float64) <-chan int {
+
 	attemptCh := make(chan int)
 
 	// computes the exponential backoff duration according to
@@ -84,8 +86,10 @@ func (adm AdminClient) newRetryTimer(ctx context.Context, maxRetry int, unit tim
 
 		// sleep = random_between(0, min(cap, base * 2 ** attempt))
 		sleep := unit * 1 << uint(attempt)
-		if sleep > cp {
-			sleep = cp
+
+		if sleep > capDur {
+			sleep = capDury
+
 		}
 		if jitter > NoJitter {
 			sleep -= time.Duration(adm.random.Float64() * float64(sleep) * jitter)

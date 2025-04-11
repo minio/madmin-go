@@ -730,11 +730,11 @@ func (adm *AdminClient) ListAccessKeysOpenIDBulk(ctx context.Context, users []st
 	}
 
 	reqData := requestData{
+
 		relPath:     adminAPIPrefix + "/idp/openid/list-access-keys-bulk",
 		queryValues: queryValues,
 	}
 
-	// Execute GET on /minio/admin/v3/list-access-keys-bulk
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 	defer closeResponse(resp)
 	if err != nil {
@@ -963,7 +963,6 @@ func (adm *AdminClient) InfoAccessKey(ctx context.Context, accessKey string) (In
 		queryValues: queryValues,
 	}
 
-	// Execute GET on /minio/admin/v3/info-access-key
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 	defer closeResponse(resp)
 	if err != nil {

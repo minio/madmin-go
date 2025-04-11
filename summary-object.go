@@ -52,7 +52,9 @@ func (adm *AdminClient) ObjectSummary(ctx context.Context, objOpts ObjectSummary
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
+
 			relPath:     fmt.Sprintf(adminAPIPrefix + "/object-summary"),
+
 			queryValues: form,
 		})
 	defer closeResponse(resp)
