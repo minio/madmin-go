@@ -510,8 +510,10 @@ type ExpirationInfo struct {
 	Object string `json:"lastObject"`
 
 	// Verbose information
-	Objects       int64 `json:"objects"`
-	ObjectsFailed int64 `json:"objectsFailed"`
+	Objects             int64 `json:"objects"`
+	ObjectsFailed       int64 `json:"objectsFailed"`
+	DeleteMarkers       int64 `json:"deleteMarkers"`
+	DeleteMarkersFailed int64 `json:"deleteMarkersFailed"`
 }
 
 type KeyRotationInfo struct {
