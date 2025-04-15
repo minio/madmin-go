@@ -87,6 +87,18 @@ type ObjectMetaSummary struct {
 	Signature      [4]byte
 }
 
+// ObjectUknownSummary is returned from minio when calling ObjectSummary.
+// This struct gives us information on files that are not a part of any object.
+type ObjectUnknownSummary struct {
+	Part     int
+	Pool     int
+	Host     string
+	Set      int
+	Drive    string
+	Filename string
+	Size     int64
+}
+
 // ObjectPartSummary is returned from minio when calling ObjectSummary.
 // This struct gives specific information about each part of the object
 // being inspected by the ObjectSummary API.
@@ -113,4 +125,5 @@ type ObjectSummary struct {
 	ErasureDist []uint8
 	Metas       []*ObjectMetaSummary
 	Parts       []*ObjectPartSummary
+	OtherFiles  []*ObjectUnknownSummary
 }
