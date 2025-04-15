@@ -1974,6 +1974,18 @@ func (z *ExpirationInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "ObjectsFailed")
 				return
 			}
+		case "deleteMarkers":
+			z.DeleteMarkers, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "DeleteMarkers")
+				return
+			}
+		case "deleteMarkersFailed":
+			z.DeleteMarkersFailed, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "DeleteMarkersFailed")
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -1987,9 +1999,9 @@ func (z *ExpirationInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *ExpirationInfo) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 4
+	// map header, size 6
 	// write "lastBucket"
-	err = en.Append(0x84, 0xaa, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74)
+	err = en.Append(0x86, 0xaa, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74)
 	if err != nil {
 		return
 	}
@@ -2028,15 +2040,35 @@ func (z *ExpirationInfo) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "ObjectsFailed")
 		return
 	}
+	// write "deleteMarkers"
+	err = en.Append(0xad, 0x64, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x72, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt64(z.DeleteMarkers)
+	if err != nil {
+		err = msgp.WrapError(err, "DeleteMarkers")
+		return
+	}
+	// write "deleteMarkersFailed"
+	err = en.Append(0xb3, 0x64, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x72, 0x73, 0x46, 0x61, 0x69, 0x6c, 0x65, 0x64)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt64(z.DeleteMarkersFailed)
+	if err != nil {
+		err = msgp.WrapError(err, "DeleteMarkersFailed")
+		return
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z *ExpirationInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 4
+	// map header, size 6
 	// string "lastBucket"
-	o = append(o, 0x84, 0xaa, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74)
+	o = append(o, 0x86, 0xaa, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74)
 	o = msgp.AppendString(o, z.Bucket)
 	// string "lastObject"
 	o = append(o, 0xaa, 0x6c, 0x61, 0x73, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74)
@@ -2047,6 +2079,12 @@ func (z *ExpirationInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "objectsFailed"
 	o = append(o, 0xad, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x46, 0x61, 0x69, 0x6c, 0x65, 0x64)
 	o = msgp.AppendInt64(o, z.ObjectsFailed)
+	// string "deleteMarkers"
+	o = append(o, 0xad, 0x64, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x72, 0x73)
+	o = msgp.AppendInt64(o, z.DeleteMarkers)
+	// string "deleteMarkersFailed"
+	o = append(o, 0xb3, 0x64, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x72, 0x73, 0x46, 0x61, 0x69, 0x6c, 0x65, 0x64)
+	o = msgp.AppendInt64(o, z.DeleteMarkersFailed)
 	return
 }
 
@@ -2092,6 +2130,18 @@ func (z *ExpirationInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "ObjectsFailed")
 				return
 			}
+		case "deleteMarkers":
+			z.DeleteMarkers, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "DeleteMarkers")
+				return
+			}
+		case "deleteMarkersFailed":
+			z.DeleteMarkersFailed, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "DeleteMarkersFailed")
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -2106,7 +2156,7 @@ func (z *ExpirationInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *ExpirationInfo) Msgsize() (s int) {
-	s = 1 + 11 + msgp.StringPrefixSize + len(z.Bucket) + 11 + msgp.StringPrefixSize + len(z.Object) + 8 + msgp.Int64Size + 14 + msgp.Int64Size
+	s = 1 + 11 + msgp.StringPrefixSize + len(z.Bucket) + 11 + msgp.StringPrefixSize + len(z.Object) + 8 + msgp.Int64Size + 14 + msgp.Int64Size + 14 + msgp.Int64Size + 20 + msgp.Int64Size
 	return
 }
 
@@ -7191,6 +7241,18 @@ func (z *ReplicateInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "ObjectsFailed")
 				return
 			}
+		case "deleteMarkers":
+			z.DeleteMarkers, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "DeleteMarkers")
+				return
+			}
+		case "deleteMarkersFailed":
+			z.DeleteMarkersFailed, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "DeleteMarkersFailed")
+				return
+			}
 		case "bytesTransferred":
 			z.BytesTransferred, err = dc.ReadInt64()
 			if err != nil {
@@ -7216,9 +7278,9 @@ func (z *ReplicateInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *ReplicateInfo) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 6
+	// map header, size 8
 	// write "lastBucket"
-	err = en.Append(0x86, 0xaa, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74)
+	err = en.Append(0x88, 0xaa, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74)
 	if err != nil {
 		return
 	}
@@ -7257,6 +7319,26 @@ func (z *ReplicateInfo) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "ObjectsFailed")
 		return
 	}
+	// write "deleteMarkers"
+	err = en.Append(0xad, 0x64, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x72, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt64(z.DeleteMarkers)
+	if err != nil {
+		err = msgp.WrapError(err, "DeleteMarkers")
+		return
+	}
+	// write "deleteMarkersFailed"
+	err = en.Append(0xb3, 0x64, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x72, 0x73, 0x46, 0x61, 0x69, 0x6c, 0x65, 0x64)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt64(z.DeleteMarkersFailed)
+	if err != nil {
+		err = msgp.WrapError(err, "DeleteMarkersFailed")
+		return
+	}
 	// write "bytesTransferred"
 	err = en.Append(0xb0, 0x62, 0x79, 0x74, 0x65, 0x73, 0x54, 0x72, 0x61, 0x6e, 0x73, 0x66, 0x65, 0x72, 0x72, 0x65, 0x64)
 	if err != nil {
@@ -7283,9 +7365,9 @@ func (z *ReplicateInfo) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *ReplicateInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 6
+	// map header, size 8
 	// string "lastBucket"
-	o = append(o, 0x86, 0xaa, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74)
+	o = append(o, 0x88, 0xaa, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74)
 	o = msgp.AppendString(o, z.Bucket)
 	// string "lastObject"
 	o = append(o, 0xaa, 0x6c, 0x61, 0x73, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74)
@@ -7296,6 +7378,12 @@ func (z *ReplicateInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "objectsFailed"
 	o = append(o, 0xad, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x46, 0x61, 0x69, 0x6c, 0x65, 0x64)
 	o = msgp.AppendInt64(o, z.ObjectsFailed)
+	// string "deleteMarkers"
+	o = append(o, 0xad, 0x64, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x72, 0x73)
+	o = msgp.AppendInt64(o, z.DeleteMarkers)
+	// string "deleteMarkersFailed"
+	o = append(o, 0xb3, 0x64, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x72, 0x73, 0x46, 0x61, 0x69, 0x6c, 0x65, 0x64)
+	o = msgp.AppendInt64(o, z.DeleteMarkersFailed)
 	// string "bytesTransferred"
 	o = append(o, 0xb0, 0x62, 0x79, 0x74, 0x65, 0x73, 0x54, 0x72, 0x61, 0x6e, 0x73, 0x66, 0x65, 0x72, 0x72, 0x65, 0x64)
 	o = msgp.AppendInt64(o, z.BytesTransferred)
@@ -7347,6 +7435,18 @@ func (z *ReplicateInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "ObjectsFailed")
 				return
 			}
+		case "deleteMarkers":
+			z.DeleteMarkers, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "DeleteMarkers")
+				return
+			}
+		case "deleteMarkersFailed":
+			z.DeleteMarkersFailed, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "DeleteMarkersFailed")
+				return
+			}
 		case "bytesTransferred":
 			z.BytesTransferred, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
@@ -7373,7 +7473,7 @@ func (z *ReplicateInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *ReplicateInfo) Msgsize() (s int) {
-	s = 1 + 11 + msgp.StringPrefixSize + len(z.Bucket) + 11 + msgp.StringPrefixSize + len(z.Object) + 8 + msgp.Int64Size + 14 + msgp.Int64Size + 17 + msgp.Int64Size + 12 + msgp.Int64Size
+	s = 1 + 11 + msgp.StringPrefixSize + len(z.Bucket) + 11 + msgp.StringPrefixSize + len(z.Object) + 8 + msgp.Int64Size + 14 + msgp.Int64Size + 14 + msgp.Int64Size + 20 + msgp.Int64Size + 17 + msgp.Int64Size + 12 + msgp.Int64Size
 	return
 }
 

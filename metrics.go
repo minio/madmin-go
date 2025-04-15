@@ -485,10 +485,12 @@ type ReplicateInfo struct {
 	Object string `json:"lastObject"`
 
 	// Verbose information
-	Objects          int64 `json:"objects"`
-	ObjectsFailed    int64 `json:"objectsFailed"`
-	BytesTransferred int64 `json:"bytesTransferred"`
-	BytesFailed      int64 `json:"bytesFailed"`
+	Objects             int64 `json:"objects"`
+	ObjectsFailed       int64 `json:"objectsFailed"`
+	DeleteMarkers       int64 `json:"deleteMarkers"`
+	DeleteMarkersFailed int64 `json:"deleteMarkersFailed"`
+	BytesTransferred    int64 `json:"bytesTransferred"`
+	BytesFailed         int64 `json:"bytesFailed"`
 }
 
 type ExpirationInfo struct {
@@ -497,8 +499,10 @@ type ExpirationInfo struct {
 	Object string `json:"lastObject"`
 
 	// Verbose information
-	Objects       int64 `json:"objects"`
-	ObjectsFailed int64 `json:"objectsFailed"`
+	Objects             int64 `json:"objects"`
+	ObjectsFailed       int64 `json:"objectsFailed"`
+	DeleteMarkers       int64 `json:"deleteMarkers"`
+	DeleteMarkersFailed int64 `json:"deleteMarkersFailed"`
 }
 
 type KeyRotationInfo struct {
