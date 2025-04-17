@@ -70,6 +70,7 @@ const (
 	LambdaWebhookSubSys = "lambda_webhook"
 
 	BrowserSubSys          = "browser"
+	KubernetesSubSys       = "kubernetes"
 	AuditEventQueueSubSys  = "audit_event_queue"
 	ErasureSubSys          = "erasure"
 	BucketEventQueueSubSys = "bucket_event_queue"
@@ -114,6 +115,7 @@ var SubSystems = set.CreateStringSet(
 	NotifyWebhookSubSys,
 	LambdaWebhookSubSys,
 	BrowserSubSys,
+	KubernetesSubSys,
 )
 
 // EOSSubSystems - list of all subsystems for EOS
