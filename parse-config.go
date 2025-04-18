@@ -70,6 +70,7 @@ const (
 	LambdaWebhookSubSys = "lambda_webhook"
 
 	BrowserSubSys          = "browser"
+	KubernetesSubSys       = "kubernetes"
 	AuditEventQueueSubSys  = "audit_event_queue"
 	ErasureSubSys          = "erasure"
 	BucketEventQueueSubSys = "bucket_event_queue"
@@ -158,6 +159,7 @@ var EOSSubSystems = set.CreateStringSet(
 	AuditEventQueueSubSys,
 	ErasureSubSys,
 	BucketEventQueueSubSys,
+	KubernetesSubSys,
 )
 
 // Standard config keys and values.
