@@ -24,11 +24,12 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/shirou/gopsutil/v3/cpu"
-	diskhw "github.com/shirou/gopsutil/v3/disk"
-	"github.com/shirou/gopsutil/v3/host"
-	"github.com/shirou/gopsutil/v3/mem"
-	"github.com/shirou/gopsutil/v3/process"
+	"github.com/shirou/gopsutil/v4/cpu"
+	diskhw "github.com/shirou/gopsutil/v4/disk"
+	"github.com/shirou/gopsutil/v4/host"
+	"github.com/shirou/gopsutil/v4/mem"
+	"github.com/shirou/gopsutil/v4/process"
+	"github.com/shirou/gopsutil/v4/sensors"
 )
 
 // HealthInfoV0 - MinIO cluster's health Info version 0
@@ -226,11 +227,11 @@ type ServerMemInfo struct {
 
 // ServerOsInfo - Includes host os information
 type ServerOsInfo struct {
-	Addr    string                 `json:"addr"`
-	Info    *host.InfoStat         `json:"info,omitempty"`
-	Sensors []host.TemperatureStat `json:"sensors,omitempty"`
-	Users   []host.UserStat        `json:"users,omitempty"`
-	Error   string                 `json:"error,omitempty"`
+	Addr    string                    `json:"addr"`
+	Info    *host.InfoStat            `json:"info,omitempty"`
+	Sensors []sensors.TemperatureStat `json:"sensors,omitempty"`
+	Users   []host.UserStat           `json:"users,omitempty"`
+	Error   string                    `json:"error,omitempty"`
 }
 
 // ServerCPUInfo - Includes cpu and timer stats of each node of the MinIO cluster
