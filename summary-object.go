@@ -122,6 +122,8 @@ type ObjectUnknownSummary struct {
 	Dir      bool
 }
 
+// ObjectVersionSummary is returned from minio when calling ObjectSummary.
+// This struct contains information on a single version.
 type ObjectVersionSummary struct {
 	VersionID string
 	Checksum  []byte
@@ -129,6 +131,8 @@ type ObjectVersionSummary struct {
 	DataDir   string
 }
 
+// ObjectBitrotSummary is returned from minio when calling ObjectSummary.
+// This struct contains bitrot information for and object on a specific host and drive.
 type ObjectBitrotSummary struct {
 	Host  string
 	Disk  string
