@@ -27,6 +27,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"strconv"
 	"time"
 
 	"github.com/minio/minio-go/v7/pkg/tags"
@@ -987,4 +988,42 @@ func (adm *AdminClient) InfoAccessKey(ctx context.Context, accessKey string) (In
 		return InfoAccessKeyResp{}, err
 	}
 	return infoResp, nil
+}
+
+// GetObjectManagePermissionsOpts represents options for getting object manage permissions
+type GetObjectManagePermissionsOpts struct {
+	TargetUser    string
+	Bucket        string
+	LockEnabled   bool
+	RetentionMode string
+	LegalHold     bool
+}
+
+// GetObjectManagePermissions get object management permissions details for the given bucket
+func (adm *AdminClient) GetObjectManagePermissions(ctx context.Context, opts GetObjectManagePermissionsOpts) (perms ObjectManagePermissions, err error) {
+	queryValues := url.Values{}
+	queryValues.Set("user", opts.TargetUser)
+	queryValues.Set("bucket", opts.Bucket)
+	queryValues.Set("bucket-lock-enabled", strconv.FormatBool(opts.LockEnabled))
+	queryValues.Set("retention-mode", opts.RetentionMode)
+	queryValues.Set("legalhold", strconv.FormatBool(opts.LegalHold))
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/object-manage-permissions",
+		queryValues: queryValues,
+	}
+
+	// Execute GET on /minio/admin/v3/object-manage-permissions
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return perms, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return perms, httpRespToErrorResponse(resp)
+	}
+
+	err = json.NewDecoder(resp.Body).Decode(&perms)
+	return perms, err
 }

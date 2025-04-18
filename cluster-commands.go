@@ -1247,6 +1247,62 @@ func (adm *AdminClient) SiteReplicationResyncOp(ctx context.Context, site PeerIn
 	return res, err
 }
 
+// PoolEndpoints represent endpoints in a given pool
+// along with its setCount and setDriveCount.
+type PoolEndpoints struct {
+	// indicates if endpoints are provided in non-ellipses style
+	Legacy       bool   `json:"legacy,omitempty"`
+	SetCount     int    `json:"setCount,omitempty"`
+	DrivesPerSet int    `json:"drivesPerSet,omitempty"`
+	Drives       Drives `json:"drives,omitempty"`
+	CmdLine      string `json:"cmdLine,omitempty"`
+	Platform     string `json:"platform,omitempty"`
+}
+
+// EndpointServerPools - list of pool endpoints
+type EndpointServerPools []PoolEndpoints
+
+// Drives - list of drives
+type Drives []Drive
+
+// Drive - a drive detail
+type Drive struct {
+	URLParts url.URL `json:"urlParts,omitempty"`
+	IsLocal  bool    `json:"isLocal,omitempty"`
+	PoolIdx  int     `json:"poolIdx,omitempty"`
+	SetIdx   int     `json:"setIdx,omitempty"`
+	DiskIdx  int     `json:"diskIdx,omitempty"`
+}
+
+// GetReplicatedSiteEndpointServerPools - gets a site replication site's api endpoint server pools
+func (adm *AdminClient) GetReplicatedSiteEndpointServerPools(ctx context.Context) (pools EndpointServerPools, err error) {
+	q := make(url.Values)
+	q.Set("api-version", SiteReplAPIVersion)
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/site-replication/endpoint-server-pools",
+		queryValues: q,
+	}
+
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return pools, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return pools, httpRespToErrorResponse(resp)
+	}
+
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return pools, err
+	}
+
+	err = json.Unmarshal(b, &pools)
+	return pools, err
+}
+
 // SRMetric - captures replication metrics for a site replication peer
 type SRMetric struct {
 	DeploymentID  string        `json:"deploymentID"`
