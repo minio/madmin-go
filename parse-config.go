@@ -115,7 +115,6 @@ var SubSystems = set.CreateStringSet(
 	NotifyWebhookSubSys,
 	LambdaWebhookSubSys,
 	BrowserSubSys,
-	KubernetesSubSys,
 )
 
 // EOSSubSystems - list of all subsystems for EOS
@@ -160,6 +159,7 @@ var EOSSubSystems = set.CreateStringSet(
 	AuditEventQueueSubSys,
 	ErasureSubSys,
 	BucketEventQueueSubSys,
+	KubernetesSubSys,
 )
 
 // Standard config keys and values.
