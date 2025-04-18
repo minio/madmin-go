@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/tinylib/msgp/msgp"
 )
@@ -32,7 +33,10 @@ import (
 
 // ObjectSummaryOptions provides options for ObjectSummary call.
 type ObjectSummaryOptions struct {
-	Bucket, Object string
+	Bucket   string
+	Object   string
+	Bitrot   bool
+	Versions bool
 }
 
 // ObjectSummary calls minio to search for all files and parts
@@ -48,6 +52,12 @@ func (adm *AdminClient) ObjectSummary(ctx context.Context, objOpts ObjectSummary
 
 	form.Add("bucket", objOpts.Bucket)
 	form.Add("object", objOpts.Object)
+	if objOpts.Bitrot {
+		form.Add("bitrot", "true")
+	}
+	if objOpts.Versions {
+		form.Add("versions", "true")
+	}
 
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
@@ -112,6 +122,23 @@ type ObjectUnknownSummary struct {
 	Dir      bool
 }
 
+// ObjectVersionSummary is returned from minio when calling ObjectSummary.
+// This struct contains information on a single version.
+type ObjectVersionSummary struct {
+	VersionID string
+	Checksum  []byte
+	ModTime   time.Time
+	DataDir   string
+}
+
+// ObjectBitrotSummary is returned from minio when calling ObjectSummary.
+// This struct contains bitrot information for and object on a specific host and drive.
+type ObjectBitrotSummary struct {
+	Host  string
+	Disk  string
+	Parts []int
+}
+
 // ObjectSummary is returned from minio when calling ObjectSummary.
 type ObjectSummary struct {
 	Name   string
@@ -120,10 +147,13 @@ type ObjectSummary struct {
 	// the version ID's or a random uuid if the object is not
 	// versioned.
 	DataDir     string
+	Version     string
 	IsInline    bool
 	PartNumbers []int
 	ErasureDist []uint8
 	Metas       []*ObjectMetaSummary
 	Parts       []*ObjectPartSummary
 	Unknown     []*ObjectUnknownSummary
+	Versions    []*ObjectVersionSummary
+	Bitrot      []*ObjectBitrotSummary
 }
