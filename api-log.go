@@ -102,7 +102,7 @@ func (l LogKind) String() string {
 // LogInfo holds console log messages
 type LogInfo struct {
 	logEntry
-	ConsoleMsg string
+	ConsoleMsg string // deprecated
 	NodeName   string `json:"node"`
 	Err        error  `json:"-"`
 }

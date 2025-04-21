@@ -61,7 +61,9 @@ type Entry struct {
 	Time         time.Time      `json:"time"`
 	API          *API           `json:"api,omitempty"`
 	RemoteHost   string         `json:"remotehost,omitempty"`
-	Host         string         `json:"host,omitempty"`
+	Host         string         `json:"host,omitempty"` // Deprecated Apr 2025
+	RequestHost  string         `json:"requestHost,omitempty"`
+	RequestNode  string         `json:"requestNode,omitempty"`
 	RequestID    string         `json:"requestID,omitempty"`
 	UserAgent    string         `json:"userAgent,omitempty"`
 	Message      string         `json:"message,omitempty"`
@@ -71,7 +73,7 @@ type Entry struct {
 // Info holds console log messages
 type Info struct {
 	Entry
-	ConsoleMsg string
+	ConsoleMsg string // deprecated
 	NodeName   string `json:"node"`
 	Err        error  `json:"-"`
 }
