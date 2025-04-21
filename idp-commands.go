@@ -359,6 +359,10 @@ type PolicyAssociationReq struct {
 	// Exactly one of the following must be non-empty in a valid request.
 	User  string `json:"user,omitempty"`
 	Group string `json:"group,omitempty"`
+
+	// Optional and only relevant for LDAP. If empty, the default
+	// configuration is used.
+	CfgName string `json:"cfgName,omitempty"`
 }
 
 // IsValid validates the object and returns a reason for when it is not.

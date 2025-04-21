@@ -613,8 +613,34 @@ const (
 
 // ListAccessKeysOpts - options for listing access keys
 type ListAccessKeysOpts struct {
-	ListType string
-	All      bool
+	ListType   string
+	All        bool
+	ConfigName string
+	AllConfigs bool
+}
+
+func (opts *ListAccessKeysOpts) validate(n int) error {
+	if opts.ListType == "" {
+		opts.ListType = AccessKeyListAll
+	}
+
+	if opts.ListType != AccessKeyListUsersOnly && opts.ListType != AccessKeyListSTSOnly &&
+		opts.ListType != AccessKeyListSvcaccOnly && opts.ListType != AccessKeyListAll {
+		return errors.New("invalid list type")
+	}
+
+	return nil
+}
+
+func (opts *ListAccessKeysOpts) BuiltinValidate(n int) error {
+	if err := opts.validate(n); err != nil {
+		return err
+	}
+
+	if opts.ConfigName != "" || opts.AllConfigs {
+		return errors.New("configName and allConfigs are not supported for builtin provider")
+	}
+	return nil
 }
 
 // ListAccessKeysBulk - list access keys belonging to the given users or all users
