@@ -884,6 +884,7 @@ type RevokeTokensReq struct {
 	User            string `json:"user"`
 	TokenRevokeType string `json:"tokenRevokeType"`
 	FullRevoke      bool   `json:"fullRevoke"`
+	ConfigName      string `json:"configName"`
 }
 
 func (r *RevokeTokensReq) Validate() error {
@@ -902,6 +903,9 @@ func (adm *AdminClient) revokeTokens(ctx context.Context, opts RevokeTokensReq, 
 	queryValues.Set("tokenRevokeType", opts.TokenRevokeType)
 	if opts.FullRevoke {
 		queryValues.Set("fullRevoke", "true")
+	}
+	if opts.ConfigName != "" {
+		queryValues.Set("configName", opts.ConfigName)
 	}
 
 	reqData := requestData{
