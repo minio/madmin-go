@@ -48,13 +48,13 @@ func main() {
 	// 	},
 	// })
 
-	logCh := madmClnt.GetAuditEvents(context.Background(), "", "")
+	eventCh := madmClnt.GetAPIEvents(context.Background(), "", "ListObjectsV2")
 	i := 1
-	for logInfo := range logCh {
+	for event := range eventCh {
 		fmt.Printf("count: %d\n", i)
 		i++
 		fmt.Println("************************")
-		fmt.Println(logInfo)
+		fmt.Println(event)
 		fmt.Println("************************")
 	}
 }

@@ -26,21 +26,21 @@ import (
 	"net/http"
 	"net/url"
 
-	"github.com/minio/madmin-go/v3/logger/audit"
+	"github.com/minio/madmin-go/v3/event"
 )
 
-func (adm AdminClient) GetAuditEvents(ctx context.Context, node string, api string) <-chan audit.Event {
-	logCh := make(chan audit.Event, 1)
+func (adm AdminClient) GetAPIEvents(ctx context.Context, node string, api string) <-chan event.API {
+	logCh := make(chan event.API)
 
 	// Only success, start a routine to start reading line by line.
-	go func(logCh chan<- audit.Event) {
+	go func(logCh chan<- event.API) {
 		defer close(logCh)
 		urlValues := make(url.Values)
 		urlValues.Set("node", node)
 		urlValues.Set("api", api)
 		// for {
 		reqData := requestData{
-			relPath:     adminAPIPrefix + "/events/audit",
+			relPath:     adminAPIPrefix + "/events/api",
 			queryValues: urlValues,
 		}
 		// Execute GET to call log handler
@@ -56,7 +56,7 @@ func (adm AdminClient) GetAuditEvents(ctx context.Context, node string, api stri
 		}
 		dec := json.NewDecoder(resp.Body)
 		for {
-			var info audit.Event
+			var info event.API
 			if err = dec.Decode(&info); err != nil {
 				fmt.Println(err)
 				break
