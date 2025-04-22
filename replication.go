@@ -28,22 +28,22 @@ import (
 // ReplDiagInfoV2 represents the replication diagnostic information to be captured
 // as part of health diagnostic information
 type ReplDiagInfoV2 struct {
-	Error                  string                 `json:"error,omitempty"`
-	SREnabled              bool                   `json:"site_replication_enabled"`
-	TotalUsers             int                    `json:"total_users,omitempty"`
-	SyncPendingUsers       int                    `json:"sync_pending_users,omitempty"`
-	TotalGroups            int                    `json:"total_groups,omitempty"`
-	SyncPendingGroups      int                    `json:"sync_pending_groups,omitempty"`
-	TotalPolicies          int                    `json:"total_policies,omitempty"`
-	SyncPendingPolicies    int                    `json:"sync_pending_policies,omitempty"`
-	TotalILMExpRules       int                    `json:"total_ilm_exp_rules,omitempty"`
-	SyncPendingILMExpRules int                    `json:"sync_pending_ilm_exp_rules,omitempty"`
-	TotalBuckets           int                    `json:"total_buckets,omitempty"`
-	SyncPendingBuckets     int                    `json:"sync_pending_buckets,omitempty"`
-	Errors                 Counter                `json:"errors,omitempty"`
-	Retries                Counter                `json:"retries,omitempty"`
-	Sites                  []ReplDiagSiteV2       `json:"sites,omitempty"`
-	ReplBuckets            []ReplDiagReplBucketV2 `json:"repl_buckets,omitempty"`
+	Error                  string             `json:"error,omitempty"`
+	SREnabled              bool               `json:"site_replication_enabled"`
+	TotalUsers             int                `json:"total_users,omitempty"`
+	SyncPendingUsers       int                `json:"sync_pending_users,omitempty"`
+	TotalGroups            int                `json:"total_groups,omitempty"`
+	SyncPendingGroups      int                `json:"sync_pending_groups,omitempty"`
+	TotalPolicies          int                `json:"total_policies,omitempty"`
+	SyncPendingPolicies    int                `json:"sync_pending_policies,omitempty"`
+	TotalILMExpRules       int                `json:"total_ilm_exp_rules,omitempty"`
+	SyncPendingILMExpRules int                `json:"sync_pending_ilm_exp_rules,omitempty"`
+	TotalBuckets           int                `json:"total_buckets,omitempty"`
+	SyncPendingBuckets     int                `json:"sync_pending_buckets,omitempty"`
+	Errors                 Counter            `json:"errors,omitempty"`
+	Retries                Counter            `json:"retries,omitempty"`
+	Sites                  []ReplDiagSiteV2   `json:"sites,omitempty"`
+	ReplBuckets            []ReplDiagBucketV2 `json:"repl_buckets,omitempty"`
 }
 
 // ReplDiagSiteV2 represents the replication site information
@@ -53,11 +53,11 @@ type ReplDiagSiteV2 struct {
 	Online       bool   `json:"online,omitempty"`
 }
 
-// ReplDiagReplBucketV2 represents the replication target information for a bucket
-type ReplDiagReplBucketV2 struct {
+// ReplDiagBucketV2 represents the replication target information for a bucket
+type ReplDiagBucketV2 struct {
 	Name               string                          `json:"name,omitempty"`
 	MetadataMismatches map[string]SRBucketStatsSummary `json:"metadata_mismatches,omitempty"`
-	BucketReplTargets  []BucketReplTargetV2            `json:"bucket_repl_targets,omitempty"`
+	Targets            []BucketReplTargetV2            `json:"targets,omitempty"`
 }
 
 type BucketReplTargetV2 struct {
