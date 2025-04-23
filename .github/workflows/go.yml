@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        go-version: [1.23.x, 1.24.x]
+        go-version: [1.24.x]
     steps:
     - name: Set up Go ${{ matrix.go-version }}
       uses: actions/setup-go@v5
@@ -34,8 +34,7 @@ jobs:
     - name: Regenerate, vet and test
       run: |
          go vet ./...
-         go install -v github.com/tinylib/msgp@latest
-         go install -v golang.org/x/tools/cmd/stringer@latest
+         go install -v tool
          export PATH=${PATH}:$(go env GOPATH)/bin
          go generate ./... >/dev/null
          (! git diff --name-only | grep '_gen.go$$') || (echo "Non-committed changes in auto-generated code is detected, please commit them to proceed." && false)
