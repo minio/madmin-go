@@ -29,21 +29,20 @@ import (
 	"github.com/minio/madmin-go/v3/event"
 )
 
+// GetAPIEvents fetches the persisted API events from MinIO
 func (adm AdminClient) GetAPIEvents(ctx context.Context, node string, api string) <-chan event.API {
-	logCh := make(chan event.API)
+	eventCh := make(chan event.API)
 
 	// Only success, start a routine to start reading line by line.
-	go func(logCh chan<- event.API) {
-		defer close(logCh)
+	go func(eventCh chan<- event.API) {
+		defer close(eventCh)
 		urlValues := make(url.Values)
 		urlValues.Set("node", node)
 		urlValues.Set("api", api)
-		// for {
 		reqData := requestData{
 			relPath:     adminAPIPrefix + "/events/api",
 			queryValues: urlValues,
 		}
-		// Execute GET to call log handler
 		resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 		if err != nil {
 			closeResponse(resp)
@@ -51,7 +50,6 @@ func (adm AdminClient) GetAPIEvents(ctx context.Context, node string, api string
 		}
 
 		if resp.StatusCode != http.StatusOK {
-			// logCh <- LogInfo{Err: httpRespToErrorResponse(resp)}
 			return
 		}
 		dec := json.NewDecoder(resp.Body)
@@ -64,13 +62,11 @@ func (adm AdminClient) GetAPIEvents(ctx context.Context, node string, api string
 			select {
 			case <-ctx.Done():
 				return
-			case logCh <- info:
+			case eventCh <- info:
 			}
 		}
-		// }
 
-	}(logCh)
+	}(eventCh)
 
-	// Returns the log info channel, for caller to start reading from.
-	return logCh
+	return eventCh
 }
