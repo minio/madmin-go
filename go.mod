@@ -2,6 +2,8 @@ module github.com/minio/madmin-go/v4
 
 go 1.24.0
 
+toolchain go1.24.2
+
 // Install tools using 'go install tool'.
 tool (
 	github.com/tinylib/msgp
