@@ -19,26 +19,40 @@ package event
 
 import "time"
 
+// Origin for the API event
+type Origin string
+
+const (
+	OriginClient          Origin = "client"
+	OriginSiteReplication Origin = "site-replication"
+	OriginILM             Origin = "ilm"
+	OriginBatch           Origin = "batch"
+	OriginRebalance       Origin = "rebalance"
+	OriginReplicate       Origin = "replicate"
+	OriginDecommission    Origin = "decommission"
+	OriginHeal            Origin = "heal"
+)
+
 // API represents the api event
 type API struct {
 	Version      string                 `json:"version"`
-	Type         string                 `json:"type,omitempty"`
 	DeploymentID string                 `json:"deploymentid,omitempty"`
 	SiteName     string                 `json:"siteName,omitempty"`
 	Time         time.Time              `json:"time"`
 	Node         string                 `json:"node,omitempty"`
+	Origin       Origin                 `json:"origin,omitempty"`
+	Type         string                 `json:"type,omitempty"`
 	Name         string                 `json:"name,omitempty"`
 	Bucket       string                 `json:"bucket,omitempty"`
 	Object       string                 `json:"object,omitempty"`
 	VersionID    string                 `json:"versionId,omitempty"`
-	External     bool                   `json:"external,omitempty"`
 	Tags         map[string]interface{} `json:"tags,omitempty"`
 	CallInfo     *CallInfo              `json:"callInfo,omitempty"`
 }
 
 // CallInfo represents the info for the external call
 type CallInfo struct {
-	StatusCode      int                    `json:"statusCode,omitempty"`
+	HttpStatusCode  int                    `json:"httpStatusCode,omitempty"`
 	InputBytes      int64                  `json:"rx"`
 	OutputBytes     int64                  `json:"tx"`
 	HeaderBytes     int64                  `json:"txHeaders,omitempty"`

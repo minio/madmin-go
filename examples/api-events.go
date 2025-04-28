@@ -48,7 +48,7 @@ func main() {
 	// 	},
 	// })
 
-	eventCh := madmClnt.GetAPIEvents(context.Background(), "", "ListObjectsV2")
+	eventCh := madmClnt.GetAPIEvents(context.Background(), "", "PutObject")
 	i := 1
 	for event := range eventCh {
 		fmt.Printf("count: %d\n", i)

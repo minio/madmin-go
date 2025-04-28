@@ -22,7 +22,8 @@ package madmin
 import (
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
+	"io"
 	"net/http"
 	"net/url"
 
@@ -56,8 +57,10 @@ func (adm AdminClient) GetAPIEvents(ctx context.Context, node string, api string
 		for {
 			var info event.API
 			if err = dec.Decode(&info); err != nil {
-				fmt.Println(err)
-				break
+				if errors.Is(err, io.EOF) {
+					break
+				}
+				continue
 			}
 			select {
 			case <-ctx.Done():
