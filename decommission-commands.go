@@ -59,7 +59,7 @@ func (adm *AdminClient) DecommissionPool(ctx context.Context, pool string) error
 	values.Set("pool", pool)
 	resp, err := adm.executeMethod(ctx, http.MethodPost, requestData{
 		// POST <endpoint>/<admin-API>/pools/decommission?pool=http://server{1...4}/disk{1...4}
-		relPath:     adminAPIPrefixV4 + "/pools/decommission",
+		relPath:     adminAPIPrefix + "/pools/decommission",
 		queryValues: values,
 	})
 	if err != nil {
@@ -79,7 +79,7 @@ func (adm *AdminClient) CancelDecommissionPool(ctx context.Context, pool string)
 	values.Set("pool", pool)
 	resp, err := adm.executeMethod(ctx, http.MethodPost, requestData{
 		// POST <endpoint>/<admin-API>/pools/cancel?pool=http://server{1...4}/disk{1...4}
-		relPath:     adminAPIPrefixV4 + "/pools/cancel",
+		relPath:     adminAPIPrefix + "/pools/cancel",
 		queryValues: values,
 	})
 	if err != nil {
@@ -99,7 +99,7 @@ func (adm *AdminClient) StatusPool(ctx context.Context, pool string) (PoolStatus
 	values.Set("pool", pool)
 	resp, err := adm.executeMethod(ctx, http.MethodGet, requestData{
 		// GET <endpoint>/<admin-API>/pools/status?pool=http://server{1...4}/disk{1...4}
-		relPath:     adminAPIPrefixV4 + "/pools/status",
+		relPath:     adminAPIPrefix + "/pools/status",
 		queryValues: values,
 	})
 	if err != nil {
@@ -123,7 +123,7 @@ func (adm *AdminClient) StatusPool(ctx context.Context, pool string) (PoolStatus
 // on the cluster.
 func (adm *AdminClient) ListPoolsStatus(ctx context.Context) ([]PoolStatus, error) {
 	resp, err := adm.executeMethod(ctx, http.MethodGet, requestData{
-		relPath: adminAPIPrefixV4 + "/pools/list", // GET <endpoint>/<admin-API>/pools/list
+		relPath: adminAPIPrefix + "/pools/list", // GET <endpoint>/<admin-API>/pools/list
 	})
 	if err != nil {
 		return nil, err

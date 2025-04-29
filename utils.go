@@ -24,6 +24,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -34,16 +35,29 @@ import (
 //msgp:tag json
 //go:generate msgp -file $GOFILE
 
-// AdminAPIVersion - admin api version used in the request.
-const (
+var (
 	// MinIO only supports last two versions
-	AdminAPIVersion = "v4"
+	// you can force an application by setting env MADMIN_API_VERSION=v3 if you want the
+	// library to start using v3, which would allow the application to work with MinIO
+	// servers that are not yet upgraded to v4 Admin API
+
+	// AdminAPIVersion - admin api version used in the request.
+	AdminAPIVersion = func() string {
+		if v := os.Getenv("MADMIN_API_VERSION"); v == "v3" {
+			return "v3"
+		}
+		return "v4"
+	}()
 
 	// Admin API version prefix
-	adminAPIPrefixV4 = "/" + AdminAPIVersion
+	adminAPIPrefix = "/" + AdminAPIVersion
 
+	// kmsAPIVersion - is the latest KMS API version, for KMS requests.
+	// NOTE: MinIO only supports last two versions
 	kmsAPIVersion = "v1"
-	kmsAPIPrefix  = "/" + kmsAPIVersion
+
+	// kms API version prefix
+	kmsAPIPrefix = "/" + kmsAPIVersion
 )
 
 // getEndpointURL - construct a new endpoint.

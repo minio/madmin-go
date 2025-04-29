@@ -62,7 +62,7 @@ func (adm *AdminClient) ServerUpdate(ctx context.Context, opts ServerUpdateOpts)
 	// Request API to Restart server
 	resp, err := adm.executeMethod(ctx,
 		http.MethodPost, requestData{
-			relPath:     adminAPIPrefixV4 + "/update",
+			relPath:     adminAPIPrefix + "/update",
 			queryValues: queryValues,
 		},
 	)

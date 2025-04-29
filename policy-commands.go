@@ -58,7 +58,7 @@ func (adm *AdminClient) InfoCannedPolicy(ctx context.Context, policyName string)
 	queryValues.Set("v", "2")
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV4 + "/info-canned-policy",
+		relPath:     adminAPIPrefix + "/info-canned-policy",
 		queryValues: queryValues,
 	}
 
@@ -87,7 +87,7 @@ func (adm *AdminClient) InfoCannedPolicy(ctx context.Context, policyName string)
 // ListCannedPolicies - list all configured canned policies.
 func (adm *AdminClient) ListCannedPolicies(ctx context.Context) (map[string]json.RawMessage, error) {
 	reqData := requestData{
-		relPath: adminAPIPrefixV4 + "/list-canned-policies",
+		relPath: adminAPIPrefix + "/list-canned-policies",
 	}
 
 	// Execute GET on /minio/admin/v4/list-canned-policies
@@ -121,7 +121,7 @@ func (adm *AdminClient) RemoveCannedPolicy(ctx context.Context, policyName strin
 	queryValues.Set("name", policyName)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV4 + "/remove-canned-policy",
+		relPath:     adminAPIPrefix + "/remove-canned-policy",
 		queryValues: queryValues,
 	}
 
@@ -150,7 +150,7 @@ func (adm *AdminClient) AddCannedPolicy(ctx context.Context, policyName string, 
 	queryValues.Set("name", policyName)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV4 + "/add-canned-policy",
+		relPath:     adminAPIPrefix + "/add-canned-policy",
 		queryValues: queryValues,
 		content:     policy,
 	}
@@ -196,7 +196,7 @@ func (adm *AdminClient) attachOrDetachPolicyBuiltin(ctx context.Context, isAttac
 	h.Add("Content-Type", "application/octet-stream")
 	reqData := requestData{
 		customHeaders: h,
-		relPath:       adminAPIPrefixV4 + "/idp/builtin/policy/" + suffix,
+		relPath:       adminAPIPrefix + "/idp/builtin/policy/" + suffix,
 		content:       encBytes,
 	}
 
@@ -249,7 +249,7 @@ func (adm *AdminClient) GetPolicyEntities(ctx context.Context, q PolicyEntitiesQ
 	params["policy"] = q.Policy
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV4 + "/idp/builtin/policy-entities",
+		relPath:     adminAPIPrefix + "/idp/builtin/policy-entities",
 		queryValues: params,
 	}
 

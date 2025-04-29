@@ -50,7 +50,7 @@ func (adm *AdminClient) SiteReplicationPerf(ctx context.Context, duration time.D
 
 	resp, err := adm.executeMethod(ctx,
 		http.MethodPost, requestData{
-			relPath:     adminAPIPrefixV4 + "/speedtest/site",
+			relPath:     adminAPIPrefix + "/speedtest/site",
 			queryValues: queryVals,
 		})
 	if err != nil {

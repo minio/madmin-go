@@ -46,7 +46,7 @@ func (adm *AdminClient) UpdateGroupMembers(ctx context.Context, g GroupAddRemove
 	}
 
 	reqData := requestData{
-		relPath: adminAPIPrefixV4 + "/update-group-members",
+		relPath: adminAPIPrefix + "/update-group-members",
 		content: data,
 	}
 
@@ -80,7 +80,7 @@ func (adm *AdminClient) GetGroupDescription(ctx context.Context, group string) (
 	v := url.Values{}
 	v.Set("group", group)
 	reqData := requestData{
-		relPath:     adminAPIPrefixV4 + "/group",
+		relPath:     adminAPIPrefix + "/group",
 		queryValues: v,
 	}
 
@@ -110,7 +110,7 @@ func (adm *AdminClient) GetGroupDescription(ctx context.Context, group string) (
 // ListGroups - lists all groups names present on the server.
 func (adm *AdminClient) ListGroups(ctx context.Context) ([]string, error) {
 	reqData := requestData{
-		relPath: adminAPIPrefixV4 + "/groups",
+		relPath: adminAPIPrefix + "/groups",
 	}
 
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
@@ -152,7 +152,7 @@ func (adm *AdminClient) SetGroupStatus(ctx context.Context, group string, status
 	v.Set("status", string(status))
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV4 + "/set-group-status",
+		relPath:     adminAPIPrefix + "/set-group-status",
 		queryValues: v,
 	}
 

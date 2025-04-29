@@ -45,7 +45,7 @@ type BucketScanInfo struct {
 func (adm *AdminClient) BucketScanInfo(ctx context.Context, bucket string) ([]BucketScanInfo, error) {
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
-		requestData{relPath: adminAPIPrefixV4 + "/scanner/status/" + bucket})
+		requestData{relPath: adminAPIPrefix + "/scanner/status/" + bucket})
 	if err != nil {
 		return nil, err
 	}

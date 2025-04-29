@@ -47,7 +47,7 @@ func (adm *AdminClient) Netperf(ctx context.Context, duration time.Duration) (re
 
 	resp, err := adm.executeMethod(ctx,
 		http.MethodPost, requestData{
-			relPath:     adminAPIPrefixV4 + "/speedtest/net",
+			relPath:     adminAPIPrefix + "/speedtest/net",
 			queryValues: queryVals,
 		})
 	if err != nil {

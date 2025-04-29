@@ -205,7 +205,7 @@ type BatchJobResult struct {
 func (adm *AdminClient) StartBatchJob(ctx context.Context, job string) (BatchJobResult, error) {
 	resp, err := adm.executeMethod(ctx, http.MethodPost,
 		requestData{
-			relPath: adminAPIPrefixV4 + "/start-job",
+			relPath: adminAPIPrefix + "/start-job",
 			content: []byte(job),
 		},
 	)
@@ -238,7 +238,7 @@ func (adm *AdminClient) BatchJobStatus(ctx context.Context, jobID string) (Batch
 
 	resp, err := adm.executeMethod(ctx, http.MethodGet,
 		requestData{
-			relPath:     adminAPIPrefixV4 + "/status-job",
+			relPath:     adminAPIPrefix + "/status-job",
 			queryValues: values,
 		},
 	)
@@ -266,7 +266,7 @@ func (adm *AdminClient) DescribeBatchJob(ctx context.Context, jobID string) (str
 
 	resp, err := adm.executeMethod(ctx, http.MethodGet,
 		requestData{
-			relPath:     adminAPIPrefixV4 + "/describe-job",
+			relPath:     adminAPIPrefix + "/describe-job",
 			queryValues: values,
 		},
 	)
@@ -311,7 +311,7 @@ func (adm *AdminClient) GenerateBatchJob(_ context.Context, opts GenerateBatchJo
 func (adm *AdminClient) GetSupportedBatchJobTypes(ctx context.Context) (supportedTypes []BatchJobType, apiUnavailable bool, err error) {
 	resp, err := adm.executeMethod(ctx, http.MethodGet,
 		requestData{
-			relPath: adminAPIPrefixV4 + "/list-supported-job-types",
+			relPath: adminAPIPrefix + "/list-supported-job-types",
 		},
 	)
 	if err != nil {
@@ -346,7 +346,7 @@ func (adm *AdminClient) GenerateBatchJobV2(ctx context.Context, opts GenerateBat
 
 	resp, err := adm.executeMethod(ctx, http.MethodGet,
 		requestData{
-			relPath:     adminAPIPrefixV4 + "/generate-job",
+			relPath:     adminAPIPrefix + "/generate-job",
 			queryValues: values,
 		},
 	)
@@ -391,7 +391,7 @@ func (adm *AdminClient) ListBatchJobs(ctx context.Context, fl *ListBatchJobsFilt
 
 	resp, err := adm.executeMethod(ctx, http.MethodGet,
 		requestData{
-			relPath:     adminAPIPrefixV4 + "/list-jobs",
+			relPath:     adminAPIPrefix + "/list-jobs",
 			queryValues: values,
 		},
 	)
@@ -420,7 +420,7 @@ func (adm *AdminClient) CancelBatchJob(ctx context.Context, jobID string) error 
 
 	resp, err := adm.executeMethod(ctx, http.MethodDelete,
 		requestData{
-			relPath:     adminAPIPrefixV4 + "/cancel-job",
+			relPath:     adminAPIPrefix + "/cancel-job",
 			queryValues: values,
 		},
 	)

@@ -53,7 +53,7 @@ func (adm *AdminClient) addTier(ctx context.Context, cfg *TierConfig, ignoreInUs
 	queryVals := url.Values{}
 	queryVals.Set("force", strconv.FormatBool(ignoreInUse))
 	reqData := requestData{
-		relPath:     path.Join(adminAPIPrefixV4, tierAPI),
+		relPath:     path.Join(adminAPIPrefix, tierAPI),
 		content:     encData,
 		queryValues: queryVals,
 	}
@@ -79,7 +79,7 @@ func (adm *AdminClient) AddTier(ctx context.Context, cfg *TierConfig) error {
 // ListTiers returns a list of remote tiers configured.
 func (adm *AdminClient) ListTiers(ctx context.Context) ([]*TierConfig, error) {
 	reqData := requestData{
-		relPath: path.Join(adminAPIPrefixV4, tierAPI),
+		relPath: path.Join(adminAPIPrefix, tierAPI),
 	}
 
 	// Execute GET on /minio/admin/v4/tier to list remote tiers configured.
@@ -135,7 +135,7 @@ func (adm *AdminClient) EditTier(ctx context.Context, tierName string, creds Tie
 	}
 
 	reqData := requestData{
-		relPath: path.Join(adminAPIPrefixV4, tierAPI, tierName),
+		relPath: path.Join(adminAPIPrefix, tierAPI, tierName),
 		content: encData,
 	}
 
@@ -160,7 +160,7 @@ func (adm *AdminClient) RemoveTier(ctx context.Context, tierName string) error {
 		return ErrTierNameEmpty
 	}
 	reqData := requestData{
-		relPath: path.Join(adminAPIPrefixV4, tierAPI, tierName),
+		relPath: path.Join(adminAPIPrefix, tierAPI, tierName),
 	}
 
 	// Execute DELETE on /minio/admin/v4/tier/tierName to remove an empty tier.
@@ -193,7 +193,7 @@ func (adm *AdminClient) RemoveTierV2(ctx context.Context, tierName string, opts 
 	queryVals.Set("force", strconv.FormatBool(opts.Force))
 
 	reqData := requestData{
-		relPath:     path.Join(adminAPIPrefixV4, tierAPI, tierName),
+		relPath:     path.Join(adminAPIPrefix, tierAPI, tierName),
 		queryValues: queryVals,
 	}
 
@@ -217,7 +217,7 @@ func (adm *AdminClient) VerifyTier(ctx context.Context, tierName string) error {
 		return ErrTierNameEmpty
 	}
 	reqData := requestData{
-		relPath: path.Join(adminAPIPrefixV4, tierAPI, tierName),
+		relPath: path.Join(adminAPIPrefix, tierAPI, tierName),
 	}
 
 	// Execute GET on /minio/admin/v4/tier/tierName to verify tierName's config.
@@ -251,7 +251,7 @@ type DailyTierStats struct {
 // hot-tier)
 func (adm *AdminClient) TierStats(ctx context.Context) ([]TierInfo, error) {
 	reqData := requestData{
-		relPath: path.Join(adminAPIPrefixV4, "tier-stats"),
+		relPath: path.Join(adminAPIPrefix, "tier-stats"),
 	}
 
 	// Execute GET on /minio/admin/v4/tier-stats to list tier-stats.

@@ -97,7 +97,7 @@ func (adm *AdminClient) ClusterInfo(ctx context.Context, options ...func(*Cluste
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
-			relPath:     adminAPIPrefixV4 + "/cluster",
+			relPath:     adminAPIPrefix + "/cluster",
 			queryValues: values,
 		})
 	defer closeResponse(resp)
@@ -136,7 +136,7 @@ func (adm *AdminClient) PoolList(ctx context.Context, options ...func(*PoolInfoO
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
-			relPath:     adminAPIPrefixV4 + "/pool",
+			relPath:     adminAPIPrefix + "/pool",
 			queryValues: values,
 		})
 	defer closeResponse(resp)
@@ -175,7 +175,7 @@ func (adm *AdminClient) PoolInfo(ctx context.Context, poolIndex int, options ...
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
-			relPath:     adminAPIPrefixV4 + fmt.Sprintf("/pool/%d", poolIndex),
+			relPath:     adminAPIPrefix + fmt.Sprintf("/pool/%d", poolIndex),
 			queryValues: values,
 		})
 	defer closeResponse(resp)
@@ -232,7 +232,7 @@ func (adm *AdminClient) SetInfo(ctx context.Context, poolIndex int, setIndex int
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
-			relPath:     adminAPIPrefixV4 + fmt.Sprintf("/set/%d/%d", poolIndex, setIndex),
+			relPath:     adminAPIPrefix + fmt.Sprintf("/set/%d/%d", poolIndex, setIndex),
 			queryValues: values,
 		})
 	defer closeResponse(resp)
@@ -271,7 +271,7 @@ func (adm *AdminClient) DriveInfo(ctx context.Context, poolIndex, setIndex, disk
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
-			relPath:     adminAPIPrefixV4 + fmt.Sprintf("/disk/%d/%d/%d", poolIndex, setIndex, diskIndex),
+			relPath:     adminAPIPrefix + fmt.Sprintf("/disk/%d/%d/%d", poolIndex, setIndex, diskIndex),
 			queryValues: values,
 		})
 	defer closeResponse(resp)

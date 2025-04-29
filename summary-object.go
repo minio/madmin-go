@@ -21,7 +21,6 @@ package madmin
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 	"time"
@@ -62,7 +61,7 @@ func (adm *AdminClient) ObjectSummary(ctx context.Context, objOpts ObjectSummary
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
-			relPath:     fmt.Sprintf(adminAPIPrefixV4 + "/object-summary"),
+			relPath:     adminAPIPrefix + "/object-summary",
 			queryValues: form,
 		})
 	defer closeResponse(resp)
