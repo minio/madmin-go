@@ -22,6 +22,7 @@ package madmin
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"unicode"
 
@@ -202,8 +203,11 @@ const (
 
 // SanitizeValue - this function is needed, to trim off single or double quotes, creeping into the values.
 func SanitizeValue(v string) string {
-	v = strings.TrimSuffix(strings.TrimPrefix(strings.TrimSpace(v), KvDoubleQuote), KvDoubleQuote)
-	return strings.TrimSuffix(strings.TrimPrefix(v, KvSingleQuote), KvSingleQuote)
+	unquoted, err := strconv.Unquote(v)
+	if err != nil {
+		return v
+	}
+	return unquoted
 }
 
 // EnvOverride contains the name of the environment variable and its value.
