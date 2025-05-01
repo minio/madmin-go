@@ -145,15 +145,16 @@ type ObjectSummary struct {
 	// DataDir represents the directory on disk created using
 	// the version ID's or a random uuid if the object is not
 	// versioned.
-	DataDir     string
-	Version     string
-	IsInline    bool
-	PartNumbers []int
-	ParityCount int
-	ErasureDist []uint8
-	Metas       []*ObjectMetaSummary
-	Parts       []*ObjectPartSummary
-	Unknown     []*ObjectUnknownSummary
-	Versions    []*ObjectVersionSummary
-	Bitrot      []*ObjectBitrotSummary
+	DataDir      string
+	Version      string
+	IsInline     bool
+	PartNumbers  []int
+	ParityCount  int
+	DeleteMarker bool
+	ErasureDist  []uint8
+	Metas        []*ObjectMetaSummary
+	Parts        []*ObjectPartSummary
+	Unknown      []*ObjectUnknownSummary
+	Versions     []*ObjectVersionSummary
+	Bitrot       []*ObjectBitrotSummary
 }
