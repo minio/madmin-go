@@ -149,6 +149,7 @@ type ObjectSummary struct {
 	Version     string
 	IsInline    bool
 	PartNumbers []int
+	ParityCount int
 	ErasureDist []uint8
 	Metas       []*ObjectMetaSummary
 	Parts       []*ObjectPartSummary
