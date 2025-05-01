@@ -298,12 +298,11 @@ func (adm *AdminClient) DriveInfo(ctx context.Context, poolIndex, setIndex, disk
 	return disk, nil
 }
 
-// NodeInfoOpts ask for additional data from the server
-// this is not used at the moment, kept here for future
-// extensibility.
-//
 //msgp:ignore NodeInfoOpts
-type NodeInfoOpts struct {
+type NodeInfoOpts struct{}
+
+//msgp:ignore NodeListOpts
+type NodeListOpts struct {
 	Limit  int
 	Offset int
 }
@@ -313,9 +312,9 @@ type NodeListResponse struct {
 	Total int    `msg:"total,omitempty"`
 }
 
-// NodeList list all the pools on the server
-func (adm *AdminClient) NodeList(ctx context.Context, options ...func(*NodeInfoOpts)) (nodeList *NodeListResponse, err error) {
-	srvOpts := &NodeInfoOpts{}
+// NodeList - list all nodes in the cluster
+func (adm *AdminClient) NodeList(ctx context.Context, options ...func(*NodeListOpts)) (nodeList *NodeListResponse, err error) {
+	srvOpts := &NodeListOpts{}
 
 	for _, o := range options {
 		o(srvOpts)
@@ -355,4 +354,39 @@ func (adm *AdminClient) NodeList(ctx context.Context, options ...func(*NodeInfoO
 	}
 
 	return nodeList, err
+}
+
+// NodeInfo - fetch information about a specific node
+func (adm *AdminClient) NodeInfo(ctx context.Context, hostname string, options ...func(*NodeInfoOpts)) (node *Node, err error) {
+	srvOpts := &NodeInfoOpts{}
+
+	for _, o := range options {
+		o(srvOpts)
+	}
+
+	values := make(url.Values)
+	resp, err := adm.executeMethod(ctx,
+		http.MethodGet,
+		requestData{
+			relPath:     adminAPIPrefix + "/node/" + hostname,
+			queryValues: values,
+		})
+	defer closeResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+
+	mr := msgp.NewReader(resp.Body)
+	node = new(Node)
+	if err = node.DecodeMsg(mr); err != nil {
+		if errors.Is(err, io.EOF) {
+			err = nil
+		}
+	}
+
+	return
 }
