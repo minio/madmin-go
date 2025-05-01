@@ -26,6 +26,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/tinylib/msgp/msgp"
 )
@@ -75,6 +76,12 @@ type PoolInfo struct {
 
 	// Optional value, not returned in ClusterInfo, PoolList API calls
 	Hosts []string `msg:"hosts,omitempty"`
+}
+
+// Node provides information on a specific node
+type Node struct {
+	Host   string `msg:"host,omitempty"`
+	Drives int    `msg:"drives,omitempty"`
 }
 
 // ClusterInfoOpts ask for additional data from the server
@@ -289,4 +296,63 @@ func (adm *AdminClient) DriveInfo(ctx context.Context, poolIndex, setIndex, disk
 	}
 
 	return disk, nil
+}
+
+// NodeInfoOpts ask for additional data from the server
+// this is not used at the moment, kept here for future
+// extensibility.
+//
+//msgp:ignore NodeInfoOpts
+type NodeInfoOpts struct {
+	Limit  int
+	Offset int
+}
+
+type NodeListResponse struct {
+	Nodes []Node `msg:"nodes,omitempty"`
+	Total int    `msg:"total,omitempty"`
+}
+
+// NodeList list all the pools on the server
+func (adm *AdminClient) NodeList(ctx context.Context, options ...func(*NodeInfoOpts)) (nodeList *NodeListResponse, err error) {
+	srvOpts := &NodeInfoOpts{}
+
+	for _, o := range options {
+		o(srvOpts)
+	}
+
+	values := make(url.Values)
+	values.Add("limit", "100")
+	if srvOpts.Limit > 0 {
+		values.Set("limit", strconv.Itoa(srvOpts.Limit))
+	}
+
+	values.Add("offset", "0")
+	if srvOpts.Offset > 0 {
+		values.Set("offset", strconv.Itoa(srvOpts.Offset))
+	}
+	resp, err := adm.executeMethod(ctx,
+		http.MethodGet,
+		requestData{
+			relPath:     adminAPIPrefix + "/node",
+			queryValues: values,
+		})
+	defer closeResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+
+	mr := msgp.NewReader(resp.Body)
+	nodeList = new(NodeListResponse)
+	if err = nodeList.DecodeMsg(mr); err != nil {
+		if errors.Is(err, io.EOF) {
+			err = nil
+		}
+	}
+
+	return nodeList, err
 }
