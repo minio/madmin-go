@@ -80,8 +80,8 @@ type PoolInfo struct {
 
 // Node provides information on a specific node
 type Node struct {
-	Host   string `msg:"host,omitempty"`
-	Drives int    `msg:"drives,omitempty"`
+	Host        string `msg:"host,omitempty"`
+	TotalDrives int    `msg:"totalDrives,omitempty"`
 }
 
 // ClusterInfoOpts ask for additional data from the server
