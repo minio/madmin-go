@@ -20,7 +20,7 @@ require (
 	github.com/prometheus/prom2json v1.4.2
 	github.com/safchain/ethtool v0.5.10
 	github.com/secure-io/sio-go v0.3.1
-	github.com/shirou/gopsutil/v4 v4.25.3
+	github.com/shirou/gopsutil/v4 v4.25.4
 	github.com/tinylib/msgp v1.2.5
 	golang.org/x/crypto v0.37.0
 	golang.org/x/net v0.39.0
