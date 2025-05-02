@@ -1075,10 +1075,10 @@ func (z *Node) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 			zb0001Mask |= 0x1
-		case "drives":
-			z.Drives, err = dc.ReadInt()
+		case "totalDrives":
+			z.TotalDrives, err = dc.ReadInt()
 			if err != nil {
-				err = msgp.WrapError(err, "Drives")
+				err = msgp.WrapError(err, "TotalDrives")
 				return
 			}
 			zb0001Mask |= 0x2
@@ -1096,7 +1096,7 @@ func (z *Node) DecodeMsg(dc *msgp.Reader) (err error) {
 			z.Host = ""
 		}
 		if (zb0001Mask & 0x2) == 0 {
-			z.Drives = 0
+			z.TotalDrives = 0
 		}
 	}
 	return
@@ -1112,7 +1112,7 @@ func (z Node) EncodeMsg(en *msgp.Writer) (err error) {
 		zb0001Len--
 		zb0001Mask |= 0x1
 	}
-	if z.Drives == 0 {
+	if z.TotalDrives == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x2
 	}
@@ -1137,14 +1137,14 @@ func (z Node) EncodeMsg(en *msgp.Writer) (err error) {
 			}
 		}
 		if (zb0001Mask & 0x2) == 0 { // if not omitted
-			// write "drives"
-			err = en.Append(0xa6, 0x64, 0x72, 0x69, 0x76, 0x65, 0x73)
+			// write "totalDrives"
+			err = en.Append(0xab, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x44, 0x72, 0x69, 0x76, 0x65, 0x73)
 			if err != nil {
 				return
 			}
-			err = en.WriteInt(z.Drives)
+			err = en.WriteInt(z.TotalDrives)
 			if err != nil {
-				err = msgp.WrapError(err, "Drives")
+				err = msgp.WrapError(err, "TotalDrives")
 				return
 			}
 		}
@@ -1163,7 +1163,7 @@ func (z Node) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x1
 	}
-	if z.Drives == 0 {
+	if z.TotalDrives == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x2
 	}
@@ -1178,9 +1178,9 @@ func (z Node) MarshalMsg(b []byte) (o []byte, err error) {
 			o = msgp.AppendString(o, z.Host)
 		}
 		if (zb0001Mask & 0x2) == 0 { // if not omitted
-			// string "drives"
-			o = append(o, 0xa6, 0x64, 0x72, 0x69, 0x76, 0x65, 0x73)
-			o = msgp.AppendInt(o, z.Drives)
+			// string "totalDrives"
+			o = append(o, 0xab, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x44, 0x72, 0x69, 0x76, 0x65, 0x73)
+			o = msgp.AppendInt(o, z.TotalDrives)
 		}
 	}
 	return
@@ -1213,10 +1213,10 @@ func (z *Node) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 			zb0001Mask |= 0x1
-		case "drives":
-			z.Drives, bts, err = msgp.ReadIntBytes(bts)
+		case "totalDrives":
+			z.TotalDrives, bts, err = msgp.ReadIntBytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "Drives")
+				err = msgp.WrapError(err, "TotalDrives")
 				return
 			}
 			zb0001Mask |= 0x2
@@ -1234,7 +1234,7 @@ func (z *Node) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.Host = ""
 		}
 		if (zb0001Mask & 0x2) == 0 {
-			z.Drives = 0
+			z.TotalDrives = 0
 		}
 	}
 	o = bts
@@ -1243,7 +1243,7 @@ func (z *Node) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z Node) Msgsize() (s int) {
-	s = 1 + 5 + msgp.StringPrefixSize + len(z.Host) + 7 + msgp.IntSize
+	s = 1 + 5 + msgp.StringPrefixSize + len(z.Host) + 12 + msgp.IntSize
 	return
 }
 
@@ -1303,10 +1303,10 @@ func (z *NodeListResponse) DecodeMsg(dc *msgp.Reader) (err error) {
 							return
 						}
 						zb0003Mask |= 0x1
-					case "drives":
-						z.Nodes[za0001].Drives, err = dc.ReadInt()
+					case "totalDrives":
+						z.Nodes[za0001].TotalDrives, err = dc.ReadInt()
 						if err != nil {
-							err = msgp.WrapError(err, "Nodes", za0001, "Drives")
+							err = msgp.WrapError(err, "Nodes", za0001, "TotalDrives")
 							return
 						}
 						zb0003Mask |= 0x2
@@ -1324,7 +1324,7 @@ func (z *NodeListResponse) DecodeMsg(dc *msgp.Reader) (err error) {
 						z.Nodes[za0001].Host = ""
 					}
 					if (zb0003Mask & 0x2) == 0 {
-						z.Nodes[za0001].Drives = 0
+						z.Nodes[za0001].TotalDrives = 0
 					}
 				}
 			}
@@ -1398,7 +1398,7 @@ func (z *NodeListResponse) EncodeMsg(en *msgp.Writer) (err error) {
 					zb0002Len--
 					zb0002Mask |= 0x1
 				}
-				if z.Nodes[za0001].Drives == 0 {
+				if z.Nodes[za0001].TotalDrives == 0 {
 					zb0002Len--
 					zb0002Mask |= 0x2
 				}
@@ -1423,14 +1423,14 @@ func (z *NodeListResponse) EncodeMsg(en *msgp.Writer) (err error) {
 						}
 					}
 					if (zb0002Mask & 0x2) == 0 { // if not omitted
-						// write "drives"
-						err = en.Append(0xa6, 0x64, 0x72, 0x69, 0x76, 0x65, 0x73)
+						// write "totalDrives"
+						err = en.Append(0xab, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x44, 0x72, 0x69, 0x76, 0x65, 0x73)
 						if err != nil {
 							return
 						}
-						err = en.WriteInt(z.Nodes[za0001].Drives)
+						err = en.WriteInt(z.Nodes[za0001].TotalDrives)
 						if err != nil {
-							err = msgp.WrapError(err, "Nodes", za0001, "Drives")
+							err = msgp.WrapError(err, "Nodes", za0001, "TotalDrives")
 							return
 						}
 					}
@@ -1486,7 +1486,7 @@ func (z *NodeListResponse) MarshalMsg(b []byte) (o []byte, err error) {
 					zb0002Len--
 					zb0002Mask |= 0x1
 				}
-				if z.Nodes[za0001].Drives == 0 {
+				if z.Nodes[za0001].TotalDrives == 0 {
 					zb0002Len--
 					zb0002Mask |= 0x2
 				}
@@ -1501,9 +1501,9 @@ func (z *NodeListResponse) MarshalMsg(b []byte) (o []byte, err error) {
 						o = msgp.AppendString(o, z.Nodes[za0001].Host)
 					}
 					if (zb0002Mask & 0x2) == 0 { // if not omitted
-						// string "drives"
-						o = append(o, 0xa6, 0x64, 0x72, 0x69, 0x76, 0x65, 0x73)
-						o = msgp.AppendInt(o, z.Nodes[za0001].Drives)
+						// string "totalDrives"
+						o = append(o, 0xab, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x44, 0x72, 0x69, 0x76, 0x65, 0x73)
+						o = msgp.AppendInt(o, z.Nodes[za0001].TotalDrives)
 					}
 				}
 			}
@@ -1573,10 +1573,10 @@ func (z *NodeListResponse) UnmarshalMsg(bts []byte) (o []byte, err error) {
 							return
 						}
 						zb0003Mask |= 0x1
-					case "drives":
-						z.Nodes[za0001].Drives, bts, err = msgp.ReadIntBytes(bts)
+					case "totalDrives":
+						z.Nodes[za0001].TotalDrives, bts, err = msgp.ReadIntBytes(bts)
 						if err != nil {
-							err = msgp.WrapError(err, "Nodes", za0001, "Drives")
+							err = msgp.WrapError(err, "Nodes", za0001, "TotalDrives")
 							return
 						}
 						zb0003Mask |= 0x2
@@ -1594,7 +1594,7 @@ func (z *NodeListResponse) UnmarshalMsg(bts []byte) (o []byte, err error) {
 						z.Nodes[za0001].Host = ""
 					}
 					if (zb0003Mask & 0x2) == 0 {
-						z.Nodes[za0001].Drives = 0
+						z.Nodes[za0001].TotalDrives = 0
 					}
 				}
 			}
@@ -1631,7 +1631,7 @@ func (z *NodeListResponse) UnmarshalMsg(bts []byte) (o []byte, err error) {
 func (z *NodeListResponse) Msgsize() (s int) {
 	s = 1 + 6 + msgp.ArrayHeaderSize
 	for za0001 := range z.Nodes {
-		s += 1 + 5 + msgp.StringPrefixSize + len(z.Nodes[za0001].Host) + 7 + msgp.IntSize
+		s += 1 + 5 + msgp.StringPrefixSize + len(z.Nodes[za0001].Host) + 12 + msgp.IntSize
 	}
 	s += 6 + msgp.IntSize
 	return
