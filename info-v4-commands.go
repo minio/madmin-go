@@ -266,7 +266,7 @@ func (adm *AdminClient) SetInfo(ctx context.Context, poolIndex int, setIndex int
 //msgp:ignore DriveInfoOpts
 type DriveInfoOpts struct{}
 
-// DriveInfo returns pool information about a specific pool referenced by poolIndex
+// DriveInfo returns information for a specific drive
 func (adm *AdminClient) DriveInfo(ctx context.Context, poolIndex, setIndex, diskIndex int, options ...func(*DriveInfoOpts)) (Disk, error) {
 	srvOpts := &DriveInfoOpts{}
 
@@ -307,6 +307,7 @@ type NodeListOpts struct {
 	Offset int
 }
 
+// NodeListResponse includes a paginated list of nodes and the total node count
 type NodeListResponse struct {
 	Nodes []Node `msg:"nodes,omitempty"`
 	Total int    `msg:"total,omitempty"`
