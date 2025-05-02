@@ -32,10 +32,9 @@ import (
 
 // ObjectSummaryOptions provides options for ObjectSummary call.
 type ObjectSummaryOptions struct {
-	Bucket   string
-	Object   string
-	Bitrot   bool
-	Versions bool
+	Bucket string
+	Object string
+	Bitrot bool
 }
 
 // ObjectSummary calls minio to search for all files and parts
@@ -53,9 +52,6 @@ func (adm *AdminClient) ObjectSummary(ctx context.Context, objOpts ObjectSummary
 	form.Add("object", objOpts.Object)
 	if objOpts.Bitrot {
 		form.Add("bitrot", "true")
-	}
-	if objOpts.Versions {
-		form.Add("versions", "true")
 	}
 
 	resp, err := adm.executeMethod(ctx,
@@ -145,14 +141,16 @@ type ObjectSummary struct {
 	// DataDir represents the directory on disk created using
 	// the version ID's or a random uuid if the object is not
 	// versioned.
-	DataDir     string
-	Version     string
-	IsInline    bool
-	PartNumbers []int
-	ErasureDist []uint8
-	Metas       []*ObjectMetaSummary
-	Parts       []*ObjectPartSummary
-	Unknown     []*ObjectUnknownSummary
-	Versions    []*ObjectVersionSummary
-	Bitrot      []*ObjectBitrotSummary
+	DataDir      string
+	Version      string
+	IsInline     bool
+	PartNumbers  []int
+	ErasureDist  []uint8
+	ParityCount  int
+	DeleteMarker bool
+	Metas        []*ObjectMetaSummary
+	Parts        []*ObjectPartSummary
+	Unknown      []*ObjectUnknownSummary
+	Versions     []*ObjectVersionSummary
+	Bitrot       []*ObjectBitrotSummary
 }
