@@ -792,7 +792,7 @@ type ProcInfo struct {
 	CreateTime     int64                      `json:"create_time,omitempty"`
 	CWD            string                     `json:"cwd,omitempty"`
 	ExecPath       string                     `json:"exec_path,omitempty"`
-	GIDs           []uint32                   `json:"gids,omitempty"`
+	GIDs           []int32                    `json:"gids,omitempty"`
 	IOCounters     process.IOCountersStat     `json:"iocounters,omitempty"`
 	IsRunning      bool                       `json:"is_running,omitempty"`
 	MemInfo        process.MemoryInfoStat     `json:"mem_info,omitempty"`
@@ -808,8 +808,16 @@ type ProcInfo struct {
 	Status         string                     `json:"status,omitempty"`
 	TGID           int32                      `json:"tgid,omitempty"`
 	Times          cpu.TimesStat              `json:"times,omitempty"`
-	UIDs           []uint32                   `json:"uids,omitempty"`
+	UIDs           []int32                    `json:"uids,omitempty"`
 	Username       string                     `json:"username,omitempty"`
+}
+
+func aTob[a, b any](aa []a, conv func(item a) b) []b {
+	bb := make([]b, len(aa))
+	for i, va := range aa {
+		bb[i] = conv(va)
+	}
+	return bb
 }
 
 // GetProcInfo returns current MinIO process information.
@@ -877,11 +885,14 @@ func GetProcInfo(ctx context.Context, addr string) ProcInfo {
 		return procInfo
 	}
 
-	procInfo.GIDs, err = proc.GidsWithContext(ctx)
+	gids, err := proc.GidsWithContext(ctx)
 	if err != nil {
 		procInfo.Error = err.Error()
 		return procInfo
 	}
+	procInfo.GIDs = aTob[uint32, int32](gids, func(item uint32) int32 {
+		return int32(item)
+	})
 
 	ioCounters, err := proc.IOCountersWithContext(ctx)
 	if err != nil {
@@ -976,11 +987,14 @@ func GetProcInfo(ctx context.Context, addr string) ProcInfo {
 	}
 	procInfo.Times = *times
 
-	procInfo.UIDs, err = proc.UidsWithContext(ctx)
+	uids, err := proc.UidsWithContext(ctx)
 	if err != nil {
 		procInfo.Error = err.Error()
 		return procInfo
 	}
+	procInfo.UIDs = aTob[uint32, int32](uids, func(item uint32) int32 {
+		return int32(item)
+	})
 
 	// In certain environments, it is not possible to get username e.g. minio-operator
 	// Plus it's not a serious error. So ignore error if any.
