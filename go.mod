@@ -20,7 +20,7 @@ require (
 	github.com/prometheus/prom2json v1.4.2
 	github.com/safchain/ethtool v0.5.10
 	github.com/secure-io/sio-go v0.3.1
-	github.com/shirou/gopsutil/v3 v3.24.5
+	github.com/shirou/gopsutil/v4 v4.25.3
 	github.com/tinylib/msgp v1.2.5
 	golang.org/x/crypto v0.37.0
 	golang.org/x/net v0.39.0
@@ -28,6 +28,7 @@ require (
 )
 
 require (
+	github.com/ebitengine/purego v0.8.2 // indirect
 	github.com/go-ini/ini v1.67.0 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/goccy/go-json v0.10.5 // indirect
@@ -47,7 +48,6 @@ require (
 	github.com/prometheus/client_model v0.6.2 // indirect
 	github.com/prometheus/prometheus v0.303.1 // indirect
 	github.com/rs/xid v1.6.0 // indirect
-	github.com/shoenig/go-m1cpu v0.1.6 // indirect
 	github.com/tklauser/go-sysconf v0.3.15 // indirect
 	github.com/tklauser/numcpus v0.10.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
