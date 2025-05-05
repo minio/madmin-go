@@ -1049,6 +1049,595 @@ func (z *ExtendedErasureSetInfo) Msgsize() (s int) {
 }
 
 // DecodeMsg implements msgp.Decodable
+func (z *Node) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 2 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "host":
+			z.Host, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "Host")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "totalDrives":
+			z.TotalDrives, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "TotalDrives")
+				return
+			}
+			zb0001Mask |= 0x2
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x3 {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Host = ""
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.TotalDrives = 0
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z Node) EncodeMsg(en *msgp.Writer) (err error) {
+	// check for omitted fields
+	zb0001Len := uint32(2)
+	var zb0001Mask uint8 /* 2 bits */
+	_ = zb0001Mask
+	if z.Host == "" {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.TotalDrives == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	// variable map header, size zb0001Len
+	err = en.Append(0x80 | uint8(zb0001Len))
+	if err != nil {
+		return
+	}
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// write "host"
+			err = en.Append(0xa4, 0x68, 0x6f, 0x73, 0x74)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.Host)
+			if err != nil {
+				err = msgp.WrapError(err, "Host")
+				return
+			}
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// write "totalDrives"
+			err = en.Append(0xab, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x44, 0x72, 0x69, 0x76, 0x65, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt(z.TotalDrives)
+			if err != nil {
+				err = msgp.WrapError(err, "TotalDrives")
+				return
+			}
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z Node) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// check for omitted fields
+	zb0001Len := uint32(2)
+	var zb0001Mask uint8 /* 2 bits */
+	_ = zb0001Mask
+	if z.Host == "" {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.TotalDrives == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	// variable map header, size zb0001Len
+	o = append(o, 0x80|uint8(zb0001Len))
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// string "host"
+			o = append(o, 0xa4, 0x68, 0x6f, 0x73, 0x74)
+			o = msgp.AppendString(o, z.Host)
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// string "totalDrives"
+			o = append(o, 0xab, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x44, 0x72, 0x69, 0x76, 0x65, 0x73)
+			o = msgp.AppendInt(o, z.TotalDrives)
+		}
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *Node) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 2 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "host":
+			z.Host, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Host")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "totalDrives":
+			z.TotalDrives, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "TotalDrives")
+				return
+			}
+			zb0001Mask |= 0x2
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x3 {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Host = ""
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.TotalDrives = 0
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z Node) Msgsize() (s int) {
+	s = 1 + 5 + msgp.StringPrefixSize + len(z.Host) + 12 + msgp.IntSize
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *NodeListResponse) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 2 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "nodes":
+			var zb0002 uint32
+			zb0002, err = dc.ReadArrayHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "Nodes")
+				return
+			}
+			if cap(z.Nodes) >= int(zb0002) {
+				z.Nodes = (z.Nodes)[:zb0002]
+			} else {
+				z.Nodes = make([]Node, zb0002)
+			}
+			for za0001 := range z.Nodes {
+				var zb0003 uint32
+				zb0003, err = dc.ReadMapHeader()
+				if err != nil {
+					err = msgp.WrapError(err, "Nodes", za0001)
+					return
+				}
+				var zb0003Mask uint8 /* 2 bits */
+				_ = zb0003Mask
+				for zb0003 > 0 {
+					zb0003--
+					field, err = dc.ReadMapKeyPtr()
+					if err != nil {
+						err = msgp.WrapError(err, "Nodes", za0001)
+						return
+					}
+					switch msgp.UnsafeString(field) {
+					case "host":
+						z.Nodes[za0001].Host, err = dc.ReadString()
+						if err != nil {
+							err = msgp.WrapError(err, "Nodes", za0001, "Host")
+							return
+						}
+						zb0003Mask |= 0x1
+					case "totalDrives":
+						z.Nodes[za0001].TotalDrives, err = dc.ReadInt()
+						if err != nil {
+							err = msgp.WrapError(err, "Nodes", za0001, "TotalDrives")
+							return
+						}
+						zb0003Mask |= 0x2
+					default:
+						err = dc.Skip()
+						if err != nil {
+							err = msgp.WrapError(err, "Nodes", za0001)
+							return
+						}
+					}
+				}
+				// Clear omitted fields.
+				if zb0003Mask != 0x3 {
+					if (zb0003Mask & 0x1) == 0 {
+						z.Nodes[za0001].Host = ""
+					}
+					if (zb0003Mask & 0x2) == 0 {
+						z.Nodes[za0001].TotalDrives = 0
+					}
+				}
+			}
+			zb0001Mask |= 0x1
+		case "total":
+			z.Total, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "Total")
+				return
+			}
+			zb0001Mask |= 0x2
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x3 {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Nodes = nil
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.Total = 0
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *NodeListResponse) EncodeMsg(en *msgp.Writer) (err error) {
+	// check for omitted fields
+	zb0001Len := uint32(2)
+	var zb0001Mask uint8 /* 2 bits */
+	_ = zb0001Mask
+	if z.Nodes == nil {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.Total == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	// variable map header, size zb0001Len
+	err = en.Append(0x80 | uint8(zb0001Len))
+	if err != nil {
+		return
+	}
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// write "nodes"
+			err = en.Append(0xa5, 0x6e, 0x6f, 0x64, 0x65, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteArrayHeader(uint32(len(z.Nodes)))
+			if err != nil {
+				err = msgp.WrapError(err, "Nodes")
+				return
+			}
+			for za0001 := range z.Nodes {
+				// check for omitted fields
+				zb0002Len := uint32(2)
+				var zb0002Mask uint8 /* 2 bits */
+				_ = zb0002Mask
+				if z.Nodes[za0001].Host == "" {
+					zb0002Len--
+					zb0002Mask |= 0x1
+				}
+				if z.Nodes[za0001].TotalDrives == 0 {
+					zb0002Len--
+					zb0002Mask |= 0x2
+				}
+				// variable map header, size zb0002Len
+				err = en.Append(0x80 | uint8(zb0002Len))
+				if err != nil {
+					return
+				}
+
+				// skip if no fields are to be emitted
+				if zb0002Len != 0 {
+					if (zb0002Mask & 0x1) == 0 { // if not omitted
+						// write "host"
+						err = en.Append(0xa4, 0x68, 0x6f, 0x73, 0x74)
+						if err != nil {
+							return
+						}
+						err = en.WriteString(z.Nodes[za0001].Host)
+						if err != nil {
+							err = msgp.WrapError(err, "Nodes", za0001, "Host")
+							return
+						}
+					}
+					if (zb0002Mask & 0x2) == 0 { // if not omitted
+						// write "totalDrives"
+						err = en.Append(0xab, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x44, 0x72, 0x69, 0x76, 0x65, 0x73)
+						if err != nil {
+							return
+						}
+						err = en.WriteInt(z.Nodes[za0001].TotalDrives)
+						if err != nil {
+							err = msgp.WrapError(err, "Nodes", za0001, "TotalDrives")
+							return
+						}
+					}
+				}
+			}
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// write "total"
+			err = en.Append(0xa5, 0x74, 0x6f, 0x74, 0x61, 0x6c)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt(z.Total)
+			if err != nil {
+				err = msgp.WrapError(err, "Total")
+				return
+			}
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *NodeListResponse) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// check for omitted fields
+	zb0001Len := uint32(2)
+	var zb0001Mask uint8 /* 2 bits */
+	_ = zb0001Mask
+	if z.Nodes == nil {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.Total == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	// variable map header, size zb0001Len
+	o = append(o, 0x80|uint8(zb0001Len))
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// string "nodes"
+			o = append(o, 0xa5, 0x6e, 0x6f, 0x64, 0x65, 0x73)
+			o = msgp.AppendArrayHeader(o, uint32(len(z.Nodes)))
+			for za0001 := range z.Nodes {
+				// check for omitted fields
+				zb0002Len := uint32(2)
+				var zb0002Mask uint8 /* 2 bits */
+				_ = zb0002Mask
+				if z.Nodes[za0001].Host == "" {
+					zb0002Len--
+					zb0002Mask |= 0x1
+				}
+				if z.Nodes[za0001].TotalDrives == 0 {
+					zb0002Len--
+					zb0002Mask |= 0x2
+				}
+				// variable map header, size zb0002Len
+				o = append(o, 0x80|uint8(zb0002Len))
+
+				// skip if no fields are to be emitted
+				if zb0002Len != 0 {
+					if (zb0002Mask & 0x1) == 0 { // if not omitted
+						// string "host"
+						o = append(o, 0xa4, 0x68, 0x6f, 0x73, 0x74)
+						o = msgp.AppendString(o, z.Nodes[za0001].Host)
+					}
+					if (zb0002Mask & 0x2) == 0 { // if not omitted
+						// string "totalDrives"
+						o = append(o, 0xab, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x44, 0x72, 0x69, 0x76, 0x65, 0x73)
+						o = msgp.AppendInt(o, z.Nodes[za0001].TotalDrives)
+					}
+				}
+			}
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// string "total"
+			o = append(o, 0xa5, 0x74, 0x6f, 0x74, 0x61, 0x6c)
+			o = msgp.AppendInt(o, z.Total)
+		}
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *NodeListResponse) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 2 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "nodes":
+			var zb0002 uint32
+			zb0002, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Nodes")
+				return
+			}
+			if cap(z.Nodes) >= int(zb0002) {
+				z.Nodes = (z.Nodes)[:zb0002]
+			} else {
+				z.Nodes = make([]Node, zb0002)
+			}
+			for za0001 := range z.Nodes {
+				var zb0003 uint32
+				zb0003, bts, err = msgp.ReadMapHeaderBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Nodes", za0001)
+					return
+				}
+				var zb0003Mask uint8 /* 2 bits */
+				_ = zb0003Mask
+				for zb0003 > 0 {
+					zb0003--
+					field, bts, err = msgp.ReadMapKeyZC(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "Nodes", za0001)
+						return
+					}
+					switch msgp.UnsafeString(field) {
+					case "host":
+						z.Nodes[za0001].Host, bts, err = msgp.ReadStringBytes(bts)
+						if err != nil {
+							err = msgp.WrapError(err, "Nodes", za0001, "Host")
+							return
+						}
+						zb0003Mask |= 0x1
+					case "totalDrives":
+						z.Nodes[za0001].TotalDrives, bts, err = msgp.ReadIntBytes(bts)
+						if err != nil {
+							err = msgp.WrapError(err, "Nodes", za0001, "TotalDrives")
+							return
+						}
+						zb0003Mask |= 0x2
+					default:
+						bts, err = msgp.Skip(bts)
+						if err != nil {
+							err = msgp.WrapError(err, "Nodes", za0001)
+							return
+						}
+					}
+				}
+				// Clear omitted fields.
+				if zb0003Mask != 0x3 {
+					if (zb0003Mask & 0x1) == 0 {
+						z.Nodes[za0001].Host = ""
+					}
+					if (zb0003Mask & 0x2) == 0 {
+						z.Nodes[za0001].TotalDrives = 0
+					}
+				}
+			}
+			zb0001Mask |= 0x1
+		case "total":
+			z.Total, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Total")
+				return
+			}
+			zb0001Mask |= 0x2
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x3 {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Nodes = nil
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.Total = 0
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *NodeListResponse) Msgsize() (s int) {
+	s = 1 + 6 + msgp.ArrayHeaderSize
+	for za0001 := range z.Nodes {
+		s += 1 + 5 + msgp.StringPrefixSize + len(z.Nodes[za0001].Host) + 12 + msgp.IntSize
+	}
+	s += 6 + msgp.IntSize
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *PoolInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field

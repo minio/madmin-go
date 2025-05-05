@@ -26,6 +26,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 
 	"github.com/tinylib/msgp/msgp"
 )
@@ -75,6 +76,12 @@ type PoolInfo struct {
 
 	// Optional value, not returned in ClusterInfo, PoolList API calls
 	Hosts []string `msg:"hosts,omitempty"`
+}
+
+// Node provides information on a specific node
+type Node struct {
+	Host        string `msg:"host,omitempty"`
+	TotalDrives int    `msg:"totalDrives,omitempty"`
 }
 
 // ClusterInfoOpts ask for additional data from the server
@@ -259,7 +266,7 @@ func (adm *AdminClient) SetInfo(ctx context.Context, poolIndex int, setIndex int
 //msgp:ignore DriveInfoOpts
 type DriveInfoOpts struct{}
 
-// DriveInfo returns pool information about a specific pool referenced by poolIndex
+// DriveInfo returns information for a specific drive
 func (adm *AdminClient) DriveInfo(ctx context.Context, poolIndex, setIndex, diskIndex int, options ...func(*DriveInfoOpts)) (Disk, error) {
 	srvOpts := &DriveInfoOpts{}
 
@@ -289,4 +296,98 @@ func (adm *AdminClient) DriveInfo(ctx context.Context, poolIndex, setIndex, disk
 	}
 
 	return disk, nil
+}
+
+//msgp:ignore NodeInfoOpts
+type NodeInfoOpts struct{}
+
+//msgp:ignore NodeListOpts
+type NodeListOpts struct {
+	Limit  int
+	Offset int
+}
+
+// NodeListResponse includes a paginated list of nodes and the total node count
+type NodeListResponse struct {
+	Nodes []Node `msg:"nodes,omitempty"`
+	Total int    `msg:"total,omitempty"`
+}
+
+// NodeList - list all nodes in the cluster
+func (adm *AdminClient) NodeList(ctx context.Context, options ...func(*NodeListOpts)) (nodeList *NodeListResponse, err error) {
+	srvOpts := &NodeListOpts{}
+
+	for _, o := range options {
+		o(srvOpts)
+	}
+
+	values := make(url.Values)
+	values.Add("limit", "100")
+	if srvOpts.Limit > 0 {
+		values.Set("limit", strconv.Itoa(srvOpts.Limit))
+	}
+
+	values.Add("offset", "0")
+	if srvOpts.Offset > 0 {
+		values.Set("offset", strconv.Itoa(srvOpts.Offset))
+	}
+	resp, err := adm.executeMethod(ctx,
+		http.MethodGet,
+		requestData{
+			relPath:     adminAPIPrefix + "/node",
+			queryValues: values,
+		})
+	defer closeResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+
+	mr := msgp.NewReader(resp.Body)
+	nodeList = new(NodeListResponse)
+	if err = nodeList.DecodeMsg(mr); err != nil {
+		if errors.Is(err, io.EOF) {
+			err = nil
+		}
+	}
+
+	return nodeList, err
+}
+
+// NodeInfo - fetch information about a specific node
+func (adm *AdminClient) NodeInfo(ctx context.Context, hostname string, options ...func(*NodeInfoOpts)) (node *Node, err error) {
+	srvOpts := &NodeInfoOpts{}
+
+	for _, o := range options {
+		o(srvOpts)
+	}
+
+	values := make(url.Values)
+	resp, err := adm.executeMethod(ctx,
+		http.MethodGet,
+		requestData{
+			relPath:     adminAPIPrefix + "/node/" + hostname,
+			queryValues: values,
+		})
+	defer closeResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+
+	mr := msgp.NewReader(resp.Body)
+	node = new(Node)
+	if err = node.DecodeMsg(mr); err != nil {
+		if errors.Is(err, io.EOF) {
+			err = nil
+		}
+	}
+
+	return
 }
