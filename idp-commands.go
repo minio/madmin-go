@@ -453,6 +453,10 @@ func (adm *AdminClient) ListAccessKeysLDAPBulkWithOpts(ctx context.Context, user
 	}
 
 	queryValues := url.Values{}
+	if opts.ListType == "" {
+		opts.ListType = AccessKeyListAll
+	}
+
 	queryValues.Set("listType", opts.ListType)
 	queryValues["userDNs"] = users
 	if opts.All {
