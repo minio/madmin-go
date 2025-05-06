@@ -19,6 +19,10 @@ package event
 
 import "time"
 
+//go:generate msgp $GOFILE
+
+//msgp:replace Origin with:string
+
 // Origin for the API event
 type Origin string
 

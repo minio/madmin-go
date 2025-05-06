@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/minio/madmin-go/v4/event"
+	"github.com/tinylib/msgp/msgp"
 )
 
 // APIEventOpts represents the options for the APIEventOpts
@@ -61,10 +62,10 @@ func (adm AdminClient) GetAPIEvents(ctx context.Context, opts APIEventOpts) (<-c
 		if resp.StatusCode != http.StatusOK {
 			return
 		}
-		dec := json.NewDecoder(resp.Body)
+		dec := msgp.NewReader(resp.Body)
 		for {
 			var info event.API
-			if err = dec.Decode(&info); err != nil {
+			if err = info.DecodeMsg(dec); err != nil {
 				if errors.Is(err, io.EOF) {
 					break
 				}
