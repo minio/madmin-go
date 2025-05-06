@@ -27,7 +27,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/minio/madmin-go/v3/event"
+	"github.com/minio/madmin-go/v4/event"
 )
 
 // APIEventOpts represents the options for the APIEventOpts

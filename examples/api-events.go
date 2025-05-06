@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/minio/madmin-go/v3"
+	"github.com/minio/madmin-go/v4"
 )
 
 func main() {
@@ -14,8 +14,10 @@ func main() {
 
 	// API requests are secure (HTTPS) if secure=true and insecure (HTTP) otherwise.
 	// New returns an MinIO Admin client object.
-	// https://172.18.0.3:32476 pcLjKJ0U5B7rCbtX d5FxdvrZro4WvodjFReeoNtya5LxncfE
 	madmClnt, err := madmin.New("localhost:9000", "minio", "minio123", false)
+	if err != nil {
+		log.Fatalln(err)
+	}
 	if err != nil {
 		log.Fatalln(err)
 	}
