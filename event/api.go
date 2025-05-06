@@ -52,7 +52,7 @@ type API struct {
 
 // CallInfo represents the info for the external call
 type CallInfo struct {
-	HttpStatusCode  int                    `json:"httpStatusCode,omitempty"`
+	HTTPStatusCode  int                    `json:"httpStatusCode,omitempty"`
 	InputBytes      int64                  `json:"rx"`
 	OutputBytes     int64                  `json:"tx"`
 	HeaderBytes     int64                  `json:"txHeaders,omitempty"`

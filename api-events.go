@@ -25,31 +25,39 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"net/url"
+	"time"
 
 	"github.com/minio/madmin-go/v3/event"
 )
 
-// GetAPIEvents fetches the persisted API events from MinIO
-func (adm AdminClient) GetAPIEvents(ctx context.Context, node string, api string) <-chan event.API {
-	eventCh := make(chan event.API)
+// APIEventOpts represents the options for the APIEventOpts
+type APIEventOpts struct {
+	Node       string
+	API        string
+	Bucket     string
+	Object     string
+	StatusCode int
+	Interval   time.Duration
+}
 
-	// Only success, start a routine to start reading line by line.
+// GetAPIEvents fetches the persisted API events from MinIO
+func (adm AdminClient) GetAPIEvents(ctx context.Context, opts APIEventOpts) (<-chan event.API, error) {
+	apiOpts, err := json.Marshal(opts)
+	if err != nil {
+		return nil, err
+	}
+	eventCh := make(chan event.API)
 	go func(eventCh chan<- event.API) {
 		defer close(eventCh)
-		urlValues := make(url.Values)
-		urlValues.Set("node", node)
-		urlValues.Set("api", api)
 		reqData := requestData{
-			relPath:     adminAPIPrefix + "/events/api",
-			queryValues: urlValues,
+			relPath: adminAPIPrefix + "/events/api",
+			content: apiOpts,
 		}
-		resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+		resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
 		if err != nil {
 			closeResponse(resp)
 			return
 		}
-
 		if resp.StatusCode != http.StatusOK {
 			return
 		}
@@ -68,8 +76,7 @@ func (adm AdminClient) GetAPIEvents(ctx context.Context, node string, api string
 			case eventCh <- info:
 			}
 		}
-
 	}(eventCh)
 
-	return eventCh
+	return eventCh, nil
 }

@@ -19,42 +19,12 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	// madmClnt.SetCustomTransport(&http.Transport{
-	// 	Proxy: http.ProxyFromEnvironment,
-	// 	DialContext: (&net.Dialer{
-	// 		Timeout:       5 * time.Second,
-	// 		KeepAlive:     15 * time.Second,
-	// 		FallbackDelay: 100 * time.Millisecond,
-	// 	}).DialContext,
-	// 	MaxIdleConns:          1024,
-	// 	MaxIdleConnsPerHost:   1024,
-	// 	ResponseHeaderTimeout: 60 * time.Second,
-	// 	IdleConnTimeout:       60 * time.Second,
-	// 	TLSHandshakeTimeout:   10 * time.Second,
-	// 	ExpectContinueTimeout: 1 * time.Second,
-	// 	// Set this value so that the underlying transport round-tripper
-	// 	// doesn't try to auto decode the body of objects with
-	// 	// content-encoding set to `gzip`.
-	// 	//
-	// 	// Refer:
-	// 	//    https://golang.org/src/net/http/transport.go?h=roundTrip#L1843
-	// 	DisableCompression: true,
-	// 	TLSClientConfig: &tls.Config{
-	// 		// Can't use SSLv3 because of POODLE and BEAST
-	// 		// Can't use TLSv1.0 because of POODLE and BEAST using CBC cipher
-	// 		// Can't use TLSv1.1 because of RC4 cipher usage
-	// 		MinVersion:         tls.VersionTLS12,
-	// 		InsecureSkipVerify: true,
-	// 	},
-	// })
+	eventCh, err := madmClnt.GetAPIEvents(context.Background(), madmin.APIEventOpts{})
+	if err != nil {
+		log.Fatalln(err)
+	}
 
-	eventCh := madmClnt.GetAPIEvents(context.Background(), "", "PutObject")
-	i := 1
 	for event := range eventCh {
-		fmt.Printf("count: %d\n", i)
-		i++
-		fmt.Println("************************")
-		fmt.Println(event)
-		fmt.Println("************************")
+		fmt.Printf("Event: %+v\n", event)
 	}
 }
