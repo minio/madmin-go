@@ -4,6 +4,8 @@ go 1.24.0
 
 toolchain go1.24.2
 
+replace github.com/tinylib/msgp v1.2.5 => github.com/klauspost/msgp v1.1.6-0.20250506154734-b646eabda3d7
+
 // Install tools using 'go install tool'.
 tool (
 	github.com/tinylib/msgp
