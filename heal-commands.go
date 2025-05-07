@@ -32,6 +32,7 @@ import (
 
 //msgp:clearomitted
 //msgp:tag json
+//msgp:timezone utc
 //go:generate msgp -file $GOFILE
 
 // HealScanMode represents the type of healing scan

@@ -142,7 +142,7 @@ func (z *BucketTarget) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 		case "resetBeforeDate":
-			z.ResetBeforeDate, err = dc.ReadTime()
+			z.ResetBeforeDate, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "ResetBeforeDate")
 				return
@@ -162,7 +162,7 @@ func (z *BucketTarget) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 		case "lastOnline":
-			z.LastOnline, err = dc.ReadTime()
+			z.LastOnline, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "LastOnline")
 				return
@@ -879,7 +879,7 @@ func (z *BucketTarget) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 		case "resetBeforeDate":
-			z.ResetBeforeDate, bts, err = msgp.ReadTimeBytes(bts)
+			z.ResetBeforeDate, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ResetBeforeDate")
 				return
@@ -899,7 +899,7 @@ func (z *BucketTarget) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 		case "lastOnline":
-			z.LastOnline, bts, err = msgp.ReadTimeBytes(bts)
+			z.LastOnline, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "LastOnline")
 				return
@@ -1186,7 +1186,7 @@ func (z *Credentials) DecodeMsg(dc *msgp.Reader) (err error) {
 			}
 			zb0001Mask |= 0x4
 		case "expiration":
-			z.Expiration, err = dc.ReadTime()
+			z.Expiration, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "Expiration")
 				return
@@ -1394,7 +1394,7 @@ func (z *Credentials) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			}
 			zb0001Mask |= 0x4
 		case "expiration":
-			z.Expiration, bts, err = msgp.ReadTimeBytes(bts)
+			z.Expiration, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Expiration")
 				return
