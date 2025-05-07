@@ -23,6 +23,7 @@ import (
 	"encoding/base64"
 )
 
+//msgp:timezone utc
 //go:generate msgp -file $GOFILE
 
 // TierGCS represents the remote tier configuration for Google Cloud Storage

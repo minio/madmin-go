@@ -2210,7 +2210,7 @@ func (z *HealStartSuccess) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 		case "startTime":
-			z.StartTime, err = dc.ReadTime()
+			z.StartTime, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "StartTime")
 				return
@@ -2309,7 +2309,7 @@ func (z *HealStartSuccess) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 		case "startTime":
-			z.StartTime, bts, err = msgp.ReadTimeBytes(bts)
+			z.StartTime, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "StartTime")
 				return
@@ -2363,7 +2363,7 @@ func (z *HealStopSuccess) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 		case "startTime":
-			z.StartTime, err = dc.ReadTime()
+			z.StartTime, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "StartTime")
 				return
@@ -2462,7 +2462,7 @@ func (z *HealStopSuccess) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 		case "startTime":
-			z.StartTime, bts, err = msgp.ReadTimeBytes(bts)
+			z.StartTime, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "StartTime")
 				return
@@ -2518,7 +2518,7 @@ func (z *HealTaskStatus) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 		case "startTime":
-			z.StartTime, err = dc.ReadTime()
+			z.StartTime, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "StartTime")
 				return
@@ -2727,7 +2727,7 @@ func (z *HealTaskStatus) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 		case "startTime":
-			z.StartTime, bts, err = msgp.ReadTimeBytes(bts)
+			z.StartTime, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "StartTime")
 				return
@@ -2845,13 +2845,13 @@ func (z *HealingDisk) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 		case "started":
-			z.Started, err = dc.ReadTime()
+			z.Started, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "Started")
 				return
 			}
 		case "last_update":
-			z.LastUpdate, err = dc.ReadTime()
+			z.LastUpdate, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "LastUpdate")
 				return
@@ -3393,13 +3393,13 @@ func (z *HealingDisk) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 		case "started":
-			z.Started, bts, err = msgp.ReadTimeBytes(bts)
+			z.Started, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Started")
 				return
 			}
 		case "last_update":
-			z.LastUpdate, bts, err = msgp.ReadTimeBytes(bts)
+			z.LastUpdate, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "LastUpdate")
 				return

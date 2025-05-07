@@ -27,6 +27,7 @@ import (
 	"time"
 )
 
+//msgp:timezone utc
 //go:generate msgp -file $GOFILE
 
 // ReplDiffOpts holds options for `mc replicate diff` command

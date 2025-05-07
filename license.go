@@ -28,6 +28,7 @@ import (
 
 //msgp:clearomitted
 //msgp:tag json
+//msgp:timezone utc
 //go:generate msgp
 // LicenseInfo is a structure containing MinIO license information.
 

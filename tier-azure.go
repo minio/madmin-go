@@ -21,6 +21,7 @@ package madmin
 
 import "errors"
 
+//msgp:timezone utc
 //go:generate msgp -file $GOFILE
 
 // ServicePrincipalAuth holds fields for a successful SP authentication with Azure

@@ -28,6 +28,7 @@ import (
 	"github.com/tinylib/msgp/msgp"
 )
 
+//msgp:timezone utc
 //go:generate msgp -unexported -file=$GOFILE
 
 // ObjectSummaryOptions provides options for ObjectSummary call.

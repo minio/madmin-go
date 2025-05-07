@@ -27,6 +27,7 @@ import (
 
 //msgp:clearomitted
 //msgp:tag json
+//msgp:timezone utc
 //go:generate msgp
 
 // BucketTargets represents a slice of bucket targets by type and endpoint

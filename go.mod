@@ -21,7 +21,7 @@ require (
 	github.com/safchain/ethtool v0.5.10
 	github.com/secure-io/sio-go v0.3.1
 	github.com/shirou/gopsutil/v4 v4.25.4
-	github.com/tinylib/msgp v1.2.5
+	github.com/tinylib/msgp v1.3.0
 	golang.org/x/crypto v0.37.0
 	golang.org/x/net v0.39.0
 	gopkg.in/yaml.v3 v3.0.1

@@ -39,6 +39,7 @@ import (
 
 //msgp:clearomitted
 //msgp:tag json
+//msgp:timezone utc
 //go:generate msgp -unexported -file $GOFILE
 
 // MetricType is a bitfield representation of different metric types.

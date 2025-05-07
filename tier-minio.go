@@ -19,6 +19,7 @@
 
 package madmin
 
+//msgp:timezone utc
 //go:generate msgp -file $GOFILE
 
 // TierMinIO represents the remote tier configuration for MinIO object storage backend.

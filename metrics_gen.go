@@ -29,7 +29,7 @@ func (z *BatchJobMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 		switch msgp.UnsafeString(field) {
 		case "collected":
-			z.CollectedAt, err = dc.ReadTime()
+			z.CollectedAt, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "CollectedAt")
 				return
@@ -153,7 +153,7 @@ func (z *BatchJobMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 		switch msgp.UnsafeString(field) {
 		case "collected":
-			z.CollectedAt, bts, err = msgp.ReadTimeBytes(bts)
+			z.CollectedAt, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "CollectedAt")
 				return
@@ -231,7 +231,7 @@ func (z *CPUMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 		switch msgp.UnsafeString(field) {
 		case "collected":
-			z.CollectedAt, err = dc.ReadTime()
+			z.CollectedAt, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "CollectedAt")
 				return
@@ -403,7 +403,7 @@ func (z *CPUMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 		switch msgp.UnsafeString(field) {
 		case "collected":
-			z.CollectedAt, bts, err = msgp.ReadTimeBytes(bts)
+			z.CollectedAt, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "CollectedAt")
 				return
@@ -1355,7 +1355,7 @@ func (z *DiskMetric) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 		switch msgp.UnsafeString(field) {
 		case "collected":
-			z.CollectedAt, err = dc.ReadTime()
+			z.CollectedAt, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "CollectedAt")
 				return
@@ -1761,7 +1761,7 @@ func (z *DiskMetric) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 		switch msgp.UnsafeString(field) {
 		case "collected":
-			z.CollectedAt, bts, err = msgp.ReadTimeBytes(bts)
+			z.CollectedAt, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "CollectedAt")
 				return
@@ -2193,13 +2193,13 @@ func (z *JobMetric) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 		case "startTime":
-			z.StartTime, err = dc.ReadTime()
+			z.StartTime, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "StartTime")
 				return
 			}
 		case "lastUpdate":
-			z.LastUpdate, err = dc.ReadTime()
+			z.LastUpdate, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "LastUpdate")
 				return
@@ -2642,13 +2642,13 @@ func (z *JobMetric) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 		case "startTime":
-			z.StartTime, bts, err = msgp.ReadTimeBytes(bts)
+			z.StartTime, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "StartTime")
 				return
 			}
 		case "lastUpdate":
-			z.LastUpdate, bts, err = msgp.ReadTimeBytes(bts)
+			z.LastUpdate, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "LastUpdate")
 				return
@@ -3584,7 +3584,7 @@ func (z *MemMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 		switch msgp.UnsafeString(field) {
 		case "collected":
-			z.CollectedAt, err = dc.ReadTime()
+			z.CollectedAt, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "CollectedAt")
 				return
@@ -3668,7 +3668,7 @@ func (z *MemMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 		switch msgp.UnsafeString(field) {
 		case "collected":
-			z.CollectedAt, bts, err = msgp.ReadTimeBytes(bts)
+			z.CollectedAt, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "CollectedAt")
 				return
@@ -3891,7 +3891,7 @@ func (z *Metrics) DecodeMsg(dc *msgp.Reader) (err error) {
 					}
 					switch msgp.UnsafeString(field) {
 					case "collected":
-						z.Net.CollectedAt, err = dc.ReadTime()
+						z.Net.CollectedAt, err = dc.ReadTimeUTC()
 						if err != nil {
 							err = msgp.WrapError(err, "Net", "CollectedAt")
 							return
@@ -3945,7 +3945,7 @@ func (z *Metrics) DecodeMsg(dc *msgp.Reader) (err error) {
 					}
 					switch msgp.UnsafeString(field) {
 					case "collected":
-						z.Mem.CollectedAt, err = dc.ReadTime()
+						z.Mem.CollectedAt, err = dc.ReadTimeUTC()
 						if err != nil {
 							err = msgp.WrapError(err, "Mem", "CollectedAt")
 							return
@@ -4694,7 +4694,7 @@ func (z *Metrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					}
 					switch msgp.UnsafeString(field) {
 					case "collected":
-						z.Net.CollectedAt, bts, err = msgp.ReadTimeBytes(bts)
+						z.Net.CollectedAt, bts, err = msgp.ReadTimeUTCBytes(bts)
 						if err != nil {
 							err = msgp.WrapError(err, "Net", "CollectedAt")
 							return
@@ -4747,7 +4747,7 @@ func (z *Metrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					}
 					switch msgp.UnsafeString(field) {
 					case "collected":
-						z.Mem.CollectedAt, bts, err = msgp.ReadTimeBytes(bts)
+						z.Mem.CollectedAt, bts, err = msgp.ReadTimeUTCBytes(bts)
 						if err != nil {
 							err = msgp.WrapError(err, "Mem", "CollectedAt")
 							return
@@ -5342,7 +5342,7 @@ func (z *NetMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 		switch msgp.UnsafeString(field) {
 		case "collected":
-			z.CollectedAt, err = dc.ReadTime()
+			z.CollectedAt, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "CollectedAt")
 				return
@@ -5445,7 +5445,7 @@ func (z *NetMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 		switch msgp.UnsafeString(field) {
 		case "collected":
-			z.CollectedAt, bts, err = msgp.ReadTimeBytes(bts)
+			z.CollectedAt, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "CollectedAt")
 				return
@@ -5501,7 +5501,7 @@ func (z *OSMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 		switch msgp.UnsafeString(field) {
 		case "collected":
-			z.CollectedAt, err = dc.ReadTime()
+			z.CollectedAt, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "CollectedAt")
 				return
@@ -5790,7 +5790,7 @@ func (z *OSMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 		switch msgp.UnsafeString(field) {
 		case "collected":
-			z.CollectedAt, bts, err = msgp.ReadTimeBytes(bts)
+			z.CollectedAt, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "CollectedAt")
 				return
@@ -5944,7 +5944,7 @@ func (z *RPCMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 		switch msgp.UnsafeString(field) {
 		case "collectedAt":
-			z.CollectedAt, err = dc.ReadTime()
+			z.CollectedAt, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "CollectedAt")
 				return
@@ -6010,7 +6010,7 @@ func (z *RPCMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 		case "lastPongTime":
-			z.LastPongTime, err = dc.ReadTime()
+			z.LastPongTime, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "LastPongTime")
 				return
@@ -6028,7 +6028,7 @@ func (z *RPCMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 		case "lastConnectTime":
-			z.LastConnectTime, err = dc.ReadTime()
+			z.LastConnectTime, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "LastConnectTime")
 				return
@@ -6455,7 +6455,7 @@ func (z *RPCMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 		switch msgp.UnsafeString(field) {
 		case "collectedAt":
-			z.CollectedAt, bts, err = msgp.ReadTimeBytes(bts)
+			z.CollectedAt, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "CollectedAt")
 				return
@@ -6521,7 +6521,7 @@ func (z *RPCMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 		case "lastPongTime":
-			z.LastPongTime, bts, err = msgp.ReadTimeBytes(bts)
+			z.LastPongTime, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "LastPongTime")
 				return
@@ -6539,7 +6539,7 @@ func (z *RPCMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 		case "lastConnectTime":
-			z.LastConnectTime, bts, err = msgp.ReadTimeBytes(bts)
+			z.LastConnectTime, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "LastConnectTime")
 				return
@@ -7984,7 +7984,7 @@ func (z *ScannerMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 		switch msgp.UnsafeString(field) {
 		case "collected":
-			z.CollectedAt, err = dc.ReadTime()
+			z.CollectedAt, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "CollectedAt")
 				return
@@ -8616,7 +8616,7 @@ func (z *ScannerMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 		switch msgp.UnsafeString(field) {
 		case "collected":
-			z.CollectedAt, bts, err = msgp.ReadTimeBytes(bts)
+			z.CollectedAt, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "CollectedAt")
 				return
@@ -8944,7 +8944,7 @@ func (z *SiteResyncMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 		switch msgp.UnsafeString(field) {
 		case "collected":
-			z.CollectedAt, err = dc.ReadTime()
+			z.CollectedAt, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "CollectedAt")
 				return
@@ -8957,13 +8957,13 @@ func (z *SiteResyncMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 			}
 			zb0001Mask |= 0x1
 		case "startTime":
-			z.StartTime, err = dc.ReadTime()
+			z.StartTime, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "StartTime")
 				return
 			}
 		case "lastUpdate":
-			z.LastUpdate, err = dc.ReadTime()
+			z.LastUpdate, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "LastUpdate")
 				return
@@ -9349,7 +9349,7 @@ func (z *SiteResyncMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 		switch msgp.UnsafeString(field) {
 		case "collected":
-			z.CollectedAt, bts, err = msgp.ReadTimeBytes(bts)
+			z.CollectedAt, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "CollectedAt")
 				return
@@ -9362,13 +9362,13 @@ func (z *SiteResyncMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			}
 			zb0001Mask |= 0x1
 		case "startTime":
-			z.StartTime, bts, err = msgp.ReadTimeBytes(bts)
+			z.StartTime, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "StartTime")
 				return
 			}
 		case "lastUpdate":
-			z.LastUpdate, bts, err = msgp.ReadTimeBytes(bts)
+			z.LastUpdate, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "LastUpdate")
 				return
