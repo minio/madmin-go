@@ -31,28 +31,26 @@ import (
 	"github.com/tinylib/msgp/msgp"
 )
 
-// APIEventOpts represents the options for the APIEventOpts
-type APIEventOpts struct {
-	Node       string        `json:"node,omitempty"`
-	API        string        `json:"api,omitempty"`
-	Bucket     string        `json:"bucket,omitempty"`
-	Object     string        `json:"object,omitempty"`
-	StatusCode int           `json:"statusCode,omitempty"`
-	Interval   time.Duration `json:"interval,omitempty"`
-	Origin     event.Origin  `json:"origin,omitempty"`
+// ErrorEventOpts represents the options for the ErrorEvents
+type ErrorEventOpts struct {
+	Node     string        `json:"node,omitempty"`
+	API      string        `json:"api,omitempty"`
+	Bucket   string        `json:"bucket,omitempty"`
+	Object   string        `json:"object,omitempty"`
+	Interval time.Duration `json:"interval,omitempty"`
 }
 
-// GetAPIEvents fetches the persisted API events from MinIO
-func (adm AdminClient) GetAPIEvents(ctx context.Context, opts APIEventOpts) (<-chan event.API, error) {
+// GetErrorEvents fetches the persisted error events from MinIO
+func (adm AdminClient) GetErrorEvents(ctx context.Context, opts ErrorEventOpts) (<-chan event.Error, error) {
 	apiOpts, err := json.Marshal(opts)
 	if err != nil {
 		return nil, err
 	}
-	eventCh := make(chan event.API)
-	go func(eventCh chan<- event.API) {
+	eventCh := make(chan event.Error)
+	go func(eventCh chan<- event.Error) {
 		defer close(eventCh)
 		reqData := requestData{
-			relPath: adminAPIPrefix + "/events/api",
+			relPath: adminAPIPrefix + "/events/error",
 			content: apiOpts,
 		}
 		resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
@@ -65,7 +63,7 @@ func (adm AdminClient) GetAPIEvents(ctx context.Context, opts APIEventOpts) (<-c
 		}
 		dec := msgp.NewReader(resp.Body)
 		for {
-			var info event.API
+			var info event.Error
 			if err = info.DecodeMsg(dec); err != nil {
 				if errors.Is(err, io.EOF) {
 					break

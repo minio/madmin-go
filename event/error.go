@@ -17,7 +17,30 @@
 
 package event
 
+import (
+	"time"
+)
+
+//go:generate msgp $GOFILE
+
 // Error represents the error event
 type Error struct {
-	// To be done
+	Version   string            `json:"version"`
+	API       string            `json:"apiName"`
+	Time      time.Time         `json:"time"`
+	Node      string            `json:"node"`
+	Message   string            `json:"message"`
+	RequestID string            `json:"requestID,omitempty"`
+	UserAgent string            `json:"userAgent,omitempty"`
+	Bucket    string            `json:"bucket,omitempty"`
+	Object    string            `json:"object,omitempty"`
+	VersionID string            `json:"versionId,omitempty"`
+	Metadata  map[string]string `json:"metadata,omitempty"`
+	Trace     *Trace            `json:"trace,omitempty"`
+}
+
+// Trace represents the trace
+type Trace struct {
+	Source    []string               `json:"source,omitempty"`
+	Variables map[string]interface{} `json:"variables,omitempty"`
 }
