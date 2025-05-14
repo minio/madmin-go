@@ -53,13 +53,13 @@ func (z *BucketScanInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 		case "last_update":
-			z.LastUpdate, err = dc.ReadTime()
+			z.LastUpdate, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "LastUpdate")
 				return
 			}
 		case "last_started":
-			z.LastStarted, err = dc.ReadTime()
+			z.LastStarted, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "LastStarted")
 				return
@@ -77,7 +77,7 @@ func (z *BucketScanInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				z.Completed = make([]time.Time, zb0002)
 			}
 			for za0001 := range z.Completed {
-				z.Completed[za0001], err = dc.ReadTime()
+				z.Completed[za0001], err = dc.ReadTimeUTC()
 				if err != nil {
 					err = msgp.WrapError(err, "Completed", za0001)
 					return
@@ -292,13 +292,13 @@ func (z *BucketScanInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 		case "last_update":
-			z.LastUpdate, bts, err = msgp.ReadTimeBytes(bts)
+			z.LastUpdate, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "LastUpdate")
 				return
 			}
 		case "last_started":
-			z.LastStarted, bts, err = msgp.ReadTimeBytes(bts)
+			z.LastStarted, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "LastStarted")
 				return
@@ -316,7 +316,7 @@ func (z *BucketScanInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				z.Completed = make([]time.Time, zb0002)
 			}
 			for za0001 := range z.Completed {
-				z.Completed[za0001], bts, err = msgp.ReadTimeBytes(bts)
+				z.Completed[za0001], bts, err = msgp.ReadTimeUTCBytes(bts)
 				if err != nil {
 					err = msgp.WrapError(err, "Completed", za0001)
 					return

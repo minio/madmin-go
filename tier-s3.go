@@ -19,6 +19,7 @@
 
 package madmin
 
+//msgp:timezone utc
 //go:generate msgp -file $GOFILE
 
 // TierS3 represents the remote tier configuration for AWS S3 compatible backend.

@@ -33,6 +33,7 @@ import (
 
 //msgp:clearomitted
 //msgp:tag json
+//msgp:timezone utc
 //go:generate msgp -file $GOFILE
 
 // ClusterInfo cluster level information

@@ -2152,7 +2152,7 @@ func (z *ObjectVersionSummary) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 		case "ModTime":
-			z.ModTime, err = dc.ReadTime()
+			z.ModTime, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "ModTime")
 				return
@@ -2270,7 +2270,7 @@ func (z *ObjectVersionSummary) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 		case "ModTime":
-			z.ModTime, bts, err = msgp.ReadTimeBytes(bts)
+			z.ModTime, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ModTime")
 				return

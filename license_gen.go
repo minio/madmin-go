@@ -43,13 +43,13 @@ func (z *LicenseInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 		case "IssuedAt":
-			z.IssuedAt, err = dc.ReadTime()
+			z.IssuedAt, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "IssuedAt")
 				return
 			}
 		case "ExpiresAt":
-			z.ExpiresAt, err = dc.ReadTime()
+			z.ExpiresAt, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "ExpiresAt")
 				return
@@ -218,13 +218,13 @@ func (z *LicenseInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 		case "IssuedAt":
-			z.IssuedAt, bts, err = msgp.ReadTimeBytes(bts)
+			z.IssuedAt, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "IssuedAt")
 				return
 			}
 		case "ExpiresAt":
-			z.ExpiresAt, bts, err = msgp.ReadTimeBytes(bts)
+			z.ExpiresAt, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ExpiresAt")
 				return
