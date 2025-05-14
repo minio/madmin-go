@@ -7973,7 +7973,7 @@ func (z *ScannerMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 4 bits */
+	var zb0001Mask uint8 /* 5 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -8217,6 +8217,26 @@ func (z *ScannerMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 			}
 			zb0001Mask |= 0x8
+		case "excessive":
+			var zb0010 uint32
+			zb0010, err = dc.ReadArrayHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "ExcessivePrefixes")
+				return
+			}
+			if cap(z.ExcessivePrefixes) >= int(zb0010) {
+				z.ExcessivePrefixes = (z.ExcessivePrefixes)[:zb0010]
+			} else {
+				z.ExcessivePrefixes = make([]string, zb0010)
+			}
+			for za0013 := range z.ExcessivePrefixes {
+				z.ExcessivePrefixes[za0013], err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "ExcessivePrefixes", za0013)
+					return
+				}
+			}
+			zb0001Mask |= 0x10
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -8226,7 +8246,7 @@ func (z *ScannerMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xf {
+	if zb0001Mask != 0x1f {
 		if (zb0001Mask & 0x1) == 0 {
 			z.PerBucketStats = nil
 		}
@@ -8239,6 +8259,9 @@ func (z *ScannerMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		if (zb0001Mask & 0x8) == 0 {
 			z.ActivePaths = nil
 		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.ExcessivePrefixes = nil
+		}
 	}
 	return
 }
@@ -8246,8 +8269,8 @@ func (z *ScannerMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *ScannerMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(7)
-	var zb0001Mask uint8 /* 7 bits */
+	zb0001Len := uint32(8)
+	var zb0001Mask uint8 /* 8 bits */
 	_ = zb0001Mask
 	if z.PerBucketStats == nil {
 		zb0001Len--
@@ -8264,6 +8287,10 @@ func (z *ScannerMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 	if z.ActivePaths == nil {
 		zb0001Len--
 		zb0001Mask |= 0x40
+	}
+	if z.ExcessivePrefixes == nil {
+		zb0001Len--
+		zb0001Mask |= 0x80
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -8465,6 +8492,25 @@ func (z *ScannerMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
+			// write "excessive"
+			err = en.Append(0xa9, 0x65, 0x78, 0x63, 0x65, 0x73, 0x73, 0x69, 0x76, 0x65)
+			if err != nil {
+				return
+			}
+			err = en.WriteArrayHeader(uint32(len(z.ExcessivePrefixes)))
+			if err != nil {
+				err = msgp.WrapError(err, "ExcessivePrefixes")
+				return
+			}
+			for za0013 := range z.ExcessivePrefixes {
+				err = en.WriteString(z.ExcessivePrefixes[za0013])
+				if err != nil {
+					err = msgp.WrapError(err, "ExcessivePrefixes", za0013)
+					return
+				}
+			}
+		}
 	}
 	return
 }
@@ -8473,8 +8519,8 @@ func (z *ScannerMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *ScannerMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(7)
-	var zb0001Mask uint8 /* 7 bits */
+	zb0001Len := uint32(8)
+	var zb0001Mask uint8 /* 8 bits */
 	_ = zb0001Mask
 	if z.PerBucketStats == nil {
 		zb0001Len--
@@ -8491,6 +8537,10 @@ func (z *ScannerMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 	if z.ActivePaths == nil {
 		zb0001Len--
 		zb0001Mask |= 0x40
+	}
+	if z.ExcessivePrefixes == nil {
+		zb0001Len--
+		zb0001Mask |= 0x80
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -8591,6 +8641,14 @@ func (z *ScannerMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 				o = msgp.AppendString(o, z.ActivePaths[za0012])
 			}
 		}
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
+			// string "excessive"
+			o = append(o, 0xa9, 0x65, 0x78, 0x63, 0x65, 0x73, 0x73, 0x69, 0x76, 0x65)
+			o = msgp.AppendArrayHeader(o, uint32(len(z.ExcessivePrefixes)))
+			for za0013 := range z.ExcessivePrefixes {
+				o = msgp.AppendString(o, z.ExcessivePrefixes[za0013])
+			}
+		}
 	}
 	return
 }
@@ -8605,7 +8663,7 @@ func (z *ScannerMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 4 bits */
+	var zb0001Mask uint8 /* 5 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -8849,6 +8907,26 @@ func (z *ScannerMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 			}
 			zb0001Mask |= 0x8
+		case "excessive":
+			var zb0010 uint32
+			zb0010, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ExcessivePrefixes")
+				return
+			}
+			if cap(z.ExcessivePrefixes) >= int(zb0010) {
+				z.ExcessivePrefixes = (z.ExcessivePrefixes)[:zb0010]
+			} else {
+				z.ExcessivePrefixes = make([]string, zb0010)
+			}
+			for za0013 := range z.ExcessivePrefixes {
+				z.ExcessivePrefixes[za0013], bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "ExcessivePrefixes", za0013)
+					return
+				}
+			}
+			zb0001Mask |= 0x10
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -8858,7 +8936,7 @@ func (z *ScannerMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xf {
+	if zb0001Mask != 0x1f {
 		if (zb0001Mask & 0x1) == 0 {
 			z.PerBucketStats = nil
 		}
@@ -8870,6 +8948,9 @@ func (z *ScannerMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 		if (zb0001Mask & 0x8) == 0 {
 			z.ActivePaths = nil
+		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.ExcessivePrefixes = nil
 		}
 	}
 	o = bts
@@ -8919,6 +9000,10 @@ func (z *ScannerMetrics) Msgsize() (s int) {
 	s += 7 + msgp.ArrayHeaderSize
 	for za0012 := range z.ActivePaths {
 		s += msgp.StringPrefixSize + len(z.ActivePaths[za0012])
+	}
+	s += 10 + msgp.ArrayHeaderSize
+	for za0013 := range z.ExcessivePrefixes {
+		s += msgp.StringPrefixSize + len(z.ExcessivePrefixes[za0013])
 	}
 	return
 }
