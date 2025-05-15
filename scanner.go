@@ -39,6 +39,7 @@ type BucketScanInfo struct {
 	Ongoing     bool        `msg:"ongoing"`
 	LastUpdate  time.Time   `msg:"last_update"`
 	LastStarted time.Time   `msg:"last_started"`
+	LastError   string      `msg:"last_error"`
 	Completed   []time.Time `msg:"completed,omitempty"`
 }
 
