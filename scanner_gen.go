@@ -64,6 +64,12 @@ func (z *BucketScanInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "LastStarted")
 				return
 			}
+		case "last_error":
+			z.LastError, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "LastError")
+				return
+			}
 		case "completed":
 			var zb0002 uint32
 			zb0002, err = dc.ReadArrayHeader()
@@ -103,12 +109,12 @@ func (z *BucketScanInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *BucketScanInfo) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(7)
-	var zb0001Mask uint8 /* 7 bits */
+	zb0001Len := uint32(8)
+	var zb0001Mask uint8 /* 8 bits */
 	_ = zb0001Mask
 	if z.Completed == nil {
 		zb0001Len--
-		zb0001Mask |= 0x40
+		zb0001Mask |= 0x80
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -178,7 +184,17 @@ func (z *BucketScanInfo) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "LastStarted")
 			return
 		}
-		if (zb0001Mask & 0x40) == 0 { // if not omitted
+		// write "last_error"
+		err = en.Append(0xaa, 0x6c, 0x61, 0x73, 0x74, 0x5f, 0x65, 0x72, 0x72, 0x6f, 0x72)
+		if err != nil {
+			return
+		}
+		err = en.WriteString(z.LastError)
+		if err != nil {
+			err = msgp.WrapError(err, "LastError")
+			return
+		}
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
 			// write "completed"
 			err = en.Append(0xa9, 0x63, 0x6f, 0x6d, 0x70, 0x6c, 0x65, 0x74, 0x65, 0x64)
 			if err != nil {
@@ -205,12 +221,12 @@ func (z *BucketScanInfo) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *BucketScanInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(7)
-	var zb0001Mask uint8 /* 7 bits */
+	zb0001Len := uint32(8)
+	var zb0001Mask uint8 /* 8 bits */
 	_ = zb0001Mask
 	if z.Completed == nil {
 		zb0001Len--
-		zb0001Mask |= 0x40
+		zb0001Mask |= 0x80
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -235,7 +251,10 @@ func (z *BucketScanInfo) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "last_started"
 		o = append(o, 0xac, 0x6c, 0x61, 0x73, 0x74, 0x5f, 0x73, 0x74, 0x61, 0x72, 0x74, 0x65, 0x64)
 		o = msgp.AppendTime(o, z.LastStarted)
-		if (zb0001Mask & 0x40) == 0 { // if not omitted
+		// string "last_error"
+		o = append(o, 0xaa, 0x6c, 0x61, 0x73, 0x74, 0x5f, 0x65, 0x72, 0x72, 0x6f, 0x72)
+		o = msgp.AppendString(o, z.LastError)
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
 			// string "completed"
 			o = append(o, 0xa9, 0x63, 0x6f, 0x6d, 0x70, 0x6c, 0x65, 0x74, 0x65, 0x64)
 			o = msgp.AppendArrayHeader(o, uint32(len(z.Completed)))
@@ -303,6 +322,12 @@ func (z *BucketScanInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "LastStarted")
 				return
 			}
+		case "last_error":
+			z.LastError, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "LastError")
+				return
+			}
 		case "completed":
 			var zb0002 uint32
 			zb0002, bts, err = msgp.ReadArrayHeaderBytes(bts)
@@ -342,6 +367,6 @@ func (z *BucketScanInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *BucketScanInfo) Msgsize() (s int) {
-	s = 1 + 5 + msgp.IntSize + 4 + msgp.IntSize + 6 + msgp.Uint64Size + 8 + msgp.BoolSize + 12 + msgp.TimeSize + 13 + msgp.TimeSize + 10 + msgp.ArrayHeaderSize + (len(z.Completed) * (msgp.TimeSize))
+	s = 1 + 5 + msgp.IntSize + 4 + msgp.IntSize + 6 + msgp.Uint64Size + 8 + msgp.BoolSize + 12 + msgp.TimeSize + 13 + msgp.TimeSize + 11 + msgp.StringPrefixSize + len(z.LastError) + 10 + msgp.ArrayHeaderSize + (len(z.Completed) * (msgp.TimeSize))
 	return
 }
