@@ -106,9 +106,10 @@ type IDPCfgInfo struct {
 
 // IDPConfig contains IDP configuration information returned by server.
 type IDPConfig struct {
-	Type string       `json:"type"`
-	Name string       `json:"name,omitempty"`
-	Info []IDPCfgInfo `json:"info"`
+	Type    string       `json:"type"`
+	Name    string       `json:"name,omitempty"`
+	Info    []IDPCfgInfo `json:"info"`
+	ConnErr error        `json:"connErr,omitempty"`
 }
 
 // Constants for IDP configuration types.
