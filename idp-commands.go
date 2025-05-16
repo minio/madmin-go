@@ -155,8 +155,14 @@ func (o *GetIDPConfigOpts) Validate() error {
 func (adm *AdminClient) GetIDPConfigWithOpts(ctx context.Context, opts GetIDPConfigOpts) (c IDPConfig, err error) {
 	opts.Validate()
 
+	queryValues := url.Values{}
+	if opts.CheckValid {
+		queryValues.Set("checkValid", "true")
+	}
+
 	reqData := requestData{
-		relPath: strings.Join([]string{adminAPIPrefix, "idp-config", opts.CfgType, opts.CfgName}, "/"),
+		relPath:     strings.Join([]string{adminAPIPrefix, "idp-config", opts.CfgType, opts.CfgName}, "/"),
+		queryValues: queryValues,
 	}
 
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
@@ -175,9 +181,6 @@ func (adm *AdminClient) GetIDPConfigWithOpts(ctx context.Context, opts GetIDPCon
 		queryParams := make(url.Values, 2)
 		queryParams.Set("type", opts.CfgType)
 		queryParams.Set("name", opts.CfgName)
-		if opts.CheckValid {
-			queryParams.Set("checkValid", "true")
-		}
 
 		reqData := requestData{
 			relPath:     adminAPIPrefix + "/idp-config",
