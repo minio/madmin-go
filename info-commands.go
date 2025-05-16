@@ -30,6 +30,7 @@ import (
 
 //msgp:clearomitted
 //msgp:tag json
+//msgp:timezone utc
 //go:generate msgp -file $GOFILE
 
 // BackendType - represents different backend types.
@@ -122,7 +123,7 @@ func (d1 BackendDisks) Merge(d2 BackendDisks) BackendDisks {
 // StorageInfo - Connect to a minio server and call Storage Info Management API
 // to fetch server's information represented by StorageInfo structure
 func (adm *AdminClient) StorageInfo(ctx context.Context) (StorageInfo, error) {
-	resp, err := adm.executeMethod(ctx, http.MethodGet, requestData{relPath: adminAPIPrefixV4 + "/storageinfo"})
+	resp, err := adm.executeMethod(ctx, http.MethodGet, requestData{relPath: adminAPIPrefix + "/storageinfo"})
 	defer closeResponse(resp)
 	if err != nil {
 		return StorageInfo{}, err
@@ -216,7 +217,7 @@ func (adm *AdminClient) DataUsageInfo(ctx context.Context) (DataUsageInfo, error
 	values.Set("capacity", "true") // We can make this configurable in future but for now its fine.
 
 	resp, err := adm.executeMethod(ctx, http.MethodGet, requestData{
-		relPath:     adminAPIPrefixV4 + "/datausageinfo",
+		relPath:     adminAPIPrefix + "/datausageinfo",
 		queryValues: values,
 	})
 	defer closeResponse(resp)
@@ -537,7 +538,7 @@ func (adm *AdminClient) ServerInfo(ctx context.Context, options ...func(*ServerI
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
-			relPath:     adminAPIPrefixV4 + "/info",
+			relPath:     adminAPIPrefix + "/info",
 			queryValues: values,
 		})
 	defer closeResponse(resp)

@@ -28,6 +28,7 @@ import (
 
 //msgp:clearomitted
 //msgp:tag json
+//msgp:timezone utc
 //go:generate msgp
 // LicenseInfo is a structure containing MinIO license information.
 
@@ -47,7 +48,7 @@ func (adm *AdminClient) GetLicenseInfo(ctx context.Context) (*LicenseInfo, error
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
-			relPath: adminAPIPrefixV4 + "/license-info",
+			relPath: adminAPIPrefix + "/license-info",
 		})
 	defer closeResponse(resp)
 	if err != nil {

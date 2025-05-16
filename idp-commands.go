@@ -53,7 +53,7 @@ func (adm *AdminClient) AddOrUpdateIDPConfig(ctx context.Context, cfgType, cfgNa
 	h.Add("Content-Type", "application/octet-stream")
 	reqData := requestData{
 		customHeaders: h,
-		relPath:       strings.Join([]string{adminAPIPrefixV4, "idp-config", cfgType, cfgName}, "/"),
+		relPath:       strings.Join([]string{adminAPIPrefix, "idp-config", cfgType, cfgName}, "/"),
 		content:       encBytes,
 	}
 
@@ -78,7 +78,7 @@ func (adm *AdminClient) AddOrUpdateIDPConfig(ctx context.Context, cfgType, cfgNa
 		queryParams.Set("name", cfgName)
 		reqData := requestData{
 			customHeaders: h,
-			relPath:       adminAPIPrefixV4 + "/idp-config",
+			relPath:       adminAPIPrefix + "/idp-config",
 			queryValues:   queryParams,
 			content:       encBytes,
 		}
@@ -132,7 +132,7 @@ func (adm *AdminClient) GetIDPConfig(ctx context.Context, cfgType, cfgName strin
 	}
 
 	reqData := requestData{
-		relPath: strings.Join([]string{adminAPIPrefixV4, "idp-config", cfgType, cfgName}, "/"),
+		relPath: strings.Join([]string{adminAPIPrefix, "idp-config", cfgType, cfgName}, "/"),
 	}
 
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
@@ -152,7 +152,7 @@ func (adm *AdminClient) GetIDPConfig(ctx context.Context, cfgType, cfgName strin
 		queryParams.Set("type", cfgType)
 		queryParams.Set("name", cfgName)
 		reqData := requestData{
-			relPath:     adminAPIPrefixV4 + "/idp-config",
+			relPath:     adminAPIPrefix + "/idp-config",
 			queryValues: queryParams,
 		}
 		resp, err = adm.executeMethod(ctx, http.MethodGet, reqData)
@@ -190,7 +190,7 @@ func (adm *AdminClient) ListIDPConfig(ctx context.Context, cfgType string) ([]ID
 	}
 
 	reqData := requestData{
-		relPath: strings.Join([]string{adminAPIPrefixV4, "idp-config", cfgType}, "/"),
+		relPath: strings.Join([]string{adminAPIPrefix, "idp-config", cfgType}, "/"),
 	}
 
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
@@ -209,7 +209,7 @@ func (adm *AdminClient) ListIDPConfig(ctx context.Context, cfgType string) ([]ID
 		queryParams := make(url.Values, 2)
 		queryParams.Set("type", cfgType)
 		reqData := requestData{
-			relPath:     adminAPIPrefixV4 + "/idp-config",
+			relPath:     adminAPIPrefix + "/idp-config",
 			queryValues: queryParams,
 		}
 		resp, err = adm.executeMethod(ctx, http.MethodGet, reqData)
@@ -239,7 +239,7 @@ func (adm *AdminClient) DeleteIDPConfig(ctx context.Context, cfgType, cfgName st
 		cfgName = Default
 	}
 	reqData := requestData{
-		relPath: strings.Join([]string{adminAPIPrefixV4, "idp-config", cfgType, cfgName}, "/"),
+		relPath: strings.Join([]string{adminAPIPrefix, "idp-config", cfgType, cfgName}, "/"),
 	}
 
 	resp, err := adm.executeMethod(ctx, http.MethodDelete, reqData)
@@ -259,7 +259,7 @@ func (adm *AdminClient) DeleteIDPConfig(ctx context.Context, cfgType, cfgName st
 		queryParams.Set("type", cfgType)
 		queryParams.Set("name", cfgName)
 		reqData := requestData{
-			relPath:     adminAPIPrefixV4 + "/idp-config",
+			relPath:     adminAPIPrefix + "/idp-config",
 			queryValues: queryParams,
 		}
 		resp, err = adm.executeMethod(ctx, http.MethodDelete, reqData)
@@ -321,7 +321,7 @@ func (adm *AdminClient) GetLDAPPolicyEntities(ctx context.Context,
 	params["policy"] = q.Policy
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV4 + "/idp/ldap/policy-entities",
+		relPath:     adminAPIPrefix + "/idp/ldap/policy-entities",
 		queryValues: params,
 	}
 
@@ -415,7 +415,7 @@ func (adm *AdminClient) attachOrDetachPolicyLDAP(ctx context.Context, isAttach b
 	h.Add("Content-Type", "application/octet-stream")
 	reqData := requestData{
 		customHeaders: h,
-		relPath:       adminAPIPrefixV4 + "/idp/ldap/policy/" + suffix,
+		relPath:       adminAPIPrefix + "/idp/ldap/policy/" + suffix,
 		content:       encBytes,
 	}
 
@@ -454,6 +454,10 @@ func (adm *AdminClient) ListAccessKeysLDAPBulkWithOpts(ctx context.Context, user
 	}
 
 	queryValues := url.Values{}
+	if opts.ListType == "" {
+		opts.ListType = AccessKeyListAll
+	}
+
 	queryValues.Set("listType", opts.ListType)
 	queryValues["userDNs"] = users
 	if opts.All {
@@ -461,7 +465,7 @@ func (adm *AdminClient) ListAccessKeysLDAPBulkWithOpts(ctx context.Context, user
 	}
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV4 + "/idp/ldap/list-access-keys-bulk",
+		relPath:     adminAPIPrefix + "/idp/ldap/list-access-keys-bulk",
 		queryValues: queryValues,
 	}
 

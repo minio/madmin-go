@@ -23,7 +23,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -63,7 +62,7 @@ func (adm *AdminClient) StartProfiling(ctx context.Context, profiler ProfilerTyp
 	v.Set("profilerType", string(profiler))
 	resp, err := adm.executeMethod(ctx,
 		http.MethodPost, requestData{
-			relPath:     adminAPIPrefixV4 + "/profiling/start",
+			relPath:     adminAPIPrefix + "/profiling/start",
 			queryValues: v,
 		},
 	)
@@ -94,7 +93,7 @@ func (adm *AdminClient) StartProfiling(ctx context.Context, profiler ProfilerTyp
 // standalone server or of the whole cluster in case of a distributed setup.
 // NOTE: For simpler use cases use Profile() API, must be
 func (adm *AdminClient) DownloadProfilingData(ctx context.Context) (io.ReadCloser, error) {
-	path := fmt.Sprintf(adminAPIPrefixV4 + "/profiling/download")
+	path := adminAPIPrefix + "/profiling/download"
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet, requestData{
 			relPath: path,
@@ -124,7 +123,7 @@ func (adm *AdminClient) Profile(ctx context.Context, profiler ProfilerType, dura
 	v.Set("duration", duration.String())
 	resp, err := adm.executeMethod(ctx,
 		http.MethodPost, requestData{
-			relPath:     adminAPIPrefixV4 + "/profile",
+			relPath:     adminAPIPrefix + "/profile",
 			queryValues: v,
 		},
 	)

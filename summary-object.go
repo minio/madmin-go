@@ -21,7 +21,6 @@ package madmin
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"net/url"
 	"time"
@@ -29,14 +28,14 @@ import (
 	"github.com/tinylib/msgp/msgp"
 )
 
+//msgp:timezone utc
 //go:generate msgp -unexported -file=$GOFILE
 
 // ObjectSummaryOptions provides options for ObjectSummary call.
 type ObjectSummaryOptions struct {
-	Bucket   string
-	Object   string
-	Bitrot   bool
-	Versions bool
+	Bucket string
+	Object string
+	Bitrot bool
 }
 
 // ObjectSummary calls minio to search for all files and parts
@@ -55,14 +54,11 @@ func (adm *AdminClient) ObjectSummary(ctx context.Context, objOpts ObjectSummary
 	if objOpts.Bitrot {
 		form.Add("bitrot", "true")
 	}
-	if objOpts.Versions {
-		form.Add("versions", "true")
-	}
 
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
-			relPath:     fmt.Sprintf(adminAPIPrefixV4 + "/object-summary"),
+			relPath:     adminAPIPrefix + "/object-summary",
 			queryValues: form,
 		})
 	defer closeResponse(resp)
@@ -146,14 +142,16 @@ type ObjectSummary struct {
 	// DataDir represents the directory on disk created using
 	// the version ID's or a random uuid if the object is not
 	// versioned.
-	DataDir     string
-	Version     string
-	IsInline    bool
-	PartNumbers []int
-	ErasureDist []uint8
-	Metas       []*ObjectMetaSummary
-	Parts       []*ObjectPartSummary
-	Unknown     []*ObjectUnknownSummary
-	Versions    []*ObjectVersionSummary
-	Bitrot      []*ObjectBitrotSummary
+	DataDir      string
+	Version      string
+	IsInline     bool
+	PartNumbers  []int
+	ErasureDist  []uint8
+	ParityCount  int
+	DeleteMarker bool
+	Metas        []*ObjectMetaSummary
+	Parts        []*ObjectPartSummary
+	Unknown      []*ObjectUnknownSummary
+	Versions     []*ObjectVersionSummary
+	Bitrot       []*ObjectBitrotSummary
 }

@@ -35,7 +35,7 @@ func (adm *AdminClient) ClearConfigHistoryKV(ctx context.Context, restoreID stri
 	v := url.Values{}
 	v.Set("restoreId", restoreID)
 	reqData := requestData{
-		relPath:     adminAPIPrefixV4 + "/clear-config-history-kv",
+		relPath:     adminAPIPrefix + "/clear-config-history-kv",
 		queryValues: v,
 	}
 
@@ -60,7 +60,7 @@ func (adm *AdminClient) RestoreConfigHistoryKV(ctx context.Context, restoreID st
 	v := url.Values{}
 	v.Set("restoreId", restoreID)
 	reqData := requestData{
-		relPath:     adminAPIPrefixV4 + "/restore-config-history-kv",
+		relPath:     adminAPIPrefix + "/restore-config-history-kv",
 		queryValues: v,
 	}
 
@@ -104,7 +104,7 @@ func (adm *AdminClient) ListConfigHistoryKV(ctx context.Context, count int) ([]C
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
-			relPath:     adminAPIPrefixV4 + "/list-config-history-kv",
+			relPath:     adminAPIPrefix + "/list-config-history-kv",
 			queryValues: v,
 		})
 	defer closeResponse(resp)

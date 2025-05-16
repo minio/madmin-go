@@ -28,6 +28,7 @@ import (
 )
 
 //msgp:clearomitted
+//msgp:timezone utc
 //go:generate msgp -file $GOFILE
 
 // BucketScanInfo contains information of a bucket scan in a given pool/set
@@ -38,6 +39,7 @@ type BucketScanInfo struct {
 	Ongoing     bool        `msg:"ongoing"`
 	LastUpdate  time.Time   `msg:"last_update"`
 	LastStarted time.Time   `msg:"last_started"`
+	LastError   string      `msg:"last_error"`
 	Completed   []time.Time `msg:"completed,omitempty"`
 }
 
@@ -45,7 +47,7 @@ type BucketScanInfo struct {
 func (adm *AdminClient) BucketScanInfo(ctx context.Context, bucket string) ([]BucketScanInfo, error) {
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
-		requestData{relPath: adminAPIPrefixV4 + "/scanner/status/" + bucket})
+		requestData{relPath: adminAPIPrefix + "/scanner/status/" + bucket})
 	if err != nil {
 		return nil, err
 	}

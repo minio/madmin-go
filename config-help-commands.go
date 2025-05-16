@@ -66,7 +66,7 @@ func (adm *AdminClient) HelpConfigKV(ctx context.Context, subSys, key string, en
 	}
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV4 + "/help-config-kv",
+		relPath:     adminAPIPrefix + "/help-config-kv",
 		queryValues: v,
 	}
 

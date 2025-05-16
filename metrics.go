@@ -23,7 +23,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -34,12 +33,13 @@ import (
 	"time"
 
 	"github.com/prometheus/procfs"
-	"github.com/shirou/gopsutil/v3/cpu"
-	"github.com/shirou/gopsutil/v3/load"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/load"
 )
 
 //msgp:clearomitted
 //msgp:tag json
+//msgp:timezone utc
 //go:generate msgp -unexported -file $GOFILE
 
 // MetricType is a bitfield representation of different metric types.
@@ -81,7 +81,7 @@ type MetricsOptions struct {
 // Metrics makes an admin call to retrieve metrics.
 // The provided function is called for each received entry.
 func (adm *AdminClient) Metrics(ctx context.Context, o MetricsOptions, out func(RealtimeMetrics)) (err error) {
-	path := fmt.Sprintf(adminAPIPrefixV4 + "/metrics")
+	path := adminAPIPrefix + "/metrics"
 	q := make(url.Values)
 	q.Set("types", strconv.FormatUint(uint64(o.Type), 10))
 	q.Set("n", strconv.Itoa(o.N))
@@ -267,6 +267,10 @@ type ScannerMetrics struct {
 
 	// Currently active path(s) being scanned.
 	ActivePaths []string `json:"active,omitempty"`
+
+	// Excessive prefixes.
+	// Paths that have been marked as having excessive number of entries within the last 24 hours.
+	ExcessivePrefixes []string `json:"excessive,omitempty"`
 }
 
 // Merge other into 's'.
@@ -332,6 +336,23 @@ func (s *ScannerMetrics) Merge(other *ScannerMetrics) {
 	}
 	s.ActivePaths = append(s.ActivePaths, other.ActivePaths...)
 	sort.Strings(s.ActivePaths)
+
+	if len(other.ExcessivePrefixes) > 0 {
+		// Merge and remove duplicates
+		merged := make(map[string]struct{}, len(s.ExcessivePrefixes)+len(other.ExcessivePrefixes))
+		for _, prefix := range s.ExcessivePrefixes {
+			merged[prefix] = struct{}{}
+		}
+		// Add other excessive prefixes
+		for _, prefix := range other.ExcessivePrefixes {
+			merged[prefix] = struct{}{}
+		}
+		s.ExcessivePrefixes = make([]string, 0, len(merged))
+		for prefix := range merged {
+			s.ExcessivePrefixes = append(s.ExcessivePrefixes, prefix)
+		}
+		sort.Strings(s.ExcessivePrefixes)
+	}
 }
 
 // DiskIOStats contains IO stats of a single drive

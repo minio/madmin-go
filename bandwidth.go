@@ -54,7 +54,7 @@ func (adm *AdminClient) GetBucketBandwidth(ctx context.Context, buckets ...strin
 	}
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV4 + "/bandwidth",
+		relPath:     adminAPIPrefix + "/bandwidth",
 		queryValues: queryValues,
 	}
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)

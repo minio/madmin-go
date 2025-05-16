@@ -865,6 +865,18 @@ func (z *ObjectSummary) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
+		case "ParityCount":
+			z.ParityCount, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "ParityCount")
+				return
+			}
+		case "DeleteMarker":
+			z.DeleteMarker, err = dc.ReadBool()
+			if err != nil {
+				err = msgp.WrapError(err, "DeleteMarker")
+				return
+			}
 		case "Metas":
 			var zb0005 uint32
 			zb0005, err = dc.ReadArrayHeader()
@@ -1033,9 +1045,9 @@ func (z *ObjectSummary) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *ObjectSummary) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 12
+	// map header, size 14
 	// write "Name"
-	err = en.Append(0x8c, 0xa4, 0x4e, 0x61, 0x6d, 0x65)
+	err = en.Append(0x8e, 0xa4, 0x4e, 0x61, 0x6d, 0x65)
 	if err != nil {
 		return
 	}
@@ -1124,6 +1136,26 @@ func (z *ObjectSummary) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "ErasureDist", za0003)
 			return
 		}
+	}
+	// write "ParityCount"
+	err = en.Append(0xab, 0x50, 0x61, 0x72, 0x69, 0x74, 0x79, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt(z.ParityCount)
+	if err != nil {
+		err = msgp.WrapError(err, "ParityCount")
+		return
+	}
+	// write "DeleteMarker"
+	err = en.Append(0xac, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x72)
+	if err != nil {
+		return
+	}
+	err = en.WriteBool(z.DeleteMarker)
+	if err != nil {
+		err = msgp.WrapError(err, "DeleteMarker")
+		return
 	}
 	// write "Metas"
 	err = en.Append(0xa5, 0x4d, 0x65, 0x74, 0x61, 0x73)
@@ -1251,9 +1283,9 @@ func (z *ObjectSummary) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *ObjectSummary) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 12
+	// map header, size 14
 	// string "Name"
-	o = append(o, 0x8c, 0xa4, 0x4e, 0x61, 0x6d, 0x65)
+	o = append(o, 0x8e, 0xa4, 0x4e, 0x61, 0x6d, 0x65)
 	o = msgp.AppendString(o, z.Name)
 	// string "Errors"
 	o = append(o, 0xa6, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x73)
@@ -1282,6 +1314,12 @@ func (z *ObjectSummary) MarshalMsg(b []byte) (o []byte, err error) {
 	for za0003 := range z.ErasureDist {
 		o = msgp.AppendUint8(o, z.ErasureDist[za0003])
 	}
+	// string "ParityCount"
+	o = append(o, 0xab, 0x50, 0x61, 0x72, 0x69, 0x74, 0x79, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+	o = msgp.AppendInt(o, z.ParityCount)
+	// string "DeleteMarker"
+	o = append(o, 0xac, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x72)
+	o = msgp.AppendBool(o, z.DeleteMarker)
 	// string "Metas"
 	o = append(o, 0xa5, 0x4d, 0x65, 0x74, 0x61, 0x73)
 	o = msgp.AppendArrayHeader(o, uint32(len(z.Metas)))
@@ -1454,6 +1492,18 @@ func (z *ObjectSummary) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
+		case "ParityCount":
+			z.ParityCount, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ParityCount")
+				return
+			}
+		case "DeleteMarker":
+			z.DeleteMarker, bts, err = msgp.ReadBoolBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "DeleteMarker")
+				return
+			}
 		case "Metas":
 			var zb0005 uint32
 			zb0005, bts, err = msgp.ReadArrayHeaderBytes(bts)
@@ -1622,7 +1672,7 @@ func (z *ObjectSummary) Msgsize() (s int) {
 	for za0001 := range z.Errors {
 		s += msgp.StringPrefixSize + len(z.Errors[za0001])
 	}
-	s += 8 + msgp.StringPrefixSize + len(z.DataDir) + 8 + msgp.StringPrefixSize + len(z.Version) + 9 + msgp.BoolSize + 12 + msgp.ArrayHeaderSize + (len(z.PartNumbers) * (msgp.IntSize)) + 12 + msgp.ArrayHeaderSize + (len(z.ErasureDist) * (msgp.Uint8Size)) + 6 + msgp.ArrayHeaderSize
+	s += 8 + msgp.StringPrefixSize + len(z.DataDir) + 8 + msgp.StringPrefixSize + len(z.Version) + 9 + msgp.BoolSize + 12 + msgp.ArrayHeaderSize + (len(z.PartNumbers) * (msgp.IntSize)) + 12 + msgp.ArrayHeaderSize + (len(z.ErasureDist) * (msgp.Uint8Size)) + 12 + msgp.IntSize + 13 + msgp.BoolSize + 6 + msgp.ArrayHeaderSize
 	for za0004 := range z.Metas {
 		if z.Metas[za0004] == nil {
 			s += msgp.NilSize
@@ -1701,12 +1751,6 @@ func (z *ObjectSummaryOptions) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Bitrot")
 				return
 			}
-		case "Versions":
-			z.Versions, err = dc.ReadBool()
-			if err != nil {
-				err = msgp.WrapError(err, "Versions")
-				return
-			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -1719,10 +1763,10 @@ func (z *ObjectSummaryOptions) DecodeMsg(dc *msgp.Reader) (err error) {
 }
 
 // EncodeMsg implements msgp.Encodable
-func (z *ObjectSummaryOptions) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 4
+func (z ObjectSummaryOptions) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 3
 	// write "Bucket"
-	err = en.Append(0x84, 0xa6, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74)
+	err = en.Append(0x83, 0xa6, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74)
 	if err != nil {
 		return
 	}
@@ -1751,25 +1795,15 @@ func (z *ObjectSummaryOptions) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "Bitrot")
 		return
 	}
-	// write "Versions"
-	err = en.Append(0xa8, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
-	if err != nil {
-		return
-	}
-	err = en.WriteBool(z.Versions)
-	if err != nil {
-		err = msgp.WrapError(err, "Versions")
-		return
-	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
-func (z *ObjectSummaryOptions) MarshalMsg(b []byte) (o []byte, err error) {
+func (z ObjectSummaryOptions) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 4
+	// map header, size 3
 	// string "Bucket"
-	o = append(o, 0x84, 0xa6, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74)
+	o = append(o, 0x83, 0xa6, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74)
 	o = msgp.AppendString(o, z.Bucket)
 	// string "Object"
 	o = append(o, 0xa6, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74)
@@ -1777,9 +1811,6 @@ func (z *ObjectSummaryOptions) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "Bitrot"
 	o = append(o, 0xa6, 0x42, 0x69, 0x74, 0x72, 0x6f, 0x74)
 	o = msgp.AppendBool(o, z.Bitrot)
-	// string "Versions"
-	o = append(o, 0xa8, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
-	o = msgp.AppendBool(o, z.Versions)
 	return
 }
 
@@ -1819,12 +1850,6 @@ func (z *ObjectSummaryOptions) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "Bitrot")
 				return
 			}
-		case "Versions":
-			z.Versions, bts, err = msgp.ReadBoolBytes(bts)
-			if err != nil {
-				err = msgp.WrapError(err, "Versions")
-				return
-			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -1838,8 +1863,8 @@ func (z *ObjectSummaryOptions) UnmarshalMsg(bts []byte) (o []byte, err error) {
 }
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
-func (z *ObjectSummaryOptions) Msgsize() (s int) {
-	s = 1 + 7 + msgp.StringPrefixSize + len(z.Bucket) + 7 + msgp.StringPrefixSize + len(z.Object) + 7 + msgp.BoolSize + 9 + msgp.BoolSize
+func (z ObjectSummaryOptions) Msgsize() (s int) {
+	s = 1 + 7 + msgp.StringPrefixSize + len(z.Bucket) + 7 + msgp.StringPrefixSize + len(z.Object) + 7 + msgp.BoolSize
 	return
 }
 
@@ -2127,7 +2152,7 @@ func (z *ObjectVersionSummary) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 		case "ModTime":
-			z.ModTime, err = dc.ReadTime()
+			z.ModTime, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "ModTime")
 				return
@@ -2245,7 +2270,7 @@ func (z *ObjectVersionSummary) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 		case "ModTime":
-			z.ModTime, bts, err = msgp.ReadTimeBytes(bts)
+			z.ModTime, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ModTime")
 				return

@@ -77,7 +77,7 @@ func (adm *AdminClient) ListRemoteTargets(ctx context.Context, bucket, arnType s
 	queryValues.Set("type", arnType)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV4 + "/list-remote-targets",
+		relPath:     adminAPIPrefix + "/list-remote-targets",
 		queryValues: queryValues,
 	}
 
@@ -117,7 +117,7 @@ func (adm *AdminClient) SetRemoteTarget(ctx context.Context, bucket string, targ
 	queryValues.Set("bucket", bucket)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV4 + "/set-remote-target",
+		relPath:     adminAPIPrefix + "/set-remote-target",
 		queryValues: queryValues,
 		content:     encData,
 	}
@@ -241,7 +241,7 @@ func (adm *AdminClient) UpdateRemoteTarget(ctx context.Context, target *BucketTa
 	}
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV4 + "/set-remote-target",
+		relPath:     adminAPIPrefix + "/set-remote-target",
 		queryValues: queryValues,
 		content:     encData,
 	}
@@ -275,7 +275,7 @@ func (adm *AdminClient) RemoveRemoteTarget(ctx context.Context, bucket, arn stri
 	queryValues.Set("arn", arn)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV4 + "/remove-remote-target",
+		relPath:     adminAPIPrefix + "/remove-remote-target",
 		queryValues: queryValues,
 	}
 

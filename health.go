@@ -40,11 +40,12 @@ import (
 	"github.com/minio/madmin-go/v4/cgroup"
 	"github.com/minio/madmin-go/v4/kernel"
 	"github.com/prometheus/procfs"
-	"github.com/shirou/gopsutil/v3/cpu"
-	"github.com/shirou/gopsutil/v3/disk"
-	"github.com/shirou/gopsutil/v3/host"
-	"github.com/shirou/gopsutil/v3/mem"
-	"github.com/shirou/gopsutil/v3/process"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/disk"
+	"github.com/shirou/gopsutil/v4/host"
+	"github.com/shirou/gopsutil/v4/mem"
+	"github.com/shirou/gopsutil/v4/process"
+	"github.com/shirou/gopsutil/v4/sensors"
 )
 
 // NodeCommon - Common fields across most node-specific health structs
@@ -404,8 +405,8 @@ func GetPartitions(ctx context.Context, addr string) Partitions {
 type OSInfo struct {
 	NodeCommon
 
-	Info    host.InfoStat          `json:"info,omitempty"`
-	Sensors []host.TemperatureStat `json:"sensors,omitempty"`
+	Info    host.InfoStat             `json:"info,omitempty"`
+	Sensors []sensors.TemperatureStat `json:"sensors,omitempty"`
 }
 
 // TimeInfo contains current time with timezone, and
@@ -465,7 +466,7 @@ func GetOSInfo(ctx context.Context, addr string) OSInfo {
 	}
 	osInfo.Info.KernelVersion = kr
 
-	osInfo.Sensors, _ = host.SensorsTemperaturesWithContext(ctx)
+	osInfo.Sensors, _ = sensors.TemperaturesWithContext(ctx)
 
 	return osInfo
 }
@@ -811,6 +812,14 @@ type ProcInfo struct {
 	Username       string                     `json:"username,omitempty"`
 }
 
+func aTob[a, b any](aa []a, conv func(item a) b) []b {
+	bb := make([]b, len(aa))
+	for i, va := range aa {
+		bb[i] = conv(va)
+	}
+	return bb
+}
+
 // GetProcInfo returns current MinIO process information.
 func GetProcInfo(ctx context.Context, addr string) ProcInfo {
 	pid := int32(syscall.Getpid())
@@ -876,11 +885,14 @@ func GetProcInfo(ctx context.Context, addr string) ProcInfo {
 		return procInfo
 	}
 
-	procInfo.GIDs, err = proc.GidsWithContext(ctx)
+	gids, err := proc.GidsWithContext(ctx)
 	if err != nil {
 		procInfo.Error = err.Error()
 		return procInfo
 	}
+	procInfo.GIDs = aTob[uint32, int32](gids, func(item uint32) int32 {
+		return int32(item)
+	})
 
 	ioCounters, err := proc.IOCountersWithContext(ctx)
 	if err != nil {
@@ -975,11 +987,14 @@ func GetProcInfo(ctx context.Context, addr string) ProcInfo {
 	}
 	procInfo.Times = *times
 
-	procInfo.UIDs, err = proc.UidsWithContext(ctx)
+	uids, err := proc.UidsWithContext(ctx)
 	if err != nil {
 		procInfo.Error = err.Error()
 		return procInfo
 	}
+	procInfo.UIDs = aTob[uint32, int32](uids, func(item uint32) int32 {
+		return int32(item)
+	})
 
 	// In certain environments, it is not possible to get username e.g. minio-operator
 	// Plus it's not a serious error. So ignore error if any.
@@ -1212,7 +1227,7 @@ func (adm *AdminClient) ServerHealthInfo(ctx context.Context, types []HealthData
 
 	resp, err := adm.executeMethod(
 		ctx, "GET", requestData{
-			relPath:     adminAPIPrefixV4 + "/healthinfo",
+			relPath:     adminAPIPrefix + "/healthinfo",
 			queryValues: v,
 		},
 	)

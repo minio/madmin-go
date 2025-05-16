@@ -24,6 +24,7 @@ package madmin
 
 //msgp:clearomitted
 //msgp:tag json
+//msgp:timezone utc
 //go:generate msgp -unexported -file $GOFILE
 
 type cpuTimesStat struct {

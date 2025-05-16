@@ -25,6 +25,7 @@ import (
 	"log"
 )
 
+//msgp:timezone utc
 //go:generate msgp -file $GOFILE
 
 // TierConfigVer refers to the current tier config version

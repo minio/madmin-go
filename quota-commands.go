@@ -54,7 +54,7 @@ func (adm *AdminClient) GetBucketQuota(ctx context.Context, bucket string) (q Bu
 	queryValues.Set("bucket", bucket)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV4 + "/get-bucket-quota",
+		relPath:     adminAPIPrefix + "/get-bucket-quota",
 		queryValues: queryValues,
 	}
 
@@ -93,7 +93,7 @@ func (adm *AdminClient) SetBucketQuota(ctx context.Context, bucket string, quota
 	queryValues.Set("bucket", bucket)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefixV4 + "/set-bucket-quota",
+		relPath:     adminAPIPrefix + "/set-bucket-quota",
 		queryValues: queryValues,
 		content:     data,
 	}
