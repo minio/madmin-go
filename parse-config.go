@@ -74,6 +74,7 @@ const (
 	AuditEventQueueSubSys  = "audit_event_queue"
 	ErasureSubSys          = "erasure"
 	BucketEventQueueSubSys = "bucket_event_queue"
+	EventRecorderSubSys    = "event"
 )
 
 // SubSystems - list of all subsystems in MinIO
@@ -160,6 +161,7 @@ var EOSSubSystems = set.CreateStringSet(
 	ErasureSubSys,
 	BucketEventQueueSubSys,
 	KubernetesSubSys,
+	EventRecorderSubSys,
 )
 
 // Standard config keys and values.
