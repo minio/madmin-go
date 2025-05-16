@@ -123,16 +123,40 @@ var ValidIDPConfigTypes = set.CreateStringSet(OpenidIDPCfg, LDAPIDPCfg)
 
 // GetIDPConfig - fetch IDP config from server.
 func (adm *AdminClient) GetIDPConfig(ctx context.Context, cfgType, cfgName string) (c IDPConfig, err error) {
-	if !ValidIDPConfigTypes.Contains(cfgType) {
-		return c, fmt.Errorf("invalid config type: %s", cfgType)
+	return adm.GetIDPConfigWithOpts(ctx, GetIDPConfigOpts{
+		CfgType: cfgType,
+		CfgName: cfgName,
+	})
+}
+
+type GetIDPConfigOpts struct {
+	CfgType    string
+	CfgName    string
+	CheckValid bool
+}
+
+func (o *GetIDPConfigOpts) Validate() error {
+	if !ValidIDPConfigTypes.Contains(o.CfgType) {
+		return fmt.Errorf("invalid config type: %s", o.CfgType)
 	}
 
-	if cfgName == "" {
-		cfgName = Default
+	if o.CfgName == "" {
+		o.CfgName = Default
 	}
+
+	if o.CheckValid && o.CfgType != LDAPIDPCfg {
+		return fmt.Errorf("CheckValid is only supported for LDAP")
+	}
+
+	return nil
+}
+
+// GetIDPConfigWithOpts - fetch IDP config from server with options.
+func (adm *AdminClient) GetIDPConfigWithOpts(ctx context.Context, opts GetIDPConfigOpts) (c IDPConfig, err error) {
+	opts.Validate()
 
 	reqData := requestData{
-		relPath: strings.Join([]string{adminAPIPrefix, "idp-config", cfgType, cfgName}, "/"),
+		relPath: strings.Join([]string{adminAPIPrefix, "idp-config", opts.CfgType, opts.CfgName}, "/"),
 	}
 
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
@@ -149,8 +173,12 @@ func (adm *AdminClient) GetIDPConfig(ctx context.Context, cfgType, cfgName strin
 		closeResponse(resp)
 
 		queryParams := make(url.Values, 2)
-		queryParams.Set("type", cfgType)
-		queryParams.Set("name", cfgName)
+		queryParams.Set("type", opts.CfgType)
+		queryParams.Set("name", opts.CfgName)
+		if opts.CheckValid {
+			queryParams.Set("checkValid", "true")
+		}
+
 		reqData := requestData{
 			relPath:     adminAPIPrefix + "/idp-config",
 			queryValues: queryParams,
