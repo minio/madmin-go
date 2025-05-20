@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -27,7 +27,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"net/http"
 	"net/http/cookiejar"
@@ -78,7 +77,7 @@ type AdminClient struct {
 // Global constants.
 const (
 	libraryName    = "madmin-go"
-	libraryVersion = "2.0.0"
+	libraryVersion = "4.0.6"
 
 	libraryAdminURLPrefix = "/minio/admin"
 	libraryKMSURLPrefix   = "/minio/kms"
@@ -95,16 +94,19 @@ const (
 
 // Options for New method
 type Options struct {
-	Creds  *credentials.Credentials
-	Secure bool
+	Creds     *credentials.Credentials
+	Secure    bool
+	Transport http.RoundTripper
 	// Add future fields here
 }
 
 // New - instantiate minio admin client
+//
+// Deprecated: please use NewWithOptions
 func New(endpoint string, accessKeyID, secretAccessKey string, secure bool) (*AdminClient, error) {
 	creds := credentials.NewStaticV4(accessKeyID, secretAccessKey, "")
 
-	clnt, err := privateNew(endpoint, creds, secure)
+	clnt, err := privateNew(endpoint, &Options{Creds: creds, Secure: secure})
 	if err != nil {
 		return nil, err
 	}
@@ -113,14 +115,14 @@ func New(endpoint string, accessKeyID, secretAccessKey string, secure bool) (*Ad
 
 // NewWithOptions - instantiate minio admin client with options.
 func NewWithOptions(endpoint string, opts *Options) (*AdminClient, error) {
-	clnt, err := privateNew(endpoint, opts.Creds, opts.Secure)
+	clnt, err := privateNew(endpoint, opts)
 	if err != nil {
 		return nil, err
 	}
 	return clnt, nil
 }
 
-func privateNew(endpoint string, creds *credentials.Credentials, secure bool) (*AdminClient, error) {
+func privateNew(endpoint string, opts *Options) (*AdminClient, error) {
 	// Initialize cookies to preserve server sent cookies if any and replay
 	// them upon each request.
 	jar, err := cookiejar.New(&cookiejar.Options{PublicSuffixList: publicsuffix.List})
@@ -129,7 +131,7 @@ func privateNew(endpoint string, creds *credentials.Credentials, secure bool) (*
 	}
 
 	// construct endpoint.
-	endpointURL, err := getEndpointURL(endpoint, secure)
+	endpointURL, err := getEndpointURL(endpoint, opts.Secure)
 	if err != nil {
 		return nil, err
 	}
@@ -137,18 +139,23 @@ func privateNew(endpoint string, creds *credentials.Credentials, secure bool) (*
 	clnt := new(AdminClient)
 
 	// Save the credentials.
-	clnt.credsProvider = creds
+	clnt.credsProvider = opts.Creds
 
 	// Remember whether we are using https or not
-	clnt.secure = secure
+	clnt.secure = opts.Secure
 
 	// Save endpoint URL, user agent for future uses.
 	clnt.endpointURL = endpointURL
 
+	tr := opts.Transport
+	if tr == nil {
+		tr = DefaultTransport(opts.Secure)
+	}
+
 	// Instantiate http client and bucket location cache.
 	clnt.httpClient = &http.Client{
 		Jar:       jar,
-		Transport: DefaultTransport(secure),
+		Transport: tr,
 	}
 
 	// Add locked pseudo-random number generator.
@@ -165,27 +172,6 @@ func (adm *AdminClient) SetAppInfo(appName string, appVersion string) {
 	if appName != "" && appVersion != "" {
 		adm.appInfo.appName = appName
 		adm.appInfo.appVersion = appVersion
-	}
-}
-
-// SetCustomTransport - set new custom transport.
-func (adm *AdminClient) SetCustomTransport(customHTTPTransport http.RoundTripper) {
-	// Set this to override default transport
-	// ``http.DefaultTransport``.
-	//
-	// This transport is usually needed for debugging OR to add your
-	// own custom TLS certificates on the client transport, for custom
-	// CA's and certs which are not part of standard certificate
-	// authority follow this example :-
-	//
-	//   tr := &http.Transport{
-	//           TLSClientConfig:    &tls.Config{RootCAs: pool},
-	//           DisableCompression: true,
-	//   }
-	//   api.SetTransport(tr)
-	//
-	if adm.httpClient != nil {
-		adm.httpClient.Transport = customHTTPTransport
 	}
 }
 
@@ -397,8 +383,9 @@ func (adm AdminClient) executeMethod(ctx context.Context, method string, reqData
 			if errors.Is(err, syscall.ECONNREFUSED) {
 				return nil, err
 			}
-			if err == context.Canceled || err == context.DeadlineExceeded {
-				return nil, err
+			// Give up if caller canceled.
+			if ctx.Err() != nil {
+				return nil, ctx.Err()
 			}
 			// retry all network errors.
 			continue
@@ -412,7 +399,7 @@ func (adm AdminClient) executeMethod(ctx context.Context, method string, reqData
 		}
 
 		// Read the body to be saved later.
-		errBodyBytes, err := ioutil.ReadAll(res.Body)
+		errBodyBytes, err := io.ReadAll(res.Body)
 		// res.Body should be closed
 		closeResponse(res)
 		if err != nil {
@@ -421,14 +408,14 @@ func (adm AdminClient) executeMethod(ctx context.Context, method string, reqData
 
 		// Save the body.
 		errBodySeeker := bytes.NewReader(errBodyBytes)
-		res.Body = ioutil.NopCloser(errBodySeeker)
+		res.Body = io.NopCloser(errBodySeeker)
 
 		// For errors verify if its retryable otherwise fail quickly.
 		errResponse := ToErrorResponse(httpRespToErrorResponse(res))
 
 		// Save the body back again.
 		errBodySeeker.Seek(0, 0) // Seek back to starting point.
-		res.Body = ioutil.NopCloser(errBodySeeker)
+		res.Body = io.NopCloser(errBodySeeker)
 
 		// Verify if error response code is retryable.
 		if isAdminErrCodeRetryable(errResponse.Code) {
@@ -461,7 +448,7 @@ func (adm AdminClient) setUserAgent(req *http.Request) {
 
 // GetAccessAndSecretKey - retrieves the access and secret keys.
 func (adm AdminClient) GetAccessAndSecretKey() (string, string) {
-	value, err := adm.credsProvider.Get()
+	value, err := adm.credsProvider.GetWithContext(adm.CredContext())
 	if err != nil {
 		return "", ""
 	}
@@ -474,7 +461,7 @@ func (adm AdminClient) GetEndpointURL() *url.URL {
 }
 
 func (adm AdminClient) getSecretKey() string {
-	value, err := adm.credsProvider.Get()
+	value, err := adm.credsProvider.GetWithContext(adm.CredContext())
 	if err != nil {
 		// Return empty, call will fail.
 		return ""
@@ -505,7 +492,7 @@ func (adm AdminClient) newRequest(ctx context.Context, method string, reqData re
 		return nil, err
 	}
 
-	value, err := adm.credsProvider.Get()
+	value, err := adm.credsProvider.GetWithContext(adm.CredContext())
 	if err != nil {
 		return nil, err
 	}
@@ -526,9 +513,9 @@ func (adm AdminClient) newRequest(ctx context.Context, method string, reqData re
 	sum := sha256.Sum256(reqData.content)
 	req.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sum[:]))
 	if reqData.contentReader != nil {
-		req.Body = ioutil.NopCloser(reqData.contentReader)
+		req.Body = io.NopCloser(reqData.contentReader)
 	} else {
-		req.Body = ioutil.NopCloser(bytes.NewReader(reqData.content))
+		req.Body = io.NopCloser(bytes.NewReader(reqData.content))
 	}
 
 	req = signer.SignV4(*req, accessKeyID, secretAccessKey, sessionToken, location)
@@ -554,4 +541,11 @@ func (adm AdminClient) makeTargetURL(r requestData) (*url.URL, error) {
 		return nil, err
 	}
 	return u, nil
+}
+
+// CredContext returns the context for fetching credentials
+func (adm AdminClient) CredContext() *credentials.CredContext {
+	return &credentials.CredContext{
+		Client: adm.httpClient,
+	}
 }

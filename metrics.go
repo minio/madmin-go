@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -23,17 +23,24 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"runtime/metrics"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/prometheus/procfs"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/load"
 )
+
+//msgp:clearomitted
+//msgp:tag json
+//msgp:timezone utc
+//go:generate msgp -unexported -file $GOFILE
 
 // MetricType is a bitfield representation of different metric types.
 type MetricType uint32
@@ -48,6 +55,10 @@ const (
 	MetricsBatchJobs
 	MetricsSiteResync
 	MetricNet
+	MetricsMem
+	MetricsCPU
+	MetricsRPC
+	MetricsRuntime
 
 	// MetricsAll must be last.
 	// Enables all metrics.
@@ -70,7 +81,7 @@ type MetricsOptions struct {
 // Metrics makes an admin call to retrieve metrics.
 // The provided function is called for each received entry.
 func (adm *AdminClient) Metrics(ctx context.Context, o MetricsOptions, out func(RealtimeMetrics)) (err error) {
-	path := fmt.Sprintf(adminAPIPrefix + "/metrics")
+	path := adminAPIPrefix + "/metrics"
 	q := make(url.Values)
 	q.Set("types", strconv.FormatUint(uint64(o.Type), 10))
 	q.Set("n", strconv.Itoa(o.N))
@@ -150,6 +161,10 @@ type Metrics struct {
 	BatchJobs  *BatchJobMetrics   `json:"batchJobs,omitempty"`
 	SiteResync *SiteResyncMetrics `json:"siteResync,omitempty"`
 	Net        *NetMetrics        `json:"net,omitempty"`
+	Mem        *MemMetrics        `json:"mem,omitempty"`
+	CPU        *CPUMetrics        `json:"cpu,omitempty"`
+	RPC        *RPCMetrics        `json:"rpc,omitempty"`
+	Go         *RuntimeMetrics    `json:"go,omitempty"`
 }
 
 // Merge other into r.
@@ -185,6 +200,14 @@ func (r *Metrics) Merge(other *Metrics) {
 		r.Net = &NetMetrics{}
 	}
 	r.Net.Merge(other.Net)
+	if r.RPC == nil && other.RPC != nil {
+		r.RPC = &RPCMetrics{}
+	}
+	r.RPC.Merge(other.RPC)
+	if r.Go == nil && other.Go != nil {
+		r.Go = &RuntimeMetrics{}
+	}
+	r.Go.Merge(other.Go)
 }
 
 // Merge will merge other into r.
@@ -222,14 +245,11 @@ type ScannerMetrics struct {
 	// Time these metrics were collected
 	CollectedAt time.Time `json:"collected"`
 
-	// Current scanner cycle
-	CurrentCycle uint64 `json:"current_cycle"`
+	// Number of buckets currently scanning
+	OngoingBuckets int `json:"ongoing_buckets"`
 
-	// Start time of current cycle
-	CurrentStarted time.Time `json:"current_started"`
-
-	// History of when last cycles completed
-	CyclesCompletedAt []time.Time `json:"cycle_complete_times"`
+	// Stats per bucket, a map between bucket name and scan stats in all erasure sets
+	PerBucketStats map[string][]BucketScanInfo `json:"per_bucket_stats,omitempty"`
 
 	// Number of accumulated operations by type since server restart.
 	LifeTimeOps map[string]uint64 `json:"life_time_ops,omitempty"`
@@ -247,36 +267,10 @@ type ScannerMetrics struct {
 
 	// Currently active path(s) being scanned.
 	ActivePaths []string `json:"active,omitempty"`
-}
 
-// TimedAction contains a number of actions and their accumulated duration in nanoseconds.
-type TimedAction struct {
-	Count   uint64 `json:"count"`
-	AccTime uint64 `json:"acc_time_ns"`
-	Bytes   uint64 `json:"bytes,omitempty"`
-}
-
-// Avg returns the average time spent on the action.
-func (t TimedAction) Avg() time.Duration {
-	if t.Count == 0 {
-		return 0
-	}
-	return time.Duration(t.AccTime / t.Count)
-}
-
-// AvgBytes returns the average time spent on the action.
-func (t TimedAction) AvgBytes() uint64 {
-	if t.Count == 0 {
-		return 0
-	}
-	return t.Bytes / t.Count
-}
-
-// Merge other into t.
-func (t *TimedAction) Merge(other TimedAction) {
-	t.Count += other.Count
-	t.AccTime += other.AccTime
-	t.Bytes += other.Bytes
+	// Excessive prefixes.
+	// Paths that have been marked as having excessive number of entries within the last 24 hours.
+	ExcessivePrefixes []string `json:"excessive,omitempty"`
 }
 
 // Merge other into 's'.
@@ -284,17 +278,27 @@ func (s *ScannerMetrics) Merge(other *ScannerMetrics) {
 	if other == nil {
 		return
 	}
+
 	if s.CollectedAt.Before(other.CollectedAt) {
 		// Use latest timestamp
 		s.CollectedAt = other.CollectedAt
 	}
-	if s.CurrentCycle < other.CurrentCycle {
-		s.CurrentCycle = other.CurrentCycle
-		s.CyclesCompletedAt = other.CyclesCompletedAt
-		s.CurrentStarted = other.CurrentStarted
+
+	if s.OngoingBuckets < other.OngoingBuckets {
+		s.OngoingBuckets = other.OngoingBuckets
 	}
-	if len(other.CyclesCompletedAt) > len(s.CyclesCompletedAt) {
-		s.CyclesCompletedAt = other.CyclesCompletedAt
+
+	if s.PerBucketStats == nil {
+		s.PerBucketStats = make(map[string][]BucketScanInfo)
+	}
+	for bucket, otherSt := range other.PerBucketStats {
+		if len(otherSt) == 0 {
+			continue
+		}
+		_, ok := s.PerBucketStats[bucket]
+		if !ok {
+			s.PerBucketStats[bucket] = otherSt
+		}
 	}
 
 	// Regular ops
@@ -332,6 +336,23 @@ func (s *ScannerMetrics) Merge(other *ScannerMetrics) {
 	}
 	s.ActivePaths = append(s.ActivePaths, other.ActivePaths...)
 	sort.Strings(s.ActivePaths)
+
+	if len(other.ExcessivePrefixes) > 0 {
+		// Merge and remove duplicates
+		merged := make(map[string]struct{}, len(s.ExcessivePrefixes)+len(other.ExcessivePrefixes))
+		for _, prefix := range s.ExcessivePrefixes {
+			merged[prefix] = struct{}{}
+		}
+		// Add other excessive prefixes
+		for _, prefix := range other.ExcessivePrefixes {
+			merged[prefix] = struct{}{}
+		}
+		s.ExcessivePrefixes = make([]string, 0, len(merged))
+		for prefix := range merged {
+			s.ExcessivePrefixes = append(s.ExcessivePrefixes, prefix)
+		}
+		sort.Strings(s.ExcessivePrefixes)
+	}
 }
 
 // DiskIOStats contains IO stats of a single drive
@@ -476,6 +497,7 @@ type JobMetric struct {
 	Replicate *ReplicateInfo   `json:"replicate,omitempty"`
 	KeyRotate *KeyRotationInfo `json:"rotation,omitempty"`
 	Expired   *ExpirationInfo  `json:"expired,omitempty"`
+	Catalog   *CatalogInfo     `json:"catalog,omitempty"`
 }
 
 type ReplicateInfo struct {
@@ -484,10 +506,12 @@ type ReplicateInfo struct {
 	Object string `json:"lastObject"`
 
 	// Verbose information
-	Objects          int64 `json:"objects"`
-	ObjectsFailed    int64 `json:"objectsFailed"`
-	BytesTransferred int64 `json:"bytesTransferred"`
-	BytesFailed      int64 `json:"bytesFailed"`
+	Objects             int64 `json:"objects"`
+	ObjectsFailed       int64 `json:"objectsFailed"`
+	DeleteMarkers       int64 `json:"deleteMarkers"`
+	DeleteMarkersFailed int64 `json:"deleteMarkersFailed"`
+	BytesTransferred    int64 `json:"bytesTransferred"`
+	BytesFailed         int64 `json:"bytesFailed"`
 }
 
 type ExpirationInfo struct {
@@ -496,8 +520,10 @@ type ExpirationInfo struct {
 	Object string `json:"lastObject"`
 
 	// Verbose information
-	Objects       int64 `json:"objects"`
-	ObjectsFailed int64 `json:"objectsFailed"`
+	Objects             int64 `json:"objects"`
+	ObjectsFailed       int64 `json:"objectsFailed"`
+	DeleteMarkers       int64 `json:"deleteMarkers"`
+	DeleteMarkersFailed int64 `json:"deleteMarkersFailed"`
 }
 
 type KeyRotationInfo struct {
@@ -508,6 +534,28 @@ type KeyRotationInfo struct {
 	// Verbose information
 	Objects       int64 `json:"objects"`
 	ObjectsFailed int64 `json:"objectsFailed"`
+}
+
+type CatalogInfo struct {
+	LastBucketScanned string `json:"lastBucketScanned"`
+	LastObjectScanned string `json:"lastObjectScanned"`
+	LastBucketMatched string `json:"lastBucketMatched"`
+	LastObjectMatched string `json:"lastObjectMatched"`
+
+	ObjectsScannedCount uint64 `json:"objectsScannedCount"`
+	ObjectsMatchedCount uint64 `json:"objectsMatchedCount"`
+
+	// Represents the number of objects' metadata that were written to output
+	// objects.
+	RecordsWrittenCount uint64 `json:"recordsWrittenCount"`
+	// Represents the number of output objects created.
+	OutputObjectsCount uint64 `json:"outputObjectsCount"`
+	// Manifest file path (part of the output of a catalog job)
+	ManifestPathBucket string `json:"manifestPathBucket"`
+	ManifestPathObject string `json:"manifestPathObject"`
+
+	// Error message
+	ErrorMsg string `json:"errorMsg"`
 }
 
 // Merge other into 'o'.
@@ -580,6 +628,8 @@ type NetMetrics struct {
 	NetStats procfs.NetDevLine `json:"netstats"`
 }
 
+//msgp:replace procfs.NetDevLine with:procfsNetDevLine
+
 // Merge other into 'o'.
 func (n *NetMetrics) Merge(other *NetMetrics) {
 	if other == nil {
@@ -605,4 +655,216 @@ func (n *NetMetrics) Merge(other *NetMetrics) {
 	n.NetStats.TxCollisions += other.NetStats.TxCollisions
 	n.NetStats.TxCarrier += other.NetStats.TxCarrier
 	n.NetStats.TxCompressed += other.NetStats.TxCompressed
+}
+
+//msgp:replace NodeCommon with:nodeCommon
+
+// nodeCommon - use as replacement for NodeCommon
+// We do not want to give NodeCommon codegen, since it is used for embedding.
+type nodeCommon struct {
+	Addr  string `json:"addr"`
+	Error string `json:"error,omitempty"`
+}
+
+// MemInfo contains system's RAM and swap information.
+type MemInfo struct {
+	NodeCommon
+
+	Total          uint64 `json:"total,omitempty"`
+	Used           uint64 `json:"used,omitempty"`
+	Free           uint64 `json:"free,omitempty"`
+	Available      uint64 `json:"available,omitempty"`
+	Shared         uint64 `json:"shared,omitempty"`
+	Cache          uint64 `json:"cache,omitempty"`
+	Buffers        uint64 `json:"buffer,omitempty"`
+	SwapSpaceTotal uint64 `json:"swap_space_total,omitempty"`
+	SwapSpaceFree  uint64 `json:"swap_space_free,omitempty"`
+	// Limit will store cgroup limit if configured and
+	// less than Total, otherwise same as Total
+	Limit uint64 `json:"limit,omitempty"`
+}
+
+type MemMetrics struct {
+	// Time these metrics were collected
+	CollectedAt time.Time `json:"collected"`
+
+	Info MemInfo `json:"memInfo"`
+}
+
+// Merge other into 'm'.
+func (m *MemMetrics) Merge(other *MemMetrics) {
+	if m.CollectedAt.Before(other.CollectedAt) {
+		// Use latest timestamp
+		m.CollectedAt = other.CollectedAt
+	}
+
+	m.Info.Total += other.Info.Total
+	m.Info.Available += other.Info.Available
+	m.Info.SwapSpaceTotal += other.Info.SwapSpaceTotal
+	m.Info.SwapSpaceFree += other.Info.SwapSpaceFree
+	m.Info.Limit += other.Info.Limit
+}
+
+//msgp:replace cpu.TimesStat with:cpuTimesStat
+//msgp:replace load.AvgStat with:loadAvgStat
+
+type CPUMetrics struct {
+	// Time these metrics were collected
+	CollectedAt time.Time `json:"collected"`
+
+	TimesStat *cpu.TimesStat `json:"timesStat"`
+	LoadStat  *load.AvgStat  `json:"loadStat"`
+	CPUCount  int            `json:"cpuCount"`
+}
+
+// Merge other into 'm'.
+func (m *CPUMetrics) Merge(other *CPUMetrics) {
+	if m.CollectedAt.Before(other.CollectedAt) {
+		// Use latest timestamp
+		m.CollectedAt = other.CollectedAt
+	}
+	m.TimesStat.User += other.TimesStat.User
+	m.TimesStat.System += other.TimesStat.System
+	m.TimesStat.Idle += other.TimesStat.Idle
+	m.TimesStat.Nice += other.TimesStat.Nice
+	m.TimesStat.Iowait += other.TimesStat.Iowait
+	m.TimesStat.Irq += other.TimesStat.Irq
+	m.TimesStat.Softirq += other.TimesStat.Softirq
+	m.TimesStat.Steal += other.TimesStat.Steal
+	m.TimesStat.Guest += other.TimesStat.Guest
+	m.TimesStat.GuestNice += other.TimesStat.GuestNice
+
+	m.LoadStat.Load1 += other.LoadStat.Load1
+	m.LoadStat.Load5 += other.LoadStat.Load5
+	m.LoadStat.Load15 += other.LoadStat.Load15
+}
+
+// RPCMetrics contains metrics for RPC operations.
+type RPCMetrics struct {
+	CollectedAt      time.Time `json:"collectedAt"`
+	Connected        int       `json:"connected"`
+	ReconnectCount   int       `json:"reconnectCount"`
+	Disconnected     int       `json:"disconnected"`
+	OutgoingStreams  int       `json:"outgoingStreams"`
+	IncomingStreams  int       `json:"incomingStreams"`
+	OutgoingBytes    int64     `json:"outgoingBytes"`
+	IncomingBytes    int64     `json:"incomingBytes"`
+	OutgoingMessages int64     `json:"outgoingMessages"`
+	IncomingMessages int64     `json:"incomingMessages"`
+	OutQueue         int       `json:"outQueue"`
+	LastPongTime     time.Time `json:"lastPongTime"`
+	LastPingMS       float64   `json:"lastPingMS"`
+	MaxPingDurMS     float64   `json:"maxPingDurMS"` // Maximum across all merged entries.
+	LastConnectTime  time.Time `json:"lastConnectTime"`
+
+	ByDestination map[string]RPCMetrics `json:"byDestination,omitempty"`
+	ByCaller      map[string]RPCMetrics `json:"byCaller,omitempty"`
+}
+
+// Merge other into 'm'.
+func (m *RPCMetrics) Merge(other *RPCMetrics) {
+	if m == nil || other == nil {
+		return
+	}
+	if m.CollectedAt.Before(other.CollectedAt) {
+		// Use latest timestamp
+		m.CollectedAt = other.CollectedAt
+	}
+	if m.LastConnectTime.Before(other.LastConnectTime) {
+		m.LastConnectTime = other.LastConnectTime
+	}
+	m.Connected += other.Connected
+	m.Disconnected += other.Disconnected
+	m.ReconnectCount += other.ReconnectCount
+	m.OutgoingStreams += other.OutgoingStreams
+	m.IncomingStreams += other.IncomingStreams
+	m.OutgoingBytes += other.OutgoingBytes
+	m.IncomingBytes += other.IncomingBytes
+	m.OutgoingMessages += other.OutgoingMessages
+	m.IncomingMessages += other.IncomingMessages
+	m.OutQueue += other.OutQueue
+	if m.LastPongTime.Before(other.LastPongTime) {
+		m.LastPongTime = other.LastPongTime
+		m.LastPingMS = other.LastPingMS
+	}
+	if m.MaxPingDurMS < other.MaxPingDurMS {
+		m.MaxPingDurMS = other.MaxPingDurMS
+	}
+	for k, v := range other.ByDestination {
+		if m.ByDestination == nil {
+			m.ByDestination = make(map[string]RPCMetrics, len(other.ByDestination))
+		}
+		existing := m.ByDestination[k]
+		existing.Merge(&v)
+		m.ByDestination[k] = existing
+	}
+	for k, v := range other.ByCaller {
+		if m.ByCaller == nil {
+			m.ByCaller = make(map[string]RPCMetrics, len(other.ByCaller))
+		}
+		existing := m.ByCaller[k]
+		existing.Merge(&v)
+		m.ByCaller[k] = existing
+	}
+}
+
+//msgp:replace metrics.Float64Histogram with:localF64H
+
+// local copy of localF64H, can be casted to/from metrics.Float64Histogram
+type localF64H struct {
+	Counts  []uint64  `json:"counts,omitempty"`
+	Buckets []float64 `json:"buckets,omitempty"`
+}
+
+// RuntimeMetrics contains metrics for the go runtime.
+// See more at https://pkg.go.dev/runtime/metrics
+type RuntimeMetrics struct {
+	// UintMetrics contains KindUint64 values
+	UintMetrics map[string]uint64 `json:"uintMetrics,omitempty"`
+
+	// FloatMetrics contains KindFloat64 values
+	FloatMetrics map[string]float64 `json:"floatMetrics,omitempty"`
+
+	// HistMetrics contains KindFloat64Histogram values
+	HistMetrics map[string]metrics.Float64Histogram `json:"histMetrics,omitempty"`
+
+	// N tracks the number of merged entries.
+	N int `json:"n"`
+}
+
+// Merge other into 'm'.
+func (m *RuntimeMetrics) Merge(other *RuntimeMetrics) {
+	if m == nil || other == nil {
+		return
+	}
+	if m.UintMetrics == nil {
+		m.UintMetrics = make(map[string]uint64, len(other.UintMetrics))
+	}
+	if m.FloatMetrics == nil {
+		m.FloatMetrics = make(map[string]float64, len(other.FloatMetrics))
+	}
+	if m.HistMetrics == nil {
+		m.HistMetrics = make(map[string]metrics.Float64Histogram, len(other.HistMetrics))
+	}
+	for k, v := range other.UintMetrics {
+		m.UintMetrics[k] += v
+	}
+	for k, v := range other.FloatMetrics {
+		m.FloatMetrics[k] += v
+	}
+	for k, v := range other.HistMetrics {
+		existing := m.HistMetrics[k]
+		if len(existing.Buckets) == 0 {
+			m.HistMetrics[k] = v
+			continue
+		}
+		// TODO: Technically, I guess we may have differing buckets,
+		// but they should be the same for the runtime.
+		if len(existing.Buckets) == len(v.Buckets) {
+			for i, count := range v.Counts {
+				existing.Counts[i] += count
+			}
+		}
+	}
+	m.N += other.N
 }

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -28,9 +28,9 @@ type logArgs struct {
 
 // Trace - defines the trace.
 type logTrace struct {
-	Message   string            `json:"message,omitempty"`
-	Source    []string          `json:"source,omitempty"`
-	Variables map[string]string `json:"variables,omitempty"`
+	Message   string                 `json:"message,omitempty"`
+	Source    []string               `json:"source,omitempty"`
+	Variables map[string]interface{} `json:"variables,omitempty"`
 }
 
 // API - defines the api type and its args.

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2025 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -29,6 +29,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"runtime"
 	"strconv"
@@ -36,15 +37,37 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/minio/madmin-go/v3/cgroup"
-	"github.com/minio/madmin-go/v3/kernel"
+	"github.com/minio/madmin-go/v4/cgroup"
+	"github.com/minio/madmin-go/v4/kernel"
 	"github.com/prometheus/procfs"
-	"github.com/shirou/gopsutil/v3/cpu"
-	"github.com/shirou/gopsutil/v3/disk"
-	"github.com/shirou/gopsutil/v3/host"
-	"github.com/shirou/gopsutil/v3/mem"
-	"github.com/shirou/gopsutil/v3/process"
+	"github.com/shirou/gopsutil/v4/cpu"
+	"github.com/shirou/gopsutil/v4/disk"
+	"github.com/shirou/gopsutil/v4/host"
+	"github.com/shirou/gopsutil/v4/mem"
+	"github.com/shirou/gopsutil/v4/process"
+	"github.com/shirou/gopsutil/v4/sensors"
 )
+
+// NodeCommon - Common fields across most node-specific health structs
+type NodeCommon struct {
+	Addr  string `json:"addr"`
+	Error string `json:"error,omitempty"`
+}
+
+// GetAddr - return the address of the node
+func (n *NodeCommon) GetAddr() string {
+	return n.Addr
+}
+
+// SetAddr - set the address of the node
+func (n *NodeCommon) SetAddr(addr string) {
+	n.Addr = addr
+}
+
+// SetError - set the address of the node
+func (n *NodeCommon) SetError(err string) {
+	n.Error = err
+}
 
 const (
 	// HealthInfoVersion0 is version 0
@@ -69,32 +92,19 @@ const (
 	SrvNotInstalled = "not-installed"
 )
 
+const (
+	sysClassBlock = "/sys/class/block"
+	sysClassDMI   = "/sys/class/dmi"
+	runDevDataPfx = "/run/udev/data/b"
+	devDir        = "/dev/"
+	devLoopDir    = "/dev/loop"
+)
+
 // NodeInfo - Interface to abstract any struct that contains address/endpoint and error fields
 type NodeInfo interface {
 	GetAddr() string
 	SetAddr(addr string)
 	SetError(err string)
-}
-
-// NodeCommon - Common fields across most node-specific health structs
-type NodeCommon struct {
-	Addr  string `json:"addr"`
-	Error string `json:"error,omitempty"`
-}
-
-// GetAddr - return the address of the node
-func (n *NodeCommon) GetAddr() string {
-	return n.Addr
-}
-
-// SetAddr - set the address of the node
-func (n *NodeCommon) SetAddr(addr string) {
-	n.Addr = addr
-}
-
-// SetError - set the address of the node
-func (n *NodeCommon) SetError(err string) {
-	n.Error = err
 }
 
 // SysErrors - contains a system error
@@ -125,6 +135,8 @@ type SysService struct {
 }
 
 // CPU contains system's CPU information.
+//
+//msgp:ignore CPU
 type CPU struct {
 	VendorID   string   `json:"vendor_id"`
 	Family     string   `json:"family"`
@@ -222,6 +234,10 @@ type Partition struct {
 	Error string `json:"error,omitempty"`
 
 	Device       string `json:"device,omitempty"`
+	Major        uint32 `json:"major"`
+	Minor        uint32 `json:"minor"`
+	Model        string `json:"model,omitempty"`
+	Revision     string `json:"revision,omitempty"`
 	Mountpoint   string `json:"mountpoint,omitempty"`
 	FSType       string `json:"fs_type,omitempty"`
 	MountOptions string `json:"mount_options,omitempty"`
@@ -232,11 +248,95 @@ type Partition struct {
 	InodeFree    uint64 `json:"inode_free,omitempty"`
 }
 
+// NetSettings - rx/tx settings of an interface
+type NetSettings struct {
+	// hardware capacity
+	RxMaxPending uint32 `json:"rx_max_pending"`
+	TxMaxPending uint32 `json:"tx_max_pending"`
+	MaxCombined  uint32 `json:"max_combined"`
+
+	// configured limits
+	RxPending     uint32 `json:"rx_pending"`
+	TxPending     uint32 `json:"tx_pending"`
+	CombinedCount uint32 `json:"combined_count"`
+}
+
+// NetInfo contains information about a network inerface
+type NetInfo struct {
+	NodeCommon
+	Interface       string       `json:"interface,omitempty"`
+	Driver          string       `json:"driver,omitempty"`
+	FirmwareVersion string       `json:"firmware_version,omitempty"`
+	Settings        *NetSettings `json:"settings,omitempty"`
+}
+
 // Partitions contains all disk partitions information of a node.
 type Partitions struct {
 	NodeCommon
 
 	Partitions []Partition `json:"partitions,omitempty"`
+}
+
+// driveHwInfo contains hardware information about a drive
+type driveHwInfo struct {
+	Model    string
+	Revision string
+	Major    uint32
+	Minor    uint32
+}
+
+func getDriveHwInfo(partDevice string) (info driveHwInfo, err error) {
+	partDevName := strings.ReplaceAll(partDevice, devDir, "")
+	devPath := path.Join(sysClassBlock, partDevName, "dev")
+
+	_, err = os.Stat(devPath)
+	if err != nil {
+		return
+	}
+
+	var data []byte
+	data, err = os.ReadFile(devPath)
+	if err != nil {
+		return
+	}
+
+	majorMinor := strings.TrimSpace(string(data))
+	mm := strings.SplitN(majorMinor, ":", 2)
+	major, err := strconv.ParseUint(mm[0], 10, 32)
+	if err == nil {
+		info.Major = uint32(major)
+	}
+	minor, err := strconv.ParseUint(mm[1], 10, 32)
+	if err == nil {
+		info.Minor = uint32(minor)
+	}
+
+	driveInfoPath := runDevDataPfx + majorMinor
+
+	var f *os.File
+	f, err = os.Open(driveInfoPath)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+
+	buf := bufio.NewScanner(f)
+	for buf.Scan() {
+		field := strings.SplitN(buf.Text(), "=", 2)
+		if len(field) == 2 {
+			if field[0] == "E:ID_MODEL" {
+				info.Model = field[1]
+			}
+			if field[0] == "E:ID_REVISION" {
+				info.Revision = field[1]
+			}
+			if len(info.Model) > 0 && len(info.Revision) > 0 {
+				break
+			}
+		}
+	}
+
+	return
 }
 
 // GetPartitions returns all disk partitions information of a node running linux only operating system.
@@ -270,8 +370,15 @@ func GetPartitions(ctx context.Context, addr string) Partitions {
 				Error:  err.Error(),
 			})
 		} else {
+			var di driveHwInfo
+			device := parts[i].Device
+			if strings.HasPrefix(device, devDir) && !strings.HasPrefix(device, devLoopDir) {
+				// ignore any error in finding device model
+				di, _ = getDriveHwInfo(device)
+			}
+
 			partitions = append(partitions, Partition{
-				Device:       parts[i].Device,
+				Device:       device,
 				Mountpoint:   parts[i].Mountpoint,
 				FSType:       parts[i].Fstype,
 				MountOptions: strings.Join(parts[i].Opts, ","),
@@ -280,6 +387,10 @@ func GetPartitions(ctx context.Context, addr string) Partitions {
 				SpaceFree:    usage.Free,
 				InodeTotal:   usage.InodesTotal,
 				InodeFree:    usage.InodesFree,
+				Model:        di.Model,
+				Revision:     di.Revision,
+				Major:        di.Major,
+				Minor:        di.Minor,
 			})
 		}
 	}
@@ -294,8 +405,8 @@ func GetPartitions(ctx context.Context, addr string) Partitions {
 type OSInfo struct {
 	NodeCommon
 
-	Info    host.InfoStat          `json:"info,omitempty"`
-	Sensors []host.TemperatureStat `json:"sensors,omitempty"`
+	Info    host.InfoStat             `json:"info,omitempty"`
+	Sensors []sensors.TemperatureStat `json:"sensors,omitempty"`
 }
 
 // TimeInfo contains current time with timezone, and
@@ -355,7 +466,7 @@ func GetOSInfo(ctx context.Context, addr string) OSInfo {
 	}
 	osInfo.Info.KernelVersion = kr
 
-	osInfo.Sensors, _ = host.SensorsTemperaturesWithContext(ctx)
+	osInfo.Sensors, _ = sensors.TemperaturesWithContext(ctx)
 
 	return osInfo
 }
@@ -374,8 +485,9 @@ func GetSysConfig(_ context.Context, addr string) SysConfig {
 		limits, err := proc.Limits()
 		if err != nil {
 			sc.Error = "rlimit: " + err.Error()
+		} else {
+			sc.Config["rlimit-max"] = limits.OpenFiles
 		}
-		sc.Config["rlimit-max"] = limits.OpenFiles
 	}
 
 	zone, _ := time.Now().Zone()
@@ -387,6 +499,20 @@ func GetSysConfig(_ context.Context, addr string) SysConfig {
 	xfsErrorConfigs := getXFSErrorMaxRetries()
 	if len(xfsErrorConfigs.Configs) > 0 || len(xfsErrorConfigs.Error) > 0 {
 		sc.Config["xfs-error-config"] = xfsErrorConfigs
+	}
+
+	sc.Config["thp-config"] = getTHPConfigs()
+
+	procCmdLine, err := getProcCmdLine()
+	if err != nil {
+		errMsg := "proc-cmdline: " + err.Error()
+		if len(sc.Error) == 0 {
+			sc.Error = errMsg
+		} else {
+			sc.Error = sc.Error + ", " + errMsg
+		}
+	} else {
+		sc.Config["proc-cmdline"] = procCmdLine
 	}
 
 	return sc
@@ -407,6 +533,32 @@ func readIntFromFile(filePath string) (num int, err error) {
 	}
 
 	return strconv.Atoi(strings.TrimSpace(string(data)))
+}
+
+func getTHPConfigs() map[string]string {
+	configs := map[string]string{}
+	captureTHPConfig(configs, "/sys/kernel/mm/transparent_hugepage/enabled", "enabled")
+	captureTHPConfig(configs, "/sys/kernel/mm/transparent_hugepage/defrag", "defrag")
+	captureTHPConfig(configs, "/sys/kernel/mm/transparent_hugepage/khugepaged/max_ptes_none", "max_ptes_none")
+	return configs
+}
+
+func getProcCmdLine() ([]string, error) {
+	fs, err := procfs.NewDefaultFS()
+	if err != nil {
+		return nil, err
+	}
+	return fs.CmdLine()
+}
+
+func captureTHPConfig(configs map[string]string, filePath string, cfgName string) {
+	errFieldName := cfgName + "_error"
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		configs[errFieldName] = err.Error()
+		return
+	}
+	configs[cfgName] = strings.TrimSpace(string(data))
 }
 
 func getXFSErrorMaxRetries() XFSErrorConfigs {
@@ -432,6 +584,41 @@ func getXFSErrorMaxRetries() XFSErrorConfigs {
 	return XFSErrorConfigs{
 		Configs: configs,
 		Error:   errMsg,
+	}
+}
+
+// ProductInfo defines a host's product information
+type ProductInfo struct {
+	NodeCommon
+
+	Family       string `json:"family"`
+	Name         string `json:"name"`
+	Vendor       string `json:"vendor"`
+	SerialNumber string `json:"serial_number"`
+	UUID         string `json:"uuid"`
+	SKU          string `json:"sku"`
+	Version      string `json:"version"`
+}
+
+func getDMIInfo(ask string) string {
+	value, err := os.ReadFile(path.Join(sysClassDMI, "id", ask))
+	if err != nil {
+		return "unknown"
+	}
+	return strings.TrimSpace(string(value))
+}
+
+// GetProductInfo returns a host's product information
+func GetProductInfo(addr string) ProductInfo {
+	return ProductInfo{
+		NodeCommon:   NodeCommon{Addr: addr},
+		Family:       getDMIInfo("product_family"),
+		Name:         getDMIInfo("product_name"),
+		Vendor:       getDMIInfo("sys_vendor"),
+		SerialNumber: getDMIInfo("product_serial"),
+		UUID:         getDMIInfo("product_uuid"),
+		SKU:          getDMIInfo("product_sku"),
+		Version:      getDMIInfo("product_version"),
 	}
 }
 
@@ -531,24 +718,11 @@ func isKauditdRunning() (bool, error) {
 	}
 	for _, proc := range procs {
 		pname, err := proc.Name()
-		if err != nil && pname == "kauditd" {
+		if err == nil && pname == "kauditd" {
 			return true, nil
 		}
 	}
 	return false, nil
-}
-
-// MemInfo contains system's RAM and swap information.
-type MemInfo struct {
-	NodeCommon
-
-	Total          uint64 `json:"total,omitempty"`
-	Available      uint64 `json:"available,omitempty"`
-	SwapSpaceTotal uint64 `json:"swap_space_total,omitempty"`
-	SwapSpaceFree  uint64 `json:"swap_space_free,omitempty"`
-	// Limit will store cgroup limit if configured and
-	// less than Total, otherwise same as Total
-	Limit uint64 `json:"limit,omitempty"`
 }
 
 // Get the final system memory limit chosen by the user.
@@ -593,7 +767,12 @@ func GetMemInfo(ctx context.Context, addr string) MemInfo {
 	return MemInfo{
 		NodeCommon:     NodeCommon{Addr: addr},
 		Total:          meminfo.Total,
+		Used:           meminfo.Used,
+		Free:           meminfo.Free,
 		Available:      meminfo.Available,
+		Shared:         meminfo.Shared,
+		Cache:          meminfo.Cached,
+		Buffers:        meminfo.Buffers,
 		SwapSpaceTotal: swapinfo.Total,
 		SwapSpaceFree:  swapinfo.Free,
 		Limit:          getMemoryLimit(meminfo.Total),
@@ -631,6 +810,14 @@ type ProcInfo struct {
 	Times          cpu.TimesStat              `json:"times,omitempty"`
 	UIDs           []int32                    `json:"uids,omitempty"`
 	Username       string                     `json:"username,omitempty"`
+}
+
+func aTob[a, b any](aa []a, conv func(item a) b) []b {
+	bb := make([]b, len(aa))
+	for i, va := range aa {
+		bb[i] = conv(va)
+	}
+	return bb
 }
 
 // GetProcInfo returns current MinIO process information.
@@ -698,11 +885,14 @@ func GetProcInfo(ctx context.Context, addr string) ProcInfo {
 		return procInfo
 	}
 
-	procInfo.GIDs, err = proc.GidsWithContext(ctx)
+	gids, err := proc.GidsWithContext(ctx)
 	if err != nil {
 		procInfo.Error = err.Error()
 		return procInfo
 	}
+	procInfo.GIDs = aTob[uint32, int32](gids, func(item uint32) int32 {
+		return int32(item)
+	})
 
 	ioCounters, err := proc.IOCountersWithContext(ctx)
 	if err != nil {
@@ -797,11 +987,14 @@ func GetProcInfo(ctx context.Context, addr string) ProcInfo {
 	}
 	procInfo.Times = *times
 
-	procInfo.UIDs, err = proc.UidsWithContext(ctx)
+	uids, err := proc.UidsWithContext(ctx)
 	if err != nil {
 		procInfo.Error = err.Error()
 		return procInfo
 	}
+	procInfo.UIDs = aTob[uint32, int32](uids, func(item uint32) int32 {
+		return int32(item)
+	})
 
 	// In certain environments, it is not possible to get username e.g. minio-operator
 	// Plus it's not a serious error. So ignore error if any.
@@ -820,9 +1013,11 @@ type SysInfo struct {
 	OSInfo         []OSInfo       `json:"osinfo,omitempty"`
 	MemInfo        []MemInfo      `json:"meminfo,omitempty"`
 	ProcInfo       []ProcInfo     `json:"procinfo,omitempty"`
+	NetInfo        []NetInfo      `json:"netinfo,omitempty"`
 	SysErrs        []SysErrors    `json:"errors,omitempty"`
 	SysServices    []SysServices  `json:"services,omitempty"`
 	SysConfig      []SysConfig    `json:"config,omitempty"`
+	ProductInfo    []ProductInfo  `json:"productinfo,omitempty"`
 	KubernetesInfo KubernetesInfo `json:"kubernetes"`
 }
 
@@ -852,24 +1047,6 @@ type MinioConfig struct {
 	Config interface{} `json:"config,omitempty"`
 }
 
-// MemStats is strip down version of runtime.MemStats containing memory stats of MinIO server.
-type MemStats struct {
-	Alloc      uint64
-	TotalAlloc uint64
-	Mallocs    uint64
-	Frees      uint64
-	HeapAlloc  uint64
-}
-
-// GCStats collect information about recent garbage collections.
-type GCStats struct {
-	LastGC     time.Time       `json:"last_gc"`     // time of last collection
-	NumGC      int64           `json:"num_gc"`      // number of garbage collections
-	PauseTotal time.Duration   `json:"pause_total"` // total pause for all collections
-	Pause      []time.Duration `json:"pause"`       // pause history, most recent first
-	PauseEnd   []time.Time     `json:"pause_end"`   // pause end times history, most recent first
-}
-
 // ServerInfo holds server information
 type ServerInfo struct {
 	State          string            `json:"state,omitempty"`
@@ -879,13 +1056,16 @@ type ServerInfo struct {
 	CommitID       string            `json:"commitID,omitempty"`
 	Network        map[string]string `json:"network,omitempty"`
 	Drives         []Disk            `json:"drives,omitempty"`
-	PoolNumber     int               `json:"poolNumber,omitempty"`
+	PoolNumber     int               `json:"poolNumber,omitempty"` // Only set if len(PoolNumbers) == 1
+	PoolNumbers    []int             `json:"poolNumbers,omitempty"`
 	MemStats       MemStats          `json:"mem_stats"`
 	GoMaxProcs     int               `json:"go_max_procs"`
 	NumCPU         int               `json:"num_cpu"`
 	RuntimeVersion string            `json:"runtime_version"`
 	GCStats        *GCStats          `json:"gc_stats,omitempty"`
 	MinioEnvVars   map[string]string `json:"minio_env_vars,omitempty"`
+	Edition        string            `json:"edition"`
+	License        *LicenseInfo      `json:"license,omitempty"`
 }
 
 // MinioInfo contains MinIO server and object storage information.
@@ -905,6 +1085,7 @@ type MinioInfo struct {
 	IsKubernetes *bool            `json:"is_kubernetes"`
 	IsDocker     *bool            `json:"is_docker"`
 	Metrics      *RealtimeMetrics `json:"metrics,omitempty"`
+	TierConfigs  []TierConfig     `json:"tier_configs,omitempty"`
 }
 
 type TLSInfo struct {
@@ -917,14 +1098,16 @@ type TLSCert struct {
 	SignatureAlgo string    `json:"signature_algo"`
 	NotBefore     time.Time `json:"not_before"`
 	NotAfter      time.Time `json:"not_after"`
+	Checksum      string    `json:"checksum"`
 }
 
 // MinioHealthInfo - Includes MinIO confifuration information
 type MinioHealthInfo struct {
 	Error string `json:"error,omitempty"`
 
-	Config MinioConfig `json:"config,omitempty"`
-	Info   MinioInfo   `json:"info,omitempty"`
+	Config      MinioConfig   `json:"config,omitempty"`
+	Info        MinioInfo     `json:"info,omitempty"`
+	Replication *ReplDiagInfo `json:"replication,omitempty"`
 }
 
 // HealthInfo - MinIO cluster's health Info
@@ -981,15 +1164,14 @@ const (
 	HealthDataTypeMinioConfig HealthDataType = "minioconfig"
 	HealthDataTypeSysCPU      HealthDataType = "syscpu"
 	HealthDataTypeSysDriveHw  HealthDataType = "sysdrivehw"
-	HealthDataTypeSysDocker   HealthDataType = "sysdocker" // is this really needed?
 	HealthDataTypeSysOsInfo   HealthDataType = "sysosinfo"
-	HealthDataTypeSysLoad     HealthDataType = "sysload" // provides very little info. Making it TBD
 	HealthDataTypeSysMem      HealthDataType = "sysmem"
 	HealthDataTypeSysNet      HealthDataType = "sysnet"
 	HealthDataTypeSysProcess  HealthDataType = "sysprocess"
 	HealthDataTypeSysErrors   HealthDataType = "syserrors"
 	HealthDataTypeSysServices HealthDataType = "sysservices"
 	HealthDataTypeSysConfig   HealthDataType = "sysconfig"
+	HealthDataTypeReplication HealthDataType = "replication"
 )
 
 // HealthDataTypesMap - Map of Health datatypes
@@ -998,15 +1180,14 @@ var HealthDataTypesMap = map[string]HealthDataType{
 	"minioconfig": HealthDataTypeMinioConfig,
 	"syscpu":      HealthDataTypeSysCPU,
 	"sysdrivehw":  HealthDataTypeSysDriveHw,
-	"sysdocker":   HealthDataTypeSysDocker,
 	"sysosinfo":   HealthDataTypeSysOsInfo,
-	"sysload":     HealthDataTypeSysLoad,
 	"sysmem":      HealthDataTypeSysMem,
 	"sysnet":      HealthDataTypeSysNet,
 	"sysprocess":  HealthDataTypeSysProcess,
 	"syserrors":   HealthDataTypeSysErrors,
 	"sysservices": HealthDataTypeSysServices,
 	"sysconfig":   HealthDataTypeSysConfig,
+	"replication": HealthDataTypeReplication,
 }
 
 // HealthDataTypesList - List of health datatypes
@@ -1015,15 +1196,14 @@ var HealthDataTypesList = []HealthDataType{
 	HealthDataTypeMinioConfig,
 	HealthDataTypeSysCPU,
 	HealthDataTypeSysDriveHw,
-	HealthDataTypeSysDocker,
 	HealthDataTypeSysOsInfo,
-	HealthDataTypeSysLoad,
 	HealthDataTypeSysMem,
 	HealthDataTypeSysNet,
 	HealthDataTypeSysProcess,
 	HealthDataTypeSysErrors,
 	HealthDataTypeSysServices,
 	HealthDataTypeSysConfig,
+	HealthDataTypeReplication,
 }
 
 // HealthInfoVersionStruct - struct for health info version
@@ -1034,9 +1214,10 @@ type HealthInfoVersionStruct struct {
 
 // ServerHealthInfo - Connect to a minio server and call Health Info Management API
 // to fetch server's information represented by HealthInfo structure
-func (adm *AdminClient) ServerHealthInfo(ctx context.Context, types []HealthDataType, deadline time.Duration) (*http.Response, string, error) {
+func (adm *AdminClient) ServerHealthInfo(ctx context.Context, types []HealthDataType, deadline time.Duration, anonymize string) (*http.Response, string, error) {
 	v := url.Values{}
 	v.Set("deadline", deadline.Truncate(1*time.Second).String())
+	v.Set("anonymize", anonymize)
 	for _, d := range HealthDataTypesList { // Init all parameters to false.
 		v.Set(string(d), "false")
 	}

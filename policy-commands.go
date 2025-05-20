@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -22,38 +22,11 @@ package madmin
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"time"
 )
-
-// InfoCannedPolicy - expand canned policy into JSON structure.
-//
-// To be DEPRECATED in favor of the implementation in InfoCannedPolicyV2
-func (adm *AdminClient) InfoCannedPolicy(ctx context.Context, policyName string) ([]byte, error) {
-	queryValues := url.Values{}
-	queryValues.Set("name", policyName)
-
-	reqData := requestData{
-		relPath:     adminAPIPrefix + "/info-canned-policy",
-		queryValues: queryValues,
-	}
-
-	// Execute GET on /minio/admin/v3/info-canned-policy
-	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
-
-	defer closeResponse(resp)
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, httpRespToErrorResponse(resp)
-	}
-
-	return ioutil.ReadAll(resp.Body)
-}
 
 // PolicyInfo contains information on a policy.
 type PolicyInfo struct {
@@ -78,8 +51,8 @@ func (pi PolicyInfo) MarshalJSON() ([]byte, error) {
 	return json.Marshal(aliasPolicyInfo(pi))
 }
 
-// InfoCannedPolicyV2 - get info on a policy including timestamps and policy json.
-func (adm *AdminClient) InfoCannedPolicyV2(ctx context.Context, policyName string) (*PolicyInfo, error) {
+// InfoCannedPolicy - get info on a policy including timestamps and policy json.
+func (adm *AdminClient) InfoCannedPolicy(ctx context.Context, policyName string) (*PolicyInfo, error) {
 	queryValues := url.Values{}
 	queryValues.Set("name", policyName)
 	queryValues.Set("v", "2")
@@ -89,7 +62,7 @@ func (adm *AdminClient) InfoCannedPolicyV2(ctx context.Context, policyName strin
 		queryValues: queryValues,
 	}
 
-	// Execute GET on /minio/admin/v3/info-canned-policy
+	// Execute GET on /minio/admin/v4/info-canned-policy
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 
 	defer closeResponse(resp)
@@ -101,7 +74,7 @@ func (adm *AdminClient) InfoCannedPolicyV2(ctx context.Context, policyName strin
 		return nil, httpRespToErrorResponse(resp)
 	}
 
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +90,7 @@ func (adm *AdminClient) ListCannedPolicies(ctx context.Context) (map[string]json
 		relPath: adminAPIPrefix + "/list-canned-policies",
 	}
 
-	// Execute GET on /minio/admin/v3/list-canned-policies
+	// Execute GET on /minio/admin/v4/list-canned-policies
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 
 	defer closeResponse(resp)
@@ -129,7 +102,7 @@ func (adm *AdminClient) ListCannedPolicies(ctx context.Context) (map[string]json
 		return nil, httpRespToErrorResponse(resp)
 	}
 
-	respBytes, err := ioutil.ReadAll(resp.Body)
+	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +125,7 @@ func (adm *AdminClient) RemoveCannedPolicy(ctx context.Context, policyName strin
 		queryValues: queryValues,
 	}
 
-	// Execute DELETE on /minio/admin/v3/remove-canned-policy to remove policy.
+	// Execute DELETE on /minio/admin/v4/remove-canned-policy to remove policy.
 	resp, err := adm.executeMethod(ctx, http.MethodDelete, reqData)
 
 	defer closeResponse(resp)
@@ -169,7 +142,7 @@ func (adm *AdminClient) RemoveCannedPolicy(ctx context.Context, policyName strin
 
 // AddCannedPolicy - adds a policy for a canned.
 func (adm *AdminClient) AddCannedPolicy(ctx context.Context, policyName string, policy []byte) error {
-	if policy == nil {
+	if len(policy) == 0 {
 		return ErrInvalidArgument("policy input cannot be empty")
 	}
 
@@ -182,7 +155,7 @@ func (adm *AdminClient) AddCannedPolicy(ctx context.Context, policyName string, 
 		content:     policy,
 	}
 
-	// Execute PUT on /minio/admin/v3/add-canned-policy to set policy.
+	// Execute PUT on /minio/admin/v4/add-canned-policy to set policy.
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
 
 	defer closeResponse(resp)
@@ -194,35 +167,6 @@ func (adm *AdminClient) AddCannedPolicy(ctx context.Context, policyName string, 
 		return httpRespToErrorResponse(resp)
 	}
 
-	return nil
-}
-
-// SetPolicy - sets the policy for a user or a group.
-func (adm *AdminClient) SetPolicy(ctx context.Context, policyName, entityName string, isGroup bool) error {
-	queryValues := url.Values{}
-	queryValues.Set("policyName", policyName)
-	queryValues.Set("userOrGroup", entityName)
-	groupStr := "false"
-	if isGroup {
-		groupStr = "true"
-	}
-	queryValues.Set("isGroup", groupStr)
-
-	reqData := requestData{
-		relPath:     adminAPIPrefix + "/set-user-or-group-policy",
-		queryValues: queryValues,
-	}
-
-	// Execute PUT on /minio/admin/v3/set-user-or-group-policy to set policy.
-	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
-	defer closeResponse(resp)
-	if err != nil {
-		return err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return httpRespToErrorResponse(resp)
-	}
 	return nil
 }
 
@@ -264,8 +208,8 @@ func (adm *AdminClient) attachOrDetachPolicyBuiltin(ctx context.Context, isAttac
 
 	// Older minio does not send a response, so we handle that case.
 
-	switch {
-	case resp.StatusCode == http.StatusOK:
+	switch resp.StatusCode {
+	case http.StatusOK:
 		// Newer/current minio sends a result.
 		content, err := DecryptData(adm.getSecretKey(), resp.Body)
 		if err != nil {
@@ -276,7 +220,7 @@ func (adm *AdminClient) attachOrDetachPolicyBuiltin(ctx context.Context, isAttac
 		err = json.Unmarshal(content, &rsp)
 		return rsp, err
 
-	case resp.StatusCode == http.StatusCreated || resp.StatusCode == http.StatusNoContent:
+	case http.StatusCreated, http.StatusNoContent:
 		// Older minio - no result sent. TODO(aditya): Remove this case after
 		// newer minio is released.
 		return PolicyAssociationResp{}, nil

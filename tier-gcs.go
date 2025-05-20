@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -23,6 +23,7 @@ import (
 	"encoding/base64"
 )
 
+//msgp:timezone utc
 //go:generate msgp -file $GOFILE
 
 // TierGCS represents the remote tier configuration for Google Cloud Storage

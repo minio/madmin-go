@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -37,7 +37,7 @@ func (adm *AdminClient) DelConfigKV(ctx context.Context, k string) (restart bool
 		content: econfigBytes,
 	}
 
-	// Execute DELETE on /minio/admin/v3/del-config-kv to delete config key.
+	// Execute DELETE on /minio/admin/v4/del-config-kv to delete config key.
 	resp, err := adm.executeMethod(ctx, http.MethodDelete, reqData)
 
 	defer closeResponse(resp)
@@ -72,7 +72,7 @@ func (adm *AdminClient) SetConfigKV(ctx context.Context, kv string) (restart boo
 		content: econfigBytes,
 	}
 
-	// Execute PUT on /minio/admin/v3/set-config-kv to set config key/value.
+	// Execute PUT on /minio/admin/v4/set-config-kv to set config key/value.
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
 
 	defer closeResponse(resp)
@@ -92,7 +92,7 @@ func (adm *AdminClient) GetConfigKV(ctx context.Context, key string) ([]byte, er
 	v := url.Values{}
 	v.Set("key", key)
 
-	// Execute GET on /minio/admin/v3/get-config-kv?key={key} to get value of key.
+	// Execute GET on /minio/admin/v4/get-config-kv?key={key} to get value of key.
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
@@ -124,7 +124,7 @@ func (adm *AdminClient) GetConfigKVWithOptions(ctx context.Context, key string, 
 		v.Set("env", "")
 	}
 
-	// Execute GET on /minio/admin/v3/get-config-kv?key={key} to get value of key.
+	// Execute GET on /minio/admin/v4/get-config-kv?key={key} to get value of key.
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{

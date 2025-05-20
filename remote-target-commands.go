@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -23,25 +23,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 )
-
-// ServiceType represents service type
-type ServiceType string
-
-const (
-	// ReplicationService specifies replication service
-	ReplicationService ServiceType = "replication"
-)
-
-// IsValid returns true if ARN type represents replication
-func (t ServiceType) IsValid() bool {
-	return t == ReplicationService
-}
 
 // ARN is a struct to define arn.
 type ARN struct {
@@ -64,16 +50,16 @@ func (a ARN) String() string {
 func ParseARN(s string) (*ARN, error) {
 	// ARN must be in the format of arn:minio:<Type>:<REGION>:<ID>:<remote-bucket>
 	if !strings.HasPrefix(s, "arn:minio:") {
-		return nil, fmt.Errorf("Invalid ARN %s", s)
+		return nil, fmt.Errorf("invalid ARN %s", s)
 	}
 
 	tokens := strings.Split(s, ":")
 	if len(tokens) != 6 {
-		return nil, fmt.Errorf("Invalid ARN %s", s)
+		return nil, fmt.Errorf("invalid ARN %s", s)
 	}
 
 	if tokens[4] == "" || tokens[5] == "" {
-		return nil, fmt.Errorf("Invalid ARN %s", s)
+		return nil, fmt.Errorf("invalid ARN %s", s)
 	}
 
 	return &ARN{
@@ -82,100 +68,6 @@ func ParseARN(s string) (*ARN, error) {
 		ID:     tokens[4],
 		Bucket: tokens[5],
 	}, nil
-}
-
-// BucketTarget represents the target bucket and site association.
-type BucketTarget struct {
-	SourceBucket        string        `json:"sourcebucket"`
-	Endpoint            string        `json:"endpoint"`
-	Credentials         *Credentials  `json:"credentials"`
-	TargetBucket        string        `json:"targetbucket"`
-	Secure              bool          `json:"secure"`
-	Path                string        `json:"path,omitempty"`
-	API                 string        `json:"api,omitempty"`
-	Arn                 string        `json:"arn,omitempty"`
-	Type                ServiceType   `json:"type"`
-	Region              string        `json:"region,omitempty"`
-	BandwidthLimit      int64         `json:"bandwidthlimit,omitempty"`
-	ReplicationSync     bool          `json:"replicationSync"`
-	StorageClass        string        `json:"storageclass,omitempty"`
-	HealthCheckDuration time.Duration `json:"healthCheckDuration,omitempty"`
-	DisableProxy        bool          `json:"disableProxy"`
-	ResetBeforeDate     time.Time     `json:"resetBeforeDate,omitempty"`
-	ResetID             string        `json:"resetID,omitempty"`
-	TotalDowntime       time.Duration `json:"totalDowntime"`
-	LastOnline          time.Time     `json:"lastOnline"`
-	Online              bool          `json:"isOnline"`
-	Latency             LatencyStat   `json:"latency"`
-	DeploymentID        string        `json:"deploymentID,omitempty"`
-}
-
-// Clone returns shallow clone of BucketTarget without secret key in credentials
-func (t *BucketTarget) Clone() BucketTarget {
-	return BucketTarget{
-		SourceBucket:        t.SourceBucket,
-		Endpoint:            t.Endpoint,
-		TargetBucket:        t.TargetBucket,
-		Credentials:         &Credentials{AccessKey: t.Credentials.AccessKey},
-		Secure:              t.Secure,
-		Path:                t.Path,
-		API:                 t.API,
-		Arn:                 t.Arn,
-		Type:                t.Type,
-		Region:              t.Region,
-		BandwidthLimit:      t.BandwidthLimit,
-		ReplicationSync:     t.ReplicationSync,
-		StorageClass:        t.StorageClass, // target storage class
-		HealthCheckDuration: t.HealthCheckDuration,
-		DisableProxy:        t.DisableProxy,
-		ResetBeforeDate:     t.ResetBeforeDate,
-		ResetID:             t.ResetID,
-		TotalDowntime:       t.TotalDowntime,
-		LastOnline:          t.LastOnline,
-		Online:              t.Online,
-		Latency:             t.Latency,
-		DeploymentID:        t.DeploymentID,
-	}
-}
-
-// URL returns target url
-func (t BucketTarget) URL() *url.URL {
-	scheme := "http"
-	if t.Secure {
-		scheme = "https"
-	}
-	return &url.URL{
-		Scheme: scheme,
-		Host:   t.Endpoint,
-	}
-}
-
-// Empty returns true if struct is empty.
-func (t BucketTarget) Empty() bool {
-	return t.String() == "" || t.Credentials == nil
-}
-
-func (t *BucketTarget) String() string {
-	return fmt.Sprintf("%s %s", t.Endpoint, t.TargetBucket)
-}
-
-// BucketTargets represents a slice of bucket targets by type and endpoint
-type BucketTargets struct {
-	Targets []BucketTarget
-}
-
-// Empty returns true if struct is empty.
-func (t BucketTargets) Empty() bool {
-	if len(t.Targets) == 0 {
-		return true
-	}
-	empty := true
-	for _, t := range t.Targets {
-		if !t.Empty() {
-			return false
-		}
-	}
-	return empty
 }
 
 // ListRemoteTargets - gets target(s) for this bucket
@@ -189,7 +81,7 @@ func (adm *AdminClient) ListRemoteTargets(ctx context.Context, bucket, arnType s
 		queryValues: queryValues,
 	}
 
-	// Execute GET on /minio/admin/v3/list-remote-targets
+	// Execute GET on /minio/admin/v4/list-remote-targets
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 
 	defer closeResponse(resp)
@@ -201,7 +93,7 @@ func (adm *AdminClient) ListRemoteTargets(ctx context.Context, bucket, arnType s
 		return targets, httpRespToErrorResponse(resp)
 	}
 
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return targets, err
 	}
@@ -230,7 +122,7 @@ func (adm *AdminClient) SetRemoteTarget(ctx context.Context, bucket string, targ
 		content:     encData,
 	}
 
-	// Execute PUT on /minio/admin/v3/set-remote-target to set a target for this bucket of specific arn type.
+	// Execute PUT on /minio/admin/v4/set-remote-target to set a target for this bucket of specific arn type.
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
 
 	defer closeResponse(resp)
@@ -241,7 +133,7 @@ func (adm *AdminClient) SetRemoteTarget(ctx context.Context, bucket string, targ
 	if resp.StatusCode != http.StatusOK {
 		return "", httpRespToErrorResponse(resp)
 	}
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
@@ -270,6 +162,10 @@ const (
 	PathUpdateType
 	// ResetUpdateType sets ResetBeforeDate and ResetID on a bucket target
 	ResetUpdateType
+	// EdgeUpdateType sets bucket target as a recipent of edge traffic
+	EdgeUpdateType
+	// EdgeExpiryUpdateType sets bucket target to sync before expiry
+	EdgeExpiryUpdateType
 )
 
 // GetTargetUpdateOps returns a slice of update operations being
@@ -296,6 +192,12 @@ func GetTargetUpdateOps(values url.Values) []TargetUpdateType {
 	}
 	if values.Get("path") == "true" {
 		ops = append(ops, PathUpdateType)
+	}
+	if values.Get("edge") == "true" {
+		ops = append(ops, EdgeUpdateType)
+	}
+	if values.Get("edgeSyncBeforeExpiry") == "true" {
+		ops = append(ops, EdgeExpiryUpdateType)
 	}
 	return ops
 }
@@ -331,6 +233,10 @@ func (adm *AdminClient) UpdateRemoteTarget(ctx context.Context, target *BucketTa
 			queryValues.Set("healthcheck", "true")
 		case PathUpdateType:
 			queryValues.Set("path", "true")
+		case EdgeUpdateType:
+			queryValues.Set("edge", "true")
+		case EdgeExpiryUpdateType:
+			queryValues.Set("edgeSyncBeforeExpiry", "true")
 		}
 	}
 
@@ -340,7 +246,7 @@ func (adm *AdminClient) UpdateRemoteTarget(ctx context.Context, target *BucketTa
 		content:     encData,
 	}
 
-	// Execute PUT on /minio/admin/v3/set-remote-target to set a target for this bucket of specific arn type.
+	// Execute PUT on /minio/admin/v4/set-remote-target to set a target for this bucket of specific arn type.
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
 
 	defer closeResponse(resp)
@@ -351,7 +257,7 @@ func (adm *AdminClient) UpdateRemoteTarget(ctx context.Context, target *BucketTa
 	if resp.StatusCode != http.StatusOK {
 		return "", httpRespToErrorResponse(resp)
 	}
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", err
 	}
@@ -373,7 +279,7 @@ func (adm *AdminClient) RemoveRemoteTarget(ctx context.Context, bucket, arn stri
 		queryValues: queryValues,
 	}
 
-	// Execute PUT on /minio/admin/v3/remove-remote-target to remove a target for this bucket
+	// Execute PUT on /minio/admin/v4/remove-remote-target to remove a target for this bucket
 	// with specific ARN
 	resp, err := adm.executeMethod(ctx, http.MethodDelete, reqData)
 	defer closeResponse(resp)

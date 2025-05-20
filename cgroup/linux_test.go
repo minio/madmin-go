@@ -2,7 +2,7 @@
 // +build linux
 
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -23,14 +23,13 @@
 package cgroup
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 )
 
 // Testing parsing correctness for various process cgroup files.
 func TestProcCGroup(t *testing.T) {
-	tmpPath, err := ioutil.TempFile("", "cgroup")
+	tmpPath, err := os.CreateTemp("", "cgroup")
 	if err != nil {
 		t.Fatal(err)
 	}

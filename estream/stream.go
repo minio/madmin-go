@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -21,7 +21,6 @@ package estream
 
 import (
 	"crypto/rand"
-	crand "crypto/rand"
 	"crypto/rsa"
 	"crypto/sha512"
 	"crypto/x509"
@@ -149,7 +148,7 @@ func ReplaceKeys(w io.Writer, r io.Reader, replace ReplaceFn, o ReplaceKeysOptio
 			}
 
 			// Decrypt stream key
-			key, err := rsa.DecryptOAEP(sha512.New(), crand.Reader, private, cipherKey, nil)
+			key, err := rsa.DecryptOAEP(sha512.New(), rand.Reader, private, cipherKey, nil)
 			if err != nil {
 				return err
 			}
@@ -158,7 +157,7 @@ func ReplaceKeys(w io.Writer, r io.Reader, replace ReplaceFn, o ReplaceKeysOptio
 				return fmt.Errorf("unexpected key length: %d", len(key))
 			}
 
-			cipherKey, err = rsa.EncryptOAEP(sha512.New(), crand.Reader, public, key[:], nil)
+			cipherKey, err = rsa.EncryptOAEP(sha512.New(), rand.Reader, public, key[:], nil)
 			if err != nil {
 				return err
 			}
@@ -191,7 +190,7 @@ func ReplaceKeys(w io.Writer, r io.Reader, replace ReplaceFn, o ReplaceKeysOptio
 			if len(key) != 32 {
 				return fmt.Errorf("unexpected key length: %d", len(key))
 			}
-			cipherKey, err := rsa.EncryptOAEP(sha512.New(), crand.Reader, public, key[:], nil)
+			cipherKey, err := rsa.EncryptOAEP(sha512.New(), rand.Reader, public, key[:], nil)
 			if err != nil {
 				return err
 			}

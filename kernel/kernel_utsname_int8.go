@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -17,8 +17,8 @@
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 //
 
-//go:build (linux && 386) || (linux && amd64) || (linux && arm64) || (linux && loong64) || (linux && mips64) || (linux && mips)
-// +build linux,386 linux,amd64 linux,arm64 linux,loong64 linux,mips64 linux,mips
+//go:build (linux && 386) || (linux && amd64) || (linux && arm64) || (linux && loong64) || (linux && mips64) || (linux && mips64le) || (linux && mips)
+// +build linux,386 linux,amd64 linux,arm64 linux,loong64 linux,mips64 linux,mips64le linux,mips
 
 package kernel
 

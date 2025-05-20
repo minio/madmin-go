@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -70,7 +70,7 @@ func (adm *AdminClient) HelpConfigKV(ctx context.Context, subSys, key string, en
 		queryValues: v,
 	}
 
-	// Execute GET on /minio/admin/v3/help-config-kv
+	// Execute GET on /minio/admin/v4/help-config-kv
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 	if err != nil {
 		return Help{}, err

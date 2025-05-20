@@ -1,7 +1,8 @@
 //go:build !linux
 // +build !linux
 
-// Copyright (c) 2015-2022 MinIO, Inc.
+//
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -24,6 +25,6 @@ package cgroup
 import "errors"
 
 // GetMemoryLimit - Not implemented in non-linux platforms
-func GetMemoryLimit(pid int) (limit uint64, err error) {
+func GetMemoryLimit(_ int) (limit uint64, err error) {
 	return limit, errors.New("Not implemented for non-linux platforms")
 }

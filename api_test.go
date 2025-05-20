@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -23,7 +23,7 @@ package madmin_test
 import (
 	"testing"
 
-	"github.com/minio/madmin-go/v3"
+	"github.com/minio/madmin-go/v4"
 )
 
 func TestMinioAdminClient(t *testing.T) {

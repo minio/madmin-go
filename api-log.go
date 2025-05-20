@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -31,8 +31,11 @@ import (
 type LogMask uint64
 
 const (
-	LogMaskMinIO LogMask = 1 << iota
-	LogMaskApplication
+	LogMaskFatal LogMask = 1 << iota
+	LogMaskWarning
+	LogMaskError
+	LogMaskEvent
+	LogMaskInfo
 
 	// LogMaskAll must be the last.
 	LogMaskAll LogMask = (1 << iota) - 1
@@ -52,25 +55,28 @@ func (m LogMask) Contains(other LogMask) bool {
 type LogKind string
 
 const (
-	// LogKindMinio Minio errors
-	LogKindMinio LogKind = "MINIO"
-	// LogKindApplication Application errors
-	LogKindApplication LogKind = "APPLICATION"
-	// LogKindAll All errors
-	LogKindAll LogKind = "ALL"
+	LogKindFatal   LogKind = "FATAL"
+	LogKindWarning LogKind = "WARNING"
+	LogKindError   LogKind = "ERROR"
+	LogKindEvent   LogKind = "EVENT"
+	LogKindInfo    LogKind = "INFO"
 )
 
 // LogMask returns the mask based on the kind.
 func (l LogKind) LogMask() LogMask {
 	switch l {
-	case LogKindMinio:
-		return LogMaskMinIO
-	case LogKindApplication:
-		return LogMaskApplication
-	case LogKindAll:
-		return LogMaskAll
+	case LogKindFatal:
+		return LogMaskFatal
+	case LogKindWarning:
+		return LogMaskWarning
+	case LogKindError:
+		return LogMaskError
+	case LogKindEvent:
+		return LogMaskEvent
+	case LogKindInfo:
+		return LogMaskInfo
 	}
-	return 0
+	return LogMaskAll
 }
 
 func (l LogKind) String() string {
@@ -80,9 +86,8 @@ func (l LogKind) String() string {
 // LogInfo holds console log messages
 type LogInfo struct {
 	logEntry
-	ConsoleMsg string
-	NodeName   string `json:"node"`
-	Err        error  `json:"-"`
+	NodeName string `json:"node"`
+	Err      error  `json:"-"`
 }
 
 // GetLogs - listen on console log messages.

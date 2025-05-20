@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -23,7 +23,6 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 )
@@ -67,6 +66,7 @@ type BucketStatus struct {
 	Lifecycle    MetaStatus `json:"lifecycle"`
 	Notification MetaStatus `json:"notification"`
 	Quota        MetaStatus `json:"quota"`
+	Cors         MetaStatus `json:"cors"`
 	Err          string     `json:"error,omitempty"`
 }
 
@@ -77,7 +77,7 @@ type BucketMetaImportErrs struct {
 
 // ImportBucketMetadata makes an admin call to set bucket metadata of a bucket from imported content
 func (adm *AdminClient) ImportBucketMetadata(ctx context.Context, bucket string, contentReader io.ReadCloser) (r BucketMetaImportErrs, err error) {
-	content, err := ioutil.ReadAll(contentReader)
+	content, err := io.ReadAll(contentReader)
 	if err != nil {
 		return r, err
 	}

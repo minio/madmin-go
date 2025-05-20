@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -22,6 +22,7 @@ package madmin
 import (
 	"math/bits"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -61,6 +62,18 @@ const (
 	TraceFTP
 	// TraceILM will trace events during MinIO ILM operations
 	TraceILM
+	// TraceKMS are traces for interactions with KMS.
+	TraceKMS
+	// TraceFormatting will trace formatting events
+	TraceFormatting
+	// TraceAdmin will trace admin calls
+	TraceAdmin
+	// TraceObject will trade object layer operations
+	TraceObject
+	// TraceReplication will trace replication as they are being picked up by workers
+	TraceReplication
+	// TraceIAM will trace Identity and Access Management
+	TraceIAM
 	// Add more here...
 
 	// TraceAll contains all valid trace modes.
@@ -72,6 +85,23 @@ const (
 	// TraceBatch will trace all batch operations.
 	TraceBatch = TraceBatchReplication | TraceBatchKeyRotation | TraceBatchExpire // |TraceBatch<NextFeature>
 )
+
+// FindTraceType will find a single trace type from a string,
+// as returned by String(). Matching is not case sensitive.
+// Will return 0 if not found.
+func FindTraceType(s string) TraceType {
+	bitIdx := uint(0)
+	for {
+		idx := TraceType(1 << bitIdx)
+		if idx > TraceAll {
+			return 0
+		}
+		if strings.EqualFold(idx.String(), s) {
+			return idx
+		}
+		bitIdx++
+	}
+}
 
 // Contains returns whether all flags in other is present in t.
 func (t TraceType) Contains(other TraceType) bool {
@@ -116,6 +146,7 @@ type TraceInfo struct {
 	Time     time.Time     `json:"time"`
 	Path     string        `json:"path"`
 	Duration time.Duration `json:"dur"`
+	Bytes    int64         `json:"bytes,omitempty"`
 
 	Message    string            `json:"msg,omitempty"`
 	Error      string            `json:"error,omitempty"`
@@ -129,26 +160,6 @@ func (t TraceInfo) Mask() uint64 {
 	return t.TraceType.Mask()
 }
 
-// traceInfoLegacy - represents a trace record, additionally
-// also reports errors if any while listening on trace.
-// For minio versions before July 2022.
-type traceInfoLegacy struct {
-	TraceInfo
-
-	ReqInfo   *TraceRequestInfo  `json:"request"`
-	RespInfo  *TraceResponseInfo `json:"response"`
-	CallStats *TraceCallStats    `json:"stats"`
-
-	StorageStats *struct {
-		Path     string        `json:"path"`
-		Duration time.Duration `json:"duration"`
-	} `json:"storageStats"`
-	OSStats *struct {
-		Path     string        `json:"path"`
-		Duration time.Duration `json:"duration"`
-	} `json:"osStats"`
-}
-
 type TraceHTTPStats struct {
 	ReqInfo   TraceRequestInfo  `json:"request"`
 	RespInfo  TraceResponseInfo `json:"response"`
@@ -157,10 +168,8 @@ type TraceHTTPStats struct {
 
 // TraceCallStats records request stats
 type TraceCallStats struct {
-	InputBytes  int `json:"inputbytes"`
-	OutputBytes int `json:"outputbytes"`
-	// Deprecated: Use TraceInfo.Duration (June 2022)
-	Latency         time.Duration `json:"latency"`
+	InputBytes      int           `json:"inputbytes"`
+	OutputBytes     int           `json:"outputbytes"`
 	TimeToFirstByte time.Duration `json:"timetofirstbyte"`
 }
 

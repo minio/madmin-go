@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -19,7 +19,17 @@
 
 package madmin
 
+import "errors"
+
+//msgp:timezone utc
 //go:generate msgp -file $GOFILE
+
+// ServicePrincipalAuth holds fields for a successful SP authentication with Azure
+type ServicePrincipalAuth struct {
+	TenantID     string `json:",omitempty"`
+	ClientID     string `json:",omitempty"`
+	ClientSecret string `json:",omitempty"`
+}
 
 // TierAzure represents the remote tier configuration for Azure Blob Storage.
 type TierAzure struct {
@@ -30,10 +40,36 @@ type TierAzure struct {
 	Prefix       string `json:",omitempty"`
 	Region       string `json:",omitempty"`
 	StorageClass string `json:",omitempty"`
+
+	SPAuth ServicePrincipalAuth `json:",omitempty"`
+}
+
+// IsSPEnabled returns true if all SP related fields are provided
+func (ti TierAzure) IsSPEnabled() bool {
+	return ti.SPAuth.TenantID != "" && ti.SPAuth.ClientID != "" && ti.SPAuth.ClientSecret != ""
 }
 
 // AzureOptions supports NewTierAzure to take variadic options
 type AzureOptions func(*TierAzure) error
+
+// AzureServicePrincipal helper to supply optional service principal credentials
+func AzureServicePrincipal(tenantID, clientID, clientSecret string) func(az *TierAzure) error {
+	return func(az *TierAzure) error {
+		if tenantID == "" {
+			return errors.New("empty tenant ID unsupported")
+		}
+		if clientID == "" {
+			return errors.New("empty client ID unsupported")
+		}
+		if clientSecret == "" {
+			return errors.New("empty client secret unsupported")
+		}
+		az.SPAuth.TenantID = tenantID
+		az.SPAuth.ClientID = clientID
+		az.SPAuth.ClientSecret = clientSecret
+		return nil
+	}
+}
 
 // AzurePrefix helper to supply optional object prefix to NewTierAzure
 func AzurePrefix(prefix string) func(az *TierAzure) error {
@@ -79,7 +115,7 @@ func NewTierAzure(name, accountName, accountKey, bucket string, options ...Azure
 		AccountKey:  accountKey,
 		Bucket:      bucket,
 		// Defaults
-		Endpoint:     "http://blob.core.windows.net",
+		Endpoint:     "",
 		Prefix:       "",
 		Region:       "",
 		StorageClass: "",

@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -66,6 +66,7 @@ type SpeedtestOpts struct {
 	StorageClass string        // Choose type of storage-class to be used while performing I/O
 	Bucket       string        // Choose a custom bucket name while performing I/O
 	NoClear      bool          // Avoid cleanup after running an object speed test
+	EnableSha256 bool          // Enable calculating sha256 for uploads
 }
 
 // Speedtest - perform speedtest on the MinIO servers
@@ -100,6 +101,9 @@ func (adm *AdminClient) Speedtest(ctx context.Context, opts SpeedtestOpts) (chan
 	}
 	if opts.NoClear {
 		queryVals.Set("noclear", "true")
+	}
+	if opts.EnableSha256 {
+		queryVals.Set("enableSha256", "true")
 	}
 	resp, err := adm.executeMethod(ctx,
 		http.MethodPost, requestData{

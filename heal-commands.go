@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -23,12 +23,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"sort"
 	"time"
 )
+
+//msgp:clearomitted
+//msgp:tag json
+//msgp:timezone utc
+//go:generate msgp -file $GOFILE
 
 // HealScanMode represents the type of healing scan
 type HealScanMode int
@@ -53,6 +58,11 @@ type HealOpts struct {
 	ScanMode     HealScanMode `json:"scanMode"`
 	UpdateParity bool         `json:"updateParity"` // Update the parity of the existing object with a new one
 	NoLock       bool         `json:"nolock"`
+
+	// Pool to heal. nil indicates "all pools" (and sets).
+	Pool *int `json:"pool,omitempty"`
+	// Set to heal. nil indicates "all sets". Should always be nil if Pool is nil.
+	Set *int `json:"set,omitempty"`
 }
 
 // Equal returns true if no is same as o.
@@ -105,21 +115,22 @@ type HealItemType string
 // HealItemType constants
 const (
 	HealItemMetadata       HealItemType = "metadata"
-	HealItemBucket                      = "bucket"
-	HealItemBucketMetadata              = "bucket-metadata"
-	HealItemObject                      = "object"
+	HealItemBucket         HealItemType = "bucket"
+	HealItemBucketMetadata HealItemType = "bucket-metadata"
+	HealItemObject         HealItemType = "object"
 )
 
 // Drive state constants
 const (
 	DriveStateOk          string = "ok"
-	DriveStateOffline            = "offline"
-	DriveStateCorrupt            = "corrupt"
-	DriveStateMissing            = "missing"
-	DriveStatePermission         = "permission-denied"
-	DriveStateFaulty             = "faulty"
-	DriveStateUnknown            = "unknown"
-	DriveStateUnformatted        = "unformatted" // only returned by disk
+	DriveStateOffline     string = "offline"
+	DriveStateCorrupt     string = "corrupt"
+	DriveStateMissing     string = "missing"
+	DriveStatePermission  string = "permission-denied"
+	DriveStateFaulty      string = "faulty"
+	DriveStateRootMount   string = "root-mount"
+	DriveStateUnknown     string = "unknown"
+	DriveStateUnformatted string = "unformatted" // only returned by disk
 )
 
 // HealDriveInfo - struct for an individual drive info item.
@@ -278,7 +289,7 @@ func (adm *AdminClient) Heal(ctx context.Context, bucket, prefix string,
 		return healStart, healTaskStatus, httpRespToErrorResponse(resp)
 	}
 
-	respBytes, err := ioutil.ReadAll(resp.Body)
+	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return healStart, healTaskStatus, err
 	}
@@ -340,6 +351,15 @@ type SetStatus struct {
 	Disks        []Disk `json:"disks"`
 }
 
+type HealingDriveReason int8
+
+const (
+	// HealingReasonFreshDisk is the 0 value default, which is a fresh disk
+	HealingReasonFreshDisk HealingDriveReason = iota
+	// HealingReasonOfflineDisk means the disk was detected as being offline for too long
+	HealingReasonOfflineDisk
+)
+
 // HealingDisk contains information about
 type HealingDisk struct {
 	// Copied from cmd/background-newdisks-heal-ops.go
@@ -355,16 +375,17 @@ type HealingDisk struct {
 	Started    time.Time `json:"started"`
 	LastUpdate time.Time `json:"last_update"`
 
+	RetryAttempts uint64 `json:"retry_attempts"`
+
 	ObjectsTotalCount uint64 `json:"objects_total_count"`
 	ObjectsTotalSize  uint64 `json:"objects_total_size"`
 
-	ItemsHealed uint64 `json:"items_healed"`
-	ItemsFailed uint64 `json:"items_failed"`
-	BytesDone   uint64 `json:"bytes_done"`
-	BytesFailed uint64 `json:"bytes_failed"`
-
-	ObjectsHealed uint64 `json:"objects_healed"` // Deprecated July 2021
-	ObjectsFailed uint64 `json:"objects_failed"` // Deprecated July 2021
+	ItemsHealed  uint64 `json:"items_healed"`
+	ItemsFailed  uint64 `json:"items_failed"`
+	ItemsSkipped uint64 `json:"items_skipped"`
+	BytesDone    uint64 `json:"bytes_done"`
+	BytesFailed  uint64 `json:"bytes_failed"`
+	BytesSkipped uint64 `json:"bytes_skipped"`
 
 	// Last object scanned.
 	Bucket string `json:"current_bucket"`
@@ -372,9 +393,15 @@ type HealingDisk struct {
 
 	// Filled on startup/restarts.
 	QueuedBuckets []string `json:"queued_buckets"`
-
 	// Filled during heal.
 	HealedBuckets []string `json:"healed_buckets"`
+
+	// Healing of this drive is finished, successfully or not
+	Finished bool `json:"finished"`
+
+	// The reason the healing was started, in order to decide which drive has priority.
+	Reason HealingDriveReason `json:"reason"`
+
 	// future add more tracking capabilities
 }
 
@@ -443,7 +470,7 @@ func (adm *AdminClient) BackgroundHealStatus(ctx context.Context) (BgHealState, 
 		return BgHealState{}, httpRespToErrorResponse(resp)
 	}
 
-	respBytes, err := ioutil.ReadAll(resp.Body)
+	respBytes, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return BgHealState{}, err
 	}

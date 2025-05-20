@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -28,7 +28,6 @@ import (
 	"encoding/binary"
 	"errors"
 	"io"
-	"math"
 
 	"github.com/cespare/xxhash/v2"
 	"github.com/secure-io/sio-go"
@@ -338,11 +337,12 @@ func (b *blockWriter) send() error {
 	}
 	// Add block id
 	hdr := msgp.AppendInt8(b.hdr[:0], int8(b.id))
-	if uint32(b.buf.Len()) > math.MaxUint32 {
+	blockLen := uint32(b.buf.Len())
+	if blockLen > (1<<32 - 1) {
 		return errors.New("max block size exceeded")
 	}
 	// Add block length.
-	hdr = msgp.AppendUint32(hdr, uint32(b.buf.Len()))
+	hdr = msgp.AppendUint32(hdr, blockLen)
 	if _, err := b.w.Write(hdr); err != nil {
 		return err
 	}

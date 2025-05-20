@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -22,7 +22,7 @@ package madmin
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 )
@@ -42,21 +42,10 @@ func (t QuotaType) IsValid() bool {
 
 // BucketQuota holds bucket quota restrictions
 type BucketQuota struct {
-	Quota    uint64    `json:"quota"`    // Deprecated Aug 2023
 	Size     uint64    `json:"size"`     // Indicates maximum size allowed per bucket
 	Rate     uint64    `json:"rate"`     // Indicates bandwidth rate allocated per bucket
 	Requests uint64    `json:"requests"` // Indicates number of requests allocated per bucket
 	Type     QuotaType `json:"quotatype,omitempty"`
-}
-
-// IsValid returns false if quota is invalid
-// empty quota when Quota == 0 is always true.
-func (q BucketQuota) IsValid() bool {
-	if q.Quota > 0 {
-		return q.Type.IsValid()
-	}
-	// Empty configs are valid.
-	return true
 }
 
 // GetBucketQuota - get info on a user
@@ -69,7 +58,7 @@ func (adm *AdminClient) GetBucketQuota(ctx context.Context, bucket string) (q Bu
 		queryValues: queryValues,
 	}
 
-	// Execute GET on /minio/admin/v3/get-quota
+	// Execute GET on /minio/admin/v4/get-quota
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 
 	defer closeResponse(resp)
@@ -81,7 +70,7 @@ func (adm *AdminClient) GetBucketQuota(ctx context.Context, bucket string) (q Bu
 		return q, httpRespToErrorResponse(resp)
 	}
 
-	b, err := ioutil.ReadAll(resp.Body)
+	b, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return q, err
 	}
@@ -109,7 +98,7 @@ func (adm *AdminClient) SetBucketQuota(ctx context.Context, bucket string, quota
 		content:     data,
 	}
 
-	// Execute PUT on /minio/admin/v3/set-bucket-quota to set quota for a bucket.
+	// Execute PUT on /minio/admin/v4/set-bucket-quota to set quota for a bucket.
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
 
 	defer closeResponse(resp)

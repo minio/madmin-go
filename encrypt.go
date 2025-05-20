@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -24,6 +24,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"io"
+	"sync"
 
 	"github.com/secure-io/sio-go"
 	"github.com/secure-io/sio-go/sioutil"
@@ -63,7 +64,9 @@ func EncryptData(password string, data []byte) ([]byte, error) {
 		}
 		id = pbkdf2AESGCM
 	} else {
+		argon2Mu.Lock()
 		key := argon2.IDKey([]byte(password), salt, argon2idTime, argon2idMemory, argon2idThreads, 32)
+		argon2Mu.Unlock()
 		if sioutil.NativeAES() {
 			stream, err = sio.AES_256_GCM.Stream(key)
 			if err != nil {
@@ -100,6 +103,12 @@ func EncryptData(password string, data []byte) ([]byte, error) {
 	return ciphertext.Bytes(), nil
 }
 
+// argon2Mu is used to control concurrent use of argon2,
+// which is very cpu/ram intensive.
+// Running concurrent operations most often provides no benefit anyway,
+// since it already uses 32 threads.
+var argon2Mu sync.Mutex
+
 // ErrMaliciousData indicates that the stream cannot be
 // decrypted by provided credentials.
 var ErrMaliciousData = sio.NotAuthentic
@@ -130,14 +139,18 @@ func DecryptData(password string, data io.Reader) ([]byte, error) {
 		err    error
 		stream *sio.Stream
 	)
-	switch {
-	case id[0] == argon2idAESGCM:
+	switch id[0] {
+	case argon2idAESGCM:
+		argon2Mu.Lock()
 		key := argon2.IDKey([]byte(password), salt, argon2idTime, argon2idMemory, argon2idThreads, 32)
+		argon2Mu.Unlock()
 		stream, err = sio.AES_256_GCM.Stream(key)
-	case id[0] == argon2idChaCHa20Poly1305:
+	case argon2idChaCHa20Poly1305:
+		argon2Mu.Lock()
 		key := argon2.IDKey([]byte(password), salt, argon2idTime, argon2idMemory, argon2idThreads, 32)
+		argon2Mu.Unlock()
 		stream, err = sio.ChaCha20Poly1305.Stream(key)
-	case id[0] == pbkdf2AESGCM:
+	case pbkdf2AESGCM:
 		key := pbkdf2.Key([]byte(password), salt, pbkdf2Cost, 32, sha256.New)
 		stream, err = sio.AES_256_GCM.Stream(key)
 	default:

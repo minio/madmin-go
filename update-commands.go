@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -24,19 +24,40 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/url"
+	"strconv"
 )
 
-// ServerUpdateStatus - contains the response of service update API
+// ServerPeerUpdateStatus server update peer binary update result
+type ServerPeerUpdateStatus struct {
+	Host           string                 `json:"host"`
+	Err            string                 `json:"err,omitempty"`
+	CurrentVersion string                 `json:"currentVersion"`
+	UpdatedVersion string                 `json:"updatedVersion"`
+	WaitingDrives  map[string]DiskMetrics `json:"waitingDrives,omitempty"`
+}
+
+// ServerUpdateStatus server update status
 type ServerUpdateStatus struct {
-	CurrentVersion string `json:"currentVersion"`
-	UpdatedVersion string `json:"updatedVersion"`
+	DryRun  bool                     `json:"dryRun"`
+	Results []ServerPeerUpdateStatus `json:"results,omitempty"`
+}
+
+// ServerUpdateOpts specifies the URL (optionally to download the binary from)
+// also allows a dry-run, the new API is idempotent which means you can
+// run it as many times as you want and any server that is not upgraded
+// automatically does get upgraded eventually to the relevant version.
+type ServerUpdateOpts struct {
+	UpdateURL string
+	DryRun    bool
 }
 
 // ServerUpdate - updates and restarts the MinIO cluster to latest version.
 // optionally takes an input URL to specify a custom update binary link
-func (adm *AdminClient) ServerUpdate(ctx context.Context, updateURL string) (us ServerUpdateStatus, err error) {
+func (adm *AdminClient) ServerUpdate(ctx context.Context, opts ServerUpdateOpts) (us ServerUpdateStatus, err error) {
 	queryValues := url.Values{}
-	queryValues.Set("updateURL", updateURL)
+	queryValues.Set("type", "2")
+	queryValues.Set("updateURL", opts.UpdateURL)
+	queryValues.Set("dry-run", strconv.FormatBool(opts.DryRun))
 
 	// Request API to Restart server
 	resp, err := adm.executeMethod(ctx,

@@ -1,5 +1,8 @@
+//go:build !linux
+// +build !linux
+
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -19,12 +22,14 @@
 
 package madmin
 
-import "time"
-
-// Credentials holds access and secret keys.
-type Credentials struct {
-	AccessKey    string    `xml:"AccessKeyId" json:"accessKey,omitempty"`
-	SecretKey    string    `xml:"SecretAccessKey" json:"secretKey,omitempty"`
-	SessionToken string    `xml:"SessionToken" json:"sessionToken,omitempty"`
-	Expiration   time.Time `xml:"Expiration" json:"expiration,omitempty"`
+// GetNetInfo returns information of the given network interface
+// Not implemented for non-linux platforms
+func GetNetInfo(addr string, iface string) NetInfo {
+	return NetInfo{
+		NodeCommon: NodeCommon{
+			Addr:  addr,
+			Error: "Not implemented for non-linux platforms",
+		},
+		Interface: iface,
+	}
 }

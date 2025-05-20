@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -27,6 +27,7 @@ import (
 	"time"
 )
 
+//msgp:timezone utc
 //go:generate msgp -file $GOFILE
 
 // ReplDiffOpts holds options for `mc replicate diff` command
@@ -88,7 +89,7 @@ func (adm *AdminClient) BucketReplicationDiff(ctx context.Context, bucketName st
 			queryValues: queryValues,
 		}
 
-		// Execute PUT on /minio/admin/v3/diff to set quota for a bucket.
+		// Execute PUT on /minio/admin/v4/diff to set quota for a bucket.
 		resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
 		if err != nil {
 			diffCh <- DiffInfo{Err: err}
@@ -146,7 +147,7 @@ func (adm *AdminClient) BucketReplicationMRF(ctx context.Context, bucketName str
 			queryValues: queryValues,
 		}
 
-		// Execute GET on /minio/admin/v3/replication/mrf to get mrf backlog for a bucket.
+		// Execute GET on /minio/admin/v4/replication/mrf to get mrf backlog for a bucket.
 		resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 		if err != nil {
 			mrfCh <- ReplicationMRF{Err: err.Error()}
@@ -221,4 +222,38 @@ func (r RStat) Add(r1 RStat) RStat {
 		Count: r.Count + r1.Count,
 		Bytes: r.Bytes + r1.Bytes,
 	}
+}
+
+// DowntimeInfo captures the downtime information
+type DowntimeInfo struct {
+	Duration StatRecorder `json:"duration"`
+	Count    StatRecorder `json:"count"`
+}
+
+// RecordCount records the value
+func (d *DowntimeInfo) RecordCount(value int64) {
+	d.Count.Record(value)
+}
+
+// RecordDuration records the value
+func (d *DowntimeInfo) RecordDuration(value int64) {
+	d.Duration.Record(value)
+}
+
+// StatRecorder records and calculates the aggregates
+type StatRecorder struct {
+	Total int64 `json:"total"`
+	Avg   int64 `json:"avg"`
+	Max   int64 `json:"max"`
+	count int64 `json:"-"`
+}
+
+// Record will record the value and calculates the aggregates on the fly
+func (s *StatRecorder) Record(value int64) {
+	s.Total += value
+	if s.count == 0 || value > s.Max {
+		s.Max = value
+	}
+	s.count++
+	s.Avg = s.Total / s.count
 }

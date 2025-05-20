@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2023 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -27,6 +27,7 @@ import (
 	"time"
 
 	jwtgo "github.com/golang-jwt/jwt/v4"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
 const (
@@ -37,8 +38,8 @@ const (
 
 // MetricsClient implements MinIO metrics operations
 type MetricsClient struct {
-	/// JWT token for authentication
-	jwtToken string
+	/// Credentials for authentication
+	creds *credentials.Credentials
 	// Indicate whether we are using https or not
 	secure bool
 	// Parsed endpoint url provided by the user.
@@ -53,19 +54,18 @@ type metricsRequestData struct {
 	relativePath string // URL path relative to admin API base endpoint
 }
 
-// NewMetricsClient - instantiate minio metrics client honoring Prometheus format
-func NewMetricsClient(endpoint string, accessKeyID, secretAccessKey string, secure bool) (*MetricsClient, error) {
-	jwtToken, err := getPrometheusToken(accessKeyID, secretAccessKey)
+// NewMetricsClientWithOptions - instantiate minio metrics client honoring Prometheus format
+func NewMetricsClientWithOptions(endpoint string, opts *Options) (*MetricsClient, error) {
+	if opts == nil {
+		return nil, ErrInvalidArgument("empty options not allowed")
+	}
+
+	endpointURL, err := getEndpointURL(endpoint, opts.Secure)
 	if err != nil {
 		return nil, err
 	}
 
-	endpointURL, err := getEndpointURL(endpoint, secure)
-	if err != nil {
-		return nil, err
-	}
-
-	clnt, err := privateNewMetricsClient(endpointURL, jwtToken, secure)
+	clnt, err := privateNewMetricsClient(endpointURL, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -87,29 +87,51 @@ func getPrometheusToken(accessKey, secretKey string) (string, error) {
 	return token, nil
 }
 
-func privateNewMetricsClient(endpointURL *url.URL, jwtToken string, secure bool) (*MetricsClient, error) {
+func privateNewMetricsClient(endpointURL *url.URL, opts *Options) (*MetricsClient, error) {
 	clnt := new(MetricsClient)
-	clnt.jwtToken = jwtToken
-	clnt.secure = secure
+	clnt.creds = opts.Creds
+	clnt.secure = opts.Secure
 	clnt.endpointURL = endpointURL
+
+	tr := opts.Transport
+	if tr == nil {
+		tr = DefaultTransport(opts.Secure)
+	}
+
 	clnt.httpClient = &http.Client{
-		Transport: DefaultTransport(secure),
+		Transport: tr,
 	}
 	return clnt, nil
 }
 
-// executeRequest - instantiates a Get method and performs the request
-func (client MetricsClient) executeRequest(ctx context.Context, reqData metricsRequestData) (res *http.Response, err error) {
+// executeGetRequest - instantiates a Get method and performs the request
+func (client *MetricsClient) executeGetRequest(ctx context.Context, reqData metricsRequestData) (res *http.Response, err error) {
 	req, err := client.newGetRequest(ctx, reqData)
 	if err != nil {
 		return nil, err
 	}
-	req.Header.Add("Authorization", "Bearer "+client.jwtToken)
+
+	v, err := client.creds.GetWithContext(client.CredContext())
+	if err != nil {
+		return nil, err
+	}
+
+	accessKeyID := v.AccessKeyID
+	secretAccessKey := v.SecretAccessKey
+
+	jwtToken, err := getPrometheusToken(accessKeyID, secretAccessKey)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Add("Authorization", "Bearer "+jwtToken)
+	req.Header.Set("X-Amz-Security-Token", v.SessionToken)
+
 	return client.httpClient.Do(req)
 }
 
 // newGetRequest - instantiate a new HTTP GET request
-func (client MetricsClient) newGetRequest(ctx context.Context, reqData metricsRequestData) (req *http.Request, err error) {
+func (client *MetricsClient) newGetRequest(ctx context.Context, reqData metricsRequestData) (req *http.Request, err error) {
 	targetURL, err := client.makeTargetURL(reqData)
 	if err != nil {
 		return nil, err
@@ -119,7 +141,7 @@ func (client MetricsClient) newGetRequest(ctx context.Context, reqData metricsRe
 }
 
 // makeTargetURL make a new target url.
-func (client MetricsClient) makeTargetURL(r metricsRequestData) (*url.URL, error) {
+func (client *MetricsClient) makeTargetURL(r metricsRequestData) (*url.URL, error) {
 	if client.endpointURL == nil {
 		return nil, fmt.Errorf("enpointURL cannot be nil")
 	}
@@ -130,4 +152,11 @@ func (client MetricsClient) makeTargetURL(r metricsRequestData) (*url.URL, error
 
 	urlStr := scheme + "://" + host + prefix + r.relativePath
 	return url.Parse(urlStr)
+}
+
+// CredContext returns the context for fetching credentials
+func (client *MetricsClient) CredContext() *credentials.CredContext {
+	return &credentials.CredContext{
+		Client: client.httpClient,
+	}
 }

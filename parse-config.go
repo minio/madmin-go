@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -53,6 +53,8 @@ const (
 	SubnetSubSys         = "subnet"
 	CallhomeSubSys       = "callhome"
 	BatchSubSys          = "batch"
+	DriveSubSys          = "drive"
+	ILMSubsys            = "ilm"
 
 	NotifyKafkaSubSys    = "notify_kafka"
 	NotifyMQTTSubSys     = "notify_mqtt"
@@ -66,6 +68,12 @@ const (
 	NotifyWebhookSubSys  = "notify_webhook"
 
 	LambdaWebhookSubSys = "lambda_webhook"
+
+	BrowserSubSys          = "browser"
+	KubernetesSubSys       = "kubernetes"
+	AuditEventQueueSubSys  = "audit_event_queue"
+	ErasureSubSys          = "erasure"
+	BucketEventQueueSubSys = "bucket_event_queue"
 )
 
 // SubSystems - list of all subsystems in MinIO
@@ -93,6 +101,8 @@ var SubSystems = set.CreateStringSet(
 	SubnetSubSys,
 	CallhomeSubSys,
 	BatchSubSys,
+	DriveSubSys,
+	ILMSubsys,
 	NotifyKafkaSubSys,
 	NotifyMQTTSubSys,
 	NotifyMySQLSubSys,
@@ -104,6 +114,52 @@ var SubSystems = set.CreateStringSet(
 	NotifyRedisSubSys,
 	NotifyWebhookSubSys,
 	LambdaWebhookSubSys,
+	BrowserSubSys,
+)
+
+// EOSSubSystems - list of all subsystems for EOS
+var EOSSubSystems = set.CreateStringSet(
+	CredentialsSubSys,
+	PolicyOPASubSys,
+	PolicyPluginSubSys,
+	IdentityOpenIDSubSys,
+	IdentityLDAPSubSys,
+	IdentityTLSSubSys,
+	IdentityPluginSubSys,
+	CacheSubSys,
+	SiteSubSys,
+	RegionSubSys,
+	EtcdSubSys,
+	StorageClassSubSys,
+	APISubSys,
+	CompressionSubSys,
+	LoggerWebhookSubSys,
+	AuditWebhookSubSys,
+	AuditKafkaSubSys,
+	HealSubSys,
+	ScannerSubSys,
+	CrawlerSubSys,
+	SubnetSubSys,
+	CallhomeSubSys,
+	BatchSubSys,
+	DriveSubSys,
+	ILMSubsys,
+	NotifyKafkaSubSys,
+	NotifyMQTTSubSys,
+	NotifyMySQLSubSys,
+	NotifyNATSSubSys,
+	NotifyNSQSubSys,
+	NotifyESSubSys,
+	NotifyAMQPSubSys,
+	NotifyPostgresSubSys,
+	NotifyRedisSubSys,
+	NotifyWebhookSubSys,
+	LambdaWebhookSubSys,
+	BrowserSubSys,
+	AuditEventQueueSubSys,
+	ErasureSubSys,
+	BucketEventQueueSubSys,
+	KubernetesSubSys,
 )
 
 // Standard config keys and values.

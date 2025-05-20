@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2023 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -21,11 +21,11 @@ package madmin
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
 	"net/url"
 	"time"
@@ -102,7 +102,7 @@ func (adm *AdminClient) ClientPerf(ctx context.Context, dur time.Duration) (resu
 		contentReader: reader,
 	})
 	reader.End()
-	if errors.Is(err, context.DeadlineExceeded) {
+	if errors.Is(err, context.DeadlineExceeded) && ctx.Err() != nil {
 		err = nil
 	}
 

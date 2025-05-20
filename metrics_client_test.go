@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2023 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -72,29 +72,6 @@ func TestMakeTargetUrlReturnsErrorOnURLParse(t *testing.T) {
 	_, err := clnt.makeTargetURL(requestData)
 	if err == nil {
 		t.Errorf("error expected got nil")
-	}
-}
-
-func TestPrivteNewMetricsClientInstantiatesMetricsClientWithRequiredFields(t *testing.T) {
-	endpointURL := &url.URL{}
-	jwtToken := "someToken"
-	secure := true
-
-	clnt, err := privateNewMetricsClient(endpointURL, jwtToken, secure)
-	if err != nil {
-		t.Errorf("error not expected, got: %v", err)
-	}
-	if clnt.endpointURL != endpointURL {
-		t.Errorf("clnt.endpointURL: %s  not equal to endpointURL: %s", clnt.endpointURL, endpointURL)
-	}
-	if clnt.jwtToken != jwtToken {
-		t.Errorf("clnt.jwtToken: %s  not equal to jwtToken: %s", clnt.jwtToken, jwtToken)
-	}
-	if clnt.secure != secure {
-		t.Errorf("clnt.secure: %v  not equal to secure: %v", clnt.secure, secure)
-	}
-	if clnt.httpClient.Transport == nil {
-		t.Errorf("clnt.Transport expecting not nil")
 	}
 }
 

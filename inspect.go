@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -24,7 +24,6 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -50,7 +49,7 @@ func (adm *AdminClient) Inspect(ctx context.Context, d InspectOptions) (key []by
 
 	method := ""
 	reqData := requestData{
-		relPath: fmt.Sprintf(adminAPIPrefix + "/inspect-data"),
+		relPath: adminAPIPrefix + "/inspect-data",
 	}
 
 	// If the public-key is specified, create a POST request and send

@@ -1,39 +1,37 @@
-linters-settings:
-  golint:
-    min-confidence: 0
-
-  misspell:
-    locale: US
-
-  gofumpt:
-    lang-version: "1.18"
-
-    # Choose whether or not to use the extra rules that are disabled
-    # by default
-    extra-rules: false
-    
+version: "2"
 linters:
-  disable-all: true
+  default: none
   enable:
-    - typecheck
-    - goimports
-    - misspell
     - govet
-    - revive
     - ineffassign
-    - gosimple
-    - unused
+    - misspell
     - prealloc
+    - revive
+    - staticcheck
     - unconvert
+    - unused
+  exclusions:
+    generated: lax
+    rules:
+      - path: (.+)\.go$
+        text: should have comment
+      - path: (.+)\.go$
+        text: should have a package comment
+      - path: (.+)\.go$
+        text: error strings should not be capitalized or end with punctuation or a newline
+      - path: (.+)\.go$
+        text: don't use ALL_CAPS in Go names
+    paths:
+      - third_party$
+      - builtin$
+      - examples$
+formatters:
+  enable:
     - gofumpt
-    
-issues:
-  exclude-use-default: false
-  exclude:
-      - should have comment
-      - should have a package comment
-      - error strings should not be capitalized or end with punctuation or a newline
-      - don't use ALL_CAPS in Go names
-
-service:
-  golangci-lint-version: 1.45.2 # use the fixed version to not introduce new linters unexpectedly
+    - goimports
+  exclusions:
+    generated: lax
+    paths:
+      - third_party$
+      - builtin$
+      - examples$

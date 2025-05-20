@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2023 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -33,7 +33,7 @@ func TestParsePrometheusResultsReturnsPrometheusObjectsFromStringReader(t *testi
 		go_gc_duration_seconds_count 397
 	`
 	myReader := strings.NewReader(prometheusResults)
-	results, err := parsePrometheusResults(myReader)
+	results, err := ParsePrometheusResults(myReader)
 	if err != nil {
 		t.Errorf("error not expected, got: %v", err)
 	}

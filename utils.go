@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -21,22 +21,44 @@ package madmin
 
 import (
 	"io"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
+	"time"
 
 	"github.com/minio/minio-go/v7/pkg/s3utils"
 )
 
-// AdminAPIVersion - admin api version used in the request.
-const (
-	AdminAPIVersion   = "v3"
-	AdminAPIVersionV2 = "v2"
-	adminAPIPrefix    = "/" + AdminAPIVersion
-	kmsAPIVersion     = "v1"
-	kmsAPIPrefix      = "/" + kmsAPIVersion
+//msgp:clearomitted
+//msgp:tag json
+//msgp:timezone utc
+//go:generate msgp -file $GOFILE
+
+var (
+	// MinIO only supports last two versions
+	// you can force an application by setting env MADMIN_API_VERSION=v3 if you want the
+	// library to start using v3, which would allow the application to work with MinIO
+	// servers that are not yet upgraded to v4 Admin API
+
+	// AdminAPIVersion - admin api version used in the request.
+	AdminAPIVersion = func() string {
+		if v := os.Getenv("MADMIN_API_VERSION"); v == "v3" {
+			return "v3"
+		}
+		return "v4"
+	}()
+
+	// Admin API version prefix
+	adminAPIPrefix = "/" + AdminAPIVersion
+
+	// kmsAPIVersion - is the latest KMS API version, for KMS requests.
+	// NOTE: MinIO only supports last two versions
+	kmsAPIVersion = "v1"
+
+	// kms API version prefix
+	kmsAPIPrefix = "/" + kmsAPIVersion
 )
 
 // getEndpointURL - construct a new endpoint.
@@ -116,7 +138,46 @@ func closeResponse(resp *http.Response) {
 		// Without this closing connection would disallow re-using
 		// the same connection for future uses.
 		//  - http://stackoverflow.com/a/17961593/4465767
-		io.Copy(ioutil.Discard, resp.Body)
+		io.Copy(io.Discard, resp.Body)
 		resp.Body.Close()
 	}
+}
+
+// TimedAction contains a number of actions and their accumulated duration in nanoseconds.
+type TimedAction struct {
+	Count   uint64 `json:"count"`
+	AccTime uint64 `json:"acc_time_ns"`
+	MinTime uint64 `json:"min_ns,omitempty"`
+	MaxTime uint64 `json:"max_ns,omitempty"`
+	Bytes   uint64 `json:"bytes,omitempty"`
+}
+
+// Avg returns the average time spent on the action.
+func (t TimedAction) Avg() time.Duration {
+	if t.Count == 0 {
+		return 0
+	}
+	return time.Duration(t.AccTime / t.Count)
+}
+
+// AvgBytes returns the average time spent on the action.
+func (t TimedAction) AvgBytes() uint64 {
+	if t.Count == 0 {
+		return 0
+	}
+	return t.Bytes / t.Count
+}
+
+// Merge other into t.
+func (t *TimedAction) Merge(other TimedAction) {
+	t.Count += other.Count
+	t.AccTime += other.AccTime
+	t.Bytes += other.Bytes
+	if t.Count == 0 {
+		t.MinTime = other.MinTime
+	}
+	if other.Count > 0 {
+		t.MinTime = min(t.MinTime, other.MinTime)
+	}
+	t.MaxTime = max(t.MaxTime, other.MaxTime)
 }

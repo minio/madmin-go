@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2022 MinIO, Inc.
+// Copyright (c) 2015-2024 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -22,7 +22,7 @@ package madmin
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -69,7 +69,7 @@ type TopLockOpts struct {
 
 // ForceUnlock force unlocks input paths...
 func (adm *AdminClient) ForceUnlock(ctx context.Context, paths ...string) error {
-	// Execute POST on /minio/admin/v3/force-unlock
+	// Execute POST on /minio/admin/v4/force-unlock
 	queryVals := make(url.Values)
 	queryVals.Set("paths", strings.Join(paths, ","))
 	resp, err := adm.executeMethod(ctx,
@@ -94,7 +94,7 @@ func (adm *AdminClient) ForceUnlock(ctx context.Context, paths ...string) error 
 // TopLocksWithOpts - returns the count number of oldest locks currently active on the server.
 // additionally we can also enable `stale` to get stale locks currently present on server.
 func (adm *AdminClient) TopLocksWithOpts(ctx context.Context, opts TopLockOpts) (LockEntries, error) {
-	// Execute GET on /minio/admin/v3/top/locks?count=10
+	// Execute GET on /minio/admin/v4/top/locks?count=10
 	// to get the 'count' number of oldest locks currently
 	// active on the server.
 	queryVals := make(url.Values)
@@ -116,7 +116,7 @@ func (adm *AdminClient) TopLocksWithOpts(ctx context.Context, opts TopLockOpts) 
 		return nil, httpRespToErrorResponse(resp)
 	}
 
-	response, err := ioutil.ReadAll(resp.Body)
+	response, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return LockEntries{}, err
 	}
