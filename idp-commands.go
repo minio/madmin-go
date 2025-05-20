@@ -174,6 +174,52 @@ func (adm *AdminClient) GetIDPConfig(ctx context.Context, cfgType, cfgName strin
 	return c, err
 }
 
+type CheckIDPConfigResp struct {
+	ErrType string `json:"errType"`
+	ErrMsg  string `json:"errMsg"`
+}
+
+// IDP validity check error types
+const (
+	IDPErrDisabled   = "disabled"
+	IDPErrConnection = "connection"
+	IDPErrInvalid    = "invalid"
+)
+
+func (adm *AdminClient) CheckIDPConfig(ctx context.Context, cfgType, cfgName string) (CheckIDPConfigResp, error) {
+	// Add OpenID support in the future.
+	if cfgType != LDAPIDPCfg {
+		return CheckIDPConfigResp{}, fmt.Errorf("invalid config type: %s", cfgType)
+	}
+
+	if cfgName == "" {
+		cfgName = Default
+	}
+
+	reqData := requestData{
+		relPath: strings.Join([]string{adminAPIPrefix, "idp-config", cfgType, cfgName, "check"}, "/"),
+	}
+
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return CheckIDPConfigResp{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return CheckIDPConfigResp{}, httpRespToErrorResponse(resp)
+	}
+
+	content, err := DecryptData(adm.getSecretKey(), resp.Body)
+	if err != nil {
+		return CheckIDPConfigResp{}, err
+	}
+
+	var r CheckIDPConfigResp
+	err = json.Unmarshal(content, &r)
+	return r, err
+}
+
 // IDPListItem - represents an item in the List IDPs call.
 type IDPListItem struct {
 	Type    string `json:"type"`
