@@ -46,11 +46,40 @@ type ReplDiagInfo struct {
 	GroupPolMismatches     map[string]map[string]SRGroupStatsSummary  `json:"group_policy_mismatches,omitempty"`
 }
 
+// ReplDiagInfoV2 represents the replication diagnostic information to be captured
+// as part of health diagnostic information
+type ReplDiagInfoV2 struct {
+	Error                  string                          `json:"error,omitempty"`
+	SREnabled              bool                            `json:"site_replication_enabled"`
+	TotalUsers             int                             `json:"total_users,omitempty"`
+	SyncPendingUsers       CountWithList                   `json:"sync_pending_users,omitempty"`
+	TotalGroups            int                             `json:"total_groups,omitempty"`
+	SyncPendingGroups      CountWithList                   `json:"sync_pending_groups,omitempty"`
+	TotalPolicies          int                             `json:"total_policies,omitempty"`
+	SyncPendingPolicies    CountWithList                   `json:"sync_pending_policies,omitempty"`
+	TotalILMExpRules       int                             `json:"total_ilm_exp_rules,omitempty"`
+	SyncPendingILMExpRules CountWithList                   `json:"sync_pending_ilm_exp_rules,omitempty"`
+	TotalBuckets           int                             `json:"total_buckets,omitempty"`
+	SyncPendingBuckets     CountWithList                   `json:"sync_pending_buckets,omitempty"`
+	Errors                 Counter                         `json:"errors,omitempty"`
+	Retries                Counter                         `json:"retries,omitempty"`
+	Sites                  []ReplDiagSite                  `json:"sites,omitempty"`
+	ReplBuckets            []ReplDiagBucketV2              `json:"repl_buckets,omitempty"`
+	UserPolMismatches      map[string]SRPolicyStatsSummary `json:"user_policy_mismatches,omitempty"`
+	GroupPolMismatches     map[string]SRGroupStatsSummary  `json:"group_policy_mismatches,omitempty"`
+}
+
+// CountWithList is a type that holds a count and a list of items
+type CountWithList struct {
+	Count int      `json:"count"`
+	List  []string `json:"list,omitempty"`
+}
+
 // ReplDiagSite represents the replication site information
 type ReplDiagSite struct {
 	Addr         string `json:"addr,omitempty"`
 	DeploymentID string `json:"deployment_id"`
-	Online       bool   `json:"online,omitempty"`
+	Online       bool   `json:"online"`
 }
 
 // ReplDiagBucket represents the replication target information for a bucket
@@ -60,11 +89,18 @@ type ReplDiagBucket struct {
 	Targets            []BucketReplTarget              `json:"targets,omitempty"`
 }
 
+// ReplDiagBucketV2 represents the replication target information for a bucket
+type ReplDiagBucketV2 struct {
+	Name               string               `json:"name,omitempty"`
+	MetadataMismatches SRBucketStatsSummary `json:"metadata_mismatches,omitempty"`
+	Targets            []BucketReplTarget   `json:"targets,omitempty"`
+}
+
 type BucketReplTarget struct {
 	SourceBucket    string        `json:"source_bucket,omitempty"`
 	TargetBucket    string        `json:"target_bucket,omitempty"`
 	Addr            string        `json:"addr,omitempty"`
-	Online          bool          `json:"online,omitempty"`
+	Online          bool          `json:"online"`
 	TotalDowntime   time.Duration `json:"total_downtime,omitempty"`
 	CurrentDowntime time.Duration `json:"current_downtime,omitempty"`
 }
