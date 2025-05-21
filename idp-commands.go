@@ -181,6 +181,7 @@ type CheckIDPConfigResp struct {
 
 // IDP validity check error types
 const (
+	IDPErrNone       = "none"
 	IDPErrDisabled   = "disabled"
 	IDPErrConnection = "connection"
 	IDPErrInvalid    = "invalid"
