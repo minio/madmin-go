@@ -71,8 +71,17 @@ type ReplDiagInfoV2 struct {
 
 // CountWithList is a type that holds a count and a list of items
 type CountWithList struct {
-	Count int      `json:"count"`
-	List  []string `json:"list,omitempty"`
+	Count int          `json:"count"`
+	List  []EntityDiag `json:"list,omitempty"`
+}
+
+// EntityDiag represents the entity diagnostic information
+type EntityDiag struct {
+	Name string `json:"name"`
+	// deploymentid/peer name will be present if entity missing on current site or entity present but other sites have more recent update (check UpdatedAt field)
+	SyncFrom []string `json:"sync_from,omitempty"`
+	// deploymentid/peer name will be present if current site is latest  and other sites are missing this entity
+	SyncTo []string `json:"sync_to,omitempty"`
 }
 
 // ReplDiagSite represents the replication site information
