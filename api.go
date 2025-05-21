@@ -398,6 +398,11 @@ func (adm AdminClient) executeMethod(ctx context.Context, method string, reqData
 			}
 		}
 
+		if res.StatusCode == http.StatusUpgradeRequired {
+			reqData.relPath = strings.ReplaceAll(reqData.relPath, adminAPIPrefix, adminAPIOldPrefix)
+			continue // Retry when an upgrade is requested.
+		}
+
 		// Read the body to be saved later.
 		errBodyBytes, err := io.ReadAll(res.Body)
 		// res.Body should be closed
