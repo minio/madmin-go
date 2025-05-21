@@ -481,6 +481,16 @@ type BatchJobMetrics struct {
 
 	// Jobs by ID.
 	Jobs map[string]JobMetric
+
+	// Job Status by Type
+	Status map[BatchJobType]BatchJobSummaryStatus
+}
+
+type BatchJobSummaryStatus struct {
+	// Status
+	Completed  float64 `json:"completed,omitempty"`
+	Failed     float64 `json:"failed,omitempty"`
+	InProgress float64 `json:"inprogress,omitempty"`
 }
 
 type JobMetric struct {
@@ -567,12 +577,19 @@ func (o *BatchJobMetrics) Merge(other *BatchJobMetrics) {
 		// Use latest timestamp
 		o.CollectedAt = other.CollectedAt
 	}
+	// Job
 	if o.Jobs == nil {
 		o.Jobs = make(map[string]JobMetric, len(other.Jobs))
 	}
-	// Job
 	for k, v := range other.Jobs {
 		o.Jobs[k] = v
+	}
+	// Job Type
+	if o.Status == nil {
+		o.Status = make(map[BatchJobType]BatchJobSummaryStatus, len(other.Status))
+	}
+	for k, v := range other.Status {
+		o.Status[k] = v
 	}
 }
 
