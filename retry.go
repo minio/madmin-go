@@ -21,6 +21,7 @@ package madmin
 
 import (
 	"context"
+	"iter"
 	"math/rand"
 	"net/http"
 	"sync"
@@ -68,9 +69,7 @@ func (r *lockedRandSource) Seed(seed int64) {
 
 // newRetryTimer creates a timer with exponentially increasing
 // delays until the maximum retry attempts are reached.
-func (adm AdminClient) newRetryTimer(ctx context.Context, maxRetry int, unit time.Duration, capDur time.Duration, jitter float64) <-chan int {
-	attemptCh := make(chan int)
-
+func (adm AdminClient) newRetryTimer(ctx context.Context, maxRetry int, unit time.Duration, capDur time.Duration, jitter float64) iter.Seq[int] {
 	// computes the exponential backoff duration according to
 	// https://www.awsarchitectureblog.com/2015/03/backoff.html
 	exponentialBackoffWait := func(attempt int) time.Duration {
@@ -93,26 +92,26 @@ func (adm AdminClient) newRetryTimer(ctx context.Context, maxRetry int, unit tim
 		return sleep
 	}
 
-	go func() {
-		defer close(attemptCh)
-		for i := 0; i < maxRetry; i++ {
-			// Attempts start from 1.
-			select {
-			case attemptCh <- i + 1:
-			case <-ctx.Done():
-				// Stop the routine.
+	return func(yield func(int) bool) {
+		// if context is already canceled, skip yield
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		for i := range maxRetry {
+			if !yield(i) {
 				return
 			}
 
 			select {
 			case <-time.After(exponentialBackoffWait(i)):
 			case <-ctx.Done():
-				// Stop the routine.
 				return
 			}
 		}
-	}()
-	return attemptCh
+	}
 }
 
 // List of admin error codes which are retryable.
