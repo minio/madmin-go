@@ -30,14 +30,25 @@ import (
 	"time"
 )
 
-// BatchJobType type to describe batch job types
-type BatchJobType string
+type (
+	// BatchJobType describes batch jobs
+	BatchJobType string
+	// BatchJobStatusType describes batch job statuses
+	BatchJobStatusType string
+)
 
 const (
 	BatchJobReplicate BatchJobType = "replicate"
 	BatchJobKeyRotate BatchJobType = "keyrotate"
 	BatchJobExpire    BatchJobType = "expire"
 	BatchJobCatalog   BatchJobType = "catalog"
+)
+
+const (
+	BatchJobStatusCompleted  BatchJobStatusType = "completed"
+	BatchJobStatusFailed     BatchJobStatusType = "failed"
+	BatchJobStatusInProgress BatchJobStatusType = "in-progress"
+	BatchJobStatusUnknown    BatchJobStatusType = "unknown"
 )
 
 // SupportedJobTypes supported job types
@@ -194,11 +205,13 @@ const BatchJobExpireTemplate = `expire:
 
 // BatchJobResult returned by StartBatchJob
 type BatchJobResult struct {
-	ID      string        `json:"id"`
-	Type    BatchJobType  `json:"type"`
-	User    string        `json:"user,omitempty"`
-	Started time.Time     `json:"started"`
-	Elapsed time.Duration `json:"elapsed,omitempty"`
+	ID      string             `json:"id"`
+	Type    BatchJobType       `json:"type"`
+	User    string             `json:"user,omitempty"`
+	Started time.Time          `json:"started"`
+	Elapsed time.Duration      `json:"elapsed,omitempty"`
+	Status  BatchJobStatusType `json:"status,omitempty"`
+	Error   string             `json:"error,omitempty"`
 }
 
 // StartBatchJob start a new batch job, input job description is in YAML.
