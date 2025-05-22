@@ -1285,6 +1285,9 @@ type InQueueMetric struct {
 	Max  QStat `json:"max" msg:"pq"`
 }
 
+// InProgressMetric holds stats for objects with replication in progress
+type InProgressMetric InQueueMetric
+
 // QStat represents number of objects and bytes in queue
 type QStat struct {
 	Count float64 `json:"count"`
@@ -1307,6 +1310,8 @@ type SRMetricsSummary struct {
 	ReplicaCount int64 `json:"replicaCount"`
 	// queue metrics
 	Queued InQueueMetric `json:"queued"`
+	// in progress metrics
+	InProgress InProgressMetric `json:"inProgress"`
 	// proxied metrics
 	Proxied ReplProxyMetric `json:"proxied"`
 	// replication metrics summary for each site replication peer
