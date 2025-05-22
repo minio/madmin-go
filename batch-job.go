@@ -30,9 +30,10 @@ import (
 	"time"
 )
 
-// BatchJobType type to describe batch job types
 type (
-	BatchJobType       string
+	// BatchJobType describes batch jobs
+	BatchJobType string
+	// BatchJobStatusType describes batch job statuses
 	BatchJobStatusType string
 )
 
