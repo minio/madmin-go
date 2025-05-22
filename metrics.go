@@ -577,14 +577,12 @@ func (o *BatchJobMetrics) Merge(other *BatchJobMetrics) {
 		// Use latest timestamp
 		o.CollectedAt = other.CollectedAt
 	}
-	// Job
 	if o.Jobs == nil {
 		o.Jobs = make(map[string]JobMetric, len(other.Jobs))
 	}
 	for k, v := range other.Jobs {
 		o.Jobs[k] = v
 	}
-	// Job Type
 	if o.Status == nil {
 		o.Status = make(map[BatchJobType]BatchJobSummaryStatus, len(other.Status))
 	}

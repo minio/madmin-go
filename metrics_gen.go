@@ -213,6 +213,250 @@ func (z *BatchJobMetrics) Msgsize() (s int) {
 }
 
 // DecodeMsg implements msgp.Decodable
+func (z *BatchJobSummaryStatus) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 3 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "completed":
+			z.Completed, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "Completed")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "failed":
+			z.Failed, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "Failed")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "inprogress":
+			z.InProgress, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "InProgress")
+				return
+			}
+			zb0001Mask |= 0x4
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x7 {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Completed = 0
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.Failed = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.InProgress = 0
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z BatchJobSummaryStatus) EncodeMsg(en *msgp.Writer) (err error) {
+	// check for omitted fields
+	zb0001Len := uint32(3)
+	var zb0001Mask uint8 /* 3 bits */
+	_ = zb0001Mask
+	if z.Completed == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.Failed == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.InProgress == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	// variable map header, size zb0001Len
+	err = en.Append(0x80 | uint8(zb0001Len))
+	if err != nil {
+		return
+	}
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// write "completed"
+			err = en.Append(0xa9, 0x63, 0x6f, 0x6d, 0x70, 0x6c, 0x65, 0x74, 0x65, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.Completed)
+			if err != nil {
+				err = msgp.WrapError(err, "Completed")
+				return
+			}
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// write "failed"
+			err = en.Append(0xa6, 0x66, 0x61, 0x69, 0x6c, 0x65, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.Failed)
+			if err != nil {
+				err = msgp.WrapError(err, "Failed")
+				return
+			}
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// write "inprogress"
+			err = en.Append(0xaa, 0x69, 0x6e, 0x70, 0x72, 0x6f, 0x67, 0x72, 0x65, 0x73, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.InProgress)
+			if err != nil {
+				err = msgp.WrapError(err, "InProgress")
+				return
+			}
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z BatchJobSummaryStatus) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// check for omitted fields
+	zb0001Len := uint32(3)
+	var zb0001Mask uint8 /* 3 bits */
+	_ = zb0001Mask
+	if z.Completed == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.Failed == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.InProgress == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	// variable map header, size zb0001Len
+	o = append(o, 0x80|uint8(zb0001Len))
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// string "completed"
+			o = append(o, 0xa9, 0x63, 0x6f, 0x6d, 0x70, 0x6c, 0x65, 0x74, 0x65, 0x64)
+			o = msgp.AppendFloat64(o, z.Completed)
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// string "failed"
+			o = append(o, 0xa6, 0x66, 0x61, 0x69, 0x6c, 0x65, 0x64)
+			o = msgp.AppendFloat64(o, z.Failed)
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// string "inprogress"
+			o = append(o, 0xaa, 0x69, 0x6e, 0x70, 0x72, 0x6f, 0x67, 0x72, 0x65, 0x73, 0x73)
+			o = msgp.AppendFloat64(o, z.InProgress)
+		}
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *BatchJobSummaryStatus) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 3 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "completed":
+			z.Completed, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Completed")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "failed":
+			z.Failed, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Failed")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "inprogress":
+			z.InProgress, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "InProgress")
+				return
+			}
+			zb0001Mask |= 0x4
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x7 {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Completed = 0
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.Failed = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.InProgress = 0
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z BatchJobSummaryStatus) Msgsize() (s int) {
+	s = 1 + 10 + msgp.Float64Size + 7 + msgp.Float64Size + 11 + msgp.Float64Size
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *CPUMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
