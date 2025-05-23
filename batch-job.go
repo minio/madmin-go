@@ -211,6 +211,7 @@ type BatchJobResult struct {
 	Started time.Time          `json:"started"`
 	Elapsed time.Duration      `json:"elapsed,omitempty"`
 	Status  BatchJobStatusType `json:"status"`
+	Message string             `json:"message,omitempty"`
 }
 
 // StartBatchJob start a new batch job, input job description is in YAML.
