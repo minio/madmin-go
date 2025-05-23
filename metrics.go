@@ -481,16 +481,6 @@ type BatchJobMetrics struct {
 
 	// Jobs by ID.
 	Jobs map[string]JobMetric
-
-	// Job Status by Type
-	Status map[BatchJobType]BatchJobSummaryStatus
-}
-
-type BatchJobSummaryStatus struct {
-	// Status
-	Completed  float64 `json:"completed,omitempty"`
-	Failed     float64 `json:"failed,omitempty"`
-	InProgress float64 `json:"inprogress,omitempty"`
 }
 
 type JobMetric struct {
@@ -500,8 +490,9 @@ type JobMetric struct {
 	LastUpdate    time.Time `json:"lastUpdate"`
 	RetryAttempts int       `json:"retryAttempts"`
 
-	Complete bool `json:"complete"`
-	Failed   bool `json:"failed"`
+	Complete bool   `json:"complete"`
+	Failed   bool   `json:"failed"`
+	Status   string `json:"status"`
 
 	// Specific job type data:
 	Replicate *ReplicateInfo   `json:"replicate,omitempty"`
@@ -582,12 +573,6 @@ func (o *BatchJobMetrics) Merge(other *BatchJobMetrics) {
 	}
 	for k, v := range other.Jobs {
 		o.Jobs[k] = v
-	}
-	if o.Status == nil {
-		o.Status = make(map[BatchJobType]BatchJobSummaryStatus, len(other.Status))
-	}
-	for k, v := range other.Status {
-		o.Status[k] = v
 	}
 }
 
