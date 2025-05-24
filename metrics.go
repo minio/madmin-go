@@ -490,8 +490,9 @@ type JobMetric struct {
 	LastUpdate    time.Time `json:"lastUpdate"`
 	RetryAttempts int       `json:"retryAttempts"`
 
-	Complete bool `json:"complete"`
-	Failed   bool `json:"failed"`
+	Complete bool   `json:"complete"`
+	Failed   bool   `json:"failed"`
+	Status   string `json:"status"`
 
 	// Specific job type data:
 	Replicate *ReplicateInfo   `json:"replicate,omitempty"`
@@ -570,7 +571,6 @@ func (o *BatchJobMetrics) Merge(other *BatchJobMetrics) {
 	if o.Jobs == nil {
 		o.Jobs = make(map[string]JobMetric, len(other.Jobs))
 	}
-	// Job
 	for k, v := range other.Jobs {
 		o.Jobs[k] = v
 	}
