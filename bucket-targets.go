@@ -49,19 +49,6 @@ func (t BucketTargets) Empty() bool {
 	return empty
 }
 
-// ServiceType represents service type
-type ServiceType string
-
-const (
-	// ReplicationService specifies replication service
-	ReplicationService ServiceType = "replication"
-)
-
-// IsValid returns true if ARN type represents replication
-func (t ServiceType) IsValid() bool {
-	return t == ReplicationService
-}
-
 // BucketTarget represents the target bucket and site association.
 type BucketTarget struct {
 	SourceBucket         string        `json:"sourcebucket"`
