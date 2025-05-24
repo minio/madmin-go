@@ -26,49 +26,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strings"
 )
-
-// ARN is a struct to define arn.
-type ARN struct {
-	Type   ServiceType
-	ID     string
-	Region string
-	Bucket string
-}
-
-// Empty returns true if arn struct is empty
-func (a ARN) Empty() bool {
-	return !a.Type.IsValid()
-}
-
-func (a ARN) String() string {
-	return fmt.Sprintf("arn:minio:%s:%s:%s:%s", a.Type, a.Region, a.ID, a.Bucket)
-}
-
-// ParseARN return ARN struct from string in arn format.
-func ParseARN(s string) (*ARN, error) {
-	// ARN must be in the format of arn:minio:<Type>:<REGION>:<ID>:<remote-bucket>
-	if !strings.HasPrefix(s, "arn:minio:") {
-		return nil, fmt.Errorf("invalid ARN %s", s)
-	}
-
-	tokens := strings.Split(s, ":")
-	if len(tokens) != 6 {
-		return nil, fmt.Errorf("invalid ARN %s", s)
-	}
-
-	if tokens[4] == "" || tokens[5] == "" {
-		return nil, fmt.Errorf("invalid ARN %s", s)
-	}
-
-	return &ARN{
-		Type:   ServiceType(tokens[2]),
-		Region: tokens[3],
-		ID:     tokens[4],
-		Bucket: tokens[5],
-	}, nil
-}
 
 // ListRemoteTargets - gets target(s) for this bucket
 func (adm *AdminClient) ListRemoteTargets(ctx context.Context, bucket, arnType string) (targets []BucketTarget, err error) {

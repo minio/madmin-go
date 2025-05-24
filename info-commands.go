@@ -301,6 +301,24 @@ type Services struct {
 	Notifications []map[string][]TargetIDStatus `json:"notifications,omitempty"`
 }
 
+// ListNotificationARNs return a list of configured notification ARNs
+func (s Services) ListNotificationARNs() (arns []ARN) {
+	for _, notify := range s.Notifications {
+		for targetType, targetStatuses := range notify {
+			for _, targetStatus := range targetStatuses {
+				for targetID := range targetStatus {
+					arns = append(arns, ARN{
+						Type:     "sqs",
+						ID:       targetID,
+						Resource: targetType,
+					})
+				}
+			}
+		}
+	}
+	return arns
+}
+
 // Buckets contains the number of buckets
 type Buckets struct {
 	Count uint64 `json:"count"`
