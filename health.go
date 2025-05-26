@@ -1107,7 +1107,7 @@ type MinioHealthInfo struct {
 
 	Config      MinioConfig     `json:"config,omitempty"`
 	Info        MinioInfo       `json:"info,omitempty"`
-	Replication *ReplDiagInfoV2 `json:"replication,omitempty"`
+	Replication *ReplDiagInfoV2 `json:"replication_info,omitempty"`
 }
 
 // HealthInfo - MinIO cluster's health Info
