@@ -28,6 +28,7 @@ type ClusterRegistrationReq struct {
 // ClusterRegistrationInfo - Information stored in the cluster registration token
 type ClusterRegistrationInfo struct {
 	DeploymentID string `json:"deployment_id"`
+	LicenseID    string `json:"license_id,omitempty"`
 	ClusterName  string `json:"cluster_name"`
 	UsedCapacity uint64 `json:"used_capacity"`
 	// The "info" sub-node of the cluster registration information struct
