@@ -21,8 +21,11 @@ import (
 	"context"
 	"crypto/rsa"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"strconv"
+	"strings"
 
 	"github.com/minio/madmin-go/v4/estream"
 )
@@ -30,6 +33,13 @@ import (
 //msgp:timezone utc
 //msgp:replace TraceType with:uint64
 //go:generate msgp $GOFILE
+
+// HTTPFilter defines parameters for filtering traces based on incoming http request properties
+type HTTPFilter struct {
+	Func      string            `json:"funcFilter"`
+	UserAgent string            `json:"userAgent"`
+	Header    map[string]string `json:"header"`
+}
 
 // ServiceTelemetryOpts is a request to add following types to tracing.
 type ServiceTelemetryOpts struct {
@@ -51,11 +61,7 @@ type ServiceTelemetryOpts struct {
 	TagKV map[string]string `json:"tags"`
 
 	// On incoming HTTP types, only trigger if substring is in request.
-	HTTPFilter struct {
-		Func      string            `json:"funcFilter"`
-		UserAgent string            `json:"userAgent"`
-		Header    map[string]string `json:"header"`
-	} `json:"httpFilter"`
+	HTTPFilter HTTPFilter `json:"httpFilter"`
 }
 
 //msgp:ignore ServiceTelemetry
@@ -133,4 +139,60 @@ func (adm AdminClient) ServiceTelemetry(ctx context.Context, opts ServiceTelemet
 			}
 		}
 	}
+}
+
+// ParseTraceType - given a comma-separated string of types, returns OR'd tracetypes counterpart
+func ParseTraceType(typeStr string) TraceType {
+	var traceType TraceType
+	typeSlice := strings.Split(typeStr, ",")
+	for _, t := range typeSlice {
+		x := TraceAll
+		v := TraceType(1)
+		for x != 0 {
+			if strings.EqualFold(v.String(), t) {
+				traceType |= v
+			}
+			v <<= 1
+			x >>= 1
+		}
+	}
+
+	if traceType == 0 {
+		traceType = TraceS3
+	}
+	return traceType
+}
+
+// ParseSampleRate converts a sample rate from string format to float64.
+func ParseSampleRate(s string) (float64, error) {
+	// Parse "x/y" entries.
+	if strings.ContainsRune(s, '/') {
+		split := strings.Split(s, "/")
+		if len(split) != 2 {
+			return 0, fmt.Errorf("invalid sample rate (%s)", s)
+		}
+		nom, err := strconv.ParseFloat(strings.TrimSpace(split[0]), 64)
+		if err != nil {
+			return 0, fmt.Errorf("invalid sample rate (%s)", s)
+		}
+		det, err := strconv.ParseFloat(strings.TrimSpace(split[1]), 64)
+		if err != nil || det <= 0 {
+			return 0, fmt.Errorf("invalid sample rate (%s)", s)
+		}
+		return nom / det, nil
+	}
+	// Parse percentage
+	if strings.ContainsRune(s, '%') {
+		split := strings.Split(strings.TrimSpace(s), "%")
+		if len(split) != 2 {
+			return 0, fmt.Errorf("invalid sample rate (%s)", s)
+		}
+		pct, err := strconv.ParseFloat(strings.TrimSpace(split[0]), 64)
+		if err != nil || pct <= 0 {
+			return 0, fmt.Errorf("invalid sample rate (%s)", s)
+		}
+		return pct / 100, nil
+	}
+	// Assume it is just a number.
+	return strconv.ParseFloat(strings.TrimSpace(s), 64)
 }

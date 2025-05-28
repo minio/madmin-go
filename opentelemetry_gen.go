@@ -7,6 +7,229 @@ import (
 )
 
 // DecodeMsg implements msgp.Decodable
+func (z *HTTPFilter) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "Func":
+			z.Func, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "Func")
+				return
+			}
+		case "UserAgent":
+			z.UserAgent, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "UserAgent")
+				return
+			}
+		case "Header":
+			var zb0002 uint32
+			zb0002, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "Header")
+				return
+			}
+			if z.Header == nil {
+				z.Header = make(map[string]string, zb0002)
+			} else if len(z.Header) > 0 {
+				for key := range z.Header {
+					delete(z.Header, key)
+				}
+			}
+			for zb0002 > 0 {
+				zb0002--
+				var za0001 string
+				var za0002 string
+				za0001, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "Header")
+					return
+				}
+				za0002, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "Header", za0001)
+					return
+				}
+				z.Header[za0001] = za0002
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *HTTPFilter) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 3
+	// write "Func"
+	err = en.Append(0x83, 0xa4, 0x46, 0x75, 0x6e, 0x63)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.Func)
+	if err != nil {
+		err = msgp.WrapError(err, "Func")
+		return
+	}
+	// write "UserAgent"
+	err = en.Append(0xa9, 0x55, 0x73, 0x65, 0x72, 0x41, 0x67, 0x65, 0x6e, 0x74)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.UserAgent)
+	if err != nil {
+		err = msgp.WrapError(err, "UserAgent")
+		return
+	}
+	// write "Header"
+	err = en.Append(0xa6, 0x48, 0x65, 0x61, 0x64, 0x65, 0x72)
+	if err != nil {
+		return
+	}
+	err = en.WriteMapHeader(uint32(len(z.Header)))
+	if err != nil {
+		err = msgp.WrapError(err, "Header")
+		return
+	}
+	for za0001, za0002 := range z.Header {
+		err = en.WriteString(za0001)
+		if err != nil {
+			err = msgp.WrapError(err, "Header")
+			return
+		}
+		err = en.WriteString(za0002)
+		if err != nil {
+			err = msgp.WrapError(err, "Header", za0001)
+			return
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *HTTPFilter) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 3
+	// string "Func"
+	o = append(o, 0x83, 0xa4, 0x46, 0x75, 0x6e, 0x63)
+	o = msgp.AppendString(o, z.Func)
+	// string "UserAgent"
+	o = append(o, 0xa9, 0x55, 0x73, 0x65, 0x72, 0x41, 0x67, 0x65, 0x6e, 0x74)
+	o = msgp.AppendString(o, z.UserAgent)
+	// string "Header"
+	o = append(o, 0xa6, 0x48, 0x65, 0x61, 0x64, 0x65, 0x72)
+	o = msgp.AppendMapHeader(o, uint32(len(z.Header)))
+	for za0001, za0002 := range z.Header {
+		o = msgp.AppendString(o, za0001)
+		o = msgp.AppendString(o, za0002)
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *HTTPFilter) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "Func":
+			z.Func, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Func")
+				return
+			}
+		case "UserAgent":
+			z.UserAgent, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "UserAgent")
+				return
+			}
+		case "Header":
+			var zb0002 uint32
+			zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Header")
+				return
+			}
+			if z.Header == nil {
+				z.Header = make(map[string]string, zb0002)
+			} else if len(z.Header) > 0 {
+				for key := range z.Header {
+					delete(z.Header, key)
+				}
+			}
+			for zb0002 > 0 {
+				var za0001 string
+				var za0002 string
+				zb0002--
+				za0001, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Header")
+					return
+				}
+				za0002, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Header", za0001)
+					return
+				}
+				z.Header[za0001] = za0002
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *HTTPFilter) Msgsize() (s int) {
+	s = 1 + 5 + msgp.StringPrefixSize + len(z.Func) + 10 + msgp.StringPrefixSize + len(z.UserAgent) + 7 + msgp.MapHeaderSize
+	if z.Header != nil {
+		for za0001, za0002 := range z.Header {
+			_ = za0002
+			s += msgp.StringPrefixSize + len(za0001) + msgp.StringPrefixSize + len(za0002)
+		}
+	}
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *ServiceTelemetryOpts) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
@@ -83,69 +306,10 @@ func (z *ServiceTelemetryOpts) DecodeMsg(dc *msgp.Reader) (err error) {
 				z.TagKV[za0001] = za0002
 			}
 		case "HTTPFilter":
-			var zb0004 uint32
-			zb0004, err = dc.ReadMapHeader()
+			err = z.HTTPFilter.DecodeMsg(dc)
 			if err != nil {
 				err = msgp.WrapError(err, "HTTPFilter")
 				return
-			}
-			for zb0004 > 0 {
-				zb0004--
-				field, err = dc.ReadMapKeyPtr()
-				if err != nil {
-					err = msgp.WrapError(err, "HTTPFilter")
-					return
-				}
-				switch msgp.UnsafeString(field) {
-				case "Func":
-					z.HTTPFilter.Func, err = dc.ReadString()
-					if err != nil {
-						err = msgp.WrapError(err, "HTTPFilter", "Func")
-						return
-					}
-				case "UserAgent":
-					z.HTTPFilter.UserAgent, err = dc.ReadString()
-					if err != nil {
-						err = msgp.WrapError(err, "HTTPFilter", "UserAgent")
-						return
-					}
-				case "Header":
-					var zb0005 uint32
-					zb0005, err = dc.ReadMapHeader()
-					if err != nil {
-						err = msgp.WrapError(err, "HTTPFilter", "Header")
-						return
-					}
-					if z.HTTPFilter.Header == nil {
-						z.HTTPFilter.Header = make(map[string]string, zb0005)
-					} else if len(z.HTTPFilter.Header) > 0 {
-						for key := range z.HTTPFilter.Header {
-							delete(z.HTTPFilter.Header, key)
-						}
-					}
-					for zb0005 > 0 {
-						zb0005--
-						var za0003 string
-						var za0004 string
-						za0003, err = dc.ReadString()
-						if err != nil {
-							err = msgp.WrapError(err, "HTTPFilter", "Header")
-							return
-						}
-						za0004, err = dc.ReadString()
-						if err != nil {
-							err = msgp.WrapError(err, "HTTPFilter", "Header", za0003)
-							return
-						}
-						z.HTTPFilter.Header[za0003] = za0004
-					}
-				default:
-					err = dc.Skip()
-					if err != nil {
-						err = msgp.WrapError(err, "HTTPFilter")
-						return
-					}
-				}
 			}
 		default:
 			err = dc.Skip()
@@ -228,48 +392,10 @@ func (z *ServiceTelemetryOpts) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	// map header, size 3
-	// write "Func"
-	err = en.Append(0x83, 0xa4, 0x46, 0x75, 0x6e, 0x63)
+	err = z.HTTPFilter.EncodeMsg(en)
 	if err != nil {
+		err = msgp.WrapError(err, "HTTPFilter")
 		return
-	}
-	err = en.WriteString(z.HTTPFilter.Func)
-	if err != nil {
-		err = msgp.WrapError(err, "HTTPFilter", "Func")
-		return
-	}
-	// write "UserAgent"
-	err = en.Append(0xa9, 0x55, 0x73, 0x65, 0x72, 0x41, 0x67, 0x65, 0x6e, 0x74)
-	if err != nil {
-		return
-	}
-	err = en.WriteString(z.HTTPFilter.UserAgent)
-	if err != nil {
-		err = msgp.WrapError(err, "HTTPFilter", "UserAgent")
-		return
-	}
-	// write "Header"
-	err = en.Append(0xa6, 0x48, 0x65, 0x61, 0x64, 0x65, 0x72)
-	if err != nil {
-		return
-	}
-	err = en.WriteMapHeader(uint32(len(z.HTTPFilter.Header)))
-	if err != nil {
-		err = msgp.WrapError(err, "HTTPFilter", "Header")
-		return
-	}
-	for za0003, za0004 := range z.HTTPFilter.Header {
-		err = en.WriteString(za0003)
-		if err != nil {
-			err = msgp.WrapError(err, "HTTPFilter", "Header")
-			return
-		}
-		err = en.WriteString(za0004)
-		if err != nil {
-			err = msgp.WrapError(err, "HTTPFilter", "Header", za0003)
-			return
-		}
 	}
 	return
 }
@@ -299,19 +425,10 @@ func (z *ServiceTelemetryOpts) MarshalMsg(b []byte) (o []byte, err error) {
 	}
 	// string "HTTPFilter"
 	o = append(o, 0xaa, 0x48, 0x54, 0x54, 0x50, 0x46, 0x69, 0x6c, 0x74, 0x65, 0x72)
-	// map header, size 3
-	// string "Func"
-	o = append(o, 0x83, 0xa4, 0x46, 0x75, 0x6e, 0x63)
-	o = msgp.AppendString(o, z.HTTPFilter.Func)
-	// string "UserAgent"
-	o = append(o, 0xa9, 0x55, 0x73, 0x65, 0x72, 0x41, 0x67, 0x65, 0x6e, 0x74)
-	o = msgp.AppendString(o, z.HTTPFilter.UserAgent)
-	// string "Header"
-	o = append(o, 0xa6, 0x48, 0x65, 0x61, 0x64, 0x65, 0x72)
-	o = msgp.AppendMapHeader(o, uint32(len(z.HTTPFilter.Header)))
-	for za0003, za0004 := range z.HTTPFilter.Header {
-		o = msgp.AppendString(o, za0003)
-		o = msgp.AppendString(o, za0004)
+	o, err = z.HTTPFilter.MarshalMsg(o)
+	if err != nil {
+		err = msgp.WrapError(err, "HTTPFilter")
+		return
 	}
 	return
 }
@@ -393,69 +510,10 @@ func (z *ServiceTelemetryOpts) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				z.TagKV[za0001] = za0002
 			}
 		case "HTTPFilter":
-			var zb0004 uint32
-			zb0004, bts, err = msgp.ReadMapHeaderBytes(bts)
+			bts, err = z.HTTPFilter.UnmarshalMsg(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "HTTPFilter")
 				return
-			}
-			for zb0004 > 0 {
-				zb0004--
-				field, bts, err = msgp.ReadMapKeyZC(bts)
-				if err != nil {
-					err = msgp.WrapError(err, "HTTPFilter")
-					return
-				}
-				switch msgp.UnsafeString(field) {
-				case "Func":
-					z.HTTPFilter.Func, bts, err = msgp.ReadStringBytes(bts)
-					if err != nil {
-						err = msgp.WrapError(err, "HTTPFilter", "Func")
-						return
-					}
-				case "UserAgent":
-					z.HTTPFilter.UserAgent, bts, err = msgp.ReadStringBytes(bts)
-					if err != nil {
-						err = msgp.WrapError(err, "HTTPFilter", "UserAgent")
-						return
-					}
-				case "Header":
-					var zb0005 uint32
-					zb0005, bts, err = msgp.ReadMapHeaderBytes(bts)
-					if err != nil {
-						err = msgp.WrapError(err, "HTTPFilter", "Header")
-						return
-					}
-					if z.HTTPFilter.Header == nil {
-						z.HTTPFilter.Header = make(map[string]string, zb0005)
-					} else if len(z.HTTPFilter.Header) > 0 {
-						for key := range z.HTTPFilter.Header {
-							delete(z.HTTPFilter.Header, key)
-						}
-					}
-					for zb0005 > 0 {
-						var za0003 string
-						var za0004 string
-						zb0005--
-						za0003, bts, err = msgp.ReadStringBytes(bts)
-						if err != nil {
-							err = msgp.WrapError(err, "HTTPFilter", "Header")
-							return
-						}
-						za0004, bts, err = msgp.ReadStringBytes(bts)
-						if err != nil {
-							err = msgp.WrapError(err, "HTTPFilter", "Header", za0003)
-							return
-						}
-						z.HTTPFilter.Header[za0003] = za0004
-					}
-				default:
-					bts, err = msgp.Skip(bts)
-					if err != nil {
-						err = msgp.WrapError(err, "HTTPFilter")
-						return
-					}
-				}
 			}
 		default:
 			bts, err = msgp.Skip(bts)
@@ -478,12 +536,6 @@ func (z *ServiceTelemetryOpts) Msgsize() (s int) {
 			s += msgp.StringPrefixSize + len(za0001) + msgp.StringPrefixSize + len(za0002)
 		}
 	}
-	s += 11 + 1 + 5 + msgp.StringPrefixSize + len(z.HTTPFilter.Func) + 10 + msgp.StringPrefixSize + len(z.HTTPFilter.UserAgent) + 7 + msgp.MapHeaderSize
-	if z.HTTPFilter.Header != nil {
-		for za0003, za0004 := range z.HTTPFilter.Header {
-			_ = za0004
-			s += msgp.StringPrefixSize + len(za0003) + msgp.StringPrefixSize + len(za0004)
-		}
-	}
+	s += 11 + z.HTTPFilter.Msgsize()
 	return
 }
