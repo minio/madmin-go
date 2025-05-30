@@ -55,6 +55,7 @@ const (
 	BatchSubSys          = "batch"
 	DriveSubSys          = "drive"
 	ILMSubsys            = "ilm"
+	ReplicationSubSys    = "replication"
 
 	NotifyKafkaSubSys    = "notify_kafka"
 	NotifyMQTTSubSys     = "notify_mqtt"
@@ -103,6 +104,7 @@ var SubSystems = set.CreateStringSet(
 	BatchSubSys,
 	DriveSubSys,
 	ILMSubsys,
+	ReplicationSubSys,
 	NotifyKafkaSubSys,
 	NotifyMQTTSubSys,
 	NotifyMySQLSubSys,
@@ -144,6 +146,7 @@ var EOSSubSystems = set.CreateStringSet(
 	BatchSubSys,
 	DriveSubSys,
 	ILMSubsys,
+	ReplicationSubSys,
 	NotifyKafkaSubSys,
 	NotifyMQTTSubSys,
 	NotifyMySQLSubSys,
