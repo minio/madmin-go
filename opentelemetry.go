@@ -141,10 +141,9 @@ func (adm AdminClient) ServiceTelemetry(ctx context.Context, opts ServiceTelemet
 	}
 }
 
-// ParseTraceType - given a comma-separated string of types, returns OR'd tracetypes counterpart
-func ParseTraceType(typeStr string) TraceType {
+// ParseTraceType - given a slice of trace types, returns OR'd tracetypes counterpart
+func ParseTraceType(typeSlice []string) TraceType {
 	var traceType TraceType
-	typeSlice := strings.Split(typeStr, ",")
 	for _, t := range typeSlice {
 		x := TraceAll
 		v := TraceType(1)
