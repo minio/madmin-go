@@ -47,6 +47,7 @@ func (adm AdminClient) GetErrorEvents(ctx context.Context, opts ErrorEventOpts) 
 		errOpts, err := json.Marshal(opts)
 		if err != nil {
 			yield(event.Error{}, err)
+			return
 		}
 		reqData := requestData{
 			relPath: adminAPIPrefix + "/events/error",
@@ -54,11 +55,11 @@ func (adm AdminClient) GetErrorEvents(ctx context.Context, opts ErrorEventOpts) 
 		}
 		resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
 		if err != nil {
-			closeResponse(resp)
 			yield(event.Error{}, err)
+			return
 		}
 		if resp.StatusCode != http.StatusOK {
-			closeResponse(resp)
+			yield(event.Error{}, httpRespToErrorResponse(resp))
 			return
 		}
 		dec := msgp.NewReader(resp.Body)

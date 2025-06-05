@@ -50,6 +50,7 @@ func (adm AdminClient) GetAPIEvents(ctx context.Context, opts APIEventOpts) iter
 		apiOpts, err := json.Marshal(opts)
 		if err != nil {
 			yield(event.API{}, err)
+			return
 		}
 		reqData := requestData{
 			relPath: adminAPIPrefix + "/events/api",
@@ -57,11 +58,11 @@ func (adm AdminClient) GetAPIEvents(ctx context.Context, opts APIEventOpts) iter
 		}
 		resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
 		if err != nil {
-			closeResponse(resp)
 			yield(event.API{}, err)
+			return
 		}
 		if resp.StatusCode != http.StatusOK {
-			closeResponse(resp)
+			yield(event.API{}, httpRespToErrorResponse(resp))
 			return
 		}
 		dec := msgp.NewReader(resp.Body)
