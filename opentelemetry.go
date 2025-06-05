@@ -192,6 +192,6 @@ func ParseSampleRate(s string) (float64, error) {
 		}
 		return pct / 100, nil
 	}
-	// Assume it is just a number.
+	// Neither a fraction nor a percentage. So we treat s as a floating-point number.
 	return strconv.ParseFloat(strings.TrimSpace(s), 64)
 }

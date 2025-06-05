@@ -296,3 +296,56 @@ func TestParseSampleRate(t *testing.T) {
 		})
 	}
 }
+
+func TestParseTraceType(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    []string
+		expected TraceType
+	}{
+		{
+			name:     "Single valid trace type",
+			input:    []string{"s3"},
+			expected: TraceS3,
+		},
+		{
+			name:     "Multiple valid trace types",
+			input:    []string{"s3", "scanner", "os"},
+			expected: TraceS3 | TraceScanner | TraceOS,
+		},
+		{
+			name:     "Case insensitive input",
+			input:    []string{"S3", "Scanner", "OS"},
+			expected: TraceS3 | TraceScanner | TraceOS,
+		},
+		{
+			name:     "Invalid trace type",
+			input:    []string{"invalid"},
+			expected: TraceS3, // Default when no valid types
+		},
+		{
+			name:     "Empty slice",
+			input:    []string{},
+			expected: TraceS3, // Default
+		},
+		{
+			name:     "Nil slice",
+			input:    nil,
+			expected: TraceS3, // Default
+		},
+		{
+			name:     "Mixed valid and invalid types",
+			input:    []string{"s3", "invalid", "internal"},
+			expected: TraceS3 | TraceInternal,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := ParseTraceType(tt.input)
+			if result != tt.expected {
+				t.Errorf("ParseTraceType(%v) = %v; want %v", tt.input, result, tt.expected)
+			}
+		})
+	}
+}
