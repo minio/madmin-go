@@ -75,6 +75,7 @@ const (
 	AuditEventQueueSubSys  = "audit_event_queue"
 	ErasureSubSys          = "erasure"
 	BucketEventQueueSubSys = "bucket_event_queue"
+	TelemetryTargetSubSys  = "telemetry_target"
 	EventRecorderSubSys    = "event"
 )
 
@@ -164,6 +165,7 @@ var EOSSubSystems = set.CreateStringSet(
 	ErasureSubSys,
 	BucketEventQueueSubSys,
 	KubernetesSubSys,
+	TelemetryTargetSubSys,
 	EventRecorderSubSys,
 )
 
