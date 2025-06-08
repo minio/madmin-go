@@ -1107,7 +1107,7 @@ type MinioHealthInfo struct {
 
 	Config          MinioConfig     `json:"config,omitempty"`
 	Info            MinioInfo       `json:"info,omitempty"`
-	Replication     *ReplDiagInfo   `json:"replication,omitempty"` // deprecated May 2025
+	Replication     *ReplDiagInfo   `json:"replication,omitempty"` // Deprecated May 2025
 	ReplicationInfo *ReplDiagInfoV2 `json:"replication_info,omitempty"`
 }
 
