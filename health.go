@@ -1105,9 +1105,10 @@ type TLSCert struct {
 type MinioHealthInfo struct {
 	Error string `json:"error,omitempty"`
 
-	Config      MinioConfig   `json:"config,omitempty"`
-	Info        MinioInfo     `json:"info,omitempty"`
-	Replication *ReplDiagInfo `json:"replication,omitempty"`
+	Config          MinioConfig     `json:"config,omitempty"`
+	Info            MinioInfo       `json:"info,omitempty"`
+	Replication     *ReplDiagInfo   `json:"replication,omitempty"` // Deprecated May 2025
+	ReplicationInfo *ReplDiagInfoV2 `json:"replication_info,omitempty"`
 }
 
 // HealthInfo - MinIO cluster's health Info
