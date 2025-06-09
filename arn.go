@@ -60,19 +60,12 @@ func ParseARN(s string) (*ARN, error) {
 		return nil, fmt.Errorf("invalid ARN %s", s)
 	}
 
-	arn := &ARN{
+	return &ARN{
 		Type:     ServiceType(tokens[2]),
 		Region:   tokens[3],
 		ID:       tokens[4],
-		Bucket:   tokens[5],
 		Resource: tokens[5],
-	}
-
-	if arn.Type == ReplicationService {
-		arn.Bucket = ""
-	}
-
-	return arn, nil
+	}, nil
 }
 
 // ServiceType represents service type
