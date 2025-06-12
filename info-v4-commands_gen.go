@@ -1660,7 +1660,7 @@ func (z *PoolInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 		case "index":
 			z.Index, err = dc.ReadInt()
 			if err != nil {
-				err = msgp.WrapError(err, "PoolIndex")
+				err = msgp.WrapError(err, "Index")
 				return
 			}
 		case "nodes":
@@ -1818,7 +1818,7 @@ func (z *PoolInfo) EncodeMsg(en *msgp.Writer) (err error) {
 		}
 		err = en.WriteInt(z.Index)
 		if err != nil {
-			err = msgp.WrapError(err, "PoolIndex")
+			err = msgp.WrapError(err, "Index")
 			return
 		}
 		// write "nodes"
@@ -2020,7 +2020,7 @@ func (z *PoolInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		case "index":
 			z.Index, bts, err = msgp.ReadIntBytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "PoolIndex")
+				err = msgp.WrapError(err, "Index")
 				return
 			}
 		case "nodes":

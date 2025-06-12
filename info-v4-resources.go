@@ -152,17 +152,19 @@ type NodeResource struct {
 
 // DriveResource represents information about a drive
 type DriveResource struct {
-	ID        string `json:"id" msg:"i"`
-	Path      string `json:"path" msg:"p"`
-	NodeID    string `json:"nodeId" msg:"ni"`
-	PoolIndex int    `json:"poolIndex" msg:"pi"`
-	SetIndex  int    `json:"setIndex" msg:"si"`
-	State     string `json:"state" msg:"s"`
-	Healing   bool   `json:"healing" msg:"h"`
-	Size      uint64 `json:"size" msg:"sz"`
-	Used      uint64 `json:"used" msg:"u"`
-	Available uint64 `json:"available" msg:"a"`
-	UUID      string `json:"uuid" msg:"uid"`
+	ID          string `json:"id" msg:"i"`
+	DriveIndex  int    `json:"idx" msg:"idx"`
+	ServerIndex int    `json:"serverIndex" msg:"sidx"`
+	Path        string `json:"path" msg:"p"`
+	NodeID      string `json:"nodeId" msg:"ni"`
+	PoolIndex   int    `json:"poolIndex" msg:"pi"`
+	SetIndex    int    `json:"setIndex" msg:"si"`
+	State       string `json:"state" msg:"s"`
+	Healing     bool   `json:"healing" msg:"h"`
+	Size        uint64 `json:"size" msg:"sz"`
+	Used        uint64 `json:"used" msg:"u"`
+	Available   uint64 `json:"available" msg:"a"`
+	UUID        string `json:"uuid" msg:"uid"`
 }
 
 // ErasureSetResource represents information about an erasure set

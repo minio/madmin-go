@@ -1197,6 +1197,18 @@ func (z *DriveResource) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "ID")
 				return
 			}
+		case "idx":
+			z.DriveIndex, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "DriveIndex")
+				return
+			}
+		case "serverIndex":
+			z.ServerIndex, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "ServerIndex")
+				return
+			}
 		case "path":
 			z.Path, err = dc.ReadString()
 			if err != nil {
@@ -1270,15 +1282,35 @@ func (z *DriveResource) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *DriveResource) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 11
+	// map header, size 13
 	// write "id"
-	err = en.Append(0x8b, 0xa2, 0x69, 0x64)
+	err = en.Append(0x8d, 0xa2, 0x69, 0x64)
 	if err != nil {
 		return
 	}
 	err = en.WriteString(z.ID)
 	if err != nil {
 		err = msgp.WrapError(err, "ID")
+		return
+	}
+	// write "idx"
+	err = en.Append(0xa3, 0x69, 0x64, 0x78)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt(z.DriveIndex)
+	if err != nil {
+		err = msgp.WrapError(err, "DriveIndex")
+		return
+	}
+	// write "serverIndex"
+	err = en.Append(0xab, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x49, 0x6e, 0x64, 0x65, 0x78)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt(z.ServerIndex)
+	if err != nil {
+		err = msgp.WrapError(err, "ServerIndex")
 		return
 	}
 	// write "path"
@@ -1387,10 +1419,16 @@ func (z *DriveResource) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *DriveResource) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 11
+	// map header, size 13
 	// string "id"
-	o = append(o, 0x8b, 0xa2, 0x69, 0x64)
+	o = append(o, 0x8d, 0xa2, 0x69, 0x64)
 	o = msgp.AppendString(o, z.ID)
+	// string "idx"
+	o = append(o, 0xa3, 0x69, 0x64, 0x78)
+	o = msgp.AppendInt(o, z.DriveIndex)
+	// string "serverIndex"
+	o = append(o, 0xab, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x49, 0x6e, 0x64, 0x65, 0x78)
+	o = msgp.AppendInt(o, z.ServerIndex)
 	// string "path"
 	o = append(o, 0xa4, 0x70, 0x61, 0x74, 0x68)
 	o = msgp.AppendString(o, z.Path)
@@ -1446,6 +1484,18 @@ func (z *DriveResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.ID, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ID")
+				return
+			}
+		case "idx":
+			z.DriveIndex, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "DriveIndex")
+				return
+			}
+		case "serverIndex":
+			z.ServerIndex, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ServerIndex")
 				return
 			}
 		case "path":
@@ -1522,7 +1572,7 @@ func (z *DriveResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *DriveResource) Msgsize() (s int) {
-	s = 1 + 3 + msgp.StringPrefixSize + len(z.ID) + 5 + msgp.StringPrefixSize + len(z.Path) + 7 + msgp.StringPrefixSize + len(z.NodeID) + 10 + msgp.IntSize + 9 + msgp.IntSize + 6 + msgp.StringPrefixSize + len(z.State) + 8 + msgp.BoolSize + 5 + msgp.Uint64Size + 5 + msgp.Uint64Size + 10 + msgp.Uint64Size + 5 + msgp.StringPrefixSize + len(z.UUID)
+	s = 1 + 3 + msgp.StringPrefixSize + len(z.ID) + 4 + msgp.IntSize + 12 + msgp.IntSize + 5 + msgp.StringPrefixSize + len(z.Path) + 7 + msgp.StringPrefixSize + len(z.NodeID) + 10 + msgp.IntSize + 9 + msgp.IntSize + 6 + msgp.StringPrefixSize + len(z.State) + 8 + msgp.BoolSize + 5 + msgp.Uint64Size + 5 + msgp.Uint64Size + 10 + msgp.Uint64Size + 5 + msgp.StringPrefixSize + len(z.UUID)
 	return
 }
 
