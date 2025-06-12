@@ -241,14 +241,17 @@ func (adm *AdminClient) DataUsageInfo(ctx context.Context) (DataUsageInfo, error
 
 // ErasureSetInfo provides information per erasure set
 type ErasureSetInfo struct {
-	ID                 int    `json:"id"`
-	RawUsage           uint64 `json:"rawUsage"`
-	RawCapacity        uint64 `json:"rawCapacity"`
-	Usage              uint64 `json:"usage"`
-	ObjectsCount       uint64 `json:"objectsCount"`
-	VersionsCount      uint64 `json:"versionsCount"`
-	DeleteMarkersCount uint64 `json:"deleteMarkersCount"`
-	HealDisks          int    `json:"healDisks"`
+	ID                 int      `json:"id"`
+	RawUsage           uint64   `json:"rawUsage"`
+	RawCapacity        uint64   `json:"rawCapacity"`
+	Usage              uint64   `json:"usage"`
+	ObjectsCount       uint64   `json:"objectsCount"`
+	VersionsCount      uint64   `json:"versionsCount"`
+	DeleteMarkersCount uint64   `json:"deleteMarkersCount"`
+	HealDisks          int      `json:"healDisks"`
+	OnlineDisks        int      `json:"onlineDisks,omitempty"`
+	OfflineDisks       int      `json:"offlineDisks,omitempty"`
+	Nodes              []string `json:"nodes,omitempty"`
 }
 
 // InfoMessage container to hold server admin related information.
