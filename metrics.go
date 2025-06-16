@@ -557,6 +557,10 @@ type CatalogInfo struct {
 
 	// Error message
 	ErrorMsg string `json:"errorMsg"`
+
+	// Used to resume catalog jobs
+	LastObjectWritten string            `json:"lastObjectWritten,omitempty"`
+	OutputFiles       []CatalogDataFile `json:"outputFiles,omitempty"`
 }
 
 // Merge other into 'o'.
