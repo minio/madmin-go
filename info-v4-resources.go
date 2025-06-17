@@ -90,7 +90,7 @@ type ClusterResource struct {
 
 // ServicesResourceInfo holds information about services connected to the cluster
 type ServicesResourceInfo struct {
-	LDAP          LDAP                          `json:"ldap,omitempty" msg:"l"`
+	LDAP          LDAP                          `json:"ldap" msg:"l"`
 	Logger        []Logger                      `json:"logger,omitempty" msg:"lg"`
 	Audit         []Audit                       `json:"audit,omitempty" msg:"a"`
 	Notifications []map[string][]TargetIDStatus `json:"notifications,omitempty" msg:"n"`
@@ -99,30 +99,23 @@ type ServicesResourceInfo struct {
 
 // PoolResource represents information about a storage pool
 type PoolResource struct {
-	//Basics
-	PoolIndex  int `json:"poolindex" msg:"i"`
-	StripeSize int `json:"stripeSize" msg:"ss"`
-	TotalSets  int `json:"totalSets" msg:"ts"`
-	// Quorums
-	WriteQuorum int `json:"writeQuorum" msg:"wq"`
-	ReadQuorum  int `json:"readQuorum" msg:"rq"`
-	// Nodes
-	Nodes []string `json:"nodes" msg:"n"`
-	// Drives
-	DriveCount    int `json:"driveCount" msg:"dc"`
-	DrivesOnline  int `json:"drivesOnline" msg:"do"`
-	DrivesOffline int `json:"drivesOffline" msg:"doff"`
-	DrivesHealing int `json:"drivesHealing" msg:"dh"`
-	// Nodes
-	NodeCount int `json:"nodeCount" msg:"nc"`
-	// Usage
-	RawUsage    uint64 `json:"rawUsage" msg:"ru"`
-	RawCapacity uint64 `json:"rawCapacity" msg:"rc"`
-	Usage       uint64 `json:"usage" msg:"u"`
-	// Metrics
-	ObjectsCount       uint64 `json:"objectsCount" msg:"oc"`
-	VersionsCount      uint64 `json:"versionsCount" msg:"vc"`
-	DeleteMarkersCount uint64 `json:"deleteMarkersCount" msg:"dc"`
+	PoolIndex          int      `json:"poolindex" msg:"i"`
+	StripeSize         int      `json:"stripeSize" msg:"ss"`
+	TotalSets          int      `json:"totalSets" msg:"ts"`
+	WriteQuorum        int      `json:"writeQuorum" msg:"wq"`
+	ReadQuorum         int      `json:"readQuorum" msg:"rq"`
+	Nodes              []string `json:"nodes" msg:"n"`
+	DriveCount         int      `json:"driveCount" msg:"dc"`
+	DrivesOnline       int      `json:"drivesOnline" msg:"do"`
+	DrivesOffline      int      `json:"drivesOffline" msg:"doff"`
+	DrivesHealing      int      `json:"drivesHealing" msg:"dh"`
+	NodeCount          int      `json:"nodeCount" msg:"nc"`
+	RawUsage           uint64   `json:"rawUsage" msg:"ru"`
+	RawCapacity        uint64   `json:"rawCapacity" msg:"rc"`
+	Usage              uint64   `json:"usage" msg:"u"`
+	ObjectsCount       uint64   `json:"objectsCount" msg:"oc"`
+	VersionsCount      uint64   `json:"versionsCount" msg:"vc"`
+	DeleteMarkersCount uint64   `json:"deleteMarkersCount" msg:"dc"`
 }
 
 type DriveCounts struct {
@@ -199,7 +192,7 @@ type ErasureSetResource struct {
 //msgp:ignore ClusterResourceOpts
 type ClusterResourceOpts struct{}
 
-// ClusterResource - Get high-level information about the cluster
+// ClusterQuery - Get high-level information about the cluster
 func (adm *AdminClient) ClusterQuery(ctx context.Context, options ...func(*ClusterResourceOpts)) (ClusterResource, error) {
 	srvOpts := &ClusterResourceOpts{}
 
@@ -282,7 +275,6 @@ type PoolsResourceOpts struct {
 }
 
 func (adm *AdminClient) PoolsQuery(ctx context.Context, options *PoolsResourceOpts) (*PaginatedPoolsResponse, error) {
-
 	values := make(url.Values)
 
 	if options != nil {
@@ -336,9 +328,7 @@ type NodesResourceOpts struct {
 }
 
 // NodesQuery - Get list of nodes
-
 func (adm *AdminClient) NodesQuery(ctx context.Context, options *NodesResourceOpts) (*PaginatedNodesResponse, error) {
-
 	values := make(url.Values)
 
 	if options != nil {
@@ -391,9 +381,7 @@ type DrivesResourceOpts struct {
 }
 
 // DrivesQuery - Get list of drives
-
 func (adm *AdminClient) DrivesQuery(ctx context.Context, options *DrivesResourceOpts) (*PaginatedDrivesResponse, error) {
-
 	values := make(url.Values)
 
 	if options != nil {
@@ -446,9 +434,7 @@ type ErasureSetsResourceOpts struct {
 }
 
 // ErasureSetsQuery - Get list of erasure sets
-
 func (adm *AdminClient) ErasureSetsQuery(ctx context.Context, options *ErasureSetsResourceOpts) (*PaginatedErasureSetsResponse, error) {
-
 	values := make(url.Values)
 
 	if options != nil {
