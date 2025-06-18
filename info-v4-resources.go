@@ -29,32 +29,35 @@ import (
 )
 
 //msgp:clearomitted
-//msgp:tag json
 //msgp:timezone utc
 //go:generate msgp -file $GOFILE
 
 // PaginatedPoolsResponse represents a paginated response for pools
 type PaginatedPoolsResponse struct {
-	Results []PoolResource `json:"results" msg:"r"`
+	Results []PoolResource `json:"results" msg:"r,omitempty"`
 	Count   int            `json:"count" msg:"c"`
+	Total   int            `json:"total" msg:"t"`
 }
 
 // PaginatedNodesResponse represents a paginated response for nodes
 type PaginatedNodesResponse struct {
-	Results []NodeResource `json:"results" msg:"r"`
+	Results []NodeResource `json:"results" msg:"r,omitempty"`
 	Count   int            `json:"count" msg:"c"`
+	Total   int            `json:"total" msg:"t"`
 }
 
 // PaginatedDrivesResponse represents a paginated response for drives
 type PaginatedDrivesResponse struct {
-	Results []DriveResource `json:"results" msg:"r"`
+	Results []DriveResource `json:"results" msg:"r,omitempty"`
 	Count   int             `json:"count" msg:"c"`
+	Total   int             `json:"total" msg:"t"`
 }
 
 // PaginatedErasureSetsResponse represents a paginated response for erasure sets
 type PaginatedErasureSetsResponse struct {
-	Results []ErasureSetResource `json:"results" msg:"r"`
+	Results []ErasureSetResource `json:"results" msg:"r,omitempty"`
 	Count   int                  `json:"count" msg:"c"`
+	Total   int                  `json:"total" msg:"t"`
 }
 
 type PoolLayout struct {
@@ -66,35 +69,31 @@ type PoolLayout struct {
 
 // ClusterResource represents high-level information about the cluster
 type ClusterResource struct {
-	// Basics
-	Mode         string       `json:"mode" msg:"m"`
-	Domains      []string     `json:"domains,omitempty" msg:"d"`
-	Region       string       `json:"region,omitempty" msg:"r"`
-	DeploymentID string       `json:"deploymentId" msg:"di"`
-	PoolCount    int          `json:"poolCount" msg:"pc"`
-	PoolsLayout  []PoolLayout `json:"poolsLayout,omitempty" msg:"pl"`
-	NodeCount    int          `json:"nodeCount" msg:"nc"`
-	DriveCount   int          `json:"driveCount" msg:"dc"`
-	SetCount     int          `json:"setCount" msg:"sc"`
-	// Metrics
-	BucketCount       int `json:"bucketCount" msg:"bc"`
-	ObjectCount       int `json:"objectCount" msg:"oc"`
-	VersionCount      int `json:"versionCount" msg:"vc"`
-	DeleteMarkerCount int `json:"deleteMarkerCount" msg:"dc"`
-	// Usage
-	TotalSize uint64 `json:"totalSize" msg:"ts"`
-	// Drives
-	OnlineDrives  int `json:"onlineDrives" msg:"od"`
-	OfflineDrives int `json:"offlineDrives" msg:"fd"`
+	Mode              string       `json:"mode" msg:"m"`
+	Domains           []string     `json:"domains,omitempty" msg:"d,omitempty"`
+	Region            string       `json:"region,omitempty" msg:"r,omitempty"`
+	DeploymentID      string       `json:"deploymentId" msg:"di"`
+	PoolCount         int          `json:"poolCount" msg:"pc"`
+	PoolsLayout       []PoolLayout `json:"poolsLayout,omitempty" msg:"pl,omitempty"`
+	NodeCount         int          `json:"nodeCount" msg:"nc"`
+	DriveCount        int          `json:"driveCount" msg:"dc"`
+	SetCount          int          `json:"setCount" msg:"sc"`
+	BucketCount       int          `json:"bucketCount" msg:"bc"`
+	ObjectCount       int          `json:"objectCount" msg:"oc"`
+	VersionCount      int          `json:"versionCount" msg:"vc"`
+	DeleteMarkerCount int          `json:"deleteMarkerCount" msg:"dc"`
+	TotalSize         uint64       `json:"totalSize" msg:"ts"`
+	OnlineDrives      int          `json:"onlineDrives" msg:"od"`
+	OfflineDrives     int          `json:"offlineDrives" msg:"fd"`
 }
 
 // ServicesResourceInfo holds information about services connected to the cluster
 type ServicesResourceInfo struct {
 	LDAP          LDAP                          `json:"ldap" msg:"l"`
-	Logger        []Logger                      `json:"logger,omitempty" msg:"lg"`
-	Audit         []Audit                       `json:"audit,omitempty" msg:"a"`
-	Notifications []map[string][]TargetIDStatus `json:"notifications,omitempty" msg:"n"`
-	KMSStatus     []KMS                         `json:"kms,omitempty" msg:"k"`
+	Logger        []Logger                      `json:"logger,omitempty" msg:"lg,omitempty"`
+	Audit         []Audit                       `json:"audit,omitempty" msg:"a,omitempty"`
+	Notifications []map[string][]TargetIDStatus `json:"notifications,omitempty" msg:"n,omitempty"`
+	KMSStatus     []KMS                         `json:"kms,omitempty" msg:"k,omitempty"`
 }
 
 // PoolResource represents information about a storage pool
@@ -104,7 +103,7 @@ type PoolResource struct {
 	TotalSets          int      `json:"totalSets" msg:"ts"`
 	WriteQuorum        int      `json:"writeQuorum" msg:"wq"`
 	ReadQuorum         int      `json:"readQuorum" msg:"rq"`
-	Nodes              []string `json:"nodes" msg:"n"`
+	Nodes              []string `json:"nodes,omitempty" msg:"n,omitempty"`
 	DriveCount         int      `json:"driveCount" msg:"dc"`
 	DrivesOnline       int      `json:"drivesOnline" msg:"do"`
 	DrivesOffline      int      `json:"drivesOffline" msg:"doff"`
@@ -119,15 +118,15 @@ type PoolResource struct {
 }
 
 type DriveCounts struct {
-	Ok          int `json:"ok,omitempty" msg:"ok"`
-	Offline     int `json:"offline,omitempty" msg:"of"`
-	Corrupt     int `json:"corrupt,omitempty" msg:"cr"`
-	Missing     int `json:"missing,omitempty" msg:"mi"`
-	Permission  int `json:"permission,omitempty" msg:"pe"`
-	Faulty      int `json:"faulty,omitempty" msg:"fa"`
-	RootMount   int `json:"rootMount,omitempty" msg:"ro"`
-	Unknown     int `json:"unknown,omitempty" msg:"un"`
-	Unformatted int `json:"unformatted,omitempty" msg:"uf"`
+	Ok          int `json:"ok" msg:"ok"`
+	Offline     int `json:"offline" msg:"of"`
+	Corrupt     int `json:"corrupt" msg:"cr"`
+	Missing     int `json:"missing" msg:"mi"`
+	Permission  int `json:"permission" msg:"pe"`
+	Faulty      int `json:"faulty" msg:"fa"`
+	RootMount   int `json:"rootMount" msg:"ro"`
+	Unknown     int `json:"unknown" msg:"un"`
+	Unformatted int `json:"unformatted" msg:"uf"`
 }
 
 // NodeResource represents information about a node
@@ -140,7 +139,7 @@ type NodeResource struct {
 	TotalDrives int         `json:"totalDrives" msg:"td"`
 	DriveCounts DriveCounts `json:"driveCounts" msg:"dc"`
 	PoolIndex   int         `json:"poolIndex" msg:"pi"`
-	PoolIndexes []int       `json:"poolIndexes" msg:"pis"`
+	PoolIndexes []int       `json:"poolIndexes,omitempty" msg:"pis,omitempty"`
 }
 
 // DriveResource represents information about a drive
@@ -162,27 +161,21 @@ type DriveResource struct {
 
 // ErasureSetResource represents information about an erasure set
 type ErasureSetResource struct {
-	// Basics
-	PoolIndex int `json:"poolIndex" msg:"pi"`
-	SetIndex  int `json:"setIndex" msg:"si"`
-	// Drives
-	DriveCount    int `json:"driveCount" msg:"dc"`
-	OfflineDrives int `json:"offlineDrives" msg:"od"`
-	OnlineDrives  int `json:"onlineDrives" msg:"ond"`
-	HealDisks     int `json:"healDisks" msg:"hd"`
-	// Quorums
-	ReadQuorum  int `json:"readQuorum" msg:"rq"`
-	WriteQuorum int `json:"writeQuorum" msg:"wq"`
-	// Nodes
-	Nodes []string `json:"nodes" msg:"n"`
-	// Usage
-	RawUsage    uint64 `json:"rawUsage" msg:"ru"`
-	RawCapacity uint64 `json:"rawCapacity" msg:"rc"`
-	Usage       uint64 `json:"usage" msg:"u"`
-	// Metrics
-	ObjectsCount       uint64 `json:"objectsCount" msg:"oc"`
-	VersionsCount      uint64 `json:"versionsCount" msg:"vc"`
-	DeleteMarkersCount uint64 `json:"deleteMarkersCount" msg:"dc"`
+	PoolIndex          int      `json:"poolIndex" msg:"pi"`
+	SetIndex           int      `json:"setIndex" msg:"si"`
+	DriveCount         int      `json:"driveCount" msg:"dc"`
+	OfflineDrives      int      `json:"offlineDrives" msg:"od"`
+	OnlineDrives       int      `json:"onlineDrives" msg:"ond"`
+	HealDisks          int      `json:"healDisks" msg:"hd"`
+	ReadQuorum         int      `json:"readQuorum" msg:"rq"`
+	WriteQuorum        int      `json:"writeQuorum" msg:"wq"`
+	Nodes              []string `json:"nodes,omitempty" msg:"n,omitempty"`
+	RawUsage           uint64   `json:"rawUsage" msg:"ru"`
+	RawCapacity        uint64   `json:"rawCapacity" msg:"rc"`
+	Usage              uint64   `json:"usage" msg:"u"`
+	ObjectsCount       uint64   `json:"objectsCount" msg:"oc"`
+	VersionsCount      uint64   `json:"versionsCount" msg:"vc"`
+	DeleteMarkersCount uint64   `json:"deleteMarkersCount" msg:"dc"`
 }
 
 // ClusterResourceOpts ask for additional data from the server
