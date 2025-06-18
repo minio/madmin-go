@@ -37,6 +37,7 @@ type PaginatedPoolsResponse struct {
 	Results []PoolResource `json:"results" msg:"r,omitempty"`
 	Count   int            `json:"count" msg:"c"`
 	Total   int            `json:"total" msg:"t"`
+	Offset  int            `json:"offset" msg:"o"`
 }
 
 // PaginatedNodesResponse represents a paginated response for nodes
@@ -44,6 +45,7 @@ type PaginatedNodesResponse struct {
 	Results []NodeResource `json:"results" msg:"r,omitempty"`
 	Count   int            `json:"count" msg:"c"`
 	Total   int            `json:"total" msg:"t"`
+	Offset  int            `json:"offset" msg:"o"`
 }
 
 // PaginatedDrivesResponse represents a paginated response for drives
@@ -51,6 +53,7 @@ type PaginatedDrivesResponse struct {
 	Results []DriveResource `json:"results" msg:"r,omitempty"`
 	Count   int             `json:"count" msg:"c"`
 	Total   int             `json:"total" msg:"t"`
+	Offset  int             `json:"offset" msg:"o"`
 }
 
 // PaginatedErasureSetsResponse represents a paginated response for erasure sets
@@ -58,6 +61,7 @@ type PaginatedErasureSetsResponse struct {
 	Results []ErasureSetResource `json:"results" msg:"r,omitempty"`
 	Count   int                  `json:"count" msg:"c"`
 	Total   int                  `json:"total" msg:"t"`
+	Offset  int                  `json:"offset" msg:"o"`
 }
 
 type PoolLayout struct {
