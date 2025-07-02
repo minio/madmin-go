@@ -488,7 +488,7 @@ func (z *CatalogInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 2 bits */
+	var zb0001Mask uint8 /* 4 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -510,6 +510,7 @@ func (z *CatalogInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "LastBucketScanned")
 				return
 			}
+			zb0001Mask |= 0x1
 		case "lastObjectScanned":
 			z.LastObjectScanned, err = dc.ReadString()
 			if err != nil {
@@ -522,6 +523,7 @@ func (z *CatalogInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "LastBucketMatched")
 				return
 			}
+			zb0001Mask |= 0x2
 		case "lastObjectMatched":
 			z.LastObjectMatched, err = dc.ReadString()
 			if err != nil {
@@ -576,7 +578,7 @@ func (z *CatalogInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "LastObjectWritten")
 				return
 			}
-			zb0001Mask |= 0x1
+			zb0001Mask |= 0x4
 		case "outputFiles":
 			var zb0002 uint32
 			zb0002, err = dc.ReadArrayHeader()
@@ -596,7 +598,7 @@ func (z *CatalogInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x2
+			zb0001Mask |= 0x8
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -606,11 +608,17 @@ func (z *CatalogInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3 {
+	if zb0001Mask != 0xf {
 		if (zb0001Mask & 0x1) == 0 {
-			z.LastObjectWritten = ""
+			z.LastBucketScanned = ""
 		}
 		if (zb0001Mask & 0x2) == 0 {
+			z.LastBucketMatched = ""
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.LastObjectWritten = ""
+		}
+		if (zb0001Mask & 0x8) == 0 {
 			z.OutputFiles = nil
 		}
 	}
@@ -623,6 +631,14 @@ func (z *CatalogInfo) EncodeMsg(en *msgp.Writer) (err error) {
 	zb0001Len := uint32(14)
 	var zb0001Mask uint16 /* 14 bits */
 	_ = zb0001Mask
+	if z.LastBucketScanned == "" {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.LastBucketMatched == "" {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
 	if z.LastObjectWritten == "" {
 		zb0001Len--
 		zb0001Mask |= 0x1000
@@ -649,15 +665,17 @@ func (z *CatalogInfo) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "Bucket")
 			return
 		}
-		// write "lastBucketScanned"
-		err = en.Append(0xb1, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x53, 0x63, 0x61, 0x6e, 0x6e, 0x65, 0x64)
-		if err != nil {
-			return
-		}
-		err = en.WriteString(z.LastBucketScanned)
-		if err != nil {
-			err = msgp.WrapError(err, "LastBucketScanned")
-			return
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// write "lastBucketScanned"
+			err = en.Append(0xb1, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x53, 0x63, 0x61, 0x6e, 0x6e, 0x65, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.LastBucketScanned)
+			if err != nil {
+				err = msgp.WrapError(err, "LastBucketScanned")
+				return
+			}
 		}
 		// write "lastObjectScanned"
 		err = en.Append(0xb1, 0x6c, 0x61, 0x73, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x53, 0x63, 0x61, 0x6e, 0x6e, 0x65, 0x64)
@@ -669,15 +687,17 @@ func (z *CatalogInfo) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "LastObjectScanned")
 			return
 		}
-		// write "lastBucketMatched"
-		err = en.Append(0xb1, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x65, 0x64)
-		if err != nil {
-			return
-		}
-		err = en.WriteString(z.LastBucketMatched)
-		if err != nil {
-			err = msgp.WrapError(err, "LastBucketMatched")
-			return
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// write "lastBucketMatched"
+			err = en.Append(0xb1, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x65, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.LastBucketMatched)
+			if err != nil {
+				err = msgp.WrapError(err, "LastBucketMatched")
+				return
+			}
 		}
 		// write "lastObjectMatched"
 		err = en.Append(0xb1, 0x6c, 0x61, 0x73, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x65, 0x64)
@@ -801,6 +821,14 @@ func (z *CatalogInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	zb0001Len := uint32(14)
 	var zb0001Mask uint16 /* 14 bits */
 	_ = zb0001Mask
+	if z.LastBucketScanned == "" {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.LastBucketMatched == "" {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
 	if z.LastObjectWritten == "" {
 		zb0001Len--
 		zb0001Mask |= 0x1000
@@ -817,15 +845,19 @@ func (z *CatalogInfo) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "bucket"
 		o = append(o, 0xa6, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74)
 		o = msgp.AppendString(o, z.Bucket)
-		// string "lastBucketScanned"
-		o = append(o, 0xb1, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x53, 0x63, 0x61, 0x6e, 0x6e, 0x65, 0x64)
-		o = msgp.AppendString(o, z.LastBucketScanned)
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// string "lastBucketScanned"
+			o = append(o, 0xb1, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x53, 0x63, 0x61, 0x6e, 0x6e, 0x65, 0x64)
+			o = msgp.AppendString(o, z.LastBucketScanned)
+		}
 		// string "lastObjectScanned"
 		o = append(o, 0xb1, 0x6c, 0x61, 0x73, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x53, 0x63, 0x61, 0x6e, 0x6e, 0x65, 0x64)
 		o = msgp.AppendString(o, z.LastObjectScanned)
-		// string "lastBucketMatched"
-		o = append(o, 0xb1, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x65, 0x64)
-		o = msgp.AppendString(o, z.LastBucketMatched)
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// string "lastBucketMatched"
+			o = append(o, 0xb1, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x65, 0x64)
+			o = msgp.AppendString(o, z.LastBucketMatched)
+		}
 		// string "lastObjectMatched"
 		o = append(o, 0xb1, 0x6c, 0x61, 0x73, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x65, 0x64)
 		o = msgp.AppendString(o, z.LastObjectMatched)
@@ -881,7 +913,7 @@ func (z *CatalogInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 2 bits */
+	var zb0001Mask uint8 /* 4 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -903,6 +935,7 @@ func (z *CatalogInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "LastBucketScanned")
 				return
 			}
+			zb0001Mask |= 0x1
 		case "lastObjectScanned":
 			z.LastObjectScanned, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
@@ -915,6 +948,7 @@ func (z *CatalogInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "LastBucketMatched")
 				return
 			}
+			zb0001Mask |= 0x2
 		case "lastObjectMatched":
 			z.LastObjectMatched, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
@@ -969,7 +1003,7 @@ func (z *CatalogInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "LastObjectWritten")
 				return
 			}
-			zb0001Mask |= 0x1
+			zb0001Mask |= 0x4
 		case "outputFiles":
 			var zb0002 uint32
 			zb0002, bts, err = msgp.ReadArrayHeaderBytes(bts)
@@ -989,7 +1023,7 @@ func (z *CatalogInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x2
+			zb0001Mask |= 0x8
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -999,11 +1033,17 @@ func (z *CatalogInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3 {
+	if zb0001Mask != 0xf {
 		if (zb0001Mask & 0x1) == 0 {
-			z.LastObjectWritten = ""
+			z.LastBucketScanned = ""
 		}
 		if (zb0001Mask & 0x2) == 0 {
+			z.LastBucketMatched = ""
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.LastObjectWritten = ""
+		}
+		if (zb0001Mask & 0x8) == 0 {
 			z.OutputFiles = nil
 		}
 	}
