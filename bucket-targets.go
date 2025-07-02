@@ -49,6 +49,8 @@ func (t BucketTargets) Empty() bool {
 	return empty
 }
 
+//msgp:replace ServiceType with:string
+
 // BucketTarget represents the target bucket and site association.
 type BucketTarget struct {
 	SourceBucket         string        `json:"sourcebucket"`
