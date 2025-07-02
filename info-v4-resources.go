@@ -85,7 +85,7 @@ type ClusterResource struct {
 	BucketCount       int          `json:"bucketCount" msg:"bc"`
 	ObjectCount       int          `json:"objectCount" msg:"oc"`
 	VersionCount      int          `json:"versionCount" msg:"vc"`
-	DeleteMarkerCount int          `json:"deleteMarkerCount" msg:"dc"`
+	DeleteMarkerCount int          `json:"deleteMarkerCount" msg:"dmc"`
 	TotalSize         uint64       `json:"totalSize" msg:"ts"`
 	OnlineDrives      int          `json:"onlineDrives" msg:"od"`
 	OfflineDrives     int          `json:"offlineDrives" msg:"fd"`
@@ -118,7 +118,7 @@ type PoolResource struct {
 	Usage              uint64   `json:"usage" msg:"u"`
 	ObjectsCount       uint64   `json:"objectsCount" msg:"oc"`
 	VersionsCount      uint64   `json:"versionsCount" msg:"vc"`
-	DeleteMarkersCount uint64   `json:"deleteMarkersCount" msg:"dc"`
+	DeleteMarkersCount uint64   `json:"deleteMarkersCount" msg:"dmc"`
 }
 
 type DriveCounts struct {
@@ -179,7 +179,7 @@ type ErasureSetResource struct {
 	Usage              uint64   `json:"usage" msg:"u"`
 	ObjectsCount       uint64   `json:"objectsCount" msg:"oc"`
 	VersionsCount      uint64   `json:"versionsCount" msg:"vc"`
-	DeleteMarkersCount uint64   `json:"deleteMarkersCount" msg:"dc"`
+	DeleteMarkersCount uint64   `json:"deleteMarkersCount" msg:"dmc"`
 }
 
 // ClusterResourceOpts ask for additional data from the server

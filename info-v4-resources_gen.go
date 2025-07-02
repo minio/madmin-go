@@ -127,7 +127,7 @@ func (z *ClusterResource) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "VersionCount")
 				return
 			}
-		case "dc":
+		case "dmc":
 			z.DeleteMarkerCount, err = dc.ReadInt()
 			if err != nil {
 				err = msgp.WrapError(err, "DeleteMarkerCount")
@@ -340,8 +340,8 @@ func (z *ClusterResource) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "VersionCount")
 			return
 		}
-		// write "dc"
-		err = en.Append(0xa2, 0x64, 0x63)
+		// write "dmc"
+		err = en.Append(0xa3, 0x64, 0x6d, 0x63)
 		if err != nil {
 			return
 		}
@@ -460,8 +460,8 @@ func (z *ClusterResource) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "vc"
 		o = append(o, 0xa2, 0x76, 0x63)
 		o = msgp.AppendInt(o, z.VersionCount)
-		// string "dc"
-		o = append(o, 0xa2, 0x64, 0x63)
+		// string "dmc"
+		o = append(o, 0xa3, 0x64, 0x6d, 0x63)
 		o = msgp.AppendInt(o, z.DeleteMarkerCount)
 		// string "ts"
 		o = append(o, 0xa2, 0x74, 0x73)
@@ -597,7 +597,7 @@ func (z *ClusterResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "VersionCount")
 				return
 			}
-		case "dc":
+		case "dmc":
 			z.DeleteMarkerCount, bts, err = msgp.ReadIntBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "DeleteMarkerCount")
@@ -655,7 +655,7 @@ func (z *ClusterResource) Msgsize() (s int) {
 	for za0002 := range z.PoolsLayout {
 		s += z.PoolsLayout[za0002].Msgsize()
 	}
-	s += 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.Uint64Size + 3 + msgp.IntSize + 3 + msgp.IntSize
+	s += 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 4 + msgp.IntSize + 3 + msgp.Uint64Size + 3 + msgp.IntSize + 3 + msgp.IntSize
 	return
 }
 
@@ -1483,7 +1483,7 @@ func (z *ErasureSetResource) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "VersionsCount")
 				return
 			}
-		case "dc":
+		case "dmc":
 			z.DeleteMarkersCount, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "DeleteMarkersCount")
@@ -1672,8 +1672,8 @@ func (z *ErasureSetResource) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "VersionsCount")
 			return
 		}
-		// write "dc"
-		err = en.Append(0xa2, 0x64, 0x63)
+		// write "dmc"
+		err = en.Append(0xa3, 0x64, 0x6d, 0x63)
 		if err != nil {
 			return
 		}
@@ -1749,8 +1749,8 @@ func (z *ErasureSetResource) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "vc"
 		o = append(o, 0xa2, 0x76, 0x63)
 		o = msgp.AppendUint64(o, z.VersionsCount)
-		// string "dc"
-		o = append(o, 0xa2, 0x64, 0x63)
+		// string "dmc"
+		o = append(o, 0xa3, 0x64, 0x6d, 0x63)
 		o = msgp.AppendUint64(o, z.DeleteMarkersCount)
 	}
 	return
@@ -1874,7 +1874,7 @@ func (z *ErasureSetResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "VersionsCount")
 				return
 			}
-		case "dc":
+		case "dmc":
 			z.DeleteMarkersCount, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "DeleteMarkersCount")
@@ -1903,7 +1903,7 @@ func (z *ErasureSetResource) Msgsize() (s int) {
 	for za0001 := range z.Nodes {
 		s += msgp.StringPrefixSize + len(z.Nodes[za0001])
 	}
-	s += 3 + msgp.Uint64Size + 3 + msgp.Uint64Size + 2 + msgp.Uint64Size + 3 + msgp.Uint64Size + 3 + msgp.Uint64Size + 3 + msgp.Uint64Size
+	s += 3 + msgp.Uint64Size + 3 + msgp.Uint64Size + 2 + msgp.Uint64Size + 3 + msgp.Uint64Size + 3 + msgp.Uint64Size + 4 + msgp.Uint64Size
 	return
 }
 
@@ -3691,7 +3691,7 @@ func (z *PoolResource) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "VersionsCount")
 				return
 			}
-		case "dc":
+		case "dmc":
 			z.DeleteMarkersCount, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "DeleteMarkersCount")
@@ -3900,8 +3900,8 @@ func (z *PoolResource) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "VersionsCount")
 			return
 		}
-		// write "dc"
-		err = en.Append(0xa2, 0x64, 0x63)
+		// write "dmc"
+		err = en.Append(0xa3, 0x64, 0x6d, 0x63)
 		if err != nil {
 			return
 		}
@@ -3983,8 +3983,8 @@ func (z *PoolResource) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "vc"
 		o = append(o, 0xa2, 0x76, 0x63)
 		o = msgp.AppendUint64(o, z.VersionsCount)
-		// string "dc"
-		o = append(o, 0xa2, 0x64, 0x63)
+		// string "dmc"
+		o = append(o, 0xa3, 0x64, 0x6d, 0x63)
 		o = msgp.AppendUint64(o, z.DeleteMarkersCount)
 	}
 	return
@@ -4120,7 +4120,7 @@ func (z *PoolResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "VersionsCount")
 				return
 			}
-		case "dc":
+		case "dmc":
 			z.DeleteMarkersCount, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "DeleteMarkersCount")
@@ -4149,7 +4149,7 @@ func (z *PoolResource) Msgsize() (s int) {
 	for za0001 := range z.Nodes {
 		s += msgp.StringPrefixSize + len(z.Nodes[za0001])
 	}
-	s += 3 + msgp.IntSize + 3 + msgp.IntSize + 5 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.Uint64Size + 3 + msgp.Uint64Size + 2 + msgp.Uint64Size + 3 + msgp.Uint64Size + 3 + msgp.Uint64Size + 3 + msgp.Uint64Size
+	s += 3 + msgp.IntSize + 3 + msgp.IntSize + 5 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.Uint64Size + 3 + msgp.Uint64Size + 2 + msgp.Uint64Size + 3 + msgp.Uint64Size + 3 + msgp.Uint64Size + 4 + msgp.Uint64Size
 	return
 }
 
