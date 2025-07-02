@@ -539,7 +539,7 @@ type KeyRotationInfo struct {
 
 type CatalogInfo struct {
 	Bucket            string `json:"bucket"`
-	LastBucketScanned string `json:"lastBucketScanned"` // Deprecated 07/01/2025; Replaced by `Bucket`
+	LastBucketScanned string `json:"lastBucketScanned,omitempty"` // Deprecated 07/01/2025; Replaced by `Bucket`
 	LastObjectScanned string `json:"lastObjectScanned"`
 	LastBucketMatched string `json:"lastBucketMatched"` // Deprecated 07/01/2025; Replaced by `Bucket`
 	LastObjectMatched string `json:"lastObjectMatched"`
