@@ -23,6 +23,9 @@
 package madmin
 
 import (
+	"encoding/json"
+	"hash/crc32"
+
 	"github.com/prometheus/procfs/sysfs"
 )
 
@@ -36,24 +39,43 @@ func getCPUFreqStats() ([]CPUFreqStats, error) {
 	if err != nil {
 		return nil, err
 	}
+	return cpuFreqSpeeds(stats), nil
+}
 
-	out := make([]CPUFreqStats, 0, len(stats))
+// cpuFreqSpeeds deduplicates CPU frequency stats and converts them.
+func cpuFreqSpeeds(stats []sysfs.SystemCPUCpufreqStats) []CPUFreqStats {
+	found := map[uint32]*CPUFreqStats{}
 	for _, stat := range stats {
-		out = append(out, CPUFreqStats{
-			Name:                     stat.Name,
-			CpuinfoCurrentFrequency:  stat.CpuinfoCurrentFrequency,
+		c := CPUFreqStats{
+			Count:                    1,
 			CpuinfoMinimumFrequency:  stat.CpuinfoMinimumFrequency,
 			CpuinfoMaximumFrequency:  stat.CpuinfoMaximumFrequency,
 			CpuinfoTransitionLatency: stat.CpuinfoTransitionLatency,
-			ScalingCurrentFrequency:  stat.ScalingCurrentFrequency,
 			ScalingMinimumFrequency:  stat.ScalingMinimumFrequency,
 			ScalingMaximumFrequency:  stat.ScalingMaximumFrequency,
 			AvailableGovernors:       stat.AvailableGovernors,
 			Driver:                   stat.Driver,
 			Governor:                 stat.Governor,
-			RelatedCpus:              stat.RelatedCpus,
 			SetSpeed:                 stat.SetSpeed,
-		})
+		}
+		b, _ := json.Marshal(c)
+		h := crc32.ChecksumIEEE(b)
+		// Set variable fields, excluded from dedupe...
+		c.Name = stat.Name
+		c.RelatedCpus = stat.RelatedCpus
+		c.CpuinfoCurrentFrequency = stat.CpuinfoCurrentFrequency
+		c.ScalingCurrentFrequency = stat.ScalingCurrentFrequency
+
+		if f := found[h]; f != nil {
+			f.Count++
+			continue
+		}
+		found[h] = &c
 	}
-	return out, nil
+
+	out := make([]CPUFreqStats, 0, len(found))
+	for _, v := range found {
+		out = append(out, *v)
+	}
+	return out
 }

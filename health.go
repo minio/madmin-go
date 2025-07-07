@@ -162,18 +162,19 @@ type CPUs struct {
 // CPUFreqStats CPU frequency stats
 type CPUFreqStats struct {
 	Name                     string
-	CpuinfoCurrentFrequency  *uint64
-	CpuinfoMinimumFrequency  *uint64
-	CpuinfoMaximumFrequency  *uint64
-	CpuinfoTransitionLatency *uint64
-	ScalingCurrentFrequency  *uint64
-	ScalingMinimumFrequency  *uint64
-	ScalingMaximumFrequency  *uint64
-	AvailableGovernors       string
-	Driver                   string
-	Governor                 string
-	RelatedCpus              string
-	SetSpeed                 string
+	Count                    int     // Number of duplicates (excluding name, current frequency, related CPUs)
+	CpuinfoCurrentFrequency  *uint64 `json:",omitempty"`
+	CpuinfoMinimumFrequency  *uint64 `json:",omitempty"`
+	CpuinfoMaximumFrequency  *uint64 `json:",omitempty"`
+	CpuinfoTransitionLatency *uint64 `json:",omitempty"`
+	ScalingCurrentFrequency  *uint64 `json:",omitempty"`
+	ScalingMinimumFrequency  *uint64 `json:",omitempty"`
+	ScalingMaximumFrequency  *uint64 `json:",omitempty"`
+	AvailableGovernors       string  `json:",omitempty"`
+	Driver                   string  `json:",omitempty"`
+	Governor                 string  `json:",omitempty"`
+	RelatedCpus              string  `json:",omitempty"`
+	SetSpeed                 string  `json:",omitempty"`
 }
 
 // GetCPUs returns system's all CPU information.
