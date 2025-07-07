@@ -23,6 +23,7 @@
 package madmin
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -30,9 +31,11 @@ import (
 
 func getCPUFreqStats() (stats []CPUFreqStats, err error) {
 	for i := 0; ; i++ {
+		cpuName := "cpu" + strconv.Itoa(i)
+
 		governorPath := filepath.Join(
 			"/sys/devices/system/cpu",
-			"cpu"+strconv.Itoa(i),
+			cpuName,
 			"cpufreq",
 			"scaling_governor",
 		)
@@ -44,8 +47,8 @@ func getCPUFreqStats() (stats []CPUFreqStats, err error) {
 		}
 
 		stats = append(stats, CPUFreqStats{
-			Name:     "cpu" + strconv.Itoa(i),
-			Governor: string(content),
+			Name:     cpuName,
+			Governor: string(bytes.TrimSpace(content)),
 		})
 		// Once we can read one CPU governor stat, its enough.
 		break
