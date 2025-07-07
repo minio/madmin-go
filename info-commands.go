@@ -470,7 +470,7 @@ type DiskMetrics struct {
 	APICalls   map[string]uint64      `json:"apiCalls,omitempty"`
 
 	// TotalTokens set per drive max concurrent I/O.
-	TotalTokens uint32 `json:"totalTokens,omitempty"`// Deprecated (unused)
+	TotalTokens uint32 `json:"totalTokens,omitempty"` // Deprecated (unused)
 
 	// TotalWaiting the amount of concurrent I/O waiting on disk
 	TotalWaiting uint32 `json:"totalWaiting,omitempty"`
