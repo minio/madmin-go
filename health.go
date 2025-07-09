@@ -1103,14 +1103,22 @@ type TLSCert struct {
 	Checksum      string    `json:"checksum"`
 }
 
+// ShardsHealthInfo holds the per drive count of objects that missing shards in that drive
+type ShardsHealthInfo struct {
+	Error string `json:"error,omitempty"`
+	// (Pool, Set) => an array of failed writes count for each drive index
+	FailedWrites map[string]map[string][]uint64 `json:"failed_writes,omitempty"`
+}
+
 // MinioHealthInfo - Includes MinIO confifuration information
 type MinioHealthInfo struct {
 	Error string `json:"error,omitempty"`
 
-	Config          MinioConfig     `json:"config,omitempty"`
-	Info            MinioInfo       `json:"info,omitempty"`
-	Replication     *ReplDiagInfo   `json:"replication,omitempty"` // Deprecated May 2025
-	ReplicationInfo *ReplDiagInfoV2 `json:"replication_info,omitempty"`
+	Config          MinioConfig       `json:"config,omitempty"`
+	Info            MinioInfo         `json:"info,omitempty"`
+	Replication     *ReplDiagInfo     `json:"replication,omitempty"` // Deprecated May 2025
+	ReplicationInfo *ReplDiagInfoV2   `json:"replication_info,omitempty"`
+	ShardsHealth    *ShardsHealthInfo `json:"shards_health,omitempty"`
 }
 
 // HealthInfo - MinIO cluster's health Info
@@ -1163,34 +1171,36 @@ type HealthDataType string
 
 // HealthDataTypes
 const (
-	HealthDataTypeMinioInfo   HealthDataType = "minioinfo"
-	HealthDataTypeMinioConfig HealthDataType = "minioconfig"
-	HealthDataTypeSysCPU      HealthDataType = "syscpu"
-	HealthDataTypeSysDriveHw  HealthDataType = "sysdrivehw"
-	HealthDataTypeSysOsInfo   HealthDataType = "sysosinfo"
-	HealthDataTypeSysMem      HealthDataType = "sysmem"
-	HealthDataTypeSysNet      HealthDataType = "sysnet"
-	HealthDataTypeSysProcess  HealthDataType = "sysprocess"
-	HealthDataTypeSysErrors   HealthDataType = "syserrors"
-	HealthDataTypeSysServices HealthDataType = "sysservices"
-	HealthDataTypeSysConfig   HealthDataType = "sysconfig"
-	HealthDataTypeReplication HealthDataType = "replication"
+	HealthDataTypeMinioInfo    HealthDataType = "minioinfo"
+	HealthDataTypeMinioConfig  HealthDataType = "minioconfig"
+	HealthDataTypeSysCPU       HealthDataType = "syscpu"
+	HealthDataTypeSysDriveHw   HealthDataType = "sysdrivehw"
+	HealthDataTypeSysOsInfo    HealthDataType = "sysosinfo"
+	HealthDataTypeSysMem       HealthDataType = "sysmem"
+	HealthDataTypeSysNet       HealthDataType = "sysnet"
+	HealthDataTypeSysProcess   HealthDataType = "sysprocess"
+	HealthDataTypeSysErrors    HealthDataType = "syserrors"
+	HealthDataTypeSysServices  HealthDataType = "sysservices"
+	HealthDataTypeSysConfig    HealthDataType = "sysconfig"
+	HealthDataTypeReplication  HealthDataType = "replication"
+	HealthDataTypeShardsHealth HealthDataType = "shardshealth"
 )
 
 // HealthDataTypesMap - Map of Health datatypes
 var HealthDataTypesMap = map[string]HealthDataType{
-	"minioinfo":   HealthDataTypeMinioInfo,
-	"minioconfig": HealthDataTypeMinioConfig,
-	"syscpu":      HealthDataTypeSysCPU,
-	"sysdrivehw":  HealthDataTypeSysDriveHw,
-	"sysosinfo":   HealthDataTypeSysOsInfo,
-	"sysmem":      HealthDataTypeSysMem,
-	"sysnet":      HealthDataTypeSysNet,
-	"sysprocess":  HealthDataTypeSysProcess,
-	"syserrors":   HealthDataTypeSysErrors,
-	"sysservices": HealthDataTypeSysServices,
-	"sysconfig":   HealthDataTypeSysConfig,
-	"replication": HealthDataTypeReplication,
+	"minioinfo":    HealthDataTypeMinioInfo,
+	"minioconfig":  HealthDataTypeMinioConfig,
+	"syscpu":       HealthDataTypeSysCPU,
+	"sysdrivehw":   HealthDataTypeSysDriveHw,
+	"sysosinfo":    HealthDataTypeSysOsInfo,
+	"sysmem":       HealthDataTypeSysMem,
+	"sysnet":       HealthDataTypeSysNet,
+	"sysprocess":   HealthDataTypeSysProcess,
+	"syserrors":    HealthDataTypeSysErrors,
+	"sysservices":  HealthDataTypeSysServices,
+	"sysconfig":    HealthDataTypeSysConfig,
+	"replication":  HealthDataTypeReplication,
+	"shardshealth": HealthDataTypeShardsHealth,
 }
 
 // HealthDataTypesList - List of health datatypes
@@ -1207,6 +1217,7 @@ var HealthDataTypesList = []HealthDataType{
 	HealthDataTypeSysServices,
 	HealthDataTypeSysConfig,
 	HealthDataTypeReplication,
+	HealthDataTypeShardsHealth,
 }
 
 // HealthInfoVersionStruct - struct for health info version
