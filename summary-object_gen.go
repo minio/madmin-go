@@ -871,12 +871,6 @@ func (z *ObjectSummary) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Version")
 				return
 			}
-		case "IsInline":
-			z.IsInline, err = dc.ReadBool()
-			if err != nil {
-				err = msgp.WrapError(err, "IsInline")
-				return
-			}
 		case "PartNumbers":
 			var zb0003 uint32
 			zb0003, err = dc.ReadArrayHeader()
@@ -1095,9 +1089,9 @@ func (z *ObjectSummary) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *ObjectSummary) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 14
+	// map header, size 13
 	// write "Name"
-	err = en.Append(0x8e, 0xa4, 0x4e, 0x61, 0x6d, 0x65)
+	err = en.Append(0x8d, 0xa4, 0x4e, 0x61, 0x6d, 0x65)
 	if err != nil {
 		return
 	}
@@ -1141,16 +1135,6 @@ func (z *ObjectSummary) EncodeMsg(en *msgp.Writer) (err error) {
 	err = en.WriteString(z.Version)
 	if err != nil {
 		err = msgp.WrapError(err, "Version")
-		return
-	}
-	// write "IsInline"
-	err = en.Append(0xa8, 0x49, 0x73, 0x49, 0x6e, 0x6c, 0x69, 0x6e, 0x65)
-	if err != nil {
-		return
-	}
-	err = en.WriteBool(z.IsInline)
-	if err != nil {
-		err = msgp.WrapError(err, "IsInline")
 		return
 	}
 	// write "PartNumbers"
@@ -1333,9 +1317,9 @@ func (z *ObjectSummary) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *ObjectSummary) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 14
+	// map header, size 13
 	// string "Name"
-	o = append(o, 0x8e, 0xa4, 0x4e, 0x61, 0x6d, 0x65)
+	o = append(o, 0x8d, 0xa4, 0x4e, 0x61, 0x6d, 0x65)
 	o = msgp.AppendString(o, z.Name)
 	// string "Errors"
 	o = append(o, 0xa6, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x73)
@@ -1349,9 +1333,6 @@ func (z *ObjectSummary) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "Version"
 	o = append(o, 0xa7, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
 	o = msgp.AppendString(o, z.Version)
-	// string "IsInline"
-	o = append(o, 0xa8, 0x49, 0x73, 0x49, 0x6e, 0x6c, 0x69, 0x6e, 0x65)
-	o = msgp.AppendBool(o, z.IsInline)
 	// string "PartNumbers"
 	o = append(o, 0xab, 0x50, 0x61, 0x72, 0x74, 0x4e, 0x75, 0x6d, 0x62, 0x65, 0x72, 0x73)
 	o = msgp.AppendArrayHeader(o, uint32(len(z.PartNumbers)))
@@ -1496,12 +1477,6 @@ func (z *ObjectSummary) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.Version, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Version")
-				return
-			}
-		case "IsInline":
-			z.IsInline, bts, err = msgp.ReadBoolBytes(bts)
-			if err != nil {
-				err = msgp.WrapError(err, "IsInline")
 				return
 			}
 		case "PartNumbers":
@@ -1722,7 +1697,7 @@ func (z *ObjectSummary) Msgsize() (s int) {
 	for za0001 := range z.Errors {
 		s += msgp.StringPrefixSize + len(z.Errors[za0001])
 	}
-	s += 8 + msgp.StringPrefixSize + len(z.DataDir) + 8 + msgp.StringPrefixSize + len(z.Version) + 9 + msgp.BoolSize + 12 + msgp.ArrayHeaderSize + (len(z.PartNumbers) * (msgp.IntSize)) + 12 + msgp.ArrayHeaderSize + (len(z.ErasureDist) * (msgp.Uint8Size)) + 12 + msgp.IntSize + 13 + msgp.BoolSize + 6 + msgp.ArrayHeaderSize
+	s += 8 + msgp.StringPrefixSize + len(z.DataDir) + 8 + msgp.StringPrefixSize + len(z.Version) + 12 + msgp.ArrayHeaderSize + (len(z.PartNumbers) * (msgp.IntSize)) + 12 + msgp.ArrayHeaderSize + (len(z.ErasureDist) * (msgp.Uint8Size)) + 12 + msgp.IntSize + 13 + msgp.BoolSize + 6 + msgp.ArrayHeaderSize
 	for za0004 := range z.Metas {
 		if z.Metas[za0004] == nil {
 			s += msgp.NilSize
@@ -1979,7 +1954,7 @@ func (z *ObjectUnknownSummary) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 		case "Err":
-			err = z.Err.DecodeMsg(dc)
+			z.Err, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "Err")
 				return
@@ -2073,7 +2048,7 @@ func (z *ObjectUnknownSummary) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = z.Err.EncodeMsg(en)
+	err = en.WriteString(z.Err)
 	if err != nil {
 		err = msgp.WrapError(err, "Err")
 		return
@@ -2108,11 +2083,7 @@ func (z *ObjectUnknownSummary) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.AppendBool(o, z.Dir)
 	// string "Err"
 	o = append(o, 0xa3, 0x45, 0x72, 0x72)
-	o, err = z.Err.MarshalMsg(o)
-	if err != nil {
-		err = msgp.WrapError(err, "Err")
-		return
-	}
+	o = msgp.AppendString(o, z.Err)
 	return
 }
 
@@ -2177,7 +2148,7 @@ func (z *ObjectUnknownSummary) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 		case "Err":
-			bts, err = z.Err.UnmarshalMsg(bts)
+			z.Err, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Err")
 				return
@@ -2196,7 +2167,7 @@ func (z *ObjectUnknownSummary) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *ObjectUnknownSummary) Msgsize() (s int) {
-	s = 1 + 5 + msgp.IntSize + 5 + msgp.StringPrefixSize + len(z.Host) + 4 + msgp.IntSize + 6 + msgp.StringPrefixSize + len(z.Drive) + 9 + msgp.StringPrefixSize + len(z.Filename) + 5 + msgp.Int64Size + 4 + msgp.BoolSize + 4 + z.Err.Msgsize()
+	s = 1 + 5 + msgp.IntSize + 5 + msgp.StringPrefixSize + len(z.Host) + 4 + msgp.IntSize + 6 + msgp.StringPrefixSize + len(z.Drive) + 9 + msgp.StringPrefixSize + len(z.Filename) + 5 + msgp.Int64Size + 4 + msgp.BoolSize + 4 + msgp.StringPrefixSize + len(z.Err)
 	return
 }
 
@@ -2224,6 +2195,18 @@ func (z *ObjectVersionSummary) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "DeleteMarker")
 				return
 			}
+		case "InLined":
+			z.InLined, err = dc.ReadBool()
+			if err != nil {
+				err = msgp.WrapError(err, "InLined")
+				return
+			}
+		case "Size":
+			z.Size, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "Size")
+				return
+			}
 		case "VersionID":
 			z.VersionID, err = dc.ReadString()
 			if err != nil {
@@ -2248,6 +2231,18 @@ func (z *ObjectVersionSummary) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "DataDir")
 				return
 			}
+		case "DataBlocks":
+			z.DataBlocks, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "DataBlocks")
+				return
+			}
+		case "ParityBlocks":
+			z.ParityBlocks, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "ParityBlocks")
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -2261,15 +2256,35 @@ func (z *ObjectVersionSummary) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *ObjectVersionSummary) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 5
+	// map header, size 9
 	// write "DeleteMarker"
-	err = en.Append(0x85, 0xac, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x72)
+	err = en.Append(0x89, 0xac, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x72)
 	if err != nil {
 		return
 	}
 	err = en.WriteBool(z.DeleteMarker)
 	if err != nil {
 		err = msgp.WrapError(err, "DeleteMarker")
+		return
+	}
+	// write "InLined"
+	err = en.Append(0xa7, 0x49, 0x6e, 0x4c, 0x69, 0x6e, 0x65, 0x64)
+	if err != nil {
+		return
+	}
+	err = en.WriteBool(z.InLined)
+	if err != nil {
+		err = msgp.WrapError(err, "InLined")
+		return
+	}
+	// write "Size"
+	err = en.Append(0xa4, 0x53, 0x69, 0x7a, 0x65)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt64(z.Size)
+	if err != nil {
+		err = msgp.WrapError(err, "Size")
 		return
 	}
 	// write "VersionID"
@@ -2312,16 +2327,42 @@ func (z *ObjectVersionSummary) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "DataDir")
 		return
 	}
+	// write "DataBlocks"
+	err = en.Append(0xaa, 0x44, 0x61, 0x74, 0x61, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt(z.DataBlocks)
+	if err != nil {
+		err = msgp.WrapError(err, "DataBlocks")
+		return
+	}
+	// write "ParityBlocks"
+	err = en.Append(0xac, 0x50, 0x61, 0x72, 0x69, 0x74, 0x79, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt(z.ParityBlocks)
+	if err != nil {
+		err = msgp.WrapError(err, "ParityBlocks")
+		return
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z *ObjectVersionSummary) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 5
+	// map header, size 9
 	// string "DeleteMarker"
-	o = append(o, 0x85, 0xac, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x72)
+	o = append(o, 0x89, 0xac, 0x44, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x4d, 0x61, 0x72, 0x6b, 0x65, 0x72)
 	o = msgp.AppendBool(o, z.DeleteMarker)
+	// string "InLined"
+	o = append(o, 0xa7, 0x49, 0x6e, 0x4c, 0x69, 0x6e, 0x65, 0x64)
+	o = msgp.AppendBool(o, z.InLined)
+	// string "Size"
+	o = append(o, 0xa4, 0x53, 0x69, 0x7a, 0x65)
+	o = msgp.AppendInt64(o, z.Size)
 	// string "VersionID"
 	o = append(o, 0xa9, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x49, 0x44)
 	o = msgp.AppendString(o, z.VersionID)
@@ -2334,6 +2375,12 @@ func (z *ObjectVersionSummary) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "DataDir"
 	o = append(o, 0xa7, 0x44, 0x61, 0x74, 0x61, 0x44, 0x69, 0x72)
 	o = msgp.AppendString(o, z.DataDir)
+	// string "DataBlocks"
+	o = append(o, 0xaa, 0x44, 0x61, 0x74, 0x61, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x73)
+	o = msgp.AppendInt(o, z.DataBlocks)
+	// string "ParityBlocks"
+	o = append(o, 0xac, 0x50, 0x61, 0x72, 0x69, 0x74, 0x79, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x73)
+	o = msgp.AppendInt(o, z.ParityBlocks)
 	return
 }
 
@@ -2361,6 +2408,18 @@ func (z *ObjectVersionSummary) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "DeleteMarker")
 				return
 			}
+		case "InLined":
+			z.InLined, bts, err = msgp.ReadBoolBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "InLined")
+				return
+			}
+		case "Size":
+			z.Size, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Size")
+				return
+			}
 		case "VersionID":
 			z.VersionID, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
@@ -2385,6 +2444,18 @@ func (z *ObjectVersionSummary) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "DataDir")
 				return
 			}
+		case "DataBlocks":
+			z.DataBlocks, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "DataBlocks")
+				return
+			}
+		case "ParityBlocks":
+			z.ParityBlocks, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ParityBlocks")
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -2399,6 +2470,6 @@ func (z *ObjectVersionSummary) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *ObjectVersionSummary) Msgsize() (s int) {
-	s = 1 + 13 + msgp.BoolSize + 10 + msgp.StringPrefixSize + len(z.VersionID) + 9 + msgp.BytesPrefixSize + len(z.Checksum) + 8 + msgp.TimeSize + 8 + msgp.StringPrefixSize + len(z.DataDir)
+	s = 1 + 13 + msgp.BoolSize + 8 + msgp.BoolSize + 5 + msgp.Int64Size + 10 + msgp.StringPrefixSize + len(z.VersionID) + 9 + msgp.BytesPrefixSize + len(z.Checksum) + 8 + msgp.TimeSize + 8 + msgp.StringPrefixSize + len(z.DataDir) + 11 + msgp.IntSize + 13 + msgp.IntSize
 	return
 }
