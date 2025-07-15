@@ -43,7 +43,7 @@ func getCPUFreqStats() (stats []CPUFreqStats, err error) {
 		content, err1 := os.ReadFile(governorPath)
 		if err1 != nil {
 			err = err1
-			continue
+			return
 		}
 
 		stats = append(stats, CPUFreqStats{
