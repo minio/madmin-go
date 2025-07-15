@@ -30,29 +30,28 @@ import (
 )
 
 func getCPUFreqStats() (stats []CPUFreqStats, err error) {
-	for i := 0; ; i++ {
-		cpuName := "cpu" + strconv.Itoa(i)
+	// Attempt to read CPU stats for governor on CPU0
+	// which is enough indicating atleast the system
+	// has one CPU.
+	cpuName := "cpu" + strconv.Itoa(0)
 
-		governorPath := filepath.Join(
-			"/sys/devices/system/cpu",
-			cpuName,
-			"cpufreq",
-			"scaling_governor",
-		)
+	governorPath := filepath.Join(
+		"/sys/devices/system/cpu",
+		cpuName,
+		"cpufreq",
+		"scaling_governor",
+	)
 
-		content, err1 := os.ReadFile(governorPath)
-		if err1 != nil {
-			err = err1
-			return
-		}
-
-		stats = append(stats, CPUFreqStats{
-			Name:     cpuName,
-			Governor: string(bytes.TrimSpace(content)),
-		})
-		// Once we can read one CPU governor stat, its enough.
-		break
+	content, err1 := os.ReadFile(governorPath)
+	if err1 != nil {
+		err = err1
+		return
 	}
 
-	return stats, err
+	stats = append(stats, CPUFreqStats{
+		Name:     cpuName,
+		Governor: string(bytes.TrimSpace(content)),
+	})
+
+	return stats, nil
 }
