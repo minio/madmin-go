@@ -40,13 +40,16 @@ type HealScanMode int
 
 const (
 	// HealUnknownScan default is unknown
-	HealUnknownScan HealScanMode = iota
+	HealUnknownScan HealScanMode = 0
 
 	// HealNormalScan checks if parts are present and not outdated
-	HealNormalScan
+	HealNormalScan = 1 << iota
 
 	// HealDeepScan checks for parts bitrot checksums
 	HealDeepScan
+
+	// HealLowQuorumScan will only pick objects that are obviously dangling (low quorum)
+	HealLowQuorumScan
 )
 
 // HealOpts - collection of options for a heal sequence
