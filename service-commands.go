@@ -22,6 +22,7 @@ package madmin
 import (
 	"context"
 	"encoding/json"
+	"iter"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -153,8 +154,9 @@ type ServiceTraceOpts struct {
 	KMS               bool
 	Formatting        bool
 
-	OnlyErrors bool
-	Threshold  time.Duration
+	OnlyErrors    bool
+	Threshold     time.Duration
+	ThresholdTTFB time.Duration
 }
 
 // TraceTypes returns the enabled traces as a bitfield value.
@@ -186,6 +188,7 @@ func (t ServiceTraceOpts) TraceTypes() TraceType {
 func (t ServiceTraceOpts) AddParams(u url.Values) {
 	u.Set("err", strconv.FormatBool(t.OnlyErrors))
 	u.Set("threshold", t.Threshold.String())
+	u.Set("threshold-ttfb", t.ThresholdTTFB.String())
 
 	u.Set("s3", strconv.FormatBool(t.S3))
 	u.Set("internal", strconv.FormatBool(t.Internal))
@@ -234,7 +237,71 @@ func (t *ServiceTraceOpts) ParseParams(r *http.Request) (err error) {
 		}
 		t.Threshold = d
 	}
+
+	if thTTFB := r.Form.Get("threshold-ttfb"); thTTFB != "" {
+		d, err := time.ParseDuration(thTTFB)
+		if err != nil {
+			return err
+		}
+		t.ThresholdTTFB = d
+	}
+
 	return nil
+}
+
+// ServiceTraceIter - listen on http trace notifications via iter.Seq
+func (adm AdminClient) ServiceTraceIter(ctx context.Context, opts ServiceTraceOpts) iter.Seq[ServiceTraceInfo] {
+	return func(yield func(ServiceTraceInfo) bool) {
+		// if context is already canceled, skip yield
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		for {
+			urlValues := make(url.Values)
+			opts.AddParams(urlValues)
+
+			reqData := requestData{
+				relPath:     adminAPIPrefix + "/trace",
+				queryValues: urlValues,
+			}
+
+			// Execute GET to call trace handler
+			resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+			if err != nil {
+				yield(ServiceTraceInfo{Err: err})
+				return
+			}
+
+			if resp.StatusCode != http.StatusOK {
+				closeResponse(resp)
+				yield(ServiceTraceInfo{Err: httpRespToErrorResponse(resp)})
+				return
+			}
+
+			dec := json.NewDecoder(resp.Body)
+			for {
+				var info TraceInfo
+				if err = dec.Decode(&info); err != nil {
+					closeResponse(resp)
+					yield(ServiceTraceInfo{Err: err})
+					break
+				}
+
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
+
+				if !yield(ServiceTraceInfo{Trace: info}) {
+					return
+				}
+			}
+		}
+	}
 }
 
 // ServiceTrace - listen on http trace notifications.
