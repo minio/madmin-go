@@ -48,7 +48,7 @@ const (
 	// HealDeepScan checks for parts bitrot checksums
 	HealDeepScan
 
-	// HealLowQuorumScan will only pick objects that are obviously dangling (low quorum)
+	// HealUncommittedScan will only pick objects that are dangling (uncommitted objects in the namespace without quorum)
 	HealLowQuorumScan
 )
 
