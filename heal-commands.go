@@ -49,7 +49,7 @@ const (
 	HealDeepScan
 
 	// HealUncommittedScan will only pick objects that are dangling (uncommitted objects in the namespace without quorum)
-	HealLowQuorumScan
+	HealUncommittedScan
 )
 
 // HealOpts - collection of options for a heal sequence
