@@ -45,6 +45,8 @@ const (
 	GCS
 	// MinIO refers to MinIO object storage backend
 	MinIO
+	// Debug refers to a debug tier type, used for testing purposes
+	Debug
 )
 
 // String returns the name of tt's remote tier backend.
@@ -58,6 +60,8 @@ func (tt TierType) String() string {
 		return "gcs"
 	case MinIO:
 		return "minio"
+	case Debug:
+		return "debug"
 	}
 	return "unsupported"
 }
@@ -97,6 +101,8 @@ func NewTierType(scType string) (TierType, error) {
 		return GCS, nil
 	case MinIO.String():
 		return MinIO, nil
+	case Debug.String():
+		return Debug, nil
 	}
 
 	return Unsupported, ErrTierTypeUnsupported
@@ -113,6 +119,7 @@ type TierConfig struct {
 	Azure   *TierAzure `json:",omitempty"`
 	GCS     *TierGCS   `json:",omitempty"`
 	MinIO   *TierMinIO `json:",omitempty"`
+	Debug   *TierDebug `json:",omitempty"`
 }
 
 var (
@@ -133,6 +140,7 @@ func (cfg *TierConfig) Clone() TierConfig {
 		az  TierAzure
 		gcs TierGCS
 		m   TierMinIO
+		d   TierDebug
 	)
 	switch cfg.Type {
 	case S3:
@@ -147,6 +155,8 @@ func (cfg *TierConfig) Clone() TierConfig {
 	case MinIO:
 		m = *cfg.MinIO
 		m.SecretKey = "REDACTED"
+	case Debug:
+		d = *cfg.Debug
 	}
 	return TierConfig{
 		Version: cfg.Version,
@@ -156,6 +166,7 @@ func (cfg *TierConfig) Clone() TierConfig {
 		Azure:   &az,
 		GCS:     &gcs,
 		MinIO:   &m,
+		Debug:   &d,
 	}
 }
 
@@ -193,6 +204,10 @@ func (cfg *TierConfig) UnmarshalJSON(b []byte) error {
 		if m.MinIO == nil {
 			return ErrTierInvalidConfig
 		}
+	case Debug:
+		if m.Debug == nil {
+			return ErrTierInvalidConfig
+		}
 	}
 
 	if m.Name == "" {
@@ -214,6 +229,8 @@ func (cfg *TierConfig) Endpoint() string {
 		return cfg.GCS.Endpoint
 	case MinIO:
 		return cfg.MinIO.Endpoint
+	case Debug:
+		return "http://localhost:9000"
 	}
 	log.Printf("unexpected tier type %s", cfg.Type)
 	return ""
@@ -230,6 +247,8 @@ func (cfg *TierConfig) Bucket() string {
 		return cfg.GCS.Bucket
 	case MinIO:
 		return cfg.MinIO.Bucket
+	case Debug:
+		return cfg.Debug.Bucket
 	}
 	log.Printf("unexpected tier type %s", cfg.Type)
 	return ""
@@ -246,6 +265,8 @@ func (cfg *TierConfig) Prefix() string {
 		return cfg.GCS.Prefix
 	case MinIO:
 		return cfg.MinIO.Prefix
+	case Debug:
+		return cfg.Debug.Prefix
 	}
 	log.Printf("unexpected tier type %s", cfg.Type)
 	return ""
@@ -262,6 +283,8 @@ func (cfg *TierConfig) Region() string {
 		return cfg.GCS.Region
 	case MinIO:
 		return cfg.MinIO.Region
+	case Debug:
+		return ""
 	}
 	log.Printf("unexpected tier type %s", cfg.Type)
 	return ""
