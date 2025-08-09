@@ -127,7 +127,7 @@ func (t *BucketTarget) Clone() BucketTarget {
 		Edge:                 t.Edge,
 		EdgeSyncBeforeExpiry: t.EdgeSyncBeforeExpiry,
 		OfflineCount:         t.OfflineCount,
-		DisableSSL:           t.DisableSSL,
+		InsecureTLS:           t.InsecureTLS,
 	}
 }
 
