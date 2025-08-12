@@ -35,6 +35,7 @@ import (
 	"github.com/prometheus/procfs"
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/load"
+	"github.com/tinylib/msgp/msgp"
 )
 
 //msgp:clearomitted
@@ -101,6 +102,7 @@ func (adm *AdminClient) Metrics(ctx context.Context, o MetricsOptions, out func(
 	if o.ByDepID != "" {
 		q.Set("by-depID", o.ByDepID)
 	}
+	q.Set("Accept", "application/vnd.msgpack")
 
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet, requestData{
@@ -117,10 +119,24 @@ func (adm *AdminClient) Metrics(ctx context.Context, o MetricsOptions, out func(
 		return httpRespToErrorResponse(resp)
 	}
 	defer closeResponse(resp)
-	dec := json.NewDecoder(resp.Body)
+
+	// Choose decoder based on content type
+	var decodeOne func(m *RealtimeMetrics) error
+	switch resp.Header.Get("Content-Type") {
+	case "application/vnd.msgpack":
+		dec := msgp.NewReader(resp.Body)
+		decodeOne = func(m *RealtimeMetrics) error {
+			return m.DecodeMsg(dec)
+		}
+	default:
+		dec := json.NewDecoder(resp.Body)
+		decodeOne = func(m *RealtimeMetrics) error {
+			return dec.Decode(m)
+		}
+	}
 	for {
 		var m RealtimeMetrics
-		err := dec.Decode(&m)
+		err := decodeOne(&m)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				err = io.ErrUnexpectedEOF
