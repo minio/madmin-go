@@ -59,6 +59,7 @@ const (
 	MetricsCPU
 	MetricsRPC
 	MetricsRuntime
+	MetricsAPI
 
 	// MetricsAll must be last.
 	// Enables all metrics.
@@ -165,6 +166,7 @@ type Metrics struct {
 	CPU        *CPUMetrics        `json:"cpu,omitempty"`
 	RPC        *RPCMetrics        `json:"rpc,omitempty"`
 	Go         *RuntimeMetrics    `json:"go,omitempty"`
+	API        *APIMetrics        `json:"api,omitempty"`
 }
 
 // Merge other into r.
@@ -208,6 +210,10 @@ func (r *Metrics) Merge(other *Metrics) {
 		r.Go = &RuntimeMetrics{}
 	}
 	r.Go.Merge(other.Go)
+	if r.API == nil && other.API != nil {
+		r.API = &APIMetrics{}
+	}
+	r.API.Merge(other.API)
 }
 
 // Merge will merge other into r.
@@ -875,4 +881,181 @@ func (m *RuntimeMetrics) Merge(other *RuntimeMetrics) {
 		}
 	}
 	m.N += other.N
+}
+
+// APIStats contains accumulated statistics for the API on a number of nodes.
+type APIStats struct {
+	Nodes         int     `json:"nodes"`                   // Number of nodes that have reported data.
+	Requests      int64   `json:"requests,omitempty"`      // Total number of requests.
+	IncomingBytes int64   `json:"incomingBytes,omitempty"` // Total number of bytes received.
+	OutgoingBytes int64   `json:"outgoingBytes,omitempty"` // Total number of bytes sent.
+	Errors4xx     int     `json:"errors_4xx,omitempty"`    // Total number of 4xx (client request) errors.
+	Errors5xx     int     `json:"errors_5xx,omitempty"`    // Total number of 5xx (serverside) errors.
+	Canceled      int64   `json:"canceled,omitempty"`      // Requests that were canceled before they finished processing.
+	TotalTime     float64 `json:"totalTimeSecs,omitempty"` // Total time range this data covers across all nodes.
+	TotalRespSecs float64 `json:"totalRespSecs,omitempty"` // Total time spent on responses in seconds.
+	TotalTTFBSecs float64 `json:"totalTtfbSecs,omitempty"` // Total time spent on TTFB in seconds.
+	Rejected      struct {
+		Auth           int64 `json:"auth,omitempty"`           // Total number of rejected authentication requests.
+		RequestsTime   int64 `json:"requestsTime,omitempty"`   // Requests that were rejected due to outdated request signature.
+		Header         int64 `json:"header,omitempty"`         // Requests that were rejected due to header signature.
+		Invalid        int64 `json:"invalid,omitempty"`        // Requests that were rejected due to invalid request signature.
+		NotImplemented int64 `json:"notImplemented,omitempty"` // Requests that were rejected due to not implemented API.
+	} `json:"rejected,omitempty"`
+}
+
+// Merge other into 'a'.
+func (a *APIStats) Merge(other APIStats) {
+	a.Nodes += other.Nodes
+	a.Requests += other.Requests
+	a.TotalTime += other.TotalTime
+	a.IncomingBytes += other.IncomingBytes
+	a.OutgoingBytes += other.OutgoingBytes
+	a.TotalRespSecs += other.TotalRespSecs
+	a.TotalTTFBSecs += other.TotalTTFBSecs
+	a.Errors4xx += other.Errors4xx
+	a.Errors5xx += other.Errors5xx
+	a.Canceled += other.Canceled
+	a.Rejected.Auth += other.Rejected.Auth
+	a.Rejected.RequestsTime += other.Rejected.RequestsTime
+	a.Rejected.Header += other.Rejected.Header
+	a.Rejected.Invalid += other.Rejected.Invalid
+	a.Rejected.NotImplemented += other.Rejected.NotImplemented
+}
+
+// SegmentedAPIMetrics contains metrics for API operations, segmented by time.
+// FirstTime must be aligned to a start time that it a multiple of Interval.
+type SegmentedAPIMetrics struct {
+	Interval  int        `json:"interval_secs"` // Interval covered by each segment
+	FirstTime time.Time  `json:"first_time"`    // Timestamp of last segment
+	Segments  []APIStats `json:"segments"`      // List of APIStats for each segment
+}
+
+// Merge other into 'a'.
+func (a *SegmentedAPIMetrics) Merge(other SegmentedAPIMetrics) {
+	if len(other.Segments) == 0 {
+		return
+	}
+	if len(a.Segments) == 0 {
+		a.Segments = other.Segments
+		return
+	}
+
+	// Intervals must match to merge safely.
+	if a.Interval == 0 {
+		a.Interval = other.Interval
+	}
+	if other.Interval == 0 || a.Interval != other.Interval {
+		// Cannot merge different resolutions without resampling.
+		// Bail out silently as there's no error mechanism here.
+		return
+	}
+
+	// Fast-path: same start time and same number of segments -> direct in-place merge.
+	if a.FirstTime.Equal(other.FirstTime) && len(a.Segments) == len(other.Segments) {
+		for i := range a.Segments {
+			a.Segments[i].Merge(other.Segments[i])
+		}
+		return
+	}
+	// More complex merge...
+	step := time.Duration(a.Interval) * time.Second
+
+	// Determine the unified timeline.
+	start := a.FirstTime
+	if other.FirstTime.Before(start) {
+		start = other.FirstTime
+	}
+
+	// Compute end times (exclusive).
+	aEnd := a.FirstTime.Add(time.Duration(len(a.Segments)) * step)
+	oEnd := other.FirstTime.Add(time.Duration(len(other.Segments)) * step)
+
+	// Total number of slots to cover both series.
+	totalSlots := int(oEnd.Sub(start) / step)
+	if aEnd.After(oEnd) {
+		totalSlots = int(aEnd.Sub(start) / step)
+	}
+
+	// Prepare the result slice with zero-value APIStats (acts as empty).
+	newSegments := make([]APIStats, totalSlots)
+
+	// Copy/merge 'a' into new slice at the proper offset.
+	if a.FirstTime.After(start) {
+		offset := int(a.FirstTime.Sub(start) / step)
+		copy(newSegments[offset:offset+len(a.Segments)], a.Segments)
+	} else {
+		// a starts at 'start'
+		copy(newSegments[:len(a.Segments)], a.Segments)
+	}
+
+	// Merge 'other' into new slice at the proper offset.
+	otherOffset := int(other.FirstTime.Sub(start) / step)
+	for i, s := range other.Segments {
+		idx := otherOffset + i
+		if idx < 0 || idx >= len(newSegments) {
+			continue
+		}
+		newSegments[idx].Merge(s)
+	}
+
+	// Update receiver with merged result.
+	a.FirstTime = start
+	a.Segments = newSegments
+}
+
+// APIMetrics contains metrics for API operations.
+type APIMetrics struct {
+	// Time these metrics were collected
+	CollectedAt time.Time `json:"collected"`
+
+	// Last minute operation statistics by API.
+	LastMinuteAPI map[string]APIStats `json:"last_minute_api"`
+
+	// Last day operation statistics by API, segmented.
+	LastDayAPI map[string]SegmentedAPIMetrics `json:"last_day_api"`
+}
+
+func (a *APIMetrics) Merge(b *APIMetrics) {
+	if b == nil {
+		return
+	}
+	if a.CollectedAt.Before(b.CollectedAt) {
+		a.CollectedAt = b.CollectedAt
+	}
+
+	for k, v := range b.LastMinuteAPI {
+		if a.LastMinuteAPI == nil {
+			a.LastMinuteAPI = make(map[string]APIStats, len(b.LastMinuteAPI))
+		}
+		existing := a.LastMinuteAPI[k]
+		existing.Merge(v)
+		a.LastMinuteAPI[k] = existing
+	}
+	for k, v := range b.LastDayAPI {
+		if a.LastDayAPI == nil {
+			a.LastDayAPI = make(map[string]SegmentedAPIMetrics, len(b.LastDayAPI))
+		}
+		existing := a.LastDayAPI[k]
+		existing.Merge(v)
+		a.LastDayAPI[k] = existing
+	}
+}
+
+// LastMinuteTotal returns the total APIStats for the last minute.
+func (a APIMetrics) LastMinuteTotal() APIStats {
+	var res APIStats
+	for _, stats := range a.LastMinuteAPI {
+		res.Merge(stats)
+	}
+	return res
+}
+
+// LastDayTotalSegmented returns the total SegmentedAPIMetrics for the last day.
+func (a APIMetrics) LastDayTotalSegmented() SegmentedAPIMetrics {
+	var res SegmentedAPIMetrics
+	for _, stats := range a.LastDayAPI {
+		res.Merge(stats)
+	}
+	return res
 }
