@@ -354,6 +354,7 @@ type SetStatus struct {
 	Disks        []Disk `json:"disks"`
 }
 
+//go:generate stringer -type=HealingDriveReason -output=heal-commands-drive-reason_gen.go -trimprefix=HealingReason $GOFILE
 type HealingDriveReason int8
 
 const (
@@ -363,7 +364,41 @@ const (
 	HealingReasonOfflineDisk
 )
 
-// HealingDisk contains information about
+//go:generate stringer -type=OfflineReason -output=heal-commands-offline-reason_gen.go -trimprefix=OfflineReason $GOFILE
+type OfflineReason int8
+
+const (
+	OfflineReasonInvalid OfflineReason = iota
+	OfflineReasonNodeDown
+	OfflineReasonDriveIOError
+	OfflineReasonDriveDown
+	OfflineReasonDriveTimeout
+)
+
+//go:generate stringer -type=OfflineDecision -output=heal-commands-offline-decision_gen.go -trimprefix=OfflineDecision $GOFILE
+type OfflineDecision int8
+
+const (
+	OfflineDecisionNone OfflineDecision = iota
+	OfflineDecisionHealDrive
+	OfflineDecisionSkipHealing
+)
+
+// OfflineEvent is copied from drive-offline-tracker.go
+type OfflineEvent struct {
+	FromTime time.Time       `json:"from_time"`
+	ToTime   time.Time       `json:"to_time"`
+	Reason   OfflineReason   `json:"reason"`
+	Decision OfflineDecision `json:"decision"`
+}
+
+// OfflineInfo contains information from a disk's offline tracker.
+type OfflineInfo struct {
+	// Copied from drive-offline-tracker.go/driveOfflineInfo
+	Events []OfflineEvent `json:"events"`
+}
+
+// HealingDisk contains information from a disk's healing tracker.
 type HealingDisk struct {
 	// Copied from cmd/background-newdisks-heal-ops.go
 	// When adding new field, update (*healingTracker).toHealingDisk
