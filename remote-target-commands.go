@@ -124,6 +124,8 @@ const (
 	EdgeUpdateType
 	// EdgeExpiryUpdateType sets bucket target to sync before expiry
 	EdgeExpiryUpdateType
+	// InsecureTLSUpdateType update tls setting
+	InsecureTLSUpdateType
 )
 
 // GetTargetUpdateOps returns a slice of update operations being
@@ -141,6 +143,9 @@ func GetTargetUpdateOps(values url.Values) []TargetUpdateType {
 	}
 	if values.Get("proxy") == "true" {
 		ops = append(ops, ProxyUpdateType)
+	}
+	if values.Get("tls") == "true" {
+		ops = append(ops, InsecureTLSUpdateType)
 	}
 	if values.Get("healthcheck") == "true" {
 		ops = append(ops, HealthCheckDurationUpdateType)
@@ -185,6 +190,8 @@ func (adm *AdminClient) UpdateRemoteTarget(ctx context.Context, target *BucketTa
 			queryValues.Set("sync", "true")
 		case ProxyUpdateType:
 			queryValues.Set("proxy", "true")
+		case InsecureTLSUpdateType:
+			queryValues.Set("tls", "true")
 		case BandwidthLimitUpdateType:
 			queryValues.Set("bandwidth", "true")
 		case HealthCheckDurationUpdateType:
