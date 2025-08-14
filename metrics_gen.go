@@ -671,22 +671,10 @@ func (z *APIStats) DecodeMsg(dc *msgp.Reader) (err error) {
 			}
 			zb0001Mask |= 0x1000
 		case "rejected":
-			if dc.IsNil() {
-				err = dc.ReadNil()
-				if err != nil {
-					err = msgp.WrapError(err, "Rejected")
-					return
-				}
-				z.Rejected = nil
-			} else {
-				if z.Rejected == nil {
-					z.Rejected = new(RejectedAPIStats)
-				}
-				err = z.Rejected.DecodeMsg(dc)
-				if err != nil {
-					err = msgp.WrapError(err, "Rejected")
-					return
-				}
+			err = z.Rejected.DecodeMsg(dc)
+			if err != nil {
+				err = msgp.WrapError(err, "Rejected")
+				return
 			}
 			zb0001Mask |= 0x2000
 		default:
@@ -739,7 +727,7 @@ func (z *APIStats) DecodeMsg(dc *msgp.Reader) (err error) {
 			z.RespTTFBSecs = 0
 		}
 		if (zb0001Mask & 0x2000) == 0 {
-			z.Rejected = nil
+			z.Rejected = RejectedAPIStats{}
 		}
 	}
 	return
@@ -802,10 +790,6 @@ func (z *APIStats) EncodeMsg(en *msgp.Writer) (err error) {
 	if z.RespTTFBSecs == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x2000
-	}
-	if z.Rejected == nil {
-		zb0001Len--
-		zb0001Mask |= 0x4000
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -995,24 +979,15 @@ func (z *APIStats) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x4000) == 0 { // if not omitted
-			// write "rejected"
-			err = en.Append(0xa8, 0x72, 0x65, 0x6a, 0x65, 0x63, 0x74, 0x65, 0x64)
-			if err != nil {
-				return
-			}
-			if z.Rejected == nil {
-				err = en.WriteNil()
-				if err != nil {
-					return
-				}
-			} else {
-				err = z.Rejected.EncodeMsg(en)
-				if err != nil {
-					err = msgp.WrapError(err, "Rejected")
-					return
-				}
-			}
+		// write "rejected"
+		err = en.Append(0xa8, 0x72, 0x65, 0x6a, 0x65, 0x63, 0x74, 0x65, 0x64)
+		if err != nil {
+			return
+		}
+		err = z.Rejected.EncodeMsg(en)
+		if err != nil {
+			err = msgp.WrapError(err, "Rejected")
+			return
 		}
 	}
 	return
@@ -1076,10 +1051,6 @@ func (z *APIStats) MarshalMsg(b []byte) (o []byte, err error) {
 	if z.RespTTFBSecs == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x2000
-	}
-	if z.Rejected == nil {
-		zb0001Len--
-		zb0001Mask |= 0x4000
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -1162,18 +1133,12 @@ func (z *APIStats) MarshalMsg(b []byte) (o []byte, err error) {
 			o = append(o, 0xb0, 0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x54, 0x74, 0x66, 0x62, 0x53, 0x65, 0x63, 0x73)
 			o = msgp.AppendFloat64(o, z.RespTTFBSecs)
 		}
-		if (zb0001Mask & 0x4000) == 0 { // if not omitted
-			// string "rejected"
-			o = append(o, 0xa8, 0x72, 0x65, 0x6a, 0x65, 0x63, 0x74, 0x65, 0x64)
-			if z.Rejected == nil {
-				o = msgp.AppendNil(o)
-			} else {
-				o, err = z.Rejected.MarshalMsg(o)
-				if err != nil {
-					err = msgp.WrapError(err, "Rejected")
-					return
-				}
-			}
+		// string "rejected"
+		o = append(o, 0xa8, 0x72, 0x65, 0x6a, 0x65, 0x63, 0x74, 0x65, 0x64)
+		o, err = z.Rejected.MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "Rejected")
+			return
 		}
 	}
 	return
@@ -1319,21 +1284,10 @@ func (z *APIStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			}
 			zb0001Mask |= 0x1000
 		case "rejected":
-			if msgp.IsNil(bts) {
-				bts, err = msgp.ReadNilBytes(bts)
-				if err != nil {
-					return
-				}
-				z.Rejected = nil
-			} else {
-				if z.Rejected == nil {
-					z.Rejected = new(RejectedAPIStats)
-				}
-				bts, err = z.Rejected.UnmarshalMsg(bts)
-				if err != nil {
-					err = msgp.WrapError(err, "Rejected")
-					return
-				}
+			bts, err = z.Rejected.UnmarshalMsg(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Rejected")
+				return
 			}
 			zb0001Mask |= 0x2000
 		default:
@@ -1386,7 +1340,7 @@ func (z *APIStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.RespTTFBSecs = 0
 		}
 		if (zb0001Mask & 0x2000) == 0 {
-			z.Rejected = nil
+			z.Rejected = RejectedAPIStats{}
 		}
 	}
 	o = bts
@@ -1407,12 +1361,7 @@ func (z *APIStats) Msgsize() (s int) {
 	} else {
 		s += msgp.TimeSize
 	}
-	s += 13 + msgp.Float64Size + 9 + msgp.Int64Size + 14 + msgp.Int64Size + 14 + msgp.Int64Size + 11 + msgp.IntSize + 11 + msgp.IntSize + 9 + msgp.Int64Size + 16 + msgp.Float64Size + 14 + msgp.Float64Size + 9 + msgp.Float64Size + 17 + msgp.Float64Size + 9
-	if z.Rejected == nil {
-		s += msgp.NilSize
-	} else {
-		s += z.Rejected.Msgsize()
-	}
+	s += 13 + msgp.Float64Size + 9 + msgp.Int64Size + 14 + msgp.Int64Size + 14 + msgp.Int64Size + 11 + msgp.IntSize + 11 + msgp.IntSize + 9 + msgp.Int64Size + 16 + msgp.Float64Size + 14 + msgp.Float64Size + 9 + msgp.Float64Size + 17 + msgp.Float64Size + 9 + z.Rejected.Msgsize()
 	return
 }
 
