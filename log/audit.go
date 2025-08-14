@@ -15,32 +15,23 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package event
+package log
 
-import (
-	"time"
-)
+import "time"
 
 //go:generate msgp $GOFILE
 
-// Error represents the error event
-type Error struct {
-	Version string            `json:"version"`
-	Node    string            `json:"node"`
-	Time    time.Time         `json:"time"`
-	Message string            `json:"message"`
-	API     string            `json:"apiName"`
-	Trace   *Trace            `json:"trace,omitempty"`
-	Tags    map[string]string `json:"tags,omitempty"`
-}
-
-// Trace represents the call trace
-type Trace struct {
-	Source    []string          `json:"source,omitempty"`
-	Variables map[string]string `json:"variables,omitempty"`
-}
-
-// GetTagValByKey gets the tag value by key
-func (e Error) GetTagValByKey(key string) string {
-	return e.Tags[key]
+// Audit represents the user triggered audit events
+type Audit struct {
+	Version    string                 `json:"version"`
+	Time       time.Time              `json:"time"`
+	Node       string                 `json:"node,omitempty"`
+	APIName    string                 `json:"apiName,omitempty"`
+	Bucket     string                 `json:"bucket,omitempty"`
+	Tags       map[string]string      `json:"tags,omitempty"`
+	RequestID  string                 `json:"requestID,omitempty"`
+	ReqClaims  map[string]interface{} `json:"requestClaims,omitempty"`
+	SourceHost string                 `json:"sourceHost,omitempty"`
+	AccessKey  string                 `json:"accessKey,omitempty"`
+	ParentUser string                 `json:"parentUser,omitempty"`
 }

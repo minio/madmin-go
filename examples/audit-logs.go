@@ -42,10 +42,10 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	opts := madmin.APIEventOpts{
+	opts := madmin.AuditLogOpts{
 		Interval: 1 * time.Hour,
 	}
-	for event, err := range madmClnt.GetAPIEvents(context.Background(), opts) {
+	for event, err := range madmClnt.GetAuditLogs(context.Background(), opts) {
 		if err != nil {
 			log.Fatalln(err)
 		}
