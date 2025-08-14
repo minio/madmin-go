@@ -901,16 +901,18 @@ func (m *RuntimeMetrics) Merge(other *RuntimeMetrics) {
 
 // APIStats contains accumulated statistics for the API on a number of nodes.
 type APIStats struct {
-	Nodes         int     `json:"nodes"`                   // Number of nodes that have reported data.
-	Requests      int64   `json:"requests,omitempty"`      // Total number of requests.
-	IncomingBytes int64   `json:"incomingBytes,omitempty"` // Total number of bytes received.
-	OutgoingBytes int64   `json:"outgoingBytes,omitempty"` // Total number of bytes sent.
-	Errors4xx     int     `json:"errors_4xx,omitempty"`    // Total number of 4xx (client request) errors.
-	Errors5xx     int     `json:"errors_5xx,omitempty"`    // Total number of 5xx (serverside) errors.
-	Canceled      int64   `json:"canceled,omitempty"`      // Requests that were canceled before they finished processing.
-	TotalTime     float64 `json:"totalTimeSecs,omitempty"` // Total time range this data covers across all nodes.
-	TotalRespSecs float64 `json:"totalRespSecs,omitempty"` // Total time spent on responses in seconds.
-	TotalTTFBSecs float64 `json:"totalTtfbSecs,omitempty"` // Total time spent on TTFB in seconds.
+	Nodes         int        `json:"nodes"`                   // Number of nodes that have reported data.
+	StartTime     *time.Time `json:"startTime,omitempty"`     // Time range this data covers unless merged from sources with different start times..
+	EndTime       *time.Time `json:"endTime,omitempty"`       // Time range this data covers unless merged from sources with different end times.
+	Requests      int64      `json:"requests,omitempty"`      // Total number of requests.
+	IncomingBytes int64      `json:"incomingBytes,omitempty"` // Total number of bytes received.
+	OutgoingBytes int64      `json:"outgoingBytes,omitempty"` // Total number of bytes sent.
+	Errors4xx     int        `json:"errors_4xx,omitempty"`    // Total number of 4xx (client request) errors.
+	Errors5xx     int        `json:"errors_5xx,omitempty"`    // Total number of 5xx (serverside) errors.
+	Canceled      int64      `json:"canceled,omitempty"`      // Requests that were canceled before they finished processing.
+	TotalTime     float64    `json:"totalTimeSecs,omitempty"` // Total time range this data covers across all nodes.
+	TotalRespSecs float64    `json:"totalRespSecs,omitempty"` // Total time spent on responses in seconds.
+	TotalTTFBSecs float64    `json:"totalTtfbSecs,omitempty"` // Total time spent on TTFB in seconds.
 	Rejected      struct {
 		Auth           int64 `json:"auth,omitempty"`           // Total number of rejected authentication requests.
 		RequestsTime   int64 `json:"requestsTime,omitempty"`   // Requests that were rejected due to outdated request signature.
@@ -922,6 +924,16 @@ type APIStats struct {
 
 // Merge other into 'a'.
 func (a *APIStats) Merge(other APIStats) {
+	if a.StartTime != nil && other.StartTime != nil {
+		if a.StartTime.Equal(*other.StartTime) {
+			a.StartTime = other.StartTime
+		}
+	}
+	if a.EndTime != nil && other.EndTime != nil {
+		if a.EndTime.Equal(*other.EndTime) {
+			a.EndTime = other.EndTime
+		}
+	}
 	a.Nodes += other.Nodes
 	a.Requests += other.Requests
 	a.TotalTime += other.TotalTime
@@ -942,9 +954,9 @@ func (a *APIStats) Merge(other APIStats) {
 // SegmentedAPIMetrics contains metrics for API operations, segmented by time.
 // FirstTime must be aligned to a start time that it a multiple of Interval.
 type SegmentedAPIMetrics struct {
-	Interval  int        `json:"interval_secs"` // Interval covered by each segment
-	FirstTime time.Time  `json:"first_time"`    // Timestamp of last segment
-	Segments  []APIStats `json:"segments"`      // List of APIStats for each segment
+	Interval  int        `json:"intervalSecs"` // Interval covered by each segment in seconds.
+	FirstTime time.Time  `json:"firstTime"`    // Timestamp of first (ie oldest) segment
+	Segments  []APIStats `json:"segments"`     // List of APIStats for each segment ordered by time (oldest first).
 }
 
 // Merge other into 'a'.
@@ -1020,16 +1032,39 @@ func (a *SegmentedAPIMetrics) Merge(other SegmentedAPIMetrics) {
 	a.Segments = newSegments
 }
 
+func (a *SegmentedAPIMetrics) Total() APIStats {
+	var res APIStats
+	if a == nil {
+		return res
+	}
+	for _, stat := range a.Segments {
+		res.Merge(stat)
+	}
+	return res
+}
+
 // APIMetrics contains metrics for API operations.
 type APIMetrics struct {
 	// Time these metrics were collected
 	CollectedAt time.Time `json:"collected"`
 
+	// Nodes responded to the request.
+	Nodes int `json:"nodes"`
+
+	// Number of active requests.
+	ActiveRequests int64 `json:"activeRequests,omitempty"`
+
+	// Number of queued requests.
+	QueuedRequests int64 `json:"queuedRequests,omitempty"`
+
 	// Last minute operation statistics by API.
-	LastMinuteAPI map[string]APIStats `json:"last_minute_api"`
+	LastMinuteAPI map[string]APIStats `json:"last_minute_apia,allownil"`
 
 	// Last day operation statistics by API, segmented.
-	LastDayAPI map[string]SegmentedAPIMetrics `json:"last_day_api"`
+	LastDayAPI map[string]SegmentedAPIMetrics `json:"last_day_api,allownil"`
+
+	// SinceStart contains operation statistics since server(s) started.
+	SinceStart APIStats `json:"since_start"`
 }
 
 func (a *APIMetrics) Merge(b *APIMetrics) {
@@ -1039,6 +1074,9 @@ func (a *APIMetrics) Merge(b *APIMetrics) {
 	if a.CollectedAt.Before(b.CollectedAt) {
 		a.CollectedAt = b.CollectedAt
 	}
+	a.Nodes += b.Nodes
+	a.ActiveRequests += b.ActiveRequests
+	a.QueuedRequests += b.QueuedRequests
 
 	for k, v := range b.LastMinuteAPI {
 		if a.LastMinuteAPI == nil {
@@ -1056,6 +1094,7 @@ func (a *APIMetrics) Merge(b *APIMetrics) {
 		existing.Merge(v)
 		a.LastDayAPI[k] = existing
 	}
+	a.SinceStart.Merge(b.SinceStart)
 }
 
 // LastMinuteTotal returns the total APIStats for the last minute.
@@ -1072,6 +1111,17 @@ func (a APIMetrics) LastDayTotalSegmented() SegmentedAPIMetrics {
 	var res SegmentedAPIMetrics
 	for _, stats := range a.LastDayAPI {
 		res.Merge(stats)
+	}
+	return res
+}
+
+// LastDayTotal returns the accumulated APIStats for the last day.
+func (a APIMetrics) LastDayTotal() APIStats {
+	var res APIStats
+	for _, stats := range a.LastDayAPI {
+		for _, s := range stats.Segments {
+			res.Merge(s)
+		}
 	}
 	return res
 }
