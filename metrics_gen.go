@@ -594,9 +594,9 @@ func (z *APIStats) DecodeMsg(dc *msgp.Reader) (err error) {
 			}
 			zb0001Mask |= 0x2
 		case "wallTimeSecs":
-			z.WallTime, err = dc.ReadFloat64()
+			z.WallTimeSecs, err = dc.ReadFloat64()
 			if err != nil {
-				err = msgp.WrapError(err, "WallTime")
+				err = msgp.WrapError(err, "WallTimeSecs")
 				return
 			}
 			zb0001Mask |= 0x4
@@ -671,81 +671,21 @@ func (z *APIStats) DecodeMsg(dc *msgp.Reader) (err error) {
 			}
 			zb0001Mask |= 0x1000
 		case "rejected":
-			var zb0002 uint32
-			zb0002, err = dc.ReadMapHeader()
-			if err != nil {
-				err = msgp.WrapError(err, "Rejected")
-				return
-			}
-			var zb0002Mask uint8 /* 5 bits */
-			_ = zb0002Mask
-			for zb0002 > 0 {
-				zb0002--
-				field, err = dc.ReadMapKeyPtr()
+			if dc.IsNil() {
+				err = dc.ReadNil()
 				if err != nil {
 					err = msgp.WrapError(err, "Rejected")
 					return
 				}
-				switch msgp.UnsafeString(field) {
-				case "auth":
-					z.Rejected.Auth, err = dc.ReadInt64()
-					if err != nil {
-						err = msgp.WrapError(err, "Rejected", "Auth")
-						return
-					}
-					zb0002Mask |= 0x1
-				case "requestsTime":
-					z.Rejected.RequestsTime, err = dc.ReadInt64()
-					if err != nil {
-						err = msgp.WrapError(err, "Rejected", "RequestsTime")
-						return
-					}
-					zb0002Mask |= 0x2
-				case "header":
-					z.Rejected.Header, err = dc.ReadInt64()
-					if err != nil {
-						err = msgp.WrapError(err, "Rejected", "Header")
-						return
-					}
-					zb0002Mask |= 0x4
-				case "invalid":
-					z.Rejected.Invalid, err = dc.ReadInt64()
-					if err != nil {
-						err = msgp.WrapError(err, "Rejected", "Invalid")
-						return
-					}
-					zb0002Mask |= 0x8
-				case "notImplemented":
-					z.Rejected.NotImplemented, err = dc.ReadInt64()
-					if err != nil {
-						err = msgp.WrapError(err, "Rejected", "NotImplemented")
-						return
-					}
-					zb0002Mask |= 0x10
-				default:
-					err = dc.Skip()
-					if err != nil {
-						err = msgp.WrapError(err, "Rejected")
-						return
-					}
+				z.Rejected = nil
+			} else {
+				if z.Rejected == nil {
+					z.Rejected = new(RejectedAPIStats)
 				}
-			}
-			// Clear omitted fields.
-			if zb0002Mask != 0x1f {
-				if (zb0002Mask & 0x1) == 0 {
-					z.Rejected.Auth = 0
-				}
-				if (zb0002Mask & 0x2) == 0 {
-					z.Rejected.RequestsTime = 0
-				}
-				if (zb0002Mask & 0x4) == 0 {
-					z.Rejected.Header = 0
-				}
-				if (zb0002Mask & 0x8) == 0 {
-					z.Rejected.Invalid = 0
-				}
-				if (zb0002Mask & 0x10) == 0 {
-					z.Rejected.NotImplemented = 0
+				err = z.Rejected.DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "Rejected")
+					return
 				}
 			}
 			zb0001Mask |= 0x2000
@@ -766,7 +706,7 @@ func (z *APIStats) DecodeMsg(dc *msgp.Reader) (err error) {
 			z.EndTime = nil
 		}
 		if (zb0001Mask & 0x4) == 0 {
-			z.WallTime = 0
+			z.WallTimeSecs = 0
 		}
 		if (zb0001Mask & 0x8) == 0 {
 			z.Requests = 0
@@ -799,13 +739,7 @@ func (z *APIStats) DecodeMsg(dc *msgp.Reader) (err error) {
 			z.RespTTFBSecs = 0
 		}
 		if (zb0001Mask & 0x2000) == 0 {
-			z.Rejected = (struct {
-				Auth           int64 `json:"auth,omitempty"`
-				RequestsTime   int64 `json:"requestsTime,omitempty"`
-				Header         int64 `json:"header,omitempty"`
-				Invalid        int64 `json:"invalid,omitempty"`
-				NotImplemented int64 `json:"notImplemented,omitempty"`
-			}{})
+			z.Rejected = nil
 		}
 	}
 	return
@@ -825,7 +759,7 @@ func (z *APIStats) EncodeMsg(en *msgp.Writer) (err error) {
 		zb0001Len--
 		zb0001Mask |= 0x4
 	}
-	if z.WallTime == 0 {
+	if z.WallTimeSecs == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x8
 	}
@@ -869,13 +803,7 @@ func (z *APIStats) EncodeMsg(en *msgp.Writer) (err error) {
 		zb0001Len--
 		zb0001Mask |= 0x2000
 	}
-	if z.Rejected == (struct {
-		Auth           int64 `json:"auth,omitempty"`
-		RequestsTime   int64 `json:"requestsTime,omitempty"`
-		Header         int64 `json:"header,omitempty"`
-		Invalid        int64 `json:"invalid,omitempty"`
-		NotImplemented int64 `json:"notImplemented,omitempty"`
-	}{}) {
+	if z.Rejected == nil {
 		zb0001Len--
 		zb0001Mask |= 0x4000
 	}
@@ -941,9 +869,9 @@ func (z *APIStats) EncodeMsg(en *msgp.Writer) (err error) {
 			if err != nil {
 				return
 			}
-			err = en.WriteFloat64(z.WallTime)
+			err = en.WriteFloat64(z.WallTimeSecs)
 			if err != nil {
-				err = msgp.WrapError(err, "WallTime")
+				err = msgp.WrapError(err, "WallTimeSecs")
 				return
 			}
 		}
@@ -1073,97 +1001,16 @@ func (z *APIStats) EncodeMsg(en *msgp.Writer) (err error) {
 			if err != nil {
 				return
 			}
-			// check for omitted fields
-			zb0002Len := uint32(5)
-			var zb0002Mask uint8 /* 5 bits */
-			_ = zb0002Mask
-			if z.Rejected.Auth == 0 {
-				zb0002Len--
-				zb0002Mask |= 0x1
-			}
-			if z.Rejected.RequestsTime == 0 {
-				zb0002Len--
-				zb0002Mask |= 0x2
-			}
-			if z.Rejected.Header == 0 {
-				zb0002Len--
-				zb0002Mask |= 0x4
-			}
-			if z.Rejected.Invalid == 0 {
-				zb0002Len--
-				zb0002Mask |= 0x8
-			}
-			if z.Rejected.NotImplemented == 0 {
-				zb0002Len--
-				zb0002Mask |= 0x10
-			}
-			// variable map header, size zb0002Len
-			err = en.Append(0x80 | uint8(zb0002Len))
-			if err != nil {
-				return
-			}
-
-			// skip if no fields are to be emitted
-			if zb0002Len != 0 {
-				if (zb0002Mask & 0x1) == 0 { // if not omitted
-					// write "auth"
-					err = en.Append(0xa4, 0x61, 0x75, 0x74, 0x68)
-					if err != nil {
-						return
-					}
-					err = en.WriteInt64(z.Rejected.Auth)
-					if err != nil {
-						err = msgp.WrapError(err, "Rejected", "Auth")
-						return
-					}
+			if z.Rejected == nil {
+				err = en.WriteNil()
+				if err != nil {
+					return
 				}
-				if (zb0002Mask & 0x2) == 0 { // if not omitted
-					// write "requestsTime"
-					err = en.Append(0xac, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x73, 0x54, 0x69, 0x6d, 0x65)
-					if err != nil {
-						return
-					}
-					err = en.WriteInt64(z.Rejected.RequestsTime)
-					if err != nil {
-						err = msgp.WrapError(err, "Rejected", "RequestsTime")
-						return
-					}
-				}
-				if (zb0002Mask & 0x4) == 0 { // if not omitted
-					// write "header"
-					err = en.Append(0xa6, 0x68, 0x65, 0x61, 0x64, 0x65, 0x72)
-					if err != nil {
-						return
-					}
-					err = en.WriteInt64(z.Rejected.Header)
-					if err != nil {
-						err = msgp.WrapError(err, "Rejected", "Header")
-						return
-					}
-				}
-				if (zb0002Mask & 0x8) == 0 { // if not omitted
-					// write "invalid"
-					err = en.Append(0xa7, 0x69, 0x6e, 0x76, 0x61, 0x6c, 0x69, 0x64)
-					if err != nil {
-						return
-					}
-					err = en.WriteInt64(z.Rejected.Invalid)
-					if err != nil {
-						err = msgp.WrapError(err, "Rejected", "Invalid")
-						return
-					}
-				}
-				if (zb0002Mask & 0x10) == 0 { // if not omitted
-					// write "notImplemented"
-					err = en.Append(0xae, 0x6e, 0x6f, 0x74, 0x49, 0x6d, 0x70, 0x6c, 0x65, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x64)
-					if err != nil {
-						return
-					}
-					err = en.WriteInt64(z.Rejected.NotImplemented)
-					if err != nil {
-						err = msgp.WrapError(err, "Rejected", "NotImplemented")
-						return
-					}
+			} else {
+				err = z.Rejected.EncodeMsg(en)
+				if err != nil {
+					err = msgp.WrapError(err, "Rejected")
+					return
 				}
 			}
 		}
@@ -1186,7 +1033,7 @@ func (z *APIStats) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x4
 	}
-	if z.WallTime == 0 {
+	if z.WallTimeSecs == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x8
 	}
@@ -1230,13 +1077,7 @@ func (z *APIStats) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x2000
 	}
-	if z.Rejected == (struct {
-		Auth           int64 `json:"auth,omitempty"`
-		RequestsTime   int64 `json:"requestsTime,omitempty"`
-		Header         int64 `json:"header,omitempty"`
-		Invalid        int64 `json:"invalid,omitempty"`
-		NotImplemented int64 `json:"notImplemented,omitempty"`
-	}{}) {
+	if z.Rejected == nil {
 		zb0001Len--
 		zb0001Mask |= 0x4000
 	}
@@ -1269,7 +1110,7 @@ func (z *APIStats) MarshalMsg(b []byte) (o []byte, err error) {
 		if (zb0001Mask & 0x8) == 0 { // if not omitted
 			// string "wallTimeSecs"
 			o = append(o, 0xac, 0x77, 0x61, 0x6c, 0x6c, 0x54, 0x69, 0x6d, 0x65, 0x53, 0x65, 0x63, 0x73)
-			o = msgp.AppendFloat64(o, z.WallTime)
+			o = msgp.AppendFloat64(o, z.WallTimeSecs)
 		}
 		if (zb0001Mask & 0x10) == 0 { // if not omitted
 			// string "requests"
@@ -1324,59 +1165,13 @@ func (z *APIStats) MarshalMsg(b []byte) (o []byte, err error) {
 		if (zb0001Mask & 0x4000) == 0 { // if not omitted
 			// string "rejected"
 			o = append(o, 0xa8, 0x72, 0x65, 0x6a, 0x65, 0x63, 0x74, 0x65, 0x64)
-			// check for omitted fields
-			zb0002Len := uint32(5)
-			var zb0002Mask uint8 /* 5 bits */
-			_ = zb0002Mask
-			if z.Rejected.Auth == 0 {
-				zb0002Len--
-				zb0002Mask |= 0x1
-			}
-			if z.Rejected.RequestsTime == 0 {
-				zb0002Len--
-				zb0002Mask |= 0x2
-			}
-			if z.Rejected.Header == 0 {
-				zb0002Len--
-				zb0002Mask |= 0x4
-			}
-			if z.Rejected.Invalid == 0 {
-				zb0002Len--
-				zb0002Mask |= 0x8
-			}
-			if z.Rejected.NotImplemented == 0 {
-				zb0002Len--
-				zb0002Mask |= 0x10
-			}
-			// variable map header, size zb0002Len
-			o = append(o, 0x80|uint8(zb0002Len))
-
-			// skip if no fields are to be emitted
-			if zb0002Len != 0 {
-				if (zb0002Mask & 0x1) == 0 { // if not omitted
-					// string "auth"
-					o = append(o, 0xa4, 0x61, 0x75, 0x74, 0x68)
-					o = msgp.AppendInt64(o, z.Rejected.Auth)
-				}
-				if (zb0002Mask & 0x2) == 0 { // if not omitted
-					// string "requestsTime"
-					o = append(o, 0xac, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x73, 0x54, 0x69, 0x6d, 0x65)
-					o = msgp.AppendInt64(o, z.Rejected.RequestsTime)
-				}
-				if (zb0002Mask & 0x4) == 0 { // if not omitted
-					// string "header"
-					o = append(o, 0xa6, 0x68, 0x65, 0x61, 0x64, 0x65, 0x72)
-					o = msgp.AppendInt64(o, z.Rejected.Header)
-				}
-				if (zb0002Mask & 0x8) == 0 { // if not omitted
-					// string "invalid"
-					o = append(o, 0xa7, 0x69, 0x6e, 0x76, 0x61, 0x6c, 0x69, 0x64)
-					o = msgp.AppendInt64(o, z.Rejected.Invalid)
-				}
-				if (zb0002Mask & 0x10) == 0 { // if not omitted
-					// string "notImplemented"
-					o = append(o, 0xae, 0x6e, 0x6f, 0x74, 0x49, 0x6d, 0x70, 0x6c, 0x65, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x64)
-					o = msgp.AppendInt64(o, z.Rejected.NotImplemented)
+			if z.Rejected == nil {
+				o = msgp.AppendNil(o)
+			} else {
+				o, err = z.Rejected.MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "Rejected")
+					return
 				}
 			}
 		}
@@ -1447,9 +1242,9 @@ func (z *APIStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			}
 			zb0001Mask |= 0x2
 		case "wallTimeSecs":
-			z.WallTime, bts, err = msgp.ReadFloat64Bytes(bts)
+			z.WallTimeSecs, bts, err = msgp.ReadFloat64Bytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "WallTime")
+				err = msgp.WrapError(err, "WallTimeSecs")
 				return
 			}
 			zb0001Mask |= 0x4
@@ -1524,81 +1319,20 @@ func (z *APIStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			}
 			zb0001Mask |= 0x1000
 		case "rejected":
-			var zb0002 uint32
-			zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
-			if err != nil {
-				err = msgp.WrapError(err, "Rejected")
-				return
-			}
-			var zb0002Mask uint8 /* 5 bits */
-			_ = zb0002Mask
-			for zb0002 > 0 {
-				zb0002--
-				field, bts, err = msgp.ReadMapKeyZC(bts)
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.Rejected = nil
+			} else {
+				if z.Rejected == nil {
+					z.Rejected = new(RejectedAPIStats)
+				}
+				bts, err = z.Rejected.UnmarshalMsg(bts)
 				if err != nil {
 					err = msgp.WrapError(err, "Rejected")
 					return
-				}
-				switch msgp.UnsafeString(field) {
-				case "auth":
-					z.Rejected.Auth, bts, err = msgp.ReadInt64Bytes(bts)
-					if err != nil {
-						err = msgp.WrapError(err, "Rejected", "Auth")
-						return
-					}
-					zb0002Mask |= 0x1
-				case "requestsTime":
-					z.Rejected.RequestsTime, bts, err = msgp.ReadInt64Bytes(bts)
-					if err != nil {
-						err = msgp.WrapError(err, "Rejected", "RequestsTime")
-						return
-					}
-					zb0002Mask |= 0x2
-				case "header":
-					z.Rejected.Header, bts, err = msgp.ReadInt64Bytes(bts)
-					if err != nil {
-						err = msgp.WrapError(err, "Rejected", "Header")
-						return
-					}
-					zb0002Mask |= 0x4
-				case "invalid":
-					z.Rejected.Invalid, bts, err = msgp.ReadInt64Bytes(bts)
-					if err != nil {
-						err = msgp.WrapError(err, "Rejected", "Invalid")
-						return
-					}
-					zb0002Mask |= 0x8
-				case "notImplemented":
-					z.Rejected.NotImplemented, bts, err = msgp.ReadInt64Bytes(bts)
-					if err != nil {
-						err = msgp.WrapError(err, "Rejected", "NotImplemented")
-						return
-					}
-					zb0002Mask |= 0x10
-				default:
-					bts, err = msgp.Skip(bts)
-					if err != nil {
-						err = msgp.WrapError(err, "Rejected")
-						return
-					}
-				}
-			}
-			// Clear omitted fields.
-			if zb0002Mask != 0x1f {
-				if (zb0002Mask & 0x1) == 0 {
-					z.Rejected.Auth = 0
-				}
-				if (zb0002Mask & 0x2) == 0 {
-					z.Rejected.RequestsTime = 0
-				}
-				if (zb0002Mask & 0x4) == 0 {
-					z.Rejected.Header = 0
-				}
-				if (zb0002Mask & 0x8) == 0 {
-					z.Rejected.Invalid = 0
-				}
-				if (zb0002Mask & 0x10) == 0 {
-					z.Rejected.NotImplemented = 0
 				}
 			}
 			zb0001Mask |= 0x2000
@@ -1619,7 +1353,7 @@ func (z *APIStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.EndTime = nil
 		}
 		if (zb0001Mask & 0x4) == 0 {
-			z.WallTime = 0
+			z.WallTimeSecs = 0
 		}
 		if (zb0001Mask & 0x8) == 0 {
 			z.Requests = 0
@@ -1652,13 +1386,7 @@ func (z *APIStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.RespTTFBSecs = 0
 		}
 		if (zb0001Mask & 0x2000) == 0 {
-			z.Rejected = (struct {
-				Auth           int64 `json:"auth,omitempty"`
-				RequestsTime   int64 `json:"requestsTime,omitempty"`
-				Header         int64 `json:"header,omitempty"`
-				Invalid        int64 `json:"invalid,omitempty"`
-				NotImplemented int64 `json:"notImplemented,omitempty"`
-			}{})
+			z.Rejected = nil
 		}
 	}
 	o = bts
@@ -1679,7 +1407,12 @@ func (z *APIStats) Msgsize() (s int) {
 	} else {
 		s += msgp.TimeSize
 	}
-	s += 13 + msgp.Float64Size + 9 + msgp.Int64Size + 14 + msgp.Int64Size + 14 + msgp.Int64Size + 11 + msgp.IntSize + 11 + msgp.IntSize + 9 + msgp.Int64Size + 16 + msgp.Float64Size + 14 + msgp.Float64Size + 9 + msgp.Float64Size + 17 + msgp.Float64Size + 9 + 1 + 5 + msgp.Int64Size + 13 + msgp.Int64Size + 7 + msgp.Int64Size + 8 + msgp.Int64Size + 15 + msgp.Int64Size
+	s += 13 + msgp.Float64Size + 9 + msgp.Int64Size + 14 + msgp.Int64Size + 14 + msgp.Int64Size + 11 + msgp.IntSize + 11 + msgp.IntSize + 9 + msgp.Int64Size + 16 + msgp.Float64Size + 14 + msgp.Float64Size + 9 + msgp.Float64Size + 17 + msgp.Float64Size + 9
+	if z.Rejected == nil {
+		s += msgp.NilSize
+	} else {
+		s += z.Rejected.Msgsize()
+	}
 	return
 }
 
@@ -9212,6 +8945,340 @@ func (z *RealtimeMetrics) Msgsize() (s int) {
 		}
 	}
 	s += 6 + msgp.BoolSize
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *RejectedAPIStats) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 5 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "auth":
+			z.Auth, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "Auth")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "requestsTime":
+			z.RequestsTime, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "RequestsTime")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "header":
+			z.Header, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "Header")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "invalid":
+			z.Invalid, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "Invalid")
+				return
+			}
+			zb0001Mask |= 0x8
+		case "notImplemented":
+			z.NotImplemented, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "NotImplemented")
+				return
+			}
+			zb0001Mask |= 0x10
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x1f {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Auth = 0
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.RequestsTime = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.Header = 0
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.Invalid = 0
+		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.NotImplemented = 0
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *RejectedAPIStats) EncodeMsg(en *msgp.Writer) (err error) {
+	// check for omitted fields
+	zb0001Len := uint32(5)
+	var zb0001Mask uint8 /* 5 bits */
+	_ = zb0001Mask
+	if z.Auth == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.RequestsTime == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.Header == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	if z.Invalid == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.NotImplemented == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	// variable map header, size zb0001Len
+	err = en.Append(0x80 | uint8(zb0001Len))
+	if err != nil {
+		return
+	}
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// write "auth"
+			err = en.Append(0xa4, 0x61, 0x75, 0x74, 0x68)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.Auth)
+			if err != nil {
+				err = msgp.WrapError(err, "Auth")
+				return
+			}
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// write "requestsTime"
+			err = en.Append(0xac, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x73, 0x54, 0x69, 0x6d, 0x65)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.RequestsTime)
+			if err != nil {
+				err = msgp.WrapError(err, "RequestsTime")
+				return
+			}
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// write "header"
+			err = en.Append(0xa6, 0x68, 0x65, 0x61, 0x64, 0x65, 0x72)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.Header)
+			if err != nil {
+				err = msgp.WrapError(err, "Header")
+				return
+			}
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// write "invalid"
+			err = en.Append(0xa7, 0x69, 0x6e, 0x76, 0x61, 0x6c, 0x69, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.Invalid)
+			if err != nil {
+				err = msgp.WrapError(err, "Invalid")
+				return
+			}
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// write "notImplemented"
+			err = en.Append(0xae, 0x6e, 0x6f, 0x74, 0x49, 0x6d, 0x70, 0x6c, 0x65, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.NotImplemented)
+			if err != nil {
+				err = msgp.WrapError(err, "NotImplemented")
+				return
+			}
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *RejectedAPIStats) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// check for omitted fields
+	zb0001Len := uint32(5)
+	var zb0001Mask uint8 /* 5 bits */
+	_ = zb0001Mask
+	if z.Auth == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.RequestsTime == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.Header == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	if z.Invalid == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.NotImplemented == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	// variable map header, size zb0001Len
+	o = append(o, 0x80|uint8(zb0001Len))
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// string "auth"
+			o = append(o, 0xa4, 0x61, 0x75, 0x74, 0x68)
+			o = msgp.AppendInt64(o, z.Auth)
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// string "requestsTime"
+			o = append(o, 0xac, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x73, 0x54, 0x69, 0x6d, 0x65)
+			o = msgp.AppendInt64(o, z.RequestsTime)
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// string "header"
+			o = append(o, 0xa6, 0x68, 0x65, 0x61, 0x64, 0x65, 0x72)
+			o = msgp.AppendInt64(o, z.Header)
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// string "invalid"
+			o = append(o, 0xa7, 0x69, 0x6e, 0x76, 0x61, 0x6c, 0x69, 0x64)
+			o = msgp.AppendInt64(o, z.Invalid)
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// string "notImplemented"
+			o = append(o, 0xae, 0x6e, 0x6f, 0x74, 0x49, 0x6d, 0x70, 0x6c, 0x65, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x64)
+			o = msgp.AppendInt64(o, z.NotImplemented)
+		}
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *RejectedAPIStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 5 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "auth":
+			z.Auth, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Auth")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "requestsTime":
+			z.RequestsTime, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "RequestsTime")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "header":
+			z.Header, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Header")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "invalid":
+			z.Invalid, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Invalid")
+				return
+			}
+			zb0001Mask |= 0x8
+		case "notImplemented":
+			z.NotImplemented, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "NotImplemented")
+				return
+			}
+			zb0001Mask |= 0x10
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x1f {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Auth = 0
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.RequestsTime = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.Header = 0
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.Invalid = 0
+		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.NotImplemented = 0
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *RejectedAPIStats) Msgsize() (s int) {
+	s = 1 + 5 + msgp.Int64Size + 13 + msgp.Int64Size + 7 + msgp.Int64Size + 8 + msgp.Int64Size + 15 + msgp.Int64Size
 	return
 }
 

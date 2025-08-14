@@ -901,27 +901,30 @@ func (m *RuntimeMetrics) Merge(other *RuntimeMetrics) {
 
 // APIStats contains accumulated statistics for the API on a number of nodes.
 type APIStats struct {
-	Nodes           int        `json:"nodes"`                      // Number of nodes that have reported data.
-	StartTime       *time.Time `json:"startTime,omitempty"`        // Time range this data covers unless merged from sources with different start times..
-	EndTime         *time.Time `json:"endTime,omitempty"`          // Time range this data covers unless merged from sources with different end times.
-	WallTime        float64    `json:"wallTimeSecs,omitempty"`     // Wall time this data covers, accumulated from all nodes.
-	Requests        int64      `json:"requests,omitempty"`         // Total number of requests.
-	IncomingBytes   int64      `json:"incomingBytes,omitempty"`    // Total number of bytes received.
-	OutgoingBytes   int64      `json:"outgoingBytes,omitempty"`    // Total number of bytes sent.
-	Errors4xx       int        `json:"errors_4xx,omitempty"`       // Total number of 4xx (client request) errors.
-	Errors5xx       int        `json:"errors_5xx,omitempty"`       // Total number of 5xx (serverside) errors.
-	Canceled        int64      `json:"canceled,omitempty"`         // Requests that were canceled before they finished processing.
-	RequestTimeSecs float64    `json:"requestTimeSecs,omitempty"`  // Total request time.
-	ReqReadSecs     float64    `json:"totalReadSecs,omitempty"`    // Total time spent on request reads in seconds.
-	RespSecs        float64    `json:"respSecs,omitempty"`         // Total time spent on responses in seconds.
-	RespTTFBSecs    float64    `json:"responseTtfbSecs,omitempty"` // Total time spent on TTFB (req read -> response first byte) in seconds.
-	Rejected        struct {
-		Auth           int64 `json:"auth,omitempty"`           // Total number of rejected authentication requests.
-		RequestsTime   int64 `json:"requestsTime,omitempty"`   // Requests that were rejected due to outdated request signature.
-		Header         int64 `json:"header,omitempty"`         // Requests that were rejected due to header signature.
-		Invalid        int64 `json:"invalid,omitempty"`        // Requests that were rejected due to invalid request signature.
-		NotImplemented int64 `json:"notImplemented,omitempty"` // Requests that were rejected due to not implemented API.
-	} `json:"rejected,omitempty"`
+	Nodes           int               `json:"nodes"`                      // Number of nodes that have reported data.
+	StartTime       *time.Time        `json:"startTime,omitempty"`        // Time range this data covers unless merged from sources with different start times..
+	EndTime         *time.Time        `json:"endTime,omitempty"`          // Time range this data covers unless merged from sources with different end times.
+	WallTimeSecs    float64           `json:"wallTimeSecs,omitempty"`     // Wall time this data covers, accumulated from all nodes.
+	Requests        int64             `json:"requests,omitempty"`         // Total number of requests.
+	IncomingBytes   int64             `json:"incomingBytes,omitempty"`    // Total number of bytes received.
+	OutgoingBytes   int64             `json:"outgoingBytes,omitempty"`    // Total number of bytes sent.
+	Errors4xx       int               `json:"errors_4xx,omitempty"`       // Total number of 4xx (client request) errors.
+	Errors5xx       int               `json:"errors_5xx,omitempty"`       // Total number of 5xx (serverside) errors.
+	Canceled        int64             `json:"canceled,omitempty"`         // Requests that were canceled before they finished processing.
+	RequestTimeSecs float64           `json:"requestTimeSecs,omitempty"`  // Total request time.
+	ReqReadSecs     float64           `json:"totalReadSecs,omitempty"`    // Total time spent on request reads in seconds.
+	RespSecs        float64           `json:"respSecs,omitempty"`         // Total time spent on responses in seconds.
+	RespTTFBSecs    float64           `json:"responseTtfbSecs,omitempty"` // Total time spent on TTFB (req read -> response first byte) in seconds.
+	Rejected        *RejectedAPIStats `json:"rejected,omitempty"`
+}
+
+// RejectedAPIStats contains statistics for rejected requests.
+type RejectedAPIStats struct {
+	Auth           int64 `json:"auth,omitempty"`           // Total number of rejected authentication requests.
+	RequestsTime   int64 `json:"requestsTime,omitempty"`   // Requests that were rejected due to outdated request signature.
+	Header         int64 `json:"header,omitempty"`         // Requests that were rejected due to header signature.
+	Invalid        int64 `json:"invalid,omitempty"`        // Requests that were rejected due to invalid request signature.
+	NotImplemented int64 `json:"notImplemented,omitempty"` // Requests that were rejected due to not implemented API.
 }
 
 // Merge other into 'a'.
