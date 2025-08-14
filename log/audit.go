@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package event
+package log
 
 import "time"
 
@@ -34,4 +34,5 @@ type Audit struct {
 	SourceHost string                 `json:"sourceHost,omitempty"`
 	AccessKey  string                 `json:"accessKey,omitempty"`
 	ParentUser string                 `json:"parentUser,omitempty"`
+	XXHash     uint64                 `json:"xxhash,omitempty"`
 }

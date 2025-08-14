@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package event
+package log
 
 import (
 	"time"
@@ -32,6 +32,7 @@ type Error struct {
 	API     string            `json:"apiName"`
 	Trace   *Trace            `json:"trace,omitempty"`
 	Tags    map[string]string `json:"tags,omitempty"`
+	XXHash  uint64            `json:"xxhash,omitempty"`
 }
 
 // Trace represents the call trace

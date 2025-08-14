@@ -28,12 +28,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/minio/madmin-go/v4/event"
+	"github.com/minio/madmin-go/v4/log"
 	"github.com/tinylib/msgp/msgp"
 )
 
-// ErrorEventOpts represents the options for the ErrorEvents
-type ErrorEventOpts struct {
+// ErrorLogOpts represents the options for the ErrorLogs
+type ErrorLogOpts struct {
 	Node     string        `json:"node,omitempty"`
 	API      string        `json:"api,omitempty"`
 	Bucket   string        `json:"bucket,omitempty"`
@@ -41,30 +41,30 @@ type ErrorEventOpts struct {
 	Interval time.Duration `json:"interval,omitempty"`
 }
 
-// GetErrorEvents fetches the persisted error events from MinIO
-func (adm AdminClient) GetErrorEvents(ctx context.Context, opts ErrorEventOpts) iter.Seq2[event.Error, error] {
-	return func(yield func(event.Error, error) bool) {
+// GetErrorLogs fetches the persisted error logs from MinIO
+func (adm AdminClient) GetErrorLogs(ctx context.Context, opts ErrorLogOpts) iter.Seq2[log.Error, error] {
+	return func(yield func(log.Error, error) bool) {
 		errOpts, err := json.Marshal(opts)
 		if err != nil {
-			yield(event.Error{}, err)
+			yield(log.Error{}, err)
 			return
 		}
 		reqData := requestData{
-			relPath: adminAPIPrefix + "/events/error",
+			relPath: adminAPIPrefix + "/logs/error",
 			content: errOpts,
 		}
 		resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
 		if err != nil {
-			yield(event.Error{}, err)
+			yield(log.Error{}, err)
 			return
 		}
 		if resp.StatusCode != http.StatusOK {
-			yield(event.Error{}, httpRespToErrorResponse(resp))
+			yield(log.Error{}, httpRespToErrorResponse(resp))
 			return
 		}
 		dec := msgp.NewReader(resp.Body)
 		for {
-			var info event.Error
+			var info log.Error
 			if err = info.DecodeMsg(dec); err != nil {
 				if errors.Is(err, io.EOF) {
 					break

@@ -15,7 +15,7 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package event
+package log
 
 import "time"
 
@@ -59,6 +59,7 @@ type API struct {
 	VersionID string            `json:"versionId,omitempty"`
 	Tags      map[string]string `json:"tags,omitempty"`
 	CallInfo  *CallInfo         `json:"callInfo,omitempty"`
+	XXHash    uint64            `json:"xxhash,omitempty"`
 }
 
 // CallInfo represents the info for the external call
