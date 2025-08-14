@@ -41,7 +41,7 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
-	for event, err := range madmClnt.GetErrorEvents(context.Background(), madmin.ErrorEventOpts{}) {
+	for event, err := range madmClnt.GetErrorLogs(context.Background(), madmin.ErrorLogOpts{}) {
 		if err != nil {
 			log.Fatalln(err)
 		}
