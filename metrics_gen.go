@@ -649,7 +649,7 @@ func (z *APIStats) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 			zb0001Mask |= 0x200
-		case "totalReadSecs":
+		case "reqReadSecs":
 			z.ReqReadSecs, err = dc.ReadFloat64()
 			if err != nil {
 				err = msgp.WrapError(err, "ReqReadSecs")
@@ -663,7 +663,7 @@ func (z *APIStats) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 			zb0001Mask |= 0x800
-		case "responseTtfbSecs":
+		case "respTtfbSecs":
 			z.RespTTFBSecs, err = dc.ReadFloat64()
 			if err != nil {
 				err = msgp.WrapError(err, "RespTTFBSecs")
@@ -944,8 +944,8 @@ func (z *APIStats) EncodeMsg(en *msgp.Writer) (err error) {
 			}
 		}
 		if (zb0001Mask & 0x800) == 0 { // if not omitted
-			// write "totalReadSecs"
-			err = en.Append(0xad, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x52, 0x65, 0x61, 0x64, 0x53, 0x65, 0x63, 0x73)
+			// write "reqReadSecs"
+			err = en.Append(0xab, 0x72, 0x65, 0x71, 0x52, 0x65, 0x61, 0x64, 0x53, 0x65, 0x63, 0x73)
 			if err != nil {
 				return
 			}
@@ -968,8 +968,8 @@ func (z *APIStats) EncodeMsg(en *msgp.Writer) (err error) {
 			}
 		}
 		if (zb0001Mask & 0x2000) == 0 { // if not omitted
-			// write "responseTtfbSecs"
-			err = en.Append(0xb0, 0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x54, 0x74, 0x66, 0x62, 0x53, 0x65, 0x63, 0x73)
+			// write "respTtfbSecs"
+			err = en.Append(0xac, 0x72, 0x65, 0x73, 0x70, 0x54, 0x74, 0x66, 0x62, 0x53, 0x65, 0x63, 0x73)
 			if err != nil {
 				return
 			}
@@ -1119,8 +1119,8 @@ func (z *APIStats) MarshalMsg(b []byte) (o []byte, err error) {
 			o = msgp.AppendFloat64(o, z.RequestTimeSecs)
 		}
 		if (zb0001Mask & 0x800) == 0 { // if not omitted
-			// string "totalReadSecs"
-			o = append(o, 0xad, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x52, 0x65, 0x61, 0x64, 0x53, 0x65, 0x63, 0x73)
+			// string "reqReadSecs"
+			o = append(o, 0xab, 0x72, 0x65, 0x71, 0x52, 0x65, 0x61, 0x64, 0x53, 0x65, 0x63, 0x73)
 			o = msgp.AppendFloat64(o, z.ReqReadSecs)
 		}
 		if (zb0001Mask & 0x1000) == 0 { // if not omitted
@@ -1129,8 +1129,8 @@ func (z *APIStats) MarshalMsg(b []byte) (o []byte, err error) {
 			o = msgp.AppendFloat64(o, z.RespSecs)
 		}
 		if (zb0001Mask & 0x2000) == 0 { // if not omitted
-			// string "responseTtfbSecs"
-			o = append(o, 0xb0, 0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x54, 0x74, 0x66, 0x62, 0x53, 0x65, 0x63, 0x73)
+			// string "respTtfbSecs"
+			o = append(o, 0xac, 0x72, 0x65, 0x73, 0x70, 0x54, 0x74, 0x66, 0x62, 0x53, 0x65, 0x63, 0x73)
 			o = msgp.AppendFloat64(o, z.RespTTFBSecs)
 		}
 		// string "rejected"
@@ -1262,7 +1262,7 @@ func (z *APIStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 			zb0001Mask |= 0x200
-		case "totalReadSecs":
+		case "reqReadSecs":
 			z.ReqReadSecs, bts, err = msgp.ReadFloat64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ReqReadSecs")
@@ -1276,7 +1276,7 @@ func (z *APIStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 			zb0001Mask |= 0x800
-		case "responseTtfbSecs":
+		case "respTtfbSecs":
 			z.RespTTFBSecs, bts, err = msgp.ReadFloat64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "RespTTFBSecs")
@@ -1361,7 +1361,7 @@ func (z *APIStats) Msgsize() (s int) {
 	} else {
 		s += msgp.TimeSize
 	}
-	s += 13 + msgp.Float64Size + 9 + msgp.Int64Size + 14 + msgp.Int64Size + 14 + msgp.Int64Size + 11 + msgp.IntSize + 11 + msgp.IntSize + 9 + msgp.Int64Size + 16 + msgp.Float64Size + 14 + msgp.Float64Size + 9 + msgp.Float64Size + 17 + msgp.Float64Size + 9 + z.Rejected.Msgsize()
+	s += 13 + msgp.Float64Size + 9 + msgp.Int64Size + 14 + msgp.Int64Size + 14 + msgp.Int64Size + 11 + msgp.IntSize + 11 + msgp.IntSize + 9 + msgp.Int64Size + 16 + msgp.Float64Size + 12 + msgp.Float64Size + 9 + msgp.Float64Size + 13 + msgp.Float64Size + 9 + z.Rejected.Msgsize()
 	return
 }
 
