@@ -102,10 +102,12 @@ func (adm *AdminClient) Metrics(ctx context.Context, o MetricsOptions, out func(
 	if o.ByDepID != "" {
 		q.Set("by-depID", o.ByDepID)
 	}
-	q.Set("Accept", "application/vnd.msgpack")
 
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet, requestData{
+			customHeaders: map[string][]string{
+				"Accept": {"application/vnd.msgpack"},
+			},
 			relPath:     path,
 			queryValues: q,
 		},
