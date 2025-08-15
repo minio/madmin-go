@@ -1098,7 +1098,11 @@ func (a *APIMetrics) Merge(b *APIMetrics) {
 		if a.LastDayAPI == nil {
 			a.LastDayAPI = make(map[string]SegmentedAPIMetrics, len(b.LastDayAPI))
 		}
-		existing := a.LastDayAPI[k]
+		existing, ok := a.LastDayAPI[k]
+		if !ok {
+			a.LastDayAPI[k] = v
+			continue
+		}
 		existing.Merge(v)
 		a.LastDayAPI[k] = existing
 	}
