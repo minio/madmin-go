@@ -438,6 +438,7 @@ type ServerProperties struct {
 	RuntimeVersion      string            `json:"runtime_version,omitempty"`
 	GCStats             *GCStats          `json:"gc_stats,omitempty"`
 	MinioEnvVars        map[string]string `json:"minio_env_vars,omitempty"`
+	MinioEnvHash        string            `json:"minio_env_hash,omitempty"`
 	Edition             string            `json:"edition"`
 	License             *LicenseInfo      `json:"license,omitempty"`
 	IsLeader            bool              `json:"is_leader"`
