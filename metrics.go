@@ -903,21 +903,34 @@ func (m *RuntimeMetrics) Merge(other *RuntimeMetrics) {
 
 // APIStats contains accumulated statistics for the API on a number of nodes.
 type APIStats struct {
-	Nodes           int              `json:"nodes"`                     // Number of nodes that have reported data.
-	StartTime       *time.Time       `json:"startTime,omitempty"`       // Time range this data covers unless merged from sources with different start times..
-	EndTime         *time.Time       `json:"endTime,omitempty"`         // Time range this data covers unless merged from sources with different end times.
-	WallTimeSecs    float64          `json:"wallTimeSecs,omitempty"`    // Wall time this data covers, accumulated from all nodes.
-	Requests        int64            `json:"requests,omitempty"`        // Total number of requests.
-	IncomingBytes   int64            `json:"incomingBytes,omitempty"`   // Total number of bytes received.
-	OutgoingBytes   int64            `json:"outgoingBytes,omitempty"`   // Total number of bytes sent.
-	Errors4xx       int              `json:"errors_4xx,omitempty"`      // Total number of 4xx (client request) errors.
-	Errors5xx       int              `json:"errors_5xx,omitempty"`      // Total number of 5xx (serverside) errors.
-	Canceled        int64            `json:"canceled,omitempty"`        // Requests that were canceled before they finished processing.
-	RequestTimeSecs float64          `json:"requestTimeSecs,omitempty"` // Total request time.
-	ReqReadSecs     float64          `json:"reqReadSecs,omitempty"`     // Total time spent on request reads in seconds.
-	RespSecs        float64          `json:"respSecs,omitempty"`        // Total time spent on responses in seconds.
-	RespTTFBSecs    float64          `json:"respTtfbSecs,omitempty"`    // Total time spent on TTFB (req read -> response first byte) in seconds.
-	Rejected        RejectedAPIStats `json:"rejected,omitempty"`
+	Nodes         int        `json:"nodes"`                   // Number of nodes that have reported data.
+	StartTime     *time.Time `json:"startTime,omitempty"`     // Time range this data covers unless merged from sources with different start times..
+	EndTime       *time.Time `json:"endTime,omitempty"`       // Time range this data covers unless merged from sources with different end times.
+	WallTimeSecs  float64    `json:"wallTimeSecs,omitempty"`  // Wall time this data covers, accumulated from all nodes.
+	Requests      int64      `json:"requests,omitempty"`      // Total number of requests.
+	IncomingBytes int64      `json:"incomingBytes,omitempty"` // Total number of bytes received.
+	OutgoingBytes int64      `json:"outgoingBytes,omitempty"` // Total number of bytes sent.
+	Errors4xx     int        `json:"errors_4xx,omitempty"`    // Total number of 4xx (client request) errors.
+	Errors5xx     int        `json:"errors_5xx,omitempty"`    // Total number of 5xx (serverside) errors.
+	Canceled      int64      `json:"canceled,omitempty"`      // Requests that were canceled before they finished processing.
+
+	// Request times
+	RequestTimeSecs float64 `json:"requestTimeSecs,omitempty"` // Total request time.
+	ReqReadSecs     float64 `json:"reqReadSecs,omitempty"`     // Total time spent on request reads in seconds.
+	RespSecs        float64 `json:"respSecs,omitempty"`        // Total time spent on responses in seconds.
+	RespTTFBSecs    float64 `json:"respTtfbSecs,omitempty"`    // Total time spent on TTFB (req read -> response first byte) in seconds.
+
+	// Request times min/max
+	RequestTimeSecsMin float64 `json:"requestTimeSecsMin,omitempty"` // Min request time.
+	RequestTimeSecsMax float64 `json:"requestTimeSecsMax,omitempty"` // Max request time.
+	ReqReadSecsMin     float64 `json:"reqReadSecsMin,omitempty"`     // Min time spent on request reads in seconds.
+	ReqReadSecsMax     float64 `json:"reqReadSecsMax,omitempty"`     // Max time spent on request reads in seconds.
+	RespSecsMin        float64 `json:"respSecsMin,omitempty"`        // Min time spent on responses in seconds.
+	RespSecsMax        float64 `json:"respSecsMax,omitempty"`        // Max time spent on responses in seconds.
+	RespTTFBSecsMin    float64 `json:"respTtfbSecsMin,omitempty"`    // Min time spent on TTFB (req read -> response first byte) in seconds.
+	RespTTFBSecsMax    float64 `json:"respTtfbSecsMax,omitempty"`    // Max time spent on TTFB (req read -> response first byte) in seconds.
+
+	Rejected RejectedAPIStats `json:"rejected,omitempty"`
 }
 
 // RejectedAPIStats contains statistics for rejected requests.
@@ -931,16 +944,19 @@ type RejectedAPIStats struct {
 
 // Merge other into 'a'.
 func (a *APIStats) Merge(other APIStats) {
-	if a.StartTime != nil && other.StartTime != nil {
-		if a.StartTime.Equal(*other.StartTime) {
-			a.StartTime = other.StartTime
-		}
+	if a.StartTime == nil && a.Requests == 0 {
+		a.StartTime = other.StartTime
 	}
-	if a.EndTime != nil && other.EndTime != nil {
-		if a.EndTime.Equal(*other.EndTime) {
-			a.EndTime = other.EndTime
-		}
+	if a.EndTime == nil && a.Requests == 0 {
+		a.EndTime = other.EndTime
 	}
+	if a.StartTime != nil && other.StartTime != nil && !a.StartTime.Equal(*other.StartTime) {
+		a.StartTime = nil
+	}
+	if a.EndTime != nil && other.EndTime != nil && !a.EndTime.Equal(*other.EndTime) {
+		a.EndTime = nil
+	}
+
 	a.Nodes += other.Nodes
 	a.Requests += other.Requests
 	a.IncomingBytes += other.IncomingBytes
@@ -957,6 +973,28 @@ func (a *APIStats) Merge(other APIStats) {
 	a.Rejected.Header += other.Rejected.Header
 	a.Rejected.Invalid += other.Rejected.Invalid
 	a.Rejected.NotImplemented += other.Rejected.NotImplemented
+
+	if a.Requests == 0 && other.Requests == 0 {
+		return
+	}
+
+	// Find 2 to min/max. If we have 1, just use that twice
+	at := *a
+	bt := other
+	if a.Requests == 0 {
+		at = bt
+	}
+	if other.Requests == 0 {
+		bt = at
+	}
+	a.RequestTimeSecsMin = min(at.RequestTimeSecs, bt.RequestTimeSecs)
+	a.RequestTimeSecsMax = max(at.RequestTimeSecs, bt.RequestTimeSecs)
+	a.ReqReadSecsMin = min(at.ReqReadSecs, bt.ReqReadSecs)
+	a.ReqReadSecsMax = max(at.ReqReadSecs, bt.ReqReadSecs)
+	a.RespSecsMin = min(at.RespSecs, bt.RespSecs)
+	a.RespSecsMax = max(at.RespSecs, bt.RespSecs)
+	a.RespTTFBSecsMin = min(at.RespTTFBSecs, bt.RespTTFBSecs)
+	a.RespTTFBSecsMax = max(at.RespTTFBSecs, bt.RespTTFBSecs)
 }
 
 // SegmentedAPIMetrics contains metrics for API operations, segmented by time.
