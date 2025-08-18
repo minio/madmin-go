@@ -981,20 +981,20 @@ func (a *APIStats) Merge(other APIStats) {
 	// Find 2 to min/max. If we have 1, just use that twice
 	at := *a
 	bt := other
-	if a.Requests == 0 {
+	if a.Requests == other.Requests {
 		at = bt
 	}
 	if other.Requests == 0 {
 		bt = at
 	}
-	a.RequestTimeSecsMin = min(at.RequestTimeSecs, bt.RequestTimeSecs)
-	a.RequestTimeSecsMax = max(at.RequestTimeSecs, bt.RequestTimeSecs)
-	a.ReqReadSecsMin = min(at.ReqReadSecs, bt.ReqReadSecs)
-	a.ReqReadSecsMax = max(at.ReqReadSecs, bt.ReqReadSecs)
-	a.RespSecsMin = min(at.RespSecs, bt.RespSecs)
-	a.RespSecsMax = max(at.RespSecs, bt.RespSecs)
-	a.RespTTFBSecsMin = min(at.RespTTFBSecs, bt.RespTTFBSecs)
-	a.RespTTFBSecsMax = max(at.RespTTFBSecs, bt.RespTTFBSecs)
+	a.RequestTimeSecsMin = min(at.RequestTimeSecsMin, bt.RequestTimeSecsMin)
+	a.RequestTimeSecsMax = max(at.RequestTimeSecsMax, bt.RequestTimeSecsMax)
+	a.ReqReadSecsMin = min(at.ReqReadSecsMin, bt.ReqReadSecsMin)
+	a.ReqReadSecsMax = max(at.ReqReadSecsMax, bt.ReqReadSecsMax)
+	a.RespSecsMin = min(at.RespSecsMin, bt.RespSecsMin)
+	a.RespSecsMax = max(at.RespSecsMax, bt.RespSecsMax)
+	a.RespTTFBSecsMin = min(at.RespTTFBSecsMin, bt.RespTTFBSecsMin)
+	a.RespTTFBSecsMax = max(at.RespTTFBSecsMax, bt.RespTTFBSecsMax)
 }
 
 // SegmentedAPIMetrics contains metrics for API operations, segmented by time.
