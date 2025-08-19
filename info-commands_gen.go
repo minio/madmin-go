@@ -8752,7 +8752,7 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint16 /* 16 bits */
+	var zb0001Mask uint32 /* 17 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -8959,6 +8959,13 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 				z.MinioEnvVars[za0005] = za0006
 			}
 			zb0001Mask |= 0x4000
+		case "minio_env_hash":
+			z.MinioEnvHash, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "MinioEnvHash")
+				return
+			}
+			zb0001Mask |= 0x8000
 		case "edition":
 			z.Edition, err = dc.ReadString()
 			if err != nil {
@@ -8983,7 +8990,7 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x8000
+			zb0001Mask |= 0x10000
 		case "is_leader":
 			z.IsLeader, err = dc.ReadBool()
 			if err != nil {
@@ -9005,7 +9012,7 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xffff {
+	if zb0001Mask != 0x1ffff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.State = ""
 		}
@@ -9052,6 +9059,9 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 			z.MinioEnvVars = nil
 		}
 		if (zb0001Mask & 0x8000) == 0 {
+			z.MinioEnvHash = ""
+		}
+		if (zb0001Mask & 0x10000) == 0 {
 			z.License = nil
 		}
 	}
@@ -9061,8 +9071,8 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(20)
-	var zb0001Mask uint32 /* 20 bits */
+	zb0001Len := uint32(21)
+	var zb0001Mask uint32 /* 21 bits */
 	_ = zb0001Mask
 	if z.State == "" {
 		zb0001Len--
@@ -9124,9 +9134,13 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 		zb0001Len--
 		zb0001Mask |= 0x8000
 	}
+	if z.MinioEnvHash == "" {
+		zb0001Len--
+		zb0001Mask |= 0x10000
+	}
 	if z.License == nil {
 		zb0001Len--
-		zb0001Mask |= 0x20000
+		zb0001Mask |= 0x40000
 	}
 	// variable map header, size zb0001Len
 	err = en.WriteMapHeader(zb0001Len)
@@ -9371,6 +9385,18 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
+		if (zb0001Mask & 0x10000) == 0 { // if not omitted
+			// write "minio_env_hash"
+			err = en.Append(0xae, 0x6d, 0x69, 0x6e, 0x69, 0x6f, 0x5f, 0x65, 0x6e, 0x76, 0x5f, 0x68, 0x61, 0x73, 0x68)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.MinioEnvHash)
+			if err != nil {
+				err = msgp.WrapError(err, "MinioEnvHash")
+				return
+			}
+		}
 		// write "edition"
 		err = en.Append(0xa7, 0x65, 0x64, 0x69, 0x74, 0x69, 0x6f, 0x6e)
 		if err != nil {
@@ -9381,7 +9407,7 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "Edition")
 			return
 		}
-		if (zb0001Mask & 0x20000) == 0 { // if not omitted
+		if (zb0001Mask & 0x40000) == 0 { // if not omitted
 			// write "license"
 			err = en.Append(0xa7, 0x6c, 0x69, 0x63, 0x65, 0x6e, 0x73, 0x65)
 			if err != nil {
@@ -9428,8 +9454,8 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(20)
-	var zb0001Mask uint32 /* 20 bits */
+	zb0001Len := uint32(21)
+	var zb0001Mask uint32 /* 21 bits */
 	_ = zb0001Mask
 	if z.State == "" {
 		zb0001Len--
@@ -9491,9 +9517,13 @@ func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x8000
 	}
+	if z.MinioEnvHash == "" {
+		zb0001Len--
+		zb0001Mask |= 0x10000
+	}
 	if z.License == nil {
 		zb0001Len--
-		zb0001Mask |= 0x20000
+		zb0001Mask |= 0x40000
 	}
 	// variable map header, size zb0001Len
 	o = msgp.AppendMapHeader(o, zb0001Len)
@@ -9608,10 +9638,15 @@ func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 				o = msgp.AppendString(o, za0006)
 			}
 		}
+		if (zb0001Mask & 0x10000) == 0 { // if not omitted
+			// string "minio_env_hash"
+			o = append(o, 0xae, 0x6d, 0x69, 0x6e, 0x69, 0x6f, 0x5f, 0x65, 0x6e, 0x76, 0x5f, 0x68, 0x61, 0x73, 0x68)
+			o = msgp.AppendString(o, z.MinioEnvHash)
+		}
 		// string "edition"
 		o = append(o, 0xa7, 0x65, 0x64, 0x69, 0x74, 0x69, 0x6f, 0x6e)
 		o = msgp.AppendString(o, z.Edition)
-		if (zb0001Mask & 0x20000) == 0 { // if not omitted
+		if (zb0001Mask & 0x40000) == 0 { // if not omitted
 			// string "license"
 			o = append(o, 0xa7, 0x6c, 0x69, 0x63, 0x65, 0x6e, 0x73, 0x65)
 			if z.License == nil {
@@ -9644,7 +9679,7 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint16 /* 16 bits */
+	var zb0001Mask uint32 /* 17 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -9850,6 +9885,13 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				z.MinioEnvVars[za0005] = za0006
 			}
 			zb0001Mask |= 0x4000
+		case "minio_env_hash":
+			z.MinioEnvHash, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "MinioEnvHash")
+				return
+			}
+			zb0001Mask |= 0x8000
 		case "edition":
 			z.Edition, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
@@ -9873,7 +9915,7 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x8000
+			zb0001Mask |= 0x10000
 		case "is_leader":
 			z.IsLeader, bts, err = msgp.ReadBoolBytes(bts)
 			if err != nil {
@@ -9895,7 +9937,7 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xffff {
+	if zb0001Mask != 0x1ffff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.State = ""
 		}
@@ -9942,6 +9984,9 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.MinioEnvVars = nil
 		}
 		if (zb0001Mask & 0x8000) == 0 {
+			z.MinioEnvHash = ""
+		}
+		if (zb0001Mask & 0x10000) == 0 {
 			z.License = nil
 		}
 	}
@@ -9975,7 +10020,7 @@ func (z *ServerProperties) Msgsize() (s int) {
 			s += msgp.StringPrefixSize + len(za0005) + msgp.StringPrefixSize + len(za0006)
 		}
 	}
-	s += 8 + msgp.StringPrefixSize + len(z.Edition) + 8
+	s += 15 + msgp.StringPrefixSize + len(z.MinioEnvHash) + 8 + msgp.StringPrefixSize + len(z.Edition) + 8
 	if z.License == nil {
 		s += msgp.NilSize
 	} else {
