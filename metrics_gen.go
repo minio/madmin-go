@@ -4,11 +4,1726 @@ package madmin
 
 import (
 	"runtime/metrics"
+	"time"
 
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/load"
 	"github.com/tinylib/msgp/msgp"
 )
+
+// DecodeMsg implements msgp.Decodable
+func (z *APIMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 4 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "collected":
+			z.CollectedAt, err = dc.ReadTimeUTC()
+			if err != nil {
+				err = msgp.WrapError(err, "CollectedAt")
+				return
+			}
+		case "nodes":
+			z.Nodes, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "Nodes")
+				return
+			}
+		case "activeRequests":
+			z.ActiveRequests, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "ActiveRequests")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "queuedRequests":
+			z.QueuedRequests, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "QueuedRequests")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "lastMinuteApi":
+			var zb0002 uint32
+			zb0002, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "LastMinuteAPI")
+				return
+			}
+			if z.LastMinuteAPI == nil {
+				z.LastMinuteAPI = make(map[string]APIStats, zb0002)
+			} else if len(z.LastMinuteAPI) > 0 {
+				for key := range z.LastMinuteAPI {
+					delete(z.LastMinuteAPI, key)
+				}
+			}
+			for zb0002 > 0 {
+				zb0002--
+				var za0001 string
+				var za0002 APIStats
+				za0001, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "LastMinuteAPI")
+					return
+				}
+				err = za0002.DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "LastMinuteAPI", za0001)
+					return
+				}
+				z.LastMinuteAPI[za0001] = za0002
+			}
+			zb0001Mask |= 0x4
+		case "lastDayApi":
+			var zb0003 uint32
+			zb0003, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "LastDayAPI")
+				return
+			}
+			if z.LastDayAPI == nil {
+				z.LastDayAPI = make(map[string]SegmentedAPIMetrics, zb0003)
+			} else if len(z.LastDayAPI) > 0 {
+				for key := range z.LastDayAPI {
+					delete(z.LastDayAPI, key)
+				}
+			}
+			for zb0003 > 0 {
+				zb0003--
+				var za0003 string
+				var za0004 SegmentedAPIMetrics
+				za0003, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "LastDayAPI")
+					return
+				}
+				err = za0004.DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "LastDayAPI", za0003)
+					return
+				}
+				z.LastDayAPI[za0003] = za0004
+			}
+			zb0001Mask |= 0x8
+		case "since_start":
+			err = z.SinceStart.DecodeMsg(dc)
+			if err != nil {
+				err = msgp.WrapError(err, "SinceStart")
+				return
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0xf {
+		if (zb0001Mask & 0x1) == 0 {
+			z.ActiveRequests = 0
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.QueuedRequests = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.LastMinuteAPI = nil
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.LastDayAPI = nil
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *APIMetrics) EncodeMsg(en *msgp.Writer) (err error) {
+	// check for omitted fields
+	zb0001Len := uint32(7)
+	var zb0001Mask uint8 /* 7 bits */
+	_ = zb0001Mask
+	if z.ActiveRequests == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	if z.QueuedRequests == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.LastMinuteAPI == nil {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	if z.LastDayAPI == nil {
+		zb0001Len--
+		zb0001Mask |= 0x20
+	}
+	// variable map header, size zb0001Len
+	err = en.Append(0x80 | uint8(zb0001Len))
+	if err != nil {
+		return
+	}
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// write "collected"
+		err = en.Append(0xa9, 0x63, 0x6f, 0x6c, 0x6c, 0x65, 0x63, 0x74, 0x65, 0x64)
+		if err != nil {
+			return
+		}
+		err = en.WriteTime(z.CollectedAt)
+		if err != nil {
+			err = msgp.WrapError(err, "CollectedAt")
+			return
+		}
+		// write "nodes"
+		err = en.Append(0xa5, 0x6e, 0x6f, 0x64, 0x65, 0x73)
+		if err != nil {
+			return
+		}
+		err = en.WriteInt(z.Nodes)
+		if err != nil {
+			err = msgp.WrapError(err, "Nodes")
+			return
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// write "activeRequests"
+			err = en.Append(0xae, 0x61, 0x63, 0x74, 0x69, 0x76, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.ActiveRequests)
+			if err != nil {
+				err = msgp.WrapError(err, "ActiveRequests")
+				return
+			}
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// write "queuedRequests"
+			err = en.Append(0xae, 0x71, 0x75, 0x65, 0x75, 0x65, 0x64, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.QueuedRequests)
+			if err != nil {
+				err = msgp.WrapError(err, "QueuedRequests")
+				return
+			}
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// write "lastMinuteApi"
+			err = en.Append(0xad, 0x6c, 0x61, 0x73, 0x74, 0x4d, 0x69, 0x6e, 0x75, 0x74, 0x65, 0x41, 0x70, 0x69)
+			if err != nil {
+				return
+			}
+			err = en.WriteMapHeader(uint32(len(z.LastMinuteAPI)))
+			if err != nil {
+				err = msgp.WrapError(err, "LastMinuteAPI")
+				return
+			}
+			for za0001, za0002 := range z.LastMinuteAPI {
+				err = en.WriteString(za0001)
+				if err != nil {
+					err = msgp.WrapError(err, "LastMinuteAPI")
+					return
+				}
+				err = za0002.EncodeMsg(en)
+				if err != nil {
+					err = msgp.WrapError(err, "LastMinuteAPI", za0001)
+					return
+				}
+			}
+		}
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// write "lastDayApi"
+			err = en.Append(0xaa, 0x6c, 0x61, 0x73, 0x74, 0x44, 0x61, 0x79, 0x41, 0x70, 0x69)
+			if err != nil {
+				return
+			}
+			err = en.WriteMapHeader(uint32(len(z.LastDayAPI)))
+			if err != nil {
+				err = msgp.WrapError(err, "LastDayAPI")
+				return
+			}
+			for za0003, za0004 := range z.LastDayAPI {
+				err = en.WriteString(za0003)
+				if err != nil {
+					err = msgp.WrapError(err, "LastDayAPI")
+					return
+				}
+				err = za0004.EncodeMsg(en)
+				if err != nil {
+					err = msgp.WrapError(err, "LastDayAPI", za0003)
+					return
+				}
+			}
+		}
+		// write "since_start"
+		err = en.Append(0xab, 0x73, 0x69, 0x6e, 0x63, 0x65, 0x5f, 0x73, 0x74, 0x61, 0x72, 0x74)
+		if err != nil {
+			return
+		}
+		err = z.SinceStart.EncodeMsg(en)
+		if err != nil {
+			err = msgp.WrapError(err, "SinceStart")
+			return
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *APIMetrics) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// check for omitted fields
+	zb0001Len := uint32(7)
+	var zb0001Mask uint8 /* 7 bits */
+	_ = zb0001Mask
+	if z.ActiveRequests == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	if z.QueuedRequests == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.LastMinuteAPI == nil {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	if z.LastDayAPI == nil {
+		zb0001Len--
+		zb0001Mask |= 0x20
+	}
+	// variable map header, size zb0001Len
+	o = append(o, 0x80|uint8(zb0001Len))
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// string "collected"
+		o = append(o, 0xa9, 0x63, 0x6f, 0x6c, 0x6c, 0x65, 0x63, 0x74, 0x65, 0x64)
+		o = msgp.AppendTime(o, z.CollectedAt)
+		// string "nodes"
+		o = append(o, 0xa5, 0x6e, 0x6f, 0x64, 0x65, 0x73)
+		o = msgp.AppendInt(o, z.Nodes)
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// string "activeRequests"
+			o = append(o, 0xae, 0x61, 0x63, 0x74, 0x69, 0x76, 0x65, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x73)
+			o = msgp.AppendInt64(o, z.ActiveRequests)
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// string "queuedRequests"
+			o = append(o, 0xae, 0x71, 0x75, 0x65, 0x75, 0x65, 0x64, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x73)
+			o = msgp.AppendInt64(o, z.QueuedRequests)
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// string "lastMinuteApi"
+			o = append(o, 0xad, 0x6c, 0x61, 0x73, 0x74, 0x4d, 0x69, 0x6e, 0x75, 0x74, 0x65, 0x41, 0x70, 0x69)
+			o = msgp.AppendMapHeader(o, uint32(len(z.LastMinuteAPI)))
+			for za0001, za0002 := range z.LastMinuteAPI {
+				o = msgp.AppendString(o, za0001)
+				o, err = za0002.MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "LastMinuteAPI", za0001)
+					return
+				}
+			}
+		}
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// string "lastDayApi"
+			o = append(o, 0xaa, 0x6c, 0x61, 0x73, 0x74, 0x44, 0x61, 0x79, 0x41, 0x70, 0x69)
+			o = msgp.AppendMapHeader(o, uint32(len(z.LastDayAPI)))
+			for za0003, za0004 := range z.LastDayAPI {
+				o = msgp.AppendString(o, za0003)
+				o, err = za0004.MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "LastDayAPI", za0003)
+					return
+				}
+			}
+		}
+		// string "since_start"
+		o = append(o, 0xab, 0x73, 0x69, 0x6e, 0x63, 0x65, 0x5f, 0x73, 0x74, 0x61, 0x72, 0x74)
+		o, err = z.SinceStart.MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "SinceStart")
+			return
+		}
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *APIMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 4 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "collected":
+			z.CollectedAt, bts, err = msgp.ReadTimeUTCBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "CollectedAt")
+				return
+			}
+		case "nodes":
+			z.Nodes, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Nodes")
+				return
+			}
+		case "activeRequests":
+			z.ActiveRequests, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ActiveRequests")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "queuedRequests":
+			z.QueuedRequests, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "QueuedRequests")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "lastMinuteApi":
+			var zb0002 uint32
+			zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "LastMinuteAPI")
+				return
+			}
+			if z.LastMinuteAPI == nil {
+				z.LastMinuteAPI = make(map[string]APIStats, zb0002)
+			} else if len(z.LastMinuteAPI) > 0 {
+				for key := range z.LastMinuteAPI {
+					delete(z.LastMinuteAPI, key)
+				}
+			}
+			for zb0002 > 0 {
+				var za0001 string
+				var za0002 APIStats
+				zb0002--
+				za0001, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "LastMinuteAPI")
+					return
+				}
+				bts, err = za0002.UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "LastMinuteAPI", za0001)
+					return
+				}
+				z.LastMinuteAPI[za0001] = za0002
+			}
+			zb0001Mask |= 0x4
+		case "lastDayApi":
+			var zb0003 uint32
+			zb0003, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "LastDayAPI")
+				return
+			}
+			if z.LastDayAPI == nil {
+				z.LastDayAPI = make(map[string]SegmentedAPIMetrics, zb0003)
+			} else if len(z.LastDayAPI) > 0 {
+				for key := range z.LastDayAPI {
+					delete(z.LastDayAPI, key)
+				}
+			}
+			for zb0003 > 0 {
+				var za0003 string
+				var za0004 SegmentedAPIMetrics
+				zb0003--
+				za0003, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "LastDayAPI")
+					return
+				}
+				bts, err = za0004.UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "LastDayAPI", za0003)
+					return
+				}
+				z.LastDayAPI[za0003] = za0004
+			}
+			zb0001Mask |= 0x8
+		case "since_start":
+			bts, err = z.SinceStart.UnmarshalMsg(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "SinceStart")
+				return
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0xf {
+		if (zb0001Mask & 0x1) == 0 {
+			z.ActiveRequests = 0
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.QueuedRequests = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.LastMinuteAPI = nil
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.LastDayAPI = nil
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *APIMetrics) Msgsize() (s int) {
+	s = 1 + 10 + msgp.TimeSize + 6 + msgp.IntSize + 15 + msgp.Int64Size + 15 + msgp.Int64Size + 14 + msgp.MapHeaderSize
+	if z.LastMinuteAPI != nil {
+		for za0001, za0002 := range z.LastMinuteAPI {
+			_ = za0002
+			s += msgp.StringPrefixSize + len(za0001) + za0002.Msgsize()
+		}
+	}
+	s += 11 + msgp.MapHeaderSize
+	if z.LastDayAPI != nil {
+		for za0003, za0004 := range z.LastDayAPI {
+			_ = za0004
+			s += msgp.StringPrefixSize + len(za0003) + za0004.Msgsize()
+		}
+	}
+	s += 12 + z.SinceStart.Msgsize()
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *APIStats) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint32 /* 22 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "nodes":
+			z.Nodes, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "Nodes")
+				return
+			}
+		case "startTime":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "StartTime")
+					return
+				}
+				z.StartTime = nil
+			} else {
+				if z.StartTime == nil {
+					z.StartTime = new(time.Time)
+				}
+				*z.StartTime, err = dc.ReadTimeUTC()
+				if err != nil {
+					err = msgp.WrapError(err, "StartTime")
+					return
+				}
+			}
+			zb0001Mask |= 0x1
+		case "endTime":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "EndTime")
+					return
+				}
+				z.EndTime = nil
+			} else {
+				if z.EndTime == nil {
+					z.EndTime = new(time.Time)
+				}
+				*z.EndTime, err = dc.ReadTimeUTC()
+				if err != nil {
+					err = msgp.WrapError(err, "EndTime")
+					return
+				}
+			}
+			zb0001Mask |= 0x2
+		case "wallTimeSecs":
+			z.WallTimeSecs, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "WallTimeSecs")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "requests":
+			z.Requests, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "Requests")
+				return
+			}
+			zb0001Mask |= 0x8
+		case "incomingBytes":
+			z.IncomingBytes, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "IncomingBytes")
+				return
+			}
+			zb0001Mask |= 0x10
+		case "outgoingBytes":
+			z.OutgoingBytes, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "OutgoingBytes")
+				return
+			}
+			zb0001Mask |= 0x20
+		case "errors_4xx":
+			z.Errors4xx, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "Errors4xx")
+				return
+			}
+			zb0001Mask |= 0x40
+		case "errors_5xx":
+			z.Errors5xx, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "Errors5xx")
+				return
+			}
+			zb0001Mask |= 0x80
+		case "canceled":
+			z.Canceled, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "Canceled")
+				return
+			}
+			zb0001Mask |= 0x100
+		case "requestTimeSecs":
+			z.RequestTimeSecs, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "RequestTimeSecs")
+				return
+			}
+			zb0001Mask |= 0x200
+		case "reqReadSecs":
+			z.ReqReadSecs, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "ReqReadSecs")
+				return
+			}
+			zb0001Mask |= 0x400
+		case "respSecs":
+			z.RespSecs, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "RespSecs")
+				return
+			}
+			zb0001Mask |= 0x800
+		case "respTtfbSecs":
+			z.RespTTFBSecs, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "RespTTFBSecs")
+				return
+			}
+			zb0001Mask |= 0x1000
+		case "requestTimeSecsMin":
+			z.RequestTimeSecsMin, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "RequestTimeSecsMin")
+				return
+			}
+			zb0001Mask |= 0x2000
+		case "requestTimeSecsMax":
+			z.RequestTimeSecsMax, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "RequestTimeSecsMax")
+				return
+			}
+			zb0001Mask |= 0x4000
+		case "reqReadSecsMin":
+			z.ReqReadSecsMin, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "ReqReadSecsMin")
+				return
+			}
+			zb0001Mask |= 0x8000
+		case "reqReadSecsMax":
+			z.ReqReadSecsMax, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "ReqReadSecsMax")
+				return
+			}
+			zb0001Mask |= 0x10000
+		case "respSecsMin":
+			z.RespSecsMin, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "RespSecsMin")
+				return
+			}
+			zb0001Mask |= 0x20000
+		case "respSecsMax":
+			z.RespSecsMax, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "RespSecsMax")
+				return
+			}
+			zb0001Mask |= 0x40000
+		case "respTtfbSecsMin":
+			z.RespTTFBSecsMin, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "RespTTFBSecsMin")
+				return
+			}
+			zb0001Mask |= 0x80000
+		case "respTtfbSecsMax":
+			z.RespTTFBSecsMax, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "RespTTFBSecsMax")
+				return
+			}
+			zb0001Mask |= 0x100000
+		case "rejected":
+			err = z.Rejected.DecodeMsg(dc)
+			if err != nil {
+				err = msgp.WrapError(err, "Rejected")
+				return
+			}
+			zb0001Mask |= 0x200000
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x3fffff {
+		if (zb0001Mask & 0x1) == 0 {
+			z.StartTime = nil
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.EndTime = nil
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.WallTimeSecs = 0
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.Requests = 0
+		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.IncomingBytes = 0
+		}
+		if (zb0001Mask & 0x20) == 0 {
+			z.OutgoingBytes = 0
+		}
+		if (zb0001Mask & 0x40) == 0 {
+			z.Errors4xx = 0
+		}
+		if (zb0001Mask & 0x80) == 0 {
+			z.Errors5xx = 0
+		}
+		if (zb0001Mask & 0x100) == 0 {
+			z.Canceled = 0
+		}
+		if (zb0001Mask & 0x200) == 0 {
+			z.RequestTimeSecs = 0
+		}
+		if (zb0001Mask & 0x400) == 0 {
+			z.ReqReadSecs = 0
+		}
+		if (zb0001Mask & 0x800) == 0 {
+			z.RespSecs = 0
+		}
+		if (zb0001Mask & 0x1000) == 0 {
+			z.RespTTFBSecs = 0
+		}
+		if (zb0001Mask & 0x2000) == 0 {
+			z.RequestTimeSecsMin = 0
+		}
+		if (zb0001Mask & 0x4000) == 0 {
+			z.RequestTimeSecsMax = 0
+		}
+		if (zb0001Mask & 0x8000) == 0 {
+			z.ReqReadSecsMin = 0
+		}
+		if (zb0001Mask & 0x10000) == 0 {
+			z.ReqReadSecsMax = 0
+		}
+		if (zb0001Mask & 0x20000) == 0 {
+			z.RespSecsMin = 0
+		}
+		if (zb0001Mask & 0x40000) == 0 {
+			z.RespSecsMax = 0
+		}
+		if (zb0001Mask & 0x80000) == 0 {
+			z.RespTTFBSecsMin = 0
+		}
+		if (zb0001Mask & 0x100000) == 0 {
+			z.RespTTFBSecsMax = 0
+		}
+		if (zb0001Mask & 0x200000) == 0 {
+			z.Rejected = RejectedAPIStats{}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *APIStats) EncodeMsg(en *msgp.Writer) (err error) {
+	// check for omitted fields
+	zb0001Len := uint32(23)
+	var zb0001Mask uint32 /* 23 bits */
+	_ = zb0001Mask
+	if z.StartTime == nil {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.EndTime == nil {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	if z.WallTimeSecs == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.Requests == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	if z.IncomingBytes == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x20
+	}
+	if z.OutgoingBytes == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x40
+	}
+	if z.Errors4xx == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x80
+	}
+	if z.Errors5xx == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x100
+	}
+	if z.Canceled == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x200
+	}
+	if z.RequestTimeSecs == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x400
+	}
+	if z.ReqReadSecs == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x800
+	}
+	if z.RespSecs == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x1000
+	}
+	if z.RespTTFBSecs == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2000
+	}
+	if z.RequestTimeSecsMin == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4000
+	}
+	if z.RequestTimeSecsMax == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8000
+	}
+	if z.ReqReadSecsMin == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x10000
+	}
+	if z.ReqReadSecsMax == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x20000
+	}
+	if z.RespSecsMin == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x40000
+	}
+	if z.RespSecsMax == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x80000
+	}
+	if z.RespTTFBSecsMin == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x100000
+	}
+	if z.RespTTFBSecsMax == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x200000
+	}
+	// variable map header, size zb0001Len
+	err = en.WriteMapHeader(zb0001Len)
+	if err != nil {
+		return
+	}
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// write "nodes"
+		err = en.Append(0xa5, 0x6e, 0x6f, 0x64, 0x65, 0x73)
+		if err != nil {
+			return
+		}
+		err = en.WriteInt(z.Nodes)
+		if err != nil {
+			err = msgp.WrapError(err, "Nodes")
+			return
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// write "startTime"
+			err = en.Append(0xa9, 0x73, 0x74, 0x61, 0x72, 0x74, 0x54, 0x69, 0x6d, 0x65)
+			if err != nil {
+				return
+			}
+			if z.StartTime == nil {
+				err = en.WriteNil()
+				if err != nil {
+					return
+				}
+			} else {
+				err = en.WriteTime(*z.StartTime)
+				if err != nil {
+					err = msgp.WrapError(err, "StartTime")
+					return
+				}
+			}
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// write "endTime"
+			err = en.Append(0xa7, 0x65, 0x6e, 0x64, 0x54, 0x69, 0x6d, 0x65)
+			if err != nil {
+				return
+			}
+			if z.EndTime == nil {
+				err = en.WriteNil()
+				if err != nil {
+					return
+				}
+			} else {
+				err = en.WriteTime(*z.EndTime)
+				if err != nil {
+					err = msgp.WrapError(err, "EndTime")
+					return
+				}
+			}
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// write "wallTimeSecs"
+			err = en.Append(0xac, 0x77, 0x61, 0x6c, 0x6c, 0x54, 0x69, 0x6d, 0x65, 0x53, 0x65, 0x63, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.WallTimeSecs)
+			if err != nil {
+				err = msgp.WrapError(err, "WallTimeSecs")
+				return
+			}
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// write "requests"
+			err = en.Append(0xa8, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.Requests)
+			if err != nil {
+				err = msgp.WrapError(err, "Requests")
+				return
+			}
+		}
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// write "incomingBytes"
+			err = en.Append(0xad, 0x69, 0x6e, 0x63, 0x6f, 0x6d, 0x69, 0x6e, 0x67, 0x42, 0x79, 0x74, 0x65, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.IncomingBytes)
+			if err != nil {
+				err = msgp.WrapError(err, "IncomingBytes")
+				return
+			}
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
+			// write "outgoingBytes"
+			err = en.Append(0xad, 0x6f, 0x75, 0x74, 0x67, 0x6f, 0x69, 0x6e, 0x67, 0x42, 0x79, 0x74, 0x65, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.OutgoingBytes)
+			if err != nil {
+				err = msgp.WrapError(err, "OutgoingBytes")
+				return
+			}
+		}
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
+			// write "errors_4xx"
+			err = en.Append(0xaa, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x73, 0x5f, 0x34, 0x78, 0x78)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt(z.Errors4xx)
+			if err != nil {
+				err = msgp.WrapError(err, "Errors4xx")
+				return
+			}
+		}
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
+			// write "errors_5xx"
+			err = en.Append(0xaa, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x73, 0x5f, 0x35, 0x78, 0x78)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt(z.Errors5xx)
+			if err != nil {
+				err = msgp.WrapError(err, "Errors5xx")
+				return
+			}
+		}
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
+			// write "canceled"
+			err = en.Append(0xa8, 0x63, 0x61, 0x6e, 0x63, 0x65, 0x6c, 0x65, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.Canceled)
+			if err != nil {
+				err = msgp.WrapError(err, "Canceled")
+				return
+			}
+		}
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
+			// write "requestTimeSecs"
+			err = en.Append(0xaf, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x54, 0x69, 0x6d, 0x65, 0x53, 0x65, 0x63, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.RequestTimeSecs)
+			if err != nil {
+				err = msgp.WrapError(err, "RequestTimeSecs")
+				return
+			}
+		}
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
+			// write "reqReadSecs"
+			err = en.Append(0xab, 0x72, 0x65, 0x71, 0x52, 0x65, 0x61, 0x64, 0x53, 0x65, 0x63, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.ReqReadSecs)
+			if err != nil {
+				err = msgp.WrapError(err, "ReqReadSecs")
+				return
+			}
+		}
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
+			// write "respSecs"
+			err = en.Append(0xa8, 0x72, 0x65, 0x73, 0x70, 0x53, 0x65, 0x63, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.RespSecs)
+			if err != nil {
+				err = msgp.WrapError(err, "RespSecs")
+				return
+			}
+		}
+		if (zb0001Mask & 0x2000) == 0 { // if not omitted
+			// write "respTtfbSecs"
+			err = en.Append(0xac, 0x72, 0x65, 0x73, 0x70, 0x54, 0x74, 0x66, 0x62, 0x53, 0x65, 0x63, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.RespTTFBSecs)
+			if err != nil {
+				err = msgp.WrapError(err, "RespTTFBSecs")
+				return
+			}
+		}
+		if (zb0001Mask & 0x4000) == 0 { // if not omitted
+			// write "requestTimeSecsMin"
+			err = en.Append(0xb2, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x54, 0x69, 0x6d, 0x65, 0x53, 0x65, 0x63, 0x73, 0x4d, 0x69, 0x6e)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.RequestTimeSecsMin)
+			if err != nil {
+				err = msgp.WrapError(err, "RequestTimeSecsMin")
+				return
+			}
+		}
+		if (zb0001Mask & 0x8000) == 0 { // if not omitted
+			// write "requestTimeSecsMax"
+			err = en.Append(0xb2, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x54, 0x69, 0x6d, 0x65, 0x53, 0x65, 0x63, 0x73, 0x4d, 0x61, 0x78)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.RequestTimeSecsMax)
+			if err != nil {
+				err = msgp.WrapError(err, "RequestTimeSecsMax")
+				return
+			}
+		}
+		if (zb0001Mask & 0x10000) == 0 { // if not omitted
+			// write "reqReadSecsMin"
+			err = en.Append(0xae, 0x72, 0x65, 0x71, 0x52, 0x65, 0x61, 0x64, 0x53, 0x65, 0x63, 0x73, 0x4d, 0x69, 0x6e)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.ReqReadSecsMin)
+			if err != nil {
+				err = msgp.WrapError(err, "ReqReadSecsMin")
+				return
+			}
+		}
+		if (zb0001Mask & 0x20000) == 0 { // if not omitted
+			// write "reqReadSecsMax"
+			err = en.Append(0xae, 0x72, 0x65, 0x71, 0x52, 0x65, 0x61, 0x64, 0x53, 0x65, 0x63, 0x73, 0x4d, 0x61, 0x78)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.ReqReadSecsMax)
+			if err != nil {
+				err = msgp.WrapError(err, "ReqReadSecsMax")
+				return
+			}
+		}
+		if (zb0001Mask & 0x40000) == 0 { // if not omitted
+			// write "respSecsMin"
+			err = en.Append(0xab, 0x72, 0x65, 0x73, 0x70, 0x53, 0x65, 0x63, 0x73, 0x4d, 0x69, 0x6e)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.RespSecsMin)
+			if err != nil {
+				err = msgp.WrapError(err, "RespSecsMin")
+				return
+			}
+		}
+		if (zb0001Mask & 0x80000) == 0 { // if not omitted
+			// write "respSecsMax"
+			err = en.Append(0xab, 0x72, 0x65, 0x73, 0x70, 0x53, 0x65, 0x63, 0x73, 0x4d, 0x61, 0x78)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.RespSecsMax)
+			if err != nil {
+				err = msgp.WrapError(err, "RespSecsMax")
+				return
+			}
+		}
+		if (zb0001Mask & 0x100000) == 0 { // if not omitted
+			// write "respTtfbSecsMin"
+			err = en.Append(0xaf, 0x72, 0x65, 0x73, 0x70, 0x54, 0x74, 0x66, 0x62, 0x53, 0x65, 0x63, 0x73, 0x4d, 0x69, 0x6e)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.RespTTFBSecsMin)
+			if err != nil {
+				err = msgp.WrapError(err, "RespTTFBSecsMin")
+				return
+			}
+		}
+		if (zb0001Mask & 0x200000) == 0 { // if not omitted
+			// write "respTtfbSecsMax"
+			err = en.Append(0xaf, 0x72, 0x65, 0x73, 0x70, 0x54, 0x74, 0x66, 0x62, 0x53, 0x65, 0x63, 0x73, 0x4d, 0x61, 0x78)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.RespTTFBSecsMax)
+			if err != nil {
+				err = msgp.WrapError(err, "RespTTFBSecsMax")
+				return
+			}
+		}
+		// write "rejected"
+		err = en.Append(0xa8, 0x72, 0x65, 0x6a, 0x65, 0x63, 0x74, 0x65, 0x64)
+		if err != nil {
+			return
+		}
+		err = z.Rejected.EncodeMsg(en)
+		if err != nil {
+			err = msgp.WrapError(err, "Rejected")
+			return
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *APIStats) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// check for omitted fields
+	zb0001Len := uint32(23)
+	var zb0001Mask uint32 /* 23 bits */
+	_ = zb0001Mask
+	if z.StartTime == nil {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.EndTime == nil {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	if z.WallTimeSecs == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.Requests == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	if z.IncomingBytes == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x20
+	}
+	if z.OutgoingBytes == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x40
+	}
+	if z.Errors4xx == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x80
+	}
+	if z.Errors5xx == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x100
+	}
+	if z.Canceled == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x200
+	}
+	if z.RequestTimeSecs == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x400
+	}
+	if z.ReqReadSecs == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x800
+	}
+	if z.RespSecs == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x1000
+	}
+	if z.RespTTFBSecs == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2000
+	}
+	if z.RequestTimeSecsMin == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4000
+	}
+	if z.RequestTimeSecsMax == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8000
+	}
+	if z.ReqReadSecsMin == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x10000
+	}
+	if z.ReqReadSecsMax == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x20000
+	}
+	if z.RespSecsMin == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x40000
+	}
+	if z.RespSecsMax == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x80000
+	}
+	if z.RespTTFBSecsMin == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x100000
+	}
+	if z.RespTTFBSecsMax == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x200000
+	}
+	// variable map header, size zb0001Len
+	o = msgp.AppendMapHeader(o, zb0001Len)
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// string "nodes"
+		o = append(o, 0xa5, 0x6e, 0x6f, 0x64, 0x65, 0x73)
+		o = msgp.AppendInt(o, z.Nodes)
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// string "startTime"
+			o = append(o, 0xa9, 0x73, 0x74, 0x61, 0x72, 0x74, 0x54, 0x69, 0x6d, 0x65)
+			if z.StartTime == nil {
+				o = msgp.AppendNil(o)
+			} else {
+				o = msgp.AppendTime(o, *z.StartTime)
+			}
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// string "endTime"
+			o = append(o, 0xa7, 0x65, 0x6e, 0x64, 0x54, 0x69, 0x6d, 0x65)
+			if z.EndTime == nil {
+				o = msgp.AppendNil(o)
+			} else {
+				o = msgp.AppendTime(o, *z.EndTime)
+			}
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// string "wallTimeSecs"
+			o = append(o, 0xac, 0x77, 0x61, 0x6c, 0x6c, 0x54, 0x69, 0x6d, 0x65, 0x53, 0x65, 0x63, 0x73)
+			o = msgp.AppendFloat64(o, z.WallTimeSecs)
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// string "requests"
+			o = append(o, 0xa8, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x73)
+			o = msgp.AppendInt64(o, z.Requests)
+		}
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// string "incomingBytes"
+			o = append(o, 0xad, 0x69, 0x6e, 0x63, 0x6f, 0x6d, 0x69, 0x6e, 0x67, 0x42, 0x79, 0x74, 0x65, 0x73)
+			o = msgp.AppendInt64(o, z.IncomingBytes)
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
+			// string "outgoingBytes"
+			o = append(o, 0xad, 0x6f, 0x75, 0x74, 0x67, 0x6f, 0x69, 0x6e, 0x67, 0x42, 0x79, 0x74, 0x65, 0x73)
+			o = msgp.AppendInt64(o, z.OutgoingBytes)
+		}
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
+			// string "errors_4xx"
+			o = append(o, 0xaa, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x73, 0x5f, 0x34, 0x78, 0x78)
+			o = msgp.AppendInt(o, z.Errors4xx)
+		}
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
+			// string "errors_5xx"
+			o = append(o, 0xaa, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x73, 0x5f, 0x35, 0x78, 0x78)
+			o = msgp.AppendInt(o, z.Errors5xx)
+		}
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
+			// string "canceled"
+			o = append(o, 0xa8, 0x63, 0x61, 0x6e, 0x63, 0x65, 0x6c, 0x65, 0x64)
+			o = msgp.AppendInt64(o, z.Canceled)
+		}
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
+			// string "requestTimeSecs"
+			o = append(o, 0xaf, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x54, 0x69, 0x6d, 0x65, 0x53, 0x65, 0x63, 0x73)
+			o = msgp.AppendFloat64(o, z.RequestTimeSecs)
+		}
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
+			// string "reqReadSecs"
+			o = append(o, 0xab, 0x72, 0x65, 0x71, 0x52, 0x65, 0x61, 0x64, 0x53, 0x65, 0x63, 0x73)
+			o = msgp.AppendFloat64(o, z.ReqReadSecs)
+		}
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
+			// string "respSecs"
+			o = append(o, 0xa8, 0x72, 0x65, 0x73, 0x70, 0x53, 0x65, 0x63, 0x73)
+			o = msgp.AppendFloat64(o, z.RespSecs)
+		}
+		if (zb0001Mask & 0x2000) == 0 { // if not omitted
+			// string "respTtfbSecs"
+			o = append(o, 0xac, 0x72, 0x65, 0x73, 0x70, 0x54, 0x74, 0x66, 0x62, 0x53, 0x65, 0x63, 0x73)
+			o = msgp.AppendFloat64(o, z.RespTTFBSecs)
+		}
+		if (zb0001Mask & 0x4000) == 0 { // if not omitted
+			// string "requestTimeSecsMin"
+			o = append(o, 0xb2, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x54, 0x69, 0x6d, 0x65, 0x53, 0x65, 0x63, 0x73, 0x4d, 0x69, 0x6e)
+			o = msgp.AppendFloat64(o, z.RequestTimeSecsMin)
+		}
+		if (zb0001Mask & 0x8000) == 0 { // if not omitted
+			// string "requestTimeSecsMax"
+			o = append(o, 0xb2, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x54, 0x69, 0x6d, 0x65, 0x53, 0x65, 0x63, 0x73, 0x4d, 0x61, 0x78)
+			o = msgp.AppendFloat64(o, z.RequestTimeSecsMax)
+		}
+		if (zb0001Mask & 0x10000) == 0 { // if not omitted
+			// string "reqReadSecsMin"
+			o = append(o, 0xae, 0x72, 0x65, 0x71, 0x52, 0x65, 0x61, 0x64, 0x53, 0x65, 0x63, 0x73, 0x4d, 0x69, 0x6e)
+			o = msgp.AppendFloat64(o, z.ReqReadSecsMin)
+		}
+		if (zb0001Mask & 0x20000) == 0 { // if not omitted
+			// string "reqReadSecsMax"
+			o = append(o, 0xae, 0x72, 0x65, 0x71, 0x52, 0x65, 0x61, 0x64, 0x53, 0x65, 0x63, 0x73, 0x4d, 0x61, 0x78)
+			o = msgp.AppendFloat64(o, z.ReqReadSecsMax)
+		}
+		if (zb0001Mask & 0x40000) == 0 { // if not omitted
+			// string "respSecsMin"
+			o = append(o, 0xab, 0x72, 0x65, 0x73, 0x70, 0x53, 0x65, 0x63, 0x73, 0x4d, 0x69, 0x6e)
+			o = msgp.AppendFloat64(o, z.RespSecsMin)
+		}
+		if (zb0001Mask & 0x80000) == 0 { // if not omitted
+			// string "respSecsMax"
+			o = append(o, 0xab, 0x72, 0x65, 0x73, 0x70, 0x53, 0x65, 0x63, 0x73, 0x4d, 0x61, 0x78)
+			o = msgp.AppendFloat64(o, z.RespSecsMax)
+		}
+		if (zb0001Mask & 0x100000) == 0 { // if not omitted
+			// string "respTtfbSecsMin"
+			o = append(o, 0xaf, 0x72, 0x65, 0x73, 0x70, 0x54, 0x74, 0x66, 0x62, 0x53, 0x65, 0x63, 0x73, 0x4d, 0x69, 0x6e)
+			o = msgp.AppendFloat64(o, z.RespTTFBSecsMin)
+		}
+		if (zb0001Mask & 0x200000) == 0 { // if not omitted
+			// string "respTtfbSecsMax"
+			o = append(o, 0xaf, 0x72, 0x65, 0x73, 0x70, 0x54, 0x74, 0x66, 0x62, 0x53, 0x65, 0x63, 0x73, 0x4d, 0x61, 0x78)
+			o = msgp.AppendFloat64(o, z.RespTTFBSecsMax)
+		}
+		// string "rejected"
+		o = append(o, 0xa8, 0x72, 0x65, 0x6a, 0x65, 0x63, 0x74, 0x65, 0x64)
+		o, err = z.Rejected.MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "Rejected")
+			return
+		}
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *APIStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint32 /* 22 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "nodes":
+			z.Nodes, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Nodes")
+				return
+			}
+		case "startTime":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.StartTime = nil
+			} else {
+				if z.StartTime == nil {
+					z.StartTime = new(time.Time)
+				}
+				*z.StartTime, bts, err = msgp.ReadTimeUTCBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "StartTime")
+					return
+				}
+			}
+			zb0001Mask |= 0x1
+		case "endTime":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.EndTime = nil
+			} else {
+				if z.EndTime == nil {
+					z.EndTime = new(time.Time)
+				}
+				*z.EndTime, bts, err = msgp.ReadTimeUTCBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "EndTime")
+					return
+				}
+			}
+			zb0001Mask |= 0x2
+		case "wallTimeSecs":
+			z.WallTimeSecs, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "WallTimeSecs")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "requests":
+			z.Requests, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Requests")
+				return
+			}
+			zb0001Mask |= 0x8
+		case "incomingBytes":
+			z.IncomingBytes, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "IncomingBytes")
+				return
+			}
+			zb0001Mask |= 0x10
+		case "outgoingBytes":
+			z.OutgoingBytes, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "OutgoingBytes")
+				return
+			}
+			zb0001Mask |= 0x20
+		case "errors_4xx":
+			z.Errors4xx, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Errors4xx")
+				return
+			}
+			zb0001Mask |= 0x40
+		case "errors_5xx":
+			z.Errors5xx, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Errors5xx")
+				return
+			}
+			zb0001Mask |= 0x80
+		case "canceled":
+			z.Canceled, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Canceled")
+				return
+			}
+			zb0001Mask |= 0x100
+		case "requestTimeSecs":
+			z.RequestTimeSecs, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "RequestTimeSecs")
+				return
+			}
+			zb0001Mask |= 0x200
+		case "reqReadSecs":
+			z.ReqReadSecs, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ReqReadSecs")
+				return
+			}
+			zb0001Mask |= 0x400
+		case "respSecs":
+			z.RespSecs, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "RespSecs")
+				return
+			}
+			zb0001Mask |= 0x800
+		case "respTtfbSecs":
+			z.RespTTFBSecs, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "RespTTFBSecs")
+				return
+			}
+			zb0001Mask |= 0x1000
+		case "requestTimeSecsMin":
+			z.RequestTimeSecsMin, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "RequestTimeSecsMin")
+				return
+			}
+			zb0001Mask |= 0x2000
+		case "requestTimeSecsMax":
+			z.RequestTimeSecsMax, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "RequestTimeSecsMax")
+				return
+			}
+			zb0001Mask |= 0x4000
+		case "reqReadSecsMin":
+			z.ReqReadSecsMin, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ReqReadSecsMin")
+				return
+			}
+			zb0001Mask |= 0x8000
+		case "reqReadSecsMax":
+			z.ReqReadSecsMax, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ReqReadSecsMax")
+				return
+			}
+			zb0001Mask |= 0x10000
+		case "respSecsMin":
+			z.RespSecsMin, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "RespSecsMin")
+				return
+			}
+			zb0001Mask |= 0x20000
+		case "respSecsMax":
+			z.RespSecsMax, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "RespSecsMax")
+				return
+			}
+			zb0001Mask |= 0x40000
+		case "respTtfbSecsMin":
+			z.RespTTFBSecsMin, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "RespTTFBSecsMin")
+				return
+			}
+			zb0001Mask |= 0x80000
+		case "respTtfbSecsMax":
+			z.RespTTFBSecsMax, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "RespTTFBSecsMax")
+				return
+			}
+			zb0001Mask |= 0x100000
+		case "rejected":
+			bts, err = z.Rejected.UnmarshalMsg(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Rejected")
+				return
+			}
+			zb0001Mask |= 0x200000
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x3fffff {
+		if (zb0001Mask & 0x1) == 0 {
+			z.StartTime = nil
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.EndTime = nil
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.WallTimeSecs = 0
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.Requests = 0
+		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.IncomingBytes = 0
+		}
+		if (zb0001Mask & 0x20) == 0 {
+			z.OutgoingBytes = 0
+		}
+		if (zb0001Mask & 0x40) == 0 {
+			z.Errors4xx = 0
+		}
+		if (zb0001Mask & 0x80) == 0 {
+			z.Errors5xx = 0
+		}
+		if (zb0001Mask & 0x100) == 0 {
+			z.Canceled = 0
+		}
+		if (zb0001Mask & 0x200) == 0 {
+			z.RequestTimeSecs = 0
+		}
+		if (zb0001Mask & 0x400) == 0 {
+			z.ReqReadSecs = 0
+		}
+		if (zb0001Mask & 0x800) == 0 {
+			z.RespSecs = 0
+		}
+		if (zb0001Mask & 0x1000) == 0 {
+			z.RespTTFBSecs = 0
+		}
+		if (zb0001Mask & 0x2000) == 0 {
+			z.RequestTimeSecsMin = 0
+		}
+		if (zb0001Mask & 0x4000) == 0 {
+			z.RequestTimeSecsMax = 0
+		}
+		if (zb0001Mask & 0x8000) == 0 {
+			z.ReqReadSecsMin = 0
+		}
+		if (zb0001Mask & 0x10000) == 0 {
+			z.ReqReadSecsMax = 0
+		}
+		if (zb0001Mask & 0x20000) == 0 {
+			z.RespSecsMin = 0
+		}
+		if (zb0001Mask & 0x40000) == 0 {
+			z.RespSecsMax = 0
+		}
+		if (zb0001Mask & 0x80000) == 0 {
+			z.RespTTFBSecsMin = 0
+		}
+		if (zb0001Mask & 0x100000) == 0 {
+			z.RespTTFBSecsMax = 0
+		}
+		if (zb0001Mask & 0x200000) == 0 {
+			z.Rejected = RejectedAPIStats{}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *APIStats) Msgsize() (s int) {
+	s = 3 + 6 + msgp.IntSize + 10
+	if z.StartTime == nil {
+		s += msgp.NilSize
+	} else {
+		s += msgp.TimeSize
+	}
+	s += 8
+	if z.EndTime == nil {
+		s += msgp.NilSize
+	} else {
+		s += msgp.TimeSize
+	}
+	s += 13 + msgp.Float64Size + 9 + msgp.Int64Size + 14 + msgp.Int64Size + 14 + msgp.Int64Size + 11 + msgp.IntSize + 11 + msgp.IntSize + 9 + msgp.Int64Size + 16 + msgp.Float64Size + 12 + msgp.Float64Size + 9 + msgp.Float64Size + 13 + msgp.Float64Size + 19 + msgp.Float64Size + 19 + msgp.Float64Size + 15 + msgp.Float64Size + 15 + msgp.Float64Size + 12 + msgp.Float64Size + 12 + msgp.Float64Size + 16 + msgp.Float64Size + 16 + msgp.Float64Size + 9 + z.Rejected.Msgsize()
+	return
+}
 
 // DecodeMsg implements msgp.Decodable
 func (z *BatchJobMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
@@ -488,6 +2203,8 @@ func (z *CatalogInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
+	var zb0001Mask uint8 /* 4 bits */
+	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
 		field, err = dc.ReadMapKeyPtr()
@@ -496,12 +2213,19 @@ func (z *CatalogInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
+		case "bucket":
+			z.Bucket, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "Bucket")
+				return
+			}
 		case "lastBucketScanned":
 			z.LastBucketScanned, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "LastBucketScanned")
 				return
 			}
+			zb0001Mask |= 0x1
 		case "lastObjectScanned":
 			z.LastObjectScanned, err = dc.ReadString()
 			if err != nil {
@@ -514,6 +2238,7 @@ func (z *CatalogInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "LastBucketMatched")
 				return
 			}
+			zb0001Mask |= 0x2
 		case "lastObjectMatched":
 			z.LastObjectMatched, err = dc.ReadString()
 			if err != nil {
@@ -562,6 +2287,33 @@ func (z *CatalogInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "ErrorMsg")
 				return
 			}
+		case "lastObjectWritten":
+			z.LastObjectWritten, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "LastObjectWritten")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "outputFiles":
+			var zb0002 uint32
+			zb0002, err = dc.ReadArrayHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "OutputFiles")
+				return
+			}
+			if cap(z.OutputFiles) >= int(zb0002) {
+				z.OutputFiles = (z.OutputFiles)[:zb0002]
+			} else {
+				z.OutputFiles = make([]CatalogDataFile, zb0002)
+			}
+			for za0001 := range z.OutputFiles {
+				err = z.OutputFiles[za0001].DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "OutputFiles", za0001)
+					return
+				}
+			}
+			zb0001Mask |= 0x8
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -570,121 +2322,209 @@ func (z *CatalogInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 			}
 		}
 	}
+	// Clear omitted fields.
+	if zb0001Mask != 0xf {
+		if (zb0001Mask & 0x1) == 0 {
+			z.LastBucketScanned = ""
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.LastBucketMatched = ""
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.LastObjectWritten = ""
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.OutputFiles = nil
+		}
+	}
 	return
 }
 
 // EncodeMsg implements msgp.Encodable
 func (z *CatalogInfo) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 11
-	// write "lastBucketScanned"
-	err = en.Append(0x8b, 0xb1, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x53, 0x63, 0x61, 0x6e, 0x6e, 0x65, 0x64)
+	// check for omitted fields
+	zb0001Len := uint32(14)
+	var zb0001Mask uint16 /* 14 bits */
+	_ = zb0001Mask
+	if z.LastBucketScanned == "" {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.LastBucketMatched == "" {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.LastObjectWritten == "" {
+		zb0001Len--
+		zb0001Mask |= 0x1000
+	}
+	if z.OutputFiles == nil {
+		zb0001Len--
+		zb0001Mask |= 0x2000
+	}
+	// variable map header, size zb0001Len
+	err = en.Append(0x80 | uint8(zb0001Len))
 	if err != nil {
 		return
 	}
-	err = en.WriteString(z.LastBucketScanned)
-	if err != nil {
-		err = msgp.WrapError(err, "LastBucketScanned")
-		return
-	}
-	// write "lastObjectScanned"
-	err = en.Append(0xb1, 0x6c, 0x61, 0x73, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x53, 0x63, 0x61, 0x6e, 0x6e, 0x65, 0x64)
-	if err != nil {
-		return
-	}
-	err = en.WriteString(z.LastObjectScanned)
-	if err != nil {
-		err = msgp.WrapError(err, "LastObjectScanned")
-		return
-	}
-	// write "lastBucketMatched"
-	err = en.Append(0xb1, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x65, 0x64)
-	if err != nil {
-		return
-	}
-	err = en.WriteString(z.LastBucketMatched)
-	if err != nil {
-		err = msgp.WrapError(err, "LastBucketMatched")
-		return
-	}
-	// write "lastObjectMatched"
-	err = en.Append(0xb1, 0x6c, 0x61, 0x73, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x65, 0x64)
-	if err != nil {
-		return
-	}
-	err = en.WriteString(z.LastObjectMatched)
-	if err != nil {
-		err = msgp.WrapError(err, "LastObjectMatched")
-		return
-	}
-	// write "objectsScannedCount"
-	err = en.Append(0xb3, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x53, 0x63, 0x61, 0x6e, 0x6e, 0x65, 0x64, 0x43, 0x6f, 0x75, 0x6e, 0x74)
-	if err != nil {
-		return
-	}
-	err = en.WriteUint64(z.ObjectsScannedCount)
-	if err != nil {
-		err = msgp.WrapError(err, "ObjectsScannedCount")
-		return
-	}
-	// write "objectsMatchedCount"
-	err = en.Append(0xb3, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x65, 0x64, 0x43, 0x6f, 0x75, 0x6e, 0x74)
-	if err != nil {
-		return
-	}
-	err = en.WriteUint64(z.ObjectsMatchedCount)
-	if err != nil {
-		err = msgp.WrapError(err, "ObjectsMatchedCount")
-		return
-	}
-	// write "recordsWrittenCount"
-	err = en.Append(0xb3, 0x72, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x73, 0x57, 0x72, 0x69, 0x74, 0x74, 0x65, 0x6e, 0x43, 0x6f, 0x75, 0x6e, 0x74)
-	if err != nil {
-		return
-	}
-	err = en.WriteUint64(z.RecordsWrittenCount)
-	if err != nil {
-		err = msgp.WrapError(err, "RecordsWrittenCount")
-		return
-	}
-	// write "outputObjectsCount"
-	err = en.Append(0xb2, 0x6f, 0x75, 0x74, 0x70, 0x75, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x43, 0x6f, 0x75, 0x6e, 0x74)
-	if err != nil {
-		return
-	}
-	err = en.WriteUint64(z.OutputObjectsCount)
-	if err != nil {
-		err = msgp.WrapError(err, "OutputObjectsCount")
-		return
-	}
-	// write "manifestPathBucket"
-	err = en.Append(0xb2, 0x6d, 0x61, 0x6e, 0x69, 0x66, 0x65, 0x73, 0x74, 0x50, 0x61, 0x74, 0x68, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74)
-	if err != nil {
-		return
-	}
-	err = en.WriteString(z.ManifestPathBucket)
-	if err != nil {
-		err = msgp.WrapError(err, "ManifestPathBucket")
-		return
-	}
-	// write "manifestPathObject"
-	err = en.Append(0xb2, 0x6d, 0x61, 0x6e, 0x69, 0x66, 0x65, 0x73, 0x74, 0x50, 0x61, 0x74, 0x68, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74)
-	if err != nil {
-		return
-	}
-	err = en.WriteString(z.ManifestPathObject)
-	if err != nil {
-		err = msgp.WrapError(err, "ManifestPathObject")
-		return
-	}
-	// write "errorMsg"
-	err = en.Append(0xa8, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x4d, 0x73, 0x67)
-	if err != nil {
-		return
-	}
-	err = en.WriteString(z.ErrorMsg)
-	if err != nil {
-		err = msgp.WrapError(err, "ErrorMsg")
-		return
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// write "bucket"
+		err = en.Append(0xa6, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74)
+		if err != nil {
+			return
+		}
+		err = en.WriteString(z.Bucket)
+		if err != nil {
+			err = msgp.WrapError(err, "Bucket")
+			return
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// write "lastBucketScanned"
+			err = en.Append(0xb1, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x53, 0x63, 0x61, 0x6e, 0x6e, 0x65, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.LastBucketScanned)
+			if err != nil {
+				err = msgp.WrapError(err, "LastBucketScanned")
+				return
+			}
+		}
+		// write "lastObjectScanned"
+		err = en.Append(0xb1, 0x6c, 0x61, 0x73, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x53, 0x63, 0x61, 0x6e, 0x6e, 0x65, 0x64)
+		if err != nil {
+			return
+		}
+		err = en.WriteString(z.LastObjectScanned)
+		if err != nil {
+			err = msgp.WrapError(err, "LastObjectScanned")
+			return
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// write "lastBucketMatched"
+			err = en.Append(0xb1, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x65, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.LastBucketMatched)
+			if err != nil {
+				err = msgp.WrapError(err, "LastBucketMatched")
+				return
+			}
+		}
+		// write "lastObjectMatched"
+		err = en.Append(0xb1, 0x6c, 0x61, 0x73, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x65, 0x64)
+		if err != nil {
+			return
+		}
+		err = en.WriteString(z.LastObjectMatched)
+		if err != nil {
+			err = msgp.WrapError(err, "LastObjectMatched")
+			return
+		}
+		// write "objectsScannedCount"
+		err = en.Append(0xb3, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x53, 0x63, 0x61, 0x6e, 0x6e, 0x65, 0x64, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint64(z.ObjectsScannedCount)
+		if err != nil {
+			err = msgp.WrapError(err, "ObjectsScannedCount")
+			return
+		}
+		// write "objectsMatchedCount"
+		err = en.Append(0xb3, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x65, 0x64, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint64(z.ObjectsMatchedCount)
+		if err != nil {
+			err = msgp.WrapError(err, "ObjectsMatchedCount")
+			return
+		}
+		// write "recordsWrittenCount"
+		err = en.Append(0xb3, 0x72, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x73, 0x57, 0x72, 0x69, 0x74, 0x74, 0x65, 0x6e, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint64(z.RecordsWrittenCount)
+		if err != nil {
+			err = msgp.WrapError(err, "RecordsWrittenCount")
+			return
+		}
+		// write "outputObjectsCount"
+		err = en.Append(0xb2, 0x6f, 0x75, 0x74, 0x70, 0x75, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint64(z.OutputObjectsCount)
+		if err != nil {
+			err = msgp.WrapError(err, "OutputObjectsCount")
+			return
+		}
+		// write "manifestPathBucket"
+		err = en.Append(0xb2, 0x6d, 0x61, 0x6e, 0x69, 0x66, 0x65, 0x73, 0x74, 0x50, 0x61, 0x74, 0x68, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74)
+		if err != nil {
+			return
+		}
+		err = en.WriteString(z.ManifestPathBucket)
+		if err != nil {
+			err = msgp.WrapError(err, "ManifestPathBucket")
+			return
+		}
+		// write "manifestPathObject"
+		err = en.Append(0xb2, 0x6d, 0x61, 0x6e, 0x69, 0x66, 0x65, 0x73, 0x74, 0x50, 0x61, 0x74, 0x68, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74)
+		if err != nil {
+			return
+		}
+		err = en.WriteString(z.ManifestPathObject)
+		if err != nil {
+			err = msgp.WrapError(err, "ManifestPathObject")
+			return
+		}
+		// write "errorMsg"
+		err = en.Append(0xa8, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x4d, 0x73, 0x67)
+		if err != nil {
+			return
+		}
+		err = en.WriteString(z.ErrorMsg)
+		if err != nil {
+			err = msgp.WrapError(err, "ErrorMsg")
+			return
+		}
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
+			// write "lastObjectWritten"
+			err = en.Append(0xb1, 0x6c, 0x61, 0x73, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x57, 0x72, 0x69, 0x74, 0x74, 0x65, 0x6e)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.LastObjectWritten)
+			if err != nil {
+				err = msgp.WrapError(err, "LastObjectWritten")
+				return
+			}
+		}
+		if (zb0001Mask & 0x2000) == 0 { // if not omitted
+			// write "outputFiles"
+			err = en.Append(0xab, 0x6f, 0x75, 0x74, 0x70, 0x75, 0x74, 0x46, 0x69, 0x6c, 0x65, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteArrayHeader(uint32(len(z.OutputFiles)))
+			if err != nil {
+				err = msgp.WrapError(err, "OutputFiles")
+				return
+			}
+			for za0001 := range z.OutputFiles {
+				err = z.OutputFiles[za0001].EncodeMsg(en)
+				if err != nil {
+					err = msgp.WrapError(err, "OutputFiles", za0001)
+					return
+				}
+			}
+		}
 	}
 	return
 }
@@ -692,40 +2532,89 @@ func (z *CatalogInfo) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *CatalogInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 11
-	// string "lastBucketScanned"
-	o = append(o, 0x8b, 0xb1, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x53, 0x63, 0x61, 0x6e, 0x6e, 0x65, 0x64)
-	o = msgp.AppendString(o, z.LastBucketScanned)
-	// string "lastObjectScanned"
-	o = append(o, 0xb1, 0x6c, 0x61, 0x73, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x53, 0x63, 0x61, 0x6e, 0x6e, 0x65, 0x64)
-	o = msgp.AppendString(o, z.LastObjectScanned)
-	// string "lastBucketMatched"
-	o = append(o, 0xb1, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x65, 0x64)
-	o = msgp.AppendString(o, z.LastBucketMatched)
-	// string "lastObjectMatched"
-	o = append(o, 0xb1, 0x6c, 0x61, 0x73, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x65, 0x64)
-	o = msgp.AppendString(o, z.LastObjectMatched)
-	// string "objectsScannedCount"
-	o = append(o, 0xb3, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x53, 0x63, 0x61, 0x6e, 0x6e, 0x65, 0x64, 0x43, 0x6f, 0x75, 0x6e, 0x74)
-	o = msgp.AppendUint64(o, z.ObjectsScannedCount)
-	// string "objectsMatchedCount"
-	o = append(o, 0xb3, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x65, 0x64, 0x43, 0x6f, 0x75, 0x6e, 0x74)
-	o = msgp.AppendUint64(o, z.ObjectsMatchedCount)
-	// string "recordsWrittenCount"
-	o = append(o, 0xb3, 0x72, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x73, 0x57, 0x72, 0x69, 0x74, 0x74, 0x65, 0x6e, 0x43, 0x6f, 0x75, 0x6e, 0x74)
-	o = msgp.AppendUint64(o, z.RecordsWrittenCount)
-	// string "outputObjectsCount"
-	o = append(o, 0xb2, 0x6f, 0x75, 0x74, 0x70, 0x75, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x43, 0x6f, 0x75, 0x6e, 0x74)
-	o = msgp.AppendUint64(o, z.OutputObjectsCount)
-	// string "manifestPathBucket"
-	o = append(o, 0xb2, 0x6d, 0x61, 0x6e, 0x69, 0x66, 0x65, 0x73, 0x74, 0x50, 0x61, 0x74, 0x68, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74)
-	o = msgp.AppendString(o, z.ManifestPathBucket)
-	// string "manifestPathObject"
-	o = append(o, 0xb2, 0x6d, 0x61, 0x6e, 0x69, 0x66, 0x65, 0x73, 0x74, 0x50, 0x61, 0x74, 0x68, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74)
-	o = msgp.AppendString(o, z.ManifestPathObject)
-	// string "errorMsg"
-	o = append(o, 0xa8, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x4d, 0x73, 0x67)
-	o = msgp.AppendString(o, z.ErrorMsg)
+	// check for omitted fields
+	zb0001Len := uint32(14)
+	var zb0001Mask uint16 /* 14 bits */
+	_ = zb0001Mask
+	if z.LastBucketScanned == "" {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.LastBucketMatched == "" {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.LastObjectWritten == "" {
+		zb0001Len--
+		zb0001Mask |= 0x1000
+	}
+	if z.OutputFiles == nil {
+		zb0001Len--
+		zb0001Mask |= 0x2000
+	}
+	// variable map header, size zb0001Len
+	o = append(o, 0x80|uint8(zb0001Len))
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// string "bucket"
+		o = append(o, 0xa6, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74)
+		o = msgp.AppendString(o, z.Bucket)
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// string "lastBucketScanned"
+			o = append(o, 0xb1, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x53, 0x63, 0x61, 0x6e, 0x6e, 0x65, 0x64)
+			o = msgp.AppendString(o, z.LastBucketScanned)
+		}
+		// string "lastObjectScanned"
+		o = append(o, 0xb1, 0x6c, 0x61, 0x73, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x53, 0x63, 0x61, 0x6e, 0x6e, 0x65, 0x64)
+		o = msgp.AppendString(o, z.LastObjectScanned)
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// string "lastBucketMatched"
+			o = append(o, 0xb1, 0x6c, 0x61, 0x73, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x65, 0x64)
+			o = msgp.AppendString(o, z.LastBucketMatched)
+		}
+		// string "lastObjectMatched"
+		o = append(o, 0xb1, 0x6c, 0x61, 0x73, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x65, 0x64)
+		o = msgp.AppendString(o, z.LastObjectMatched)
+		// string "objectsScannedCount"
+		o = append(o, 0xb3, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x53, 0x63, 0x61, 0x6e, 0x6e, 0x65, 0x64, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+		o = msgp.AppendUint64(o, z.ObjectsScannedCount)
+		// string "objectsMatchedCount"
+		o = append(o, 0xb3, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x4d, 0x61, 0x74, 0x63, 0x68, 0x65, 0x64, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+		o = msgp.AppendUint64(o, z.ObjectsMatchedCount)
+		// string "recordsWrittenCount"
+		o = append(o, 0xb3, 0x72, 0x65, 0x63, 0x6f, 0x72, 0x64, 0x73, 0x57, 0x72, 0x69, 0x74, 0x74, 0x65, 0x6e, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+		o = msgp.AppendUint64(o, z.RecordsWrittenCount)
+		// string "outputObjectsCount"
+		o = append(o, 0xb2, 0x6f, 0x75, 0x74, 0x70, 0x75, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+		o = msgp.AppendUint64(o, z.OutputObjectsCount)
+		// string "manifestPathBucket"
+		o = append(o, 0xb2, 0x6d, 0x61, 0x6e, 0x69, 0x66, 0x65, 0x73, 0x74, 0x50, 0x61, 0x74, 0x68, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74)
+		o = msgp.AppendString(o, z.ManifestPathBucket)
+		// string "manifestPathObject"
+		o = append(o, 0xb2, 0x6d, 0x61, 0x6e, 0x69, 0x66, 0x65, 0x73, 0x74, 0x50, 0x61, 0x74, 0x68, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74)
+		o = msgp.AppendString(o, z.ManifestPathObject)
+		// string "errorMsg"
+		o = append(o, 0xa8, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x4d, 0x73, 0x67)
+		o = msgp.AppendString(o, z.ErrorMsg)
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
+			// string "lastObjectWritten"
+			o = append(o, 0xb1, 0x6c, 0x61, 0x73, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x57, 0x72, 0x69, 0x74, 0x74, 0x65, 0x6e)
+			o = msgp.AppendString(o, z.LastObjectWritten)
+		}
+		if (zb0001Mask & 0x2000) == 0 { // if not omitted
+			// string "outputFiles"
+			o = append(o, 0xab, 0x6f, 0x75, 0x74, 0x70, 0x75, 0x74, 0x46, 0x69, 0x6c, 0x65, 0x73)
+			o = msgp.AppendArrayHeader(o, uint32(len(z.OutputFiles)))
+			for za0001 := range z.OutputFiles {
+				o, err = z.OutputFiles[za0001].MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "OutputFiles", za0001)
+					return
+				}
+			}
+		}
+	}
 	return
 }
 
@@ -739,6 +2628,8 @@ func (z *CatalogInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
+	var zb0001Mask uint8 /* 4 bits */
+	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
 		field, bts, err = msgp.ReadMapKeyZC(bts)
@@ -747,12 +2638,19 @@ func (z *CatalogInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
+		case "bucket":
+			z.Bucket, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Bucket")
+				return
+			}
 		case "lastBucketScanned":
 			z.LastBucketScanned, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "LastBucketScanned")
 				return
 			}
+			zb0001Mask |= 0x1
 		case "lastObjectScanned":
 			z.LastObjectScanned, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
@@ -765,6 +2663,7 @@ func (z *CatalogInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "LastBucketMatched")
 				return
 			}
+			zb0001Mask |= 0x2
 		case "lastObjectMatched":
 			z.LastObjectMatched, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
@@ -813,6 +2712,33 @@ func (z *CatalogInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "ErrorMsg")
 				return
 			}
+		case "lastObjectWritten":
+			z.LastObjectWritten, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "LastObjectWritten")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "outputFiles":
+			var zb0002 uint32
+			zb0002, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "OutputFiles")
+				return
+			}
+			if cap(z.OutputFiles) >= int(zb0002) {
+				z.OutputFiles = (z.OutputFiles)[:zb0002]
+			} else {
+				z.OutputFiles = make([]CatalogDataFile, zb0002)
+			}
+			for za0001 := range z.OutputFiles {
+				bts, err = z.OutputFiles[za0001].UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "OutputFiles", za0001)
+					return
+				}
+			}
+			zb0001Mask |= 0x8
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -821,13 +2747,31 @@ func (z *CatalogInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			}
 		}
 	}
+	// Clear omitted fields.
+	if zb0001Mask != 0xf {
+		if (zb0001Mask & 0x1) == 0 {
+			z.LastBucketScanned = ""
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.LastBucketMatched = ""
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.LastObjectWritten = ""
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.OutputFiles = nil
+		}
+	}
 	o = bts
 	return
 }
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *CatalogInfo) Msgsize() (s int) {
-	s = 1 + 18 + msgp.StringPrefixSize + len(z.LastBucketScanned) + 18 + msgp.StringPrefixSize + len(z.LastObjectScanned) + 18 + msgp.StringPrefixSize + len(z.LastBucketMatched) + 18 + msgp.StringPrefixSize + len(z.LastObjectMatched) + 20 + msgp.Uint64Size + 20 + msgp.Uint64Size + 20 + msgp.Uint64Size + 19 + msgp.Uint64Size + 19 + msgp.StringPrefixSize + len(z.ManifestPathBucket) + 19 + msgp.StringPrefixSize + len(z.ManifestPathObject) + 9 + msgp.StringPrefixSize + len(z.ErrorMsg)
+	s = 1 + 7 + msgp.StringPrefixSize + len(z.Bucket) + 18 + msgp.StringPrefixSize + len(z.LastBucketScanned) + 18 + msgp.StringPrefixSize + len(z.LastObjectScanned) + 18 + msgp.StringPrefixSize + len(z.LastBucketMatched) + 18 + msgp.StringPrefixSize + len(z.LastObjectMatched) + 20 + msgp.Uint64Size + 20 + msgp.Uint64Size + 20 + msgp.Uint64Size + 19 + msgp.Uint64Size + 19 + msgp.StringPrefixSize + len(z.ManifestPathBucket) + 19 + msgp.StringPrefixSize + len(z.ManifestPathObject) + 9 + msgp.StringPrefixSize + len(z.ErrorMsg) + 18 + msgp.StringPrefixSize + len(z.LastObjectWritten) + 12 + msgp.ArrayHeaderSize
+	for za0001 := range z.OutputFiles {
+		s += z.OutputFiles[za0001].Msgsize()
+	}
 	return
 }
 
@@ -2222,6 +4166,12 @@ func (z *JobMetric) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Failed")
 				return
 			}
+		case "status":
+			z.Status, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "Status")
+				return
+			}
 		case "replicate":
 			if dc.IsNil() {
 				err = dc.ReadNil()
@@ -2327,24 +4277,24 @@ func (z *JobMetric) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *JobMetric) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(11)
-	var zb0001Mask uint16 /* 11 bits */
+	zb0001Len := uint32(12)
+	var zb0001Mask uint16 /* 12 bits */
 	_ = zb0001Mask
 	if z.Replicate == nil {
 		zb0001Len--
-		zb0001Mask |= 0x80
+		zb0001Mask |= 0x100
 	}
 	if z.KeyRotate == nil {
 		zb0001Len--
-		zb0001Mask |= 0x100
+		zb0001Mask |= 0x200
 	}
 	if z.Expired == nil {
 		zb0001Len--
-		zb0001Mask |= 0x200
+		zb0001Mask |= 0x400
 	}
 	if z.Catalog == nil {
 		zb0001Len--
-		zb0001Mask |= 0x400
+		zb0001Mask |= 0x800
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -2424,7 +4374,17 @@ func (z *JobMetric) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "Failed")
 			return
 		}
-		if (zb0001Mask & 0x80) == 0 { // if not omitted
+		// write "status"
+		err = en.Append(0xa6, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73)
+		if err != nil {
+			return
+		}
+		err = en.WriteString(z.Status)
+		if err != nil {
+			err = msgp.WrapError(err, "Status")
+			return
+		}
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
 			// write "replicate"
 			err = en.Append(0xa9, 0x72, 0x65, 0x70, 0x6c, 0x69, 0x63, 0x61, 0x74, 0x65)
 			if err != nil {
@@ -2443,7 +4403,7 @@ func (z *JobMetric) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x100) == 0 { // if not omitted
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
 			// write "rotation"
 			err = en.Append(0xa8, 0x72, 0x6f, 0x74, 0x61, 0x74, 0x69, 0x6f, 0x6e)
 			if err != nil {
@@ -2462,7 +4422,7 @@ func (z *JobMetric) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x200) == 0 { // if not omitted
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
 			// write "expired"
 			err = en.Append(0xa7, 0x65, 0x78, 0x70, 0x69, 0x72, 0x65, 0x64)
 			if err != nil {
@@ -2481,7 +4441,7 @@ func (z *JobMetric) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x400) == 0 { // if not omitted
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
 			// write "catalog"
 			err = en.Append(0xa7, 0x63, 0x61, 0x74, 0x61, 0x6c, 0x6f, 0x67)
 			if err != nil {
@@ -2508,24 +4468,24 @@ func (z *JobMetric) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *JobMetric) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(11)
-	var zb0001Mask uint16 /* 11 bits */
+	zb0001Len := uint32(12)
+	var zb0001Mask uint16 /* 12 bits */
 	_ = zb0001Mask
 	if z.Replicate == nil {
 		zb0001Len--
-		zb0001Mask |= 0x80
+		zb0001Mask |= 0x100
 	}
 	if z.KeyRotate == nil {
 		zb0001Len--
-		zb0001Mask |= 0x100
+		zb0001Mask |= 0x200
 	}
 	if z.Expired == nil {
 		zb0001Len--
-		zb0001Mask |= 0x200
+		zb0001Mask |= 0x400
 	}
 	if z.Catalog == nil {
 		zb0001Len--
-		zb0001Mask |= 0x400
+		zb0001Mask |= 0x800
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -2553,7 +4513,10 @@ func (z *JobMetric) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "failed"
 		o = append(o, 0xa6, 0x66, 0x61, 0x69, 0x6c, 0x65, 0x64)
 		o = msgp.AppendBool(o, z.Failed)
-		if (zb0001Mask & 0x80) == 0 { // if not omitted
+		// string "status"
+		o = append(o, 0xa6, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73)
+		o = msgp.AppendString(o, z.Status)
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
 			// string "replicate"
 			o = append(o, 0xa9, 0x72, 0x65, 0x70, 0x6c, 0x69, 0x63, 0x61, 0x74, 0x65)
 			if z.Replicate == nil {
@@ -2566,7 +4529,7 @@ func (z *JobMetric) MarshalMsg(b []byte) (o []byte, err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x100) == 0 { // if not omitted
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
 			// string "rotation"
 			o = append(o, 0xa8, 0x72, 0x6f, 0x74, 0x61, 0x74, 0x69, 0x6f, 0x6e)
 			if z.KeyRotate == nil {
@@ -2579,7 +4542,7 @@ func (z *JobMetric) MarshalMsg(b []byte) (o []byte, err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x200) == 0 { // if not omitted
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
 			// string "expired"
 			o = append(o, 0xa7, 0x65, 0x78, 0x70, 0x69, 0x72, 0x65, 0x64)
 			if z.Expired == nil {
@@ -2592,7 +4555,7 @@ func (z *JobMetric) MarshalMsg(b []byte) (o []byte, err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x400) == 0 { // if not omitted
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
 			// string "catalog"
 			o = append(o, 0xa7, 0x63, 0x61, 0x74, 0x61, 0x6c, 0x6f, 0x67)
 			if z.Catalog == nil {
@@ -2669,6 +4632,12 @@ func (z *JobMetric) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.Failed, bts, err = msgp.ReadBoolBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Failed")
+				return
+			}
+		case "status":
+			z.Status, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Status")
 				return
 			}
 		case "replicate":
@@ -2772,7 +4741,7 @@ func (z *JobMetric) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *JobMetric) Msgsize() (s int) {
-	s = 1 + 6 + msgp.StringPrefixSize + len(z.JobID) + 8 + msgp.StringPrefixSize + len(z.JobType) + 10 + msgp.TimeSize + 11 + msgp.TimeSize + 14 + msgp.IntSize + 9 + msgp.BoolSize + 7 + msgp.BoolSize + 10
+	s = 1 + 6 + msgp.StringPrefixSize + len(z.JobID) + 8 + msgp.StringPrefixSize + len(z.JobType) + 10 + msgp.TimeSize + 11 + msgp.TimeSize + 14 + msgp.IntSize + 9 + msgp.BoolSize + 7 + msgp.BoolSize + 7 + msgp.StringPrefixSize + len(z.Status) + 10
 	if z.Replicate == nil {
 		s += msgp.NilSize
 	} else {
@@ -3759,7 +5728,7 @@ func (z *Metrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint16 /* 10 bits */
+	var zb0001Mask uint16 /* 11 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -4023,6 +5992,25 @@ func (z *Metrics) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 			}
 			zb0001Mask |= 0x200
+		case "api":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "API")
+					return
+				}
+				z.API = nil
+			} else {
+				if z.API == nil {
+					z.API = new(APIMetrics)
+				}
+				err = z.API.DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "API")
+					return
+				}
+			}
+			zb0001Mask |= 0x400
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -4032,7 +6020,7 @@ func (z *Metrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3ff {
+	if zb0001Mask != 0x7ff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Scanner = nil
 		}
@@ -4063,6 +6051,9 @@ func (z *Metrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		if (zb0001Mask & 0x200) == 0 {
 			z.Go = nil
 		}
+		if (zb0001Mask & 0x400) == 0 {
+			z.API = nil
+		}
 	}
 	return
 }
@@ -4070,8 +6061,8 @@ func (z *Metrics) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *Metrics) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(10)
-	var zb0001Mask uint16 /* 10 bits */
+	zb0001Len := uint32(11)
+	var zb0001Mask uint16 /* 11 bits */
 	_ = zb0001Mask
 	if z.Scanner == nil {
 		zb0001Len--
@@ -4112,6 +6103,10 @@ func (z *Metrics) EncodeMsg(en *msgp.Writer) (err error) {
 	if z.Go == nil {
 		zb0001Len--
 		zb0001Mask |= 0x200
+	}
+	if z.API == nil {
+		zb0001Len--
+		zb0001Mask |= 0x400
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -4353,6 +6348,25 @@ func (z *Metrics) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
+			// write "api"
+			err = en.Append(0xa3, 0x61, 0x70, 0x69)
+			if err != nil {
+				return
+			}
+			if z.API == nil {
+				err = en.WriteNil()
+				if err != nil {
+					return
+				}
+			} else {
+				err = z.API.EncodeMsg(en)
+				if err != nil {
+					err = msgp.WrapError(err, "API")
+					return
+				}
+			}
+		}
 	}
 	return
 }
@@ -4361,8 +6375,8 @@ func (z *Metrics) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *Metrics) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(10)
-	var zb0001Mask uint16 /* 10 bits */
+	zb0001Len := uint32(11)
+	var zb0001Mask uint16 /* 11 bits */
 	_ = zb0001Mask
 	if z.Scanner == nil {
 		zb0001Len--
@@ -4403,6 +6417,10 @@ func (z *Metrics) MarshalMsg(b []byte) (o []byte, err error) {
 	if z.Go == nil {
 		zb0001Len--
 		zb0001Mask |= 0x200
+	}
+	if z.API == nil {
+		zb0001Len--
+		zb0001Mask |= 0x400
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -4554,6 +6572,19 @@ func (z *Metrics) MarshalMsg(b []byte) (o []byte, err error) {
 				}
 			}
 		}
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
+			// string "api"
+			o = append(o, 0xa3, 0x61, 0x70, 0x69)
+			if z.API == nil {
+				o = msgp.AppendNil(o)
+			} else {
+				o, err = z.API.MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "API")
+					return
+				}
+			}
+		}
 	}
 	return
 }
@@ -4568,7 +6599,7 @@ func (z *Metrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint16 /* 10 bits */
+	var zb0001Mask uint16 /* 11 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -4822,6 +6853,24 @@ func (z *Metrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 			}
 			zb0001Mask |= 0x200
+		case "api":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.API = nil
+			} else {
+				if z.API == nil {
+					z.API = new(APIMetrics)
+				}
+				bts, err = z.API.UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "API")
+					return
+				}
+			}
+			zb0001Mask |= 0x400
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -4831,7 +6880,7 @@ func (z *Metrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3ff {
+	if zb0001Mask != 0x7ff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Scanner = nil
 		}
@@ -4861,6 +6910,9 @@ func (z *Metrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 		if (zb0001Mask & 0x200) == 0 {
 			z.Go = nil
+		}
+		if (zb0001Mask & 0x400) == 0 {
+			z.API = nil
 		}
 	}
 	o = bts
@@ -4928,6 +6980,12 @@ func (z *Metrics) Msgsize() (s int) {
 		s += msgp.NilSize
 	} else {
 		s += z.Go.Msgsize()
+	}
+	s += 4
+	if z.API == nil {
+		s += msgp.NilSize
+	} else {
+		s += z.API.Msgsize()
 	}
 	return
 }
@@ -7200,6 +9258,340 @@ func (z *RealtimeMetrics) Msgsize() (s int) {
 }
 
 // DecodeMsg implements msgp.Decodable
+func (z *RejectedAPIStats) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 5 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "auth":
+			z.Auth, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "Auth")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "requestsTime":
+			z.RequestsTime, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "RequestsTime")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "header":
+			z.Header, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "Header")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "invalid":
+			z.Invalid, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "Invalid")
+				return
+			}
+			zb0001Mask |= 0x8
+		case "notImplemented":
+			z.NotImplemented, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "NotImplemented")
+				return
+			}
+			zb0001Mask |= 0x10
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x1f {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Auth = 0
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.RequestsTime = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.Header = 0
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.Invalid = 0
+		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.NotImplemented = 0
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *RejectedAPIStats) EncodeMsg(en *msgp.Writer) (err error) {
+	// check for omitted fields
+	zb0001Len := uint32(5)
+	var zb0001Mask uint8 /* 5 bits */
+	_ = zb0001Mask
+	if z.Auth == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.RequestsTime == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.Header == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	if z.Invalid == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.NotImplemented == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	// variable map header, size zb0001Len
+	err = en.Append(0x80 | uint8(zb0001Len))
+	if err != nil {
+		return
+	}
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// write "auth"
+			err = en.Append(0xa4, 0x61, 0x75, 0x74, 0x68)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.Auth)
+			if err != nil {
+				err = msgp.WrapError(err, "Auth")
+				return
+			}
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// write "requestsTime"
+			err = en.Append(0xac, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x73, 0x54, 0x69, 0x6d, 0x65)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.RequestsTime)
+			if err != nil {
+				err = msgp.WrapError(err, "RequestsTime")
+				return
+			}
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// write "header"
+			err = en.Append(0xa6, 0x68, 0x65, 0x61, 0x64, 0x65, 0x72)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.Header)
+			if err != nil {
+				err = msgp.WrapError(err, "Header")
+				return
+			}
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// write "invalid"
+			err = en.Append(0xa7, 0x69, 0x6e, 0x76, 0x61, 0x6c, 0x69, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.Invalid)
+			if err != nil {
+				err = msgp.WrapError(err, "Invalid")
+				return
+			}
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// write "notImplemented"
+			err = en.Append(0xae, 0x6e, 0x6f, 0x74, 0x49, 0x6d, 0x70, 0x6c, 0x65, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.NotImplemented)
+			if err != nil {
+				err = msgp.WrapError(err, "NotImplemented")
+				return
+			}
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *RejectedAPIStats) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// check for omitted fields
+	zb0001Len := uint32(5)
+	var zb0001Mask uint8 /* 5 bits */
+	_ = zb0001Mask
+	if z.Auth == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.RequestsTime == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.Header == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	if z.Invalid == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.NotImplemented == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	// variable map header, size zb0001Len
+	o = append(o, 0x80|uint8(zb0001Len))
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// string "auth"
+			o = append(o, 0xa4, 0x61, 0x75, 0x74, 0x68)
+			o = msgp.AppendInt64(o, z.Auth)
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// string "requestsTime"
+			o = append(o, 0xac, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x73, 0x54, 0x69, 0x6d, 0x65)
+			o = msgp.AppendInt64(o, z.RequestsTime)
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// string "header"
+			o = append(o, 0xa6, 0x68, 0x65, 0x61, 0x64, 0x65, 0x72)
+			o = msgp.AppendInt64(o, z.Header)
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// string "invalid"
+			o = append(o, 0xa7, 0x69, 0x6e, 0x76, 0x61, 0x6c, 0x69, 0x64)
+			o = msgp.AppendInt64(o, z.Invalid)
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// string "notImplemented"
+			o = append(o, 0xae, 0x6e, 0x6f, 0x74, 0x49, 0x6d, 0x70, 0x6c, 0x65, 0x6d, 0x65, 0x6e, 0x74, 0x65, 0x64)
+			o = msgp.AppendInt64(o, z.NotImplemented)
+		}
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *RejectedAPIStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 5 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "auth":
+			z.Auth, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Auth")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "requestsTime":
+			z.RequestsTime, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "RequestsTime")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "header":
+			z.Header, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Header")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "invalid":
+			z.Invalid, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Invalid")
+				return
+			}
+			zb0001Mask |= 0x8
+		case "notImplemented":
+			z.NotImplemented, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "NotImplemented")
+				return
+			}
+			zb0001Mask |= 0x10
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x1f {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Auth = 0
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.RequestsTime = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.Header = 0
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.Invalid = 0
+		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.NotImplemented = 0
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *RejectedAPIStats) Msgsize() (s int) {
+	s = 1 + 5 + msgp.Int64Size + 13 + msgp.Int64Size + 7 + msgp.Int64Size + 8 + msgp.Int64Size + 15 + msgp.Int64Size
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *ReplicateInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
@@ -9004,6 +11396,202 @@ func (z *ScannerMetrics) Msgsize() (s int) {
 	s += 10 + msgp.ArrayHeaderSize
 	for za0013 := range z.ExcessivePrefixes {
 		s += msgp.StringPrefixSize + len(z.ExcessivePrefixes[za0013])
+	}
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *SegmentedAPIMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "intervalSecs":
+			z.Interval, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "Interval")
+				return
+			}
+		case "firstTime":
+			z.FirstTime, err = dc.ReadTimeUTC()
+			if err != nil {
+				err = msgp.WrapError(err, "FirstTime")
+				return
+			}
+		case "segments":
+			var zb0002 uint32
+			zb0002, err = dc.ReadArrayHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "Segments")
+				return
+			}
+			if cap(z.Segments) >= int(zb0002) {
+				z.Segments = (z.Segments)[:zb0002]
+			} else {
+				z.Segments = make([]APIStats, zb0002)
+			}
+			for za0001 := range z.Segments {
+				err = z.Segments[za0001].DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "Segments", za0001)
+					return
+				}
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *SegmentedAPIMetrics) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 3
+	// write "intervalSecs"
+	err = en.Append(0x83, 0xac, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x76, 0x61, 0x6c, 0x53, 0x65, 0x63, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt(z.Interval)
+	if err != nil {
+		err = msgp.WrapError(err, "Interval")
+		return
+	}
+	// write "firstTime"
+	err = en.Append(0xa9, 0x66, 0x69, 0x72, 0x73, 0x74, 0x54, 0x69, 0x6d, 0x65)
+	if err != nil {
+		return
+	}
+	err = en.WriteTime(z.FirstTime)
+	if err != nil {
+		err = msgp.WrapError(err, "FirstTime")
+		return
+	}
+	// write "segments"
+	err = en.Append(0xa8, 0x73, 0x65, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteArrayHeader(uint32(len(z.Segments)))
+	if err != nil {
+		err = msgp.WrapError(err, "Segments")
+		return
+	}
+	for za0001 := range z.Segments {
+		err = z.Segments[za0001].EncodeMsg(en)
+		if err != nil {
+			err = msgp.WrapError(err, "Segments", za0001)
+			return
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *SegmentedAPIMetrics) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 3
+	// string "intervalSecs"
+	o = append(o, 0x83, 0xac, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x76, 0x61, 0x6c, 0x53, 0x65, 0x63, 0x73)
+	o = msgp.AppendInt(o, z.Interval)
+	// string "firstTime"
+	o = append(o, 0xa9, 0x66, 0x69, 0x72, 0x73, 0x74, 0x54, 0x69, 0x6d, 0x65)
+	o = msgp.AppendTime(o, z.FirstTime)
+	// string "segments"
+	o = append(o, 0xa8, 0x73, 0x65, 0x67, 0x6d, 0x65, 0x6e, 0x74, 0x73)
+	o = msgp.AppendArrayHeader(o, uint32(len(z.Segments)))
+	for za0001 := range z.Segments {
+		o, err = z.Segments[za0001].MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "Segments", za0001)
+			return
+		}
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *SegmentedAPIMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "intervalSecs":
+			z.Interval, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Interval")
+				return
+			}
+		case "firstTime":
+			z.FirstTime, bts, err = msgp.ReadTimeUTCBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "FirstTime")
+				return
+			}
+		case "segments":
+			var zb0002 uint32
+			zb0002, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Segments")
+				return
+			}
+			if cap(z.Segments) >= int(zb0002) {
+				z.Segments = (z.Segments)[:zb0002]
+			} else {
+				z.Segments = make([]APIStats, zb0002)
+			}
+			for za0001 := range z.Segments {
+				bts, err = z.Segments[za0001].UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Segments", za0001)
+					return
+				}
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *SegmentedAPIMetrics) Msgsize() (s int) {
+	s = 1 + 13 + msgp.IntSize + 10 + msgp.TimeSize + 9 + msgp.ArrayHeaderSize
+	for za0001 := range z.Segments {
+		s += z.Segments[za0001].Msgsize()
 	}
 	return
 }

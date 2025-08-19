@@ -53,6 +53,9 @@ var (
 	// Admin API version prefix
 	adminAPIPrefix = "/" + AdminAPIVersion
 
+	// Admin API version prefix for previous version.
+	adminAPIOldPrefix = "/v3"
+
 	// kmsAPIVersion - is the latest KMS API version, for KMS requests.
 	// NOTE: MinIO only supports last two versions
 	kmsAPIVersion = "v1"

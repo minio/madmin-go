@@ -40,13 +40,16 @@ type HealScanMode int
 
 const (
 	// HealUnknownScan default is unknown
-	HealUnknownScan HealScanMode = iota
+	HealUnknownScan HealScanMode = 0
 
 	// HealNormalScan checks if parts are present and not outdated
-	HealNormalScan
+	HealNormalScan HealScanMode = 1 << (iota - 1)
 
 	// HealDeepScan checks for parts bitrot checksums
 	HealDeepScan
+
+	// HealUncommittedScan will only pick objects that are dangling (uncommitted objects in the namespace without quorum)
+	HealUncommittedScan
 )
 
 // HealOpts - collection of options for a heal sequence

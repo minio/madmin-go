@@ -1,8 +1,9 @@
-//go:build linux
-// +build linux
+//
+//go:build ignore
+// +build ignore
 
 //
-// Copyright (c) 2015-2025 MinIO, Inc.
+// Copyright (c) 2015-2022 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -20,38 +21,30 @@
 // along with this program. If not, see <http://www.gnu.org/licenses/>.
 //
 
-package madmin
+package main
 
 import (
-	"bytes"
-	"os"
-	"path/filepath"
-	"strconv"
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/minio/madmin-go/v4"
 )
 
-func getCPUFreqStats() (stats []CPUFreqStats, err error) {
-	// Attempt to read CPU stats for governor on CPU0
-	// which is enough indicating atleast the system
-	// has one CPU.
-	cpuName := "cpu" + strconv.Itoa(0)
+func main() {
+	// Note: YOUR-ACCESSKEYID, YOUR-SECRETACCESSKEY and my-bucketname are
+	// dummy values, please replace them with original values.
 
-	governorPath := filepath.Join(
-		"/sys/devices/system/cpu",
-		cpuName,
-		"cpufreq",
-		"scaling_governor",
-	)
-
-	content, err1 := os.ReadFile(governorPath)
-	if err1 != nil {
-		err = err1
-		return
+	// API requests are secure (HTTPS) if secure=true and insecure (HTTP) otherwise.
+	// New returns an MinIO Admin client object.
+	madmClnt, err := madmin.New("localhost:9000", "minio", "minio123", false)
+	if err != nil {
+		log.Fatalln(err)
 	}
-
-	stats = append(stats, CPUFreqStats{
-		Name:     cpuName,
-		Governor: string(bytes.TrimSpace(content)),
-	})
-
-	return stats, nil
+	for event, err := range madmClnt.GetErrorEvents(context.Background(), madmin.ErrorEventOpts{}) {
+		if err != nil {
+			log.Fatalln(err)
+		}
+		fmt.Printf("Event: %+v\n", event)
+	}
 }

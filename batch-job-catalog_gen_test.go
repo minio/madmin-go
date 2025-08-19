@@ -9,8 +9,8 @@ import (
 	"github.com/tinylib/msgp/msgp"
 )
 
-func TestMarshalUnmarshalHTTPFilter(t *testing.T) {
-	v := HTTPFilter{}
+func TestMarshalUnmarshalCatalogDataFile(t *testing.T) {
+	v := CatalogDataFile{}
 	bts, err := v.MarshalMsg(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -32,8 +32,8 @@ func TestMarshalUnmarshalHTTPFilter(t *testing.T) {
 	}
 }
 
-func BenchmarkMarshalMsgHTTPFilter(b *testing.B) {
-	v := HTTPFilter{}
+func BenchmarkMarshalMsgCatalogDataFile(b *testing.B) {
+	v := CatalogDataFile{}
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -41,8 +41,8 @@ func BenchmarkMarshalMsgHTTPFilter(b *testing.B) {
 	}
 }
 
-func BenchmarkAppendMsgHTTPFilter(b *testing.B) {
-	v := HTTPFilter{}
+func BenchmarkAppendMsgCatalogDataFile(b *testing.B) {
+	v := CatalogDataFile{}
 	bts := make([]byte, 0, v.Msgsize())
 	bts, _ = v.MarshalMsg(bts[0:0])
 	b.SetBytes(int64(len(bts)))
@@ -53,8 +53,8 @@ func BenchmarkAppendMsgHTTPFilter(b *testing.B) {
 	}
 }
 
-func BenchmarkUnmarshalHTTPFilter(b *testing.B) {
-	v := HTTPFilter{}
+func BenchmarkUnmarshalCatalogDataFile(b *testing.B) {
+	v := CatalogDataFile{}
 	bts, _ := v.MarshalMsg(nil)
 	b.ReportAllocs()
 	b.SetBytes(int64(len(bts)))
@@ -67,17 +67,17 @@ func BenchmarkUnmarshalHTTPFilter(b *testing.B) {
 	}
 }
 
-func TestEncodeDecodeHTTPFilter(t *testing.T) {
-	v := HTTPFilter{}
+func TestEncodeDecodeCatalogDataFile(t *testing.T) {
+	v := CatalogDataFile{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 
 	m := v.Msgsize()
 	if buf.Len() > m {
-		t.Log("WARNING: TestEncodeDecodeHTTPFilter Msgsize() is inaccurate")
+		t.Log("WARNING: TestEncodeDecodeCatalogDataFile Msgsize() is inaccurate")
 	}
 
-	vn := HTTPFilter{}
+	vn := CatalogDataFile{}
 	err := msgp.Decode(&buf, &vn)
 	if err != nil {
 		t.Error(err)
@@ -91,8 +91,8 @@ func TestEncodeDecodeHTTPFilter(t *testing.T) {
 	}
 }
 
-func BenchmarkEncodeHTTPFilter(b *testing.B) {
-	v := HTTPFilter{}
+func BenchmarkEncodeCatalogDataFile(b *testing.B) {
+	v := CatalogDataFile{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))
@@ -105,8 +105,8 @@ func BenchmarkEncodeHTTPFilter(b *testing.B) {
 	en.Flush()
 }
 
-func BenchmarkDecodeHTTPFilter(b *testing.B) {
-	v := HTTPFilter{}
+func BenchmarkDecodeCatalogDataFile(b *testing.B) {
+	v := CatalogDataFile{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))
@@ -122,8 +122,8 @@ func BenchmarkDecodeHTTPFilter(b *testing.B) {
 	}
 }
 
-func TestMarshalUnmarshalServiceTelemetryOpts(t *testing.T) {
-	v := ServiceTelemetryOpts{}
+func TestMarshalUnmarshalCatalogManifest(t *testing.T) {
+	v := CatalogManifest{}
 	bts, err := v.MarshalMsg(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -145,8 +145,8 @@ func TestMarshalUnmarshalServiceTelemetryOpts(t *testing.T) {
 	}
 }
 
-func BenchmarkMarshalMsgServiceTelemetryOpts(b *testing.B) {
-	v := ServiceTelemetryOpts{}
+func BenchmarkMarshalMsgCatalogManifest(b *testing.B) {
+	v := CatalogManifest{}
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -154,8 +154,8 @@ func BenchmarkMarshalMsgServiceTelemetryOpts(b *testing.B) {
 	}
 }
 
-func BenchmarkAppendMsgServiceTelemetryOpts(b *testing.B) {
-	v := ServiceTelemetryOpts{}
+func BenchmarkAppendMsgCatalogManifest(b *testing.B) {
+	v := CatalogManifest{}
 	bts := make([]byte, 0, v.Msgsize())
 	bts, _ = v.MarshalMsg(bts[0:0])
 	b.SetBytes(int64(len(bts)))
@@ -166,8 +166,8 @@ func BenchmarkAppendMsgServiceTelemetryOpts(b *testing.B) {
 	}
 }
 
-func BenchmarkUnmarshalServiceTelemetryOpts(b *testing.B) {
-	v := ServiceTelemetryOpts{}
+func BenchmarkUnmarshalCatalogManifest(b *testing.B) {
+	v := CatalogManifest{}
 	bts, _ := v.MarshalMsg(nil)
 	b.ReportAllocs()
 	b.SetBytes(int64(len(bts)))
@@ -180,17 +180,17 @@ func BenchmarkUnmarshalServiceTelemetryOpts(b *testing.B) {
 	}
 }
 
-func TestEncodeDecodeServiceTelemetryOpts(t *testing.T) {
-	v := ServiceTelemetryOpts{}
+func TestEncodeDecodeCatalogManifest(t *testing.T) {
+	v := CatalogManifest{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 
 	m := v.Msgsize()
 	if buf.Len() > m {
-		t.Log("WARNING: TestEncodeDecodeServiceTelemetryOpts Msgsize() is inaccurate")
+		t.Log("WARNING: TestEncodeDecodeCatalogManifest Msgsize() is inaccurate")
 	}
 
-	vn := ServiceTelemetryOpts{}
+	vn := CatalogManifest{}
 	err := msgp.Decode(&buf, &vn)
 	if err != nil {
 		t.Error(err)
@@ -204,8 +204,8 @@ func TestEncodeDecodeServiceTelemetryOpts(t *testing.T) {
 	}
 }
 
-func BenchmarkEncodeServiceTelemetryOpts(b *testing.B) {
-	v := ServiceTelemetryOpts{}
+func BenchmarkEncodeCatalogManifest(b *testing.B) {
+	v := CatalogManifest{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))
@@ -218,8 +218,8 @@ func BenchmarkEncodeServiceTelemetryOpts(b *testing.B) {
 	en.Flush()
 }
 
-func BenchmarkDecodeServiceTelemetryOpts(b *testing.B) {
-	v := ServiceTelemetryOpts{}
+func BenchmarkDecodeCatalogManifest(b *testing.B) {
+	v := CatalogManifest{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))

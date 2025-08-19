@@ -241,14 +241,17 @@ func (adm *AdminClient) DataUsageInfo(ctx context.Context) (DataUsageInfo, error
 
 // ErasureSetInfo provides information per erasure set
 type ErasureSetInfo struct {
-	ID                 int    `json:"id"`
-	RawUsage           uint64 `json:"rawUsage"`
-	RawCapacity        uint64 `json:"rawCapacity"`
-	Usage              uint64 `json:"usage"`
-	ObjectsCount       uint64 `json:"objectsCount"`
-	VersionsCount      uint64 `json:"versionsCount"`
-	DeleteMarkersCount uint64 `json:"deleteMarkersCount"`
-	HealDisks          int    `json:"healDisks"`
+	ID                 int      `json:"id"`
+	RawUsage           uint64   `json:"rawUsage"`
+	RawCapacity        uint64   `json:"rawCapacity"`
+	Usage              uint64   `json:"usage"`
+	ObjectsCount       uint64   `json:"objectsCount"`
+	VersionsCount      uint64   `json:"versionsCount"`
+	DeleteMarkersCount uint64   `json:"deleteMarkersCount"`
+	HealDisks          int      `json:"healDisks"`
+	OnlineDisks        int      `json:"onlineDisks,omitempty"`
+	OfflineDisks       int      `json:"offlineDisks,omitempty"`
+	Nodes              []string `json:"nodes,omitempty"`
 }
 
 // InfoMessage container to hold server admin related information.
@@ -299,6 +302,24 @@ type Services struct {
 	Logger        []Logger                      `json:"logger,omitempty"`
 	Audit         []Audit                       `json:"audit,omitempty"`
 	Notifications []map[string][]TargetIDStatus `json:"notifications,omitempty"`
+}
+
+// ListNotificationARNs return a list of configured notification ARNs
+func (s Services) ListNotificationARNs() (arns []ARN) {
+	for _, notify := range s.Notifications {
+		for targetType, targetStatuses := range notify {
+			for _, targetStatus := range targetStatuses {
+				for targetID := range targetStatus {
+					arns = append(arns, ARN{
+						Type:     "sqs",
+						ID:       targetID,
+						Resource: targetType,
+					})
+				}
+			}
+		}
+	}
+	return arns
 }
 
 // Buckets contains the number of buckets
@@ -417,6 +438,7 @@ type ServerProperties struct {
 	RuntimeVersion      string            `json:"runtime_version,omitempty"`
 	GCStats             *GCStats          `json:"gc_stats,omitempty"`
 	MinioEnvVars        map[string]string `json:"minio_env_vars,omitempty"`
+	MinioEnvHash        string            `json:"minio_env_hash,omitempty"`
 	Edition             string            `json:"edition"`
 	License             *LicenseInfo      `json:"license,omitempty"`
 	IsLeader            bool              `json:"is_leader"`
@@ -449,19 +471,22 @@ type DiskMetrics struct {
 	APICalls   map[string]uint64      `json:"apiCalls,omitempty"`
 
 	// TotalTokens set per drive max concurrent I/O.
-	TotalTokens uint32 `json:"totalTokens,omitempty"`
+	TotalTokens uint32 `json:"totalTokens,omitempty"` // Deprecated (unused)
+
 	// TotalWaiting the amount of concurrent I/O waiting on disk
 	TotalWaiting uint32 `json:"totalWaiting,omitempty"`
 
 	// Captures all data availability errors such as
 	// permission denied, faulty disk and timeout errors.
 	TotalErrorsAvailability uint64 `json:"totalErrorsAvailability,omitempty"`
+
 	// Captures all timeout only errors
 	TotalErrorsTimeout uint64 `json:"totalErrorsTimeout,omitempty"`
 
 	// Total writes on disk (could be empty if the feature
 	// is not enabled on the server)
 	TotalWrites uint64 `json:"totalWrites,omitempty"`
+
 	// Total deletes on disk (could be empty if the feature
 	// is not enabled on the server)
 	TotalDeletes uint64 `json:"totalDeletes,omitempty"`

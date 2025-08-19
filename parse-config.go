@@ -55,6 +55,7 @@ const (
 	BatchSubSys          = "batch"
 	DriveSubSys          = "drive"
 	ILMSubsys            = "ilm"
+	ReplicationSubSys    = "replication"
 
 	NotifyKafkaSubSys    = "notify_kafka"
 	NotifyMQTTSubSys     = "notify_mqtt"
@@ -74,6 +75,8 @@ const (
 	AuditEventQueueSubSys  = "audit_event_queue"
 	ErasureSubSys          = "erasure"
 	BucketEventQueueSubSys = "bucket_event_queue"
+	TelemetryTargetSubSys  = "telemetry_target"
+	EventRecorderSubSys    = "event"
 )
 
 // SubSystems - list of all subsystems in MinIO
@@ -103,6 +106,7 @@ var SubSystems = set.CreateStringSet(
 	BatchSubSys,
 	DriveSubSys,
 	ILMSubsys,
+	ReplicationSubSys,
 	NotifyKafkaSubSys,
 	NotifyMQTTSubSys,
 	NotifyMySQLSubSys,
@@ -144,6 +148,7 @@ var EOSSubSystems = set.CreateStringSet(
 	BatchSubSys,
 	DriveSubSys,
 	ILMSubsys,
+	ReplicationSubSys,
 	NotifyKafkaSubSys,
 	NotifyMQTTSubSys,
 	NotifyMySQLSubSys,
@@ -160,6 +165,8 @@ var EOSSubSystems = set.CreateStringSet(
 	ErasureSubSys,
 	BucketEventQueueSubSys,
 	KubernetesSubSys,
+	TelemetryTargetSubSys,
+	EventRecorderSubSys,
 )
 
 // Standard config keys and values.

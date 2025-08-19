@@ -35,6 +35,7 @@ import (
 	"github.com/prometheus/procfs"
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/load"
+	"github.com/tinylib/msgp/msgp"
 )
 
 //msgp:clearomitted
@@ -59,6 +60,7 @@ const (
 	MetricsCPU
 	MetricsRPC
 	MetricsRuntime
+	MetricsAPI
 
 	// MetricsAll must be last.
 	// Enables all metrics.
@@ -103,6 +105,9 @@ func (adm *AdminClient) Metrics(ctx context.Context, o MetricsOptions, out func(
 
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet, requestData{
+			customHeaders: map[string][]string{
+				"Accept": {"application/vnd.msgpack"},
+			},
 			relPath:     path,
 			queryValues: q,
 		},
@@ -116,10 +121,24 @@ func (adm *AdminClient) Metrics(ctx context.Context, o MetricsOptions, out func(
 		return httpRespToErrorResponse(resp)
 	}
 	defer closeResponse(resp)
-	dec := json.NewDecoder(resp.Body)
+
+	// Choose decoder based on content type
+	var decodeOne func(m *RealtimeMetrics) error
+	switch resp.Header.Get("Content-Type") {
+	case "application/vnd.msgpack":
+		dec := msgp.NewReader(resp.Body)
+		decodeOne = func(m *RealtimeMetrics) error {
+			return m.DecodeMsg(dec)
+		}
+	default:
+		dec := json.NewDecoder(resp.Body)
+		decodeOne = func(m *RealtimeMetrics) error {
+			return dec.Decode(m)
+		}
+	}
 	for {
 		var m RealtimeMetrics
-		err := dec.Decode(&m)
+		err := decodeOne(&m)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				err = io.ErrUnexpectedEOF
@@ -165,6 +184,7 @@ type Metrics struct {
 	CPU        *CPUMetrics        `json:"cpu,omitempty"`
 	RPC        *RPCMetrics        `json:"rpc,omitempty"`
 	Go         *RuntimeMetrics    `json:"go,omitempty"`
+	API        *APIMetrics        `json:"api,omitempty"`
 }
 
 // Merge other into r.
@@ -208,6 +228,10 @@ func (r *Metrics) Merge(other *Metrics) {
 		r.Go = &RuntimeMetrics{}
 	}
 	r.Go.Merge(other.Go)
+	if r.API == nil && other.API != nil {
+		r.API = &APIMetrics{}
+	}
+	r.API.Merge(other.API)
 }
 
 // Merge will merge other into r.
@@ -490,8 +514,9 @@ type JobMetric struct {
 	LastUpdate    time.Time `json:"lastUpdate"`
 	RetryAttempts int       `json:"retryAttempts"`
 
-	Complete bool `json:"complete"`
-	Failed   bool `json:"failed"`
+	Complete bool   `json:"complete"`
+	Failed   bool   `json:"failed"`
+	Status   string `json:"status"`
 
 	// Specific job type data:
 	Replicate *ReplicateInfo   `json:"replicate,omitempty"`
@@ -537,9 +562,10 @@ type KeyRotationInfo struct {
 }
 
 type CatalogInfo struct {
-	LastBucketScanned string `json:"lastBucketScanned"`
+	Bucket            string `json:"bucket"`
+	LastBucketScanned string `json:"lastBucketScanned,omitempty"` // Deprecated 07/01/2025; Replaced by `bucket`
 	LastObjectScanned string `json:"lastObjectScanned"`
-	LastBucketMatched string `json:"lastBucketMatched"`
+	LastBucketMatched string `json:"lastBucketMatched,omitempty"` // Deprecated 07/01/2025; Replaced by `bucket`
 	LastObjectMatched string `json:"lastObjectMatched"`
 
 	ObjectsScannedCount uint64 `json:"objectsScannedCount"`
@@ -556,6 +582,10 @@ type CatalogInfo struct {
 
 	// Error message
 	ErrorMsg string `json:"errorMsg"`
+
+	// Used to resume catalog jobs
+	LastObjectWritten string            `json:"lastObjectWritten,omitempty"`
+	OutputFiles       []CatalogDataFile `json:"outputFiles,omitempty"`
 }
 
 // Merge other into 'o'.
@@ -567,12 +597,14 @@ func (o *BatchJobMetrics) Merge(other *BatchJobMetrics) {
 		// Use latest timestamp
 		o.CollectedAt = other.CollectedAt
 	}
+	// Use latest metrics
 	if o.Jobs == nil {
 		o.Jobs = make(map[string]JobMetric, len(other.Jobs))
 	}
-	// Job
 	for k, v := range other.Jobs {
-		o.Jobs[k] = v
+		if exists, ok := o.Jobs[k]; !ok || exists.LastUpdate.Before(v.LastUpdate) {
+			o.Jobs[k] = v
+		}
 	}
 }
 
@@ -867,4 +899,279 @@ func (m *RuntimeMetrics) Merge(other *RuntimeMetrics) {
 		}
 	}
 	m.N += other.N
+}
+
+// APIStats contains accumulated statistics for the API on a number of nodes.
+type APIStats struct {
+	Nodes         int        `json:"nodes"`                   // Number of nodes that have reported data.
+	StartTime     *time.Time `json:"startTime,omitempty"`     // Time range this data covers unless merged from sources with different start times..
+	EndTime       *time.Time `json:"endTime,omitempty"`       // Time range this data covers unless merged from sources with different end times.
+	WallTimeSecs  float64    `json:"wallTimeSecs,omitempty"`  // Wall time this data covers, accumulated from all nodes.
+	Requests      int64      `json:"requests,omitempty"`      // Total number of requests.
+	IncomingBytes int64      `json:"incomingBytes,omitempty"` // Total number of bytes received.
+	OutgoingBytes int64      `json:"outgoingBytes,omitempty"` // Total number of bytes sent.
+	Errors4xx     int        `json:"errors_4xx,omitempty"`    // Total number of 4xx (client request) errors.
+	Errors5xx     int        `json:"errors_5xx,omitempty"`    // Total number of 5xx (serverside) errors.
+	Canceled      int64      `json:"canceled,omitempty"`      // Requests that were canceled before they finished processing.
+
+	// Request times
+	RequestTimeSecs float64 `json:"requestTimeSecs,omitempty"` // Total request time.
+	ReqReadSecs     float64 `json:"reqReadSecs,omitempty"`     // Total time spent on request reads in seconds.
+	RespSecs        float64 `json:"respSecs,omitempty"`        // Total time spent on responses in seconds.
+	RespTTFBSecs    float64 `json:"respTtfbSecs,omitempty"`    // Total time spent on TTFB (req read -> response first byte) in seconds.
+
+	// Request times min/max
+	RequestTimeSecsMin float64 `json:"requestTimeSecsMin,omitempty"` // Min request time.
+	RequestTimeSecsMax float64 `json:"requestTimeSecsMax,omitempty"` // Max request time.
+	ReqReadSecsMin     float64 `json:"reqReadSecsMin,omitempty"`     // Min time spent on request reads in seconds.
+	ReqReadSecsMax     float64 `json:"reqReadSecsMax,omitempty"`     // Max time spent on request reads in seconds.
+	RespSecsMin        float64 `json:"respSecsMin,omitempty"`        // Min time spent on responses in seconds.
+	RespSecsMax        float64 `json:"respSecsMax,omitempty"`        // Max time spent on responses in seconds.
+	RespTTFBSecsMin    float64 `json:"respTtfbSecsMin,omitempty"`    // Min time spent on TTFB (req read -> response first byte) in seconds.
+	RespTTFBSecsMax    float64 `json:"respTtfbSecsMax,omitempty"`    // Max time spent on TTFB (req read -> response first byte) in seconds.
+
+	Rejected RejectedAPIStats `json:"rejected,omitempty"`
+}
+
+// RejectedAPIStats contains statistics for rejected requests.
+type RejectedAPIStats struct {
+	Auth           int64 `json:"auth,omitempty"`           // Total number of rejected authentication requests.
+	RequestsTime   int64 `json:"requestsTime,omitempty"`   // Requests that were rejected due to outdated request signature.
+	Header         int64 `json:"header,omitempty"`         // Requests that were rejected due to header signature.
+	Invalid        int64 `json:"invalid,omitempty"`        // Requests that were rejected due to invalid request signature.
+	NotImplemented int64 `json:"notImplemented,omitempty"` // Requests that were rejected due to not implemented API.
+}
+
+// Merge other into 'a'.
+func (a *APIStats) Merge(other APIStats) {
+	if a.StartTime == nil && a.Requests == 0 {
+		a.StartTime = other.StartTime
+	}
+	if a.EndTime == nil && a.Requests == 0 {
+		a.EndTime = other.EndTime
+	}
+	if a.StartTime != nil && other.StartTime != nil && !a.StartTime.Equal(*other.StartTime) {
+		a.StartTime = nil
+	}
+	if a.EndTime != nil && other.EndTime != nil && !a.EndTime.Equal(*other.EndTime) {
+		a.EndTime = nil
+	}
+
+	a.Nodes += other.Nodes
+	a.Requests += other.Requests
+	a.IncomingBytes += other.IncomingBytes
+	a.OutgoingBytes += other.OutgoingBytes
+	a.RequestTimeSecs += other.RequestTimeSecs
+	a.ReqReadSecs += other.ReqReadSecs
+	a.RespSecs += other.RespSecs
+	a.RespTTFBSecs += other.RespTTFBSecs
+	a.Errors4xx += other.Errors4xx
+	a.Errors5xx += other.Errors5xx
+	a.Canceled += other.Canceled
+	a.Rejected.Auth += other.Rejected.Auth
+	a.Rejected.RequestsTime += other.Rejected.RequestsTime
+	a.Rejected.Header += other.Rejected.Header
+	a.Rejected.Invalid += other.Rejected.Invalid
+	a.Rejected.NotImplemented += other.Rejected.NotImplemented
+
+	if a.Requests == 0 && other.Requests == 0 {
+		return
+	}
+
+	// Find 2 to min/max. If we have 1, just use that twice
+	at := *a
+	bt := other
+	if a.Requests == other.Requests {
+		at = bt
+	}
+	if other.Requests == 0 {
+		bt = at
+	}
+	a.RequestTimeSecsMin = min(at.RequestTimeSecsMin, bt.RequestTimeSecsMin)
+	a.RequestTimeSecsMax = max(at.RequestTimeSecsMax, bt.RequestTimeSecsMax)
+	a.ReqReadSecsMin = min(at.ReqReadSecsMin, bt.ReqReadSecsMin)
+	a.ReqReadSecsMax = max(at.ReqReadSecsMax, bt.ReqReadSecsMax)
+	a.RespSecsMin = min(at.RespSecsMin, bt.RespSecsMin)
+	a.RespSecsMax = max(at.RespSecsMax, bt.RespSecsMax)
+	a.RespTTFBSecsMin = min(at.RespTTFBSecsMin, bt.RespTTFBSecsMin)
+	a.RespTTFBSecsMax = max(at.RespTTFBSecsMax, bt.RespTTFBSecsMax)
+}
+
+// SegmentedAPIMetrics contains metrics for API operations, segmented by time.
+// FirstTime must be aligned to a start time that it a multiple of Interval.
+type SegmentedAPIMetrics struct {
+	Interval  int        `json:"intervalSecs"` // Interval covered by each segment in seconds.
+	FirstTime time.Time  `json:"firstTime"`    // Timestamp of first (ie oldest) segment
+	Segments  []APIStats `json:"segments"`     // List of APIStats for each segment ordered by time (oldest first).
+}
+
+// Merge other into 'a'.
+func (a *SegmentedAPIMetrics) Merge(other SegmentedAPIMetrics) {
+	if len(other.Segments) == 0 {
+		return
+	}
+	if len(a.Segments) == 0 {
+		a.Segments = other.Segments
+		return
+	}
+
+	// Intervals must match to merge safely.
+	if a.Interval == 0 {
+		a.Interval = other.Interval
+	}
+	if other.Interval == 0 || a.Interval != other.Interval {
+		// Cannot merge different resolutions without resampling.
+		// Bail out silently as there's no error mechanism here.
+		return
+	}
+
+	// Fast-path: same start time and same number of segments -> direct in-place merge.
+	if a.FirstTime.Equal(other.FirstTime) && len(a.Segments) == len(other.Segments) {
+		for i := range a.Segments {
+			a.Segments[i].Merge(other.Segments[i])
+		}
+		return
+	}
+	// More complex merge...
+	step := time.Duration(a.Interval) * time.Second
+
+	// Determine the unified timeline.
+	start := a.FirstTime
+	if other.FirstTime.Before(start) {
+		start = other.FirstTime
+	}
+
+	// Compute end times (exclusive).
+	aEnd := a.FirstTime.Add(time.Duration(len(a.Segments)) * step)
+	oEnd := other.FirstTime.Add(time.Duration(len(other.Segments)) * step)
+
+	// Total number of slots to cover both series.
+	totalSlots := int(oEnd.Sub(start) / step)
+	if aEnd.After(oEnd) {
+		totalSlots = int(aEnd.Sub(start) / step)
+	}
+
+	// Prepare the result slice with zero-value APIStats (acts as empty).
+	newSegments := make([]APIStats, totalSlots)
+
+	// Copy/merge 'a' into new slice at the proper offset.
+	if a.FirstTime.After(start) {
+		offset := int(a.FirstTime.Sub(start) / step)
+		copy(newSegments[offset:offset+len(a.Segments)], a.Segments)
+	} else {
+		// a starts at 'start'
+		copy(newSegments[:len(a.Segments)], a.Segments)
+	}
+
+	// Merge 'other' into new slice at the proper offset.
+	otherOffset := int(other.FirstTime.Sub(start) / step)
+	for i, s := range other.Segments {
+		idx := otherOffset + i
+		if idx < 0 || idx >= len(newSegments) {
+			continue
+		}
+		newSegments[idx].Merge(s)
+	}
+
+	// Update receiver with merged result.
+	a.FirstTime = start
+	a.Segments = newSegments
+}
+
+func (a *SegmentedAPIMetrics) Total() APIStats {
+	var res APIStats
+	if a == nil {
+		return res
+	}
+	for _, stat := range a.Segments {
+		res.Merge(stat)
+	}
+	return res
+}
+
+// APIMetrics contains metrics for API operations.
+type APIMetrics struct {
+	// Time these metrics were collected
+	CollectedAt time.Time `json:"collected"`
+
+	// Nodes responded to the request.
+	Nodes int `json:"nodes"`
+
+	// Number of active requests.
+	ActiveRequests int64 `json:"activeRequests,omitempty"`
+
+	// Number of queued requests.
+	QueuedRequests int64 `json:"queuedRequests,omitempty"`
+
+	// Last minute operation statistics by API.
+	LastMinuteAPI map[string]APIStats `json:"lastMinuteApi,omitempty"`
+
+	// Last day operation statistics by API, segmented.
+	LastDayAPI map[string]SegmentedAPIMetrics `json:"lastDayApi,omitempty"`
+
+	// SinceStart contains operation statistics since server(s) started.
+	SinceStart APIStats `json:"since_start"`
+}
+
+func (a *APIMetrics) Merge(b *APIMetrics) {
+	if b == nil {
+		return
+	}
+	if a.CollectedAt.Before(b.CollectedAt) {
+		a.CollectedAt = b.CollectedAt
+	}
+	a.Nodes += b.Nodes
+	a.ActiveRequests += b.ActiveRequests
+	a.QueuedRequests += b.QueuedRequests
+
+	for k, v := range b.LastMinuteAPI {
+		if a.LastMinuteAPI == nil {
+			a.LastMinuteAPI = make(map[string]APIStats, len(b.LastMinuteAPI))
+		}
+		existing := a.LastMinuteAPI[k]
+		existing.Merge(v)
+		a.LastMinuteAPI[k] = existing
+	}
+	for k, v := range b.LastDayAPI {
+		if a.LastDayAPI == nil {
+			a.LastDayAPI = make(map[string]SegmentedAPIMetrics, len(b.LastDayAPI))
+		}
+		existing, ok := a.LastDayAPI[k]
+		if !ok {
+			a.LastDayAPI[k] = v
+			continue
+		}
+		existing.Merge(v)
+		a.LastDayAPI[k] = existing
+	}
+	a.SinceStart.Merge(b.SinceStart)
+}
+
+// LastMinuteTotal returns the total APIStats for the last minute.
+func (a APIMetrics) LastMinuteTotal() APIStats {
+	var res APIStats
+	for _, stats := range a.LastMinuteAPI {
+		res.Merge(stats)
+	}
+	return res
+}
+
+// LastDayTotalSegmented returns the total SegmentedAPIMetrics for the last day.
+func (a APIMetrics) LastDayTotalSegmented() SegmentedAPIMetrics {
+	var res SegmentedAPIMetrics
+	for _, stats := range a.LastDayAPI {
+		res.Merge(stats)
+	}
+	return res
+}
+
+// LastDayTotal returns the accumulated APIStats for the last day.
+func (a APIMetrics) LastDayTotal() APIStats {
+	var res APIStats
+	for _, stats := range a.LastDayAPI {
+		for _, s := range stats.Segments {
+			res.Merge(s)
+		}
+	}
+	return res
 }

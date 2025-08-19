@@ -91,6 +91,8 @@ type ObjectMetaSummary struct {
 	IsDeleteMarker bool
 	ModTime        int64
 	Signature      [4]byte
+	Pool           int
+	Set            int
 }
 
 // ObjectPartSummary is returned from minio when calling ObjectSummary.
@@ -116,15 +118,21 @@ type ObjectUnknownSummary struct {
 	Filename string
 	Size     int64
 	Dir      bool
+	Err      string
 }
 
 // ObjectVersionSummary is returned from minio when calling ObjectSummary.
 // This struct contains information on a single version.
 type ObjectVersionSummary struct {
-	VersionID string
-	Checksum  []byte
-	ModTime   time.Time
-	DataDir   string
+	DeleteMarker bool
+	InLined      bool
+	Size         int64
+	VersionID    string
+	Checksum     []byte
+	ModTime      time.Time
+	DataDir      string
+	DataBlocks   int
+	ParityBlocks int
 }
 
 // ObjectBitrotSummary is returned from minio when calling ObjectSummary.
@@ -144,10 +152,9 @@ type ObjectSummary struct {
 	// versioned.
 	DataDir      string
 	Version      string
-	IsInline     bool
 	PartNumbers  []int
 	ErasureDist  []uint8
-	ParityCount  int
+	ParityCount  int // deprecated
 	DeleteMarker bool
 	Metas        []*ObjectMetaSummary
 	Parts        []*ObjectPartSummary
