@@ -43,10 +43,10 @@ const (
 	HealUnknownScan HealScanMode = 0
 
 	// HealNormalScan checks if parts are present and not outdated
-	HealNormalScan HealScanMode = iota
+	HealNormalScan HealScanMode = 1 << (iota - 1)
 
 	// HealDeepScan checks for parts bitrot checksums
-	HealDeepScan HealScanMode = 1 << (iota - 1)
+	HealDeepScan
 
 	// HealUncommittedScan will only pick objects that are dangling (uncommitted objects in the namespace without quorum)
 	HealUncommittedScan
