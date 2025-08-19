@@ -271,3 +271,54 @@ func (adm *AdminClient) GetPolicyEntities(ctx context.Context, q PolicyEntitiesQ
 	err = json.Unmarshal(content, &r)
 	return r, err
 }
+
+type AddAzureCannedPolicyReq struct {
+	Name       string `json:"name"`
+	ConfigName string `json:"config_name"`
+	Policy     []byte `json:"policy"`
+}
+
+func (r *AddAzureCannedPolicyReq) Validate() error {
+	if r.Name == "" {
+		return ErrInvalidArgument("Group name is required")
+	}
+	if len(r.Policy) == 0 {
+		return ErrInvalidArgument("Policy is required")
+	}
+	if r.ConfigName == "" {
+		r.ConfigName = Default
+	}
+	return nil
+}
+
+// AddAzureCannedPolicy - adds a policy corresponding to the Azure group ID for the given
+// Azure group name
+func (adm *AdminClient) AddAzureCannedPolicy(ctx context.Context, r AddAzureCannedPolicyReq) error {
+	if err := r.Validate(); err != nil {
+		return err
+	}
+
+	queryValues := url.Values{}
+	queryValues.Set("name", r.Name)
+	queryValues.Set("config_name", r.ConfigName)
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/idp/openid/add-azure-canned-policy",
+		queryValues: queryValues,
+		content:     r.Policy,
+	}
+
+	// Execute PUT on /minio/admin/v4/idp/openid/add-azure-canned-policy to set policy.
+	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
+
+	defer closeResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+
+	return nil
+}
