@@ -60,6 +60,8 @@ const (
 	ItemInitializing = ItemState("initializing")
 	// ItemOnline indicates that the item is online
 	ItemOnline = ItemState("online")
+	// ItemCordoned indicates that the item is cordoned
+	ItemCordoned = ItemState("cordoned")
 )
 
 // StorageInfo - represents total capacity of underlying storage.
