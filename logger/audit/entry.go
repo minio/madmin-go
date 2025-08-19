@@ -54,17 +54,18 @@ type Entry struct {
 		TimeToResponse      string          `json:"timeToResponse,omitempty"`
 		TimeToResponseInNS  string          `json:"timeToResponseInNS,omitempty"`
 	} `json:"api"`
-	RemoteHost string                 `json:"remotehost,omitempty"`
-	RequestID  string                 `json:"requestID,omitempty"`
-	UserAgent  string                 `json:"userAgent,omitempty"`
-	ReqPath    string                 `json:"requestPath,omitempty"`
-	ReqHost    string                 `json:"requestHost,omitempty"`
-	ReqNode    string                 `json:"requestNode,omitempty"`
-	ReqClaims  map[string]interface{} `json:"requestClaims,omitempty"`
-	ReqQuery   map[string]string      `json:"requestQuery,omitempty"`
-	ReqHeader  map[string]string      `json:"requestHeader,omitempty"`
-	RespHeader map[string]string      `json:"responseHeader,omitempty"`
-	Tags       map[string]interface{} `json:"tags,omitempty"`
+	LogHost    string            `json:"loghost,omitempty"`
+	RemoteHost string            `json:"remotehost,omitempty"`
+	RequestID  string            `json:"requestID,omitempty"`
+	UserAgent  string            `json:"userAgent,omitempty"`
+	ReqPath    string            `json:"requestPath,omitempty"`
+	ReqHost    string            `json:"requestHost,omitempty"`
+	ReqNode    string            `json:"requestNode,omitempty"`
+	ReqClaims  map[string]any    `json:"requestClaims,omitempty"`
+	ReqQuery   map[string]string `json:"requestQuery,omitempty"`
+	ReqHeader  map[string]string `json:"requestHeader,omitempty"`
+	RespHeader map[string]string `json:"responseHeader,omitempty"`
+	Tags       map[string]any    `json:"tags,omitempty"`
 
 	AccessKey  string `json:"accessKey,omitempty"`
 	ParentUser string `json:"parentUser,omitempty"`

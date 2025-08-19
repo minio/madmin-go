@@ -54,6 +54,7 @@ type API struct {
 
 // Entry - defines fields and values of each log entry.
 type Entry struct {
+	LogHost      string         `json:"loghost,omitempty"`
 	Site         string         `json:"site,omitempty"`
 	DeploymentID string         `json:"deploymentid,omitempty"`
 	Level        madmin.LogKind `json:"level"`
