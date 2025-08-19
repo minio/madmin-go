@@ -37,7 +37,7 @@ type APILogOpts struct {
 	Node       string        `json:"node,omitempty"`
 	API        string        `json:"api,omitempty"`
 	Bucket     string        `json:"bucket,omitempty"`
-	Object     string        `json:"object,omitempty"`
+	Prefix     string        `json:"prefix,omitempty"`
 	StatusCode int           `json:"statusCode,omitempty"`
 	Interval   time.Duration `json:"interval,omitempty"`
 	Origin     log.Origin    `json:"origin,omitempty"`

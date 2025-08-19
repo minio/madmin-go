@@ -17,7 +17,15 @@
 
 package log
 
-import "time"
+import (
+	"fmt"
+	"strings"
+	"time"
+)
+
+//msgp:clearomitted
+//msgp:timezone utc
+//msgp:tag json
 
 //go:generate msgp $GOFILE
 
@@ -59,7 +67,6 @@ type API struct {
 	VersionID string            `json:"versionId,omitempty"`
 	Tags      map[string]string `json:"tags,omitempty"`
 	CallInfo  *CallInfo         `json:"callInfo,omitempty"`
-	XXHash    uint64            `json:"xxhash,omitempty"`
 }
 
 // CallInfo represents the info for the external call
@@ -81,4 +88,50 @@ type CallInfo struct {
 	RespHeader      map[string]string      `json:"responseHeader,omitempty"`
 	AccessKey       string                 `json:"accessKey,omitempty"`
 	ParentUser      string                 `json:"parentUser,omitempty"`
+}
+
+// String provides a canonical representation for API
+func (a API) String() string {
+	values := []string{
+		toString("version", a.Version),
+		toTime("time", a.Time),
+		toString("node", a.Node),
+		toString("origin", string(a.Origin)),
+		toString("type", string(a.Type)),
+		toString("name", a.Name),
+		toString("bucket", a.Bucket),
+		toString("object", a.Object),
+		toString("versionId", a.VersionID),
+		toMap("tags", a.Tags),
+	}
+	if a.CallInfo != nil {
+		values = append(values, fmt.Sprintf("callInfo={%s}", a.CallInfo.String()))
+	}
+	values = filterAndSort(values)
+	return strings.Join(values, ",")
+}
+
+// String returns the canonical string for CallInfo
+func (c CallInfo) String() string {
+	values := []string{
+		toInt("httpStatusCode", c.HTTPStatusCode),
+		toInt64("rx", c.InputBytes),
+		toInt64("tx", c.OutputBytes),
+		toInt64("txHeaders", c.HeaderBytes),
+		toString("timeToFirstByte", c.TimeToFirstByte),
+		toString("timeToResponse", c.TimeToResponse),
+		toString("sourceHost", c.SourceHost),
+		toString("requestID", c.RequestID),
+		toString("userAgent", c.UserAgent),
+		toString("requestPath", c.ReqPath),
+		toString("requestHost", c.ReqHost),
+		toInterfaceMap("requestClaims", c.ReqClaims),
+		toMap("requestQuery", c.ReqQuery),
+		toMap("requestHeader", c.ReqHeader),
+		toMap("responseHeader", c.RespHeader),
+		toString("accessKey", c.AccessKey),
+		toString("parentUser", c.ParentUser),
+	}
+	values = filterAndSort(values)
+	return strings.Join(values, ",")
 }

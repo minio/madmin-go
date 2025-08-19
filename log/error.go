@@ -18,8 +18,15 @@
 package log
 
 import (
+	"fmt"
+	"slices"
+	"strings"
 	"time"
 )
+
+//msgp:clearomitted
+//msgp:timezone utc
+//msgp:tag json
 
 //go:generate msgp $GOFILE
 
@@ -32,7 +39,6 @@ type Error struct {
 	API     string            `json:"apiName"`
 	Trace   *Trace            `json:"trace,omitempty"`
 	Tags    map[string]string `json:"tags,omitempty"`
-	XXHash  uint64            `json:"xxhash,omitempty"`
 }
 
 // Trace represents the call trace
@@ -44,4 +50,35 @@ type Trace struct {
 // GetTagValByKey gets the tag value by key
 func (e Error) GetTagValByKey(key string) string {
 	return e.Tags[key]
+}
+
+// String returns the canonical string for Error
+func (e Error) String() string {
+	values := []string{
+		toString("version", e.Version),
+		toString("node", e.Node),
+		toTime("time", e.Time),
+		toString("message", e.Message),
+		toString("apiName", e.API),
+		toMap("tags", e.Tags),
+	}
+	if e.Trace != nil {
+		values = append(values, fmt.Sprintf("trace={%s}", e.Trace.String()))
+	}
+	values = filterAndSort(values)
+	return strings.Join(values, ",")
+}
+
+// String returns the canonical string for Trace
+func (t Trace) String() string {
+	values := []string{
+		toMap("variables", t.Variables),
+	}
+	if len(t.Source) > 0 {
+		src := slices.Clone(t.Source)
+		slices.Sort(src)
+		values = append(values, fmt.Sprintf("source=[%s]", strings.Join(src, ",")))
+	}
+	values = filterAndSort(values)
+	return strings.Join(values, ",")
 }

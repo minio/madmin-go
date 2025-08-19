@@ -17,7 +17,14 @@
 
 package log
 
-import "time"
+import (
+	"strings"
+	"time"
+)
+
+//msgp:clearomitted
+//msgp:timezone utc
+//msgp:tag json
 
 //go:generate msgp $GOFILE
 
@@ -34,5 +41,23 @@ type Audit struct {
 	SourceHost string                 `json:"sourceHost,omitempty"`
 	AccessKey  string                 `json:"accessKey,omitempty"`
 	ParentUser string                 `json:"parentUser,omitempty"`
-	XXHash     uint64                 `json:"xxhash,omitempty"`
+}
+
+// String returns a canonical string for Audit
+func (a Audit) String() string {
+	values := []string{
+		toString("version", a.Version),
+		toTime("time", a.Time),
+		toString("node", a.Node),
+		toString("apiName", a.APIName),
+		toString("bucket", a.Bucket),
+		toMap("tags", a.Tags),
+		toString("requestID", a.RequestID),
+		toInterfaceMap("requestClaims", a.ReqClaims),
+		toString("sourceHost", a.SourceHost),
+		toString("accessKey", a.AccessKey),
+		toString("parentUser", a.ParentUser),
+	}
+	values = filterAndSort(values)
+	return strings.Join(values, ",")
 }

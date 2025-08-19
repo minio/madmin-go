@@ -37,7 +37,7 @@ type ErrorLogOpts struct {
 	Node     string        `json:"node,omitempty"`
 	API      string        `json:"api,omitempty"`
 	Bucket   string        `json:"bucket,omitempty"`
-	Object   string        `json:"object,omitempty"`
+	Prefix   string        `json:"prefix,omitempty"`
 	Interval time.Duration `json:"interval,omitempty"`
 }
 

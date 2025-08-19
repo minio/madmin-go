@@ -16,6 +16,8 @@ func (z *Audit) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
+	var zb0001Mask uint16 /* 9 bits */
+	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
 		field, err = dc.ReadMapKeyPtr()
@@ -24,37 +26,40 @@ func (z *Audit) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "Version":
+		case "version":
 			z.Version, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "Version")
 				return
 			}
-		case "Time":
-			z.Time, err = dc.ReadTime()
+		case "time":
+			z.Time, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "Time")
 				return
 			}
-		case "Node":
+		case "node":
 			z.Node, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "Node")
 				return
 			}
-		case "APIName":
+			zb0001Mask |= 0x1
+		case "apiName":
 			z.APIName, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "APIName")
 				return
 			}
-		case "Bucket":
+			zb0001Mask |= 0x2
+		case "bucket":
 			z.Bucket, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "Bucket")
 				return
 			}
-		case "Tags":
+			zb0001Mask |= 0x4
+		case "tags":
 			var zb0002 uint32
 			zb0002, err = dc.ReadMapHeader()
 			if err != nil {
@@ -84,13 +89,15 @@ func (z *Audit) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.Tags[za0001] = za0002
 			}
-		case "RequestID":
+			zb0001Mask |= 0x8
+		case "requestID":
 			z.RequestID, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "RequestID")
 				return
 			}
-		case "ReqClaims":
+			zb0001Mask |= 0x10
+		case "requestClaims":
 			var zb0003 uint32
 			zb0003, err = dc.ReadMapHeader()
 			if err != nil {
@@ -120,30 +127,28 @@ func (z *Audit) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.ReqClaims[za0003] = za0004
 			}
-		case "SourceHost":
+			zb0001Mask |= 0x20
+		case "sourceHost":
 			z.SourceHost, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "SourceHost")
 				return
 			}
-		case "AccessKey":
+			zb0001Mask |= 0x40
+		case "accessKey":
 			z.AccessKey, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "AccessKey")
 				return
 			}
-		case "ParentUser":
+			zb0001Mask |= 0x80
+		case "parentUser":
 			z.ParentUser, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "ParentUser")
 				return
 			}
-		case "XXHash":
-			z.XXHash, err = dc.ReadUint64()
-			if err != nil {
-				err = msgp.WrapError(err, "XXHash")
-				return
-			}
+			zb0001Mask |= 0x100
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -152,155 +157,241 @@ func (z *Audit) DecodeMsg(dc *msgp.Reader) (err error) {
 			}
 		}
 	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x1ff {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Node = ""
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.APIName = ""
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.Bucket = ""
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.Tags = nil
+		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.RequestID = ""
+		}
+		if (zb0001Mask & 0x20) == 0 {
+			z.ReqClaims = nil
+		}
+		if (zb0001Mask & 0x40) == 0 {
+			z.SourceHost = ""
+		}
+		if (zb0001Mask & 0x80) == 0 {
+			z.AccessKey = ""
+		}
+		if (zb0001Mask & 0x100) == 0 {
+			z.ParentUser = ""
+		}
+	}
 	return
 }
 
 // EncodeMsg implements msgp.Encodable
 func (z *Audit) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 12
-	// write "Version"
-	err = en.Append(0x8c, 0xa7, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
+	// check for omitted fields
+	zb0001Len := uint32(11)
+	var zb0001Mask uint16 /* 11 bits */
+	_ = zb0001Mask
+	if z.Node == "" {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	if z.APIName == "" {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.Bucket == "" {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	if z.Tags == nil {
+		zb0001Len--
+		zb0001Mask |= 0x20
+	}
+	if z.RequestID == "" {
+		zb0001Len--
+		zb0001Mask |= 0x40
+	}
+	if z.ReqClaims == nil {
+		zb0001Len--
+		zb0001Mask |= 0x80
+	}
+	if z.SourceHost == "" {
+		zb0001Len--
+		zb0001Mask |= 0x100
+	}
+	if z.AccessKey == "" {
+		zb0001Len--
+		zb0001Mask |= 0x200
+	}
+	if z.ParentUser == "" {
+		zb0001Len--
+		zb0001Mask |= 0x400
+	}
+	// variable map header, size zb0001Len
+	err = en.Append(0x80 | uint8(zb0001Len))
 	if err != nil {
 		return
 	}
-	err = en.WriteString(z.Version)
-	if err != nil {
-		err = msgp.WrapError(err, "Version")
-		return
-	}
-	// write "Time"
-	err = en.Append(0xa4, 0x54, 0x69, 0x6d, 0x65)
-	if err != nil {
-		return
-	}
-	err = en.WriteTime(z.Time)
-	if err != nil {
-		err = msgp.WrapError(err, "Time")
-		return
-	}
-	// write "Node"
-	err = en.Append(0xa4, 0x4e, 0x6f, 0x64, 0x65)
-	if err != nil {
-		return
-	}
-	err = en.WriteString(z.Node)
-	if err != nil {
-		err = msgp.WrapError(err, "Node")
-		return
-	}
-	// write "APIName"
-	err = en.Append(0xa7, 0x41, 0x50, 0x49, 0x4e, 0x61, 0x6d, 0x65)
-	if err != nil {
-		return
-	}
-	err = en.WriteString(z.APIName)
-	if err != nil {
-		err = msgp.WrapError(err, "APIName")
-		return
-	}
-	// write "Bucket"
-	err = en.Append(0xa6, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74)
-	if err != nil {
-		return
-	}
-	err = en.WriteString(z.Bucket)
-	if err != nil {
-		err = msgp.WrapError(err, "Bucket")
-		return
-	}
-	// write "Tags"
-	err = en.Append(0xa4, 0x54, 0x61, 0x67, 0x73)
-	if err != nil {
-		return
-	}
-	err = en.WriteMapHeader(uint32(len(z.Tags)))
-	if err != nil {
-		err = msgp.WrapError(err, "Tags")
-		return
-	}
-	for za0001, za0002 := range z.Tags {
-		err = en.WriteString(za0001)
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// write "version"
+		err = en.Append(0xa7, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
 		if err != nil {
-			err = msgp.WrapError(err, "Tags")
 			return
 		}
-		err = en.WriteString(za0002)
+		err = en.WriteString(z.Version)
 		if err != nil {
-			err = msgp.WrapError(err, "Tags", za0001)
+			err = msgp.WrapError(err, "Version")
 			return
 		}
-	}
-	// write "RequestID"
-	err = en.Append(0xa9, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x49, 0x44)
-	if err != nil {
-		return
-	}
-	err = en.WriteString(z.RequestID)
-	if err != nil {
-		err = msgp.WrapError(err, "RequestID")
-		return
-	}
-	// write "ReqClaims"
-	err = en.Append(0xa9, 0x52, 0x65, 0x71, 0x43, 0x6c, 0x61, 0x69, 0x6d, 0x73)
-	if err != nil {
-		return
-	}
-	err = en.WriteMapHeader(uint32(len(z.ReqClaims)))
-	if err != nil {
-		err = msgp.WrapError(err, "ReqClaims")
-		return
-	}
-	for za0003, za0004 := range z.ReqClaims {
-		err = en.WriteString(za0003)
+		// write "time"
+		err = en.Append(0xa4, 0x74, 0x69, 0x6d, 0x65)
 		if err != nil {
-			err = msgp.WrapError(err, "ReqClaims")
 			return
 		}
-		err = en.WriteIntf(za0004)
+		err = en.WriteTime(z.Time)
 		if err != nil {
-			err = msgp.WrapError(err, "ReqClaims", za0003)
+			err = msgp.WrapError(err, "Time")
 			return
 		}
-	}
-	// write "SourceHost"
-	err = en.Append(0xaa, 0x53, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x48, 0x6f, 0x73, 0x74)
-	if err != nil {
-		return
-	}
-	err = en.WriteString(z.SourceHost)
-	if err != nil {
-		err = msgp.WrapError(err, "SourceHost")
-		return
-	}
-	// write "AccessKey"
-	err = en.Append(0xa9, 0x41, 0x63, 0x63, 0x65, 0x73, 0x73, 0x4b, 0x65, 0x79)
-	if err != nil {
-		return
-	}
-	err = en.WriteString(z.AccessKey)
-	if err != nil {
-		err = msgp.WrapError(err, "AccessKey")
-		return
-	}
-	// write "ParentUser"
-	err = en.Append(0xaa, 0x50, 0x61, 0x72, 0x65, 0x6e, 0x74, 0x55, 0x73, 0x65, 0x72)
-	if err != nil {
-		return
-	}
-	err = en.WriteString(z.ParentUser)
-	if err != nil {
-		err = msgp.WrapError(err, "ParentUser")
-		return
-	}
-	// write "XXHash"
-	err = en.Append(0xa6, 0x58, 0x58, 0x48, 0x61, 0x73, 0x68)
-	if err != nil {
-		return
-	}
-	err = en.WriteUint64(z.XXHash)
-	if err != nil {
-		err = msgp.WrapError(err, "XXHash")
-		return
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// write "node"
+			err = en.Append(0xa4, 0x6e, 0x6f, 0x64, 0x65)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.Node)
+			if err != nil {
+				err = msgp.WrapError(err, "Node")
+				return
+			}
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// write "apiName"
+			err = en.Append(0xa7, 0x61, 0x70, 0x69, 0x4e, 0x61, 0x6d, 0x65)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.APIName)
+			if err != nil {
+				err = msgp.WrapError(err, "APIName")
+				return
+			}
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// write "bucket"
+			err = en.Append(0xa6, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.Bucket)
+			if err != nil {
+				err = msgp.WrapError(err, "Bucket")
+				return
+			}
+		}
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// write "tags"
+			err = en.Append(0xa4, 0x74, 0x61, 0x67, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteMapHeader(uint32(len(z.Tags)))
+			if err != nil {
+				err = msgp.WrapError(err, "Tags")
+				return
+			}
+			for za0001, za0002 := range z.Tags {
+				err = en.WriteString(za0001)
+				if err != nil {
+					err = msgp.WrapError(err, "Tags")
+					return
+				}
+				err = en.WriteString(za0002)
+				if err != nil {
+					err = msgp.WrapError(err, "Tags", za0001)
+					return
+				}
+			}
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
+			// write "requestID"
+			err = en.Append(0xa9, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x49, 0x44)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.RequestID)
+			if err != nil {
+				err = msgp.WrapError(err, "RequestID")
+				return
+			}
+		}
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
+			// write "requestClaims"
+			err = en.Append(0xad, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x43, 0x6c, 0x61, 0x69, 0x6d, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteMapHeader(uint32(len(z.ReqClaims)))
+			if err != nil {
+				err = msgp.WrapError(err, "ReqClaims")
+				return
+			}
+			for za0003, za0004 := range z.ReqClaims {
+				err = en.WriteString(za0003)
+				if err != nil {
+					err = msgp.WrapError(err, "ReqClaims")
+					return
+				}
+				err = en.WriteIntf(za0004)
+				if err != nil {
+					err = msgp.WrapError(err, "ReqClaims", za0003)
+					return
+				}
+			}
+		}
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
+			// write "sourceHost"
+			err = en.Append(0xaa, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x48, 0x6f, 0x73, 0x74)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.SourceHost)
+			if err != nil {
+				err = msgp.WrapError(err, "SourceHost")
+				return
+			}
+		}
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
+			// write "accessKey"
+			err = en.Append(0xa9, 0x61, 0x63, 0x63, 0x65, 0x73, 0x73, 0x4b, 0x65, 0x79)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.AccessKey)
+			if err != nil {
+				err = msgp.WrapError(err, "AccessKey")
+				return
+			}
+		}
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
+			// write "parentUser"
+			err = en.Append(0xaa, 0x70, 0x61, 0x72, 0x65, 0x6e, 0x74, 0x55, 0x73, 0x65, 0x72)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.ParentUser)
+			if err != nil {
+				err = msgp.WrapError(err, "ParentUser")
+				return
+			}
+		}
 	}
 	return
 }
@@ -308,55 +399,115 @@ func (z *Audit) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *Audit) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 12
-	// string "Version"
-	o = append(o, 0x8c, 0xa7, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
-	o = msgp.AppendString(o, z.Version)
-	// string "Time"
-	o = append(o, 0xa4, 0x54, 0x69, 0x6d, 0x65)
-	o = msgp.AppendTime(o, z.Time)
-	// string "Node"
-	o = append(o, 0xa4, 0x4e, 0x6f, 0x64, 0x65)
-	o = msgp.AppendString(o, z.Node)
-	// string "APIName"
-	o = append(o, 0xa7, 0x41, 0x50, 0x49, 0x4e, 0x61, 0x6d, 0x65)
-	o = msgp.AppendString(o, z.APIName)
-	// string "Bucket"
-	o = append(o, 0xa6, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74)
-	o = msgp.AppendString(o, z.Bucket)
-	// string "Tags"
-	o = append(o, 0xa4, 0x54, 0x61, 0x67, 0x73)
-	o = msgp.AppendMapHeader(o, uint32(len(z.Tags)))
-	for za0001, za0002 := range z.Tags {
-		o = msgp.AppendString(o, za0001)
-		o = msgp.AppendString(o, za0002)
+	// check for omitted fields
+	zb0001Len := uint32(11)
+	var zb0001Mask uint16 /* 11 bits */
+	_ = zb0001Mask
+	if z.Node == "" {
+		zb0001Len--
+		zb0001Mask |= 0x4
 	}
-	// string "RequestID"
-	o = append(o, 0xa9, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x49, 0x44)
-	o = msgp.AppendString(o, z.RequestID)
-	// string "ReqClaims"
-	o = append(o, 0xa9, 0x52, 0x65, 0x71, 0x43, 0x6c, 0x61, 0x69, 0x6d, 0x73)
-	o = msgp.AppendMapHeader(o, uint32(len(z.ReqClaims)))
-	for za0003, za0004 := range z.ReqClaims {
-		o = msgp.AppendString(o, za0003)
-		o, err = msgp.AppendIntf(o, za0004)
-		if err != nil {
-			err = msgp.WrapError(err, "ReqClaims", za0003)
-			return
+	if z.APIName == "" {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.Bucket == "" {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	if z.Tags == nil {
+		zb0001Len--
+		zb0001Mask |= 0x20
+	}
+	if z.RequestID == "" {
+		zb0001Len--
+		zb0001Mask |= 0x40
+	}
+	if z.ReqClaims == nil {
+		zb0001Len--
+		zb0001Mask |= 0x80
+	}
+	if z.SourceHost == "" {
+		zb0001Len--
+		zb0001Mask |= 0x100
+	}
+	if z.AccessKey == "" {
+		zb0001Len--
+		zb0001Mask |= 0x200
+	}
+	if z.ParentUser == "" {
+		zb0001Len--
+		zb0001Mask |= 0x400
+	}
+	// variable map header, size zb0001Len
+	o = append(o, 0x80|uint8(zb0001Len))
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// string "version"
+		o = append(o, 0xa7, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
+		o = msgp.AppendString(o, z.Version)
+		// string "time"
+		o = append(o, 0xa4, 0x74, 0x69, 0x6d, 0x65)
+		o = msgp.AppendTime(o, z.Time)
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// string "node"
+			o = append(o, 0xa4, 0x6e, 0x6f, 0x64, 0x65)
+			o = msgp.AppendString(o, z.Node)
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// string "apiName"
+			o = append(o, 0xa7, 0x61, 0x70, 0x69, 0x4e, 0x61, 0x6d, 0x65)
+			o = msgp.AppendString(o, z.APIName)
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// string "bucket"
+			o = append(o, 0xa6, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74)
+			o = msgp.AppendString(o, z.Bucket)
+		}
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// string "tags"
+			o = append(o, 0xa4, 0x74, 0x61, 0x67, 0x73)
+			o = msgp.AppendMapHeader(o, uint32(len(z.Tags)))
+			for za0001, za0002 := range z.Tags {
+				o = msgp.AppendString(o, za0001)
+				o = msgp.AppendString(o, za0002)
+			}
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
+			// string "requestID"
+			o = append(o, 0xa9, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x49, 0x44)
+			o = msgp.AppendString(o, z.RequestID)
+		}
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
+			// string "requestClaims"
+			o = append(o, 0xad, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x43, 0x6c, 0x61, 0x69, 0x6d, 0x73)
+			o = msgp.AppendMapHeader(o, uint32(len(z.ReqClaims)))
+			for za0003, za0004 := range z.ReqClaims {
+				o = msgp.AppendString(o, za0003)
+				o, err = msgp.AppendIntf(o, za0004)
+				if err != nil {
+					err = msgp.WrapError(err, "ReqClaims", za0003)
+					return
+				}
+			}
+		}
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
+			// string "sourceHost"
+			o = append(o, 0xaa, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x48, 0x6f, 0x73, 0x74)
+			o = msgp.AppendString(o, z.SourceHost)
+		}
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
+			// string "accessKey"
+			o = append(o, 0xa9, 0x61, 0x63, 0x63, 0x65, 0x73, 0x73, 0x4b, 0x65, 0x79)
+			o = msgp.AppendString(o, z.AccessKey)
+		}
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
+			// string "parentUser"
+			o = append(o, 0xaa, 0x70, 0x61, 0x72, 0x65, 0x6e, 0x74, 0x55, 0x73, 0x65, 0x72)
+			o = msgp.AppendString(o, z.ParentUser)
 		}
 	}
-	// string "SourceHost"
-	o = append(o, 0xaa, 0x53, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x48, 0x6f, 0x73, 0x74)
-	o = msgp.AppendString(o, z.SourceHost)
-	// string "AccessKey"
-	o = append(o, 0xa9, 0x41, 0x63, 0x63, 0x65, 0x73, 0x73, 0x4b, 0x65, 0x79)
-	o = msgp.AppendString(o, z.AccessKey)
-	// string "ParentUser"
-	o = append(o, 0xaa, 0x50, 0x61, 0x72, 0x65, 0x6e, 0x74, 0x55, 0x73, 0x65, 0x72)
-	o = msgp.AppendString(o, z.ParentUser)
-	// string "XXHash"
-	o = append(o, 0xa6, 0x58, 0x58, 0x48, 0x61, 0x73, 0x68)
-	o = msgp.AppendUint64(o, z.XXHash)
 	return
 }
 
@@ -370,6 +521,8 @@ func (z *Audit) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
+	var zb0001Mask uint16 /* 9 bits */
+	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
 		field, bts, err = msgp.ReadMapKeyZC(bts)
@@ -378,37 +531,40 @@ func (z *Audit) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "Version":
+		case "version":
 			z.Version, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Version")
 				return
 			}
-		case "Time":
-			z.Time, bts, err = msgp.ReadTimeBytes(bts)
+		case "time":
+			z.Time, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Time")
 				return
 			}
-		case "Node":
+		case "node":
 			z.Node, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Node")
 				return
 			}
-		case "APIName":
+			zb0001Mask |= 0x1
+		case "apiName":
 			z.APIName, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "APIName")
 				return
 			}
-		case "Bucket":
+			zb0001Mask |= 0x2
+		case "bucket":
 			z.Bucket, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Bucket")
 				return
 			}
-		case "Tags":
+			zb0001Mask |= 0x4
+		case "tags":
 			var zb0002 uint32
 			zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
 			if err != nil {
@@ -438,13 +594,15 @@ func (z *Audit) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.Tags[za0001] = za0002
 			}
-		case "RequestID":
+			zb0001Mask |= 0x8
+		case "requestID":
 			z.RequestID, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "RequestID")
 				return
 			}
-		case "ReqClaims":
+			zb0001Mask |= 0x10
+		case "requestClaims":
 			var zb0003 uint32
 			zb0003, bts, err = msgp.ReadMapHeaderBytes(bts)
 			if err != nil {
@@ -474,36 +632,64 @@ func (z *Audit) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.ReqClaims[za0003] = za0004
 			}
-		case "SourceHost":
+			zb0001Mask |= 0x20
+		case "sourceHost":
 			z.SourceHost, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "SourceHost")
 				return
 			}
-		case "AccessKey":
+			zb0001Mask |= 0x40
+		case "accessKey":
 			z.AccessKey, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "AccessKey")
 				return
 			}
-		case "ParentUser":
+			zb0001Mask |= 0x80
+		case "parentUser":
 			z.ParentUser, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ParentUser")
 				return
 			}
-		case "XXHash":
-			z.XXHash, bts, err = msgp.ReadUint64Bytes(bts)
-			if err != nil {
-				err = msgp.WrapError(err, "XXHash")
-				return
-			}
+			zb0001Mask |= 0x100
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
 				err = msgp.WrapError(err)
 				return
 			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x1ff {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Node = ""
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.APIName = ""
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.Bucket = ""
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.Tags = nil
+		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.RequestID = ""
+		}
+		if (zb0001Mask & 0x20) == 0 {
+			z.ReqClaims = nil
+		}
+		if (zb0001Mask & 0x40) == 0 {
+			z.SourceHost = ""
+		}
+		if (zb0001Mask & 0x80) == 0 {
+			z.AccessKey = ""
+		}
+		if (zb0001Mask & 0x100) == 0 {
+			z.ParentUser = ""
 		}
 	}
 	o = bts
@@ -519,13 +705,13 @@ func (z *Audit) Msgsize() (s int) {
 			s += msgp.StringPrefixSize + len(za0001) + msgp.StringPrefixSize + len(za0002)
 		}
 	}
-	s += 10 + msgp.StringPrefixSize + len(z.RequestID) + 10 + msgp.MapHeaderSize
+	s += 10 + msgp.StringPrefixSize + len(z.RequestID) + 14 + msgp.MapHeaderSize
 	if z.ReqClaims != nil {
 		for za0003, za0004 := range z.ReqClaims {
 			_ = za0004
 			s += msgp.StringPrefixSize + len(za0003) + msgp.GuessSize(za0004)
 		}
 	}
-	s += 11 + msgp.StringPrefixSize + len(z.SourceHost) + 10 + msgp.StringPrefixSize + len(z.AccessKey) + 11 + msgp.StringPrefixSize + len(z.ParentUser) + 7 + msgp.Uint64Size
+	s += 11 + msgp.StringPrefixSize + len(z.SourceHost) + 10 + msgp.StringPrefixSize + len(z.AccessKey) + 11 + msgp.StringPrefixSize + len(z.ParentUser)
 	return
 }
