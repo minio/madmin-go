@@ -539,7 +539,7 @@ func (z *APIStats) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint32 /* 22 bits */
+	var zb0001Mask uint32 /* 23 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -555,6 +555,7 @@ func (z *APIStats) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Nodes")
 				return
 			}
+			zb0001Mask |= 0x1
 		case "startTime":
 			if dc.IsNil() {
 				err = dc.ReadNil()
@@ -573,7 +574,7 @@ func (z *APIStats) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x1
+			zb0001Mask |= 0x2
 		case "endTime":
 			if dc.IsNil() {
 				err = dc.ReadNil()
@@ -592,147 +593,147 @@ func (z *APIStats) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x2
+			zb0001Mask |= 0x4
 		case "wallTimeSecs":
 			z.WallTimeSecs, err = dc.ReadFloat64()
 			if err != nil {
 				err = msgp.WrapError(err, "WallTimeSecs")
 				return
 			}
-			zb0001Mask |= 0x4
+			zb0001Mask |= 0x8
 		case "requests":
 			z.Requests, err = dc.ReadInt64()
 			if err != nil {
 				err = msgp.WrapError(err, "Requests")
 				return
 			}
-			zb0001Mask |= 0x8
+			zb0001Mask |= 0x10
 		case "incomingBytes":
 			z.IncomingBytes, err = dc.ReadInt64()
 			if err != nil {
 				err = msgp.WrapError(err, "IncomingBytes")
 				return
 			}
-			zb0001Mask |= 0x10
+			zb0001Mask |= 0x20
 		case "outgoingBytes":
 			z.OutgoingBytes, err = dc.ReadInt64()
 			if err != nil {
 				err = msgp.WrapError(err, "OutgoingBytes")
 				return
 			}
-			zb0001Mask |= 0x20
+			zb0001Mask |= 0x40
 		case "errors_4xx":
 			z.Errors4xx, err = dc.ReadInt()
 			if err != nil {
 				err = msgp.WrapError(err, "Errors4xx")
 				return
 			}
-			zb0001Mask |= 0x40
+			zb0001Mask |= 0x80
 		case "errors_5xx":
 			z.Errors5xx, err = dc.ReadInt()
 			if err != nil {
 				err = msgp.WrapError(err, "Errors5xx")
 				return
 			}
-			zb0001Mask |= 0x80
+			zb0001Mask |= 0x100
 		case "canceled":
 			z.Canceled, err = dc.ReadInt64()
 			if err != nil {
 				err = msgp.WrapError(err, "Canceled")
 				return
 			}
-			zb0001Mask |= 0x100
+			zb0001Mask |= 0x200
 		case "requestTimeSecs":
 			z.RequestTimeSecs, err = dc.ReadFloat64()
 			if err != nil {
 				err = msgp.WrapError(err, "RequestTimeSecs")
 				return
 			}
-			zb0001Mask |= 0x200
+			zb0001Mask |= 0x400
 		case "reqReadSecs":
 			z.ReqReadSecs, err = dc.ReadFloat64()
 			if err != nil {
 				err = msgp.WrapError(err, "ReqReadSecs")
 				return
 			}
-			zb0001Mask |= 0x400
+			zb0001Mask |= 0x800
 		case "respSecs":
 			z.RespSecs, err = dc.ReadFloat64()
 			if err != nil {
 				err = msgp.WrapError(err, "RespSecs")
 				return
 			}
-			zb0001Mask |= 0x800
+			zb0001Mask |= 0x1000
 		case "respTtfbSecs":
 			z.RespTTFBSecs, err = dc.ReadFloat64()
 			if err != nil {
 				err = msgp.WrapError(err, "RespTTFBSecs")
 				return
 			}
-			zb0001Mask |= 0x1000
+			zb0001Mask |= 0x2000
 		case "requestTimeSecsMin":
 			z.RequestTimeSecsMin, err = dc.ReadFloat64()
 			if err != nil {
 				err = msgp.WrapError(err, "RequestTimeSecsMin")
 				return
 			}
-			zb0001Mask |= 0x2000
+			zb0001Mask |= 0x4000
 		case "requestTimeSecsMax":
 			z.RequestTimeSecsMax, err = dc.ReadFloat64()
 			if err != nil {
 				err = msgp.WrapError(err, "RequestTimeSecsMax")
 				return
 			}
-			zb0001Mask |= 0x4000
+			zb0001Mask |= 0x8000
 		case "reqReadSecsMin":
 			z.ReqReadSecsMin, err = dc.ReadFloat64()
 			if err != nil {
 				err = msgp.WrapError(err, "ReqReadSecsMin")
 				return
 			}
-			zb0001Mask |= 0x8000
+			zb0001Mask |= 0x10000
 		case "reqReadSecsMax":
 			z.ReqReadSecsMax, err = dc.ReadFloat64()
 			if err != nil {
 				err = msgp.WrapError(err, "ReqReadSecsMax")
 				return
 			}
-			zb0001Mask |= 0x10000
+			zb0001Mask |= 0x20000
 		case "respSecsMin":
 			z.RespSecsMin, err = dc.ReadFloat64()
 			if err != nil {
 				err = msgp.WrapError(err, "RespSecsMin")
 				return
 			}
-			zb0001Mask |= 0x20000
+			zb0001Mask |= 0x40000
 		case "respSecsMax":
 			z.RespSecsMax, err = dc.ReadFloat64()
 			if err != nil {
 				err = msgp.WrapError(err, "RespSecsMax")
 				return
 			}
-			zb0001Mask |= 0x40000
+			zb0001Mask |= 0x80000
 		case "respTtfbSecsMin":
 			z.RespTTFBSecsMin, err = dc.ReadFloat64()
 			if err != nil {
 				err = msgp.WrapError(err, "RespTTFBSecsMin")
 				return
 			}
-			zb0001Mask |= 0x80000
+			zb0001Mask |= 0x100000
 		case "respTtfbSecsMax":
 			z.RespTTFBSecsMax, err = dc.ReadFloat64()
 			if err != nil {
 				err = msgp.WrapError(err, "RespTTFBSecsMax")
 				return
 			}
-			zb0001Mask |= 0x100000
+			zb0001Mask |= 0x200000
 		case "rejected":
 			err = z.Rejected.DecodeMsg(dc)
 			if err != nil {
 				err = msgp.WrapError(err, "Rejected")
 				return
 			}
-			zb0001Mask |= 0x200000
+			zb0001Mask |= 0x400000
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -742,71 +743,74 @@ func (z *APIStats) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3fffff {
+	if zb0001Mask != 0x7fffff {
 		if (zb0001Mask & 0x1) == 0 {
-			z.StartTime = nil
+			z.Nodes = 0
 		}
 		if (zb0001Mask & 0x2) == 0 {
-			z.EndTime = nil
+			z.StartTime = nil
 		}
 		if (zb0001Mask & 0x4) == 0 {
-			z.WallTimeSecs = 0
+			z.EndTime = nil
 		}
 		if (zb0001Mask & 0x8) == 0 {
-			z.Requests = 0
+			z.WallTimeSecs = 0
 		}
 		if (zb0001Mask & 0x10) == 0 {
-			z.IncomingBytes = 0
+			z.Requests = 0
 		}
 		if (zb0001Mask & 0x20) == 0 {
-			z.OutgoingBytes = 0
+			z.IncomingBytes = 0
 		}
 		if (zb0001Mask & 0x40) == 0 {
-			z.Errors4xx = 0
+			z.OutgoingBytes = 0
 		}
 		if (zb0001Mask & 0x80) == 0 {
-			z.Errors5xx = 0
+			z.Errors4xx = 0
 		}
 		if (zb0001Mask & 0x100) == 0 {
-			z.Canceled = 0
+			z.Errors5xx = 0
 		}
 		if (zb0001Mask & 0x200) == 0 {
-			z.RequestTimeSecs = 0
+			z.Canceled = 0
 		}
 		if (zb0001Mask & 0x400) == 0 {
-			z.ReqReadSecs = 0
+			z.RequestTimeSecs = 0
 		}
 		if (zb0001Mask & 0x800) == 0 {
-			z.RespSecs = 0
+			z.ReqReadSecs = 0
 		}
 		if (zb0001Mask & 0x1000) == 0 {
-			z.RespTTFBSecs = 0
+			z.RespSecs = 0
 		}
 		if (zb0001Mask & 0x2000) == 0 {
-			z.RequestTimeSecsMin = 0
+			z.RespTTFBSecs = 0
 		}
 		if (zb0001Mask & 0x4000) == 0 {
-			z.RequestTimeSecsMax = 0
+			z.RequestTimeSecsMin = 0
 		}
 		if (zb0001Mask & 0x8000) == 0 {
-			z.ReqReadSecsMin = 0
+			z.RequestTimeSecsMax = 0
 		}
 		if (zb0001Mask & 0x10000) == 0 {
-			z.ReqReadSecsMax = 0
+			z.ReqReadSecsMin = 0
 		}
 		if (zb0001Mask & 0x20000) == 0 {
-			z.RespSecsMin = 0
+			z.ReqReadSecsMax = 0
 		}
 		if (zb0001Mask & 0x40000) == 0 {
-			z.RespSecsMax = 0
+			z.RespSecsMin = 0
 		}
 		if (zb0001Mask & 0x80000) == 0 {
-			z.RespTTFBSecsMin = 0
+			z.RespSecsMax = 0
 		}
 		if (zb0001Mask & 0x100000) == 0 {
-			z.RespTTFBSecsMax = 0
+			z.RespTTFBSecsMin = 0
 		}
 		if (zb0001Mask & 0x200000) == 0 {
+			z.RespTTFBSecsMax = 0
+		}
+		if (zb0001Mask & 0x400000) == 0 {
 			z.Rejected = RejectedAPIStats{}
 		}
 	}
@@ -819,6 +823,10 @@ func (z *APIStats) EncodeMsg(en *msgp.Writer) (err error) {
 	zb0001Len := uint32(23)
 	var zb0001Mask uint32 /* 23 bits */
 	_ = zb0001Mask
+	if z.Nodes == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
 	if z.StartTime == nil {
 		zb0001Len--
 		zb0001Mask |= 0x2
@@ -911,15 +919,17 @@ func (z *APIStats) EncodeMsg(en *msgp.Writer) (err error) {
 
 	// skip if no fields are to be emitted
 	if zb0001Len != 0 {
-		// write "nodes"
-		err = en.Append(0xa5, 0x6e, 0x6f, 0x64, 0x65, 0x73)
-		if err != nil {
-			return
-		}
-		err = en.WriteInt(z.Nodes)
-		if err != nil {
-			err = msgp.WrapError(err, "Nodes")
-			return
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// write "nodes"
+			err = en.Append(0xa5, 0x6e, 0x6f, 0x64, 0x65, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt(z.Nodes)
+			if err != nil {
+				err = msgp.WrapError(err, "Nodes")
+				return
+			}
 		}
 		if (zb0001Mask & 0x2) == 0 { // if not omitted
 			// write "startTime"
@@ -1208,6 +1218,10 @@ func (z *APIStats) MarshalMsg(b []byte) (o []byte, err error) {
 	zb0001Len := uint32(23)
 	var zb0001Mask uint32 /* 23 bits */
 	_ = zb0001Mask
+	if z.Nodes == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
 	if z.StartTime == nil {
 		zb0001Len--
 		zb0001Mask |= 0x2
@@ -1297,9 +1311,11 @@ func (z *APIStats) MarshalMsg(b []byte) (o []byte, err error) {
 
 	// skip if no fields are to be emitted
 	if zb0001Len != 0 {
-		// string "nodes"
-		o = append(o, 0xa5, 0x6e, 0x6f, 0x64, 0x65, 0x73)
-		o = msgp.AppendInt(o, z.Nodes)
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// string "nodes"
+			o = append(o, 0xa5, 0x6e, 0x6f, 0x64, 0x65, 0x73)
+			o = msgp.AppendInt(o, z.Nodes)
+		}
 		if (zb0001Mask & 0x2) == 0 { // if not omitted
 			// string "startTime"
 			o = append(o, 0xa9, 0x73, 0x74, 0x61, 0x72, 0x74, 0x54, 0x69, 0x6d, 0x65)
@@ -1434,7 +1450,7 @@ func (z *APIStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint32 /* 22 bits */
+	var zb0001Mask uint32 /* 23 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -1450,6 +1466,7 @@ func (z *APIStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "Nodes")
 				return
 			}
+			zb0001Mask |= 0x1
 		case "startTime":
 			if msgp.IsNil(bts) {
 				bts, err = msgp.ReadNilBytes(bts)
@@ -1467,7 +1484,7 @@ func (z *APIStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x1
+			zb0001Mask |= 0x2
 		case "endTime":
 			if msgp.IsNil(bts) {
 				bts, err = msgp.ReadNilBytes(bts)
@@ -1485,147 +1502,147 @@ func (z *APIStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x2
+			zb0001Mask |= 0x4
 		case "wallTimeSecs":
 			z.WallTimeSecs, bts, err = msgp.ReadFloat64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "WallTimeSecs")
 				return
 			}
-			zb0001Mask |= 0x4
+			zb0001Mask |= 0x8
 		case "requests":
 			z.Requests, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Requests")
 				return
 			}
-			zb0001Mask |= 0x8
+			zb0001Mask |= 0x10
 		case "incomingBytes":
 			z.IncomingBytes, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "IncomingBytes")
 				return
 			}
-			zb0001Mask |= 0x10
+			zb0001Mask |= 0x20
 		case "outgoingBytes":
 			z.OutgoingBytes, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "OutgoingBytes")
 				return
 			}
-			zb0001Mask |= 0x20
+			zb0001Mask |= 0x40
 		case "errors_4xx":
 			z.Errors4xx, bts, err = msgp.ReadIntBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Errors4xx")
 				return
 			}
-			zb0001Mask |= 0x40
+			zb0001Mask |= 0x80
 		case "errors_5xx":
 			z.Errors5xx, bts, err = msgp.ReadIntBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Errors5xx")
 				return
 			}
-			zb0001Mask |= 0x80
+			zb0001Mask |= 0x100
 		case "canceled":
 			z.Canceled, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Canceled")
 				return
 			}
-			zb0001Mask |= 0x100
+			zb0001Mask |= 0x200
 		case "requestTimeSecs":
 			z.RequestTimeSecs, bts, err = msgp.ReadFloat64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "RequestTimeSecs")
 				return
 			}
-			zb0001Mask |= 0x200
+			zb0001Mask |= 0x400
 		case "reqReadSecs":
 			z.ReqReadSecs, bts, err = msgp.ReadFloat64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ReqReadSecs")
 				return
 			}
-			zb0001Mask |= 0x400
+			zb0001Mask |= 0x800
 		case "respSecs":
 			z.RespSecs, bts, err = msgp.ReadFloat64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "RespSecs")
 				return
 			}
-			zb0001Mask |= 0x800
+			zb0001Mask |= 0x1000
 		case "respTtfbSecs":
 			z.RespTTFBSecs, bts, err = msgp.ReadFloat64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "RespTTFBSecs")
 				return
 			}
-			zb0001Mask |= 0x1000
+			zb0001Mask |= 0x2000
 		case "requestTimeSecsMin":
 			z.RequestTimeSecsMin, bts, err = msgp.ReadFloat64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "RequestTimeSecsMin")
 				return
 			}
-			zb0001Mask |= 0x2000
+			zb0001Mask |= 0x4000
 		case "requestTimeSecsMax":
 			z.RequestTimeSecsMax, bts, err = msgp.ReadFloat64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "RequestTimeSecsMax")
 				return
 			}
-			zb0001Mask |= 0x4000
+			zb0001Mask |= 0x8000
 		case "reqReadSecsMin":
 			z.ReqReadSecsMin, bts, err = msgp.ReadFloat64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ReqReadSecsMin")
 				return
 			}
-			zb0001Mask |= 0x8000
+			zb0001Mask |= 0x10000
 		case "reqReadSecsMax":
 			z.ReqReadSecsMax, bts, err = msgp.ReadFloat64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ReqReadSecsMax")
 				return
 			}
-			zb0001Mask |= 0x10000
+			zb0001Mask |= 0x20000
 		case "respSecsMin":
 			z.RespSecsMin, bts, err = msgp.ReadFloat64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "RespSecsMin")
 				return
 			}
-			zb0001Mask |= 0x20000
+			zb0001Mask |= 0x40000
 		case "respSecsMax":
 			z.RespSecsMax, bts, err = msgp.ReadFloat64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "RespSecsMax")
 				return
 			}
-			zb0001Mask |= 0x40000
+			zb0001Mask |= 0x80000
 		case "respTtfbSecsMin":
 			z.RespTTFBSecsMin, bts, err = msgp.ReadFloat64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "RespTTFBSecsMin")
 				return
 			}
-			zb0001Mask |= 0x80000
+			zb0001Mask |= 0x100000
 		case "respTtfbSecsMax":
 			z.RespTTFBSecsMax, bts, err = msgp.ReadFloat64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "RespTTFBSecsMax")
 				return
 			}
-			zb0001Mask |= 0x100000
+			zb0001Mask |= 0x200000
 		case "rejected":
 			bts, err = z.Rejected.UnmarshalMsg(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Rejected")
 				return
 			}
-			zb0001Mask |= 0x200000
+			zb0001Mask |= 0x400000
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -1635,71 +1652,74 @@ func (z *APIStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3fffff {
+	if zb0001Mask != 0x7fffff {
 		if (zb0001Mask & 0x1) == 0 {
-			z.StartTime = nil
+			z.Nodes = 0
 		}
 		if (zb0001Mask & 0x2) == 0 {
-			z.EndTime = nil
+			z.StartTime = nil
 		}
 		if (zb0001Mask & 0x4) == 0 {
-			z.WallTimeSecs = 0
+			z.EndTime = nil
 		}
 		if (zb0001Mask & 0x8) == 0 {
-			z.Requests = 0
+			z.WallTimeSecs = 0
 		}
 		if (zb0001Mask & 0x10) == 0 {
-			z.IncomingBytes = 0
+			z.Requests = 0
 		}
 		if (zb0001Mask & 0x20) == 0 {
-			z.OutgoingBytes = 0
+			z.IncomingBytes = 0
 		}
 		if (zb0001Mask & 0x40) == 0 {
-			z.Errors4xx = 0
+			z.OutgoingBytes = 0
 		}
 		if (zb0001Mask & 0x80) == 0 {
-			z.Errors5xx = 0
+			z.Errors4xx = 0
 		}
 		if (zb0001Mask & 0x100) == 0 {
-			z.Canceled = 0
+			z.Errors5xx = 0
 		}
 		if (zb0001Mask & 0x200) == 0 {
-			z.RequestTimeSecs = 0
+			z.Canceled = 0
 		}
 		if (zb0001Mask & 0x400) == 0 {
-			z.ReqReadSecs = 0
+			z.RequestTimeSecs = 0
 		}
 		if (zb0001Mask & 0x800) == 0 {
-			z.RespSecs = 0
+			z.ReqReadSecs = 0
 		}
 		if (zb0001Mask & 0x1000) == 0 {
-			z.RespTTFBSecs = 0
+			z.RespSecs = 0
 		}
 		if (zb0001Mask & 0x2000) == 0 {
-			z.RequestTimeSecsMin = 0
+			z.RespTTFBSecs = 0
 		}
 		if (zb0001Mask & 0x4000) == 0 {
-			z.RequestTimeSecsMax = 0
+			z.RequestTimeSecsMin = 0
 		}
 		if (zb0001Mask & 0x8000) == 0 {
-			z.ReqReadSecsMin = 0
+			z.RequestTimeSecsMax = 0
 		}
 		if (zb0001Mask & 0x10000) == 0 {
-			z.ReqReadSecsMax = 0
+			z.ReqReadSecsMin = 0
 		}
 		if (zb0001Mask & 0x20000) == 0 {
-			z.RespSecsMin = 0
+			z.ReqReadSecsMax = 0
 		}
 		if (zb0001Mask & 0x40000) == 0 {
-			z.RespSecsMax = 0
+			z.RespSecsMin = 0
 		}
 		if (zb0001Mask & 0x80000) == 0 {
-			z.RespTTFBSecsMin = 0
+			z.RespSecsMax = 0
 		}
 		if (zb0001Mask & 0x100000) == 0 {
-			z.RespTTFBSecsMax = 0
+			z.RespTTFBSecsMin = 0
 		}
 		if (zb0001Mask & 0x200000) == 0 {
+			z.RespTTFBSecsMax = 0
+		}
+		if (zb0001Mask & 0x400000) == 0 {
 			z.Rejected = RejectedAPIStats{}
 		}
 	}
