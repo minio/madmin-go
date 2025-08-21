@@ -26,7 +26,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/minio/madmin-go/v2"
+	"github.com/minio/madmin-go/v4"
 )
 
 func main() {
@@ -42,7 +42,7 @@ func main() {
 	// Print most recent failures for replication across all nodes in a minio cluster.
 	mrfCh := madmClnt.BucketReplicationMRF(context.Background(), "my-bucketname", "all")
 	for m := range mrfCh {
-		if m.Err != nil {
+		if m.Err != "" {
 			log.Fatalln(m.Err)
 		}
 		fmt.Println(m)
