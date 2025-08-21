@@ -903,7 +903,7 @@ func (m *RuntimeMetrics) Merge(other *RuntimeMetrics) {
 
 // APIStats contains accumulated statistics for the API on a number of nodes.
 type APIStats struct {
-	Nodes         int        `json:"nodes"`                   // Number of nodes that have reported data.
+	Nodes         int        `json:"nodes,omitempty"`         // Number of nodes that have reported data.
 	StartTime     *time.Time `json:"startTime,omitempty"`     // Time range this data covers unless merged from sources with different start times..
 	EndTime       *time.Time `json:"endTime,omitempty"`       // Time range this data covers unless merged from sources with different end times.
 	WallTimeSecs  float64    `json:"wallTimeSecs,omitempty"`  // Wall time this data covers, accumulated from all nodes.
@@ -1011,14 +1011,11 @@ func (a *SegmentedAPIMetrics) Merge(other SegmentedAPIMetrics) {
 		return
 	}
 	if len(a.Segments) == 0 {
-		a.Segments = other.Segments
+		*a = other
 		return
 	}
 
 	// Intervals must match to merge safely.
-	if a.Interval == 0 {
-		a.Interval = other.Interval
-	}
 	if other.Interval == 0 || a.Interval != other.Interval {
 		// Cannot merge different resolutions without resampling.
 		// Bail out silently as there's no error mechanism here.
@@ -1078,13 +1075,19 @@ func (a *SegmentedAPIMetrics) Merge(other SegmentedAPIMetrics) {
 	a.Segments = newSegments
 }
 
-func (a *SegmentedAPIMetrics) Total() APIStats {
+func (a *SegmentedAPIMetrics) Total(nodes ...int) APIStats {
 	var res APIStats
 	if a == nil {
 		return res
 	}
 	for _, stat := range a.Segments {
 		res.Merge(stat)
+	}
+	// Since we are merging across APIs must reset track node count.
+	if len(nodes) > 0 {
+		res.Nodes = nodes[0]
+	} else {
+		res.Nodes = 0
 	}
 	return res
 }
@@ -1153,14 +1156,21 @@ func (a APIMetrics) LastMinuteTotal() APIStats {
 	for _, stats := range a.LastMinuteAPI {
 		res.Merge(stats)
 	}
+	// Since we are merging across APIs must reset track node count.
+	res.Nodes = a.Nodes
 	return res
 }
 
 // LastDayTotalSegmented returns the total SegmentedAPIMetrics for the last day.
+// There will be no node-count for values.
 func (a APIMetrics) LastDayTotalSegmented() SegmentedAPIMetrics {
 	var res SegmentedAPIMetrics
 	for _, stats := range a.LastDayAPI {
 		res.Merge(stats)
+	}
+	// Since we are merging across APIs must reset track node count.
+	for i := range res.Segments {
+		res.Segments[i].Nodes = a.Nodes
 	}
 	return res
 }
@@ -1173,5 +1183,8 @@ func (a APIMetrics) LastDayTotal() APIStats {
 			res.Merge(s)
 		}
 	}
+	// Since we are merging across APIs must reset track node count.
+	res.Nodes = a.Nodes
+
 	return res
 }
