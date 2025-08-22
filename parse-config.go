@@ -270,6 +270,26 @@ func (c *SubsysConfig) Lookup(key string) (val string, present bool) {
 	return c.KV[idx].Value, true
 }
 
+// LookupEnv resolves the value of a config parameter.
+func (c *SubsysConfig) Lookupenv(key string) (val string, envVal string, present bool) {
+	if c.kvIndexMap == nil {
+		return
+	}
+
+	idx, ok := c.kvIndexMap[key]
+	if !ok {
+		return
+	}
+
+	if evo := c.KV[idx].EnvOverride; evo != nil {
+		envVal = evo.Value
+		present = true
+	}
+
+	val = c.KV[idx].Value
+	return val, envVal, true
+}
+
 var (
 	ErrInvalidEnvVarLine = errors.New("expected env var line of the form `# MINIO_...=...`")
 	ErrInvalidConfigKV   = errors.New("expected config value in the format `key=value`")
