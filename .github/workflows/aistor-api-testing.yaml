@@ -1,0 +1,124 @@
+# @format
+
+name: MinIO Admin AIStor EOS API Testing
+on:
+  pull_request:
+    branches:
+      - main
+
+  # Manual dispatch
+  workflow_dispatch:
+
+# This ensures that previous jobs for the PR are canceled when the PR is updated.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref }}
+  cancel-in-progress: true
+
+env:
+  GOPRIVATE: "github.com/miniohq"
+
+jobs:
+  build-aistor:
+    runs-on: self-hosted
+    strategy:
+      matrix:
+        go-version: [1.24.x]
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Configure git for private modules
+        env:
+          TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: git config --global url."https://minio-bot:${TOKEN}@github.com".insteadOf "https://github.com"
+      - name: Checkout EOS project
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+          path: eos
+      - name: Setup Go
+        uses: ./.github/actions/setup-go
+        with:
+          cache-name: aistor-eos
+          cache-dependency-path: "eos/go.mod,eos/go.sum"
+          go-version: ${{ matrix.go-version }}
+          gh_runner_cache_endpoint_url: https://ns-3.k1.min.dev
+          gh_runner_cache_access_key: ${{ secrets.GH_RUNNER_CACHE_ACCESS_KEY }}
+          gh_runner_cache_secret_key: ${{ secrets.GH_RUNNER_CACHE_SECRET_KEY }}
+      - name: Point eos madmin-go ref to local madmin-go
+        run: |
+          # Point eos to local madmin-go
+          pushd eos
+          go mod edit -replace github.com/minio/madmin-go/v4=$GITHUB_WORKSPACE
+          go mod tidy
+          popd
+      - name: Build AIStor
+        working-directory: ./eos
+        run: |
+          make docker-dev TAG=minio/eos:${{ github.run_id }}
+      - name: Save docker image
+        run: |
+          mkdir -p ./tmp
+          docker save --output ./tmp/eos-${{ github.run_id }}.tar minio/eos:${{ github.run_id }}
+      - name: Upload docker image
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-eos-madmin
+          path: ./tmp/eos-${{ github.run_id }}.tar
+
+  list-tests:
+    name: Determine tests
+    timeout-minutes: 5
+    runs-on: self-hosted
+    outputs:
+      testList: ${{ steps.testList.outputs.testList }}
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+      - name: Determine tests
+        id: testList
+        run: |
+          TESTS_JSON=$(cat integrationtests/*_test.go | grep '^func Test[a-zA-Z0-9_]*\s*(t\s.testing.T)' | sed -n 's/.*\(Test[a-zA-Z0-9_]*\).*/\1/p' | sed s/^Test//g | jq -R -s -c 'split("\n")[:-1]')
+          echo Integration tests: $TESTS_JSON
+          echo "testList=$TESTS_JSON" >> $GITHUB_OUTPUT
+
+  run-tests:
+    name: ${{ matrix.test }}
+    needs: [build-aistor, list-tests]
+    timeout-minutes: 30
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        test: ${{ fromJson(needs.list-tests.outputs.testList) }}
+        go-version: [1.24.x]
+        os: [self-hosted]
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+      - name: Configure git for private modules
+        env:
+          TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+        run: git config --global url."https://minio-bot:${TOKEN}@github.com".insteadOf "https://github.com"
+      - name: Download AIStor Docker image
+        uses: actions/download-artifact@v4
+        with:
+          path: ./tmp/image
+          pattern: docker-eos-madmin
+      - name: Load AIStor Docker image
+        run: |
+          docker load --input ./tmp/image/eos-${{ github.run_id }}.tar
+      - name: Setup Go
+        uses: ./.github/actions/setup-go
+        with:
+          cache-name: madmin-go-integrationtests
+          cache-dependency-path: "go.mod,go.sum,integrationtests/go.mod,integrationtests/go.sum"
+          go-version: ${{ matrix.go-version }}
+          gh_runner_cache_endpoint_url: https://ns-3.k1.min.dev
+          gh_runner_cache_access_key: ${{ secrets.GH_RUNNER_CACHE_ACCESS_KEY }}
+          gh_runner_cache_secret_key: ${{ secrets.GH_RUNNER_CACHE_SECRET_KEY }}
+      - name: Run ${{ matrix.test }}
+        working-directory: ./integrationtests
+        env:
+          EOS_IMAGE: "minio/eos:${{ github.run_id }}"
+        run: |
+          go test -v -run '^Test${{ matrix.test }}$' -timeout 30m
