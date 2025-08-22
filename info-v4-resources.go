@@ -270,7 +270,7 @@ func (adm *AdminClient) ServicesQuery(ctx context.Context, options ...func(*Serv
 	return info, nil
 }
 
-// PoolsResourceOpts contains the available options for the PoolQuery API
+// PoolsResourceOpts contains the available options for the PoolsQuery API
 //
 //msgp:ignore PoolsResourceOpts
 type PoolsResourceOpts struct {
@@ -328,9 +328,7 @@ func (adm *AdminClient) PoolsQuery(ctx context.Context, options *PoolsResourceOp
 	return &poolsResp, nil
 }
 
-// NodesResourceOpts ask for additional data from the server
-// this is not used at the moment, kept here for future
-// extensibility.
+// NodesResourceOpts contains the available options for the NodesQuery API
 //
 //msgp:ignore NodesResourceOpts
 type NodesResourceOpts struct {
@@ -391,9 +389,7 @@ func (adm *AdminClient) NodesQuery(ctx context.Context, options *NodesResourceOp
 	return &nodesResp, nil
 }
 
-// DrivesResourceOpts ask for additional data from the server
-// this is not used at the moment, kept here for future
-// extensibility.
+// DrivesResourceOpts contains the available options for the DrivesQuery API
 //
 //msgp:ignore DrivesResourceOpts
 type DrivesResourceOpts struct {
@@ -454,9 +450,7 @@ func (adm *AdminClient) DrivesQuery(ctx context.Context, options *DrivesResource
 	return &drivesResp, nil
 }
 
-// ErasureSetsResourceOpts ask for additional data from the server
-// this is not used at the moment, kept here for future
-// extensibility.
+// ErasureSetsResourceOpts contains the available options for the ErasureSetsQuery API
 //
 //msgp:ignore ErasureSetsResourceOpts
 type ErasureSetsResourceOpts struct {
