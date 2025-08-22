@@ -270,7 +270,7 @@ func (c *SubsysConfig) Lookup(key string) (val string, present bool) {
 	return c.KV[idx].Value, true
 }
 
-// LookupEnv resolves the value of a config parameter.
+// Lookupenv resolves the value of a config parameter.
 func (c *SubsysConfig) Lookupenv(key string) (val string, envVal string, present bool) {
 	if c.kvIndexMap == nil {
 		return
