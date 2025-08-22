@@ -19,7 +19,7 @@ env:
 
 jobs:
   build-aistor:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         go-version: [1.24.x]
@@ -68,7 +68,7 @@ jobs:
   list-tests:
     name: Determine tests
     timeout-minutes: 5
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     outputs:
       testList: ${{ steps.testList.outputs.testList }}
     steps:
@@ -85,13 +85,12 @@ jobs:
     name: ${{ matrix.test }}
     needs: [build-aistor, list-tests]
     timeout-minutes: 30
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         test: ${{ fromJson(needs.list-tests.outputs.testList) }}
         go-version: [1.24.x]
-        os: [self-hosted]
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
