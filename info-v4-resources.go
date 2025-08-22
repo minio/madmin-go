@@ -23,6 +23,8 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"reflect"
+	"sort"
 	"strconv"
 
 	"github.com/tinylib/msgp/msgp"
@@ -34,34 +36,42 @@ import (
 
 // PaginatedPoolsResponse represents a paginated response for pools
 type PaginatedPoolsResponse struct {
-	Results []PoolResource `json:"results" msg:"r,omitempty"`
-	Count   int            `json:"count" msg:"c"`
-	Total   int            `json:"total" msg:"t"`
-	Offset  int            `json:"offset" msg:"o"`
+	Results      []PoolResource `json:"results" msg:"r,omitempty"`
+	Count        int            `json:"count" msg:"c"`
+	Total        int            `json:"total" msg:"t"`
+	Offset       int            `json:"offset" msg:"o"`
+	Sort         string         `json:"sort" msg:"s"`
+	SortReversed bool           `json:"sortReversed" msg:"sr"`
 }
 
 // PaginatedNodesResponse represents a paginated response for nodes
 type PaginatedNodesResponse struct {
-	Results []NodeResource `json:"results" msg:"r,omitempty"`
-	Count   int            `json:"count" msg:"c"`
-	Total   int            `json:"total" msg:"t"`
-	Offset  int            `json:"offset" msg:"o"`
+	Results      []NodeResource `json:"results" msg:"r,omitempty"`
+	Count        int            `json:"count" msg:"c"`
+	Total        int            `json:"total" msg:"t"`
+	Offset       int            `json:"offset" msg:"o"`
+	Sort         string         `json:"sort" msg:"s"`
+	SortReversed bool           `json:"sortReversed" msg:"sr"`
 }
 
 // PaginatedDrivesResponse represents a paginated response for drives
 type PaginatedDrivesResponse struct {
-	Results []DriveResource `json:"results" msg:"r,omitempty"`
-	Count   int             `json:"count" msg:"c"`
-	Total   int             `json:"total" msg:"t"`
-	Offset  int             `json:"offset" msg:"o"`
+	Results      []DriveResource `json:"results" msg:"r,omitempty"`
+	Count        int             `json:"count" msg:"c"`
+	Total        int             `json:"total" msg:"t"`
+	Offset       int             `json:"offset" msg:"o"`
+	Sort         string          `json:"sort" msg:"s"`
+	SortReversed bool            `json:"sortReversed" msg:"sr"`
 }
 
 // PaginatedErasureSetsResponse represents a paginated response for erasure sets
 type PaginatedErasureSetsResponse struct {
-	Results []ErasureSetResource `json:"results" msg:"r,omitempty"`
-	Count   int                  `json:"count" msg:"c"`
-	Total   int                  `json:"total" msg:"t"`
-	Offset  int                  `json:"offset" msg:"o"`
+	Results      []ErasureSetResource `json:"results" msg:"r,omitempty"`
+	Count        int                  `json:"count" msg:"c"`
+	Total        int                  `json:"total" msg:"t"`
+	Offset       int                  `json:"offset" msg:"o"`
+	Sort         string               `json:"sort" msg:"s"`
+	SortReversed bool                 `json:"sortReversed" msg:"sr"`
 }
 
 type PoolLayout struct {
@@ -260,32 +270,37 @@ func (adm *AdminClient) ServicesQuery(ctx context.Context, options ...func(*Serv
 	return info, nil
 }
 
-// PoolsResourceOpts ask for additional data from the server
-// this is not used at the moment, kept here for future
-// extensibility.
+// PoolsResourceOpts contains the available options for the PoolQuery API
 //
 //msgp:ignore PoolsResourceOpts
 type PoolsResourceOpts struct {
-	Limit  int
-	Offset int
-	Filter string
+	Limit        int
+	Offset       int
+	Filter       string
+	Sort         string
+	SortReversed bool
 }
 
 func (adm *AdminClient) PoolsQuery(ctx context.Context, options *PoolsResourceOpts) (*PaginatedPoolsResponse, error) {
 	values := make(url.Values)
 
 	if options != nil {
-		// Add pagination and filter parameters if provided
 		if options.Limit > 0 {
 			values.Set("limit", strconv.Itoa(options.Limit))
 		}
-
 		if options.Offset > 0 {
 			values.Set("offset", strconv.Itoa(options.Offset))
 		}
-
 		if options.Filter != "" {
 			values.Set("filter", options.Filter)
+		}
+		if options.Sort != "" {
+			values.Set("sort", options.Sort)
+		}
+		if options.SortReversed {
+			values.Set("sortReversed", "true")
+		} else {
+			values.Set("sortReversed", "false")
 		}
 	}
 
@@ -319,9 +334,11 @@ func (adm *AdminClient) PoolsQuery(ctx context.Context, options *PoolsResourceOp
 //
 //msgp:ignore NodesResourceOpts
 type NodesResourceOpts struct {
-	Limit  int
-	Offset int
-	Filter string
+	Limit        int
+	Offset       int
+	Filter       string
+	Sort         string
+	SortReversed bool
 }
 
 // NodesQuery - Get list of nodes
@@ -340,6 +357,14 @@ func (adm *AdminClient) NodesQuery(ctx context.Context, options *NodesResourceOp
 
 		if options.Filter != "" {
 			values.Set("filter", options.Filter)
+		}
+		if options.Sort != "" {
+			values.Set("sort", options.Sort)
+		}
+		if options.SortReversed {
+			values.Set("sortReversed", "true")
+		} else {
+			values.Set("sortReversed", "false")
 		}
 	}
 
@@ -372,9 +397,11 @@ func (adm *AdminClient) NodesQuery(ctx context.Context, options *NodesResourceOp
 //
 //msgp:ignore DrivesResourceOpts
 type DrivesResourceOpts struct {
-	Limit  int
-	Offset int
-	Filter string
+	Limit        int
+	Offset       int
+	Filter       string
+	Sort         string
+	SortReversed bool
 }
 
 // DrivesQuery - Get list of drives
@@ -393,6 +420,14 @@ func (adm *AdminClient) DrivesQuery(ctx context.Context, options *DrivesResource
 
 		if options.Filter != "" {
 			values.Set("filter", options.Filter)
+		}
+		if options.Sort != "" {
+			values.Set("sort", options.Sort)
+		}
+		if options.SortReversed {
+			values.Set("sortReversed", "true")
+		} else {
+			values.Set("sortReversed", "false")
 		}
 	}
 
@@ -425,9 +460,11 @@ func (adm *AdminClient) DrivesQuery(ctx context.Context, options *DrivesResource
 //
 //msgp:ignore ErasureSetsResourceOpts
 type ErasureSetsResourceOpts struct {
-	Limit  int
-	Offset int
-	Filter string
+	Limit        int
+	Offset       int
+	Filter       string
+	Sort         string
+	SortReversed bool
 }
 
 // ErasureSetsQuery - Get list of erasure sets
@@ -446,6 +483,14 @@ func (adm *AdminClient) ErasureSetsQuery(ctx context.Context, options *ErasureSe
 
 		if options.Filter != "" {
 			values.Set("filter", options.Filter)
+		}
+		if options.Sort != "" {
+			values.Set("sort", options.Sort)
+		}
+		if options.SortReversed {
+			values.Set("sortReversed", "true")
+		} else {
+			values.Set("sortReversed", "false")
 		}
 	}
 
@@ -470,4 +515,47 @@ func (adm *AdminClient) ErasureSetsQuery(ctx context.Context, options *ErasureSe
 	}
 
 	return &setsResp, nil
+}
+
+// SortSlice allows for slice sorting based on a field as string.
+func SortSlice[T any](slice []T, field string, reversed bool) {
+	if field == "" {
+		return
+	}
+	sort.SliceStable(slice, func(i, j int) bool {
+		valI := reflect.ValueOf(slice[i])
+		valJ := reflect.ValueOf(slice[j])
+
+		if valI.Kind() == reflect.Ptr {
+			valI = valI.Elem()
+			valJ = valJ.Elem()
+		}
+
+		fieldI := valI.FieldByName(field)
+		fieldJ := valJ.FieldByName(field)
+
+		if !fieldI.IsValid() || !fieldJ.IsValid() {
+			return false
+		}
+
+		switch fieldI.Kind() {
+		case reflect.String:
+			if reversed {
+				return fieldI.String() > fieldJ.String()
+			}
+			return fieldI.String() < fieldJ.String()
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			if reversed {
+				return fieldI.Int() > fieldJ.Int()
+			}
+			return fieldI.Int() < fieldJ.Int()
+		case reflect.Float32, reflect.Float64:
+			if reversed {
+				return fieldI.Float() > fieldJ.Float()
+			}
+			return fieldI.Float() < fieldJ.Float()
+		default:
+			return false
+		}
+	})
 }

@@ -2357,6 +2357,18 @@ func (z *PaginatedDrivesResponse) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Offset")
 				return
 			}
+		case "s":
+			z.Sort, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "Sort")
+				return
+			}
+		case "sr":
+			z.SortReversed, err = dc.ReadBool()
+			if err != nil {
+				err = msgp.WrapError(err, "SortReversed")
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -2376,8 +2388,8 @@ func (z *PaginatedDrivesResponse) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *PaginatedDrivesResponse) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(4)
-	var zb0001Mask uint8 /* 4 bits */
+	zb0001Len := uint32(6)
+	var zb0001Mask uint8 /* 6 bits */
 	_ = zb0001Mask
 	if z.Results == nil {
 		zb0001Len--
@@ -2440,6 +2452,26 @@ func (z *PaginatedDrivesResponse) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "Offset")
 			return
 		}
+		// write "s"
+		err = en.Append(0xa1, 0x73)
+		if err != nil {
+			return
+		}
+		err = en.WriteString(z.Sort)
+		if err != nil {
+			err = msgp.WrapError(err, "Sort")
+			return
+		}
+		// write "sr"
+		err = en.Append(0xa2, 0x73, 0x72)
+		if err != nil {
+			return
+		}
+		err = en.WriteBool(z.SortReversed)
+		if err != nil {
+			err = msgp.WrapError(err, "SortReversed")
+			return
+		}
 	}
 	return
 }
@@ -2448,8 +2480,8 @@ func (z *PaginatedDrivesResponse) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *PaginatedDrivesResponse) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(4)
-	var zb0001Mask uint8 /* 4 bits */
+	zb0001Len := uint32(6)
+	var zb0001Mask uint8 /* 6 bits */
 	_ = zb0001Mask
 	if z.Results == nil {
 		zb0001Len--
@@ -2481,6 +2513,12 @@ func (z *PaginatedDrivesResponse) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "o"
 		o = append(o, 0xa1, 0x6f)
 		o = msgp.AppendInt(o, z.Offset)
+		// string "s"
+		o = append(o, 0xa1, 0x73)
+		o = msgp.AppendString(o, z.Sort)
+		// string "sr"
+		o = append(o, 0xa2, 0x73, 0x72)
+		o = msgp.AppendBool(o, z.SortReversed)
 	}
 	return
 }
@@ -2543,6 +2581,18 @@ func (z *PaginatedDrivesResponse) UnmarshalMsg(bts []byte) (o []byte, err error)
 				err = msgp.WrapError(err, "Offset")
 				return
 			}
+		case "s":
+			z.Sort, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Sort")
+				return
+			}
+		case "sr":
+			z.SortReversed, bts, err = msgp.ReadBoolBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "SortReversed")
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -2566,7 +2616,7 @@ func (z *PaginatedDrivesResponse) Msgsize() (s int) {
 	for za0001 := range z.Results {
 		s += z.Results[za0001].Msgsize()
 	}
-	s += 2 + msgp.IntSize + 2 + msgp.IntSize + 2 + msgp.IntSize
+	s += 2 + msgp.IntSize + 2 + msgp.IntSize + 2 + msgp.IntSize + 2 + msgp.StringPrefixSize + len(z.Sort) + 3 + msgp.BoolSize
 	return
 }
 
@@ -2628,6 +2678,18 @@ func (z *PaginatedErasureSetsResponse) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Offset")
 				return
 			}
+		case "s":
+			z.Sort, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "Sort")
+				return
+			}
+		case "sr":
+			z.SortReversed, err = dc.ReadBool()
+			if err != nil {
+				err = msgp.WrapError(err, "SortReversed")
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -2647,8 +2709,8 @@ func (z *PaginatedErasureSetsResponse) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *PaginatedErasureSetsResponse) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(4)
-	var zb0001Mask uint8 /* 4 bits */
+	zb0001Len := uint32(6)
+	var zb0001Mask uint8 /* 6 bits */
 	_ = zb0001Mask
 	if z.Results == nil {
 		zb0001Len--
@@ -2711,6 +2773,26 @@ func (z *PaginatedErasureSetsResponse) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "Offset")
 			return
 		}
+		// write "s"
+		err = en.Append(0xa1, 0x73)
+		if err != nil {
+			return
+		}
+		err = en.WriteString(z.Sort)
+		if err != nil {
+			err = msgp.WrapError(err, "Sort")
+			return
+		}
+		// write "sr"
+		err = en.Append(0xa2, 0x73, 0x72)
+		if err != nil {
+			return
+		}
+		err = en.WriteBool(z.SortReversed)
+		if err != nil {
+			err = msgp.WrapError(err, "SortReversed")
+			return
+		}
 	}
 	return
 }
@@ -2719,8 +2801,8 @@ func (z *PaginatedErasureSetsResponse) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *PaginatedErasureSetsResponse) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(4)
-	var zb0001Mask uint8 /* 4 bits */
+	zb0001Len := uint32(6)
+	var zb0001Mask uint8 /* 6 bits */
 	_ = zb0001Mask
 	if z.Results == nil {
 		zb0001Len--
@@ -2752,6 +2834,12 @@ func (z *PaginatedErasureSetsResponse) MarshalMsg(b []byte) (o []byte, err error
 		// string "o"
 		o = append(o, 0xa1, 0x6f)
 		o = msgp.AppendInt(o, z.Offset)
+		// string "s"
+		o = append(o, 0xa1, 0x73)
+		o = msgp.AppendString(o, z.Sort)
+		// string "sr"
+		o = append(o, 0xa2, 0x73, 0x72)
+		o = msgp.AppendBool(o, z.SortReversed)
 	}
 	return
 }
@@ -2814,6 +2902,18 @@ func (z *PaginatedErasureSetsResponse) UnmarshalMsg(bts []byte) (o []byte, err e
 				err = msgp.WrapError(err, "Offset")
 				return
 			}
+		case "s":
+			z.Sort, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Sort")
+				return
+			}
+		case "sr":
+			z.SortReversed, bts, err = msgp.ReadBoolBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "SortReversed")
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -2837,7 +2937,7 @@ func (z *PaginatedErasureSetsResponse) Msgsize() (s int) {
 	for za0001 := range z.Results {
 		s += z.Results[za0001].Msgsize()
 	}
-	s += 2 + msgp.IntSize + 2 + msgp.IntSize + 2 + msgp.IntSize
+	s += 2 + msgp.IntSize + 2 + msgp.IntSize + 2 + msgp.IntSize + 2 + msgp.StringPrefixSize + len(z.Sort) + 3 + msgp.BoolSize
 	return
 }
 
@@ -2899,6 +2999,18 @@ func (z *PaginatedNodesResponse) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Offset")
 				return
 			}
+		case "s":
+			z.Sort, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "Sort")
+				return
+			}
+		case "sr":
+			z.SortReversed, err = dc.ReadBool()
+			if err != nil {
+				err = msgp.WrapError(err, "SortReversed")
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -2918,8 +3030,8 @@ func (z *PaginatedNodesResponse) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *PaginatedNodesResponse) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(4)
-	var zb0001Mask uint8 /* 4 bits */
+	zb0001Len := uint32(6)
+	var zb0001Mask uint8 /* 6 bits */
 	_ = zb0001Mask
 	if z.Results == nil {
 		zb0001Len--
@@ -2982,6 +3094,26 @@ func (z *PaginatedNodesResponse) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "Offset")
 			return
 		}
+		// write "s"
+		err = en.Append(0xa1, 0x73)
+		if err != nil {
+			return
+		}
+		err = en.WriteString(z.Sort)
+		if err != nil {
+			err = msgp.WrapError(err, "Sort")
+			return
+		}
+		// write "sr"
+		err = en.Append(0xa2, 0x73, 0x72)
+		if err != nil {
+			return
+		}
+		err = en.WriteBool(z.SortReversed)
+		if err != nil {
+			err = msgp.WrapError(err, "SortReversed")
+			return
+		}
 	}
 	return
 }
@@ -2990,8 +3122,8 @@ func (z *PaginatedNodesResponse) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *PaginatedNodesResponse) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(4)
-	var zb0001Mask uint8 /* 4 bits */
+	zb0001Len := uint32(6)
+	var zb0001Mask uint8 /* 6 bits */
 	_ = zb0001Mask
 	if z.Results == nil {
 		zb0001Len--
@@ -3023,6 +3155,12 @@ func (z *PaginatedNodesResponse) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "o"
 		o = append(o, 0xa1, 0x6f)
 		o = msgp.AppendInt(o, z.Offset)
+		// string "s"
+		o = append(o, 0xa1, 0x73)
+		o = msgp.AppendString(o, z.Sort)
+		// string "sr"
+		o = append(o, 0xa2, 0x73, 0x72)
+		o = msgp.AppendBool(o, z.SortReversed)
 	}
 	return
 }
@@ -3085,6 +3223,18 @@ func (z *PaginatedNodesResponse) UnmarshalMsg(bts []byte) (o []byte, err error) 
 				err = msgp.WrapError(err, "Offset")
 				return
 			}
+		case "s":
+			z.Sort, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Sort")
+				return
+			}
+		case "sr":
+			z.SortReversed, bts, err = msgp.ReadBoolBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "SortReversed")
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -3108,7 +3258,7 @@ func (z *PaginatedNodesResponse) Msgsize() (s int) {
 	for za0001 := range z.Results {
 		s += z.Results[za0001].Msgsize()
 	}
-	s += 2 + msgp.IntSize + 2 + msgp.IntSize + 2 + msgp.IntSize
+	s += 2 + msgp.IntSize + 2 + msgp.IntSize + 2 + msgp.IntSize + 2 + msgp.StringPrefixSize + len(z.Sort) + 3 + msgp.BoolSize
 	return
 }
 
@@ -3170,6 +3320,18 @@ func (z *PaginatedPoolsResponse) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Offset")
 				return
 			}
+		case "s":
+			z.Sort, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "Sort")
+				return
+			}
+		case "sr":
+			z.SortReversed, err = dc.ReadBool()
+			if err != nil {
+				err = msgp.WrapError(err, "SortReversed")
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -3189,8 +3351,8 @@ func (z *PaginatedPoolsResponse) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *PaginatedPoolsResponse) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(4)
-	var zb0001Mask uint8 /* 4 bits */
+	zb0001Len := uint32(6)
+	var zb0001Mask uint8 /* 6 bits */
 	_ = zb0001Mask
 	if z.Results == nil {
 		zb0001Len--
@@ -3253,6 +3415,26 @@ func (z *PaginatedPoolsResponse) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "Offset")
 			return
 		}
+		// write "s"
+		err = en.Append(0xa1, 0x73)
+		if err != nil {
+			return
+		}
+		err = en.WriteString(z.Sort)
+		if err != nil {
+			err = msgp.WrapError(err, "Sort")
+			return
+		}
+		// write "sr"
+		err = en.Append(0xa2, 0x73, 0x72)
+		if err != nil {
+			return
+		}
+		err = en.WriteBool(z.SortReversed)
+		if err != nil {
+			err = msgp.WrapError(err, "SortReversed")
+			return
+		}
 	}
 	return
 }
@@ -3261,8 +3443,8 @@ func (z *PaginatedPoolsResponse) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *PaginatedPoolsResponse) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(4)
-	var zb0001Mask uint8 /* 4 bits */
+	zb0001Len := uint32(6)
+	var zb0001Mask uint8 /* 6 bits */
 	_ = zb0001Mask
 	if z.Results == nil {
 		zb0001Len--
@@ -3294,6 +3476,12 @@ func (z *PaginatedPoolsResponse) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "o"
 		o = append(o, 0xa1, 0x6f)
 		o = msgp.AppendInt(o, z.Offset)
+		// string "s"
+		o = append(o, 0xa1, 0x73)
+		o = msgp.AppendString(o, z.Sort)
+		// string "sr"
+		o = append(o, 0xa2, 0x73, 0x72)
+		o = msgp.AppendBool(o, z.SortReversed)
 	}
 	return
 }
@@ -3356,6 +3544,18 @@ func (z *PaginatedPoolsResponse) UnmarshalMsg(bts []byte) (o []byte, err error) 
 				err = msgp.WrapError(err, "Offset")
 				return
 			}
+		case "s":
+			z.Sort, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Sort")
+				return
+			}
+		case "sr":
+			z.SortReversed, bts, err = msgp.ReadBoolBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "SortReversed")
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -3379,7 +3579,7 @@ func (z *PaginatedPoolsResponse) Msgsize() (s int) {
 	for za0001 := range z.Results {
 		s += z.Results[za0001].Msgsize()
 	}
-	s += 2 + msgp.IntSize + 2 + msgp.IntSize + 2 + msgp.IntSize
+	s += 2 + msgp.IntSize + 2 + msgp.IntSize + 2 + msgp.IntSize + 2 + msgp.StringPrefixSize + len(z.Sort) + 3 + msgp.BoolSize
 	return
 }
 
