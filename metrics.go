@@ -23,6 +23,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -69,16 +70,25 @@ const (
 
 // MetricsOptions are options provided to Metrics call.
 type MetricsOptions struct {
-	Type     MetricType    // Return only these metric types. Several types can be combined using |. Leave at 0 to return all.
-	N        int           // Maximum number of samples to return. 0 will return endless stream.
-	Interval time.Duration // Interval between samples. Will be rounded up to 1s.
-	Hosts    []string      // Leave empty for all
-	ByHost   bool          // Return metrics by host.
-	Disks    []string
-	ByDisk   bool
-	ByJobID  string
-	ByDepID  string
+	Type        MetricType    // Return only these metric types. Several types can be combined using |. Leave at 0 to return all.
+	N           int           // Maximum number of samples to return. 0 will return endless stream.
+	Interval    time.Duration // Interval between samples. Will be rounded up to 1s.
+	PoolIdx     []int         // Only include metrics for these pools. Leave empty for all.
+	Hosts       []string      // Only include specified hosts. Leave empty for all.
+	DriveSetIdx []int         // Only include metrics for these drive sets (combine with PoolIdx if needed).
+	Disks       []string      // Include only specific disks. Leave empty for all.
+	ByJobID     string
+	ByDepID     string
+
+	// Alternative output merging.
+	// Populates maps of the same name in the result.
+	ByHost bool // Return individual metrics by host.
+	ByDisk bool // Return individual metrics by disk.
+	ByPool bool // Return individual metrics by pool.
 }
+
+// DriveSetPrefix will be used to select drives from specific sets.
+const DriveSetPrefix = "::drive-set::"
 
 // Metrics makes an admin call to retrieve metrics.
 // The provided function is called for each received entry.
@@ -92,15 +102,28 @@ func (adm *AdminClient) Metrics(ctx context.Context, o MetricsOptions, out func(
 	if o.ByHost {
 		q.Set("by-host", "true")
 	}
+	for _, v := range o.DriveSetIdx {
+		o.Disks = append(o.Disks, fmt.Sprintf(DriveSetPrefix+"%d", v))
+	}
 	q.Set("disks", strings.Join(o.Disks, ","))
 	if o.ByDisk {
 		q.Set("by-disk", "true")
+	}
+	if o.ByPool {
+		q.Set("by-pool", "true")
 	}
 	if o.ByJobID != "" {
 		q.Set("by-jobID", o.ByJobID)
 	}
 	if o.ByDepID != "" {
 		q.Set("by-depID", o.ByDepID)
+	}
+	if len(o.PoolIdx) > 0 {
+		str := make([]string, len(o.PoolIdx))
+		for i, id := range o.PoolIdx {
+			str[i] = strconv.Itoa(id)
+		}
+		q.Set("pool-idx", strings.Join(str, ","))
 	}
 
 	resp, err := adm.executeMethod(ctx,
@@ -163,11 +186,23 @@ func (m MetricType) Contains(x MetricType) bool {
 type RealtimeMetrics struct {
 	// Error indicates an error occurred.
 	Errors []string `json:"errors,omitempty"`
+
 	// Hosts indicates the scanned hosts
-	Hosts      []string              `json:"hosts"`
-	Aggregated Metrics               `json:"aggregated"`
-	ByHost     map[string]Metrics    `json:"by_host,omitempty"`
-	ByDisk     map[string]DiskMetric `json:"by_disk,omitempty"`
+	Hosts []string `json:"hosts"`
+
+	// Aggregated contains aggregated metrics for all hosts
+	Aggregated Metrics `json:"aggregated"`
+
+	// ByHost contains metrics for each host if requested.
+	ByHost map[string]Metrics `json:"by_host,omitempty"`
+
+	// ByDisk contains metrics for each disk if requested.
+	ByDisk map[string]DiskMetric `json:"by_disk,omitempty"`
+
+	// ByPool contains metrics for each pool if requested.
+	// Map key is a parseable integer of the pool index.
+	ByPool map[string]Metrics `json:"by_pool,omitempty"`
+
 	// Final indicates whether this is the final packet and the receiver can exit.
 	Final bool `json:"final"`
 }
@@ -261,6 +296,19 @@ func (r *RealtimeMetrics) Merge(other *RealtimeMetrics) {
 	}
 	for disk, metrics := range other.ByDisk {
 		r.ByDisk[disk] = metrics
+	}
+
+	// Aggregate per pool metrics
+	if r.ByPool == nil && len(other.ByPool) > 0 {
+		r.ByPool = make(map[string]Metrics, len(other.ByPool))
+	}
+	for id, m := range other.ByPool {
+		if p, ok := r.ByPool[id]; ok {
+			p.Merge(&m)
+			r.ByPool[id] = p
+		} else {
+			r.ByPool[id] = m
+		}
 	}
 }
 
@@ -381,23 +429,44 @@ func (s *ScannerMetrics) Merge(other *ScannerMetrics) {
 
 // DiskIOStats contains IO stats of a single drive
 type DiskIOStats struct {
-	ReadIOs        uint64 `json:"read_ios"`
-	ReadMerges     uint64 `json:"read_merges"`
-	ReadSectors    uint64 `json:"read_sectors"`
-	ReadTicks      uint64 `json:"read_ticks"`
-	WriteIOs       uint64 `json:"write_ios"`
-	WriteMerges    uint64 `json:"write_merges"`
-	WriteSectors   uint64 `json:"wrte_sectors"`
-	WriteTicks     uint64 `json:"write_ticks"`
-	CurrentIOs     uint64 `json:"current_ios"`
-	TotalTicks     uint64 `json:"total_ticks"`
-	ReqTicks       uint64 `json:"req_ticks"`
-	DiscardIOs     uint64 `json:"discard_ios"`
-	DiscardMerges  uint64 `json:"discard_merges"`
-	DiscardSectors uint64 `json:"discard_secotrs"`
-	DiscardTicks   uint64 `json:"discard_ticks"`
-	FlushIOs       uint64 `json:"flush_ios"`
-	FlushTicks     uint64 `json:"flush_ticks"`
+	ReadIOs        uint64 `json:"read_ios,omitempty"`
+	ReadMerges     uint64 `json:"read_merges,omitempty"`
+	ReadSectors    uint64 `json:"read_sectors,omitempty"`
+	ReadTicks      uint64 `json:"read_ticks,omitempty"`
+	WriteIOs       uint64 `json:"write_ios,omitempty"`
+	WriteMerges    uint64 `json:"write_merges,omitempty"`
+	WriteSectors   uint64 `json:"wrte_sectors,omitempty"`
+	WriteTicks     uint64 `json:"write_ticks,omitempty"`
+	CurrentIOs     uint64 `json:"current_ios,omitempty"`
+	TotalTicks     uint64 `json:"total_ticks,omitempty"`
+	ReqTicks       uint64 `json:"req_ticks,omitempty"`
+	DiscardIOs     uint64 `json:"discard_ios,omitempty"`
+	DiscardMerges  uint64 `json:"discard_merges,omitempty"`
+	DiscardSectors uint64 `json:"discard_secotrs,omitempty"`
+	DiscardTicks   uint64 `json:"discard_ticks,omitempty"`
+	FlushIOs       uint64 `json:"flush_ios,omitempty"`
+	FlushTicks     uint64 `json:"flush_ticks,omitempty"`
+}
+
+// Merge 'other' into 'd'.
+func (d *DiskIOStats) Merge(other DiskIOStats) {
+	d.ReadIOs += other.ReadIOs
+	d.ReadMerges += other.ReadMerges
+	d.ReadSectors += other.ReadSectors
+	d.ReadTicks += other.ReadTicks
+	d.WriteIOs += other.WriteIOs
+	d.WriteMerges += other.WriteMerges
+	d.WriteSectors += other.WriteSectors
+	d.WriteTicks += other.WriteTicks
+	d.CurrentIOs += other.CurrentIOs
+	d.TotalTicks += other.TotalTicks
+	d.ReqTicks += other.ReqTicks
+	d.DiscardIOs += other.DiscardIOs
+	d.DiscardMerges += other.DiscardMerges
+	d.DiscardSectors += other.DiscardSectors
+	d.DiscardTicks += other.DiscardTicks
+	d.FlushIOs += other.FlushIOs
+	d.FlushTicks += other.FlushTicks
 }
 
 // DiskMetric contains metrics for one or more disks.
@@ -408,6 +477,12 @@ type DiskMetric struct {
 	// Number of disks
 	NDisks int `json:"n_disks"`
 
+	// SetIdx will be populated if all disks in the metrics are part of the same set.
+	SetIdx *int `json:"set_idx,omitempty"`
+
+	// PoolIdx will be populated if all disks in the metrics are part of the same pool.
+	PoolIdx *int `json:"pool_idx,omitempty"`
+
 	// Offline disks
 	Offline int `json:"offline,omitempty"`
 
@@ -415,9 +490,11 @@ type DiskMetric struct {
 	Healing int `json:"healing,omitempty"`
 
 	// Number of accumulated operations by type since server restart.
+	// FIXME: This is nil now due to eos #1088
 	LifeTimeOps map[string]uint64 `json:"life_time_ops,omitempty"`
 
 	// Last minute statistics.
+	// FIXME: This is nil now due to eos #1088
 	LastMinute struct {
 		Operations map[string]TimedAction `json:"operations,omitempty"`
 	} `json:"last_minute"`
@@ -430,9 +507,24 @@ func (d *DiskMetric) Merge(other *DiskMetric) {
 	if other == nil {
 		return
 	}
+	if d.NDisks == 0 {
+		*d = *other
+		return
+	}
 	if d.CollectedAt.Before(other.CollectedAt) {
 		// Use latest timestamp
 		d.CollectedAt = other.CollectedAt
+	}
+	// PoolIdx and SetIdx must match for all disks in the metrics.
+	if d.SetIdx == nil && d.NDisks == 0 && other.SetIdx != nil {
+		d.SetIdx = other.SetIdx
+	} else if d.SetIdx != nil && other.SetIdx != nil && *d.SetIdx != *other.SetIdx {
+		d.SetIdx = nil
+	}
+	if d.PoolIdx == nil && d.NDisks == 0 && other.PoolIdx != nil {
+		d.PoolIdx = other.PoolIdx
+	} else if d.PoolIdx != nil && other.PoolIdx != nil && *d.PoolIdx != *other.PoolIdx {
+		d.PoolIdx = nil
 	}
 	d.NDisks += other.NDisks
 	d.Offline += other.Offline
@@ -449,11 +541,7 @@ func (d *DiskMetric) Merge(other *DiskMetric) {
 	if d.LastMinute.Operations == nil && len(other.LastMinute.Operations) > 0 {
 		d.LastMinute.Operations = make(map[string]TimedAction, len(other.LastMinute.Operations))
 	}
-	for k, v := range other.LastMinute.Operations {
-		total := d.LastMinute.Operations[k]
-		total.Merge(v)
-		d.LastMinute.Operations[k] = total
-	}
+	d.IOStats.Merge(other.IOStats)
 }
 
 // OSMetrics contains metrics for OS operations.

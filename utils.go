@@ -173,14 +173,14 @@ func (t TimedAction) AvgBytes() uint64 {
 
 // Merge other into t.
 func (t *TimedAction) Merge(other TimedAction) {
-	t.Count += other.Count
-	t.AccTime += other.AccTime
-	t.Bytes += other.Bytes
 	if t.Count == 0 {
 		t.MinTime = other.MinTime
 	}
 	if other.Count > 0 {
 		t.MinTime = min(t.MinTime, other.MinTime)
 	}
+	t.Count += other.Count
+	t.AccTime += other.AccTime
+	t.Bytes += other.Bytes
 	t.MaxTime = max(t.MaxTime, other.MaxTime)
 }
