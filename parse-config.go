@@ -270,12 +270,13 @@ func (c *SubsysConfig) Lookup(key string) (val string, present bool) {
 	return c.KV[idx].Value, true
 }
 
-// Lookupenv resolves the value of a config parameter.
-func (c *SubsysConfig) Lookupenv(key string) (val string, envVal string, present bool) {
+// LookupEnv finds value based on given key. If env variable is specified on the server for the parameter instead of overwriting it, it returns it as well along with config parameter.
+func (c *SubsysConfig) LookupEnv(key string) (val string, envVal string, present bool) {
 	if c.kvIndexMap == nil {
 		return
 	}
 
+	// if key not found in index map, return
 	idx, ok := c.kvIndexMap[key]
 	if !ok {
 		return
@@ -283,7 +284,6 @@ func (c *SubsysConfig) Lookupenv(key string) (val string, envVal string, present
 
 	if evo := c.KV[idx].EnvOverride; evo != nil {
 		envVal = evo.Value
-		present = true
 	}
 
 	val = c.KV[idx].Value
