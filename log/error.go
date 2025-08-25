@@ -15,11 +15,18 @@
 // You should have received a copy of the GNU Affero General Public License
 // along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-package event
+package log
 
 import (
+	"fmt"
+	"slices"
+	"strings"
 	"time"
 )
+
+//msgp:clearomitted
+//msgp:timezone utc
+//msgp:tag json
 
 //go:generate msgp $GOFILE
 
@@ -43,4 +50,35 @@ type Trace struct {
 // GetTagValByKey gets the tag value by key
 func (e Error) GetTagValByKey(key string) string {
 	return e.Tags[key]
+}
+
+// String returns the canonical string for Error
+func (e Error) String() string {
+	values := []string{
+		toString("version", e.Version),
+		toString("node", e.Node),
+		toTime("time", e.Time),
+		toString("message", e.Message),
+		toString("apiName", e.API),
+		toMap("tags", e.Tags),
+	}
+	if e.Trace != nil {
+		values = append(values, fmt.Sprintf("trace={%s}", e.Trace.String()))
+	}
+	values = filterAndSort(values)
+	return strings.Join(values, ",")
+}
+
+// String returns the canonical string for Trace
+func (t Trace) String() string {
+	values := []string{
+		toMap("variables", t.Variables),
+	}
+	if len(t.Source) > 0 {
+		src := slices.Clone(t.Source)
+		slices.Sort(src)
+		values = append(values, fmt.Sprintf("source=[%s]", strings.Join(src, ",")))
+	}
+	values = filterAndSort(values)
+	return strings.Join(values, ",")
 }
