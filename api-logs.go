@@ -28,43 +28,46 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/minio/madmin-go/v4/event"
+	"github.com/minio/madmin-go/v4/log"
 	"github.com/tinylib/msgp/msgp"
 )
 
-// ErrorEventOpts represents the options for the ErrorEvents
-type ErrorEventOpts struct {
-	Node     string        `json:"node,omitempty"`
-	API      string        `json:"api,omitempty"`
-	Bucket   string        `json:"bucket,omitempty"`
-	Object   string        `json:"object,omitempty"`
-	Interval time.Duration `json:"interval,omitempty"`
+// APILogOpts represents the options for the APILogOpts
+type APILogOpts struct {
+	Node       string        `json:"node,omitempty"`
+	API        string        `json:"api,omitempty"`
+	Bucket     string        `json:"bucket,omitempty"`
+	Prefix     string        `json:"prefix,omitempty"`
+	StatusCode int           `json:"statusCode,omitempty"`
+	Interval   time.Duration `json:"interval,omitempty"`
+	Origin     log.Origin    `json:"origin,omitempty"`
+	Type       log.APIType   `json:"type,omitempty"`
 }
 
-// GetErrorEvents fetches the persisted error events from MinIO
-func (adm AdminClient) GetErrorEvents(ctx context.Context, opts ErrorEventOpts) iter.Seq2[event.Error, error] {
-	return func(yield func(event.Error, error) bool) {
-		errOpts, err := json.Marshal(opts)
+// GetAPILogs fetches the persisted API logs from MinIO
+func (adm AdminClient) GetAPILogs(ctx context.Context, opts APILogOpts) iter.Seq2[log.API, error] {
+	return func(yield func(log.API, error) bool) {
+		apiOpts, err := json.Marshal(opts)
 		if err != nil {
-			yield(event.Error{}, err)
+			yield(log.API{}, err)
 			return
 		}
 		reqData := requestData{
-			relPath: adminAPIPrefix + "/events/error",
-			content: errOpts,
+			relPath: adminAPIPrefix + "/logs/api",
+			content: apiOpts,
 		}
 		resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
 		if err != nil {
-			yield(event.Error{}, err)
+			yield(log.API{}, err)
 			return
 		}
 		if resp.StatusCode != http.StatusOK {
-			yield(event.Error{}, httpRespToErrorResponse(resp))
+			yield(log.API{}, httpRespToErrorResponse(resp))
 			return
 		}
 		dec := msgp.NewReader(resp.Body)
 		for {
-			var info event.Error
+			var info log.API
 			if err = info.DecodeMsg(dec); err != nil {
 				if errors.Is(err, io.EOF) {
 					break
