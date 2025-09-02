@@ -1359,9 +1359,9 @@ type Segmented[T any, PT interface {
 	*T
 	Segmenter[T]
 }] struct {
-	Interval  int       `json:"int,omitempty"`  // Interval covered by each segment in seconds.
-	FirstTime time.Time `json:"ft,omitzero"`    // Timestamp of first (ie oldest) segment
-	Segments  []T       `json:"segs,omitempty"` // List of DiskAction for each segment ordered by time (oldest first).
+	Interval  int       `json:"intervalSecs,omitempty"` // Interval covered by each segment in seconds.
+	FirstTime time.Time `json:"firstTime,omitzero"`     // Timestamp of first (ie oldest) segment
+	Segments  []T       `json:"segments,omitempty"`     // List of DiskAction for each segment ordered by time (oldest first).
 }
 
 // Add 'other' to 'a'.
