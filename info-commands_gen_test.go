@@ -1026,8 +1026,8 @@ func BenchmarkDecodeDisk(b *testing.B) {
 	}
 }
 
-func TestMarshalUnmarshalDiskMetrics(t *testing.T) {
-	v := DiskMetrics{}
+func TestMarshalUnmarshalDiskStatus(t *testing.T) {
+	v := DiskStatus{}
 	bts, err := v.MarshalMsg(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -1049,8 +1049,8 @@ func TestMarshalUnmarshalDiskMetrics(t *testing.T) {
 	}
 }
 
-func BenchmarkMarshalMsgDiskMetrics(b *testing.B) {
-	v := DiskMetrics{}
+func BenchmarkMarshalMsgDiskStatus(b *testing.B) {
+	v := DiskStatus{}
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -1058,8 +1058,8 @@ func BenchmarkMarshalMsgDiskMetrics(b *testing.B) {
 	}
 }
 
-func BenchmarkAppendMsgDiskMetrics(b *testing.B) {
-	v := DiskMetrics{}
+func BenchmarkAppendMsgDiskStatus(b *testing.B) {
+	v := DiskStatus{}
 	bts := make([]byte, 0, v.Msgsize())
 	bts, _ = v.MarshalMsg(bts[0:0])
 	b.SetBytes(int64(len(bts)))
@@ -1070,8 +1070,8 @@ func BenchmarkAppendMsgDiskMetrics(b *testing.B) {
 	}
 }
 
-func BenchmarkUnmarshalDiskMetrics(b *testing.B) {
-	v := DiskMetrics{}
+func BenchmarkUnmarshalDiskStatus(b *testing.B) {
+	v := DiskStatus{}
 	bts, _ := v.MarshalMsg(nil)
 	b.ReportAllocs()
 	b.SetBytes(int64(len(bts)))
@@ -1084,17 +1084,17 @@ func BenchmarkUnmarshalDiskMetrics(b *testing.B) {
 	}
 }
 
-func TestEncodeDecodeDiskMetrics(t *testing.T) {
-	v := DiskMetrics{}
+func TestEncodeDecodeDiskStatus(t *testing.T) {
+	v := DiskStatus{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 
 	m := v.Msgsize()
 	if buf.Len() > m {
-		t.Log("WARNING: TestEncodeDecodeDiskMetrics Msgsize() is inaccurate")
+		t.Log("WARNING: TestEncodeDecodeDiskStatus Msgsize() is inaccurate")
 	}
 
-	vn := DiskMetrics{}
+	vn := DiskStatus{}
 	err := msgp.Decode(&buf, &vn)
 	if err != nil {
 		t.Error(err)
@@ -1108,8 +1108,8 @@ func TestEncodeDecodeDiskMetrics(t *testing.T) {
 	}
 }
 
-func BenchmarkEncodeDiskMetrics(b *testing.B) {
-	v := DiskMetrics{}
+func BenchmarkEncodeDiskStatus(b *testing.B) {
+	v := DiskStatus{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))
@@ -1122,8 +1122,8 @@ func BenchmarkEncodeDiskMetrics(b *testing.B) {
 	en.Flush()
 }
 
-func BenchmarkDecodeDiskMetrics(b *testing.B) {
-	v := DiskMetrics{}
+func BenchmarkDecodeDiskStatus(b *testing.B) {
+	v := DiskStatus{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))

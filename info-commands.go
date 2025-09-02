@@ -463,17 +463,11 @@ type GCStats struct {
 	PauseEnd   []time.Time     `json:"pause_end"`   // pause end times history, most recent first
 }
 
-// DiskMetrics has the information about XL Storage APIs
+// DiskStatus has the information about XL Storage APIs
 // the number of calls of each API and the moving average of
 // the duration, in nanosecond, of each API.
-type DiskMetrics struct {
-	LastMinute map[string]TimedAction `json:"lastMinute,omitempty"`
-	APICalls   map[string]uint64      `json:"apiCalls,omitempty"`
-
-	// TotalTokens set per drive max concurrent I/O.
-	TotalTokens uint32 `json:"totalTokens,omitempty"` // Deprecated (unused)
-
-	// TotalWaiting the amount of concurrent I/O waiting on disk
+type DiskStatus struct {
+	// TotalWaiting is something. Seems to be related to offline disks.
 	TotalWaiting uint32 `json:"totalWaiting,omitempty"`
 
 	// Captures all data availability errors such as
@@ -482,25 +476,36 @@ type DiskMetrics struct {
 
 	// Captures all timeout only errors
 	TotalErrorsTimeout uint64 `json:"totalErrorsTimeout,omitempty"`
-
-	// Total writes on disk (could be empty if the feature
-	// is not enabled on the server)
-	TotalWrites uint64 `json:"totalWrites,omitempty"`
-
-	// Total deletes on disk (could be empty if the feature
-	// is not enabled on the server)
-	TotalDeletes uint64 `json:"totalDeletes,omitempty"`
 }
 
 // CacheStats drive cache stats
 type CacheStats struct {
-	Capacity   int64 `json:"capacity"`
+	N          int   `json:"n"`
+	Capacity   int64 `json:"cap"`
 	Used       int64 `json:"used"`
 	Hits       int64 `json:"hits"`
 	Misses     int64 `json:"misses"`
 	DelHits    int64 `json:"delHits"`
 	DelMisses  int64 `json:"delMisses"`
 	Collisions int64 `json:"collisions"`
+}
+
+// Merge other into 'c'.
+func (c *CacheStats) Merge(other *CacheStats) {
+	if c == nil {
+		return
+	}
+	if other == nil {
+		return
+	}
+	c.N += other.N
+	c.Capacity += other.Capacity
+	c.Used += other.Used
+	c.Hits += other.Hits
+	c.Misses += other.Misses
+	c.DelHits += other.DelHits
+	c.DelMisses += other.DelMisses
+	c.Collisions += other.Collisions
 }
 
 // Disk holds Disk information
@@ -523,7 +528,7 @@ type Disk struct {
 	ReadLatency     float64      `json:"readlatency,omitempty"`
 	WriteLatency    float64      `json:"writelatency,omitempty"`
 	Utilization     float64      `json:"utilization,omitempty"`
-	Metrics         *DiskMetrics `json:"metrics,omitempty"`
+	Metrics         *DiskStatus  `json:"metrics,omitempty"`
 	HealInfo        *HealingDisk `json:"heal_info,omitempty"`
 	UsedInodes      uint64       `json:"used_inodes"`
 	FreeInodes      uint64       `json:"free_inodes,omitempty"`
