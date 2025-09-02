@@ -533,6 +533,9 @@ type DiskMetric struct {
 	// Offline disks
 	Offline int `json:"offline,omitempty"`
 
+	// Hanging - drives hanging.
+	Hanging int `json:"waiting,omitempty"`
+
 	// Healing disks
 	Healing int `json:"healing,omitempty"`
 
@@ -633,6 +636,7 @@ func (d *DiskMetric) Merge(other *DiskMetric) {
 	d.NDisks += other.NDisks
 	d.Offline += other.Offline
 	d.Healing += other.Healing
+	d.Hanging += other.Hanging
 	if other.Cache != nil {
 		if d.Cache == nil {
 			d.Cache = other.Cache
