@@ -273,9 +273,9 @@ func (adm *AdminClient) GetPolicyEntities(ctx context.Context, q PolicyEntitiesQ
 }
 
 type AddAzureCannedPolicyReq struct {
-	Name       string `json:"name"`
-	ConfigName string `json:"config_name"`
-	Policy     []byte `json:"policy"`
+	Name       string
+	ConfigName string
+	Policy     []byte
 }
 
 func (r *AddAzureCannedPolicyReq) Validate() error {
@@ -291,6 +291,55 @@ func (r *AddAzureCannedPolicyReq) Validate() error {
 	return nil
 }
 
+type RemoveAzureCannedPolicyReq struct {
+	Name       string
+	ConfigName string
+}
+
+func (r *RemoveAzureCannedPolicyReq) Validate() error {
+	if r.Name == "" {
+		return ErrInvalidArgument("Group name is required")
+	}
+	if r.ConfigName == "" {
+		r.ConfigName = Default
+	}
+	return nil
+}
+
+type ListAzureCannedPoliciesReq struct {
+	ConfigName  string
+	GetAllUUIDs bool // whether to also get policies that exist in MinIO but not in Azure
+}
+
+func (r *ListAzureCannedPoliciesReq) Validate() error {
+	if r.ConfigName == "" {
+		r.ConfigName = Default
+	}
+	return nil
+}
+
+type ListAzureCannedPoliciesResp []InfoAzureCannedPolicyResp
+
+type InfoAzureCannedPolicyReq struct {
+	Name       string
+	ConfigName string
+}
+
+func (r *InfoAzureCannedPolicyReq) Validate() error {
+	if r.Name == "" {
+		return ErrInvalidArgument("Group name is required")
+	}
+	if r.ConfigName == "" {
+		r.ConfigName = Default
+	}
+	return nil
+}
+
+type InfoAzureCannedPolicyResp struct {
+	GroupName string
+	PI        PolicyInfo
+}
+
 // AddAzureCannedPolicy - adds a policy corresponding to the Azure group ID for the given
 // Azure group name
 func (adm *AdminClient) AddAzureCannedPolicy(ctx context.Context, r AddAzureCannedPolicyReq) error {
@@ -300,7 +349,7 @@ func (adm *AdminClient) AddAzureCannedPolicy(ctx context.Context, r AddAzureCann
 
 	queryValues := url.Values{}
 	queryValues.Set("name", r.Name)
-	queryValues.Set("config_name", r.ConfigName)
+	queryValues.Set("configName", r.ConfigName)
 
 	reqData := requestData{
 		relPath:     adminAPIPrefix + "/idp/openid/add-azure-canned-policy",
@@ -321,4 +370,114 @@ func (adm *AdminClient) AddAzureCannedPolicy(ctx context.Context, r AddAzureCann
 	}
 
 	return nil
+}
+
+// RemoveAzureCannedPolicy - removes a policy corresponding to the Azure group ID for the given
+// Azure group name
+func (adm *AdminClient) RemoveAzureCannedPolicy(ctx context.Context, r RemoveAzureCannedPolicyReq) error {
+	if err := r.Validate(); err != nil {
+		return err
+	}
+
+	queryValues := url.Values{}
+	queryValues.Set("name", r.Name)
+	queryValues.Set("configName", r.ConfigName)
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/idp/openid/remove-azure-canned-policy",
+		queryValues: queryValues,
+	}
+
+	// Execute DELETE on /minio/admin/v4/idp/openid/remove-azure-canned-policy to remove policy.
+	resp, err := adm.executeMethod(ctx, http.MethodDelete, reqData)
+
+	defer closeResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+
+	return nil
+}
+
+// ListAzureCannedPolicies - lists all Azure canned policies for the given configuration
+func (adm *AdminClient) ListAzureCannedPolicies(ctx context.Context, r ListAzureCannedPoliciesReq) (ListAzureCannedPoliciesResp, error) {
+	if err := r.Validate(); err != nil {
+		return ListAzureCannedPoliciesResp{}, err
+	}
+
+	queryValues := url.Values{}
+	queryValues.Set("configName", r.ConfigName)
+	if r.GetAllUUIDs {
+		queryValues.Set("getAllUUIDs", "true")
+	}
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/idp/openid/list-azure-canned-policies",
+		queryValues: queryValues,
+	}
+
+	// Execute GET on /minio/admin/v4/idp/openid/list-azure-canned-policies
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+
+	defer closeResponse(resp)
+	if err != nil {
+		return ListAzureCannedPoliciesResp{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return ListAzureCannedPoliciesResp{}, httpRespToErrorResponse(resp)
+	}
+
+	respBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return ListAzureCannedPoliciesResp{}, err
+	}
+
+	var response ListAzureCannedPoliciesResp
+	if err = json.Unmarshal(respBytes, &response); err != nil {
+		return ListAzureCannedPoliciesResp{}, err
+	}
+
+	return response, nil
+}
+
+// InfoAzureCannedPolicy - gets info on an Azure canned policy including timestamps and policy json
+func (adm *AdminClient) InfoAzureCannedPolicy(ctx context.Context, r InfoAzureCannedPolicyReq) (InfoAzureCannedPolicyResp, error) {
+	if err := r.Validate(); err != nil {
+		return InfoAzureCannedPolicyResp{}, err
+	}
+
+	queryValues := url.Values{}
+	queryValues.Set("name", r.Name)
+	queryValues.Set("configName", r.ConfigName)
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/idp/openid/info-azure-canned-policy",
+		queryValues: queryValues,
+	}
+
+	// Execute GET on /minio/admin/v4/idp/openid/info-azure-canned-policy
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+
+	defer closeResponse(resp)
+	if err != nil {
+		return InfoAzureCannedPolicyResp{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return InfoAzureCannedPolicyResp{}, httpRespToErrorResponse(resp)
+	}
+
+	data, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return InfoAzureCannedPolicyResp{}, err
+	}
+
+	var p InfoAzureCannedPolicyResp
+	err = json.Unmarshal(data, &p)
+	return p, err
 }
