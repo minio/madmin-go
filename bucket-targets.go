@@ -78,6 +78,7 @@ type BucketTarget struct {
 	Edge                 bool          `json:"edge"`                 // target is recipient of edge traffic
 	EdgeSyncBeforeExpiry bool          `json:"edgeSyncBeforeExpiry"` // must replicate to edge before expiry
 	OfflineCount         int64         `json:"offlineCount"`
+	InsecureTLS          bool          `json:"insecureTLS"`
 }
 
 // Credentials holds access and secret keys.
@@ -116,6 +117,7 @@ func (t *BucketTarget) Clone() BucketTarget {
 		Edge:                 t.Edge,
 		EdgeSyncBeforeExpiry: t.EdgeSyncBeforeExpiry,
 		OfflineCount:         t.OfflineCount,
+		InsecureTLS:          t.InsecureTLS,
 	}
 }
 

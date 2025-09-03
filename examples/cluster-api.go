@@ -1,7 +1,9 @@
+//
 //go:build ignore
 // +build ignore
 
-// Copyright (c) 2015-2023 MinIO, Inc.
+//
+// Copyright (c) 2015-2022 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -23,28 +25,31 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
-	"log"
 
 	"github.com/minio/madmin-go/v4"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
 func main() {
-	// Note: YOUR-ACCESSKEYID, YOUR-SECRETACCESSKEY and my-bucketname are
-	// dummy values, please replace them with original values.
+	c, err := madmin.NewWithOptions("127.0.0.1:9001", &madmin.Options{
+		Creds:     credentials.NewStaticV4("minio", "minio123", ""),
+		Secure:    false,
+		Transport: nil,
+	})
+	fatalErr(err)
 
-	// API requests are secure (HTTPS) if secure=true and insecure (HTTP) otherwise.
-	// New returns an MinIO Admin client object.
-	madmClnt, err := madmin.New("your-minio.example.com:9000", "YOUR-ACCESSKEYID", "YOUR-SECRETACCESSKEY", true)
+	stats, err := c.ClusterAPIStats(context.Background())
+	fatalErr(err)
+
+	b, err := json.MarshalIndent(stats, "", "  ")
+	fatalErr(err)
+	fmt.Println(string(b))
+}
+
+func fatalErr(err error) {
 	if err != nil {
-		log.Fatalln(err)
-	}
-	// Print most recent failures for replication across all nodes in a minio cluster.
-	mrfCh := madmClnt.BucketReplicationMRF(context.Background(), "my-bucketname", "all")
-	for m := range mrfCh {
-		if m.Err != "" {
-			log.Fatalln(m.Err)
-		}
-		fmt.Println(m)
+		panic(err)
 	}
 }

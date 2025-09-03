@@ -76,7 +76,7 @@ const (
 	ErasureSubSys          = "erasure"
 	BucketEventQueueSubSys = "bucket_event_queue"
 	TelemetryTargetSubSys  = "telemetry_target"
-	EventRecorderSubSys    = "event"
+	LogRecorderSubSys      = "log"
 )
 
 // SubSystems - list of all subsystems in MinIO
@@ -166,7 +166,7 @@ var EOSSubSystems = set.CreateStringSet(
 	BucketEventQueueSubSys,
 	KubernetesSubSys,
 	TelemetryTargetSubSys,
-	EventRecorderSubSys,
+	LogRecorderSubSys,
 )
 
 // Standard config keys and values.
@@ -268,6 +268,26 @@ func (c *SubsysConfig) Lookup(key string) (val string, present bool) {
 		return c.KV[idx].EnvOverride.Value, true
 	}
 	return c.KV[idx].Value, true
+}
+
+// LookupEnv finds value based on given key. If env variable is specified on the server for the parameter instead of overwriting it, it returns it as well along with config parameter.
+func (c *SubsysConfig) LookupEnv(key string) (val string, envVal string, present bool) {
+	if c.kvIndexMap == nil {
+		return
+	}
+
+	// if key not found in index map, return
+	idx, ok := c.kvIndexMap[key]
+	if !ok {
+		return
+	}
+
+	if evo := c.KV[idx].EnvOverride; evo != nil {
+		envVal = evo.Value
+	}
+
+	val = c.KV[idx].Value
+	return val, envVal, true
 }
 
 var (

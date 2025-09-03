@@ -1,7 +1,9 @@
+//
 //go:build ignore
 // +build ignore
 
-// Copyright (c) 2015-2023 MinIO, Inc.
+//
+// Copyright (c) 2015-2022 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -25,6 +27,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/minio/madmin-go/v4"
 )
@@ -35,16 +38,17 @@ func main() {
 
 	// API requests are secure (HTTPS) if secure=true and insecure (HTTP) otherwise.
 	// New returns an MinIO Admin client object.
-	madmClnt, err := madmin.New("your-minio.example.com:9000", "YOUR-ACCESSKEYID", "YOUR-SECRETACCESSKEY", true)
+	madmClnt, err := madmin.New("localhost:9000", "minio", "minio123", false)
 	if err != nil {
 		log.Fatalln(err)
 	}
-	// Print most recent failures for replication across all nodes in a minio cluster.
-	mrfCh := madmClnt.BucketReplicationMRF(context.Background(), "my-bucketname", "all")
-	for m := range mrfCh {
-		if m.Err != "" {
-			log.Fatalln(m.Err)
+	opts := madmin.APILogOpts{
+		Interval: 1 * time.Hour,
+	}
+	for event, err := range madmClnt.GetAPILogs(context.Background(), opts) {
+		if err != nil {
+			log.Fatalln(err)
 		}
-		fmt.Println(m)
+		fmt.Printf("Event: %+v\n", event)
 	}
 }

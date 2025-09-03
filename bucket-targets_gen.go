@@ -204,6 +204,12 @@ func (z *BucketTarget) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "OfflineCount")
 				return
 			}
+		case "insecureTLS":
+			z.InsecureTLS, err = dc.ReadBool()
+			if err != nil {
+				err = msgp.WrapError(err, "InsecureTLS")
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -251,8 +257,8 @@ func (z *BucketTarget) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *BucketTarget) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(25)
-	var zb0001Mask uint32 /* 25 bits */
+	zb0001Len := uint32(26)
+	var zb0001Mask uint32 /* 26 bits */
 	_ = zb0001Mask
 	if z.Path == "" {
 		zb0001Len--
@@ -579,6 +585,16 @@ func (z *BucketTarget) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "OfflineCount")
 			return
 		}
+		// write "insecureTLS"
+		err = en.Append(0xab, 0x69, 0x6e, 0x73, 0x65, 0x63, 0x75, 0x72, 0x65, 0x54, 0x4c, 0x53)
+		if err != nil {
+			return
+		}
+		err = en.WriteBool(z.InsecureTLS)
+		if err != nil {
+			err = msgp.WrapError(err, "InsecureTLS")
+			return
+		}
 	}
 	return
 }
@@ -587,8 +603,8 @@ func (z *BucketTarget) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *BucketTarget) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(25)
-	var zb0001Mask uint32 /* 25 bits */
+	zb0001Len := uint32(26)
+	var zb0001Mask uint32 /* 26 bits */
 	_ = zb0001Mask
 	if z.Path == "" {
 		zb0001Len--
@@ -742,6 +758,9 @@ func (z *BucketTarget) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "offlineCount"
 		o = append(o, 0xac, 0x6f, 0x66, 0x66, 0x6c, 0x69, 0x6e, 0x65, 0x43, 0x6f, 0x75, 0x6e, 0x74)
 		o = msgp.AppendInt64(o, z.OfflineCount)
+		// string "insecureTLS"
+		o = append(o, 0xab, 0x69, 0x6e, 0x73, 0x65, 0x63, 0x75, 0x72, 0x65, 0x54, 0x4c, 0x53)
+		o = msgp.AppendBool(o, z.InsecureTLS)
 	}
 	return
 }
@@ -941,6 +960,12 @@ func (z *BucketTarget) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "OfflineCount")
 				return
 			}
+		case "insecureTLS":
+			z.InsecureTLS, bts, err = msgp.ReadBoolBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "InsecureTLS")
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -994,7 +1019,7 @@ func (z *BucketTarget) Msgsize() (s int) {
 	} else {
 		s += z.Credentials.Msgsize()
 	}
-	s += 13 + msgp.StringPrefixSize + len(z.TargetBucket) + 7 + msgp.BoolSize + 5 + msgp.StringPrefixSize + len(z.Path) + 4 + msgp.StringPrefixSize + len(z.API) + 4 + msgp.StringPrefixSize + len(z.Arn) + 5 + msgp.StringPrefixSize + len(string(z.Type)) + 7 + msgp.StringPrefixSize + len(z.Region) + 15 + msgp.Int64Size + 16 + msgp.BoolSize + 13 + msgp.StringPrefixSize + len(z.StorageClass) + 20 + msgp.DurationSize + 13 + msgp.BoolSize + 16 + msgp.TimeSize + 8 + msgp.StringPrefixSize + len(z.ResetID) + 14 + msgp.DurationSize + 11 + msgp.TimeSize + 9 + msgp.BoolSize + 8 + z.Latency.Msgsize() + 13 + msgp.StringPrefixSize + len(z.DeploymentID) + 5 + msgp.BoolSize + 21 + msgp.BoolSize + 13 + msgp.Int64Size
+	s += 13 + msgp.StringPrefixSize + len(z.TargetBucket) + 7 + msgp.BoolSize + 5 + msgp.StringPrefixSize + len(z.Path) + 4 + msgp.StringPrefixSize + len(z.API) + 4 + msgp.StringPrefixSize + len(z.Arn) + 5 + msgp.StringPrefixSize + len(string(z.Type)) + 7 + msgp.StringPrefixSize + len(z.Region) + 15 + msgp.Int64Size + 16 + msgp.BoolSize + 13 + msgp.StringPrefixSize + len(z.StorageClass) + 20 + msgp.DurationSize + 13 + msgp.BoolSize + 16 + msgp.TimeSize + 8 + msgp.StringPrefixSize + len(z.ResetID) + 14 + msgp.DurationSize + 11 + msgp.TimeSize + 9 + msgp.BoolSize + 8 + z.Latency.Msgsize() + 13 + msgp.StringPrefixSize + len(z.DeploymentID) + 5 + msgp.BoolSize + 21 + msgp.BoolSize + 13 + msgp.Int64Size + 12 + msgp.BoolSize
 	return
 }
 
