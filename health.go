@@ -1111,7 +1111,7 @@ type BucketQuotaDiagInfo struct {
 	Usage  int64  `json:"usage"` // Usage in bytes
 }
 
-// BucketQuotaDiag holds quota diagnostics for all buckets.
+// BucketQuotaDiag holds quota diagnostics for all buckets with quota.
 type BucketQuotaDiag struct {
 	Buckets []BucketQuotaDiagInfo `json:"buckets,omitempty"`
 	Error   string                `json:"error,omitempty"`
