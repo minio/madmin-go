@@ -1104,14 +1104,14 @@ type TLSCert struct {
 	Checksum      string    `json:"checksum"`
 }
 
-// BucketQuotaDiagInfo represents usage and quota info for a single bucket
+// BucketQuotaDiagInfo represents usage and quota info for a single bucket.
 type BucketQuotaDiagInfo struct {
-	Bucket    string `json:"bucket"`
-	QuotaSet  int64  `json:"quota_set"`    // Quota in bytes
-	Usage     int64  `json:"usage"`        // Usage in bytes
+	Bucket   string `json:"bucket"`
+	QuotaSet int64  `json:"quota_set"` // Quota in bytes
+	Usage    int64  `json:"usage"`     // Usage in bytes
 }
 
-// // BucketQuotaDiag holds quota diagnostics for all buckets
+// BucketQuotaDiag holds quota diagnostics for all buckets.
 type BucketQuotaDiag struct {
 	Buckets []BucketQuotaDiagInfo `json:"buckets,omitempty"`
 	Error   string                `json:"error,omitempty"`
