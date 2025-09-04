@@ -1106,9 +1106,9 @@ type TLSCert struct {
 
 // BucketQuotaDiagInfo represents usage and quota info for a single bucket.
 type BucketQuotaDiagInfo struct {
-	Bucket   string `json:"bucket"`
-	QuotaSet int64  `json:"quota_set"` // Quota in bytes
-	Usage    int64  `json:"usage"`     // Usage in bytes
+	Bucket string `json:"bucket"`
+	Quota  int64  `json:"quota"` // Quota in bytes
+	Usage  int64  `json:"usage"` // Usage in bytes
 }
 
 // BucketQuotaDiag holds quota diagnostics for all buckets.
