@@ -15,12 +15,11 @@ on:
 jobs:
   golangci-lint:
     name: golangci-lint Validation
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 15
     strategy:
       matrix:
         go-version: [1.24.x]
-        os: [ubuntu-latest]
     steps:
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v5
