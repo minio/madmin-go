@@ -1,4 +1,4 @@
-name: Go Lint & Vet
+name: Golangci-lint
 
 on:
   workflow_dispatch:   # ability to manually run from the github actions UI
@@ -6,20 +6,21 @@ on:
     branches:
       - main
       - master
-      
+
   push:
     branches:
       - main
       - master
 
 jobs:
-  build:
-    name: Lint & Deprecation checks Go ${{ matrix.go-version }}
-    runs-on: ubuntu-latest
+  golangci-lint:
+    name: golangci-lint Validation
+    runs-on: self-hosted
+    timeout-minutes: 15
     strategy:
       matrix:
         go-version: [1.24.x]
-
+        os: [ubuntu-latest]
     steps:
       - name: Set up Go ${{ matrix.go-version }}
         uses: actions/setup-go@v5
@@ -33,11 +34,11 @@ jobs:
       - name: Run golangci-lint (includes deprecation checks)
         uses: golangci/golangci-lint-action@v7
         with:
-          args: --timeout=5m
+          args: --timeout 5m --config ./.golangci.yml
 
-      - name: Deprecation check with go vet
+      - name:  Staticcheck run with go vet
         run: |
-          echo "Running go vet (flags deprecated API usage)..."
+          echo "Running go vet..."
           go vet -vettool=$(which staticcheck) ./...
 
       - name: Regenerate, vet and test for generated files
