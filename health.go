@@ -1078,6 +1078,7 @@ type MinioInfo struct {
 	SQSARN       []string         `json:"sqsARN,omitempty"`
 	DeploymentID string           `json:"deploymentID,omitempty"`
 	Buckets      Buckets          `json:"buckets,omitempty"`
+	BucketQuota  *BucketQuotaDiag `json:"bucket_quota,omitempty"`
 	Objects      Objects          `json:"objects,omitempty"`
 	Usage        Usage            `json:"usage,omitempty"`
 	Services     Services         `json:"services,omitempty"`
@@ -1101,6 +1102,19 @@ type TLSCert struct {
 	NotBefore     time.Time `json:"not_before"`
 	NotAfter      time.Time `json:"not_after"`
 	Checksum      string    `json:"checksum"`
+}
+
+// BucketQuotaDiagInfo represents usage and quota info for a single bucket.
+type BucketQuotaDiagInfo struct {
+	Bucket string `json:"bucket"`
+	Quota  int64  `json:"quota"` // Quota in bytes
+	Usage  int64  `json:"usage"` // Usage in bytes
+}
+
+// BucketQuotaDiag holds quota diagnostics for all buckets with quota.
+type BucketQuotaDiag struct {
+	Buckets []BucketQuotaDiagInfo `json:"buckets,omitempty"`
+	Error   string                `json:"error,omitempty"`
 }
 
 // ShardsHealthInfo holds the per drive count of objects that missing shards in that drive
