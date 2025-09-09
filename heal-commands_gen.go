@@ -3723,6 +3723,450 @@ func (z MRFStatus) Msgsize() (s int) {
 }
 
 // DecodeMsg implements msgp.Decodable
+func (z *OfflineDecision) DecodeMsg(dc *msgp.Reader) (err error) {
+	{
+		var zb0001 int8
+		zb0001, err = dc.ReadInt8()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		(*z) = OfflineDecision(zb0001)
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z OfflineDecision) EncodeMsg(en *msgp.Writer) (err error) {
+	err = en.WriteInt8(int8(z))
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z OfflineDecision) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	o = msgp.AppendInt8(o, int8(z))
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *OfflineDecision) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	{
+		var zb0001 int8
+		zb0001, bts, err = msgp.ReadInt8Bytes(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		(*z) = OfflineDecision(zb0001)
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z OfflineDecision) Msgsize() (s int) {
+	s = msgp.Int8Size
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *OfflineEvent) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "from_time":
+			z.FromTime, err = dc.ReadTimeUTC()
+			if err != nil {
+				err = msgp.WrapError(err, "FromTime")
+				return
+			}
+		case "to_time":
+			z.ToTime, err = dc.ReadTimeUTC()
+			if err != nil {
+				err = msgp.WrapError(err, "ToTime")
+				return
+			}
+		case "reason":
+			{
+				var zb0002 int8
+				zb0002, err = dc.ReadInt8()
+				if err != nil {
+					err = msgp.WrapError(err, "Reason")
+					return
+				}
+				z.Reason = OfflineReason(zb0002)
+			}
+		case "decision":
+			{
+				var zb0003 int8
+				zb0003, err = dc.ReadInt8()
+				if err != nil {
+					err = msgp.WrapError(err, "Decision")
+					return
+				}
+				z.Decision = OfflineDecision(zb0003)
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *OfflineEvent) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 4
+	// write "from_time"
+	err = en.Append(0x84, 0xa9, 0x66, 0x72, 0x6f, 0x6d, 0x5f, 0x74, 0x69, 0x6d, 0x65)
+	if err != nil {
+		return
+	}
+	err = en.WriteTime(z.FromTime)
+	if err != nil {
+		err = msgp.WrapError(err, "FromTime")
+		return
+	}
+	// write "to_time"
+	err = en.Append(0xa7, 0x74, 0x6f, 0x5f, 0x74, 0x69, 0x6d, 0x65)
+	if err != nil {
+		return
+	}
+	err = en.WriteTime(z.ToTime)
+	if err != nil {
+		err = msgp.WrapError(err, "ToTime")
+		return
+	}
+	// write "reason"
+	err = en.Append(0xa6, 0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt8(int8(z.Reason))
+	if err != nil {
+		err = msgp.WrapError(err, "Reason")
+		return
+	}
+	// write "decision"
+	err = en.Append(0xa8, 0x64, 0x65, 0x63, 0x69, 0x73, 0x69, 0x6f, 0x6e)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt8(int8(z.Decision))
+	if err != nil {
+		err = msgp.WrapError(err, "Decision")
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *OfflineEvent) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 4
+	// string "from_time"
+	o = append(o, 0x84, 0xa9, 0x66, 0x72, 0x6f, 0x6d, 0x5f, 0x74, 0x69, 0x6d, 0x65)
+	o = msgp.AppendTime(o, z.FromTime)
+	// string "to_time"
+	o = append(o, 0xa7, 0x74, 0x6f, 0x5f, 0x74, 0x69, 0x6d, 0x65)
+	o = msgp.AppendTime(o, z.ToTime)
+	// string "reason"
+	o = append(o, 0xa6, 0x72, 0x65, 0x61, 0x73, 0x6f, 0x6e)
+	o = msgp.AppendInt8(o, int8(z.Reason))
+	// string "decision"
+	o = append(o, 0xa8, 0x64, 0x65, 0x63, 0x69, 0x73, 0x69, 0x6f, 0x6e)
+	o = msgp.AppendInt8(o, int8(z.Decision))
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *OfflineEvent) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "from_time":
+			z.FromTime, bts, err = msgp.ReadTimeUTCBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "FromTime")
+				return
+			}
+		case "to_time":
+			z.ToTime, bts, err = msgp.ReadTimeUTCBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ToTime")
+				return
+			}
+		case "reason":
+			{
+				var zb0002 int8
+				zb0002, bts, err = msgp.ReadInt8Bytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Reason")
+					return
+				}
+				z.Reason = OfflineReason(zb0002)
+			}
+		case "decision":
+			{
+				var zb0003 int8
+				zb0003, bts, err = msgp.ReadInt8Bytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Decision")
+					return
+				}
+				z.Decision = OfflineDecision(zb0003)
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *OfflineEvent) Msgsize() (s int) {
+	s = 1 + 10 + msgp.TimeSize + 8 + msgp.TimeSize + 7 + msgp.Int8Size + 9 + msgp.Int8Size
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *OfflineInfo) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "events":
+			var zb0002 uint32
+			zb0002, err = dc.ReadArrayHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "Events")
+				return
+			}
+			if cap(z.Events) >= int(zb0002) {
+				z.Events = (z.Events)[:zb0002]
+			} else {
+				z.Events = make([]OfflineEvent, zb0002)
+			}
+			for za0001 := range z.Events {
+				err = z.Events[za0001].DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "Events", za0001)
+					return
+				}
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *OfflineInfo) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 1
+	// write "events"
+	err = en.Append(0x81, 0xa6, 0x65, 0x76, 0x65, 0x6e, 0x74, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteArrayHeader(uint32(len(z.Events)))
+	if err != nil {
+		err = msgp.WrapError(err, "Events")
+		return
+	}
+	for za0001 := range z.Events {
+		err = z.Events[za0001].EncodeMsg(en)
+		if err != nil {
+			err = msgp.WrapError(err, "Events", za0001)
+			return
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *OfflineInfo) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 1
+	// string "events"
+	o = append(o, 0x81, 0xa6, 0x65, 0x76, 0x65, 0x6e, 0x74, 0x73)
+	o = msgp.AppendArrayHeader(o, uint32(len(z.Events)))
+	for za0001 := range z.Events {
+		o, err = z.Events[za0001].MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "Events", za0001)
+			return
+		}
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *OfflineInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "events":
+			var zb0002 uint32
+			zb0002, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Events")
+				return
+			}
+			if cap(z.Events) >= int(zb0002) {
+				z.Events = (z.Events)[:zb0002]
+			} else {
+				z.Events = make([]OfflineEvent, zb0002)
+			}
+			for za0001 := range z.Events {
+				bts, err = z.Events[za0001].UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Events", za0001)
+					return
+				}
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *OfflineInfo) Msgsize() (s int) {
+	s = 1 + 7 + msgp.ArrayHeaderSize
+	for za0001 := range z.Events {
+		s += z.Events[za0001].Msgsize()
+	}
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *OfflineReason) DecodeMsg(dc *msgp.Reader) (err error) {
+	{
+		var zb0001 int8
+		zb0001, err = dc.ReadInt8()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		(*z) = OfflineReason(zb0001)
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z OfflineReason) EncodeMsg(en *msgp.Writer) (err error) {
+	err = en.WriteInt8(int8(z))
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z OfflineReason) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	o = msgp.AppendInt8(o, int8(z))
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *OfflineReason) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	{
+		var zb0001 int8
+		zb0001, bts, err = msgp.ReadInt8Bytes(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		(*z) = OfflineReason(zb0001)
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z OfflineReason) Msgsize() (s int) {
+	s = msgp.Int8Size
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *SetStatus) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
