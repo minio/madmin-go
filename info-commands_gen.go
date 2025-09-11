@@ -8988,6 +8988,18 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "ILMExpiryInProgress")
 				return
 			}
+		case "backend_version":
+			z.BackendVersion, err = dc.ReadUint32()
+			if err != nil {
+				err = msgp.WrapError(err, "BackendVersion")
+				return
+			}
+		case "node_api_version":
+			z.NodeAPIVersion, err = dc.ReadUint32()
+			if err != nil {
+				err = msgp.WrapError(err, "NodeAPIVersion")
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -9056,8 +9068,8 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(21)
-	var zb0001Mask uint32 /* 21 bits */
+	zb0001Len := uint32(23)
+	var zb0001Mask uint32 /* 23 bits */
 	_ = zb0001Mask
 	if z.State == "" {
 		zb0001Len--
@@ -9431,6 +9443,26 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "ILMExpiryInProgress")
 			return
 		}
+		// write "backend_version"
+		err = en.Append(0xaf, 0x62, 0x61, 0x63, 0x6b, 0x65, 0x6e, 0x64, 0x5f, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint32(z.BackendVersion)
+		if err != nil {
+			err = msgp.WrapError(err, "BackendVersion")
+			return
+		}
+		// write "node_api_version"
+		err = en.Append(0xb0, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x61, 0x70, 0x69, 0x5f, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint32(z.NodeAPIVersion)
+		if err != nil {
+			err = msgp.WrapError(err, "NodeAPIVersion")
+			return
+		}
 	}
 	return
 }
@@ -9439,8 +9471,8 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(21)
-	var zb0001Mask uint32 /* 21 bits */
+	zb0001Len := uint32(23)
+	var zb0001Mask uint32 /* 23 bits */
 	_ = zb0001Mask
 	if z.State == "" {
 		zb0001Len--
@@ -9650,6 +9682,12 @@ func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "ilm_expiry_in_progress"
 		o = append(o, 0xb6, 0x69, 0x6c, 0x6d, 0x5f, 0x65, 0x78, 0x70, 0x69, 0x72, 0x79, 0x5f, 0x69, 0x6e, 0x5f, 0x70, 0x72, 0x6f, 0x67, 0x72, 0x65, 0x73, 0x73)
 		o = msgp.AppendBool(o, z.ILMExpiryInProgress)
+		// string "backend_version"
+		o = append(o, 0xaf, 0x62, 0x61, 0x63, 0x6b, 0x65, 0x6e, 0x64, 0x5f, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
+		o = msgp.AppendUint32(o, z.BackendVersion)
+		// string "node_api_version"
+		o = append(o, 0xb0, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x61, 0x70, 0x69, 0x5f, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
+		o = msgp.AppendUint32(o, z.NodeAPIVersion)
 	}
 	return
 }
@@ -9909,6 +9947,18 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "ILMExpiryInProgress")
 				return
 			}
+		case "backend_version":
+			z.BackendVersion, bts, err = msgp.ReadUint32Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "BackendVersion")
+				return
+			}
+		case "node_api_version":
+			z.NodeAPIVersion, bts, err = msgp.ReadUint32Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "NodeAPIVersion")
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -10007,7 +10057,7 @@ func (z *ServerProperties) Msgsize() (s int) {
 	} else {
 		s += z.License.Msgsize()
 	}
-	s += 10 + msgp.BoolSize + 23 + msgp.BoolSize
+	s += 10 + msgp.BoolSize + 23 + msgp.BoolSize + 16 + msgp.Uint32Size + 17 + msgp.Uint32Size
 	return
 }
 
