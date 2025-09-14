@@ -514,6 +514,7 @@ type Disk struct {
 	RootDisk        bool         `json:"rootDisk,omitempty"`
 	DrivePath       string       `json:"path,omitempty"`
 	Healing         bool         `json:"healing,omitempty"`
+	HealingQueued   bool         `json:"healing_queued,omitempty"`
 	Scanning        bool         `json:"scanning,omitempty"`
 	State           string       `json:"state,omitempty"`
 	UUID            string       `json:"uuid,omitempty"`
@@ -530,6 +531,7 @@ type Disk struct {
 	Utilization     float64      `json:"utilization,omitempty"`
 	Metrics         *DiskStatus  `json:"metrics,omitempty"`
 	HealInfo        *HealingDisk `json:"heal_info,omitempty"`
+	OfflineInfo     *OfflineInfo `json:"offline_info,omitempty"`
 	UsedInodes      uint64       `json:"used_inodes"`
 	FreeInodes      uint64       `json:"free_inodes,omitempty"`
 	Local           bool         `json:"local,omitempty"`
