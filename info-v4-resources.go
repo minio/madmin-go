@@ -26,6 +26,7 @@ import (
 	"reflect"
 	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/tinylib/msgp/msgp"
 )
@@ -274,9 +275,11 @@ func (adm *AdminClient) ServicesQuery(ctx context.Context, options ...func(*Serv
 //
 //msgp:ignore PoolsResourceOpts
 type PoolsResourceOpts struct {
-	Limit        int
-	Offset       int
-	Filter       string
+	Limit  int
+	Offset int
+	Filter string
+	// Sort fields contained in PoolResource.
+	// Supported fields: int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, string
 	Sort         string
 	SortReversed bool
 }
@@ -332,9 +335,11 @@ func (adm *AdminClient) PoolsQuery(ctx context.Context, options *PoolsResourceOp
 //
 //msgp:ignore NodesResourceOpts
 type NodesResourceOpts struct {
-	Limit        int
-	Offset       int
-	Filter       string
+	Limit  int
+	Offset int
+	Filter string
+	// Sort fields contained in NodeResource.
+	// Supported fields: int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, string
 	Sort         string
 	SortReversed bool
 }
@@ -393,9 +398,11 @@ func (adm *AdminClient) NodesQuery(ctx context.Context, options *NodesResourceOp
 //
 //msgp:ignore DrivesResourceOpts
 type DrivesResourceOpts struct {
-	Limit        int
-	Offset       int
-	Filter       string
+	Limit  int
+	Offset int
+	Filter string
+	// Sort fields contained in DriveResource.
+	// Supported fields: int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, string
 	Sort         string
 	SortReversed bool
 }
@@ -454,9 +461,11 @@ func (adm *AdminClient) DrivesQuery(ctx context.Context, options *DrivesResource
 //
 //msgp:ignore ErasureSetsResourceOpts
 type ErasureSetsResourceOpts struct {
-	Limit        int
-	Offset       int
-	Filter       string
+	Limit  int
+	Offset int
+	Filter string
+	// Sort fields contained in ErasureSetsResource.
+	// Supported fields: int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, string
 	Sort         string
 	SortReversed bool
 }
@@ -512,44 +521,124 @@ func (adm *AdminClient) ErasureSetsQuery(ctx context.Context, options *ErasureSe
 }
 
 // SortSlice allows for slice sorting based on a field as string.
+// The referred field must be a string, int, uint, float or a pointer to one of these.
+// The field must be exported.
+// Structs can be traversed using dot notation, e.g. "Field1.Field2".
 func SortSlice[T any](slice []T, field string, reversed bool) {
 	if field == "" {
 		return
 	}
+
+	// Resolve a dotted field path on a value. Pointers are dereferenced.
+	// Returns an invalid Value if the path cannot be fully resolved,
+	// or if a nil pointer is encountered before reaching the final field.
+	getFieldByPath := func(v reflect.Value, parts []string) reflect.Value {
+		// Unwrap pointers at the start.
+		for v.Kind() == reflect.Ptr {
+			if v.IsNil() {
+				return reflect.Value{}
+			}
+			v = v.Elem()
+		}
+		for i, name := range parts {
+			if v.Kind() != reflect.Struct {
+				return reflect.Value{}
+			}
+			f := v.FieldByName(name)
+			if !f.IsValid() {
+				return reflect.Value{}
+			}
+			// If not last, continue traversal after deref pointers.
+			if i < len(parts)-1 {
+				for f.Kind() == reflect.Ptr {
+					if f.IsNil() {
+						return reflect.Value{}
+					}
+					f = f.Elem()
+				}
+				v = f
+				continue
+			}
+			// Last segment: return as-is (could be pointer to primitive or primitive).
+			return f
+		}
+		return reflect.Value{}
+	}
+
+	// Compare two field values that are either primitives (string/int/uint/float)
+	// or pointers to those primitives. Nil is considered "less" than non-nil.
+	less := func(a, b reflect.Value) (bool, bool) {
+		// If pointers to primitives, allow a single level deref at the end.
+		deref := func(x reflect.Value) (reflect.Value, bool) {
+			if !x.IsValid() {
+				return reflect.Value{}, true // treat invalid as nil
+			}
+			if x.Kind() == reflect.Ptr {
+				if x.IsNil() {
+					return reflect.Value{}, true
+				}
+				x = x.Elem()
+			}
+			return x, false
+		}
+
+		av, anil := deref(a)
+		bv, bnil := deref(b)
+		// If either side is effectively nil/invalid, define ordering.
+		if anil || bnil {
+			if anil && bnil {
+				return false, true // equal, not less; handled as comparable
+			}
+			// nil < non-nil
+			return anil && !bnil, true
+		}
+
+		switch av.Kind() {
+		case reflect.String:
+			return av.String() < bv.String(), true
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			return av.Int() < bv.Int(), true
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			return av.Uint() < bv.Uint(), true
+		case reflect.Float32, reflect.Float64:
+			return av.Float() < bv.Float(), true
+		default:
+			// Unsupported type.
+			return false, false
+		}
+	}
+
+	parts := strings.Split(field, ".")
 	sort.SliceStable(slice, func(i, j int) bool {
 		valI := reflect.ValueOf(slice[i])
 		valJ := reflect.ValueOf(slice[j])
 
 		if valI.Kind() == reflect.Ptr {
+			if valI.IsNil() {
+				// nil < non-nil
+				return !reversed // place nil first in ascending, last in descending
+			}
 			valI = valI.Elem()
+		}
+		if valJ.Kind() == reflect.Ptr {
+			if valJ.IsNil() {
+				// If both nil, stable order. If only J is nil, I is "less" in ascending.
+				return reversed // in descending, nil first => i<j is false
+			}
 			valJ = valJ.Elem()
 		}
 
-		fieldI := valI.FieldByName(field)
-		fieldJ := valJ.FieldByName(field)
+		fieldI := getFieldByPath(valI, parts)
+		fieldJ := getFieldByPath(valJ, parts)
 
-		if !fieldI.IsValid() || !fieldJ.IsValid() {
+		lt, ok := less(fieldI, fieldJ)
+		if !ok {
+			// If types unsupported or fields invalid, keep original order.
 			return false
 		}
-
-		switch fieldI.Kind() {
-		case reflect.String:
-			if reversed {
-				return fieldI.String() > fieldJ.String()
-			}
-			return fieldI.String() < fieldJ.String()
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			if reversed {
-				return fieldI.Int() > fieldJ.Int()
-			}
-			return fieldI.Int() < fieldJ.Int()
-		case reflect.Float32, reflect.Float64:
-			if reversed {
-				return fieldI.Float() > fieldJ.Float()
-			}
-			return fieldI.Float() < fieldJ.Float()
-		default:
-			return false
+		if reversed {
+			return !lt && !(reflect.DeepEqual(fieldI.Interface(), fieldJ.Interface()))
 		}
+		return lt
 	})
 }
