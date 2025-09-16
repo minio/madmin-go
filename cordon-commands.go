@@ -36,14 +36,31 @@ import (
 
 const (
 	CordonAction    = "cordon"
-	UncordonAction  = "uncordon"
 	StateCordoned   = "cordoned"
+	UncordonAction  = "uncordon"
 	StateUncordoned = "uncordoned"
+	DrainAction     = "drain"
+	StateDraining   = "draining"
+	StateDrained    = "drained"
 )
 
+func CordonActionToState(action string) string {
+	switch action {
+	case CordonAction:
+		return StateCordoned
+	case UncordonAction:
+		return StateUncordoned
+	case DrainAction:
+		return StateDraining
+	default:
+		return "unknown"
+	}
+}
+
 func CordonActionValidate(action string) error {
-	if !slices.Contains([]string{CordonAction, UncordonAction}, action) {
-		return fmt.Errorf("invalid action '%s', must be either '%s' or '%s'", action, CordonAction, UncordonAction)
+	validActions := []string{CordonAction, UncordonAction, DrainAction}
+	if !slices.Contains(validActions, action) {
+		return fmt.Errorf("invalid action '%s', must be one of '%s'", action, validActions)
 	}
 	return nil
 }
@@ -75,7 +92,15 @@ func (adm *AdminClient) Uncordon(ctx context.Context, node string) (CordonNodeRe
 	})
 }
 
-// cordonAction can cordon or uncordon a node
+// Drain will drain a node, preventing it from receiving new requests and allowing existing requests to finish.
+func (adm *AdminClient) Drain(ctx context.Context, node string) (CordonNodeResult, error) {
+	return adm.cordonAction(ctx, CordonNodeOpts{
+		Action: DrainAction,
+		Node:   node,
+	})
+}
+
+// cordonAction can cordon, drain or uncordon a node
 func (adm *AdminClient) cordonAction(ctx context.Context, opts CordonNodeOpts) (CordonNodeResult, error) {
 	if err := CordonActionValidate(opts.Action); err != nil {
 		return CordonNodeResult{}, err
