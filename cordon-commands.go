@@ -28,35 +28,21 @@ import (
 	"slices"
 )
 
-//msgp:ignore CordonNodeOpts
+//msgp:ignore cordonNodeOpts
 //msgp:clearomitted
 //msgp:tag json
 //msgp:timezone utc
 //go:generate msgp -file $GOFILE
 
 const (
-	CordonAction    = "cordon"
-	StateCordoned   = "cordoned"
-	UncordonAction  = "uncordon"
-	StateUncordoned = "uncordoned"
-	DrainAction     = "drain"
-	StateDraining   = "draining"
-	StateDrained    = "drained"
+	CordonAction   = "cordon"
+	StateCordoned  = "cordoned"
+	UncordonAction = "uncordon"
+	DrainAction    = "drain"
+	StateDraining  = "draining"
 )
 
-func CordonActionToState(action string) string {
-	switch action {
-	case CordonAction:
-		return StateCordoned
-	case UncordonAction:
-		return StateUncordoned
-	case DrainAction:
-		return StateDraining
-	default:
-		return "unknown"
-	}
-}
-
+// CordonActionValidate validates if the given action is one of the known, allowed actions.
 func CordonActionValidate(action string) error {
 	validActions := []string{CordonAction, UncordonAction, DrainAction}
 	if !slices.Contains(validActions, action) {
@@ -65,21 +51,25 @@ func CordonActionValidate(action string) error {
 	return nil
 }
 
-type CordonNodeOpts struct {
-	Action string
-	Node   string
-}
-
+// CordonNodeResult represents the result of a cordon, uncordon or drain operation on a node.
+// Node will be the targeted node, in the format <host>:<port>.
+// Errors will contain any errors that occurred communicating the Cordon to peers, each item in the slice
+// will have the node name and the error message from that node, e.g. "node1:9000: <error message>".
 type CordonNodeResult struct {
 	Node   string   `json:"node"`
-	Status string   `json:"status"`
 	Errors []string `json:"errors,omitempty"`
+}
+
+// cordonNodeOpts is used internally to pass options to the cordonAction method.
+type cordonNodeOpts struct {
+	Action string
+	Node   string
 }
 
 // Cordon will cordon a node, preventing it from receiving new requests and putting it in a maintenance mode.
 // The node name is given in the format <host>:<port>, for example: "node1:9000".
 func (adm *AdminClient) Cordon(ctx context.Context, node string) (CordonNodeResult, error) {
-	return adm.cordonAction(ctx, CordonNodeOpts{
+	return adm.cordonAction(ctx, cordonNodeOpts{
 		Action: CordonAction,
 		Node:   node,
 	})
@@ -88,7 +78,7 @@ func (adm *AdminClient) Cordon(ctx context.Context, node string) (CordonNodeResu
 // Uncordon will uncordon a node, allowing it to receive requests again.
 // The node name is given in the format <host>:<port>, for example: "node1:9000".
 func (adm *AdminClient) Uncordon(ctx context.Context, node string) (CordonNodeResult, error) {
-	return adm.cordonAction(ctx, CordonNodeOpts{
+	return adm.cordonAction(ctx, cordonNodeOpts{
 		Action: UncordonAction,
 		Node:   node,
 	})
@@ -96,16 +86,16 @@ func (adm *AdminClient) Uncordon(ctx context.Context, node string) (CordonNodeRe
 
 // Drain will drain a node, preventing it from receiving new requests and allowing existing requests to finish.
 // The node name is given in the format <host>:<port>, for example: "node1:9000".
-// The node will Cordon itself once the drain is complete and there are 0 remaining connections.
+// The node will Cordon itself once the drain is completel and there are 0 remaining connections.
 func (adm *AdminClient) Drain(ctx context.Context, node string) (CordonNodeResult, error) {
-	return adm.cordonAction(ctx, CordonNodeOpts{
+	return adm.cordonAction(ctx, cordonNodeOpts{
 		Action: DrainAction,
 		Node:   node,
 	})
 }
 
 // cordonAction can cordon, drain or uncordon a node
-func (adm *AdminClient) cordonAction(ctx context.Context, opts CordonNodeOpts) (CordonNodeResult, error) {
+func (adm *AdminClient) cordonAction(ctx context.Context, opts cordonNodeOpts) (CordonNodeResult, error) {
 	if err := CordonActionValidate(opts.Action); err != nil {
 		return CordonNodeResult{}, err
 	}

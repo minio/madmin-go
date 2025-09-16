@@ -32,12 +32,6 @@ func (z *CordonNodeResult) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Node")
 				return
 			}
-		case "status":
-			z.Status, err = dc.ReadString()
-			if err != nil {
-				err = msgp.WrapError(err, "Status")
-				return
-			}
 		case "errors":
 			var zb0002 uint32
 			zb0002, err = dc.ReadArrayHeader()
@@ -77,12 +71,12 @@ func (z *CordonNodeResult) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *CordonNodeResult) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(3)
-	var zb0001Mask uint8 /* 3 bits */
+	zb0001Len := uint32(2)
+	var zb0001Mask uint8 /* 2 bits */
 	_ = zb0001Mask
 	if z.Errors == nil {
 		zb0001Len--
-		zb0001Mask |= 0x4
+		zb0001Mask |= 0x2
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -102,17 +96,7 @@ func (z *CordonNodeResult) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "Node")
 			return
 		}
-		// write "status"
-		err = en.Append(0xa6, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73)
-		if err != nil {
-			return
-		}
-		err = en.WriteString(z.Status)
-		if err != nil {
-			err = msgp.WrapError(err, "Status")
-			return
-		}
-		if (zb0001Mask & 0x4) == 0 { // if not omitted
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
 			// write "errors"
 			err = en.Append(0xa6, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x73)
 			if err != nil {
@@ -139,12 +123,12 @@ func (z *CordonNodeResult) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *CordonNodeResult) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(3)
-	var zb0001Mask uint8 /* 3 bits */
+	zb0001Len := uint32(2)
+	var zb0001Mask uint8 /* 2 bits */
 	_ = zb0001Mask
 	if z.Errors == nil {
 		zb0001Len--
-		zb0001Mask |= 0x4
+		zb0001Mask |= 0x2
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -154,10 +138,7 @@ func (z *CordonNodeResult) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "node"
 		o = append(o, 0xa4, 0x6e, 0x6f, 0x64, 0x65)
 		o = msgp.AppendString(o, z.Node)
-		// string "status"
-		o = append(o, 0xa6, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73)
-		o = msgp.AppendString(o, z.Status)
-		if (zb0001Mask & 0x4) == 0 { // if not omitted
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
 			// string "errors"
 			o = append(o, 0xa6, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x73)
 			o = msgp.AppendArrayHeader(o, uint32(len(z.Errors)))
@@ -193,12 +174,6 @@ func (z *CordonNodeResult) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.Node, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Node")
-				return
-			}
-		case "status":
-			z.Status, bts, err = msgp.ReadStringBytes(bts)
-			if err != nil {
-				err = msgp.WrapError(err, "Status")
 				return
 			}
 		case "errors":
@@ -240,7 +215,7 @@ func (z *CordonNodeResult) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *CordonNodeResult) Msgsize() (s int) {
-	s = 1 + 5 + msgp.StringPrefixSize + len(z.Node) + 7 + msgp.StringPrefixSize + len(z.Status) + 7 + msgp.ArrayHeaderSize
+	s = 1 + 5 + msgp.StringPrefixSize + len(z.Node) + 7 + msgp.ArrayHeaderSize
 	for za0001 := range z.Errors {
 		s += msgp.StringPrefixSize + len(z.Errors[za0001])
 	}
