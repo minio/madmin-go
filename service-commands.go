@@ -77,9 +77,9 @@ type ServiceActionOpts struct {
 
 // ServiceActionPeerResult service peer result
 type ServiceActionPeerResult struct {
-	Host          string                `json:"host"`
-	Err           string                `json:"err,omitempty"`
-	WaitingDrives map[string]DiskStatus `json:"waitingDrives,omitempty"`
+	Host          string                 `json:"host"`
+	Err           string                 `json:"err,omitempty"`
+	WaitingDrives map[string]DiskMetrics `json:"waitingDrives,omitempty"`
 }
 
 // ServiceActionResult service action result
