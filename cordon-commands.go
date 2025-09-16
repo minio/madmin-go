@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2024 MinIO, Inc.
+// Copyright (c) 2015-2025 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -77,6 +77,7 @@ type CordonNodeResult struct {
 }
 
 // Cordon will cordon a node, preventing it from receiving new requests and putting it in a maintenance mode.
+// The node name is given in the format <host>:<port>, for example: "node1:9000".
 func (adm *AdminClient) Cordon(ctx context.Context, node string) (CordonNodeResult, error) {
 	return adm.cordonAction(ctx, CordonNodeOpts{
 		Action: CordonAction,
@@ -85,6 +86,7 @@ func (adm *AdminClient) Cordon(ctx context.Context, node string) (CordonNodeResu
 }
 
 // Uncordon will uncordon a node, allowing it to receive requests again.
+// The node name is given in the format <host>:<port>, for example: "node1:9000".
 func (adm *AdminClient) Uncordon(ctx context.Context, node string) (CordonNodeResult, error) {
 	return adm.cordonAction(ctx, CordonNodeOpts{
 		Action: UncordonAction,
@@ -93,6 +95,8 @@ func (adm *AdminClient) Uncordon(ctx context.Context, node string) (CordonNodeRe
 }
 
 // Drain will drain a node, preventing it from receiving new requests and allowing existing requests to finish.
+// The node name is given in the format <host>:<port>, for example: "node1:9000".
+// The node will Cordon itself once the drain is complete and there are 0 remaining connections.
 func (adm *AdminClient) Drain(ctx context.Context, node string) (CordonNodeResult, error) {
 	return adm.cordonAction(ctx, CordonNodeOpts{
 		Action: DrainAction,
