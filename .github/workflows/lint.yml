@@ -1,0 +1,50 @@
+name: Golangci-lint
+
+on:
+  workflow_dispatch:   # ability to manually run from the github actions UI
+  pull_request:
+    branches:
+      - main
+      - master
+
+  push:
+    branches:
+      - main
+      - master
+
+jobs:
+  golangci-lint:
+    name: golangci-lint Validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    strategy:
+      matrix:
+        go-version: [1.24.x]
+    steps:
+      - name: Set up Go ${{ matrix.go-version }}
+        uses: actions/setup-go@v5
+        with:
+          go-version: ${{ matrix.go-version }}
+        id: go
+
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Run golangci-lint (includes deprecation checks)
+        uses: golangci/golangci-lint-action@v7
+        with:
+          args: --timeout 5m --config ./.golangci.yml
+
+      - name:  Staticcheck run with go vet
+        run: |
+          echo "Running go vet..."
+          go vet -vettool=$(which staticcheck) ./...
+
+      - name: Regenerate, vet and test for generated files
+        run: |
+          go vet ./...
+          go install -v tool
+          export PATH=${PATH}:$(go env GOPATH)/bin
+          go generate ./... >/dev/null
+          (! git diff --name-only | grep '_gen.go$') || \
+            (echo "Non-committed changes in auto-generated code is detected, please commit them to proceed." && false)

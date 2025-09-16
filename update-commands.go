@@ -29,11 +29,11 @@ import (
 
 // ServerPeerUpdateStatus server update peer binary update result
 type ServerPeerUpdateStatus struct {
-	Host           string                 `json:"host"`
-	Err            string                 `json:"err,omitempty"`
-	CurrentVersion string                 `json:"currentVersion"`
-	UpdatedVersion string                 `json:"updatedVersion"`
-	WaitingDrives  map[string]DiskMetrics `json:"waitingDrives,omitempty"`
+	Host           string                `json:"host"`
+	Err            string                `json:"err,omitempty"`
+	CurrentVersion string                `json:"currentVersion"`
+	UpdatedVersion string                `json:"updatedVersion"`
+	WaitingDrives  map[string]DiskStatus `json:"waitingDrives,omitempty"`
 }
 
 // ServerUpdateStatus server update status
