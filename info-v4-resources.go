@@ -279,8 +279,13 @@ type PoolsResourceOpts struct {
 	Offset int
 	Filter string
 	// Sort fields contained in PoolResource.
-	// Supported fields: int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, string
-	Sort         string
+	//
+	// Example: PoolsResourceOpts.Sort = "PoolIndex"
+	// Assuming the value of PoolIndex is of a supported value type.
+	//
+	// Supported Values Types: int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, string
+	Sort string
+	// SortReversed will only take effect if Sort is defined
 	SortReversed bool
 }
 
