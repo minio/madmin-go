@@ -272,6 +272,14 @@ func (adm *AdminClient) GetPolicyEntities(ctx context.Context, q PolicyEntitiesQ
 	return r, err
 }
 
+// Azure Policy Commands
+// These commands manage policies corresponding to Azure group IDs for given Azure group names.
+// For example, an azure group name "devs" may have a group ID of "00000000-0000-0000-0000-000000000001".
+// Using AddAzureCannedPolicy, we can request creation of a policy corresponding to the group name "devs",
+// which will internally create a policy with the group ID "00000000-0000-0000-0000-000000000001".
+// Other commands allow listing, removing and getting info on such policies, using their human friendly group names.
+
+// AddAzureCannedPolicyReq represents a request to add an Azure canned policy.
 type AddAzureCannedPolicyReq struct {
 	Name       string
 	ConfigName string
@@ -291,6 +299,7 @@ func (r *AddAzureCannedPolicyReq) Validate() error {
 	return nil
 }
 
+// RemoveAzureCannedPolicyReq represents a request to remove an Azure canned policy.
 type RemoveAzureCannedPolicyReq struct {
 	Name       string
 	ConfigName string
@@ -306,6 +315,7 @@ func (r *RemoveAzureCannedPolicyReq) Validate() error {
 	return nil
 }
 
+// ListAzureCannedPoliciesReq represents a request to list Azure canned policies.
 type ListAzureCannedPoliciesReq struct {
 	ConfigName  string
 	GetAllUUIDs bool // whether to also get policies that exist in MinIO but not in Azure
@@ -318,8 +328,10 @@ func (r *ListAzureCannedPoliciesReq) Validate() error {
 	return nil
 }
 
+// ListAzureCannedPoliciesResp represents the response containing a list of Azure canned policies.
 type ListAzureCannedPoliciesResp []InfoAzureCannedPolicyResp
 
+// InfoAzureCannedPolicyReq represents a request to get information about an Azure canned policy.
 type InfoAzureCannedPolicyReq struct {
 	Name       string
 	ConfigName string
@@ -335,6 +347,7 @@ func (r *InfoAzureCannedPolicyReq) Validate() error {
 	return nil
 }
 
+// InfoAzureCannedPolicyResp represents the response containing information about an Azure canned policy.
 type InfoAzureCannedPolicyResp struct {
 	GroupName string
 	PI        PolicyInfo
