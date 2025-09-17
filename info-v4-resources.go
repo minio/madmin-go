@@ -344,8 +344,13 @@ type NodesResourceOpts struct {
 	Offset int
 	Filter string
 	// Sort fields contained in NodeResource.
-	// Supported fields: int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, string
-	Sort         string
+	//
+	// Example: NodesResourceOpts.Sort = "PoolIndex"
+	// Assuming the value of PoolIndex is of a supported value type.
+	//
+	// Supported Values Types: int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, string
+	Sort string
+	// SortReversed will only take effect if Sort is defined
 	SortReversed bool
 }
 
@@ -407,8 +412,13 @@ type DrivesResourceOpts struct {
 	Offset int
 	Filter string
 	// Sort fields contained in DriveResource.
-	// Supported fields: int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, string
-	Sort         string
+	//
+	// Example: DrivesResourceOpts.Sort = "ServerIndex"
+	// Assuming the value of ServerIndex is of a supported value type.
+	//
+	// Supported Values Types: int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, string
+	Sort string
+	// SortReversed will only take effect if Sort is defined
 	SortReversed bool
 }
 
@@ -469,9 +479,14 @@ type ErasureSetsResourceOpts struct {
 	Limit  int
 	Offset int
 	Filter string
-	// Sort fields contained in ErasureSetsResource.
-	// Supported fields: int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, string
-	Sort         string
+	// Sort fields contained in ErasureSetResource.
+	//
+	// Example: ErasureSetsResourceOpts.Sort = "SetIndex"
+	// Assuming the value of SetIndex is of a supported value type.
+	//
+	// Supported Values Types: int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, string
+	Sort string
+	// SortReversed will only take effect if Sort is defined
 	SortReversed bool
 }
 

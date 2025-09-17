@@ -21,6 +21,7 @@ package madmin
 
 import (
 	"reflect"
+	"slices"
 	"testing"
 )
 
@@ -185,21 +186,21 @@ func TestSortSlice_UnsupportedOrMissing(t *testing.T) {
 	}
 
 	// Unsupported type: sorting by a struct field itself should keep order (stable, comparator returns equal).
-	items := append([]Outer(nil), orig...)
+	items := slices.Clone(orig)
 	SortSlice(items, "Inner", false)
 	if !reflect.DeepEqual(items, orig) {
 		t.Fatalf("unsupported type should keep order, got %v, want %v", items, orig)
 	}
 
 	// Missing field: should keep order.
-	items = append([]Outer(nil), orig...)
+	items = slices.Clone(orig)
 	SortSlice(items, "DoesNotExist", false)
 	if !reflect.DeepEqual(items, orig) {
 		t.Fatalf("missing field should keep order, got %v, want %v", items, orig)
 	}
 
 	// Empty field: function returns immediately, keep order.
-	items = append([]Outer(nil), orig...)
+	items = slices.Clone(orig)
 	SortSlice(items, "", false)
 	if !reflect.DeepEqual(items, orig) {
 		t.Fatalf("empty field should keep order, got %v, want %v", items, orig)
@@ -399,8 +400,8 @@ func BenchmarkSortSlice_SmallInt(b *testing.B) {
 	for i := range orig {
 		orig[i] = Outer{ID: 10 - i, Inner: Inner{Score: 10 - i}}
 	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for b.Loop() {
 		items := make([]Outer, len(orig))
 		copy(items, orig)
 		SortSlice(items, "ID", false)
@@ -412,8 +413,8 @@ func BenchmarkSortSlice_MediumInt(b *testing.B) {
 	for i := range orig {
 		orig[i] = Outer{ID: 100 - i, Inner: Inner{Score: 100 - i}}
 	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for b.Loop() {
 		items := make([]Outer, len(orig))
 		copy(items, orig)
 		SortSlice(items, "ID", false)
@@ -425,8 +426,8 @@ func BenchmarkSortSlice_LargeInt(b *testing.B) {
 	for i := range orig {
 		orig[i] = Outer{ID: 1000 - i, Inner: Inner{Score: 1000 - i}}
 	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for b.Loop() {
 		items := make([]Outer, len(orig))
 		copy(items, orig)
 		SortSlice(items, "ID", false)
@@ -438,8 +439,8 @@ func BenchmarkSortSlice_NestedString(b *testing.B) {
 	for i := range orig {
 		orig[i] = Outer{ID: i, Inner: Inner{Name: string(rune('z' - i%26))}}
 	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for b.Loop() {
 		items := make([]Outer, len(orig))
 		copy(items, orig)
 		SortSlice(items, "Inner.Name", false)
@@ -451,8 +452,8 @@ func BenchmarkSortSlice_AlreadySorted(b *testing.B) {
 	for i := range orig {
 		orig[i] = Outer{ID: i}
 	}
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
+
+	for b.Loop() {
 		items := make([]Outer, len(orig))
 		copy(items, orig)
 		SortSlice(items, "ID", false)
