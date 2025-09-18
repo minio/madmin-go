@@ -75,6 +75,7 @@ type PaginatedErasureSetsResponse struct {
 	SortReversed bool                 `json:"sortReversed" msg:"sr"`
 }
 
+// PoolLayout
 type PoolLayout struct {
 	Servers       int `json:"servers" msg:"s"`
 	Drives        int `json:"drives" msg:"d"`
@@ -132,6 +133,7 @@ type PoolResource struct {
 	DeleteMarkersCount uint64   `json:"deleteMarkersCount" msg:"dmc"`
 }
 
+// DriveCounts
 type DriveCounts struct {
 	Ok          int `json:"ok" msg:"ok"`
 	Offline     int `json:"offline" msg:"of"`
