@@ -184,3 +184,61 @@ func (t *TimedAction) Merge(other TimedAction) {
 	t.Bytes += other.Bytes
 	t.MaxTime = max(t.MaxTime, other.MaxTime)
 }
+
+// DiskAction contains a number of actions and their accumulated duration in nanoseconds.
+type DiskAction struct {
+	// Number of actions performed.
+	Count uint64 `json:"n,omitempty"`
+
+	// Accumulated time spent on the action in seconds.
+	AccTime float64 `json:"time_s,omitempty"`
+
+	// Min and max time spent on the action in seconds.
+	MinTime float64 `json:"min_s,omitempty"`
+	MaxTime float64 `json:"max_s,omitempty"`
+
+	// Total number of bytes read or written.
+	Bytes uint64 `json:"b,omitempty"`
+
+	// Captures all data availability errors such as
+	// permission denied, faulty disk and timeout errors.
+	AvailabilityErrs uint64 `json:"errs_avail,omitempty"`
+
+	// Captures all timeouts, if set on individual operations.
+	Timeouts uint64 `json:"timeouts,omitempty"`
+}
+
+// Avg returns the average time spent on the action.
+func (t DiskAction) Avg() time.Duration {
+	if t.Count == 0 {
+		return 0
+	}
+	return time.Duration(t.AccTime * float64(time.Second) / float64(t.Count))
+}
+
+// AvgBytes returns the average time spent on the action.
+func (t DiskAction) AvgBytes() uint64 {
+	if t.Count == 0 {
+		return 0
+	}
+	return t.Bytes / t.Count
+}
+
+// Add other to t.
+func (t *DiskAction) Add(other *DiskAction) {
+	if other == nil {
+		return
+	}
+	if t.Count == 0 {
+		t.MinTime = other.MinTime
+	}
+	if other.Count > 0 {
+		t.MinTime = min(t.MinTime, other.MinTime)
+	}
+	t.Count += other.Count
+	t.AccTime += other.AccTime
+	t.Bytes += other.Bytes
+	t.MaxTime = max(t.MaxTime, other.MaxTime)
+	t.AvailabilityErrs += other.AvailabilityErrs
+	t.Timeouts += other.Timeouts
+}

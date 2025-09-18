@@ -26,5 +26,5 @@ import "errors"
 
 // GetMemoryLimit - Not implemented in non-linux platforms
 func GetMemoryLimit(_ int) (limit uint64, err error) {
-	return limit, errors.New("Not implemented for non-linux platforms")
+	return limit, errors.New("not implemented for non-linux platforms")
 }
