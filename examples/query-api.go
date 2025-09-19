@@ -1,0 +1,112 @@
+//go:build ignore
+// +build ignore
+
+//
+// Copyright (c) 2015-2025 MinIO, Inc.
+//
+// This file is part of MinIO Object Storage stack
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program. If not, see <http://www.gnu.org/licenses/>.
+//
+
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+
+	"github.com/minio/madmin-go/v4"
+)
+
+var client *madmin.AdminClient
+
+func main() {
+	// verifyTLS := true
+	var err error
+	// client, err = madmin.New("your-minio.example.com:9000", "YOUR-ACCESSKEYID", "YOUR-SECRETACCESSKEY", verifyTLS)
+	client, err = madmin.New("localhost:9001", "minioadmin", "minioadmin", false)
+	if err != nil {
+		log.Fatalln(err)
+	}
+	getPools()
+	getSinglePool()
+	getErasureSetsForSinglePool()
+	getDrivesForSinglePool()
+}
+
+func getPools() {
+	resp, xerr := client.PoolsQuery(context.Background(), &madmin.PoolsResourceOpts{
+		Offset: 0,
+		Limit:  1000,
+		Filter: "",
+		Sort:   "PoolIndex",
+	})
+	if xerr != nil {
+		log.Fatalln(xerr)
+	}
+
+	for _, v := range resp.Results {
+		fmt.Printf("%+v\n", v)
+	}
+}
+
+func getSinglePool() {
+	resp, xerr := client.PoolsQuery(context.Background(), &madmin.PoolsResourceOpts{
+		Offset: 0,
+		Limit:  1,
+		Filter: "PoolIndex = 1",
+	})
+	if xerr != nil {
+		log.Fatalln(xerr)
+	}
+
+	for _, v := range resp.Results {
+		fmt.Printf("%+v\n", v)
+	}
+}
+
+func getErasureSetsForSinglePool() {
+	resp, xerr := client.ErasureSetsQuery(context.Background(), &madmin.ErasureSetsResourceOpts{
+		Offset:       0,
+		Limit:        1000,
+		Filter:       "PoolIndex = 1",
+		Sort:         "SetIndex",
+		SortReversed: false,
+	})
+	if xerr != nil {
+		log.Fatalln(xerr)
+	}
+
+	for _, v := range resp.Results {
+		fmt.Printf("%+v\n", v)
+	}
+}
+
+func getDrivesForSinglePool() {
+	resp, xerr := client.DrivesQuery(context.Background(), &madmin.DrivesResourceOpts{
+		Offset:       0,
+		Limit:        1000,
+		Filter:       "PoolIndex = 1",
+		Sort:         "SetIndex",
+		SortReversed: false,
+	})
+	if xerr != nil {
+		log.Fatalln(xerr)
+	}
+
+	for _, v := range resp.Results {
+		fmt.Printf("%+v\n", v)
+	}
+}
