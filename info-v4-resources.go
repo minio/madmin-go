@@ -277,6 +277,8 @@ func (adm *AdminClient) ServicesQuery(ctx context.Context, options ...func(*Serv
 //
 //msgp:ignore PoolsResourceOpts
 type PoolsResourceOpts struct {
+	// Limit defaults to 100 if set to 0.
+	// A limit of -1 will return all results.
 	Limit  int
 	Offset int
 	Filter string
@@ -295,9 +297,8 @@ func (adm *AdminClient) PoolsQuery(ctx context.Context, options *PoolsResourceOp
 	values := make(url.Values)
 
 	if options != nil {
-		if options.Limit > 0 {
-			values.Set("limit", strconv.Itoa(options.Limit))
-		}
+		values.Set("limit", strconv.Itoa(options.Limit))
+
 		if options.Offset > 0 {
 			values.Set("offset", strconv.Itoa(options.Offset))
 		}
@@ -342,6 +343,8 @@ func (adm *AdminClient) PoolsQuery(ctx context.Context, options *PoolsResourceOp
 //
 //msgp:ignore NodesResourceOpts
 type NodesResourceOpts struct {
+	// Limit defaults to 100 if set to 0.
+	// A limit of -1 will return all results.
 	Limit  int
 	Offset int
 	Filter string
@@ -362,9 +365,7 @@ func (adm *AdminClient) NodesQuery(ctx context.Context, options *NodesResourceOp
 
 	if options != nil {
 		// Add pagination and filter parameters if provided
-		if options.Limit > 0 {
-			values.Set("limit", strconv.Itoa(options.Limit))
-		}
+		values.Set("limit", strconv.Itoa(options.Limit))
 
 		if options.Offset > 0 {
 			values.Set("offset", strconv.Itoa(options.Offset))
@@ -410,6 +411,8 @@ func (adm *AdminClient) NodesQuery(ctx context.Context, options *NodesResourceOp
 //
 //msgp:ignore DrivesResourceOpts
 type DrivesResourceOpts struct {
+	// Limit defaults to 100 if set to 0.
+	// A limit of -1 will return all results.
 	Limit  int
 	Offset int
 	Filter string
@@ -430,9 +433,7 @@ func (adm *AdminClient) DrivesQuery(ctx context.Context, options *DrivesResource
 
 	if options != nil {
 		// Add pagination and filter parameters if provided
-		if options.Limit > 0 {
-			values.Set("limit", strconv.Itoa(options.Limit))
-		}
+		values.Set("limit", strconv.Itoa(options.Limit))
 
 		if options.Offset > 0 {
 			values.Set("offset", strconv.Itoa(options.Offset))
@@ -478,6 +479,8 @@ func (adm *AdminClient) DrivesQuery(ctx context.Context, options *DrivesResource
 //
 //msgp:ignore ErasureSetsResourceOpts
 type ErasureSetsResourceOpts struct {
+	// Limit defaults to 100 if set to 0.
+	// A limit of -1 will return all results.
 	Limit  int
 	Offset int
 	Filter string
@@ -498,9 +501,7 @@ func (adm *AdminClient) ErasureSetsQuery(ctx context.Context, options *ErasureSe
 
 	if options != nil {
 		// Add pagination and filter parameters if provided
-		if options.Limit > 0 {
-			values.Set("limit", strconv.Itoa(options.Limit))
-		}
+		values.Set("limit", strconv.Itoa(options.Limit))
 
 		if options.Offset > 0 {
 			values.Set("offset", strconv.Itoa(options.Offset))
