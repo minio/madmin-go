@@ -33,10 +33,9 @@ import (
 var client *madmin.AdminClient
 
 func main() {
-	// verifyTLS := true
+	verifyTLS := true
 	var err error
-	// client, err = madmin.New("your-minio.example.com:9000", "YOUR-ACCESSKEYID", "YOUR-SECRETACCESSKEY", verifyTLS)
-	client, err = madmin.New("localhost:9001", "minioadmin", "minioadmin", false)
+	client, err = madmin.New("your-minio.example.com:9000", "YOUR-ACCESSKEYID", "YOUR-SECRETACCESSKEY", verifyTLS)
 	if err != nil {
 		log.Fatalln(err)
 	}
