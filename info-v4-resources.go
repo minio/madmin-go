@@ -23,7 +23,10 @@ import (
 	"context"
 	"net/http"
 	"net/url"
+	"reflect"
+	"sort"
 	"strconv"
+	"strings"
 
 	"github.com/tinylib/msgp/msgp"
 )
@@ -34,36 +37,45 @@ import (
 
 // PaginatedPoolsResponse represents a paginated response for pools
 type PaginatedPoolsResponse struct {
-	Results []PoolResource `json:"results" msg:"r,omitempty"`
-	Count   int            `json:"count" msg:"c"`
-	Total   int            `json:"total" msg:"t"`
-	Offset  int            `json:"offset" msg:"o"`
+	Results      []PoolResource `json:"results" msg:"r,omitempty"`
+	Count        int            `json:"count" msg:"c"`
+	Total        int            `json:"total" msg:"t"`
+	Offset       int            `json:"offset" msg:"o"`
+	Sort         string         `json:"sort" msg:"s"`
+	SortReversed bool           `json:"sortReversed" msg:"sr"`
 }
 
 // PaginatedNodesResponse represents a paginated response for nodes
 type PaginatedNodesResponse struct {
-	Results []NodeResource `json:"results" msg:"r,omitempty"`
-	Count   int            `json:"count" msg:"c"`
-	Total   int            `json:"total" msg:"t"`
-	Offset  int            `json:"offset" msg:"o"`
+	Results      []NodeResource `json:"results" msg:"r,omitempty"`
+	Count        int            `json:"count" msg:"c"`
+	Total        int            `json:"total" msg:"t"`
+	Offset       int            `json:"offset" msg:"o"`
+	Sort         string         `json:"sort" msg:"s"`
+	SortReversed bool           `json:"sortReversed" msg:"sr"`
 }
 
 // PaginatedDrivesResponse represents a paginated response for drives
 type PaginatedDrivesResponse struct {
-	Results []DriveResource `json:"results" msg:"r,omitempty"`
-	Count   int             `json:"count" msg:"c"`
-	Total   int             `json:"total" msg:"t"`
-	Offset  int             `json:"offset" msg:"o"`
+	Results      []DriveResource `json:"results" msg:"r,omitempty"`
+	Count        int             `json:"count" msg:"c"`
+	Total        int             `json:"total" msg:"t"`
+	Offset       int             `json:"offset" msg:"o"`
+	Sort         string          `json:"sort" msg:"s"`
+	SortReversed bool            `json:"sortReversed" msg:"sr"`
 }
 
 // PaginatedErasureSetsResponse represents a paginated response for erasure sets
 type PaginatedErasureSetsResponse struct {
-	Results []ErasureSetResource `json:"results" msg:"r,omitempty"`
-	Count   int                  `json:"count" msg:"c"`
-	Total   int                  `json:"total" msg:"t"`
-	Offset  int                  `json:"offset" msg:"o"`
+	Results      []ErasureSetResource `json:"results" msg:"r,omitempty"`
+	Count        int                  `json:"count" msg:"c"`
+	Total        int                  `json:"total" msg:"t"`
+	Offset       int                  `json:"offset" msg:"o"`
+	Sort         string               `json:"sort" msg:"s"`
+	SortReversed bool                 `json:"sortReversed" msg:"sr"`
 }
 
+// PoolLayout ...
 type PoolLayout struct {
 	Servers       int `json:"servers" msg:"s"`
 	Drives        int `json:"drives" msg:"d"`
@@ -121,6 +133,7 @@ type PoolResource struct {
 	DeleteMarkersCount uint64   `json:"deleteMarkersCount" msg:"dmc"`
 }
 
+// DriveCounts ...
 type DriveCounts struct {
 	Ok          int `json:"ok" msg:"ok"`
 	Offline     int `json:"offline" msg:"of"`
@@ -260,32 +273,45 @@ func (adm *AdminClient) ServicesQuery(ctx context.Context, options ...func(*Serv
 	return info, nil
 }
 
-// PoolsResourceOpts ask for additional data from the server
-// this is not used at the moment, kept here for future
-// extensibility.
+// PoolsResourceOpts contains the available options for the PoolsQuery API
 //
 //msgp:ignore PoolsResourceOpts
 type PoolsResourceOpts struct {
+	// Limit defaults to 100 if set to 0.
+	// A limit of -1 will return all results.
 	Limit  int
 	Offset int
 	Filter string
+	// Sort fields contained in PoolResource.
+	//
+	// Example: PoolsResourceOpts.Sort = "PoolIndex"
+	// Assuming the value of PoolIndex is of a supported value type.
+	//
+	// Supported Values Types: int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, string
+	Sort string
+	// SortReversed will only take effect if Sort is defined
+	SortReversed bool
 }
 
 func (adm *AdminClient) PoolsQuery(ctx context.Context, options *PoolsResourceOpts) (*PaginatedPoolsResponse, error) {
 	values := make(url.Values)
 
 	if options != nil {
-		// Add pagination and filter parameters if provided
-		if options.Limit > 0 {
-			values.Set("limit", strconv.Itoa(options.Limit))
-		}
+		values.Set("limit", strconv.Itoa(options.Limit))
 
 		if options.Offset > 0 {
 			values.Set("offset", strconv.Itoa(options.Offset))
 		}
-
 		if options.Filter != "" {
 			values.Set("filter", options.Filter)
+		}
+		if options.Sort != "" {
+			values.Set("sort", options.Sort)
+		}
+		if options.SortReversed {
+			values.Set("sortReversed", "true")
+		} else {
+			values.Set("sortReversed", "false")
 		}
 	}
 
@@ -313,15 +339,24 @@ func (adm *AdminClient) PoolsQuery(ctx context.Context, options *PoolsResourceOp
 	return &poolsResp, nil
 }
 
-// NodesResourceOpts ask for additional data from the server
-// this is not used at the moment, kept here for future
-// extensibility.
+// NodesResourceOpts contains the available options for the NodesQuery API
 //
 //msgp:ignore NodesResourceOpts
 type NodesResourceOpts struct {
+	// Limit defaults to 100 if set to 0.
+	// A limit of -1 will return all results.
 	Limit  int
 	Offset int
 	Filter string
+	// Sort fields contained in NodeResource.
+	//
+	// Example: NodesResourceOpts.Sort = "PoolIndex"
+	// Assuming the value of PoolIndex is of a supported value type.
+	//
+	// Supported Values Types: int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, string
+	Sort string
+	// SortReversed will only take effect if Sort is defined
+	SortReversed bool
 }
 
 // NodesQuery - Get list of nodes
@@ -330,9 +365,7 @@ func (adm *AdminClient) NodesQuery(ctx context.Context, options *NodesResourceOp
 
 	if options != nil {
 		// Add pagination and filter parameters if provided
-		if options.Limit > 0 {
-			values.Set("limit", strconv.Itoa(options.Limit))
-		}
+		values.Set("limit", strconv.Itoa(options.Limit))
 
 		if options.Offset > 0 {
 			values.Set("offset", strconv.Itoa(options.Offset))
@@ -340,6 +373,14 @@ func (adm *AdminClient) NodesQuery(ctx context.Context, options *NodesResourceOp
 
 		if options.Filter != "" {
 			values.Set("filter", options.Filter)
+		}
+		if options.Sort != "" {
+			values.Set("sort", options.Sort)
+		}
+		if options.SortReversed {
+			values.Set("sortReversed", "true")
+		} else {
+			values.Set("sortReversed", "false")
 		}
 	}
 
@@ -366,15 +407,24 @@ func (adm *AdminClient) NodesQuery(ctx context.Context, options *NodesResourceOp
 	return &nodesResp, nil
 }
 
-// DrivesResourceOpts ask for additional data from the server
-// this is not used at the moment, kept here for future
-// extensibility.
+// DrivesResourceOpts contains the available options for the DrivesQuery API
 //
 //msgp:ignore DrivesResourceOpts
 type DrivesResourceOpts struct {
+	// Limit defaults to 100 if set to 0.
+	// A limit of -1 will return all results.
 	Limit  int
 	Offset int
 	Filter string
+	// Sort fields contained in DriveResource.
+	//
+	// Example: DrivesResourceOpts.Sort = "ServerIndex"
+	// Assuming the value of ServerIndex is of a supported value type.
+	//
+	// Supported Values Types: int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, string
+	Sort string
+	// SortReversed will only take effect if Sort is defined
+	SortReversed bool
 }
 
 // DrivesQuery - Get list of drives
@@ -383,9 +433,7 @@ func (adm *AdminClient) DrivesQuery(ctx context.Context, options *DrivesResource
 
 	if options != nil {
 		// Add pagination and filter parameters if provided
-		if options.Limit > 0 {
-			values.Set("limit", strconv.Itoa(options.Limit))
-		}
+		values.Set("limit", strconv.Itoa(options.Limit))
 
 		if options.Offset > 0 {
 			values.Set("offset", strconv.Itoa(options.Offset))
@@ -393,6 +441,14 @@ func (adm *AdminClient) DrivesQuery(ctx context.Context, options *DrivesResource
 
 		if options.Filter != "" {
 			values.Set("filter", options.Filter)
+		}
+		if options.Sort != "" {
+			values.Set("sort", options.Sort)
+		}
+		if options.SortReversed {
+			values.Set("sortReversed", "true")
+		} else {
+			values.Set("sortReversed", "false")
 		}
 	}
 
@@ -419,15 +475,24 @@ func (adm *AdminClient) DrivesQuery(ctx context.Context, options *DrivesResource
 	return &drivesResp, nil
 }
 
-// ErasureSetsResourceOpts ask for additional data from the server
-// this is not used at the moment, kept here for future
-// extensibility.
+// ErasureSetsResourceOpts contains the available options for the ErasureSetsQuery API
 //
 //msgp:ignore ErasureSetsResourceOpts
 type ErasureSetsResourceOpts struct {
+	// Limit defaults to 100 if set to 0.
+	// A limit of -1 will return all results.
 	Limit  int
 	Offset int
 	Filter string
+	// Sort fields contained in ErasureSetResource.
+	//
+	// Example: ErasureSetsResourceOpts.Sort = "SetIndex"
+	// Assuming the value of SetIndex is of a supported value type.
+	//
+	// Supported Values Types: int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, string
+	Sort string
+	// SortReversed will only take effect if Sort is defined
+	SortReversed bool
 }
 
 // ErasureSetsQuery - Get list of erasure sets
@@ -436,9 +501,7 @@ func (adm *AdminClient) ErasureSetsQuery(ctx context.Context, options *ErasureSe
 
 	if options != nil {
 		// Add pagination and filter parameters if provided
-		if options.Limit > 0 {
-			values.Set("limit", strconv.Itoa(options.Limit))
-		}
+		values.Set("limit", strconv.Itoa(options.Limit))
 
 		if options.Offset > 0 {
 			values.Set("offset", strconv.Itoa(options.Offset))
@@ -446,6 +509,14 @@ func (adm *AdminClient) ErasureSetsQuery(ctx context.Context, options *ErasureSe
 
 		if options.Filter != "" {
 			values.Set("filter", options.Filter)
+		}
+		if options.Sort != "" {
+			values.Set("sort", options.Sort)
+		}
+		if options.SortReversed {
+			values.Set("sortReversed", "true")
+		} else {
+			values.Set("sortReversed", "false")
 		}
 	}
 
@@ -470,4 +541,127 @@ func (adm *AdminClient) ErasureSetsQuery(ctx context.Context, options *ErasureSe
 	}
 
 	return &setsResp, nil
+}
+
+// SortSlice allows for slice sorting based on a field as string.
+// The referred field must be a string, int, uint, float or a pointer to one of these.
+// The field must be exported.
+// Structs can be traversed using dot notation, e.g. "Field1.Field2".
+func SortSlice[T any](slice []T, field string, reversed bool) {
+	if field == "" {
+		return
+	}
+
+	// Resolve a dotted field path on a value. Pointers are dereferenced.
+	// Returns an invalid Value if the path cannot be fully resolved,
+	// or if a nil pointer is encountered before reaching the final field.
+	getFieldByPath := func(v reflect.Value, parts []string) reflect.Value {
+		// Unwrap pointers at the start.
+		for v.Kind() == reflect.Ptr {
+			if v.IsNil() {
+				return reflect.Value{}
+			}
+			v = v.Elem()
+		}
+		for i, name := range parts {
+			if v.Kind() != reflect.Struct {
+				return reflect.Value{}
+			}
+			f := v.FieldByName(name)
+			if !f.IsValid() {
+				return reflect.Value{}
+			}
+			// If not last, continue traversal after deref pointers.
+			if i < len(parts)-1 {
+				for f.Kind() == reflect.Ptr {
+					if f.IsNil() {
+						return reflect.Value{}
+					}
+					f = f.Elem()
+				}
+				v = f
+				continue
+			}
+			// Last segment: return as-is (could be pointer to primitive or primitive).
+			return f
+		}
+		return reflect.Value{}
+	}
+
+	// Compare two field values that are either primitives (string/int/uint/float)
+	// or pointers to those primitives. Nil is considered "less" than non-nil.
+	less := func(a, b reflect.Value) (bool, bool) {
+		// If pointers to primitives, allow a single level deref at the end.
+		deref := func(x reflect.Value) (reflect.Value, bool) {
+			if !x.IsValid() {
+				return reflect.Value{}, true // treat invalid as nil
+			}
+			if x.Kind() == reflect.Ptr {
+				if x.IsNil() {
+					return reflect.Value{}, true
+				}
+				x = x.Elem()
+			}
+			return x, false
+		}
+
+		av, anil := deref(a)
+		bv, bnil := deref(b)
+		// If either side is effectively nil/invalid, define ordering.
+		if anil || bnil {
+			if anil && bnil {
+				return false, true // equal, not less; handled as comparable
+			}
+			// nil < non-nil
+			return anil && !bnil, true
+		}
+
+		switch av.Kind() {
+		case reflect.String:
+			return av.String() < bv.String(), true
+		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+			return av.Int() < bv.Int(), true
+		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+			return av.Uint() < bv.Uint(), true
+		case reflect.Float32, reflect.Float64:
+			return av.Float() < bv.Float(), true
+		default:
+			// Unsupported type.
+			return false, false
+		}
+	}
+
+	parts := strings.Split(field, ".")
+	sort.SliceStable(slice, func(i, j int) bool {
+		valI := reflect.ValueOf(slice[i])
+		valJ := reflect.ValueOf(slice[j])
+
+		if valI.Kind() == reflect.Ptr {
+			if valI.IsNil() {
+				// nil < non-nil
+				return !reversed // place nil first in ascending, last in descending
+			}
+			valI = valI.Elem()
+		}
+		if valJ.Kind() == reflect.Ptr {
+			if valJ.IsNil() {
+				// If both nil, stable order. If only J is nil, I is "less" in ascending.
+				return reversed // in descending, nil first => i<j is false
+			}
+			valJ = valJ.Elem()
+		}
+
+		fieldI := getFieldByPath(valI, parts)
+		fieldJ := getFieldByPath(valJ, parts)
+
+		lt, ok := less(fieldI, fieldJ)
+		if !ok {
+			// If types unsupported or fields invalid, keep original order.
+			return false
+		}
+		if reversed {
+			return !lt && !(reflect.DeepEqual(fieldI.Interface(), fieldJ.Interface()))
+		}
+		return lt
+	})
 }
