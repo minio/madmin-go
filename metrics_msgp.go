@@ -35,7 +35,7 @@ func (z *Segmented[T, PT]) DecodeMsg(dc *msgp.Reader) (err error) {
 	zb0001, err = dc.ReadMapHeader()
 	if err != nil {
 		err = msgp.WrapError(err)
-		return
+		return err
 	}
 	var zb0001Mask uint8 /* 3 bits */
 	_ = zb0001Mask
@@ -44,21 +44,21 @@ func (z *Segmented[T, PT]) DecodeMsg(dc *msgp.Reader) (err error) {
 		field, err = dc.ReadMapKeyPtr()
 		if err != nil {
 			err = msgp.WrapError(err)
-			return
+			return err
 		}
 		switch msgp.UnsafeString(field) {
 		case "int":
 			z.Interval, err = dc.ReadInt()
 			if err != nil {
 				err = msgp.WrapError(err, "Interval")
-				return
+				return err
 			}
 			zb0001Mask |= 0x1
 		case "ft":
 			z.FirstTime, err = dc.ReadTimeUTC()
 			if err != nil {
 				err = msgp.WrapError(err, "FirstTime")
-				return
+				return err
 			}
 			zb0001Mask |= 0x2
 		case "segs":
@@ -66,7 +66,7 @@ func (z *Segmented[T, PT]) DecodeMsg(dc *msgp.Reader) (err error) {
 			zb0002, err = dc.ReadArrayHeader()
 			if err != nil {
 				err = msgp.WrapError(err, "Segments")
-				return
+				return err
 			}
 			if cap(z.Segments) >= int(zb0002) {
 				z.Segments = (z.Segments)[:zb0002]
@@ -77,7 +77,7 @@ func (z *Segmented[T, PT]) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = PT(&z.Segments[za0001]).DecodeMsg(dc)
 				if err != nil {
 					err = msgp.WrapError(err, "Segments", za0001)
-					return
+					return err
 				}
 			}
 			zb0001Mask |= 0x4
@@ -85,7 +85,7 @@ func (z *Segmented[T, PT]) DecodeMsg(dc *msgp.Reader) (err error) {
 			err = dc.Skip()
 			if err != nil {
 				err = msgp.WrapError(err)
-				return
+				return err
 			}
 		}
 	}
@@ -101,7 +101,7 @@ func (z *Segmented[T, PT]) DecodeMsg(dc *msgp.Reader) (err error) {
 			z.Segments = nil
 		}
 	}
-	return
+	return err
 }
 
 // EncodeMsg implements msgp.Encodable
@@ -125,7 +125,7 @@ func (z *Segmented[T, PT]) EncodeMsg(en *msgp.Writer) (err error) {
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
 	if err != nil {
-		return
+		return err
 	}
 
 	// skip if no fields are to be emitted
@@ -134,47 +134,47 @@ func (z *Segmented[T, PT]) EncodeMsg(en *msgp.Writer) (err error) {
 			// write "int"
 			err = en.Append(0xa3, 0x69, 0x6e, 0x74)
 			if err != nil {
-				return
+				return err
 			}
 			err = en.WriteInt(z.Interval)
 			if err != nil {
 				err = msgp.WrapError(err, "Interval")
-				return
+				return err
 			}
 		}
 		if (zb0001Mask & 0x2) == 0 { // if not omitted
 			// write "ft"
 			err = en.Append(0xa2, 0x66, 0x74)
 			if err != nil {
-				return
+				return err
 			}
 			err = en.WriteTime(z.FirstTime)
 			if err != nil {
 				err = msgp.WrapError(err, "FirstTime")
-				return
+				return err
 			}
 		}
 		if (zb0001Mask & 0x4) == 0 { // if not omitted
 			// write "segs"
 			err = en.Append(0xa4, 0x73, 0x65, 0x67, 0x73)
 			if err != nil {
-				return
+				return err
 			}
 			err = en.WriteArrayHeader(uint32(len(z.Segments)))
 			if err != nil {
 				err = msgp.WrapError(err, "Segments")
-				return
+				return err
 			}
 			for za0001 := range z.Segments {
 				err = PT(&z.Segments[za0001]).EncodeMsg(en)
 				if err != nil {
 					err = msgp.WrapError(err, "Segments", za0001)
-					return
+					return err
 				}
 			}
 		}
 	}
-	return
+	return err
 }
 
 // MarshalMsg implements msgp.Marshaler
@@ -219,12 +219,12 @@ func (z *Segmented[T, PT]) MarshalMsg(b []byte) (o []byte, err error) {
 				o, err = PT(&z.Segments[za0001]).MarshalMsg(o)
 				if err != nil {
 					err = msgp.WrapError(err, "Segments", za0001)
-					return
+					return o, err
 				}
 			}
 		}
 	}
-	return
+	return o, err
 }
 
 // UnmarshalMsg implements msgp.Unmarshaler
@@ -235,7 +235,7 @@ func (z *Segmented[T, PT]) UnmarshalMsg(bts []byte) (o []byte, err error) {
 	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
 	if err != nil {
 		err = msgp.WrapError(err)
-		return
+		return o, err
 	}
 	var zb0001Mask uint8 /* 3 bits */
 	_ = zb0001Mask
@@ -244,21 +244,21 @@ func (z *Segmented[T, PT]) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		field, bts, err = msgp.ReadMapKeyZC(bts)
 		if err != nil {
 			err = msgp.WrapError(err)
-			return
+			return o, err
 		}
 		switch msgp.UnsafeString(field) {
 		case "int":
 			z.Interval, bts, err = msgp.ReadIntBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Interval")
-				return
+				return o, err
 			}
 			zb0001Mask |= 0x1
 		case "ft":
 			z.FirstTime, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "FirstTime")
-				return
+				return o, err
 			}
 			zb0001Mask |= 0x2
 		case "segs":
@@ -266,7 +266,7 @@ func (z *Segmented[T, PT]) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			zb0002, bts, err = msgp.ReadArrayHeaderBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Segments")
-				return
+				return o, err
 			}
 			if cap(z.Segments) >= int(zb0002) {
 				z.Segments = (z.Segments)[:zb0002]
@@ -277,7 +277,7 @@ func (z *Segmented[T, PT]) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				bts, err = PT(&z.Segments[za0001]).UnmarshalMsg(bts)
 				if err != nil {
 					err = msgp.WrapError(err, "Segments", za0001)
-					return
+					return o, err
 				}
 			}
 			zb0001Mask |= 0x4
@@ -285,7 +285,7 @@ func (z *Segmented[T, PT]) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			bts, err = msgp.Skip(bts)
 			if err != nil {
 				err = msgp.WrapError(err)
-				return
+				return o, err
 			}
 		}
 	}
@@ -302,7 +302,7 @@ func (z *Segmented[T, PT]) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	o = bts
-	return
+	return o, err
 }
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
@@ -311,5 +311,5 @@ func (z *Segmented[T, PT]) Msgsize() (s int) {
 	for za0001 := range z.Segments {
 		s += PT(&z.Segments[za0001]).Msgsize()
 	}
-	return
+	return s
 }

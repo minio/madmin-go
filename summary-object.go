@@ -76,7 +76,7 @@ func (adm *AdminClient) ObjectSummary(ctx context.Context, objOpts ObjectSummary
 		return nil, err
 	}
 
-	return
+	return objectSummary, err
 }
 
 // ObjectMetaSummary is returned from minio when calling ObjectSummary

@@ -160,6 +160,8 @@ type DriveResource struct {
 	Size        uint64      `json:"size" msg:"sz"`
 	Used        uint64      `json:"used" msg:"u"`
 	Available   uint64      `json:"available" msg:"a"`
+	InodesFree  uint64      `json:"inodesFree" msg:"if"`
+	InodesUsed  uint64      `json:"inodesUsed" msg:"iu"`
 	UUID        string      `json:"uuid" msg:"uid"`
 	Metrics     *DiskMetric `json:"metrics,omitempty" msg:"m,omitempty"`
 }

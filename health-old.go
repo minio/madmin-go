@@ -263,7 +263,7 @@ func (s *ServerDiskHwInfo) GetTotalCapacity() (capacity uint64) {
 	for _, u := range s.Usage {
 		capacity += u.Total
 	}
-	return
+	return capacity
 }
 
 // GetTotalFreeCapacity gets the total capacity that is free.
@@ -271,7 +271,7 @@ func (s *ServerDiskHwInfo) GetTotalFreeCapacity() (capacity uint64) {
 	for _, u := range s.Usage {
 		capacity += u.Free
 	}
-	return
+	return capacity
 }
 
 // GetTotalUsedCapacity gets the total capacity used.
@@ -279,7 +279,7 @@ func (s *ServerDiskHwInfo) GetTotalUsedCapacity() (capacity uint64) {
 	for _, u := range s.Usage {
 		capacity += u.Used
 	}
-	return
+	return capacity
 }
 
 // SmartInfo contains S.M.A.R.T data about the drive

@@ -1054,6 +1054,18 @@ func (z *DriveResource) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Available")
 				return
 			}
+		case "if":
+			z.InodesFree, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "InodesFree")
+				return
+			}
+		case "iu":
+			z.InodesUsed, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "InodesUsed")
+				return
+			}
 		case "uid":
 			z.UUID, err = dc.ReadString()
 			if err != nil {
@@ -1098,15 +1110,15 @@ func (z *DriveResource) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *DriveResource) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(14)
-	var zb0001Mask uint16 /* 14 bits */
+	zb0001Len := uint32(16)
+	var zb0001Mask uint16 /* 16 bits */
 	_ = zb0001Mask
 	if z.Metrics == nil {
 		zb0001Len--
-		zb0001Mask |= 0x2000
+		zb0001Mask |= 0x8000
 	}
 	// variable map header, size zb0001Len
-	err = en.Append(0x80 | uint8(zb0001Len))
+	err = en.WriteMapHeader(zb0001Len)
 	if err != nil {
 		return
 	}
@@ -1233,6 +1245,26 @@ func (z *DriveResource) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "Available")
 			return
 		}
+		// write "if"
+		err = en.Append(0xa2, 0x69, 0x66)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint64(z.InodesFree)
+		if err != nil {
+			err = msgp.WrapError(err, "InodesFree")
+			return
+		}
+		// write "iu"
+		err = en.Append(0xa2, 0x69, 0x75)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint64(z.InodesUsed)
+		if err != nil {
+			err = msgp.WrapError(err, "InodesUsed")
+			return
+		}
 		// write "uid"
 		err = en.Append(0xa3, 0x75, 0x69, 0x64)
 		if err != nil {
@@ -1243,7 +1275,7 @@ func (z *DriveResource) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "UUID")
 			return
 		}
-		if (zb0001Mask & 0x2000) == 0 { // if not omitted
+		if (zb0001Mask & 0x8000) == 0 { // if not omitted
 			// write "m"
 			err = en.Append(0xa1, 0x6d)
 			if err != nil {
@@ -1270,15 +1302,15 @@ func (z *DriveResource) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *DriveResource) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(14)
-	var zb0001Mask uint16 /* 14 bits */
+	zb0001Len := uint32(16)
+	var zb0001Mask uint16 /* 16 bits */
 	_ = zb0001Mask
 	if z.Metrics == nil {
 		zb0001Len--
-		zb0001Mask |= 0x2000
+		zb0001Mask |= 0x8000
 	}
 	// variable map header, size zb0001Len
-	o = append(o, 0x80|uint8(zb0001Len))
+	o = msgp.AppendMapHeader(o, zb0001Len)
 
 	// skip if no fields are to be emitted
 	if zb0001Len != 0 {
@@ -1318,10 +1350,16 @@ func (z *DriveResource) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "a"
 		o = append(o, 0xa1, 0x61)
 		o = msgp.AppendUint64(o, z.Available)
+		// string "if"
+		o = append(o, 0xa2, 0x69, 0x66)
+		o = msgp.AppendUint64(o, z.InodesFree)
+		// string "iu"
+		o = append(o, 0xa2, 0x69, 0x75)
+		o = msgp.AppendUint64(o, z.InodesUsed)
 		// string "uid"
 		o = append(o, 0xa3, 0x75, 0x69, 0x64)
 		o = msgp.AppendString(o, z.UUID)
-		if (zb0001Mask & 0x2000) == 0 { // if not omitted
+		if (zb0001Mask & 0x8000) == 0 { // if not omitted
 			// string "m"
 			o = append(o, 0xa1, 0x6d)
 			if z.Metrics == nil {
@@ -1430,6 +1468,18 @@ func (z *DriveResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "Available")
 				return
 			}
+		case "if":
+			z.InodesFree, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "InodesFree")
+				return
+			}
+		case "iu":
+			z.InodesUsed, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "InodesUsed")
+				return
+			}
 		case "uid":
 			z.UUID, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
@@ -1473,7 +1523,7 @@ func (z *DriveResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *DriveResource) Msgsize() (s int) {
-	s = 1 + 2 + msgp.StringPrefixSize + len(z.ID) + 4 + msgp.IntSize + 5 + msgp.IntSize + 2 + msgp.StringPrefixSize + len(z.Path) + 3 + msgp.StringPrefixSize + len(z.NodeID) + 3 + msgp.IntSize + 3 + msgp.IntSize + 2 + msgp.StringPrefixSize + len(z.State) + 2 + msgp.BoolSize + 3 + msgp.Uint64Size + 2 + msgp.Uint64Size + 2 + msgp.Uint64Size + 4 + msgp.StringPrefixSize + len(z.UUID) + 2
+	s = 3 + 2 + msgp.StringPrefixSize + len(z.ID) + 4 + msgp.IntSize + 5 + msgp.IntSize + 2 + msgp.StringPrefixSize + len(z.Path) + 3 + msgp.StringPrefixSize + len(z.NodeID) + 3 + msgp.IntSize + 3 + msgp.IntSize + 2 + msgp.StringPrefixSize + len(z.State) + 2 + msgp.BoolSize + 3 + msgp.Uint64Size + 2 + msgp.Uint64Size + 2 + msgp.Uint64Size + 3 + msgp.Uint64Size + 3 + msgp.Uint64Size + 4 + msgp.StringPrefixSize + len(z.UUID) + 2
 	if z.Metrics == nil {
 		s += msgp.NilSize
 	} else {
