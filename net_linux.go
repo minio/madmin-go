@@ -36,14 +36,14 @@ func GetNetInfo(addr string, iface string) (ni NetInfo) {
 	ethHandle, err := ethtool.NewEthtool()
 	if err != nil {
 		ni.Error = err.Error()
-		return
+		return ni
 	}
 	defer ethHandle.Close()
 
 	di, err := ethHandle.DriverInfo(ni.Interface)
 	if err != nil {
 		ni.Error = fmt.Sprintf("Error getting driver info for %s: %s", ni.Interface, err.Error())
-		return
+		return ni
 	}
 
 	ni.Driver = di.Driver
@@ -52,7 +52,7 @@ func GetNetInfo(addr string, iface string) (ni NetInfo) {
 	ring, err := ethHandle.GetRing(ni.Interface)
 	if err != nil {
 		ni.Error = fmt.Sprintf("Error getting ring parameters for %s: %s", ni.Interface, err.Error())
-		return
+		return ni
 	}
 
 	ni.Settings = &NetSettings{
@@ -69,5 +69,5 @@ func GetNetInfo(addr string, iface string) (ni NetInfo) {
 	ni.Settings.CombinedCount = channels.CombinedCount
 	ni.Settings.MaxCombined = channels.MaxCombined
 
-	return
+	return ni
 }
