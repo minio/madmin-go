@@ -375,9 +375,12 @@ func (adm *AdminClient) NodesQuery(ctx context.Context, options *NodesResourceOp
 //
 //msgp:ignore DrivesResourceOpts
 type DrivesResourceOpts struct {
-	Limit  int
-	Offset int
-	Filter string
+	Limit      int
+	Offset     int
+	Filter     string
+	Metrics    bool // Include drive metrics in the response
+	LastMinute bool // Include rolling 1 minute drive metrics. Requires Metrics.
+	LastDay    bool // Include segmented 1 day drive metrics. Requires Metrics.
 }
 
 // DrivesQuery - Get list of drives
@@ -396,6 +399,15 @@ func (adm *AdminClient) DrivesQuery(ctx context.Context, options *DrivesResource
 
 		if options.Filter != "" {
 			values.Set("filter", options.Filter)
+		}
+		if options.Metrics {
+			values.Set("metrics", "true")
+		}
+		if options.LastMinute {
+			values.Set("1m", "true")
+		}
+		if options.LastDay {
+			values.Set("24h", "true")
 		}
 	}
 
