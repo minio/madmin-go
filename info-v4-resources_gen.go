@@ -972,6 +972,8 @@ func (z *DriveResource) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
+	var zb0001Mask uint8 /* 1 bits */
+	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
 		field, err = dc.ReadMapKeyPtr()
@@ -1058,6 +1060,25 @@ func (z *DriveResource) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "UUID")
 				return
 			}
+		case "m":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "Metrics")
+					return
+				}
+				z.Metrics = nil
+			} else {
+				if z.Metrics == nil {
+					z.Metrics = new(DiskMetric)
+				}
+				err = z.Metrics.DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "Metrics")
+					return
+				}
+			}
+			zb0001Mask |= 0x1
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -1066,141 +1087,181 @@ func (z *DriveResource) DecodeMsg(dc *msgp.Reader) (err error) {
 			}
 		}
 	}
+	// Clear omitted fields.
+	if (zb0001Mask & 0x1) == 0 {
+		z.Metrics = nil
+	}
+
 	return
 }
 
 // EncodeMsg implements msgp.Encodable
 func (z *DriveResource) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 13
-	// write "i"
-	err = en.Append(0x8d, 0xa1, 0x69)
+	// check for omitted fields
+	zb0001Len := uint32(14)
+	var zb0001Mask uint16 /* 14 bits */
+	_ = zb0001Mask
+	if z.Metrics == nil {
+		zb0001Len--
+		zb0001Mask |= 0x2000
+	}
+	// variable map header, size zb0001Len
+	err = en.Append(0x80 | uint8(zb0001Len))
 	if err != nil {
 		return
 	}
-	err = en.WriteString(z.ID)
-	if err != nil {
-		err = msgp.WrapError(err, "ID")
-		return
-	}
-	// write "idx"
-	err = en.Append(0xa3, 0x69, 0x64, 0x78)
-	if err != nil {
-		return
-	}
-	err = en.WriteInt(z.DriveIndex)
-	if err != nil {
-		err = msgp.WrapError(err, "DriveIndex")
-		return
-	}
-	// write "sidx"
-	err = en.Append(0xa4, 0x73, 0x69, 0x64, 0x78)
-	if err != nil {
-		return
-	}
-	err = en.WriteInt(z.ServerIndex)
-	if err != nil {
-		err = msgp.WrapError(err, "ServerIndex")
-		return
-	}
-	// write "p"
-	err = en.Append(0xa1, 0x70)
-	if err != nil {
-		return
-	}
-	err = en.WriteString(z.Path)
-	if err != nil {
-		err = msgp.WrapError(err, "Path")
-		return
-	}
-	// write "ni"
-	err = en.Append(0xa2, 0x6e, 0x69)
-	if err != nil {
-		return
-	}
-	err = en.WriteString(z.NodeID)
-	if err != nil {
-		err = msgp.WrapError(err, "NodeID")
-		return
-	}
-	// write "pi"
-	err = en.Append(0xa2, 0x70, 0x69)
-	if err != nil {
-		return
-	}
-	err = en.WriteInt(z.PoolIndex)
-	if err != nil {
-		err = msgp.WrapError(err, "PoolIndex")
-		return
-	}
-	// write "si"
-	err = en.Append(0xa2, 0x73, 0x69)
-	if err != nil {
-		return
-	}
-	err = en.WriteInt(z.SetIndex)
-	if err != nil {
-		err = msgp.WrapError(err, "SetIndex")
-		return
-	}
-	// write "s"
-	err = en.Append(0xa1, 0x73)
-	if err != nil {
-		return
-	}
-	err = en.WriteString(z.State)
-	if err != nil {
-		err = msgp.WrapError(err, "State")
-		return
-	}
-	// write "h"
-	err = en.Append(0xa1, 0x68)
-	if err != nil {
-		return
-	}
-	err = en.WriteBool(z.Healing)
-	if err != nil {
-		err = msgp.WrapError(err, "Healing")
-		return
-	}
-	// write "sz"
-	err = en.Append(0xa2, 0x73, 0x7a)
-	if err != nil {
-		return
-	}
-	err = en.WriteUint64(z.Size)
-	if err != nil {
-		err = msgp.WrapError(err, "Size")
-		return
-	}
-	// write "u"
-	err = en.Append(0xa1, 0x75)
-	if err != nil {
-		return
-	}
-	err = en.WriteUint64(z.Used)
-	if err != nil {
-		err = msgp.WrapError(err, "Used")
-		return
-	}
-	// write "a"
-	err = en.Append(0xa1, 0x61)
-	if err != nil {
-		return
-	}
-	err = en.WriteUint64(z.Available)
-	if err != nil {
-		err = msgp.WrapError(err, "Available")
-		return
-	}
-	// write "uid"
-	err = en.Append(0xa3, 0x75, 0x69, 0x64)
-	if err != nil {
-		return
-	}
-	err = en.WriteString(z.UUID)
-	if err != nil {
-		err = msgp.WrapError(err, "UUID")
-		return
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// write "i"
+		err = en.Append(0xa1, 0x69)
+		if err != nil {
+			return
+		}
+		err = en.WriteString(z.ID)
+		if err != nil {
+			err = msgp.WrapError(err, "ID")
+			return
+		}
+		// write "idx"
+		err = en.Append(0xa3, 0x69, 0x64, 0x78)
+		if err != nil {
+			return
+		}
+		err = en.WriteInt(z.DriveIndex)
+		if err != nil {
+			err = msgp.WrapError(err, "DriveIndex")
+			return
+		}
+		// write "sidx"
+		err = en.Append(0xa4, 0x73, 0x69, 0x64, 0x78)
+		if err != nil {
+			return
+		}
+		err = en.WriteInt(z.ServerIndex)
+		if err != nil {
+			err = msgp.WrapError(err, "ServerIndex")
+			return
+		}
+		// write "p"
+		err = en.Append(0xa1, 0x70)
+		if err != nil {
+			return
+		}
+		err = en.WriteString(z.Path)
+		if err != nil {
+			err = msgp.WrapError(err, "Path")
+			return
+		}
+		// write "ni"
+		err = en.Append(0xa2, 0x6e, 0x69)
+		if err != nil {
+			return
+		}
+		err = en.WriteString(z.NodeID)
+		if err != nil {
+			err = msgp.WrapError(err, "NodeID")
+			return
+		}
+		// write "pi"
+		err = en.Append(0xa2, 0x70, 0x69)
+		if err != nil {
+			return
+		}
+		err = en.WriteInt(z.PoolIndex)
+		if err != nil {
+			err = msgp.WrapError(err, "PoolIndex")
+			return
+		}
+		// write "si"
+		err = en.Append(0xa2, 0x73, 0x69)
+		if err != nil {
+			return
+		}
+		err = en.WriteInt(z.SetIndex)
+		if err != nil {
+			err = msgp.WrapError(err, "SetIndex")
+			return
+		}
+		// write "s"
+		err = en.Append(0xa1, 0x73)
+		if err != nil {
+			return
+		}
+		err = en.WriteString(z.State)
+		if err != nil {
+			err = msgp.WrapError(err, "State")
+			return
+		}
+		// write "h"
+		err = en.Append(0xa1, 0x68)
+		if err != nil {
+			return
+		}
+		err = en.WriteBool(z.Healing)
+		if err != nil {
+			err = msgp.WrapError(err, "Healing")
+			return
+		}
+		// write "sz"
+		err = en.Append(0xa2, 0x73, 0x7a)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint64(z.Size)
+		if err != nil {
+			err = msgp.WrapError(err, "Size")
+			return
+		}
+		// write "u"
+		err = en.Append(0xa1, 0x75)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint64(z.Used)
+		if err != nil {
+			err = msgp.WrapError(err, "Used")
+			return
+		}
+		// write "a"
+		err = en.Append(0xa1, 0x61)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint64(z.Available)
+		if err != nil {
+			err = msgp.WrapError(err, "Available")
+			return
+		}
+		// write "uid"
+		err = en.Append(0xa3, 0x75, 0x69, 0x64)
+		if err != nil {
+			return
+		}
+		err = en.WriteString(z.UUID)
+		if err != nil {
+			err = msgp.WrapError(err, "UUID")
+			return
+		}
+		if (zb0001Mask & 0x2000) == 0 { // if not omitted
+			// write "m"
+			err = en.Append(0xa1, 0x6d)
+			if err != nil {
+				return
+			}
+			if z.Metrics == nil {
+				err = en.WriteNil()
+				if err != nil {
+					return
+				}
+			} else {
+				err = z.Metrics.EncodeMsg(en)
+				if err != nil {
+					err = msgp.WrapError(err, "Metrics")
+					return
+				}
+			}
+		}
 	}
 	return
 }
@@ -1208,46 +1269,72 @@ func (z *DriveResource) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *DriveResource) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 13
-	// string "i"
-	o = append(o, 0x8d, 0xa1, 0x69)
-	o = msgp.AppendString(o, z.ID)
-	// string "idx"
-	o = append(o, 0xa3, 0x69, 0x64, 0x78)
-	o = msgp.AppendInt(o, z.DriveIndex)
-	// string "sidx"
-	o = append(o, 0xa4, 0x73, 0x69, 0x64, 0x78)
-	o = msgp.AppendInt(o, z.ServerIndex)
-	// string "p"
-	o = append(o, 0xa1, 0x70)
-	o = msgp.AppendString(o, z.Path)
-	// string "ni"
-	o = append(o, 0xa2, 0x6e, 0x69)
-	o = msgp.AppendString(o, z.NodeID)
-	// string "pi"
-	o = append(o, 0xa2, 0x70, 0x69)
-	o = msgp.AppendInt(o, z.PoolIndex)
-	// string "si"
-	o = append(o, 0xa2, 0x73, 0x69)
-	o = msgp.AppendInt(o, z.SetIndex)
-	// string "s"
-	o = append(o, 0xa1, 0x73)
-	o = msgp.AppendString(o, z.State)
-	// string "h"
-	o = append(o, 0xa1, 0x68)
-	o = msgp.AppendBool(o, z.Healing)
-	// string "sz"
-	o = append(o, 0xa2, 0x73, 0x7a)
-	o = msgp.AppendUint64(o, z.Size)
-	// string "u"
-	o = append(o, 0xa1, 0x75)
-	o = msgp.AppendUint64(o, z.Used)
-	// string "a"
-	o = append(o, 0xa1, 0x61)
-	o = msgp.AppendUint64(o, z.Available)
-	// string "uid"
-	o = append(o, 0xa3, 0x75, 0x69, 0x64)
-	o = msgp.AppendString(o, z.UUID)
+	// check for omitted fields
+	zb0001Len := uint32(14)
+	var zb0001Mask uint16 /* 14 bits */
+	_ = zb0001Mask
+	if z.Metrics == nil {
+		zb0001Len--
+		zb0001Mask |= 0x2000
+	}
+	// variable map header, size zb0001Len
+	o = append(o, 0x80|uint8(zb0001Len))
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// string "i"
+		o = append(o, 0xa1, 0x69)
+		o = msgp.AppendString(o, z.ID)
+		// string "idx"
+		o = append(o, 0xa3, 0x69, 0x64, 0x78)
+		o = msgp.AppendInt(o, z.DriveIndex)
+		// string "sidx"
+		o = append(o, 0xa4, 0x73, 0x69, 0x64, 0x78)
+		o = msgp.AppendInt(o, z.ServerIndex)
+		// string "p"
+		o = append(o, 0xa1, 0x70)
+		o = msgp.AppendString(o, z.Path)
+		// string "ni"
+		o = append(o, 0xa2, 0x6e, 0x69)
+		o = msgp.AppendString(o, z.NodeID)
+		// string "pi"
+		o = append(o, 0xa2, 0x70, 0x69)
+		o = msgp.AppendInt(o, z.PoolIndex)
+		// string "si"
+		o = append(o, 0xa2, 0x73, 0x69)
+		o = msgp.AppendInt(o, z.SetIndex)
+		// string "s"
+		o = append(o, 0xa1, 0x73)
+		o = msgp.AppendString(o, z.State)
+		// string "h"
+		o = append(o, 0xa1, 0x68)
+		o = msgp.AppendBool(o, z.Healing)
+		// string "sz"
+		o = append(o, 0xa2, 0x73, 0x7a)
+		o = msgp.AppendUint64(o, z.Size)
+		// string "u"
+		o = append(o, 0xa1, 0x75)
+		o = msgp.AppendUint64(o, z.Used)
+		// string "a"
+		o = append(o, 0xa1, 0x61)
+		o = msgp.AppendUint64(o, z.Available)
+		// string "uid"
+		o = append(o, 0xa3, 0x75, 0x69, 0x64)
+		o = msgp.AppendString(o, z.UUID)
+		if (zb0001Mask & 0x2000) == 0 { // if not omitted
+			// string "m"
+			o = append(o, 0xa1, 0x6d)
+			if z.Metrics == nil {
+				o = msgp.AppendNil(o)
+			} else {
+				o, err = z.Metrics.MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "Metrics")
+					return
+				}
+			}
+		}
+	}
 	return
 }
 
@@ -1261,6 +1348,8 @@ func (z *DriveResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
+	var zb0001Mask uint8 /* 1 bits */
+	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
 		field, bts, err = msgp.ReadMapKeyZC(bts)
@@ -1347,6 +1436,24 @@ func (z *DriveResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "UUID")
 				return
 			}
+		case "m":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.Metrics = nil
+			} else {
+				if z.Metrics == nil {
+					z.Metrics = new(DiskMetric)
+				}
+				bts, err = z.Metrics.UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Metrics")
+					return
+				}
+			}
+			zb0001Mask |= 0x1
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -1355,13 +1462,23 @@ func (z *DriveResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			}
 		}
 	}
+	// Clear omitted fields.
+	if (zb0001Mask & 0x1) == 0 {
+		z.Metrics = nil
+	}
+
 	o = bts
 	return
 }
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *DriveResource) Msgsize() (s int) {
-	s = 1 + 2 + msgp.StringPrefixSize + len(z.ID) + 4 + msgp.IntSize + 5 + msgp.IntSize + 2 + msgp.StringPrefixSize + len(z.Path) + 3 + msgp.StringPrefixSize + len(z.NodeID) + 3 + msgp.IntSize + 3 + msgp.IntSize + 2 + msgp.StringPrefixSize + len(z.State) + 2 + msgp.BoolSize + 3 + msgp.Uint64Size + 2 + msgp.Uint64Size + 2 + msgp.Uint64Size + 4 + msgp.StringPrefixSize + len(z.UUID)
+	s = 1 + 2 + msgp.StringPrefixSize + len(z.ID) + 4 + msgp.IntSize + 5 + msgp.IntSize + 2 + msgp.StringPrefixSize + len(z.Path) + 3 + msgp.StringPrefixSize + len(z.NodeID) + 3 + msgp.IntSize + 3 + msgp.IntSize + 2 + msgp.StringPrefixSize + len(z.State) + 2 + msgp.BoolSize + 3 + msgp.Uint64Size + 2 + msgp.Uint64Size + 2 + msgp.Uint64Size + 4 + msgp.StringPrefixSize + len(z.UUID) + 2
+	if z.Metrics == nil {
+		s += msgp.NilSize
+	} else {
+		s += z.Metrics.Msgsize()
+	}
 	return
 }
 
