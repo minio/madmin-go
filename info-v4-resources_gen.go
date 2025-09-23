@@ -97,6 +97,24 @@ func (z *ClusterResource) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "NodeCount")
 				return
 			}
+		case "non":
+			z.NodesOnline, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "NodesOnline")
+				return
+			}
+		case "nin":
+			z.NodesInitializing, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "NodesInitializing")
+				return
+			}
+		case "nof":
+			z.NodesOffline, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "NodesOffline")
+				return
+			}
 		case "dc":
 			z.DriveCount, err = dc.ReadInt()
 			if err != nil {
@@ -151,6 +169,30 @@ func (z *ClusterResource) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "OfflineDrives")
 				return
 			}
+		case "rtb":
+			z.RawTotalBytes, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "RawTotalBytes")
+				return
+			}
+		case "rfb":
+			z.RawFreeBytes, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "RawFreeBytes")
+				return
+			}
+		case "utb":
+			z.UsableTotalBytes, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "UsableTotalBytes")
+				return
+			}
+		case "ufb":
+			z.UsableFreeBytes, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "UsableFreeBytes")
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -177,8 +219,8 @@ func (z *ClusterResource) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *ClusterResource) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(16)
-	var zb0001Mask uint16 /* 16 bits */
+	zb0001Len := uint32(23)
+	var zb0001Mask uint32 /* 23 bits */
 	_ = zb0001Mask
 	if z.Domains == nil {
 		zb0001Len--
@@ -290,6 +332,36 @@ func (z *ClusterResource) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "NodeCount")
 			return
 		}
+		// write "non"
+		err = en.Append(0xa3, 0x6e, 0x6f, 0x6e)
+		if err != nil {
+			return
+		}
+		err = en.WriteInt(z.NodesOnline)
+		if err != nil {
+			err = msgp.WrapError(err, "NodesOnline")
+			return
+		}
+		// write "nin"
+		err = en.Append(0xa3, 0x6e, 0x69, 0x6e)
+		if err != nil {
+			return
+		}
+		err = en.WriteInt(z.NodesInitializing)
+		if err != nil {
+			err = msgp.WrapError(err, "NodesInitializing")
+			return
+		}
+		// write "nof"
+		err = en.Append(0xa3, 0x6e, 0x6f, 0x66)
+		if err != nil {
+			return
+		}
+		err = en.WriteInt(z.NodesOffline)
+		if err != nil {
+			err = msgp.WrapError(err, "NodesOffline")
+			return
+		}
 		// write "dc"
 		err = en.Append(0xa2, 0x64, 0x63)
 		if err != nil {
@@ -380,6 +452,46 @@ func (z *ClusterResource) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "OfflineDrives")
 			return
 		}
+		// write "rtb"
+		err = en.Append(0xa3, 0x72, 0x74, 0x62)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint64(z.RawTotalBytes)
+		if err != nil {
+			err = msgp.WrapError(err, "RawTotalBytes")
+			return
+		}
+		// write "rfb"
+		err = en.Append(0xa3, 0x72, 0x66, 0x62)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint64(z.RawFreeBytes)
+		if err != nil {
+			err = msgp.WrapError(err, "RawFreeBytes")
+			return
+		}
+		// write "utb"
+		err = en.Append(0xa3, 0x75, 0x74, 0x62)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint64(z.UsableTotalBytes)
+		if err != nil {
+			err = msgp.WrapError(err, "UsableTotalBytes")
+			return
+		}
+		// write "ufb"
+		err = en.Append(0xa3, 0x75, 0x66, 0x62)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint64(z.UsableFreeBytes)
+		if err != nil {
+			err = msgp.WrapError(err, "UsableFreeBytes")
+			return
+		}
 	}
 	return
 }
@@ -388,8 +500,8 @@ func (z *ClusterResource) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *ClusterResource) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(16)
-	var zb0001Mask uint16 /* 16 bits */
+	zb0001Len := uint32(23)
+	var zb0001Mask uint32 /* 23 bits */
 	_ = zb0001Mask
 	if z.Domains == nil {
 		zb0001Len--
@@ -445,6 +557,15 @@ func (z *ClusterResource) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "nc"
 		o = append(o, 0xa2, 0x6e, 0x63)
 		o = msgp.AppendInt(o, z.NodeCount)
+		// string "non"
+		o = append(o, 0xa3, 0x6e, 0x6f, 0x6e)
+		o = msgp.AppendInt(o, z.NodesOnline)
+		// string "nin"
+		o = append(o, 0xa3, 0x6e, 0x69, 0x6e)
+		o = msgp.AppendInt(o, z.NodesInitializing)
+		// string "nof"
+		o = append(o, 0xa3, 0x6e, 0x6f, 0x66)
+		o = msgp.AppendInt(o, z.NodesOffline)
 		// string "dc"
 		o = append(o, 0xa2, 0x64, 0x63)
 		o = msgp.AppendInt(o, z.DriveCount)
@@ -472,6 +593,18 @@ func (z *ClusterResource) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "fd"
 		o = append(o, 0xa2, 0x66, 0x64)
 		o = msgp.AppendInt(o, z.OfflineDrives)
+		// string "rtb"
+		o = append(o, 0xa3, 0x72, 0x74, 0x62)
+		o = msgp.AppendUint64(o, z.RawTotalBytes)
+		// string "rfb"
+		o = append(o, 0xa3, 0x72, 0x66, 0x62)
+		o = msgp.AppendUint64(o, z.RawFreeBytes)
+		// string "utb"
+		o = append(o, 0xa3, 0x75, 0x74, 0x62)
+		o = msgp.AppendUint64(o, z.UsableTotalBytes)
+		// string "ufb"
+		o = append(o, 0xa3, 0x75, 0x66, 0x62)
+		o = msgp.AppendUint64(o, z.UsableFreeBytes)
 	}
 	return
 }
@@ -567,6 +700,24 @@ func (z *ClusterResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "NodeCount")
 				return
 			}
+		case "non":
+			z.NodesOnline, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "NodesOnline")
+				return
+			}
+		case "nin":
+			z.NodesInitializing, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "NodesInitializing")
+				return
+			}
+		case "nof":
+			z.NodesOffline, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "NodesOffline")
+				return
+			}
 		case "dc":
 			z.DriveCount, bts, err = msgp.ReadIntBytes(bts)
 			if err != nil {
@@ -621,6 +772,30 @@ func (z *ClusterResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "OfflineDrives")
 				return
 			}
+		case "rtb":
+			z.RawTotalBytes, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "RawTotalBytes")
+				return
+			}
+		case "rfb":
+			z.RawFreeBytes, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "RawFreeBytes")
+				return
+			}
+		case "utb":
+			z.UsableTotalBytes, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "UsableTotalBytes")
+				return
+			}
+		case "ufb":
+			z.UsableFreeBytes, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "UsableFreeBytes")
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -655,7 +830,7 @@ func (z *ClusterResource) Msgsize() (s int) {
 	for za0002 := range z.PoolsLayout {
 		s += z.PoolsLayout[za0002].Msgsize()
 	}
-	s += 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 4 + msgp.IntSize + 3 + msgp.Uint64Size + 3 + msgp.IntSize + 3 + msgp.IntSize
+	s += 3 + msgp.IntSize + 4 + msgp.IntSize + 4 + msgp.IntSize + 4 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 4 + msgp.IntSize + 3 + msgp.Uint64Size + 3 + msgp.IntSize + 3 + msgp.IntSize + 4 + msgp.Uint64Size + 4 + msgp.Uint64Size + 4 + msgp.Uint64Size + 4 + msgp.Uint64Size
 	return
 }
 

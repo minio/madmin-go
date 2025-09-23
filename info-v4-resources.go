@@ -80,6 +80,9 @@ type ClusterResource struct {
 	PoolCount         int          `json:"poolCount" msg:"pc"`
 	PoolsLayout       []PoolLayout `json:"poolsLayout,omitempty" msg:"pl,omitempty"`
 	NodeCount         int          `json:"nodeCount" msg:"nc"`
+	NodesOnline       int          `json:"nodesOnline" msg:"non"`
+	NodesInitializing int          `json:"nodesInitializing" msg:"nin"`
+	NodesOffline      int          `json:"nodesOffline" msg:"nof"`
 	DriveCount        int          `json:"driveCount" msg:"dc"`
 	SetCount          int          `json:"setCount" msg:"sc"`
 	BucketCount       int          `json:"bucketCount" msg:"bc"`
@@ -89,6 +92,10 @@ type ClusterResource struct {
 	TotalSize         uint64       `json:"totalSize" msg:"ts"`
 	OnlineDrives      int          `json:"onlineDrives" msg:"od"`
 	OfflineDrives     int          `json:"offlineDrives" msg:"fd"`
+	RawTotalBytes     uint64       `json:"rawTotalBytes" msg:"rtb"`
+	RawFreeBytes      uint64       `json:"rawFreeBytes" msg:"rfb"`
+	UsableTotalBytes  uint64       `json:"usableTotalBytes" msg:"utb"`
+	UsableFreeBytes   uint64       `json:"UsableFreeBytes" msg:"ufb"`
 }
 
 // ServicesResourceInfo holds information about services connected to the cluster
