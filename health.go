@@ -293,13 +293,13 @@ func getDriveHwInfo(partDevice string) (info driveHwInfo, err error) {
 
 	_, err = os.Stat(devPath)
 	if err != nil {
-		return
+		return info, err
 	}
 
 	var data []byte
 	data, err = os.ReadFile(devPath)
 	if err != nil {
-		return
+		return info, err
 	}
 
 	majorMinor := strings.TrimSpace(string(data))
@@ -318,7 +318,7 @@ func getDriveHwInfo(partDevice string) (info driveHwInfo, err error) {
 	var f *os.File
 	f, err = os.Open(driveInfoPath)
 	if err != nil {
-		return
+		return info, err
 	}
 	defer f.Close()
 
@@ -338,7 +338,7 @@ func getDriveHwInfo(partDevice string) (info driveHwInfo, err error) {
 		}
 	}
 
-	return
+	return info, err
 }
 
 // GetPartitions returns all disk partitions information of a node running linux only operating system.
@@ -524,14 +524,14 @@ func readIntFromFile(filePath string) (num int, err error) {
 	var file *os.File
 	file, err = os.Open(filePath)
 	if err != nil {
-		return
+		return num, err
 	}
 	defer file.Close()
 
 	var data []byte
 	data, err = io.ReadAll(file)
 	if err != nil {
-		return
+		return num, err
 	}
 
 	return strconv.Atoi(strings.TrimSpace(string(data)))
