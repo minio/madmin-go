@@ -169,7 +169,7 @@ type HealResultItem struct {
 // and after heal
 func (hri *HealResultItem) GetMissingCounts() (b, a int) {
 	if hri == nil {
-		return
+		return b, a
 	}
 	for _, v := range hri.Before.Drives {
 		if v.State == DriveStateMissing {

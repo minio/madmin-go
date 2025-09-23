@@ -263,7 +263,7 @@ func (s *ServerDiskHwInfo) GetTotalCapacity() (capacity uint64) {
 	for _, u := range s.Usage {
 		capacity += u.Total
 	}
-	return
+	return capacity
 }
 
 // GetTotalFreeCapacity gets the total capacity that is free.
