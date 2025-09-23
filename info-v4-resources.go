@@ -383,7 +383,7 @@ type DrivesResourceOpts struct {
 	Limit      int
 	Offset     int
 	Filter     string
-	Metrics    bool // Include drive metrics in the response
+	Metrics    bool // Include per-drive metrics in the response
 	LastMinute bool // Include rolling 1 minute drive metrics. Requires Metrics.
 	LastDay    bool // Include segmented 1 day drive metrics. Requires Metrics.
 }
