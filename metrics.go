@@ -637,9 +637,7 @@ func (d *DiskMetric) Merge(other *DiskMetric) {
 	} else if other.DiskIdx == nil || d.DiskIdx != nil && other.DiskIdx != nil && *d.DiskIdx != *other.DiskIdx || d.SetIdx == nil {
 		d.DiskIdx = nil
 	}
-	if d.State == nil && len(other.State) > 0 {
-		d.State = other.State
-	} else if len(other.State) > 0 {
+	if len(other.State) > 0 {
 		if d.State == nil {
 			d.State = make(map[string]int, len(other.State))
 		}

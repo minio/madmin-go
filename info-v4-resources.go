@@ -54,6 +54,11 @@ type PaginatedDrivesResponse struct {
 	Count   int             `json:"count" msg:"c"`
 	Total   int             `json:"total" msg:"t"`
 	Offset  int             `json:"offset" msg:"o"`
+
+	// Aggregated are the metrics aggregated for all filtered drives,
+	// not just the results.
+	// Always returned, though day metrics are only available if the option is set.
+	Aggregated DiskMetric `json:"aggregated,omitempty" msg:"m,omitempty"`
 }
 
 // PaginatedErasureSetsResponse represents a paginated response for erasure sets

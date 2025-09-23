@@ -2476,7 +2476,7 @@ func (z *PaginatedDrivesResponse) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 1 bits */
+	var zb0001Mask uint8 /* 2 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -2524,6 +2524,13 @@ func (z *PaginatedDrivesResponse) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Offset")
 				return
 			}
+		case "m":
+			err = z.Aggregated.DecodeMsg(dc)
+			if err != nil {
+				err = msgp.WrapError(err, "Aggregated")
+				return
+			}
+			zb0001Mask |= 0x2
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -2533,18 +2540,22 @@ func (z *PaginatedDrivesResponse) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if (zb0001Mask & 0x1) == 0 {
-		z.Results = nil
+	if zb0001Mask != 0x3 {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Results = nil
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.Aggregated = DiskMetric{}
+		}
 	}
-
 	return
 }
 
 // EncodeMsg implements msgp.Encodable
 func (z *PaginatedDrivesResponse) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(4)
-	var zb0001Mask uint8 /* 4 bits */
+	zb0001Len := uint32(5)
+	var zb0001Mask uint8 /* 5 bits */
 	_ = zb0001Mask
 	if z.Results == nil {
 		zb0001Len--
@@ -2607,6 +2618,16 @@ func (z *PaginatedDrivesResponse) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "Offset")
 			return
 		}
+		// write "m"
+		err = en.Append(0xa1, 0x6d)
+		if err != nil {
+			return
+		}
+		err = z.Aggregated.EncodeMsg(en)
+		if err != nil {
+			err = msgp.WrapError(err, "Aggregated")
+			return
+		}
 	}
 	return
 }
@@ -2615,8 +2636,8 @@ func (z *PaginatedDrivesResponse) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *PaginatedDrivesResponse) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(4)
-	var zb0001Mask uint8 /* 4 bits */
+	zb0001Len := uint32(5)
+	var zb0001Mask uint8 /* 5 bits */
 	_ = zb0001Mask
 	if z.Results == nil {
 		zb0001Len--
@@ -2648,6 +2669,13 @@ func (z *PaginatedDrivesResponse) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "o"
 		o = append(o, 0xa1, 0x6f)
 		o = msgp.AppendInt(o, z.Offset)
+		// string "m"
+		o = append(o, 0xa1, 0x6d)
+		o, err = z.Aggregated.MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "Aggregated")
+			return
+		}
 	}
 	return
 }
@@ -2662,7 +2690,7 @@ func (z *PaginatedDrivesResponse) UnmarshalMsg(bts []byte) (o []byte, err error)
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 1 bits */
+	var zb0001Mask uint8 /* 2 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -2710,6 +2738,13 @@ func (z *PaginatedDrivesResponse) UnmarshalMsg(bts []byte) (o []byte, err error)
 				err = msgp.WrapError(err, "Offset")
 				return
 			}
+		case "m":
+			bts, err = z.Aggregated.UnmarshalMsg(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Aggregated")
+				return
+			}
+			zb0001Mask |= 0x2
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -2719,10 +2754,14 @@ func (z *PaginatedDrivesResponse) UnmarshalMsg(bts []byte) (o []byte, err error)
 		}
 	}
 	// Clear omitted fields.
-	if (zb0001Mask & 0x1) == 0 {
-		z.Results = nil
+	if zb0001Mask != 0x3 {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Results = nil
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.Aggregated = DiskMetric{}
+		}
 	}
-
 	o = bts
 	return
 }
@@ -2733,7 +2772,7 @@ func (z *PaginatedDrivesResponse) Msgsize() (s int) {
 	for za0001 := range z.Results {
 		s += z.Results[za0001].Msgsize()
 	}
-	s += 2 + msgp.IntSize + 2 + msgp.IntSize + 2 + msgp.IntSize
+	s += 2 + msgp.IntSize + 2 + msgp.IntSize + 2 + msgp.IntSize + 2 + z.Aggregated.Msgsize()
 	return
 }
 
