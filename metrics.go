@@ -530,6 +530,10 @@ type DiskMetric struct {
 	// PoolIdx will be populated if all disks in the metrics are part of the same pool.
 	PoolIdx *int `json:"pool_idx,omitempty"`
 
+	// Disk states for non-ok disks.
+	// See madmin.DriveState for possible values.
+	State map[string]int `json:"state,omitempty"`
+
 	// Offline disks
 	Offline int `json:"offline,omitempty"`
 
@@ -632,6 +636,14 @@ func (d *DiskMetric) Merge(other *DiskMetric) {
 		d.DiskIdx = other.DiskIdx
 	} else if other.DiskIdx == nil || d.DiskIdx != nil && other.DiskIdx != nil && *d.DiskIdx != *other.DiskIdx || d.SetIdx == nil {
 		d.DiskIdx = nil
+	}
+	if len(other.State) > 0 {
+		if d.State == nil {
+			d.State = make(map[string]int, len(other.State))
+		}
+		for k, v := range other.State {
+			d.State[k] = d.State[k] + v
+		}
 	}
 	d.NDisks += other.NDisks
 	d.Offline += other.Offline

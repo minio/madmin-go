@@ -63,6 +63,11 @@ type PaginatedDrivesResponse struct {
 	Offset       int             `json:"offset" msg:"o"`
 	Sort         string          `json:"sort" msg:"s"`
 	SortReversed bool            `json:"sortReversed" msg:"sr"`
+
+	// Aggregated are the metrics aggregated for all filtered drives,
+	// not just the results.
+	// Always returned, though day metrics are only available if the option is set.
+	Aggregated DiskMetric `json:"aggregated,omitempty" msg:"m,omitempty"`
 }
 
 // PaginatedErasureSetsResponse represents a paginated response for erasure sets
@@ -168,19 +173,22 @@ type NodeResource struct {
 
 // DriveResource represents information about a drive
 type DriveResource struct {
-	ID          string `json:"id" msg:"i"`
-	DriveIndex  int    `json:"idx" msg:"idx"`
-	ServerIndex int    `json:"serverIndex" msg:"sidx"`
-	Path        string `json:"path" msg:"p"`
-	NodeID      string `json:"nodeId" msg:"ni"`
-	PoolIndex   int    `json:"poolIndex" msg:"pi"`
-	SetIndex    int    `json:"setIndex" msg:"si"`
-	State       string `json:"state" msg:"s"`
-	Healing     bool   `json:"healing" msg:"h"`
-	Size        uint64 `json:"size" msg:"sz"`
-	Used        uint64 `json:"used" msg:"u"`
-	Available   uint64 `json:"available" msg:"a"`
-	UUID        string `json:"uuid" msg:"uid"`
+	ID          string      `json:"id" msg:"i"`
+	DriveIndex  int         `json:"idx" msg:"idx"`
+	ServerIndex int         `json:"serverIndex" msg:"sidx"`
+	Path        string      `json:"path" msg:"p"`
+	NodeID      string      `json:"nodeId" msg:"ni"`
+	PoolIndex   int         `json:"poolIndex" msg:"pi"`
+	SetIndex    int         `json:"setIndex" msg:"si"`
+	State       string      `json:"state" msg:"s"`
+	Healing     bool        `json:"healing" msg:"h"`
+	Size        uint64      `json:"size" msg:"sz"`
+	Used        uint64      `json:"used" msg:"u"`
+	Available   uint64      `json:"available" msg:"a"`
+	InodesFree  uint64      `json:"inodesFree" msg:"if"`
+	InodesUsed  uint64      `json:"inodesUsed" msg:"iu"`
+	UUID        string      `json:"uuid" msg:"uid"`
+	Metrics     *DiskMetric `json:"metrics,omitempty" msg:"m,omitempty"`
 }
 
 // ErasureSetResource represents information about an erasure set
@@ -432,6 +440,9 @@ type DrivesResourceOpts struct {
 	Sort string
 	// SortReversed will only take effect if Sort is defined
 	SortReversed bool
+	Metrics      bool // Include per-drive metrics in the response
+	LastMinute   bool // Include rolling 1 minute drive metrics. Requires Metrics.
+	LastDay      bool // Include segmented 1 day drive metrics. Requires Metrics.
 }
 
 // DrivesQuery - Get list of drives
@@ -456,6 +467,15 @@ func (adm *AdminClient) DrivesQuery(ctx context.Context, options *DrivesResource
 			values.Set("sortReversed", "true")
 		} else {
 			values.Set("sortReversed", "false")
+		}
+		if options.Metrics {
+			values.Set("metrics", "true")
+		}
+		if options.LastMinute {
+			values.Set("1m", "true")
+		}
+		if options.LastDay {
+			values.Set("24h", "true")
 		}
 	}
 
