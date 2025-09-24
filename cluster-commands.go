@@ -173,6 +173,7 @@ type PeerInfo struct {
 	SyncState          SyncStatus      `json:"sync"`             // whether to enable| disable synchronous replication
 	DefaultBandwidth   BucketBandwidth `json:"defaultbandwidth"` // bandwidth limit per bucket in bytes/sec
 	ReplicateILMExpiry bool            `json:"replicate-ilm-expiry"`
+	ObjectNamingMode   string          `json:"objectNamingMode,omitempty"`
 	APIVersion         string          `json:"apiVersion,omitempty"`
 }
 
