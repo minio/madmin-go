@@ -273,13 +273,13 @@ func (c *SubsysConfig) Lookup(key string) (val string, present bool) {
 // LookupEnv finds value based on given key. If env variable is specified on the server for the parameter instead of overwriting it, it returns it as well along with config parameter.
 func (c *SubsysConfig) LookupEnv(key string) (val string, envVal string, present bool) {
 	if c.kvIndexMap == nil {
-		return
+		return val, envVal, present
 	}
 
 	// if key not found in index map, return
 	idx, ok := c.kvIndexMap[key]
 	if !ok {
-		return
+		return val, envVal, present
 	}
 
 	if evo := c.KV[idx].EnvOverride; evo != nil {
@@ -300,7 +300,7 @@ func parseEnvVarLine(s, subSystem, target string) (val ConfigKV, err error) {
 	ps := strings.SplitN(s, KvSeparator, 2)
 	if len(ps) != 2 {
 		err = ErrInvalidEnvVarLine
-		return
+		return val, err
 	}
 
 	val.EnvOverride = &EnvOverride{
@@ -312,14 +312,14 @@ func parseEnvVarLine(s, subSystem, target string) (val ConfigKV, err error) {
 	envPrefix := EnvPrefix + strings.ToUpper(subSystem) + EnvWordDelimiter
 	if !strings.HasPrefix(envVar, envPrefix) {
 		err = fmt.Errorf("expected env %v to have prefix %v", envVar, envPrefix)
-		return
+		return val, err
 	}
 	configVar := strings.TrimPrefix(envVar, envPrefix)
 	if target != Default {
 		configVar = strings.TrimSuffix(configVar, EnvWordDelimiter+target)
 	}
 	val.Key = strings.ToLower(configVar)
-	return
+	return val, err
 }
 
 // Takes "k1=v1 k2=v2 ..." and returns key=k1 and rem="v1 k2=v2 ..." on success.
@@ -330,12 +330,12 @@ func parseConfigKey(text string) (key, rem string, err error) {
 	key = strings.TrimSpace(ts[0])
 	if len(key) == 0 {
 		err = ErrInvalidConfigKV
-		return
+		return key, rem, err
 	}
 
 	if len(ts) == 1 {
 		err = ErrInvalidConfigKV
-		return
+		return key, rem, err
 	}
 
 	return key, ts[1], nil
@@ -349,7 +349,7 @@ func parseConfigValue(text string) (v, rem string, err error) {
 		v = ts[0]
 		if len(ts) == 1 {
 			err = ErrInvalidConfigKV
-			return
+			return v, rem, err
 		}
 		rem = strings.TrimSpace(ts[1])
 	} else {
@@ -361,7 +361,7 @@ func parseConfigValue(text string) (v, rem string, err error) {
 			rem = ""
 		}
 	}
-	return
+	return v, rem, err
 }
 
 func parseConfigLine(s string) (c SubsysConfig, err error) {
@@ -375,7 +375,7 @@ func parseConfigLine(s string) (c SubsysConfig, err error) {
 
 	if len(ps) == 1 {
 		// No config KVs present.
-		return
+		return c, err
 	}
 
 	// Parse keys and values
@@ -385,17 +385,17 @@ func parseConfigLine(s string) (c SubsysConfig, err error) {
 		kv := ConfigKV{}
 		kv.Key, text, err = parseConfigKey(text)
 		if err != nil {
-			return
+			return c, err
 		}
 
 		kv.Value, text, err = parseConfigValue(text)
 		if err != nil {
-			return
+			return c, err
 		}
 
 		c.AddConfigKV(kv)
 	}
-	return
+	return c, err
 }
 
 func isEnvLine(s string) bool {
