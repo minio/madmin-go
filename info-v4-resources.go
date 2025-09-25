@@ -293,7 +293,7 @@ type ClusterSummaryResponse struct {
 //msgp:ignore ClusterSummaryResourceOpts
 type ClusterSummaryResourceOpts struct{}
 
-func (adm *AdminClient) ClusterSummaryQuery(ctx context.Context, options ClusterSummaryResourceOpts) (ClusterSummaryResponse, error) {
+func (adm *AdminClient) ClusterSummaryQuery(ctx context.Context, _ ClusterSummaryResourceOpts) (ClusterSummaryResponse, error) {
 	values := make(url.Values)
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
