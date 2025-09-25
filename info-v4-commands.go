@@ -390,5 +390,5 @@ func (adm *AdminClient) NodeInfo(ctx context.Context, hostname string, options .
 		}
 	}
 
-	return
+	return node, err
 }
