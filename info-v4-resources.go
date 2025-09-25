@@ -274,10 +274,16 @@ type PoolSummary struct {
 
 // ClusterSummaryResponse contains a comprehensive summary of cluster resources and statistics
 type ClusterSummaryResponse struct {
-	Usage   ClusterSummaryUsage `json:"usage" msg:"us"`
-	Servers ClusterSummaryCount `json:"servers" msg:"srv"`
-	Drives  ClusterSummaryCount `json:"drives" msg:"drv"`
-	Pools   []PoolSummary       `json:"pools" msg:"pls"`
+	Encryption   bool
+	Version      string
+	DeploymentID string
+	Region       string
+	Domains      []string
+	Mode         string
+	Usage        ClusterSummaryUsage `json:"usage" msg:"us"`
+	Servers      ClusterSummaryCount `json:"servers" msg:"srv"`
+	Drives       ClusterSummaryCount `json:"drives" msg:"drv"`
+	Pools        []PoolSummary       `json:"pools" msg:"pls"`
 }
 
 // ClusterSummaryResourceOpts ask for additional data from the server
@@ -292,7 +298,7 @@ func (adm *AdminClient) ClusterSummaryQuery(ctx context.Context, options Cluster
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
-			relPath:     adminAPIPrefix + "/query/summary",
+			relPath:     adminAPIPrefix + "/cluster-summary",
 			queryValues: values,
 		})
 	defer closeResponse(resp)
