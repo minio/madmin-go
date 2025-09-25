@@ -47,27 +47,49 @@ type PaginatedPoolsResponse struct {
 
 // PaginatedNodesResponse represents a paginated response for nodes
 type PaginatedNodesResponse struct {
-	Results      []NodeResource `json:"results" msg:"r,omitempty"`
-	Count        int            `json:"count" msg:"c"`
-	Total        int            `json:"total" msg:"t"`
-	Offset       int            `json:"offset" msg:"o"`
-	Sort         string         `json:"sort" msg:"s"`
-	SortReversed bool           `json:"sortReversed" msg:"sr"`
+	Results      []NodeResource    `json:"results" msg:"r,omitempty"`
+	Summary      NodesQuerySummary `json:"summary" msg:"sum"`
+	Count        int               `json:"count" msg:"c"`
+	Total        int               `json:"total" msg:"t"`
+	Offset       int               `json:"offset" msg:"o"`
+	Sort         string            `json:"sort" msg:"s"`
+	SortReversed bool              `json:"sortReversed" msg:"sr"`
+}
+
+type NodesQuerySummary struct {
+	Offline      int `json:"Offline" msg:"off"`
+	Initializing int `json:"Initializing" msg:"ini"`
+	Online       int `json:"Online" msg:"on"`
+	Unknown      int `json:"Unknown" msg:"un"`
 }
 
 // PaginatedDrivesResponse represents a paginated response for drives
 type PaginatedDrivesResponse struct {
-	Results      []DriveResource `json:"results" msg:"r,omitempty"`
-	Count        int             `json:"count" msg:"c"`
-	Total        int             `json:"total" msg:"t"`
-	Offset       int             `json:"offset" msg:"o"`
-	Sort         string          `json:"sort" msg:"s"`
-	SortReversed bool            `json:"sortReversed" msg:"sr"`
+	Results      []DriveResource    `json:"results" msg:"r,omitempty"`
+	Summary      DrivesQuerySummary `json:"summary" msg:"sum"`
+	Count        int                `json:"count" msg:"c"`
+	Total        int                `json:"total" msg:"t"`
+	Offset       int                `json:"offset" msg:"o"`
+	Sort         string             `json:"sort" msg:"s"`
+	SortReversed bool               `json:"sortReversed" msg:"sr"`
 
 	// Aggregated are the metrics aggregated for all filtered drives,
 	// not just the results.
 	// Always returned, though day metrics are only available if the option is set.
 	Aggregated DiskMetric `json:"aggregated,omitempty" msg:"m,omitempty"`
+}
+
+// DrivesQuerySummary contains a summary for all drives, ignoring pagination and query limits.
+type DrivesQuerySummary struct {
+	StateOk          int `json:"stateOk" msg:"s"`
+	StateOffline     int `json:"stateOffline" msg:"so"`
+	StateCorrupt     int `json:"stateCorrupt" msg:"sc"`
+	StateMissing     int `json:"stateMissing" msg:"sm"`
+	StatePermission  int `json:"statePermission" msg:"sp"`
+	StateFaulty      int `json:"stateFaulty" msg:"sf"`
+	StateRootMount   int `json:"stateRootMount" msg:"srm"`
+	StateUnknown     int `json:"stateUnknown" msg:"sun"`
+	StateUnformatted int `json:"stateUnformatted" msg:"suf"`
 }
 
 // PaginatedErasureSetsResponse represents a paginated response for erasure sets
@@ -97,9 +119,6 @@ type ClusterResource struct {
 	PoolCount         int          `json:"poolCount" msg:"pc"`
 	PoolsLayout       []PoolLayout `json:"poolsLayout,omitempty" msg:"pl,omitempty"`
 	NodeCount         int          `json:"nodeCount" msg:"nc"`
-	NodesOnline       int          `json:"nodesOnline" msg:"non"`
-	NodesInitializing int          `json:"nodesInitializing" msg:"nin"`
-	NodesOffline      int          `json:"nodesOffline" msg:"nof"`
 	DriveCount        int          `json:"driveCount" msg:"dc"`
 	SetCount          int          `json:"setCount" msg:"sc"`
 	BucketCount       int          `json:"bucketCount" msg:"bc"`
@@ -208,6 +227,82 @@ type ErasureSetResource struct {
 	ObjectsCount       uint64   `json:"objectsCount" msg:"oc"`
 	VersionsCount      uint64   `json:"versionsCount" msg:"vc"`
 	DeleteMarkersCount uint64   `json:"deleteMarkersCount" msg:"dmc"`
+}
+
+type ClusterSummaryUsage struct {
+	TotalCapacity int64 `json:"totalCapacity" msg:"tc"`
+	Available     int64 `json:"available" msg:"av"`
+	DrivesUsage   int64 `json:"drivesUsage" msg:"du"`
+}
+
+type ClusterSummaryCount struct {
+	Total   int `json:"total" msg:"t"`
+	Online  int `json:"online" msg:"on"`
+	Offline int `json:"offline" msg:"off"`
+	Healing int `json:"healing" msg:"hl"`
+}
+
+type DriveSummaryCount struct {
+	Total   int `json:"total" msg:"t"`
+	Online  int `json:"online" msg:"on"`
+	Offline int `json:"offline" msg:"off"`
+	Healing int `json:"healing" msg:"hl"`
+}
+
+type PoolDetails struct {
+	TotalServers       int `json:"totalServers" msg:"ts"`
+	TotalObjects       int `json:"totalObjects" msg:"to"`
+	TotalDeleteMarkers int `json:"totalDeleteMarkers" msg:"tdm"`
+	TotalVersions      int `json:"totalVersions" msg:"tv"`
+	ErasureSets        int `json:"erasureSets" msg:"es"`
+	DrivesPerSet       int `json:"drivesPerSet" msg:"dps"`
+	Parity             int `json:"parity" msg:"p"`
+}
+
+type PoolSummary struct {
+	Index   int                 `json:"index" msg:"idx"`
+	Usage   ClusterSummaryUsage `json:"usage" msg:"us"`
+	Drives  DriveSummaryCount   `json:"drives" msg:"drv"`
+	Details PoolDetails         `json:"details" msg:"dtls"`
+}
+
+type ClusterSummaryResponse struct {
+	Usage   ClusterSummaryUsage `json:"usage" msg:"us"`
+	Servers ClusterSummaryCount `json:"servers" msg:"srv"`
+	Drives  ClusterSummaryCount `json:"drives" msg:"drv"`
+	Pools   []PoolSummary       `json:"pools" msg:"pls"`
+}
+
+// ClusterSummaryResourceOpts ask for additional data from the server
+// this is not used at the moment, kept here for future
+// extensibility.
+//
+//msgp:ignore ClusterSummaryResourceOpts
+type ClusterSummaryResourceOpts struct{}
+
+func (adm *AdminClient) ClusterSummaryQuery(ctx context.Context, options ClusterSummaryResourceOpts) (ClusterSummaryResponse, error) {
+	values := make(url.Values)
+	resp, err := adm.executeMethod(ctx,
+		http.MethodGet,
+		requestData{
+			relPath:     adminAPIPrefix + "/query/summary",
+			queryValues: values,
+		})
+	defer closeResponse(resp)
+	if err != nil {
+		return ClusterSummaryResponse{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return ClusterSummaryResponse{}, httpRespToErrorResponse(resp)
+	}
+
+	var info ClusterSummaryResponse
+	if err = info.DecodeMsg(msgp.NewReader(resp.Body)); err != nil {
+		return ClusterSummaryResponse{}, err
+	}
+
+	return info, nil
 }
 
 // ClusterResourceOpts ask for additional data from the server
