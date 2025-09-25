@@ -955,31 +955,31 @@ func (z *ClusterSummaryResponse) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "Encryption":
+		case "enc":
 			z.Encryption, err = dc.ReadBool()
 			if err != nil {
 				err = msgp.WrapError(err, "Encryption")
 				return
 			}
-		case "Version":
+		case "ver":
 			z.Version, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "Version")
 				return
 			}
-		case "DeploymentID":
+		case "did":
 			z.DeploymentID, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "DeploymentID")
 				return
 			}
-		case "Region":
+		case "reg":
 			z.Region, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "Region")
 				return
 			}
-		case "Domains":
+		case "dom":
 			var zb0002 uint32
 			zb0002, err = dc.ReadArrayHeader()
 			if err != nil {
@@ -998,7 +998,7 @@ func (z *ClusterSummaryResponse) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
-		case "Mode":
+		case "mod":
 			z.Mode, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "Mode")
@@ -1090,8 +1090,8 @@ func (z *ClusterSummaryResponse) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *ClusterSummaryResponse) EncodeMsg(en *msgp.Writer) (err error) {
 	// map header, size 10
-	// write "Encryption"
-	err = en.Append(0x8a, 0xaa, 0x45, 0x6e, 0x63, 0x72, 0x79, 0x70, 0x74, 0x69, 0x6f, 0x6e)
+	// write "enc"
+	err = en.Append(0x8a, 0xa3, 0x65, 0x6e, 0x63)
 	if err != nil {
 		return
 	}
@@ -1100,8 +1100,8 @@ func (z *ClusterSummaryResponse) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "Encryption")
 		return
 	}
-	// write "Version"
-	err = en.Append(0xa7, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
+	// write "ver"
+	err = en.Append(0xa3, 0x76, 0x65, 0x72)
 	if err != nil {
 		return
 	}
@@ -1110,8 +1110,8 @@ func (z *ClusterSummaryResponse) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "Version")
 		return
 	}
-	// write "DeploymentID"
-	err = en.Append(0xac, 0x44, 0x65, 0x70, 0x6c, 0x6f, 0x79, 0x6d, 0x65, 0x6e, 0x74, 0x49, 0x44)
+	// write "did"
+	err = en.Append(0xa3, 0x64, 0x69, 0x64)
 	if err != nil {
 		return
 	}
@@ -1120,8 +1120,8 @@ func (z *ClusterSummaryResponse) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "DeploymentID")
 		return
 	}
-	// write "Region"
-	err = en.Append(0xa6, 0x52, 0x65, 0x67, 0x69, 0x6f, 0x6e)
+	// write "reg"
+	err = en.Append(0xa3, 0x72, 0x65, 0x67)
 	if err != nil {
 		return
 	}
@@ -1130,8 +1130,8 @@ func (z *ClusterSummaryResponse) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "Region")
 		return
 	}
-	// write "Domains"
-	err = en.Append(0xa7, 0x44, 0x6f, 0x6d, 0x61, 0x69, 0x6e, 0x73)
+	// write "dom"
+	err = en.Append(0xa3, 0x64, 0x6f, 0x6d)
 	if err != nil {
 		return
 	}
@@ -1147,8 +1147,8 @@ func (z *ClusterSummaryResponse) EncodeMsg(en *msgp.Writer) (err error) {
 			return
 		}
 	}
-	// write "Mode"
-	err = en.Append(0xa4, 0x4d, 0x6f, 0x64, 0x65)
+	// write "mod"
+	err = en.Append(0xa3, 0x6d, 0x6f, 0x64)
 	if err != nil {
 		return
 	}
@@ -1237,26 +1237,26 @@ func (z *ClusterSummaryResponse) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *ClusterSummaryResponse) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// map header, size 10
-	// string "Encryption"
-	o = append(o, 0x8a, 0xaa, 0x45, 0x6e, 0x63, 0x72, 0x79, 0x70, 0x74, 0x69, 0x6f, 0x6e)
+	// string "enc"
+	o = append(o, 0x8a, 0xa3, 0x65, 0x6e, 0x63)
 	o = msgp.AppendBool(o, z.Encryption)
-	// string "Version"
-	o = append(o, 0xa7, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
+	// string "ver"
+	o = append(o, 0xa3, 0x76, 0x65, 0x72)
 	o = msgp.AppendString(o, z.Version)
-	// string "DeploymentID"
-	o = append(o, 0xac, 0x44, 0x65, 0x70, 0x6c, 0x6f, 0x79, 0x6d, 0x65, 0x6e, 0x74, 0x49, 0x44)
+	// string "did"
+	o = append(o, 0xa3, 0x64, 0x69, 0x64)
 	o = msgp.AppendString(o, z.DeploymentID)
-	// string "Region"
-	o = append(o, 0xa6, 0x52, 0x65, 0x67, 0x69, 0x6f, 0x6e)
+	// string "reg"
+	o = append(o, 0xa3, 0x72, 0x65, 0x67)
 	o = msgp.AppendString(o, z.Region)
-	// string "Domains"
-	o = append(o, 0xa7, 0x44, 0x6f, 0x6d, 0x61, 0x69, 0x6e, 0x73)
+	// string "dom"
+	o = append(o, 0xa3, 0x64, 0x6f, 0x6d)
 	o = msgp.AppendArrayHeader(o, uint32(len(z.Domains)))
 	for za0001 := range z.Domains {
 		o = msgp.AppendString(o, z.Domains[za0001])
 	}
-	// string "Mode"
-	o = append(o, 0xa4, 0x4d, 0x6f, 0x64, 0x65)
+	// string "mod"
+	o = append(o, 0xa3, 0x6d, 0x6f, 0x64)
 	o = msgp.AppendString(o, z.Mode)
 	// string "us"
 	o = append(o, 0xa2, 0x75, 0x73)
@@ -1315,31 +1315,31 @@ func (z *ClusterSummaryResponse) UnmarshalMsg(bts []byte) (o []byte, err error) 
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "Encryption":
+		case "enc":
 			z.Encryption, bts, err = msgp.ReadBoolBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Encryption")
 				return
 			}
-		case "Version":
+		case "ver":
 			z.Version, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Version")
 				return
 			}
-		case "DeploymentID":
+		case "did":
 			z.DeploymentID, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "DeploymentID")
 				return
 			}
-		case "Region":
+		case "reg":
 			z.Region, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Region")
 				return
 			}
-		case "Domains":
+		case "dom":
 			var zb0002 uint32
 			zb0002, bts, err = msgp.ReadArrayHeaderBytes(bts)
 			if err != nil {
@@ -1358,7 +1358,7 @@ func (z *ClusterSummaryResponse) UnmarshalMsg(bts []byte) (o []byte, err error) 
 					return
 				}
 			}
-		case "Mode":
+		case "mod":
 			z.Mode, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Mode")
@@ -1450,11 +1450,11 @@ func (z *ClusterSummaryResponse) UnmarshalMsg(bts []byte) (o []byte, err error) 
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *ClusterSummaryResponse) Msgsize() (s int) {
-	s = 1 + 11 + msgp.BoolSize + 8 + msgp.StringPrefixSize + len(z.Version) + 13 + msgp.StringPrefixSize + len(z.DeploymentID) + 7 + msgp.StringPrefixSize + len(z.Region) + 8 + msgp.ArrayHeaderSize
+	s = 1 + 4 + msgp.BoolSize + 4 + msgp.StringPrefixSize + len(z.Version) + 4 + msgp.StringPrefixSize + len(z.DeploymentID) + 4 + msgp.StringPrefixSize + len(z.Region) + 4 + msgp.ArrayHeaderSize
 	for za0001 := range z.Domains {
 		s += msgp.StringPrefixSize + len(z.Domains[za0001])
 	}
-	s += 5 + msgp.StringPrefixSize + len(z.Mode) + 3 + 1 + 3 + msgp.Int64Size + 3 + msgp.Int64Size + 3 + msgp.Int64Size + 4 + z.Servers.Msgsize() + 4 + z.Drives.Msgsize() + 4 + msgp.ArrayHeaderSize
+	s += 4 + msgp.StringPrefixSize + len(z.Mode) + 3 + 1 + 3 + msgp.Int64Size + 3 + msgp.Int64Size + 3 + msgp.Int64Size + 4 + z.Servers.Msgsize() + 4 + z.Drives.Msgsize() + 4 + msgp.ArrayHeaderSize
 	for za0002 := range z.Pools {
 		s += z.Pools[za0002].Msgsize()
 	}
