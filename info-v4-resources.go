@@ -274,12 +274,12 @@ type PoolSummary struct {
 
 // ClusterSummaryResponse contains a comprehensive summary of cluster resources and statistics
 type ClusterSummaryResponse struct {
-	Encryption   bool
-	Version      string
-	DeploymentID string
-	Region       string
-	Domains      []string
-	Mode         string
+	Encryption   bool     `json:"encryption" msg:"enc"`
+	Version      string   `json:"version" msg:"ver"`
+	DeploymentID string   `json:"deploymentID" msg:"did"`
+	Region       string   `json:"region" msg:"reg"`
+	Domains      []string `json:"domains" msg:"dom"`
+	Mode         string   `json:"mode" msg:"mod"`
 	Usage        ClusterSummaryUsage `json:"usage" msg:"us"`
 	Servers      ClusterSummaryCount `json:"servers" msg:"srv"`
 	Drives       ClusterSummaryCount `json:"drives" msg:"drv"`
