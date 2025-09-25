@@ -540,11 +540,6 @@ func (adm *AdminClient) ListAccessKeysLDAPBulkWithOpts(ctx context.Context, user
 	return listResp, nil
 }
 
-// OpenIDLoginURLResp - response containing the OpenID login URL
-type OpenIDLoginURLResp struct {
-	URL string
-}
-
 // GetOpenIDLoginURL - fetches the OpenID login URL for authentication
 func (an *AnonymousClient) GetOpenIDLoginURL(ctx context.Context, reqID, configName string, port int) (string, error) {
 	if configName == "" {
