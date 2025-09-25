@@ -56,6 +56,7 @@ type PaginatedNodesResponse struct {
 	SortReversed bool              `json:"sortReversed" msg:"sr"`
 }
 
+// NodesQuerySummary contains summary statistics for all nodes in the cluster
 type NodesQuerySummary struct {
 	Offline      int `json:"Offline" msg:"off"`
 	Initializing int `json:"Initializing" msg:"ini"`
@@ -102,7 +103,7 @@ type PaginatedErasureSetsResponse struct {
 	SortReversed bool                 `json:"sortReversed" msg:"sr"`
 }
 
-// PoolLayout ...
+// PoolLayout contains layout information for a storage pool including server and drive counts
 type PoolLayout struct {
 	Servers       int `json:"servers" msg:"s"`
 	Drives        int `json:"drives" msg:"d"`
@@ -110,7 +111,7 @@ type PoolLayout struct {
 	DrivesHealing int `json:"drivesHealing" msg:"dh"`
 }
 
-// ClusterResource represents high-level information about the cluster
+// ClusterResource represents comprehensive high-level information about the MinIO cluster
 type ClusterResource struct {
 	Mode              string       `json:"mode" msg:"m"`
 	Domains           []string     `json:"domains,omitempty" msg:"d,omitempty"`
@@ -134,7 +135,7 @@ type ClusterResource struct {
 	UsableFreeBytes   uint64       `json:"UsableFreeBytes" msg:"ufb"`
 }
 
-// ServicesResourceInfo holds information about services connected to the cluster
+// ServicesResourceInfo holds information about external services and integrations connected to the cluster
 type ServicesResourceInfo struct {
 	LDAP          LDAP                          `json:"ldap" msg:"l"`
 	Logger        []Logger                      `json:"logger,omitempty" msg:"lg,omitempty"`
@@ -143,7 +144,7 @@ type ServicesResourceInfo struct {
 	KMSStatus     []KMS                         `json:"kms,omitempty" msg:"k,omitempty"`
 }
 
-// PoolResource represents information about a storage pool
+// PoolResource represents detailed information about a storage pool including capacity, usage, and drive statistics
 type PoolResource struct {
 	PoolIndex          int      `json:"poolindex" msg:"i"`
 	StripeSize         int      `json:"stripeSize" msg:"ss"`
@@ -164,7 +165,7 @@ type PoolResource struct {
 	DeleteMarkersCount uint64   `json:"deleteMarkersCount" msg:"dmc"`
 }
 
-// DriveCounts ...
+// DriveCounts contains counts of drives categorized by their operational state
 type DriveCounts struct {
 	Ok          int `json:"ok" msg:"ok"`
 	Offline     int `json:"offline" msg:"of"`
@@ -177,7 +178,7 @@ type DriveCounts struct {
 	Unformatted int `json:"unformatted" msg:"uf"`
 }
 
-// NodeResource represents information about a node
+// NodeResource represents detailed information about a MinIO server node including version, state, and drive counts
 type NodeResource struct {
 	Host        string      `json:"host" msg:"h"`
 	Version     string      `json:"version" msg:"v"`
@@ -190,7 +191,7 @@ type NodeResource struct {
 	PoolIndexes []int       `json:"poolIndexes,omitempty" msg:"pis,omitempty"`
 }
 
-// DriveResource represents information about a drive
+// DriveResource represents detailed information about a storage drive including capacity, usage, and metrics
 type DriveResource struct {
 	ID          string      `json:"id" msg:"i"`
 	DriveIndex  int         `json:"idx" msg:"idx"`
@@ -210,7 +211,7 @@ type DriveResource struct {
 	Metrics     *DiskMetric `json:"metrics,omitempty" msg:"m,omitempty"`
 }
 
-// ErasureSetResource represents information about an erasure set
+// ErasureSetResource represents detailed information about an erasure coding set including drive counts and capacity
 type ErasureSetResource struct {
 	PoolIndex          int      `json:"poolIndex" msg:"pi"`
 	SetIndex           int      `json:"setIndex" msg:"si"`
@@ -229,12 +230,14 @@ type ErasureSetResource struct {
 	DeleteMarkersCount uint64   `json:"deleteMarkersCount" msg:"dmc"`
 }
 
+// ClusterSummaryUsage contains storage usage statistics for the cluster
 type ClusterSummaryUsage struct {
 	TotalCapacity int64 `json:"totalCapacity" msg:"tc"`
 	Available     int64 `json:"available" msg:"av"`
 	DrivesUsage   int64 `json:"drivesUsage" msg:"du"`
 }
 
+// ClusterSummaryCount contains resource counts with status breakdown
 type ClusterSummaryCount struct {
 	Total   int `json:"total" msg:"t"`
 	Online  int `json:"online" msg:"on"`
@@ -242,6 +245,7 @@ type ClusterSummaryCount struct {
 	Healing int `json:"healing" msg:"hl"`
 }
 
+// DriveSummaryCount contains drive counts with status breakdown
 type DriveSummaryCount struct {
 	Total   int `json:"total" msg:"t"`
 	Online  int `json:"online" msg:"on"`
@@ -249,6 +253,7 @@ type DriveSummaryCount struct {
 	Healing int `json:"healing" msg:"hl"`
 }
 
+// PoolDetails contains detailed configuration and statistics for a storage pool
 type PoolDetails struct {
 	TotalServers       int `json:"totalServers" msg:"ts"`
 	TotalObjects       int `json:"totalObjects" msg:"to"`
@@ -259,6 +264,7 @@ type PoolDetails struct {
 	Parity             int `json:"parity" msg:"p"`
 }
 
+// PoolSummary contains summary information for a storage pool including usage and drive statistics
 type PoolSummary struct {
 	Index   int                 `json:"index" msg:"idx"`
 	Usage   ClusterSummaryUsage `json:"usage" msg:"us"`
@@ -266,6 +272,7 @@ type PoolSummary struct {
 	Details PoolDetails         `json:"details" msg:"dtls"`
 }
 
+// ClusterSummaryResponse contains a comprehensive summary of cluster resources and statistics
 type ClusterSummaryResponse struct {
 	Usage   ClusterSummaryUsage `json:"usage" msg:"us"`
 	Servers ClusterSummaryCount `json:"servers" msg:"srv"`
@@ -665,10 +672,11 @@ func (adm *AdminClient) ErasureSetsQuery(ctx context.Context, options *ErasureSe
 	return &setsResp, nil
 }
 
-// SortSlice allows for slice sorting based on a field as string.
-// The referred field must be a string, int, uint, float or a pointer to one of these.
-// The field must be exported.
-// Structs can be traversed using dot notation, e.g. "Field1.Field2".
+// SortSlice sorts a slice of structs based on a specified field path using reflection.
+// The field parameter supports dot notation for nested fields (e.g., "Field1.Field2").
+// Supported field types: string, int, uint, float variants, and pointers to these types.
+// The field must be exported. Nil values are sorted as "less than" non-nil values.
+// If reversed is true, the sort order is reversed.
 func SortSlice[T any](slice []T, field string, reversed bool) {
 	if field == "" {
 		return
