@@ -60,6 +60,8 @@ const (
 	ItemInitializing = ItemState("initializing")
 	// ItemOnline indicates that the item is online
 	ItemOnline = ItemState("online")
+	// ItemRestarting indicates that the item is restarting
+	ItemRestarting = ItemState("restarting")
 )
 
 // StorageInfo - represents total capacity of underlying storage.
@@ -444,6 +446,8 @@ type ServerProperties struct {
 	License             *LicenseInfo      `json:"license,omitempty"`
 	IsLeader            bool              `json:"is_leader"`
 	ILMExpiryInProgress bool              `json:"ilm_expiry_in_progress"`
+	BackendVersion      uint32            `json:"backend_version"`
+	NodeAPIVersion      uint32            `json:"node_api_version"`
 }
 
 // MemStats is strip down version of runtime.MemStats containing memory stats of MinIO server.

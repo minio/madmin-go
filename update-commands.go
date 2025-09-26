@@ -40,6 +40,8 @@ type ServerPeerUpdateStatus struct {
 type ServerUpdateStatus struct {
 	DryRun  bool                     `json:"dryRun"`
 	Results []ServerPeerUpdateStatus `json:"results,omitempty"`
+
+	Error string `json:"error,omitempty"`
 }
 
 // ServerUpdateOpts specifies the URL (optionally to download the binary from)
@@ -49,6 +51,8 @@ type ServerUpdateStatus struct {
 type ServerUpdateOpts struct {
 	UpdateURL string
 	DryRun    bool
+	Force     bool
+	ByNode    bool
 }
 
 // ServerUpdate - updates and restarts the MinIO cluster to latest version.
@@ -58,6 +62,8 @@ func (adm *AdminClient) ServerUpdate(ctx context.Context, opts ServerUpdateOpts)
 	queryValues.Set("type", "2")
 	queryValues.Set("updateURL", opts.UpdateURL)
 	queryValues.Set("dry-run", strconv.FormatBool(opts.DryRun))
+	queryValues.Set("force", strconv.FormatBool(opts.Force))
+	queryValues.Set("by-node", strconv.FormatBool(opts.ByNode))
 
 	// Request API to Restart server
 	resp, err := adm.executeMethod(ctx,
@@ -80,4 +86,74 @@ func (adm *AdminClient) ServerUpdate(ctx context.Context, opts ServerUpdateOpts)
 	}
 
 	return us, nil
+}
+
+type NodeBumpVersionResp struct {
+	Done    bool   `json:"done"`
+	Offline bool   `json:"offline"`
+	Error   string `json:"error,omitempty"`
+}
+
+type ClusterBumpVersionResp struct {
+	Nodes map[string]NodeBumpVersionResp `json:"nodes,omitempty"`
+	Error string                         `json:"error,omitempty"`
+}
+
+// BumpVersion asks the cluster to use the newest internal backend format and internode APIs that is supported by the current binary
+func (adm *AdminClient) BumpVersion(ctx context.Context, dryRun bool) (r ClusterBumpVersionResp, err error) {
+	values := url.Values{}
+	values.Set("dry-run", strconv.FormatBool(dryRun))
+	resp, err := adm.executeMethod(ctx,
+		http.MethodPost,
+		requestData{
+			queryValues: values,
+			relPath:     adminAPIPrefix + "/bump-version",
+		},
+	)
+	defer closeResponse(resp)
+	if err != nil {
+		return r, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return r, httpRespToErrorResponse(resp)
+	}
+	err = json.NewDecoder(resp.Body).Decode(&r)
+	return r, err
+}
+
+type Version struct {
+	Major uint16 `json:"major"`
+	Minor uint16 `json:"minor"`
+	Patch uint16 `json:"patch"`
+}
+
+type NodeAPIDesc struct {
+	BackendVersion Version `json:"backendVersion"`
+	NodeAPIVersion uint32  `json:"nodeAPIVersion"`
+	Error          string  `json:"error,omitempty"`
+}
+
+type ClusterAPIDesc struct {
+	Nodes map[string]NodeAPIDesc `json:"nodes,omitempty"`
+	Error string                 `json:"error,omitempty"`
+}
+
+func (adm *AdminClient) GetAPIDesc(ctx context.Context) (r ClusterAPIDesc, err error) {
+	values := url.Values{}
+	resp, err := adm.executeMethod(ctx,
+		http.MethodGet,
+		requestData{
+			queryValues: values,
+			relPath:     adminAPIPrefix + "/api-desc",
+		},
+	)
+	defer closeResponse(resp)
+	if err != nil {
+		return r, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return r, httpRespToErrorResponse(resp)
+	}
+	err = json.NewDecoder(resp.Body).Decode(&r)
+	return r, err
 }
