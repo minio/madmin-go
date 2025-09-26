@@ -282,7 +282,7 @@ type ClusterSummaryResponse struct {
 	Mode         string              `json:"mode" msg:"mod"`
 	Usage        ClusterSummaryUsage `json:"usage" msg:"us"`
 	Servers      ClusterSummaryCount `json:"servers" msg:"srv"`
-	Drives       ClusterSummaryCount `json:"drives" msg:"drv"`
+	Drives       DriveSummaryCount   `json:"drives" msg:"drv"`
 	Pools        []PoolSummary       `json:"pools" msg:"pls"`
 }
 
