@@ -171,6 +171,8 @@ type TraceCallStats struct {
 	InputBytes      int           `json:"inputbytes"`
 	OutputBytes     int           `json:"outputbytes"`
 	TimeToFirstByte time.Duration `json:"timetofirstbyte"`
+	ReadBlocked     time.Duration `json:"readBlocked"`
+	WriteBlocked    time.Duration `json:"writeBlocked"`
 }
 
 // TraceRequestInfo represents trace of http request
