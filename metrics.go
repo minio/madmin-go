@@ -1163,10 +1163,12 @@ type APIStats struct {
 	Canceled      int64      `json:"canceled,omitempty"`      // Requests that were canceled before they finished processing.
 
 	// Request times
-	RequestTimeSecs float64 `json:"requestTimeSecs,omitempty"` // Total request time.
-	ReqReadSecs     float64 `json:"reqReadSecs,omitempty"`     // Total time spent on request reads in seconds.
-	RespSecs        float64 `json:"respSecs,omitempty"`        // Total time spent on responses in seconds.
-	RespTTFBSecs    float64 `json:"respTtfbSecs,omitempty"`    // Total time spent on TTFB (req read -> response first byte) in seconds.
+	RequestTimeSecs  float64 `json:"requestTimeSecs,omitempty"` // Total request time.
+	ReqReadSecs      float64 `json:"reqReadSecs,omitempty"`     // Total time spent on request reads in seconds.
+	RespSecs         float64 `json:"respSecs,omitempty"`        // Total time spent on responses in seconds.
+	RespTTFBSecs     float64 `json:"respTtfbSecs,omitempty"`    // Total time spent on TTFB (req read -> response first byte) in seconds.
+	ReadBlockedSecs  float64 `json:"readBlocked,omitempty"`     // Time spent waiting for reads from client.
+	WriteBlockedSecs float64 `json:"writeBlocked,omitempty"`    // Time spent waiting for writes to client.
 
 	// Request times min/max
 	RequestTimeSecsMin float64 `json:"requestTimeSecsMin,omitempty"` // Min request time.
@@ -1229,6 +1231,8 @@ func (a *APIStats) Merge(other APIStats) {
 	a.Rejected.Header += other.Rejected.Header
 	a.Rejected.Invalid += other.Rejected.Invalid
 	a.Rejected.NotImplemented += other.Rejected.NotImplemented
+	a.ReadBlockedSecs += other.ReadBlockedSecs
+	a.WriteBlockedSecs += other.WriteBlockedSecs
 
 	if a.Requests == 0 && other.Requests == 0 {
 		return
