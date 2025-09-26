@@ -256,19 +256,20 @@ type ErasureSetInfo struct {
 
 // InfoMessage container to hold server admin related information.
 type InfoMessage struct {
-	Mode          string             `json:"mode,omitempty"`
-	Domain        []string           `json:"domain,omitempty"`
-	Region        string             `json:"region,omitempty"`
-	SQSARN        []string           `json:"sqsARN,omitempty"`
-	DeploymentID  string             `json:"deploymentID,omitempty"`
-	Buckets       Buckets            `json:"buckets,omitempty"`
-	Objects       Objects            `json:"objects,omitempty"`
-	Versions      Versions           `json:"versions,omitempty"`
-	DeleteMarkers DeleteMarkers      `json:"deletemarkers,omitempty"`
-	Usage         Usage              `json:"usage,omitempty"`
-	Services      Services           `json:"services,omitempty"`
-	Backend       ErasureBackend     `json:"backend,omitempty"`
-	Servers       []ServerProperties `json:"servers,omitempty"`
+	Mode             string             `json:"mode,omitempty"`
+	Domain           []string           `json:"domain,omitempty"`
+	Region           string             `json:"region,omitempty"`
+	SQSARN           []string           `json:"sqsARN,omitempty"`
+	DeploymentID     string             `json:"deploymentID,omitempty"`
+	ObjectNamingMode string             `json:"objectNamingMode,omitempty"`
+	Buckets          Buckets            `json:"buckets,omitempty"`
+	Objects          Objects            `json:"objects,omitempty"`
+	Versions         Versions           `json:"versions,omitempty"`
+	DeleteMarkers    DeleteMarkers      `json:"deletemarkers,omitempty"`
+	Usage            Usage              `json:"usage,omitempty"`
+	Services         Services           `json:"services,omitempty"`
+	Backend          ErasureBackend     `json:"backend,omitempty"`
+	Servers          []ServerProperties `json:"servers,omitempty"`
 
 	Pools map[int]map[int]ErasureSetInfo `json:"pools,omitempty"`
 }

@@ -6027,7 +6027,7 @@ func (z *InfoMessage) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint16 /* 13 bits */
+	var zb0001Mask uint16 /* 14 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -6098,6 +6098,13 @@ func (z *InfoMessage) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 			zb0001Mask |= 0x10
+		case "objectNamingMode":
+			z.ObjectNamingMode, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "ObjectNamingMode")
+				return
+			}
+			zb0001Mask |= 0x20
 		case "buckets":
 			var zb0004 uint32
 			zb0004, err = dc.ReadMapHeader()
@@ -6141,7 +6148,7 @@ func (z *InfoMessage) DecodeMsg(dc *msgp.Reader) (err error) {
 				z.Buckets.Error = ""
 			}
 
-			zb0001Mask |= 0x20
+			zb0001Mask |= 0x40
 		case "objects":
 			var zb0005 uint32
 			zb0005, err = dc.ReadMapHeader()
@@ -6185,7 +6192,7 @@ func (z *InfoMessage) DecodeMsg(dc *msgp.Reader) (err error) {
 				z.Objects.Error = ""
 			}
 
-			zb0001Mask |= 0x40
+			zb0001Mask |= 0x80
 		case "versions":
 			var zb0006 uint32
 			zb0006, err = dc.ReadMapHeader()
@@ -6229,7 +6236,7 @@ func (z *InfoMessage) DecodeMsg(dc *msgp.Reader) (err error) {
 				z.Versions.Error = ""
 			}
 
-			zb0001Mask |= 0x80
+			zb0001Mask |= 0x100
 		case "deletemarkers":
 			var zb0007 uint32
 			zb0007, err = dc.ReadMapHeader()
@@ -6273,7 +6280,7 @@ func (z *InfoMessage) DecodeMsg(dc *msgp.Reader) (err error) {
 				z.DeleteMarkers.Error = ""
 			}
 
-			zb0001Mask |= 0x100
+			zb0001Mask |= 0x200
 		case "usage":
 			var zb0008 uint32
 			zb0008, err = dc.ReadMapHeader()
@@ -6317,21 +6324,21 @@ func (z *InfoMessage) DecodeMsg(dc *msgp.Reader) (err error) {
 				z.Usage.Error = ""
 			}
 
-			zb0001Mask |= 0x200
+			zb0001Mask |= 0x400
 		case "services":
 			err = z.Services.DecodeMsg(dc)
 			if err != nil {
 				err = msgp.WrapError(err, "Services")
 				return
 			}
-			zb0001Mask |= 0x400
+			zb0001Mask |= 0x800
 		case "backend":
 			err = z.Backend.DecodeMsg(dc)
 			if err != nil {
 				err = msgp.WrapError(err, "Backend")
 				return
 			}
-			zb0001Mask |= 0x800
+			zb0001Mask |= 0x1000
 		case "servers":
 			var zb0009 uint32
 			zb0009, err = dc.ReadArrayHeader()
@@ -6351,7 +6358,7 @@ func (z *InfoMessage) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x1000
+			zb0001Mask |= 0x2000
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -6361,7 +6368,7 @@ func (z *InfoMessage) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x1fff {
+	if zb0001Mask != 0x3fff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Mode = ""
 		}
@@ -6378,27 +6385,30 @@ func (z *InfoMessage) DecodeMsg(dc *msgp.Reader) (err error) {
 			z.DeploymentID = ""
 		}
 		if (zb0001Mask & 0x20) == 0 {
-			z.Buckets = (Buckets{})
+			z.ObjectNamingMode = ""
 		}
 		if (zb0001Mask & 0x40) == 0 {
-			z.Objects = (Objects{})
+			z.Buckets = (Buckets{})
 		}
 		if (zb0001Mask & 0x80) == 0 {
-			z.Versions = (Versions{})
+			z.Objects = (Objects{})
 		}
 		if (zb0001Mask & 0x100) == 0 {
-			z.DeleteMarkers = (DeleteMarkers{})
+			z.Versions = (Versions{})
 		}
 		if (zb0001Mask & 0x200) == 0 {
-			z.Usage = (Usage{})
+			z.DeleteMarkers = (DeleteMarkers{})
 		}
 		if (zb0001Mask & 0x400) == 0 {
-			z.Services = Services{}
+			z.Usage = (Usage{})
 		}
 		if (zb0001Mask & 0x800) == 0 {
-			z.Backend = ErasureBackend{}
+			z.Services = Services{}
 		}
 		if (zb0001Mask & 0x1000) == 0 {
+			z.Backend = ErasureBackend{}
+		}
+		if (zb0001Mask & 0x2000) == 0 {
 			z.Servers = nil
 		}
 	}
@@ -6408,8 +6418,8 @@ func (z *InfoMessage) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *InfoMessage) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(13)
-	var zb0001Mask uint16 /* 13 bits */
+	zb0001Len := uint32(14)
+	var zb0001Mask uint16 /* 14 bits */
 	_ = zb0001Mask
 	if z.Mode == "" {
 		zb0001Len--
@@ -6431,29 +6441,33 @@ func (z *InfoMessage) EncodeMsg(en *msgp.Writer) (err error) {
 		zb0001Len--
 		zb0001Mask |= 0x10
 	}
-	if z.Buckets == (Buckets{}) {
+	if z.ObjectNamingMode == "" {
 		zb0001Len--
 		zb0001Mask |= 0x20
 	}
-	if z.Objects == (Objects{}) {
+	if z.Buckets == (Buckets{}) {
 		zb0001Len--
 		zb0001Mask |= 0x40
 	}
-	if z.Versions == (Versions{}) {
+	if z.Objects == (Objects{}) {
 		zb0001Len--
 		zb0001Mask |= 0x80
 	}
-	if z.DeleteMarkers == (DeleteMarkers{}) {
+	if z.Versions == (Versions{}) {
 		zb0001Len--
 		zb0001Mask |= 0x100
 	}
-	if z.Usage == (Usage{}) {
+	if z.DeleteMarkers == (DeleteMarkers{}) {
 		zb0001Len--
 		zb0001Mask |= 0x200
 	}
+	if z.Usage == (Usage{}) {
+		zb0001Len--
+		zb0001Mask |= 0x400
+	}
 	if z.Servers == nil {
 		zb0001Len--
-		zb0001Mask |= 0x1000
+		zb0001Mask |= 0x2000
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -6538,6 +6552,18 @@ func (z *InfoMessage) EncodeMsg(en *msgp.Writer) (err error) {
 			}
 		}
 		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// write "objectNamingMode"
+			err = en.Append(0xb0, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x4e, 0x61, 0x6d, 0x69, 0x6e, 0x67, 0x4d, 0x6f, 0x64, 0x65)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.ObjectNamingMode)
+			if err != nil {
+				err = msgp.WrapError(err, "ObjectNamingMode")
+				return
+			}
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
 			// write "buckets"
 			err = en.Append(0xa7, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73)
 			if err != nil {
@@ -6583,7 +6609,7 @@ func (z *InfoMessage) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x40) == 0 { // if not omitted
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
 			// write "objects"
 			err = en.Append(0xa7, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73)
 			if err != nil {
@@ -6629,7 +6655,7 @@ func (z *InfoMessage) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x80) == 0 { // if not omitted
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
 			// write "versions"
 			err = en.Append(0xa8, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
 			if err != nil {
@@ -6675,7 +6701,7 @@ func (z *InfoMessage) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x100) == 0 { // if not omitted
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
 			// write "deletemarkers"
 			err = en.Append(0xad, 0x64, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x6d, 0x61, 0x72, 0x6b, 0x65, 0x72, 0x73)
 			if err != nil {
@@ -6721,7 +6747,7 @@ func (z *InfoMessage) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x200) == 0 { // if not omitted
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
 			// write "usage"
 			err = en.Append(0xa5, 0x75, 0x73, 0x61, 0x67, 0x65)
 			if err != nil {
@@ -6787,7 +6813,7 @@ func (z *InfoMessage) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "Backend")
 			return
 		}
-		if (zb0001Mask & 0x1000) == 0 { // if not omitted
+		if (zb0001Mask & 0x2000) == 0 { // if not omitted
 			// write "servers"
 			err = en.Append(0xa7, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x73)
 			if err != nil {
@@ -6814,8 +6840,8 @@ func (z *InfoMessage) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *InfoMessage) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(13)
-	var zb0001Mask uint16 /* 13 bits */
+	zb0001Len := uint32(14)
+	var zb0001Mask uint16 /* 14 bits */
 	_ = zb0001Mask
 	if z.Mode == "" {
 		zb0001Len--
@@ -6837,29 +6863,33 @@ func (z *InfoMessage) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x10
 	}
-	if z.Buckets == (Buckets{}) {
+	if z.ObjectNamingMode == "" {
 		zb0001Len--
 		zb0001Mask |= 0x20
 	}
-	if z.Objects == (Objects{}) {
+	if z.Buckets == (Buckets{}) {
 		zb0001Len--
 		zb0001Mask |= 0x40
 	}
-	if z.Versions == (Versions{}) {
+	if z.Objects == (Objects{}) {
 		zb0001Len--
 		zb0001Mask |= 0x80
 	}
-	if z.DeleteMarkers == (DeleteMarkers{}) {
+	if z.Versions == (Versions{}) {
 		zb0001Len--
 		zb0001Mask |= 0x100
 	}
-	if z.Usage == (Usage{}) {
+	if z.DeleteMarkers == (DeleteMarkers{}) {
 		zb0001Len--
 		zb0001Mask |= 0x200
 	}
+	if z.Usage == (Usage{}) {
+		zb0001Len--
+		zb0001Mask |= 0x400
+	}
 	if z.Servers == nil {
 		zb0001Len--
-		zb0001Mask |= 0x1000
+		zb0001Mask |= 0x2000
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -6898,6 +6928,11 @@ func (z *InfoMessage) MarshalMsg(b []byte) (o []byte, err error) {
 			o = msgp.AppendString(o, z.DeploymentID)
 		}
 		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// string "objectNamingMode"
+			o = append(o, 0xb0, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x4e, 0x61, 0x6d, 0x69, 0x6e, 0x67, 0x4d, 0x6f, 0x64, 0x65)
+			o = msgp.AppendString(o, z.ObjectNamingMode)
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
 			// string "buckets"
 			o = append(o, 0xa7, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73)
 			// check for omitted fields
@@ -6923,7 +6958,7 @@ func (z *InfoMessage) MarshalMsg(b []byte) (o []byte, err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x40) == 0 { // if not omitted
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
 			// string "objects"
 			o = append(o, 0xa7, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73)
 			// check for omitted fields
@@ -6949,7 +6984,7 @@ func (z *InfoMessage) MarshalMsg(b []byte) (o []byte, err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x80) == 0 { // if not omitted
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
 			// string "versions"
 			o = append(o, 0xa8, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
 			// check for omitted fields
@@ -6975,7 +7010,7 @@ func (z *InfoMessage) MarshalMsg(b []byte) (o []byte, err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x100) == 0 { // if not omitted
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
 			// string "deletemarkers"
 			o = append(o, 0xad, 0x64, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x6d, 0x61, 0x72, 0x6b, 0x65, 0x72, 0x73)
 			// check for omitted fields
@@ -7001,7 +7036,7 @@ func (z *InfoMessage) MarshalMsg(b []byte) (o []byte, err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x200) == 0 { // if not omitted
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
 			// string "usage"
 			o = append(o, 0xa5, 0x75, 0x73, 0x61, 0x67, 0x65)
 			// check for omitted fields
@@ -7041,7 +7076,7 @@ func (z *InfoMessage) MarshalMsg(b []byte) (o []byte, err error) {
 			err = msgp.WrapError(err, "Backend")
 			return
 		}
-		if (zb0001Mask & 0x1000) == 0 { // if not omitted
+		if (zb0001Mask & 0x2000) == 0 { // if not omitted
 			// string "servers"
 			o = append(o, 0xa7, 0x73, 0x65, 0x72, 0x76, 0x65, 0x72, 0x73)
 			o = msgp.AppendArrayHeader(o, uint32(len(z.Servers)))
@@ -7067,7 +7102,7 @@ func (z *InfoMessage) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint16 /* 13 bits */
+	var zb0001Mask uint16 /* 14 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -7138,6 +7173,13 @@ func (z *InfoMessage) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 			zb0001Mask |= 0x10
+		case "objectNamingMode":
+			z.ObjectNamingMode, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ObjectNamingMode")
+				return
+			}
+			zb0001Mask |= 0x20
 		case "buckets":
 			var zb0004 uint32
 			zb0004, bts, err = msgp.ReadMapHeaderBytes(bts)
@@ -7181,7 +7223,7 @@ func (z *InfoMessage) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				z.Buckets.Error = ""
 			}
 
-			zb0001Mask |= 0x20
+			zb0001Mask |= 0x40
 		case "objects":
 			var zb0005 uint32
 			zb0005, bts, err = msgp.ReadMapHeaderBytes(bts)
@@ -7225,7 +7267,7 @@ func (z *InfoMessage) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				z.Objects.Error = ""
 			}
 
-			zb0001Mask |= 0x40
+			zb0001Mask |= 0x80
 		case "versions":
 			var zb0006 uint32
 			zb0006, bts, err = msgp.ReadMapHeaderBytes(bts)
@@ -7269,7 +7311,7 @@ func (z *InfoMessage) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				z.Versions.Error = ""
 			}
 
-			zb0001Mask |= 0x80
+			zb0001Mask |= 0x100
 		case "deletemarkers":
 			var zb0007 uint32
 			zb0007, bts, err = msgp.ReadMapHeaderBytes(bts)
@@ -7313,7 +7355,7 @@ func (z *InfoMessage) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				z.DeleteMarkers.Error = ""
 			}
 
-			zb0001Mask |= 0x100
+			zb0001Mask |= 0x200
 		case "usage":
 			var zb0008 uint32
 			zb0008, bts, err = msgp.ReadMapHeaderBytes(bts)
@@ -7357,21 +7399,21 @@ func (z *InfoMessage) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				z.Usage.Error = ""
 			}
 
-			zb0001Mask |= 0x200
+			zb0001Mask |= 0x400
 		case "services":
 			bts, err = z.Services.UnmarshalMsg(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Services")
 				return
 			}
-			zb0001Mask |= 0x400
+			zb0001Mask |= 0x800
 		case "backend":
 			bts, err = z.Backend.UnmarshalMsg(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Backend")
 				return
 			}
-			zb0001Mask |= 0x800
+			zb0001Mask |= 0x1000
 		case "servers":
 			var zb0009 uint32
 			zb0009, bts, err = msgp.ReadArrayHeaderBytes(bts)
@@ -7391,7 +7433,7 @@ func (z *InfoMessage) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x1000
+			zb0001Mask |= 0x2000
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -7401,7 +7443,7 @@ func (z *InfoMessage) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x1fff {
+	if zb0001Mask != 0x3fff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Mode = ""
 		}
@@ -7418,27 +7460,30 @@ func (z *InfoMessage) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.DeploymentID = ""
 		}
 		if (zb0001Mask & 0x20) == 0 {
-			z.Buckets = (Buckets{})
+			z.ObjectNamingMode = ""
 		}
 		if (zb0001Mask & 0x40) == 0 {
-			z.Objects = (Objects{})
+			z.Buckets = (Buckets{})
 		}
 		if (zb0001Mask & 0x80) == 0 {
-			z.Versions = (Versions{})
+			z.Objects = (Objects{})
 		}
 		if (zb0001Mask & 0x100) == 0 {
-			z.DeleteMarkers = (DeleteMarkers{})
+			z.Versions = (Versions{})
 		}
 		if (zb0001Mask & 0x200) == 0 {
-			z.Usage = (Usage{})
+			z.DeleteMarkers = (DeleteMarkers{})
 		}
 		if (zb0001Mask & 0x400) == 0 {
-			z.Services = Services{}
+			z.Usage = (Usage{})
 		}
 		if (zb0001Mask & 0x800) == 0 {
-			z.Backend = ErasureBackend{}
+			z.Services = Services{}
 		}
 		if (zb0001Mask & 0x1000) == 0 {
+			z.Backend = ErasureBackend{}
+		}
+		if (zb0001Mask & 0x2000) == 0 {
 			z.Servers = nil
 		}
 	}
@@ -7456,7 +7501,7 @@ func (z *InfoMessage) Msgsize() (s int) {
 	for za0002 := range z.SQSARN {
 		s += msgp.StringPrefixSize + len(z.SQSARN[za0002])
 	}
-	s += 13 + msgp.StringPrefixSize + len(z.DeploymentID) + 8 + 1 + 6 + msgp.Uint64Size + 6 + msgp.StringPrefixSize + len(z.Buckets.Error) + 8 + 1 + 6 + msgp.Uint64Size + 6 + msgp.StringPrefixSize + len(z.Objects.Error) + 9 + 1 + 6 + msgp.Uint64Size + 6 + msgp.StringPrefixSize + len(z.Versions.Error) + 14 + 1 + 6 + msgp.Uint64Size + 6 + msgp.StringPrefixSize + len(z.DeleteMarkers.Error) + 6 + 1 + 5 + msgp.Uint64Size + 6 + msgp.StringPrefixSize + len(z.Usage.Error) + 9 + z.Services.Msgsize() + 8 + z.Backend.Msgsize() + 8 + msgp.ArrayHeaderSize
+	s += 13 + msgp.StringPrefixSize + len(z.DeploymentID) + 17 + msgp.StringPrefixSize + len(z.ObjectNamingMode) + 8 + 1 + 6 + msgp.Uint64Size + 6 + msgp.StringPrefixSize + len(z.Buckets.Error) + 8 + 1 + 6 + msgp.Uint64Size + 6 + msgp.StringPrefixSize + len(z.Objects.Error) + 9 + 1 + 6 + msgp.Uint64Size + 6 + msgp.StringPrefixSize + len(z.Versions.Error) + 14 + 1 + 6 + msgp.Uint64Size + 6 + msgp.StringPrefixSize + len(z.DeleteMarkers.Error) + 6 + 1 + 5 + msgp.Uint64Size + 6 + msgp.StringPrefixSize + len(z.Usage.Error) + 9 + z.Services.Msgsize() + 8 + z.Backend.Msgsize() + 8 + msgp.ArrayHeaderSize
 	for za0003 := range z.Servers {
 		s += z.Servers[za0003].Msgsize()
 	}
