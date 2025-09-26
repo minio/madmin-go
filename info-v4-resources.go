@@ -43,10 +43,6 @@ type PaginatedPoolsResponse struct {
 	Offset       int            `json:"offset" msg:"o"`
 	Sort         string         `json:"sort" msg:"s"`
 	SortReversed bool           `json:"sortReversed" msg:"sr"`
-
-	// Aggregated are the metrics aggregated for all filtered pools,
-	// not just the results.
-	Aggregated *Metrics `json:"aggregated,omitempty" msg:"m,omitempty"`
 }
 
 // PaginatedNodesResponse represents a paginated response for nodes
@@ -153,8 +149,6 @@ type PoolResource struct {
 	ObjectsCount       uint64   `json:"objectsCount" msg:"oc"`
 	VersionsCount      uint64   `json:"versionsCount" msg:"vc"`
 	DeleteMarkersCount uint64   `json:"deleteMarkersCount" msg:"dmc"`
-	// Metrics contains the metrics aggregated for pool if requested.
-	Metrics *Metrics `json:"metrics,omitempty" msg:"m,omitempty"`
 }
 
 // DriveCounts ...
@@ -313,16 +307,12 @@ type PoolsResourceOpts struct {
 	Sort string
 	// SortReversed will only take effect if Sort is defined
 	SortReversed bool
-
-	// Metrics will include per-node metrics in the response if set
-	Metrics OptionalMetrics
 }
 
 func (adm *AdminClient) PoolsQuery(ctx context.Context, options *PoolsResourceOpts) (*PaginatedPoolsResponse, error) {
 	values := make(url.Values)
 
 	if options != nil {
-		options.Metrics.apply(values)
 		values.Set("limit", strconv.Itoa(options.Limit))
 
 		if options.Offset > 0 {

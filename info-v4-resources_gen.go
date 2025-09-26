@@ -4057,7 +4057,7 @@ func (z *PaginatedPoolsResponse) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 2 bits */
+	var zb0001Mask uint8 /* 1 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -4117,25 +4117,6 @@ func (z *PaginatedPoolsResponse) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "SortReversed")
 				return
 			}
-		case "m":
-			if dc.IsNil() {
-				err = dc.ReadNil()
-				if err != nil {
-					err = msgp.WrapError(err, "Aggregated")
-					return
-				}
-				z.Aggregated = nil
-			} else {
-				if z.Aggregated == nil {
-					z.Aggregated = new(Metrics)
-				}
-				err = z.Aggregated.DecodeMsg(dc)
-				if err != nil {
-					err = msgp.WrapError(err, "Aggregated")
-					return
-				}
-			}
-			zb0001Mask |= 0x2
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -4145,30 +4126,22 @@ func (z *PaginatedPoolsResponse) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3 {
-		if (zb0001Mask & 0x1) == 0 {
-			z.Results = nil
-		}
-		if (zb0001Mask & 0x2) == 0 {
-			z.Aggregated = nil
-		}
+	if (zb0001Mask & 0x1) == 0 {
+		z.Results = nil
 	}
+
 	return
 }
 
 // EncodeMsg implements msgp.Encodable
 func (z *PaginatedPoolsResponse) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(7)
-	var zb0001Mask uint8 /* 7 bits */
+	zb0001Len := uint32(6)
+	var zb0001Mask uint8 /* 6 bits */
 	_ = zb0001Mask
 	if z.Results == nil {
 		zb0001Len--
 		zb0001Mask |= 0x1
-	}
-	if z.Aggregated == nil {
-		zb0001Len--
-		zb0001Mask |= 0x40
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -4247,25 +4220,6 @@ func (z *PaginatedPoolsResponse) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "SortReversed")
 			return
 		}
-		if (zb0001Mask & 0x40) == 0 { // if not omitted
-			// write "m"
-			err = en.Append(0xa1, 0x6d)
-			if err != nil {
-				return
-			}
-			if z.Aggregated == nil {
-				err = en.WriteNil()
-				if err != nil {
-					return
-				}
-			} else {
-				err = z.Aggregated.EncodeMsg(en)
-				if err != nil {
-					err = msgp.WrapError(err, "Aggregated")
-					return
-				}
-			}
-		}
 	}
 	return
 }
@@ -4274,16 +4228,12 @@ func (z *PaginatedPoolsResponse) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *PaginatedPoolsResponse) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(7)
-	var zb0001Mask uint8 /* 7 bits */
+	zb0001Len := uint32(6)
+	var zb0001Mask uint8 /* 6 bits */
 	_ = zb0001Mask
 	if z.Results == nil {
 		zb0001Len--
 		zb0001Mask |= 0x1
-	}
-	if z.Aggregated == nil {
-		zb0001Len--
-		zb0001Mask |= 0x40
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -4317,19 +4267,6 @@ func (z *PaginatedPoolsResponse) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "sr"
 		o = append(o, 0xa2, 0x73, 0x72)
 		o = msgp.AppendBool(o, z.SortReversed)
-		if (zb0001Mask & 0x40) == 0 { // if not omitted
-			// string "m"
-			o = append(o, 0xa1, 0x6d)
-			if z.Aggregated == nil {
-				o = msgp.AppendNil(o)
-			} else {
-				o, err = z.Aggregated.MarshalMsg(o)
-				if err != nil {
-					err = msgp.WrapError(err, "Aggregated")
-					return
-				}
-			}
-		}
 	}
 	return
 }
@@ -4344,7 +4281,7 @@ func (z *PaginatedPoolsResponse) UnmarshalMsg(bts []byte) (o []byte, err error) 
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 2 bits */
+	var zb0001Mask uint8 /* 1 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -4404,24 +4341,6 @@ func (z *PaginatedPoolsResponse) UnmarshalMsg(bts []byte) (o []byte, err error) 
 				err = msgp.WrapError(err, "SortReversed")
 				return
 			}
-		case "m":
-			if msgp.IsNil(bts) {
-				bts, err = msgp.ReadNilBytes(bts)
-				if err != nil {
-					return
-				}
-				z.Aggregated = nil
-			} else {
-				if z.Aggregated == nil {
-					z.Aggregated = new(Metrics)
-				}
-				bts, err = z.Aggregated.UnmarshalMsg(bts)
-				if err != nil {
-					err = msgp.WrapError(err, "Aggregated")
-					return
-				}
-			}
-			zb0001Mask |= 0x2
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -4431,14 +4350,10 @@ func (z *PaginatedPoolsResponse) UnmarshalMsg(bts []byte) (o []byte, err error) 
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3 {
-		if (zb0001Mask & 0x1) == 0 {
-			z.Results = nil
-		}
-		if (zb0001Mask & 0x2) == 0 {
-			z.Aggregated = nil
-		}
+	if (zb0001Mask & 0x1) == 0 {
+		z.Results = nil
 	}
+
 	o = bts
 	return
 }
@@ -4449,12 +4364,7 @@ func (z *PaginatedPoolsResponse) Msgsize() (s int) {
 	for za0001 := range z.Results {
 		s += z.Results[za0001].Msgsize()
 	}
-	s += 2 + msgp.IntSize + 2 + msgp.IntSize + 2 + msgp.IntSize + 2 + msgp.StringPrefixSize + len(z.Sort) + 3 + msgp.BoolSize + 2
-	if z.Aggregated == nil {
-		s += msgp.NilSize
-	} else {
-		s += z.Aggregated.Msgsize()
-	}
+	s += 2 + msgp.IntSize + 2 + msgp.IntSize + 2 + msgp.IntSize + 2 + msgp.StringPrefixSize + len(z.Sort) + 3 + msgp.BoolSize
 	return
 }
 
@@ -4646,7 +4556,7 @@ func (z *PoolResource) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 2 bits */
+	var zb0001Mask uint8 /* 1 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -4772,25 +4682,6 @@ func (z *PoolResource) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "DeleteMarkersCount")
 				return
 			}
-		case "m":
-			if dc.IsNil() {
-				err = dc.ReadNil()
-				if err != nil {
-					err = msgp.WrapError(err, "Metrics")
-					return
-				}
-				z.Metrics = nil
-			} else {
-				if z.Metrics == nil {
-					z.Metrics = new(Metrics)
-				}
-				err = z.Metrics.DecodeMsg(dc)
-				if err != nil {
-					err = msgp.WrapError(err, "Metrics")
-					return
-				}
-			}
-			zb0001Mask |= 0x2
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -4800,30 +4691,22 @@ func (z *PoolResource) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3 {
-		if (zb0001Mask & 0x1) == 0 {
-			z.Nodes = nil
-		}
-		if (zb0001Mask & 0x2) == 0 {
-			z.Metrics = nil
-		}
+	if (zb0001Mask & 0x1) == 0 {
+		z.Nodes = nil
 	}
+
 	return
 }
 
 // EncodeMsg implements msgp.Encodable
 func (z *PoolResource) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(18)
-	var zb0001Mask uint32 /* 18 bits */
+	zb0001Len := uint32(17)
+	var zb0001Mask uint32 /* 17 bits */
 	_ = zb0001Mask
 	if z.Nodes == nil {
 		zb0001Len--
 		zb0001Mask |= 0x20
-	}
-	if z.Metrics == nil {
-		zb0001Len--
-		zb0001Mask |= 0x20000
 	}
 	// variable map header, size zb0001Len
 	err = en.WriteMapHeader(zb0001Len)
@@ -5012,25 +4895,6 @@ func (z *PoolResource) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "DeleteMarkersCount")
 			return
 		}
-		if (zb0001Mask & 0x20000) == 0 { // if not omitted
-			// write "m"
-			err = en.Append(0xa1, 0x6d)
-			if err != nil {
-				return
-			}
-			if z.Metrics == nil {
-				err = en.WriteNil()
-				if err != nil {
-					return
-				}
-			} else {
-				err = z.Metrics.EncodeMsg(en)
-				if err != nil {
-					err = msgp.WrapError(err, "Metrics")
-					return
-				}
-			}
-		}
 	}
 	return
 }
@@ -5039,16 +4903,12 @@ func (z *PoolResource) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *PoolResource) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(18)
-	var zb0001Mask uint32 /* 18 bits */
+	zb0001Len := uint32(17)
+	var zb0001Mask uint32 /* 17 bits */
 	_ = zb0001Mask
 	if z.Nodes == nil {
 		zb0001Len--
 		zb0001Mask |= 0x20
-	}
-	if z.Metrics == nil {
-		zb0001Len--
-		zb0001Mask |= 0x20000
 	}
 	// variable map header, size zb0001Len
 	o = msgp.AppendMapHeader(o, zb0001Len)
@@ -5111,19 +4971,6 @@ func (z *PoolResource) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "dmc"
 		o = append(o, 0xa3, 0x64, 0x6d, 0x63)
 		o = msgp.AppendUint64(o, z.DeleteMarkersCount)
-		if (zb0001Mask & 0x20000) == 0 { // if not omitted
-			// string "m"
-			o = append(o, 0xa1, 0x6d)
-			if z.Metrics == nil {
-				o = msgp.AppendNil(o)
-			} else {
-				o, err = z.Metrics.MarshalMsg(o)
-				if err != nil {
-					err = msgp.WrapError(err, "Metrics")
-					return
-				}
-			}
-		}
 	}
 	return
 }
@@ -5138,7 +4985,7 @@ func (z *PoolResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 2 bits */
+	var zb0001Mask uint8 /* 1 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -5264,24 +5111,6 @@ func (z *PoolResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "DeleteMarkersCount")
 				return
 			}
-		case "m":
-			if msgp.IsNil(bts) {
-				bts, err = msgp.ReadNilBytes(bts)
-				if err != nil {
-					return
-				}
-				z.Metrics = nil
-			} else {
-				if z.Metrics == nil {
-					z.Metrics = new(Metrics)
-				}
-				bts, err = z.Metrics.UnmarshalMsg(bts)
-				if err != nil {
-					err = msgp.WrapError(err, "Metrics")
-					return
-				}
-			}
-			zb0001Mask |= 0x2
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -5291,14 +5120,10 @@ func (z *PoolResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3 {
-		if (zb0001Mask & 0x1) == 0 {
-			z.Nodes = nil
-		}
-		if (zb0001Mask & 0x2) == 0 {
-			z.Metrics = nil
-		}
+	if (zb0001Mask & 0x1) == 0 {
+		z.Nodes = nil
 	}
+
 	o = bts
 	return
 }
@@ -5309,12 +5134,7 @@ func (z *PoolResource) Msgsize() (s int) {
 	for za0001 := range z.Nodes {
 		s += msgp.StringPrefixSize + len(z.Nodes[za0001])
 	}
-	s += 3 + msgp.IntSize + 3 + msgp.IntSize + 5 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.Uint64Size + 3 + msgp.Uint64Size + 2 + msgp.Uint64Size + 3 + msgp.Uint64Size + 3 + msgp.Uint64Size + 4 + msgp.Uint64Size + 2
-	if z.Metrics == nil {
-		s += msgp.NilSize
-	} else {
-		s += z.Metrics.Msgsize()
-	}
+	s += 3 + msgp.IntSize + 3 + msgp.IntSize + 5 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.Uint64Size + 3 + msgp.Uint64Size + 2 + msgp.Uint64Size + 3 + msgp.Uint64Size + 3 + msgp.Uint64Size + 4 + msgp.Uint64Size
 	return
 }
 
