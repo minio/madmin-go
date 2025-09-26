@@ -39,10 +39,21 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 	}
+
+	getClusterSummary()
 	getPools()
 	getSinglePool()
 	getErasureSetsForSinglePool()
 	getDrivesForSinglePool()
+}
+
+func getClusterSummary() {
+	resp, xerr := client.ClusterSummaryQuery(context.Background(), madmin.ClusterSummaryResourceOpts{})
+	if xerr != nil {
+		log.Fatalln(xerr)
+	}
+
+	fmt.Printf("%+v", resp)
 }
 
 func getPools() {
