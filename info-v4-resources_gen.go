@@ -4120,12 +4120,6 @@ func (z *PaginatedDrivesResponse) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 			}
 			zb0001Mask |= 0x1
-		case "sum":
-			err = z.Summary.DecodeMsg(dc)
-			if err != nil {
-				err = msgp.WrapError(err, "Summary")
-				return
-			}
 		case "c":
 			z.Count, err = dc.ReadInt()
 			if err != nil {
@@ -4186,8 +4180,8 @@ func (z *PaginatedDrivesResponse) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *PaginatedDrivesResponse) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(8)
-	var zb0001Mask uint8 /* 8 bits */
+	zb0001Len := uint32(7)
+	var zb0001Mask uint8 /* 7 bits */
 	_ = zb0001Mask
 	if z.Results == nil {
 		zb0001Len--
@@ -4219,16 +4213,6 @@ func (z *PaginatedDrivesResponse) EncodeMsg(en *msgp.Writer) (err error) {
 					return
 				}
 			}
-		}
-		// write "sum"
-		err = en.Append(0xa3, 0x73, 0x75, 0x6d)
-		if err != nil {
-			return
-		}
-		err = z.Summary.EncodeMsg(en)
-		if err != nil {
-			err = msgp.WrapError(err, "Summary")
-			return
 		}
 		// write "c"
 		err = en.Append(0xa1, 0x63)
@@ -4298,8 +4282,8 @@ func (z *PaginatedDrivesResponse) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *PaginatedDrivesResponse) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(8)
-	var zb0001Mask uint8 /* 8 bits */
+	zb0001Len := uint32(7)
+	var zb0001Mask uint8 /* 7 bits */
 	_ = zb0001Mask
 	if z.Results == nil {
 		zb0001Len--
@@ -4321,13 +4305,6 @@ func (z *PaginatedDrivesResponse) MarshalMsg(b []byte) (o []byte, err error) {
 					return
 				}
 			}
-		}
-		// string "sum"
-		o = append(o, 0xa3, 0x73, 0x75, 0x6d)
-		o, err = z.Summary.MarshalMsg(o)
-		if err != nil {
-			err = msgp.WrapError(err, "Summary")
-			return
 		}
 		// string "c"
 		o = append(o, 0xa1, 0x63)
@@ -4395,12 +4372,6 @@ func (z *PaginatedDrivesResponse) UnmarshalMsg(bts []byte) (o []byte, err error)
 				}
 			}
 			zb0001Mask |= 0x1
-		case "sum":
-			bts, err = z.Summary.UnmarshalMsg(bts)
-			if err != nil {
-				err = msgp.WrapError(err, "Summary")
-				return
-			}
 		case "c":
 			z.Count, bts, err = msgp.ReadIntBytes(bts)
 			if err != nil {
@@ -4465,7 +4436,7 @@ func (z *PaginatedDrivesResponse) Msgsize() (s int) {
 	for za0001 := range z.Results {
 		s += z.Results[za0001].Msgsize()
 	}
-	s += 4 + z.Summary.Msgsize() + 2 + msgp.IntSize + 2 + msgp.IntSize + 2 + msgp.IntSize + 2 + msgp.StringPrefixSize + len(z.Sort) + 3 + msgp.BoolSize + 2 + z.Aggregated.Msgsize()
+	s += 2 + msgp.IntSize + 2 + msgp.IntSize + 2 + msgp.IntSize + 2 + msgp.StringPrefixSize + len(z.Sort) + 3 + msgp.BoolSize + 2 + z.Aggregated.Msgsize()
 	return
 }
 
