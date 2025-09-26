@@ -66,13 +66,12 @@ type NodesQuerySummary struct {
 
 // PaginatedDrivesResponse represents a paginated response for drives
 type PaginatedDrivesResponse struct {
-	Results      []DriveResource    `json:"results" msg:"r,omitempty"`
-	Summary      DrivesQuerySummary `json:"summary" msg:"sum"`
-	Count        int                `json:"count" msg:"c"`
-	Total        int                `json:"total" msg:"t"`
-	Offset       int                `json:"offset" msg:"o"`
-	Sort         string             `json:"sort" msg:"s"`
-	SortReversed bool               `json:"sortReversed" msg:"sr"`
+	Results      []DriveResource `json:"results" msg:"r,omitempty"`
+	Count        int             `json:"count" msg:"c"`
+	Total        int             `json:"total" msg:"t"`
+	Offset       int             `json:"offset" msg:"o"`
+	Sort         string          `json:"sort" msg:"s"`
+	SortReversed bool            `json:"sortReversed" msg:"sr"`
 
 	// Aggregated are the metrics aggregated for all filtered drives,
 	// not just the results.
