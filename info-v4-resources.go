@@ -54,6 +54,10 @@ type PaginatedNodesResponse struct {
 	Offset       int               `json:"offset" msg:"o"`
 	Sort         string            `json:"sort" msg:"s"`
 	SortReversed bool              `json:"sortReversed" msg:"sr"`
+
+	// Aggregated are the metrics aggregated for all filtered nodes,
+	// not just the results.
+	Aggregated *Metrics `json:"aggregated,omitempty" msg:"m,omitempty"`
 }
 
 // NodesQuerySummary contains summary statistics for all nodes in the cluster
@@ -132,6 +136,8 @@ type ClusterResource struct {
 	RawFreeBytes      uint64       `json:"rawFreeBytes" msg:"rfb"`
 	UsableTotalBytes  uint64       `json:"usableTotalBytes" msg:"utb"`
 	UsableFreeBytes   uint64       `json:"UsableFreeBytes" msg:"ufb"`
+	// Metrics contains the metrics aggregated for cluster if requested.
+	Metrics *Metrics `json:"metrics,omitempty" msg:"met,omitempty"`
 }
 
 // ServicesResourceInfo holds information about external services and integrations connected to the cluster
@@ -188,6 +194,9 @@ type NodeResource struct {
 	DriveCounts DriveCounts `json:"driveCounts" msg:"dc"`
 	PoolIndex   int         `json:"poolIndex" msg:"pi"`
 	PoolIndexes []int       `json:"poolIndexes,omitempty" msg:"pis,omitempty"`
+
+	// Metrics contains the metrics aggregated for node if requested.
+	Metrics *Metrics `json:"metrics,omitempty" msg:"m,omitempty"`
 }
 
 // DriveResource represents detailed information about a storage drive including capacity, usage, and metrics
@@ -322,17 +331,15 @@ func (adm *AdminClient) ClusterSummaryQuery(ctx context.Context, _ ClusterSummar
 // extensibility.
 //
 //msgp:ignore ClusterResourceOpts
-type ClusterResourceOpts struct{}
+type ClusterResourceOpts struct {
+	// Metrics will include per-node metrics in the response if set
+	Metrics OptionalMetrics
+}
 
 // ClusterQuery - Get high-level information about the cluster
-func (adm *AdminClient) ClusterQuery(ctx context.Context, options ...func(*ClusterResourceOpts)) (ClusterResource, error) {
-	srvOpts := &ClusterResourceOpts{}
-
-	for _, o := range options {
-		o(srvOpts)
-	}
-
+func (adm *AdminClient) ClusterQuery(ctx context.Context, options ClusterResourceOpts) (ClusterResource, error) {
 	values := make(url.Values)
+	options.Metrics.apply(values)
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
@@ -364,13 +371,7 @@ func (adm *AdminClient) ClusterQuery(ctx context.Context, options ...func(*Clust
 type ServicesResourceOpts struct{}
 
 // ServicesQuery - Get information about services connected to the cluster
-func (adm *AdminClient) ServicesQuery(ctx context.Context, options ...func(*ServicesResourceOpts)) (ServicesResourceInfo, error) {
-	srvOpts := &ServicesResourceOpts{}
-
-	for _, o := range options {
-		o(srvOpts)
-	}
-
+func (adm *AdminClient) ServicesQuery(ctx context.Context, _ ServicesResourceOpts) (ServicesResourceInfo, error) {
 	values := make(url.Values)
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
@@ -479,6 +480,9 @@ type NodesResourceOpts struct {
 	Sort string
 	// SortReversed will only take effect if Sort is defined
 	SortReversed bool
+
+	// Metrics will include per-node metrics in the response if set
+	Metrics OptionalMetrics
 }
 
 // NodesQuery - Get list of nodes
@@ -486,6 +490,7 @@ func (adm *AdminClient) NodesQuery(ctx context.Context, options *NodesResourceOp
 	values := make(url.Values)
 
 	if options != nil {
+		options.Metrics.apply(values)
 		// Add pagination and filter parameters if provided
 		values.Set("limit", strconv.Itoa(options.Limit))
 
@@ -799,4 +804,40 @@ func SortSlice[T any](slice []T, field string, reversed bool) {
 		}
 		return lt
 	})
+}
+
+// OptionalMetrics indicates optional metrics to include in the response.
+type OptionalMetrics struct {
+	Types MetricType
+	Flags MetricFlags
+}
+
+func (o OptionalMetrics) apply(q url.Values) {
+	if o.Types != 0 {
+		q.Set("metric-types", strconv.FormatUint(uint64(o.Types), 10))
+		q.Set("metric-flags", strconv.FormatUint(uint64(o.Flags), 10))
+	}
+}
+
+// Add adds the given metrics to the OptionalMetrics.
+func (o *OptionalMetrics) Add(m ...MetricType) {
+	for _, t := range m {
+		o.Types = o.Types | t
+	}
+}
+
+// AddFlags adds the given flags to the OptionalMetrics.
+func (o *OptionalMetrics) AddFlags(f ...MetricFlags) {
+	for _, f := range f {
+		o.Flags = o.Flags | f
+	}
+}
+
+func (o *OptionalMetrics) Parse(q url.Values) {
+	if t, err := strconv.ParseUint(q.Get("metric-types"), 10, 64); err == nil {
+		o.Types = MetricType(t)
+	}
+	if f, err := strconv.ParseUint(q.Get("metric-flags"), 10, 64); err == nil {
+		o.Flags = MetricFlags(f)
+	}
 }

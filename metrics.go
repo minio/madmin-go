@@ -39,10 +39,7 @@ import (
 	"github.com/tinylib/msgp/msgp"
 )
 
-//msgp:clearomitted
-//msgp:tag json
-//msgp:timezone utc
-//go:generate msgp -unexported -file $GOFILE
+//go:generate msgp -unexported -d clearomitted -d "tag json" -d "timezone utc" -d "maps binkeys" -file $GOFILE
 
 // MetricType is a bitfield representation of different metric types.
 type MetricType uint32
@@ -81,6 +78,7 @@ const (
 	MetricsByHost                                 // Aggregate metrics by host/node.
 	MetricsByDisk                                 // Aggregate metrics by disk.
 	MetricsLegacyDiskIO                           // Add legacy disk IO metrics.
+	MetricsByDiskSet                              // Aggregate metrics by disk pool+set index.
 )
 
 // Contains returns whether m contains all of x.
@@ -229,6 +227,9 @@ type RealtimeMetrics struct {
 	// ByDisk contains metrics for each disk if requested.
 	ByDisk map[string]DiskMetric `json:"by_disk,omitempty"`
 
+	// ByDiskSet contains disk metrics aggregated by pool+set index.
+	ByDiskSet map[int]map[int]DiskMetric `json:"by_disk_set,omitempty"`
+
 	// Final indicates whether this is the final packet and the receiver can exit.
 	Final bool `json:"final"`
 }
@@ -322,6 +323,21 @@ func (r *RealtimeMetrics) Merge(other *RealtimeMetrics) {
 	}
 	for disk, metrics := range other.ByDisk {
 		r.ByDisk[disk] = metrics
+	}
+	if r.ByDiskSet == nil && len(other.ByDiskSet) > 0 {
+		r.ByDiskSet = make(map[int]map[int]DiskMetric, len(other.ByDisk))
+	}
+	for pIdx, pool := range other.ByDiskSet {
+		dstp := r.ByDiskSet[pIdx]
+		if dstp == nil {
+			dstp = make(map[int]DiskMetric, len(pool))
+			r.ByDiskSet[pIdx] = dstp
+		}
+		for sIdx, disks := range pool {
+			dsts := dstp[sIdx]
+			dsts.Merge(&disks)
+			dstp[sIdx] = dsts
+		}
 	}
 }
 
