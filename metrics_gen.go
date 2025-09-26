@@ -11448,7 +11448,7 @@ func (z *RealtimeMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 3 bits */
+	var zb0001Mask uint8 /* 4 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -11561,6 +11561,57 @@ func (z *RealtimeMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 				z.ByDisk[za0005] = za0006
 			}
 			zb0001Mask |= 0x4
+		case "by_disk_set":
+			var zb0006 uint32
+			zb0006, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "ByDiskSet")
+				return
+			}
+			if z.ByDiskSet == nil {
+				z.ByDiskSet = make(map[int]map[int]DiskMetric, zb0006)
+			} else if len(z.ByDiskSet) > 0 {
+				clear(z.ByDiskSet)
+			}
+			for zb0006 > 0 {
+				zb0006--
+				var za0007 int
+				za0007, err = dc.ReadInt()
+				if err != nil {
+					err = msgp.WrapError(err, "ByDiskSet", za0007)
+					return
+				}
+				var za0008 map[int]DiskMetric
+				var zb0007 uint32
+				zb0007, err = dc.ReadMapHeader()
+				if err != nil {
+					err = msgp.WrapError(err, "ByDiskSet", za0007)
+					return
+				}
+				if za0008 == nil {
+					za0008 = make(map[int]DiskMetric, zb0007)
+				} else if len(za0008) > 0 {
+					clear(za0008)
+				}
+				for zb0007 > 0 {
+					zb0007--
+					var za0009 int
+					za0009, err = dc.ReadInt()
+					if err != nil {
+						err = msgp.WrapError(err, "ByDiskSet", za0007, za0009)
+						return
+					}
+					var za0010 DiskMetric
+					err = za0010.DecodeMsg(dc)
+					if err != nil {
+						err = msgp.WrapError(err, "ByDiskSet", za0007, za0009)
+						return
+					}
+					za0008[za0009] = za0010
+				}
+				z.ByDiskSet[za0007] = za0008
+			}
+			zb0001Mask |= 0x8
 		case "final":
 			z.Final, err = dc.ReadBool()
 			if err != nil {
@@ -11576,7 +11627,7 @@ func (z *RealtimeMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x7 {
+	if zb0001Mask != 0xf {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Errors = nil
 		}
@@ -11586,6 +11637,9 @@ func (z *RealtimeMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		if (zb0001Mask & 0x4) == 0 {
 			z.ByDisk = nil
 		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.ByDiskSet = nil
+		}
 	}
 	return
 }
@@ -11593,8 +11647,8 @@ func (z *RealtimeMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *RealtimeMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(6)
-	var zb0001Mask uint8 /* 6 bits */
+	zb0001Len := uint32(7)
+	var zb0001Mask uint8 /* 7 bits */
 	_ = zb0001Mask
 	if z.Errors == nil {
 		zb0001Len--
@@ -11607,6 +11661,10 @@ func (z *RealtimeMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 	if z.ByDisk == nil {
 		zb0001Len--
 		zb0001Mask |= 0x10
+	}
+	if z.ByDiskSet == nil {
+		zb0001Len--
+		zb0001Mask |= 0x20
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -11710,6 +11768,42 @@ func (z *RealtimeMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// write "by_disk_set"
+			err = en.Append(0xab, 0x62, 0x79, 0x5f, 0x64, 0x69, 0x73, 0x6b, 0x5f, 0x73, 0x65, 0x74)
+			if err != nil {
+				return
+			}
+			err = en.WriteMapHeader(uint32(len(z.ByDiskSet)))
+			if err != nil {
+				err = msgp.WrapError(err, "ByDiskSet")
+				return
+			}
+			for za0007, za0008 := range z.ByDiskSet {
+				err = en.WriteInt(za0007)
+				if err != nil {
+					err = msgp.WrapError(err, "ByDiskSet", za0007)
+					return
+				}
+				err = en.WriteMapHeader(uint32(len(za0008)))
+				if err != nil {
+					err = msgp.WrapError(err, "ByDiskSet", za0007)
+					return
+				}
+				for za0009, za0010 := range za0008 {
+					err = en.WriteInt(za0009)
+					if err != nil {
+						err = msgp.WrapError(err, "ByDiskSet", za0007, za0009)
+						return
+					}
+					err = za0010.EncodeMsg(en)
+					if err != nil {
+						err = msgp.WrapError(err, "ByDiskSet", za0007, za0009)
+						return
+					}
+				}
+			}
+		}
 		// write "final"
 		err = en.Append(0xa5, 0x66, 0x69, 0x6e, 0x61, 0x6c)
 		if err != nil {
@@ -11728,8 +11822,8 @@ func (z *RealtimeMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *RealtimeMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(6)
-	var zb0001Mask uint8 /* 6 bits */
+	zb0001Len := uint32(7)
+	var zb0001Mask uint8 /* 7 bits */
 	_ = zb0001Mask
 	if z.Errors == nil {
 		zb0001Len--
@@ -11742,6 +11836,10 @@ func (z *RealtimeMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 	if z.ByDisk == nil {
 		zb0001Len--
 		zb0001Mask |= 0x10
+	}
+	if z.ByDiskSet == nil {
+		zb0001Len--
+		zb0001Mask |= 0x20
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -11795,6 +11893,23 @@ func (z *RealtimeMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 				}
 			}
 		}
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// string "by_disk_set"
+			o = append(o, 0xab, 0x62, 0x79, 0x5f, 0x64, 0x69, 0x73, 0x6b, 0x5f, 0x73, 0x65, 0x74)
+			o = msgp.AppendMapHeader(o, uint32(len(z.ByDiskSet)))
+			for za0007, za0008 := range z.ByDiskSet {
+				o = msgp.AppendInt(o, za0007)
+				o = msgp.AppendMapHeader(o, uint32(len(za0008)))
+				for za0009, za0010 := range za0008 {
+					o = msgp.AppendInt(o, za0009)
+					o, err = za0010.MarshalMsg(o)
+					if err != nil {
+						err = msgp.WrapError(err, "ByDiskSet", za0007, za0009)
+						return
+					}
+				}
+			}
+		}
 		// string "final"
 		o = append(o, 0xa5, 0x66, 0x69, 0x6e, 0x61, 0x6c)
 		o = msgp.AppendBool(o, z.Final)
@@ -11812,7 +11927,7 @@ func (z *RealtimeMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 3 bits */
+	var zb0001Mask uint8 /* 4 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -11925,6 +12040,57 @@ func (z *RealtimeMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				z.ByDisk[za0005] = za0006
 			}
 			zb0001Mask |= 0x4
+		case "by_disk_set":
+			var zb0006 uint32
+			zb0006, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ByDiskSet")
+				return
+			}
+			if z.ByDiskSet == nil {
+				z.ByDiskSet = make(map[int]map[int]DiskMetric, zb0006)
+			} else if len(z.ByDiskSet) > 0 {
+				clear(z.ByDiskSet)
+			}
+			for zb0006 > 0 {
+				var za0008 map[int]DiskMetric
+				zb0006--
+				var za0007 int
+				za0007, bts, err = msgp.ReadIntBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "ByDiskSet", za0007)
+					return
+				}
+				var zb0007 uint32
+				zb0007, bts, err = msgp.ReadMapHeaderBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "ByDiskSet", za0007)
+					return
+				}
+				if za0008 == nil {
+					za0008 = make(map[int]DiskMetric, zb0007)
+				} else if len(za0008) > 0 {
+					clear(za0008)
+				}
+				for zb0007 > 0 {
+					var za0010 DiskMetric
+					zb0007--
+					var za0009 int
+					za0009, bts, err = msgp.ReadIntBytes(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "ByDiskSet", za0007, za0009)
+						return
+					}
+					bts, err = za0010.UnmarshalMsg(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "ByDiskSet", za0007, za0009)
+						return
+					}
+					za0008[za0009] = za0010
+				}
+				z.ByDiskSet[za0007] = za0008
+			}
+			zb0001Mask |= 0x8
 		case "final":
 			z.Final, bts, err = msgp.ReadBoolBytes(bts)
 			if err != nil {
@@ -11940,7 +12106,7 @@ func (z *RealtimeMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x7 {
+	if zb0001Mask != 0xf {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Errors = nil
 		}
@@ -11949,6 +12115,9 @@ func (z *RealtimeMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 		if (zb0001Mask & 0x4) == 0 {
 			z.ByDisk = nil
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.ByDiskSet = nil
 		}
 	}
 	o = bts
@@ -11977,6 +12146,21 @@ func (z *RealtimeMetrics) Msgsize() (s int) {
 		for za0005, za0006 := range z.ByDisk {
 			_ = za0006
 			s += msgp.StringPrefixSize + len(za0005) + za0006.Msgsize()
+		}
+	}
+	s += 12 + msgp.MapHeaderSize
+	if z.ByDiskSet != nil {
+		for za0007, za0008 := range z.ByDiskSet {
+			_ = za0008
+			_ = za0007
+			s += msgp.IntSize + msgp.MapHeaderSize
+			if za0008 != nil {
+				for za0009, za0010 := range za0008 {
+					_ = za0010
+					_ = za0009
+					s += msgp.IntSize + za0010.Msgsize()
+				}
+			}
 		}
 	}
 	s += 6 + msgp.BoolSize
