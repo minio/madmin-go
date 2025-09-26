@@ -24,12 +24,14 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/minio/minio-go/v7/pkg/set"
+	xnet "github.com/minio/pkg/v3/net"
 )
 
 // AddOrUpdateIDPConfig - creates a new or updates an existing IDP
@@ -536,4 +538,45 @@ func (adm *AdminClient) ListAccessKeysLDAPBulkWithOpts(ctx context.Context, user
 		return nil, err
 	}
 	return listResp, nil
+}
+
+// GetOpenIDLoginURL - fetches the OpenID login URL for authentication
+func (an *AnonymousClient) GetOpenIDLoginURL(ctx context.Context, reqID, configName string, port int) (string, error) {
+	if configName == "" {
+		configName = Default
+	}
+
+	queryValues := url.Values{}
+	queryValues.Set("configName", configName)
+	queryValues.Set("port", fmt.Sprint(port))
+	queryValues.Set("reqID", reqID)
+
+	reqData := requestData{
+		relPath:     "/minio/console/login-cli",
+		queryValues: queryValues,
+	}
+
+	// Execute GET on /minio/admin/v4/idp/openid/login-url
+	resp, err := an.executeMethod(ctx, http.MethodGet, reqData, nil)
+	defer closeResponse(resp)
+	if err != nil {
+		return "", err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return "", httpRespToErrorResponse(resp)
+	}
+
+	// Read and parse the JSON response
+	respBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	var loginResp xnet.URL
+	if err = loginResp.UnmarshalJSON(respBytes); err != nil {
+		return "", err
+	}
+
+	return loginResp.String(), nil
 }
