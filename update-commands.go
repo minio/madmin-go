@@ -88,12 +88,14 @@ func (adm *AdminClient) ServerUpdate(ctx context.Context, opts ServerUpdateOpts)
 	return us, nil
 }
 
+// NodeBumpVersionResp is the result of BumpVersion API in a single node
 type NodeBumpVersionResp struct {
 	Done    bool   `json:"done"`
 	Offline bool   `json:"offline"`
 	Error   string `json:"error,omitempty"`
 }
 
+// ClusterBumpVersionResp is the result of BumpVersion API of the cluster
 type ClusterBumpVersionResp struct {
 	Nodes map[string]NodeBumpVersionResp `json:"nodes,omitempty"`
 	Error string                         `json:"error,omitempty"`
@@ -121,23 +123,27 @@ func (adm *AdminClient) BumpVersion(ctx context.Context, dryRun bool) (r Cluster
 	return r, err
 }
 
+// Version represents a semantic version
 type Version struct {
 	Major uint16 `json:"major"`
 	Minor uint16 `json:"minor"`
 	Patch uint16 `json:"patch"`
 }
 
-type NodeAPIDesc struct {
+// APIDesc describes the backend format version and the node API version of a single node
+type APIDesc struct {
 	BackendVersion Version `json:"backendVersion"`
 	NodeAPIVersion uint32  `json:"nodeAPIVersion"`
 	Error          string  `json:"error,omitempty"`
 }
 
+// ClusterAPIDesc describes the backend format version and the node API version of all nodes in the cluster
 type ClusterAPIDesc struct {
-	Nodes map[string]NodeAPIDesc `json:"nodes,omitempty"`
-	Error string                 `json:"error,omitempty"`
+	Nodes map[string]APIDesc `json:"nodes,omitempty"`
+	Error string             `json:"error,omitempty"`
 }
 
+// GetAPIDesc returns the backend format version and the node API version of all nodes in the cluster
 func (adm *AdminClient) GetAPIDesc(ctx context.Context) (r ClusterAPIDesc, err error) {
 	values := url.Values{}
 	resp, err := adm.executeMethod(ctx,
