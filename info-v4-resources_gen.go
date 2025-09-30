@@ -4081,184 +4081,6 @@ func (z *NodeResource) Msgsize() (s int) {
 }
 
 // DecodeMsg implements msgp.Decodable
-func (z *NodesQuerySummary) DecodeMsg(dc *msgp.Reader) (err error) {
-	var field []byte
-	_ = field
-	var zb0001 uint32
-	zb0001, err = dc.ReadMapHeader()
-	if err != nil {
-		err = msgp.WrapError(err)
-		return
-	}
-	for zb0001 > 0 {
-		zb0001--
-		field, err = dc.ReadMapKeyPtr()
-		if err != nil {
-			err = msgp.WrapError(err)
-			return
-		}
-		switch msgp.UnsafeString(field) {
-		case "off":
-			z.Offline, err = dc.ReadInt()
-			if err != nil {
-				err = msgp.WrapError(err, "Offline")
-				return
-			}
-		case "ini":
-			z.Initializing, err = dc.ReadInt()
-			if err != nil {
-				err = msgp.WrapError(err, "Initializing")
-				return
-			}
-		case "on":
-			z.Online, err = dc.ReadInt()
-			if err != nil {
-				err = msgp.WrapError(err, "Online")
-				return
-			}
-		case "un":
-			z.Unknown, err = dc.ReadInt()
-			if err != nil {
-				err = msgp.WrapError(err, "Unknown")
-				return
-			}
-		default:
-			err = dc.Skip()
-			if err != nil {
-				err = msgp.WrapError(err)
-				return
-			}
-		}
-	}
-	return
-}
-
-// EncodeMsg implements msgp.Encodable
-func (z *NodesQuerySummary) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 4
-	// write "off"
-	err = en.Append(0x84, 0xa3, 0x6f, 0x66, 0x66)
-	if err != nil {
-		return
-	}
-	err = en.WriteInt(z.Offline)
-	if err != nil {
-		err = msgp.WrapError(err, "Offline")
-		return
-	}
-	// write "ini"
-	err = en.Append(0xa3, 0x69, 0x6e, 0x69)
-	if err != nil {
-		return
-	}
-	err = en.WriteInt(z.Initializing)
-	if err != nil {
-		err = msgp.WrapError(err, "Initializing")
-		return
-	}
-	// write "on"
-	err = en.Append(0xa2, 0x6f, 0x6e)
-	if err != nil {
-		return
-	}
-	err = en.WriteInt(z.Online)
-	if err != nil {
-		err = msgp.WrapError(err, "Online")
-		return
-	}
-	// write "un"
-	err = en.Append(0xa2, 0x75, 0x6e)
-	if err != nil {
-		return
-	}
-	err = en.WriteInt(z.Unknown)
-	if err != nil {
-		err = msgp.WrapError(err, "Unknown")
-		return
-	}
-	return
-}
-
-// MarshalMsg implements msgp.Marshaler
-func (z *NodesQuerySummary) MarshalMsg(b []byte) (o []byte, err error) {
-	o = msgp.Require(b, z.Msgsize())
-	// map header, size 4
-	// string "off"
-	o = append(o, 0x84, 0xa3, 0x6f, 0x66, 0x66)
-	o = msgp.AppendInt(o, z.Offline)
-	// string "ini"
-	o = append(o, 0xa3, 0x69, 0x6e, 0x69)
-	o = msgp.AppendInt(o, z.Initializing)
-	// string "on"
-	o = append(o, 0xa2, 0x6f, 0x6e)
-	o = msgp.AppendInt(o, z.Online)
-	// string "un"
-	o = append(o, 0xa2, 0x75, 0x6e)
-	o = msgp.AppendInt(o, z.Unknown)
-	return
-}
-
-// UnmarshalMsg implements msgp.Unmarshaler
-func (z *NodesQuerySummary) UnmarshalMsg(bts []byte) (o []byte, err error) {
-	var field []byte
-	_ = field
-	var zb0001 uint32
-	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
-	if err != nil {
-		err = msgp.WrapError(err)
-		return
-	}
-	for zb0001 > 0 {
-		zb0001--
-		field, bts, err = msgp.ReadMapKeyZC(bts)
-		if err != nil {
-			err = msgp.WrapError(err)
-			return
-		}
-		switch msgp.UnsafeString(field) {
-		case "off":
-			z.Offline, bts, err = msgp.ReadIntBytes(bts)
-			if err != nil {
-				err = msgp.WrapError(err, "Offline")
-				return
-			}
-		case "ini":
-			z.Initializing, bts, err = msgp.ReadIntBytes(bts)
-			if err != nil {
-				err = msgp.WrapError(err, "Initializing")
-				return
-			}
-		case "on":
-			z.Online, bts, err = msgp.ReadIntBytes(bts)
-			if err != nil {
-				err = msgp.WrapError(err, "Online")
-				return
-			}
-		case "un":
-			z.Unknown, bts, err = msgp.ReadIntBytes(bts)
-			if err != nil {
-				err = msgp.WrapError(err, "Unknown")
-				return
-			}
-		default:
-			bts, err = msgp.Skip(bts)
-			if err != nil {
-				err = msgp.WrapError(err)
-				return
-			}
-		}
-	}
-	o = bts
-	return
-}
-
-// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
-func (z *NodesQuerySummary) Msgsize() (s int) {
-	s = 1 + 4 + msgp.IntSize + 4 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize
-	return
-}
-
-// DecodeMsg implements msgp.Decodable
 func (z *OptionalMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
@@ -5115,12 +4937,6 @@ func (z *PaginatedNodesResponse) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 			}
 			zb0001Mask |= 0x1
-		case "sum":
-			err = z.Summary.DecodeMsg(dc)
-			if err != nil {
-				err = msgp.WrapError(err, "Summary")
-				return
-			}
 		case "c":
 			z.Count, err = dc.ReadInt()
 			if err != nil {
@@ -5193,8 +5009,8 @@ func (z *PaginatedNodesResponse) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *PaginatedNodesResponse) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(8)
-	var zb0001Mask uint8 /* 8 bits */
+	zb0001Len := uint32(7)
+	var zb0001Mask uint8 /* 7 bits */
 	_ = zb0001Mask
 	if z.Results == nil {
 		zb0001Len--
@@ -5202,7 +5018,7 @@ func (z *PaginatedNodesResponse) EncodeMsg(en *msgp.Writer) (err error) {
 	}
 	if z.Aggregated == nil {
 		zb0001Len--
-		zb0001Mask |= 0x80
+		zb0001Mask |= 0x40
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -5230,16 +5046,6 @@ func (z *PaginatedNodesResponse) EncodeMsg(en *msgp.Writer) (err error) {
 					return
 				}
 			}
-		}
-		// write "sum"
-		err = en.Append(0xa3, 0x73, 0x75, 0x6d)
-		if err != nil {
-			return
-		}
-		err = z.Summary.EncodeMsg(en)
-		if err != nil {
-			err = msgp.WrapError(err, "Summary")
-			return
 		}
 		// write "c"
 		err = en.Append(0xa1, 0x63)
@@ -5291,7 +5097,7 @@ func (z *PaginatedNodesResponse) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "SortReversed")
 			return
 		}
-		if (zb0001Mask & 0x80) == 0 { // if not omitted
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
 			// write "m"
 			err = en.Append(0xa1, 0x6d)
 			if err != nil {
@@ -5318,8 +5124,8 @@ func (z *PaginatedNodesResponse) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *PaginatedNodesResponse) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(8)
-	var zb0001Mask uint8 /* 8 bits */
+	zb0001Len := uint32(7)
+	var zb0001Mask uint8 /* 7 bits */
 	_ = zb0001Mask
 	if z.Results == nil {
 		zb0001Len--
@@ -5327,7 +5133,7 @@ func (z *PaginatedNodesResponse) MarshalMsg(b []byte) (o []byte, err error) {
 	}
 	if z.Aggregated == nil {
 		zb0001Len--
-		zb0001Mask |= 0x80
+		zb0001Mask |= 0x40
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -5346,13 +5152,6 @@ func (z *PaginatedNodesResponse) MarshalMsg(b []byte) (o []byte, err error) {
 				}
 			}
 		}
-		// string "sum"
-		o = append(o, 0xa3, 0x73, 0x75, 0x6d)
-		o, err = z.Summary.MarshalMsg(o)
-		if err != nil {
-			err = msgp.WrapError(err, "Summary")
-			return
-		}
 		// string "c"
 		o = append(o, 0xa1, 0x63)
 		o = msgp.AppendInt(o, z.Count)
@@ -5368,7 +5167,7 @@ func (z *PaginatedNodesResponse) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "sr"
 		o = append(o, 0xa2, 0x73, 0x72)
 		o = msgp.AppendBool(o, z.SortReversed)
-		if (zb0001Mask & 0x80) == 0 { // if not omitted
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
 			// string "m"
 			o = append(o, 0xa1, 0x6d)
 			if z.Aggregated == nil {
@@ -5425,12 +5224,6 @@ func (z *PaginatedNodesResponse) UnmarshalMsg(bts []byte) (o []byte, err error) 
 				}
 			}
 			zb0001Mask |= 0x1
-		case "sum":
-			bts, err = z.Summary.UnmarshalMsg(bts)
-			if err != nil {
-				err = msgp.WrapError(err, "Summary")
-				return
-			}
 		case "c":
 			z.Count, bts, err = msgp.ReadIntBytes(bts)
 			if err != nil {
@@ -5506,7 +5299,7 @@ func (z *PaginatedNodesResponse) Msgsize() (s int) {
 	for za0001 := range z.Results {
 		s += z.Results[za0001].Msgsize()
 	}
-	s += 4 + z.Summary.Msgsize() + 2 + msgp.IntSize + 2 + msgp.IntSize + 2 + msgp.IntSize + 2 + msgp.StringPrefixSize + len(z.Sort) + 3 + msgp.BoolSize + 2
+	s += 2 + msgp.IntSize + 2 + msgp.IntSize + 2 + msgp.IntSize + 2 + msgp.StringPrefixSize + len(z.Sort) + 3 + msgp.BoolSize + 2
 	if z.Aggregated == nil {
 		s += msgp.NilSize
 	} else {
