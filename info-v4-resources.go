@@ -337,9 +337,13 @@ type ClusterResourceOpts struct {
 }
 
 // ClusterQuery - Get high-level information about the cluster
-func (adm *AdminClient) ClusterQuery(ctx context.Context, options ClusterResourceOpts) (ClusterResource, error) {
+func (adm *AdminClient) ClusterQuery(ctx context.Context, options ...func(*ClusterResourceOpts)) (ClusterResource, error) {
+	opts := ClusterResourceOpts{}
+	for _, option := range options {
+		option(&opts)
+	}
 	values := make(url.Values)
-	options.Metrics.apply(values)
+	opts.Metrics.apply(values)
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
@@ -371,7 +375,11 @@ func (adm *AdminClient) ClusterQuery(ctx context.Context, options ClusterResourc
 type ServicesResourceOpts struct{}
 
 // ServicesQuery - Get information about services connected to the cluster
-func (adm *AdminClient) ServicesQuery(ctx context.Context, _ ServicesResourceOpts) (ServicesResourceInfo, error) {
+func (adm *AdminClient) ServicesQuery(ctx context.Context, options ...func(*ServicesResourceOpts)) (ServicesResourceInfo, error) {
+	opts := ServicesResourceOpts{}
+	for _, option := range options {
+		option(&opts)
+	}
 	values := make(url.Values)
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
