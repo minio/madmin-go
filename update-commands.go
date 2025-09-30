@@ -123,13 +123,6 @@ func (adm *AdminClient) BumpVersion(ctx context.Context, dryRun bool) (r Cluster
 	return r, err
 }
 
-// Version represents a semantic version
-type Version struct {
-	Major uint16 `json:"major"`
-	Minor uint16 `json:"minor"`
-	Patch uint16 `json:"patch"`
-}
-
 // APIDesc describes the backend format version and the node API version of a single node
 type APIDesc struct {
 	BackendVersion Version `json:"backendVersion"`
