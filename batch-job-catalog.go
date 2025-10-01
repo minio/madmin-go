@@ -19,10 +19,8 @@
 
 package madmin
 
-//msgp:clearomitted
 //msgp:tag json
-//msgp:timezone utc
-//go:generate msgp -file $GOFILE
+//go:generate msgp -d clearomitted -d "timezone utc" -file $GOFILE
 
 // CatalogDataFile contains information about an output file from a catalog job run.
 type CatalogDataFile struct {

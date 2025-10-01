@@ -27,9 +27,7 @@ import (
 	"time"
 )
 
-//msgp:clearomitted
-//msgp:timezone utc
-//go:generate msgp -file $GOFILE
+//go:generate msgp -d clearomitted -d "timezone utc" -file $GOFILE
 
 // BucketScanInfo contains information of a bucket scan in a given pool/set
 type BucketScanInfo struct {
