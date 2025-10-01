@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2024 MinIO, Inc.
+// Copyright (c) 2015-2025 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -62,6 +62,8 @@ const (
 	ItemOnline = ItemState("online")
 	// ItemRestarting indicates that the item is restarting
 	ItemRestarting = ItemState("restarting")
+	// ItemCordoned indicates that the item is cordoned
+	ItemCordoned = ItemState("cordoned")
 )
 
 // StorageInfo - represents total capacity of underlying storage.

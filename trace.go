@@ -74,6 +74,8 @@ const (
 	TraceReplication
 	// TraceIAM will trace Identity and Access Management
 	TraceIAM
+	// TraceTables will trace table operations
+	TraceTables
 	// Add more here...
 
 	// TraceAll contains all valid trace modes.
