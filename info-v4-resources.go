@@ -47,25 +47,16 @@ type PaginatedPoolsResponse struct {
 
 // PaginatedNodesResponse represents a paginated response for nodes
 type PaginatedNodesResponse struct {
-	Results      []NodeResource    `json:"results" msg:"r,omitempty"`
-	Summary      NodesQuerySummary `json:"summary" msg:"sum"`
-	Count        int               `json:"count" msg:"c"`
-	Total        int               `json:"total" msg:"t"`
-	Offset       int               `json:"offset" msg:"o"`
-	Sort         string            `json:"sort" msg:"s"`
-	SortReversed bool              `json:"sortReversed" msg:"sr"`
+	Results      []NodeResource `json:"results" msg:"r,omitempty"`
+	Count        int            `json:"count" msg:"c"`
+	Total        int            `json:"total" msg:"t"`
+	Offset       int            `json:"offset" msg:"o"`
+	Sort         string         `json:"sort" msg:"s"`
+	SortReversed bool           `json:"sortReversed" msg:"sr"`
 
 	// Aggregated are the metrics aggregated for all filtered nodes,
 	// not just the results.
 	Aggregated *Metrics `json:"aggregated,omitempty" msg:"m,omitempty"`
-}
-
-// NodesQuerySummary contains summary statistics for all nodes in the cluster
-type NodesQuerySummary struct {
-	Offline      int `json:"Offline" msg:"off"`
-	Initializing int `json:"Initializing" msg:"ini"`
-	Online       int `json:"Online" msg:"on"`
-	Unknown      int `json:"Unknown" msg:"un"`
 }
 
 // PaginatedDrivesResponse represents a paginated response for drives
