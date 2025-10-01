@@ -8988,6 +8988,53 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "ILMExpiryInProgress")
 				return
 			}
+		case "backend_version":
+			var zb0006 uint32
+			zb0006, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "BackendVersion")
+				return
+			}
+			for zb0006 > 0 {
+				zb0006--
+				field, err = dc.ReadMapKeyPtr()
+				if err != nil {
+					err = msgp.WrapError(err, "BackendVersion")
+					return
+				}
+				switch msgp.UnsafeString(field) {
+				case "major":
+					z.BackendVersion.Major, err = dc.ReadUint16()
+					if err != nil {
+						err = msgp.WrapError(err, "BackendVersion", "Major")
+						return
+					}
+				case "minor":
+					z.BackendVersion.Minor, err = dc.ReadUint16()
+					if err != nil {
+						err = msgp.WrapError(err, "BackendVersion", "Minor")
+						return
+					}
+				case "patch":
+					z.BackendVersion.Patch, err = dc.ReadUint16()
+					if err != nil {
+						err = msgp.WrapError(err, "BackendVersion", "Patch")
+						return
+					}
+				default:
+					err = dc.Skip()
+					if err != nil {
+						err = msgp.WrapError(err, "BackendVersion")
+						return
+					}
+				}
+			}
+		case "node_api_version":
+			z.NodeAPIVersion, err = dc.ReadUint32()
+			if err != nil {
+				err = msgp.WrapError(err, "NodeAPIVersion")
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -9056,8 +9103,8 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(21)
-	var zb0001Mask uint32 /* 21 bits */
+	zb0001Len := uint32(23)
+	var zb0001Mask uint32 /* 23 bits */
 	_ = zb0001Mask
 	if z.State == "" {
 		zb0001Len--
@@ -9431,6 +9478,52 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "ILMExpiryInProgress")
 			return
 		}
+		// write "backend_version"
+		err = en.Append(0xaf, 0x62, 0x61, 0x63, 0x6b, 0x65, 0x6e, 0x64, 0x5f, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
+		if err != nil {
+			return
+		}
+		// map header, size 3
+		// write "major"
+		err = en.Append(0x83, 0xa5, 0x6d, 0x61, 0x6a, 0x6f, 0x72)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint16(z.BackendVersion.Major)
+		if err != nil {
+			err = msgp.WrapError(err, "BackendVersion", "Major")
+			return
+		}
+		// write "minor"
+		err = en.Append(0xa5, 0x6d, 0x69, 0x6e, 0x6f, 0x72)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint16(z.BackendVersion.Minor)
+		if err != nil {
+			err = msgp.WrapError(err, "BackendVersion", "Minor")
+			return
+		}
+		// write "patch"
+		err = en.Append(0xa5, 0x70, 0x61, 0x74, 0x63, 0x68)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint16(z.BackendVersion.Patch)
+		if err != nil {
+			err = msgp.WrapError(err, "BackendVersion", "Patch")
+			return
+		}
+		// write "node_api_version"
+		err = en.Append(0xb0, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x61, 0x70, 0x69, 0x5f, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint32(z.NodeAPIVersion)
+		if err != nil {
+			err = msgp.WrapError(err, "NodeAPIVersion")
+			return
+		}
 	}
 	return
 }
@@ -9439,8 +9532,8 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(21)
-	var zb0001Mask uint32 /* 21 bits */
+	zb0001Len := uint32(23)
+	var zb0001Mask uint32 /* 23 bits */
 	_ = zb0001Mask
 	if z.State == "" {
 		zb0001Len--
@@ -9650,6 +9743,21 @@ func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "ilm_expiry_in_progress"
 		o = append(o, 0xb6, 0x69, 0x6c, 0x6d, 0x5f, 0x65, 0x78, 0x70, 0x69, 0x72, 0x79, 0x5f, 0x69, 0x6e, 0x5f, 0x70, 0x72, 0x6f, 0x67, 0x72, 0x65, 0x73, 0x73)
 		o = msgp.AppendBool(o, z.ILMExpiryInProgress)
+		// string "backend_version"
+		o = append(o, 0xaf, 0x62, 0x61, 0x63, 0x6b, 0x65, 0x6e, 0x64, 0x5f, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
+		// map header, size 3
+		// string "major"
+		o = append(o, 0x83, 0xa5, 0x6d, 0x61, 0x6a, 0x6f, 0x72)
+		o = msgp.AppendUint16(o, z.BackendVersion.Major)
+		// string "minor"
+		o = append(o, 0xa5, 0x6d, 0x69, 0x6e, 0x6f, 0x72)
+		o = msgp.AppendUint16(o, z.BackendVersion.Minor)
+		// string "patch"
+		o = append(o, 0xa5, 0x70, 0x61, 0x74, 0x63, 0x68)
+		o = msgp.AppendUint16(o, z.BackendVersion.Patch)
+		// string "node_api_version"
+		o = append(o, 0xb0, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x61, 0x70, 0x69, 0x5f, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
+		o = msgp.AppendUint32(o, z.NodeAPIVersion)
 	}
 	return
 }
@@ -9909,6 +10017,53 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "ILMExpiryInProgress")
 				return
 			}
+		case "backend_version":
+			var zb0006 uint32
+			zb0006, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "BackendVersion")
+				return
+			}
+			for zb0006 > 0 {
+				zb0006--
+				field, bts, err = msgp.ReadMapKeyZC(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "BackendVersion")
+					return
+				}
+				switch msgp.UnsafeString(field) {
+				case "major":
+					z.BackendVersion.Major, bts, err = msgp.ReadUint16Bytes(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "BackendVersion", "Major")
+						return
+					}
+				case "minor":
+					z.BackendVersion.Minor, bts, err = msgp.ReadUint16Bytes(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "BackendVersion", "Minor")
+						return
+					}
+				case "patch":
+					z.BackendVersion.Patch, bts, err = msgp.ReadUint16Bytes(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "BackendVersion", "Patch")
+						return
+					}
+				default:
+					bts, err = msgp.Skip(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "BackendVersion")
+						return
+					}
+				}
+			}
+		case "node_api_version":
+			z.NodeAPIVersion, bts, err = msgp.ReadUint32Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "NodeAPIVersion")
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -10007,7 +10162,7 @@ func (z *ServerProperties) Msgsize() (s int) {
 	} else {
 		s += z.License.Msgsize()
 	}
-	s += 10 + msgp.BoolSize + 23 + msgp.BoolSize
+	s += 10 + msgp.BoolSize + 23 + msgp.BoolSize + 16 + 1 + 6 + msgp.Uint16Size + 6 + msgp.Uint16Size + 6 + msgp.Uint16Size + 17 + msgp.Uint32Size
 	return
 }
 
@@ -12089,6 +12244,159 @@ func (z *Usage) UnmarshalMsg(bts []byte) (o []byte, err error) {
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z Usage) Msgsize() (s int) {
 	s = 1 + 5 + msgp.Uint64Size + 6 + msgp.StringPrefixSize + len(z.Error)
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *Version) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "major":
+			z.Major, err = dc.ReadUint16()
+			if err != nil {
+				err = msgp.WrapError(err, "Major")
+				return
+			}
+		case "minor":
+			z.Minor, err = dc.ReadUint16()
+			if err != nil {
+				err = msgp.WrapError(err, "Minor")
+				return
+			}
+		case "patch":
+			z.Patch, err = dc.ReadUint16()
+			if err != nil {
+				err = msgp.WrapError(err, "Patch")
+				return
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z Version) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 3
+	// write "major"
+	err = en.Append(0x83, 0xa5, 0x6d, 0x61, 0x6a, 0x6f, 0x72)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint16(z.Major)
+	if err != nil {
+		err = msgp.WrapError(err, "Major")
+		return
+	}
+	// write "minor"
+	err = en.Append(0xa5, 0x6d, 0x69, 0x6e, 0x6f, 0x72)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint16(z.Minor)
+	if err != nil {
+		err = msgp.WrapError(err, "Minor")
+		return
+	}
+	// write "patch"
+	err = en.Append(0xa5, 0x70, 0x61, 0x74, 0x63, 0x68)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint16(z.Patch)
+	if err != nil {
+		err = msgp.WrapError(err, "Patch")
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z Version) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 3
+	// string "major"
+	o = append(o, 0x83, 0xa5, 0x6d, 0x61, 0x6a, 0x6f, 0x72)
+	o = msgp.AppendUint16(o, z.Major)
+	// string "minor"
+	o = append(o, 0xa5, 0x6d, 0x69, 0x6e, 0x6f, 0x72)
+	o = msgp.AppendUint16(o, z.Minor)
+	// string "patch"
+	o = append(o, 0xa5, 0x70, 0x61, 0x74, 0x63, 0x68)
+	o = msgp.AppendUint16(o, z.Patch)
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *Version) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "major":
+			z.Major, bts, err = msgp.ReadUint16Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Major")
+				return
+			}
+		case "minor":
+			z.Minor, bts, err = msgp.ReadUint16Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Minor")
+				return
+			}
+		case "patch":
+			z.Patch, bts, err = msgp.ReadUint16Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Patch")
+				return
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z Version) Msgsize() (s int) {
+	s = 1 + 6 + msgp.Uint16Size + 6 + msgp.Uint16Size + 6 + msgp.Uint16Size
 	return
 }
 

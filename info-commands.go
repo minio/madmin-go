@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2024 MinIO, Inc.
+// Copyright (c) 2015-2025 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -60,6 +60,8 @@ const (
 	ItemInitializing = ItemState("initializing")
 	// ItemOnline indicates that the item is online
 	ItemOnline = ItemState("online")
+	// ItemRestarting indicates that the item is restarting
+	ItemRestarting = ItemState("restarting")
 	// ItemCordoned indicates that the item is cordoned
 	ItemCordoned = ItemState("cordoned")
 )
@@ -423,6 +425,13 @@ type ErasureBackend struct {
 	DrivesPerSet []int `json:"totalDrivesPerSet"`
 }
 
+// Version represents a semantic version
+type Version struct {
+	Major uint16 `json:"major"`
+	Minor uint16 `json:"minor"`
+	Patch uint16 `json:"patch"`
+}
+
 // ServerProperties holds server information
 type ServerProperties struct {
 	State               string            `json:"state,omitempty"`
@@ -446,6 +455,8 @@ type ServerProperties struct {
 	License             *LicenseInfo      `json:"license,omitempty"`
 	IsLeader            bool              `json:"is_leader"`
 	ILMExpiryInProgress bool              `json:"ilm_expiry_in_progress"`
+	BackendVersion      Version           `json:"backend_version"`
+	NodeAPIVersion      uint32            `json:"node_api_version"`
 }
 
 // MemStats is strip down version of runtime.MemStats containing memory stats of MinIO server.
