@@ -28,11 +28,8 @@ import (
 	"slices"
 )
 
-//msgp:ignore cordonNodeOpts
-//msgp:clearomitted
 //msgp:tag json
-//msgp:timezone utc
-//go:generate msgp -file $GOFILE
+//go:generate msgp -d clearomitted -d "timezone utc" -file $GOFILE
 
 const (
 	CordonAction   = "cordon"
@@ -59,6 +56,8 @@ type CordonNodeResult struct {
 	Node   string   `json:"node"`
 	Errors []string `json:"errors,omitempty"`
 }
+
+//msgp:ignore cordonNodeOpts
 
 // cordonNodeOpts is used internally to pass options to the cordonAction method.
 type cordonNodeOpts struct {

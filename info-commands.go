@@ -28,10 +28,8 @@ import (
 	"time"
 )
 
-//msgp:clearomitted
 //msgp:tag json
-//msgp:timezone utc
-//go:generate msgp -file $GOFILE
+//go:generate msgp -d clearomitted -d "timezone utc" -file $GOFILE
 
 // BackendType - represents different backend types.
 type BackendType int

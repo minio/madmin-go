@@ -24,6 +24,9 @@ import (
 	"github.com/minio/madmin-go/v4"
 )
 
+//msgp:tag json
+//go:generate msgp -d clearomitted -d "timezone utc" -file $GOFILE
+
 // ObjectVersion object version key/versionId
 type ObjectVersion struct {
 	ObjectName string `json:"objectName"`
@@ -51,6 +54,8 @@ type API struct {
 	Name string `json:"name,omitempty"`
 	Args *Args  `json:"args,omitempty"`
 }
+
+//msgp:replace madmin.LogKind with:string
 
 // Entry - defines fields and values of each log entry.
 type Entry struct {

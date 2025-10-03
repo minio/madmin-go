@@ -27,8 +27,7 @@ import (
 	"time"
 )
 
-//msgp:timezone utc
-//go:generate msgp -file $GOFILE
+//go:generate msgp -d clearomitted -d "timezone utc" -file $GOFILE
 
 // ReplDiffOpts holds options for `mc replicate diff` command
 //

@@ -30,9 +30,8 @@ import (
 	"github.com/minio/madmin-go/v4/estream"
 )
 
-//msgp:timezone utc
 //msgp:replace TraceType with:uint64
-//go:generate msgp $GOFILE
+//go:generate msgp -d clearomitted -d "timezone utc" $GOFILE
 
 // HTTPFilter defines parameters for filtering traces based on incoming http request properties
 type HTTPFilter struct {

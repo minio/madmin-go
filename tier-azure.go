@@ -21,8 +21,7 @@ package madmin
 
 import "errors"
 
-//msgp:timezone utc
-//go:generate msgp -file $GOFILE
+//go:generate msgp -d clearomitted -d "timezone utc" -file $GOFILE
 
 // ServicePrincipalAuth holds fields for a successful SP authentication with Azure
 type ServicePrincipalAuth struct {
