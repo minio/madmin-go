@@ -143,6 +143,7 @@ type PoolResource struct {
 	PoolIndex          int      `json:"poolindex" msg:"i"`
 	StripeSize         int      `json:"stripeSize" msg:"ss"`
 	TotalSets          int      `json:"totalSets" msg:"ts"`
+	Parity             int      `json:"parity" msg:"p"`
 	WriteQuorum        int      `json:"writeQuorum" msg:"wq"`
 	ReadQuorum         int      `json:"readQuorum" msg:"rq"`
 	Nodes              []string `json:"nodes,omitempty" msg:"n,omitempty"`
