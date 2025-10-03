@@ -6098,6 +6098,12 @@ func (z *PoolResource) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "TotalSets")
 				return
 			}
+		case "p":
+			z.Parity, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "Parity")
+				return
+			}
 		case "wq":
 			z.WriteQuorum, err = dc.ReadInt()
 			if err != nil {
@@ -6215,12 +6221,12 @@ func (z *PoolResource) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *PoolResource) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(17)
-	var zb0001Mask uint32 /* 17 bits */
+	zb0001Len := uint32(18)
+	var zb0001Mask uint32 /* 18 bits */
 	_ = zb0001Mask
 	if z.Nodes == nil {
 		zb0001Len--
-		zb0001Mask |= 0x20
+		zb0001Mask |= 0x40
 	}
 	// variable map header, size zb0001Len
 	err = en.WriteMapHeader(zb0001Len)
@@ -6260,6 +6266,16 @@ func (z *PoolResource) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "TotalSets")
 			return
 		}
+		// write "p"
+		err = en.Append(0xa1, 0x70)
+		if err != nil {
+			return
+		}
+		err = en.WriteInt(z.Parity)
+		if err != nil {
+			err = msgp.WrapError(err, "Parity")
+			return
+		}
 		// write "wq"
 		err = en.Append(0xa2, 0x77, 0x71)
 		if err != nil {
@@ -6280,7 +6296,7 @@ func (z *PoolResource) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "ReadQuorum")
 			return
 		}
-		if (zb0001Mask & 0x20) == 0 { // if not omitted
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
 			// write "n"
 			err = en.Append(0xa1, 0x6e)
 			if err != nil {
@@ -6417,12 +6433,12 @@ func (z *PoolResource) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *PoolResource) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(17)
-	var zb0001Mask uint32 /* 17 bits */
+	zb0001Len := uint32(18)
+	var zb0001Mask uint32 /* 18 bits */
 	_ = zb0001Mask
 	if z.Nodes == nil {
 		zb0001Len--
-		zb0001Mask |= 0x20
+		zb0001Mask |= 0x40
 	}
 	// variable map header, size zb0001Len
 	o = msgp.AppendMapHeader(o, zb0001Len)
@@ -6438,13 +6454,16 @@ func (z *PoolResource) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "ts"
 		o = append(o, 0xa2, 0x74, 0x73)
 		o = msgp.AppendInt(o, z.TotalSets)
+		// string "p"
+		o = append(o, 0xa1, 0x70)
+		o = msgp.AppendInt(o, z.Parity)
 		// string "wq"
 		o = append(o, 0xa2, 0x77, 0x71)
 		o = msgp.AppendInt(o, z.WriteQuorum)
 		// string "rq"
 		o = append(o, 0xa2, 0x72, 0x71)
 		o = msgp.AppendInt(o, z.ReadQuorum)
-		if (zb0001Mask & 0x20) == 0 { // if not omitted
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
 			// string "n"
 			o = append(o, 0xa1, 0x6e)
 			o = msgp.AppendArrayHeader(o, uint32(len(z.Nodes)))
@@ -6525,6 +6544,12 @@ func (z *PoolResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.TotalSets, bts, err = msgp.ReadIntBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "TotalSets")
+				return
+			}
+		case "p":
+			z.Parity, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Parity")
 				return
 			}
 		case "wq":
@@ -6644,7 +6669,7 @@ func (z *PoolResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *PoolResource) Msgsize() (s int) {
-	s = 3 + 2 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 2 + msgp.ArrayHeaderSize
+	s = 3 + 2 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 2 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 2 + msgp.ArrayHeaderSize
 	for za0001 := range z.Nodes {
 		s += msgp.StringPrefixSize + len(z.Nodes[za0001])
 	}
