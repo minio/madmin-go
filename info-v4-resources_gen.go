@@ -2091,6 +2091,12 @@ func (z *DriveResource) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Used")
 				return
 			}
+		case "pu":
+			z.PercentageUsed, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "PercentageUsed")
+				return
+			}
 		case "a":
 			z.Available, err = dc.ReadUint64()
 			if err != nil {
@@ -2153,12 +2159,12 @@ func (z *DriveResource) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *DriveResource) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(16)
-	var zb0001Mask uint16 /* 16 bits */
+	zb0001Len := uint32(17)
+	var zb0001Mask uint32 /* 17 bits */
 	_ = zb0001Mask
 	if z.Metrics == nil {
 		zb0001Len--
-		zb0001Mask |= 0x8000
+		zb0001Mask |= 0x10000
 	}
 	// variable map header, size zb0001Len
 	err = en.WriteMapHeader(zb0001Len)
@@ -2278,6 +2284,16 @@ func (z *DriveResource) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "Used")
 			return
 		}
+		// write "pu"
+		err = en.Append(0xa2, 0x70, 0x75)
+		if err != nil {
+			return
+		}
+		err = en.WriteFloat64(z.PercentageUsed)
+		if err != nil {
+			err = msgp.WrapError(err, "PercentageUsed")
+			return
+		}
 		// write "a"
 		err = en.Append(0xa1, 0x61)
 		if err != nil {
@@ -2318,7 +2334,7 @@ func (z *DriveResource) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "UUID")
 			return
 		}
-		if (zb0001Mask & 0x8000) == 0 { // if not omitted
+		if (zb0001Mask & 0x10000) == 0 { // if not omitted
 			// write "m"
 			err = en.Append(0xa1, 0x6d)
 			if err != nil {
@@ -2345,12 +2361,12 @@ func (z *DriveResource) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *DriveResource) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(16)
-	var zb0001Mask uint16 /* 16 bits */
+	zb0001Len := uint32(17)
+	var zb0001Mask uint32 /* 17 bits */
 	_ = zb0001Mask
 	if z.Metrics == nil {
 		zb0001Len--
-		zb0001Mask |= 0x8000
+		zb0001Mask |= 0x10000
 	}
 	// variable map header, size zb0001Len
 	o = msgp.AppendMapHeader(o, zb0001Len)
@@ -2390,6 +2406,9 @@ func (z *DriveResource) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "u"
 		o = append(o, 0xa1, 0x75)
 		o = msgp.AppendUint64(o, z.Used)
+		// string "pu"
+		o = append(o, 0xa2, 0x70, 0x75)
+		o = msgp.AppendFloat64(o, z.PercentageUsed)
 		// string "a"
 		o = append(o, 0xa1, 0x61)
 		o = msgp.AppendUint64(o, z.Available)
@@ -2402,7 +2421,7 @@ func (z *DriveResource) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "uid"
 		o = append(o, 0xa3, 0x75, 0x69, 0x64)
 		o = msgp.AppendString(o, z.UUID)
-		if (zb0001Mask & 0x8000) == 0 { // if not omitted
+		if (zb0001Mask & 0x10000) == 0 { // if not omitted
 			// string "m"
 			o = append(o, 0xa1, 0x6d)
 			if z.Metrics == nil {
@@ -2505,6 +2524,12 @@ func (z *DriveResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "Used")
 				return
 			}
+		case "pu":
+			z.PercentageUsed, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "PercentageUsed")
+				return
+			}
 		case "a":
 			z.Available, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
@@ -2566,7 +2591,7 @@ func (z *DriveResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *DriveResource) Msgsize() (s int) {
-	s = 3 + 2 + msgp.StringPrefixSize + len(z.ID) + 4 + msgp.IntSize + 5 + msgp.IntSize + 2 + msgp.StringPrefixSize + len(z.Path) + 3 + msgp.StringPrefixSize + len(z.NodeID) + 3 + msgp.IntSize + 3 + msgp.IntSize + 2 + msgp.StringPrefixSize + len(z.State) + 2 + msgp.BoolSize + 3 + msgp.Uint64Size + 2 + msgp.Uint64Size + 2 + msgp.Uint64Size + 3 + msgp.Uint64Size + 3 + msgp.Uint64Size + 4 + msgp.StringPrefixSize + len(z.UUID) + 2
+	s = 3 + 2 + msgp.StringPrefixSize + len(z.ID) + 4 + msgp.IntSize + 5 + msgp.IntSize + 2 + msgp.StringPrefixSize + len(z.Path) + 3 + msgp.StringPrefixSize + len(z.NodeID) + 3 + msgp.IntSize + 3 + msgp.IntSize + 2 + msgp.StringPrefixSize + len(z.State) + 2 + msgp.BoolSize + 3 + msgp.Uint64Size + 2 + msgp.Uint64Size + 3 + msgp.Float64Size + 2 + msgp.Uint64Size + 3 + msgp.Uint64Size + 3 + msgp.Uint64Size + 4 + msgp.StringPrefixSize + len(z.UUID) + 2
 	if z.Metrics == nil {
 		s += msgp.NilSize
 	} else {

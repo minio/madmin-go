@@ -192,22 +192,23 @@ type NodeResource struct {
 
 // DriveResource represents detailed information about a storage drive including capacity, usage, and metrics
 type DriveResource struct {
-	ID          string      `json:"id" msg:"i"`
-	DriveIndex  int         `json:"idx" msg:"idx"`
-	ServerIndex int         `json:"serverIndex" msg:"sidx"`
-	Path        string      `json:"path" msg:"p"`
-	NodeID      string      `json:"nodeId" msg:"ni"`
-	PoolIndex   int         `json:"poolIndex" msg:"pi"`
-	SetIndex    int         `json:"setIndex" msg:"si"`
-	State       string      `json:"state" msg:"s"`
-	Healing     bool        `json:"healing" msg:"h"`
-	Size        uint64      `json:"size" msg:"sz"`
-	Used        uint64      `json:"used" msg:"u"`
-	Available   uint64      `json:"available" msg:"a"`
-	InodesFree  uint64      `json:"inodesFree" msg:"if"`
-	InodesUsed  uint64      `json:"inodesUsed" msg:"iu"`
-	UUID        string      `json:"uuid" msg:"uid"`
-	Metrics     *DiskMetric `json:"metrics,omitempty" msg:"m,omitempty"`
+	ID             string      `json:"id" msg:"i"`
+	DriveIndex     int         `json:"idx" msg:"idx"`
+	ServerIndex    int         `json:"serverIndex" msg:"sidx"`
+	Path           string      `json:"path" msg:"p"`
+	NodeID         string      `json:"nodeId" msg:"ni"`
+	PoolIndex      int         `json:"poolIndex" msg:"pi"`
+	SetIndex       int         `json:"setIndex" msg:"si"`
+	State          string      `json:"state" msg:"s"`
+	Healing        bool        `json:"healing" msg:"h"`
+	Size           uint64      `json:"size" msg:"sz"`
+	Used           uint64      `json:"used" msg:"u"`
+	PercentageUsed float64     `json:"percentageUsed" msg:"pu"`
+	Available      uint64      `json:"available" msg:"a"`
+	InodesFree     uint64      `json:"inodesFree" msg:"if"`
+	InodesUsed     uint64      `json:"inodesUsed" msg:"iu"`
+	UUID           string      `json:"uuid" msg:"uid"`
+	Metrics        *DiskMetric `json:"metrics,omitempty" msg:"m,omitempty"`
 }
 
 // ErasureSetResource represents detailed information about an erasure coding set including drive counts and capacity
