@@ -97,6 +97,7 @@ type ServiceActionPeerResult struct {
 type ServiceActionResult struct {
 	Action  ServiceAction             `json:"action"`
 	DryRun  bool                      `json:"dryRun"`
+	Async   bool                      `json:"async"`
 	Results []ServiceActionPeerResult `json:"results,omitempty"`
 }
 

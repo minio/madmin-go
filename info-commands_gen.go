@@ -8646,6 +8646,12 @@ func (z *ServerInfoOpts) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
+		case "Uncached":
+			z.Uncached, err = dc.ReadBool()
+			if err != nil {
+				err = msgp.WrapError(err, "Uncached")
+				return
+			}
 		case "Metrics":
 			z.Metrics, err = dc.ReadBool()
 			if err != nil {
@@ -8665,9 +8671,19 @@ func (z *ServerInfoOpts) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z ServerInfoOpts) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 1
+	// map header, size 2
+	// write "Uncached"
+	err = en.Append(0x82, 0xa8, 0x55, 0x6e, 0x63, 0x61, 0x63, 0x68, 0x65, 0x64)
+	if err != nil {
+		return
+	}
+	err = en.WriteBool(z.Uncached)
+	if err != nil {
+		err = msgp.WrapError(err, "Uncached")
+		return
+	}
 	// write "Metrics"
-	err = en.Append(0x81, 0xa7, 0x4d, 0x65, 0x74, 0x72, 0x69, 0x63, 0x73)
+	err = en.Append(0xa7, 0x4d, 0x65, 0x74, 0x72, 0x69, 0x63, 0x73)
 	if err != nil {
 		return
 	}
@@ -8682,9 +8698,12 @@ func (z ServerInfoOpts) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z ServerInfoOpts) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 1
+	// map header, size 2
+	// string "Uncached"
+	o = append(o, 0x82, 0xa8, 0x55, 0x6e, 0x63, 0x61, 0x63, 0x68, 0x65, 0x64)
+	o = msgp.AppendBool(o, z.Uncached)
 	// string "Metrics"
-	o = append(o, 0x81, 0xa7, 0x4d, 0x65, 0x74, 0x72, 0x69, 0x63, 0x73)
+	o = append(o, 0xa7, 0x4d, 0x65, 0x74, 0x72, 0x69, 0x63, 0x73)
 	o = msgp.AppendBool(o, z.Metrics)
 	return
 }
@@ -8707,6 +8726,12 @@ func (z *ServerInfoOpts) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
+		case "Uncached":
+			z.Uncached, bts, err = msgp.ReadBoolBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Uncached")
+				return
+			}
 		case "Metrics":
 			z.Metrics, bts, err = msgp.ReadBoolBytes(bts)
 			if err != nil {
@@ -8727,7 +8752,7 @@ func (z *ServerInfoOpts) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z ServerInfoOpts) Msgsize() (s int) {
-	s = 1 + 8 + msgp.BoolSize
+	s = 1 + 9 + msgp.BoolSize + 8 + msgp.BoolSize
 	return
 }
 
@@ -8741,7 +8766,7 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint32 /* 17 bits */
+	var zb0001Mask uint32 /* 18 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -9029,12 +9054,13 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 					}
 				}
 			}
-		case "node_api_version":
-			z.NodeAPIVersion, err = dc.ReadUint32()
+		case "restarting":
+			z.Restarting, err = dc.ReadBool()
 			if err != nil {
-				err = msgp.WrapError(err, "NodeAPIVersion")
+				err = msgp.WrapError(err, "Restarting")
 				return
 			}
+			zb0001Mask |= 0x20000
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -9044,7 +9070,7 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x1ffff {
+	if zb0001Mask != 0x3ffff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.State = ""
 		}
@@ -9095,6 +9121,9 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 		if (zb0001Mask & 0x10000) == 0 {
 			z.License = nil
+		}
+		if (zb0001Mask & 0x20000) == 0 {
+			z.Restarting = false
 		}
 	}
 	return
@@ -9173,6 +9202,10 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 	if z.License == nil {
 		zb0001Len--
 		zb0001Mask |= 0x40000
+	}
+	if z.Restarting == false {
+		zb0001Len--
+		zb0001Mask |= 0x400000
 	}
 	// variable map header, size zb0001Len
 	err = en.WriteMapHeader(zb0001Len)
@@ -9514,15 +9547,17 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "BackendVersion", "Patch")
 			return
 		}
-		// write "node_api_version"
-		err = en.Append(0xb0, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x61, 0x70, 0x69, 0x5f, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
-		if err != nil {
-			return
-		}
-		err = en.WriteUint32(z.NodeAPIVersion)
-		if err != nil {
-			err = msgp.WrapError(err, "NodeAPIVersion")
-			return
+		if (zb0001Mask & 0x400000) == 0 { // if not omitted
+			// write "restarting"
+			err = en.Append(0xaa, 0x72, 0x65, 0x73, 0x74, 0x61, 0x72, 0x74, 0x69, 0x6e, 0x67)
+			if err != nil {
+				return
+			}
+			err = en.WriteBool(z.Restarting)
+			if err != nil {
+				err = msgp.WrapError(err, "Restarting")
+				return
+			}
 		}
 	}
 	return
@@ -9602,6 +9637,10 @@ func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 	if z.License == nil {
 		zb0001Len--
 		zb0001Mask |= 0x40000
+	}
+	if z.Restarting == false {
+		zb0001Len--
+		zb0001Mask |= 0x400000
 	}
 	// variable map header, size zb0001Len
 	o = msgp.AppendMapHeader(o, zb0001Len)
@@ -9755,9 +9794,11 @@ func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "patch"
 		o = append(o, 0xa5, 0x70, 0x61, 0x74, 0x63, 0x68)
 		o = msgp.AppendUint16(o, z.BackendVersion.Patch)
-		// string "node_api_version"
-		o = append(o, 0xb0, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x61, 0x70, 0x69, 0x5f, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
-		o = msgp.AppendUint32(o, z.NodeAPIVersion)
+		if (zb0001Mask & 0x400000) == 0 { // if not omitted
+			// string "restarting"
+			o = append(o, 0xaa, 0x72, 0x65, 0x73, 0x74, 0x61, 0x72, 0x74, 0x69, 0x6e, 0x67)
+			o = msgp.AppendBool(o, z.Restarting)
+		}
 	}
 	return
 }
@@ -9772,7 +9813,7 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint32 /* 17 bits */
+	var zb0001Mask uint32 /* 18 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -10058,12 +10099,13 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					}
 				}
 			}
-		case "node_api_version":
-			z.NodeAPIVersion, bts, err = msgp.ReadUint32Bytes(bts)
+		case "restarting":
+			z.Restarting, bts, err = msgp.ReadBoolBytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "NodeAPIVersion")
+				err = msgp.WrapError(err, "Restarting")
 				return
 			}
+			zb0001Mask |= 0x20000
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -10073,7 +10115,7 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x1ffff {
+	if zb0001Mask != 0x3ffff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.State = ""
 		}
@@ -10125,6 +10167,9 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		if (zb0001Mask & 0x10000) == 0 {
 			z.License = nil
 		}
+		if (zb0001Mask & 0x20000) == 0 {
+			z.Restarting = false
+		}
 	}
 	o = bts
 	return
@@ -10162,7 +10207,7 @@ func (z *ServerProperties) Msgsize() (s int) {
 	} else {
 		s += z.License.Msgsize()
 	}
-	s += 10 + msgp.BoolSize + 23 + msgp.BoolSize + 16 + 1 + 6 + msgp.Uint16Size + 6 + msgp.Uint16Size + 6 + msgp.Uint16Size + 17 + msgp.Uint32Size
+	s += 10 + msgp.BoolSize + 23 + msgp.BoolSize + 16 + 1 + 6 + msgp.Uint16Size + 6 + msgp.Uint16Size + 6 + msgp.Uint16Size + 11 + msgp.BoolSize
 	return
 }
 
