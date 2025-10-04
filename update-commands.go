@@ -40,6 +40,7 @@ type ServerPeerUpdateStatus struct {
 type ServerUpdateStatus struct {
 	DryRun  bool                     `json:"dryRun"`
 	Results []ServerPeerUpdateStatus `json:"results,omitempty"`
+	Async   bool                     `json:"async"`
 
 	Error string `json:"error,omitempty"`
 }

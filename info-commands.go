@@ -456,7 +456,7 @@ type ServerProperties struct {
 	IsLeader            bool              `json:"is_leader"`
 	ILMExpiryInProgress bool              `json:"ilm_expiry_in_progress"`
 	BackendVersion      Version           `json:"backend_version"`
-	NodeAPIVersion      uint32            `json:"node_api_version"`
+	Restarting          bool              `json:"restarting,omitempty"`
 }
 
 // MemStats is strip down version of runtime.MemStats containing memory stats of MinIO server.
@@ -559,13 +559,21 @@ type Disk struct {
 
 // ServerInfoOpts ask for additional data from the server
 type ServerInfoOpts struct {
-	Metrics bool
+	Uncached bool
+	Metrics  bool
 }
 
 // WithDriveMetrics asks server to return additional metrics per drive
 func WithDriveMetrics(metrics bool) func(*ServerInfoOpts) {
 	return func(opts *ServerInfoOpts) {
 		opts.Metrics = metrics
+	}
+}
+
+// Uncached forces the server to not use any cached server information
+func Uncached() func(*ServerInfoOpts) {
+	return func(opts *ServerInfoOpts) {
+		opts.Uncached = true
 	}
 }
 
@@ -580,6 +588,7 @@ func (adm *AdminClient) ServerInfo(ctx context.Context, options ...func(*ServerI
 
 	values := make(url.Values)
 	values.Set("metrics", strconv.FormatBool(srvOpts.Metrics))
+	values.Set("no-cache", strconv.FormatBool(srvOpts.Uncached))
 
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
