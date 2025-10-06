@@ -989,10 +989,9 @@ func (adm *AdminClient) InfoAccessKey(ctx context.Context, accessKey string) (In
 // IAMCacheAnalysis represents statistics about IAM cache entities
 type IAMCacheAnalysis struct {
 	TotalPolicies            int `json:"totalPolicies"`            // Total number of IAM policies
-	TotalUsers               int `json:"totalUsers"`               // Total number of all users (regular + service accounts + STS)
 	TotalRegularUsers        int `json:"totalRegularUsers"`        // Count of regular IAM users
 	TotalServiceAccounts     int `json:"totalServiceAccounts"`     // Count of service account users
-	TotalUsersNonRootParent  int `json:"totalUsersNonRootParent"`  // Count of users whose ParentUser is not the root user
+	TotalSvcAccNonRootParent int `json:"totalSvcAccNonRootParent"` // Count of service accounts whose ParentUser is not the root user
 	TotalGroups              int `json:"totalGroups"`              // Total number of IAM groups
 	TotalUserPolicyMappings  int `json:"totalUserPolicyMappings"`  // Count of user-to-policy mappings
 	TotalGroupPolicyMappings int `json:"totalGroupPolicyMappings"` // Count of group-to-policy mappings
@@ -1002,7 +1001,8 @@ type IAMCacheAnalysis struct {
 // HasReplicationEntities returns true if there are any non-root IAM entities
 func (i IAMCacheAnalysis) HasReplicationEntities() bool {
 	return i.TotalPolicies > 0 ||
-		i.TotalUsersNonRootParent > 0 ||
+		i.TotalRegularUsers > 0 ||
+		i.TotalSvcAccNonRootParent > 0 ||
 		i.TotalGroups > 0 ||
 		i.TotalUserPolicyMappings > 0 ||
 		i.TotalGroupPolicyMappings > 0 ||
