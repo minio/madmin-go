@@ -985,3 +985,55 @@ func (adm *AdminClient) InfoAccessKey(ctx context.Context, accessKey string) (In
 	}
 	return infoResp, nil
 }
+
+// IAMCacheAnalysis represents statistics about IAM cache entities
+type IAMCacheAnalysis struct {
+	TotalPolicies            int `json:"totalPolicies"`            // Total number of IAM policies
+	TotalUsers               int `json:"totalUsers"`               // Total number of all users (regular + service accounts + STS)
+	TotalRegularUsers        int `json:"totalRegularUsers"`        // Count of regular IAM users
+	TotalServiceAccounts     int `json:"totalServiceAccounts"`     // Count of service account users
+	TotalUsersNonRootParent  int `json:"totalUsersNonRootParent"`  // Count of users whose ParentUser is not the root user
+	TotalGroups              int `json:"totalGroups"`              // Total number of IAM groups
+	TotalUserPolicyMappings  int `json:"totalUserPolicyMappings"`  // Count of user-to-policy mappings
+	TotalGroupPolicyMappings int `json:"totalGroupPolicyMappings"` // Count of group-to-policy mappings
+	TotalSTSPolicyMappings   int `json:"totalSTSPolicyMappings"`   // Count of STS-to-policy mappings
+}
+
+// HasReplicationEntities returns true if there are any non-root IAM entities
+func (i IAMCacheAnalysis) HasReplicationEntities() bool {
+	return i.TotalPolicies > 0 ||
+		i.TotalUsersNonRootParent > 0 ||
+		i.TotalGroups > 0 ||
+		i.TotalUserPolicyMappings > 0 ||
+		i.TotalGroupPolicyMappings > 0 ||
+		i.TotalSTSPolicyMappings > 0
+}
+
+// IAMEntityReport returns statistics about IAM cache entities
+func (adm *AdminClient) IAMEntityReport(ctx context.Context) (IAMCacheAnalysis, error) {
+	reqData := requestData{
+		relPath: "/minio/admin/v3/iam-entity-report",
+	}
+
+	// Execute GET on /minio/admin/v3/iam-entity-report
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return IAMCacheAnalysis{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return IAMCacheAnalysis{}, httpRespToErrorResponse(resp)
+	}
+
+	data, err := DecryptData(adm.getSecretKey(), resp.Body)
+	if err != nil {
+		return IAMCacheAnalysis{}, err
+	}
+
+	var report IAMCacheAnalysis
+	if err = json.Unmarshal(data, &report); err != nil {
+		return IAMCacheAnalysis{}, err
+	}
+	return report, nil
+}
