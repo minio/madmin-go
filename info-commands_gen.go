@@ -9,6 +9,529 @@ import (
 )
 
 // DecodeMsg implements msgp.Decodable
+func (z *APIVersion) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "backend":
+			var zb0002 uint32
+			zb0002, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "Backend")
+				return
+			}
+			for zb0002 > 0 {
+				zb0002--
+				field, err = dc.ReadMapKeyPtr()
+				if err != nil {
+					err = msgp.WrapError(err, "Backend")
+					return
+				}
+				switch msgp.UnsafeString(field) {
+				case "current":
+					var zb0003 uint32
+					zb0003, err = dc.ReadMapHeader()
+					if err != nil {
+						err = msgp.WrapError(err, "Backend", "Current")
+						return
+					}
+					for zb0003 > 0 {
+						zb0003--
+						field, err = dc.ReadMapKeyPtr()
+						if err != nil {
+							err = msgp.WrapError(err, "Backend", "Current")
+							return
+						}
+						switch msgp.UnsafeString(field) {
+						case "major":
+							z.Backend.Current.Major, err = dc.ReadUint16()
+							if err != nil {
+								err = msgp.WrapError(err, "Backend", "Current", "Major")
+								return
+							}
+						case "minor":
+							z.Backend.Current.Minor, err = dc.ReadUint16()
+							if err != nil {
+								err = msgp.WrapError(err, "Backend", "Current", "Minor")
+								return
+							}
+						case "patch":
+							z.Backend.Current.Patch, err = dc.ReadUint16()
+							if err != nil {
+								err = msgp.WrapError(err, "Backend", "Current", "Patch")
+								return
+							}
+						default:
+							err = dc.Skip()
+							if err != nil {
+								err = msgp.WrapError(err, "Backend", "Current")
+								return
+							}
+						}
+					}
+				case "max":
+					var zb0004 uint32
+					zb0004, err = dc.ReadMapHeader()
+					if err != nil {
+						err = msgp.WrapError(err, "Backend", "Max")
+						return
+					}
+					for zb0004 > 0 {
+						zb0004--
+						field, err = dc.ReadMapKeyPtr()
+						if err != nil {
+							err = msgp.WrapError(err, "Backend", "Max")
+							return
+						}
+						switch msgp.UnsafeString(field) {
+						case "major":
+							z.Backend.Max.Major, err = dc.ReadUint16()
+							if err != nil {
+								err = msgp.WrapError(err, "Backend", "Max", "Major")
+								return
+							}
+						case "minor":
+							z.Backend.Max.Minor, err = dc.ReadUint16()
+							if err != nil {
+								err = msgp.WrapError(err, "Backend", "Max", "Minor")
+								return
+							}
+						case "patch":
+							z.Backend.Max.Patch, err = dc.ReadUint16()
+							if err != nil {
+								err = msgp.WrapError(err, "Backend", "Max", "Patch")
+								return
+							}
+						default:
+							err = dc.Skip()
+							if err != nil {
+								err = msgp.WrapError(err, "Backend", "Max")
+								return
+							}
+						}
+					}
+				case "min":
+					var zb0005 uint32
+					zb0005, err = dc.ReadMapHeader()
+					if err != nil {
+						err = msgp.WrapError(err, "Backend", "Min")
+						return
+					}
+					for zb0005 > 0 {
+						zb0005--
+						field, err = dc.ReadMapKeyPtr()
+						if err != nil {
+							err = msgp.WrapError(err, "Backend", "Min")
+							return
+						}
+						switch msgp.UnsafeString(field) {
+						case "major":
+							z.Backend.Min.Major, err = dc.ReadUint16()
+							if err != nil {
+								err = msgp.WrapError(err, "Backend", "Min", "Major")
+								return
+							}
+						case "minor":
+							z.Backend.Min.Minor, err = dc.ReadUint16()
+							if err != nil {
+								err = msgp.WrapError(err, "Backend", "Min", "Minor")
+								return
+							}
+						case "patch":
+							z.Backend.Min.Patch, err = dc.ReadUint16()
+							if err != nil {
+								err = msgp.WrapError(err, "Backend", "Min", "Patch")
+								return
+							}
+						default:
+							err = dc.Skip()
+							if err != nil {
+								err = msgp.WrapError(err, "Backend", "Min")
+								return
+							}
+						}
+					}
+				default:
+					err = dc.Skip()
+					if err != nil {
+						err = msgp.WrapError(err, "Backend")
+						return
+					}
+				}
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *APIVersion) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 1
+	// write "backend"
+	err = en.Append(0x81, 0xa7, 0x62, 0x61, 0x63, 0x6b, 0x65, 0x6e, 0x64)
+	if err != nil {
+		return
+	}
+	// map header, size 3
+	// write "current"
+	err = en.Append(0x83, 0xa7, 0x63, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74)
+	if err != nil {
+		return
+	}
+	// map header, size 3
+	// write "major"
+	err = en.Append(0x83, 0xa5, 0x6d, 0x61, 0x6a, 0x6f, 0x72)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint16(z.Backend.Current.Major)
+	if err != nil {
+		err = msgp.WrapError(err, "Backend", "Current", "Major")
+		return
+	}
+	// write "minor"
+	err = en.Append(0xa5, 0x6d, 0x69, 0x6e, 0x6f, 0x72)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint16(z.Backend.Current.Minor)
+	if err != nil {
+		err = msgp.WrapError(err, "Backend", "Current", "Minor")
+		return
+	}
+	// write "patch"
+	err = en.Append(0xa5, 0x70, 0x61, 0x74, 0x63, 0x68)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint16(z.Backend.Current.Patch)
+	if err != nil {
+		err = msgp.WrapError(err, "Backend", "Current", "Patch")
+		return
+	}
+	// write "max"
+	err = en.Append(0xa3, 0x6d, 0x61, 0x78)
+	if err != nil {
+		return
+	}
+	// map header, size 3
+	// write "major"
+	err = en.Append(0x83, 0xa5, 0x6d, 0x61, 0x6a, 0x6f, 0x72)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint16(z.Backend.Max.Major)
+	if err != nil {
+		err = msgp.WrapError(err, "Backend", "Max", "Major")
+		return
+	}
+	// write "minor"
+	err = en.Append(0xa5, 0x6d, 0x69, 0x6e, 0x6f, 0x72)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint16(z.Backend.Max.Minor)
+	if err != nil {
+		err = msgp.WrapError(err, "Backend", "Max", "Minor")
+		return
+	}
+	// write "patch"
+	err = en.Append(0xa5, 0x70, 0x61, 0x74, 0x63, 0x68)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint16(z.Backend.Max.Patch)
+	if err != nil {
+		err = msgp.WrapError(err, "Backend", "Max", "Patch")
+		return
+	}
+	// write "min"
+	err = en.Append(0xa3, 0x6d, 0x69, 0x6e)
+	if err != nil {
+		return
+	}
+	// map header, size 3
+	// write "major"
+	err = en.Append(0x83, 0xa5, 0x6d, 0x61, 0x6a, 0x6f, 0x72)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint16(z.Backend.Min.Major)
+	if err != nil {
+		err = msgp.WrapError(err, "Backend", "Min", "Major")
+		return
+	}
+	// write "minor"
+	err = en.Append(0xa5, 0x6d, 0x69, 0x6e, 0x6f, 0x72)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint16(z.Backend.Min.Minor)
+	if err != nil {
+		err = msgp.WrapError(err, "Backend", "Min", "Minor")
+		return
+	}
+	// write "patch"
+	err = en.Append(0xa5, 0x70, 0x61, 0x74, 0x63, 0x68)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint16(z.Backend.Min.Patch)
+	if err != nil {
+		err = msgp.WrapError(err, "Backend", "Min", "Patch")
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *APIVersion) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 1
+	// string "backend"
+	o = append(o, 0x81, 0xa7, 0x62, 0x61, 0x63, 0x6b, 0x65, 0x6e, 0x64)
+	// map header, size 3
+	// string "current"
+	o = append(o, 0x83, 0xa7, 0x63, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74)
+	// map header, size 3
+	// string "major"
+	o = append(o, 0x83, 0xa5, 0x6d, 0x61, 0x6a, 0x6f, 0x72)
+	o = msgp.AppendUint16(o, z.Backend.Current.Major)
+	// string "minor"
+	o = append(o, 0xa5, 0x6d, 0x69, 0x6e, 0x6f, 0x72)
+	o = msgp.AppendUint16(o, z.Backend.Current.Minor)
+	// string "patch"
+	o = append(o, 0xa5, 0x70, 0x61, 0x74, 0x63, 0x68)
+	o = msgp.AppendUint16(o, z.Backend.Current.Patch)
+	// string "max"
+	o = append(o, 0xa3, 0x6d, 0x61, 0x78)
+	// map header, size 3
+	// string "major"
+	o = append(o, 0x83, 0xa5, 0x6d, 0x61, 0x6a, 0x6f, 0x72)
+	o = msgp.AppendUint16(o, z.Backend.Max.Major)
+	// string "minor"
+	o = append(o, 0xa5, 0x6d, 0x69, 0x6e, 0x6f, 0x72)
+	o = msgp.AppendUint16(o, z.Backend.Max.Minor)
+	// string "patch"
+	o = append(o, 0xa5, 0x70, 0x61, 0x74, 0x63, 0x68)
+	o = msgp.AppendUint16(o, z.Backend.Max.Patch)
+	// string "min"
+	o = append(o, 0xa3, 0x6d, 0x69, 0x6e)
+	// map header, size 3
+	// string "major"
+	o = append(o, 0x83, 0xa5, 0x6d, 0x61, 0x6a, 0x6f, 0x72)
+	o = msgp.AppendUint16(o, z.Backend.Min.Major)
+	// string "minor"
+	o = append(o, 0xa5, 0x6d, 0x69, 0x6e, 0x6f, 0x72)
+	o = msgp.AppendUint16(o, z.Backend.Min.Minor)
+	// string "patch"
+	o = append(o, 0xa5, 0x70, 0x61, 0x74, 0x63, 0x68)
+	o = msgp.AppendUint16(o, z.Backend.Min.Patch)
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *APIVersion) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "backend":
+			var zb0002 uint32
+			zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Backend")
+				return
+			}
+			for zb0002 > 0 {
+				zb0002--
+				field, bts, err = msgp.ReadMapKeyZC(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Backend")
+					return
+				}
+				switch msgp.UnsafeString(field) {
+				case "current":
+					var zb0003 uint32
+					zb0003, bts, err = msgp.ReadMapHeaderBytes(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "Backend", "Current")
+						return
+					}
+					for zb0003 > 0 {
+						zb0003--
+						field, bts, err = msgp.ReadMapKeyZC(bts)
+						if err != nil {
+							err = msgp.WrapError(err, "Backend", "Current")
+							return
+						}
+						switch msgp.UnsafeString(field) {
+						case "major":
+							z.Backend.Current.Major, bts, err = msgp.ReadUint16Bytes(bts)
+							if err != nil {
+								err = msgp.WrapError(err, "Backend", "Current", "Major")
+								return
+							}
+						case "minor":
+							z.Backend.Current.Minor, bts, err = msgp.ReadUint16Bytes(bts)
+							if err != nil {
+								err = msgp.WrapError(err, "Backend", "Current", "Minor")
+								return
+							}
+						case "patch":
+							z.Backend.Current.Patch, bts, err = msgp.ReadUint16Bytes(bts)
+							if err != nil {
+								err = msgp.WrapError(err, "Backend", "Current", "Patch")
+								return
+							}
+						default:
+							bts, err = msgp.Skip(bts)
+							if err != nil {
+								err = msgp.WrapError(err, "Backend", "Current")
+								return
+							}
+						}
+					}
+				case "max":
+					var zb0004 uint32
+					zb0004, bts, err = msgp.ReadMapHeaderBytes(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "Backend", "Max")
+						return
+					}
+					for zb0004 > 0 {
+						zb0004--
+						field, bts, err = msgp.ReadMapKeyZC(bts)
+						if err != nil {
+							err = msgp.WrapError(err, "Backend", "Max")
+							return
+						}
+						switch msgp.UnsafeString(field) {
+						case "major":
+							z.Backend.Max.Major, bts, err = msgp.ReadUint16Bytes(bts)
+							if err != nil {
+								err = msgp.WrapError(err, "Backend", "Max", "Major")
+								return
+							}
+						case "minor":
+							z.Backend.Max.Minor, bts, err = msgp.ReadUint16Bytes(bts)
+							if err != nil {
+								err = msgp.WrapError(err, "Backend", "Max", "Minor")
+								return
+							}
+						case "patch":
+							z.Backend.Max.Patch, bts, err = msgp.ReadUint16Bytes(bts)
+							if err != nil {
+								err = msgp.WrapError(err, "Backend", "Max", "Patch")
+								return
+							}
+						default:
+							bts, err = msgp.Skip(bts)
+							if err != nil {
+								err = msgp.WrapError(err, "Backend", "Max")
+								return
+							}
+						}
+					}
+				case "min":
+					var zb0005 uint32
+					zb0005, bts, err = msgp.ReadMapHeaderBytes(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "Backend", "Min")
+						return
+					}
+					for zb0005 > 0 {
+						zb0005--
+						field, bts, err = msgp.ReadMapKeyZC(bts)
+						if err != nil {
+							err = msgp.WrapError(err, "Backend", "Min")
+							return
+						}
+						switch msgp.UnsafeString(field) {
+						case "major":
+							z.Backend.Min.Major, bts, err = msgp.ReadUint16Bytes(bts)
+							if err != nil {
+								err = msgp.WrapError(err, "Backend", "Min", "Major")
+								return
+							}
+						case "minor":
+							z.Backend.Min.Minor, bts, err = msgp.ReadUint16Bytes(bts)
+							if err != nil {
+								err = msgp.WrapError(err, "Backend", "Min", "Minor")
+								return
+							}
+						case "patch":
+							z.Backend.Min.Patch, bts, err = msgp.ReadUint16Bytes(bts)
+							if err != nil {
+								err = msgp.WrapError(err, "Backend", "Min", "Patch")
+								return
+							}
+						default:
+							bts, err = msgp.Skip(bts)
+							if err != nil {
+								err = msgp.WrapError(err, "Backend", "Min")
+								return
+							}
+						}
+					}
+				default:
+					bts, err = msgp.Skip(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "Backend")
+						return
+					}
+				}
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *APIVersion) Msgsize() (s int) {
+	s = 1 + 8 + 1 + 8 + 1 + 6 + msgp.Uint16Size + 6 + msgp.Uint16Size + 6 + msgp.Uint16Size + 4 + 1 + 6 + msgp.Uint16Size + 6 + msgp.Uint16Size + 6 + msgp.Uint16Size + 4 + 1 + 6 + msgp.Uint16Size + 6 + msgp.Uint16Size + 6 + msgp.Uint16Size
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *Audit) DecodeMsg(dc *msgp.Reader) (err error) {
 	var zb0003 uint32
 	zb0003, err = dc.ReadMapHeader()
@@ -1067,6 +1590,474 @@ func (z *BackendType) UnmarshalMsg(bts []byte) (o []byte, err error) {
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z BackendType) Msgsize() (s int) {
 	s = msgp.IntSize
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *BackendVersion) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "current":
+			var zb0002 uint32
+			zb0002, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "Current")
+				return
+			}
+			for zb0002 > 0 {
+				zb0002--
+				field, err = dc.ReadMapKeyPtr()
+				if err != nil {
+					err = msgp.WrapError(err, "Current")
+					return
+				}
+				switch msgp.UnsafeString(field) {
+				case "major":
+					z.Current.Major, err = dc.ReadUint16()
+					if err != nil {
+						err = msgp.WrapError(err, "Current", "Major")
+						return
+					}
+				case "minor":
+					z.Current.Minor, err = dc.ReadUint16()
+					if err != nil {
+						err = msgp.WrapError(err, "Current", "Minor")
+						return
+					}
+				case "patch":
+					z.Current.Patch, err = dc.ReadUint16()
+					if err != nil {
+						err = msgp.WrapError(err, "Current", "Patch")
+						return
+					}
+				default:
+					err = dc.Skip()
+					if err != nil {
+						err = msgp.WrapError(err, "Current")
+						return
+					}
+				}
+			}
+		case "max":
+			var zb0003 uint32
+			zb0003, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "Max")
+				return
+			}
+			for zb0003 > 0 {
+				zb0003--
+				field, err = dc.ReadMapKeyPtr()
+				if err != nil {
+					err = msgp.WrapError(err, "Max")
+					return
+				}
+				switch msgp.UnsafeString(field) {
+				case "major":
+					z.Max.Major, err = dc.ReadUint16()
+					if err != nil {
+						err = msgp.WrapError(err, "Max", "Major")
+						return
+					}
+				case "minor":
+					z.Max.Minor, err = dc.ReadUint16()
+					if err != nil {
+						err = msgp.WrapError(err, "Max", "Minor")
+						return
+					}
+				case "patch":
+					z.Max.Patch, err = dc.ReadUint16()
+					if err != nil {
+						err = msgp.WrapError(err, "Max", "Patch")
+						return
+					}
+				default:
+					err = dc.Skip()
+					if err != nil {
+						err = msgp.WrapError(err, "Max")
+						return
+					}
+				}
+			}
+		case "min":
+			var zb0004 uint32
+			zb0004, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "Min")
+				return
+			}
+			for zb0004 > 0 {
+				zb0004--
+				field, err = dc.ReadMapKeyPtr()
+				if err != nil {
+					err = msgp.WrapError(err, "Min")
+					return
+				}
+				switch msgp.UnsafeString(field) {
+				case "major":
+					z.Min.Major, err = dc.ReadUint16()
+					if err != nil {
+						err = msgp.WrapError(err, "Min", "Major")
+						return
+					}
+				case "minor":
+					z.Min.Minor, err = dc.ReadUint16()
+					if err != nil {
+						err = msgp.WrapError(err, "Min", "Minor")
+						return
+					}
+				case "patch":
+					z.Min.Patch, err = dc.ReadUint16()
+					if err != nil {
+						err = msgp.WrapError(err, "Min", "Patch")
+						return
+					}
+				default:
+					err = dc.Skip()
+					if err != nil {
+						err = msgp.WrapError(err, "Min")
+						return
+					}
+				}
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *BackendVersion) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 3
+	// write "current"
+	err = en.Append(0x83, 0xa7, 0x63, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74)
+	if err != nil {
+		return
+	}
+	// map header, size 3
+	// write "major"
+	err = en.Append(0x83, 0xa5, 0x6d, 0x61, 0x6a, 0x6f, 0x72)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint16(z.Current.Major)
+	if err != nil {
+		err = msgp.WrapError(err, "Current", "Major")
+		return
+	}
+	// write "minor"
+	err = en.Append(0xa5, 0x6d, 0x69, 0x6e, 0x6f, 0x72)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint16(z.Current.Minor)
+	if err != nil {
+		err = msgp.WrapError(err, "Current", "Minor")
+		return
+	}
+	// write "patch"
+	err = en.Append(0xa5, 0x70, 0x61, 0x74, 0x63, 0x68)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint16(z.Current.Patch)
+	if err != nil {
+		err = msgp.WrapError(err, "Current", "Patch")
+		return
+	}
+	// write "max"
+	err = en.Append(0xa3, 0x6d, 0x61, 0x78)
+	if err != nil {
+		return
+	}
+	// map header, size 3
+	// write "major"
+	err = en.Append(0x83, 0xa5, 0x6d, 0x61, 0x6a, 0x6f, 0x72)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint16(z.Max.Major)
+	if err != nil {
+		err = msgp.WrapError(err, "Max", "Major")
+		return
+	}
+	// write "minor"
+	err = en.Append(0xa5, 0x6d, 0x69, 0x6e, 0x6f, 0x72)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint16(z.Max.Minor)
+	if err != nil {
+		err = msgp.WrapError(err, "Max", "Minor")
+		return
+	}
+	// write "patch"
+	err = en.Append(0xa5, 0x70, 0x61, 0x74, 0x63, 0x68)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint16(z.Max.Patch)
+	if err != nil {
+		err = msgp.WrapError(err, "Max", "Patch")
+		return
+	}
+	// write "min"
+	err = en.Append(0xa3, 0x6d, 0x69, 0x6e)
+	if err != nil {
+		return
+	}
+	// map header, size 3
+	// write "major"
+	err = en.Append(0x83, 0xa5, 0x6d, 0x61, 0x6a, 0x6f, 0x72)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint16(z.Min.Major)
+	if err != nil {
+		err = msgp.WrapError(err, "Min", "Major")
+		return
+	}
+	// write "minor"
+	err = en.Append(0xa5, 0x6d, 0x69, 0x6e, 0x6f, 0x72)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint16(z.Min.Minor)
+	if err != nil {
+		err = msgp.WrapError(err, "Min", "Minor")
+		return
+	}
+	// write "patch"
+	err = en.Append(0xa5, 0x70, 0x61, 0x74, 0x63, 0x68)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint16(z.Min.Patch)
+	if err != nil {
+		err = msgp.WrapError(err, "Min", "Patch")
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *BackendVersion) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 3
+	// string "current"
+	o = append(o, 0x83, 0xa7, 0x63, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74)
+	// map header, size 3
+	// string "major"
+	o = append(o, 0x83, 0xa5, 0x6d, 0x61, 0x6a, 0x6f, 0x72)
+	o = msgp.AppendUint16(o, z.Current.Major)
+	// string "minor"
+	o = append(o, 0xa5, 0x6d, 0x69, 0x6e, 0x6f, 0x72)
+	o = msgp.AppendUint16(o, z.Current.Minor)
+	// string "patch"
+	o = append(o, 0xa5, 0x70, 0x61, 0x74, 0x63, 0x68)
+	o = msgp.AppendUint16(o, z.Current.Patch)
+	// string "max"
+	o = append(o, 0xa3, 0x6d, 0x61, 0x78)
+	// map header, size 3
+	// string "major"
+	o = append(o, 0x83, 0xa5, 0x6d, 0x61, 0x6a, 0x6f, 0x72)
+	o = msgp.AppendUint16(o, z.Max.Major)
+	// string "minor"
+	o = append(o, 0xa5, 0x6d, 0x69, 0x6e, 0x6f, 0x72)
+	o = msgp.AppendUint16(o, z.Max.Minor)
+	// string "patch"
+	o = append(o, 0xa5, 0x70, 0x61, 0x74, 0x63, 0x68)
+	o = msgp.AppendUint16(o, z.Max.Patch)
+	// string "min"
+	o = append(o, 0xa3, 0x6d, 0x69, 0x6e)
+	// map header, size 3
+	// string "major"
+	o = append(o, 0x83, 0xa5, 0x6d, 0x61, 0x6a, 0x6f, 0x72)
+	o = msgp.AppendUint16(o, z.Min.Major)
+	// string "minor"
+	o = append(o, 0xa5, 0x6d, 0x69, 0x6e, 0x6f, 0x72)
+	o = msgp.AppendUint16(o, z.Min.Minor)
+	// string "patch"
+	o = append(o, 0xa5, 0x70, 0x61, 0x74, 0x63, 0x68)
+	o = msgp.AppendUint16(o, z.Min.Patch)
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *BackendVersion) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "current":
+			var zb0002 uint32
+			zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Current")
+				return
+			}
+			for zb0002 > 0 {
+				zb0002--
+				field, bts, err = msgp.ReadMapKeyZC(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Current")
+					return
+				}
+				switch msgp.UnsafeString(field) {
+				case "major":
+					z.Current.Major, bts, err = msgp.ReadUint16Bytes(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "Current", "Major")
+						return
+					}
+				case "minor":
+					z.Current.Minor, bts, err = msgp.ReadUint16Bytes(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "Current", "Minor")
+						return
+					}
+				case "patch":
+					z.Current.Patch, bts, err = msgp.ReadUint16Bytes(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "Current", "Patch")
+						return
+					}
+				default:
+					bts, err = msgp.Skip(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "Current")
+						return
+					}
+				}
+			}
+		case "max":
+			var zb0003 uint32
+			zb0003, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Max")
+				return
+			}
+			for zb0003 > 0 {
+				zb0003--
+				field, bts, err = msgp.ReadMapKeyZC(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Max")
+					return
+				}
+				switch msgp.UnsafeString(field) {
+				case "major":
+					z.Max.Major, bts, err = msgp.ReadUint16Bytes(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "Max", "Major")
+						return
+					}
+				case "minor":
+					z.Max.Minor, bts, err = msgp.ReadUint16Bytes(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "Max", "Minor")
+						return
+					}
+				case "patch":
+					z.Max.Patch, bts, err = msgp.ReadUint16Bytes(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "Max", "Patch")
+						return
+					}
+				default:
+					bts, err = msgp.Skip(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "Max")
+						return
+					}
+				}
+			}
+		case "min":
+			var zb0004 uint32
+			zb0004, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Min")
+				return
+			}
+			for zb0004 > 0 {
+				zb0004--
+				field, bts, err = msgp.ReadMapKeyZC(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Min")
+					return
+				}
+				switch msgp.UnsafeString(field) {
+				case "major":
+					z.Min.Major, bts, err = msgp.ReadUint16Bytes(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "Min", "Major")
+						return
+					}
+				case "minor":
+					z.Min.Minor, bts, err = msgp.ReadUint16Bytes(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "Min", "Minor")
+						return
+					}
+				case "patch":
+					z.Min.Patch, bts, err = msgp.ReadUint16Bytes(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "Min", "Patch")
+						return
+					}
+				default:
+					bts, err = msgp.Skip(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "Min")
+						return
+					}
+				}
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *BackendVersion) Msgsize() (s int) {
+	s = 1 + 8 + 1 + 6 + msgp.Uint16Size + 6 + msgp.Uint16Size + 6 + msgp.Uint16Size + 4 + 1 + 6 + msgp.Uint16Size + 6 + msgp.Uint16Size + 6 + msgp.Uint16Size + 4 + 1 + 6 + msgp.Uint16Size + 6 + msgp.Uint16Size + 6 + msgp.Uint16Size
 	return
 }
 
@@ -9013,51 +10004,16 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "ILMExpiryInProgress")
 				return
 			}
-		case "backend_version":
-			var zb0006 uint32
-			zb0006, err = dc.ReadMapHeader()
+		case "api_version":
+			err = z.APIVersion.DecodeMsg(dc)
 			if err != nil {
-				err = msgp.WrapError(err, "BackendVersion")
+				err = msgp.WrapError(err, "APIVersion")
 				return
 			}
-			for zb0006 > 0 {
-				zb0006--
-				field, err = dc.ReadMapKeyPtr()
-				if err != nil {
-					err = msgp.WrapError(err, "BackendVersion")
-					return
-				}
-				switch msgp.UnsafeString(field) {
-				case "major":
-					z.BackendVersion.Major, err = dc.ReadUint16()
-					if err != nil {
-						err = msgp.WrapError(err, "BackendVersion", "Major")
-						return
-					}
-				case "minor":
-					z.BackendVersion.Minor, err = dc.ReadUint16()
-					if err != nil {
-						err = msgp.WrapError(err, "BackendVersion", "Minor")
-						return
-					}
-				case "patch":
-					z.BackendVersion.Patch, err = dc.ReadUint16()
-					if err != nil {
-						err = msgp.WrapError(err, "BackendVersion", "Patch")
-						return
-					}
-				default:
-					err = dc.Skip()
-					if err != nil {
-						err = msgp.WrapError(err, "BackendVersion")
-						return
-					}
-				}
-			}
-		case "restarting":
-			z.Restarting, err = dc.ReadBool()
+		case "restarting_since":
+			z.RestartingSince, err = dc.ReadTimeUTC()
 			if err != nil {
-				err = msgp.WrapError(err, "Restarting")
+				err = msgp.WrapError(err, "RestartingSince")
 				return
 			}
 			zb0001Mask |= 0x20000
@@ -9123,7 +10079,7 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 			z.License = nil
 		}
 		if (zb0001Mask & 0x20000) == 0 {
-			z.Restarting = false
+			z.RestartingSince = (time.Time{})
 		}
 	}
 	return
@@ -9203,7 +10159,7 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 		zb0001Len--
 		zb0001Mask |= 0x40000
 	}
-	if z.Restarting == false {
+	if z.RestartingSince == (time.Time{}) {
 		zb0001Len--
 		zb0001Mask |= 0x400000
 	}
@@ -9511,51 +10467,25 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "ILMExpiryInProgress")
 			return
 		}
-		// write "backend_version"
-		err = en.Append(0xaf, 0x62, 0x61, 0x63, 0x6b, 0x65, 0x6e, 0x64, 0x5f, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
+		// write "api_version"
+		err = en.Append(0xab, 0x61, 0x70, 0x69, 0x5f, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
 		if err != nil {
 			return
 		}
-		// map header, size 3
-		// write "major"
-		err = en.Append(0x83, 0xa5, 0x6d, 0x61, 0x6a, 0x6f, 0x72)
+		err = z.APIVersion.EncodeMsg(en)
 		if err != nil {
-			return
-		}
-		err = en.WriteUint16(z.BackendVersion.Major)
-		if err != nil {
-			err = msgp.WrapError(err, "BackendVersion", "Major")
-			return
-		}
-		// write "minor"
-		err = en.Append(0xa5, 0x6d, 0x69, 0x6e, 0x6f, 0x72)
-		if err != nil {
-			return
-		}
-		err = en.WriteUint16(z.BackendVersion.Minor)
-		if err != nil {
-			err = msgp.WrapError(err, "BackendVersion", "Minor")
-			return
-		}
-		// write "patch"
-		err = en.Append(0xa5, 0x70, 0x61, 0x74, 0x63, 0x68)
-		if err != nil {
-			return
-		}
-		err = en.WriteUint16(z.BackendVersion.Patch)
-		if err != nil {
-			err = msgp.WrapError(err, "BackendVersion", "Patch")
+			err = msgp.WrapError(err, "APIVersion")
 			return
 		}
 		if (zb0001Mask & 0x400000) == 0 { // if not omitted
-			// write "restarting"
-			err = en.Append(0xaa, 0x72, 0x65, 0x73, 0x74, 0x61, 0x72, 0x74, 0x69, 0x6e, 0x67)
+			// write "restarting_since"
+			err = en.Append(0xb0, 0x72, 0x65, 0x73, 0x74, 0x61, 0x72, 0x74, 0x69, 0x6e, 0x67, 0x5f, 0x73, 0x69, 0x6e, 0x63, 0x65)
 			if err != nil {
 				return
 			}
-			err = en.WriteBool(z.Restarting)
+			err = en.WriteTime(z.RestartingSince)
 			if err != nil {
-				err = msgp.WrapError(err, "Restarting")
+				err = msgp.WrapError(err, "RestartingSince")
 				return
 			}
 		}
@@ -9638,7 +10568,7 @@ func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x40000
 	}
-	if z.Restarting == false {
+	if z.RestartingSince == (time.Time{}) {
 		zb0001Len--
 		zb0001Mask |= 0x400000
 	}
@@ -9782,22 +10712,17 @@ func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "ilm_expiry_in_progress"
 		o = append(o, 0xb6, 0x69, 0x6c, 0x6d, 0x5f, 0x65, 0x78, 0x70, 0x69, 0x72, 0x79, 0x5f, 0x69, 0x6e, 0x5f, 0x70, 0x72, 0x6f, 0x67, 0x72, 0x65, 0x73, 0x73)
 		o = msgp.AppendBool(o, z.ILMExpiryInProgress)
-		// string "backend_version"
-		o = append(o, 0xaf, 0x62, 0x61, 0x63, 0x6b, 0x65, 0x6e, 0x64, 0x5f, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
-		// map header, size 3
-		// string "major"
-		o = append(o, 0x83, 0xa5, 0x6d, 0x61, 0x6a, 0x6f, 0x72)
-		o = msgp.AppendUint16(o, z.BackendVersion.Major)
-		// string "minor"
-		o = append(o, 0xa5, 0x6d, 0x69, 0x6e, 0x6f, 0x72)
-		o = msgp.AppendUint16(o, z.BackendVersion.Minor)
-		// string "patch"
-		o = append(o, 0xa5, 0x70, 0x61, 0x74, 0x63, 0x68)
-		o = msgp.AppendUint16(o, z.BackendVersion.Patch)
+		// string "api_version"
+		o = append(o, 0xab, 0x61, 0x70, 0x69, 0x5f, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
+		o, err = z.APIVersion.MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "APIVersion")
+			return
+		}
 		if (zb0001Mask & 0x400000) == 0 { // if not omitted
-			// string "restarting"
-			o = append(o, 0xaa, 0x72, 0x65, 0x73, 0x74, 0x61, 0x72, 0x74, 0x69, 0x6e, 0x67)
-			o = msgp.AppendBool(o, z.Restarting)
+			// string "restarting_since"
+			o = append(o, 0xb0, 0x72, 0x65, 0x73, 0x74, 0x61, 0x72, 0x74, 0x69, 0x6e, 0x67, 0x5f, 0x73, 0x69, 0x6e, 0x63, 0x65)
+			o = msgp.AppendTime(o, z.RestartingSince)
 		}
 	}
 	return
@@ -10058,51 +10983,16 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "ILMExpiryInProgress")
 				return
 			}
-		case "backend_version":
-			var zb0006 uint32
-			zb0006, bts, err = msgp.ReadMapHeaderBytes(bts)
+		case "api_version":
+			bts, err = z.APIVersion.UnmarshalMsg(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "BackendVersion")
+				err = msgp.WrapError(err, "APIVersion")
 				return
 			}
-			for zb0006 > 0 {
-				zb0006--
-				field, bts, err = msgp.ReadMapKeyZC(bts)
-				if err != nil {
-					err = msgp.WrapError(err, "BackendVersion")
-					return
-				}
-				switch msgp.UnsafeString(field) {
-				case "major":
-					z.BackendVersion.Major, bts, err = msgp.ReadUint16Bytes(bts)
-					if err != nil {
-						err = msgp.WrapError(err, "BackendVersion", "Major")
-						return
-					}
-				case "minor":
-					z.BackendVersion.Minor, bts, err = msgp.ReadUint16Bytes(bts)
-					if err != nil {
-						err = msgp.WrapError(err, "BackendVersion", "Minor")
-						return
-					}
-				case "patch":
-					z.BackendVersion.Patch, bts, err = msgp.ReadUint16Bytes(bts)
-					if err != nil {
-						err = msgp.WrapError(err, "BackendVersion", "Patch")
-						return
-					}
-				default:
-					bts, err = msgp.Skip(bts)
-					if err != nil {
-						err = msgp.WrapError(err, "BackendVersion")
-						return
-					}
-				}
-			}
-		case "restarting":
-			z.Restarting, bts, err = msgp.ReadBoolBytes(bts)
+		case "restarting_since":
+			z.RestartingSince, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "Restarting")
+				err = msgp.WrapError(err, "RestartingSince")
 				return
 			}
 			zb0001Mask |= 0x20000
@@ -10168,7 +11058,7 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.License = nil
 		}
 		if (zb0001Mask & 0x20000) == 0 {
-			z.Restarting = false
+			z.RestartingSince = (time.Time{})
 		}
 	}
 	o = bts
@@ -10207,7 +11097,7 @@ func (z *ServerProperties) Msgsize() (s int) {
 	} else {
 		s += z.License.Msgsize()
 	}
-	s += 10 + msgp.BoolSize + 23 + msgp.BoolSize + 16 + 1 + 6 + msgp.Uint16Size + 6 + msgp.Uint16Size + 6 + msgp.Uint16Size + 11 + msgp.BoolSize
+	s += 10 + msgp.BoolSize + 23 + msgp.BoolSize + 12 + z.APIVersion.Msgsize() + 17 + msgp.TimeSize
 	return
 }
 

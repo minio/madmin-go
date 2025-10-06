@@ -25,6 +25,7 @@ import (
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 )
 
 // ServerPeerUpdateStatus server update peer binary update result
@@ -40,7 +41,6 @@ type ServerPeerUpdateStatus struct {
 type ServerUpdateStatus struct {
 	DryRun  bool                     `json:"dryRun"`
 	Results []ServerPeerUpdateStatus `json:"results,omitempty"`
-	Async   bool                     `json:"async"`
 
 	Error string `json:"error,omitempty"`
 }
@@ -50,10 +50,10 @@ type ServerUpdateStatus struct {
 // run it as many times as you want and any server that is not upgraded
 // automatically does get upgraded eventually to the relevant version.
 type ServerUpdateOpts struct {
-	UpdateURL string
-	DryRun    bool
-	Force     bool
-	ByNode    bool
+	UpdateURL    string
+	DryRun       bool
+	GracefulWait time.Duration
+	ByNode       bool
 }
 
 // ServerUpdate - updates and restarts the MinIO cluster to latest version.
@@ -63,7 +63,7 @@ func (adm *AdminClient) ServerUpdate(ctx context.Context, opts ServerUpdateOpts)
 	queryValues.Set("type", "2")
 	queryValues.Set("updateURL", opts.UpdateURL)
 	queryValues.Set("dry-run", strconv.FormatBool(opts.DryRun))
-	queryValues.Set("force", strconv.FormatBool(opts.Force))
+	queryValues.Set("wait", strconv.FormatInt(int64(opts.GracefulWait), 10))
 	queryValues.Set("by-node", strconv.FormatBool(opts.ByNode))
 
 	// Request API to Restart server
