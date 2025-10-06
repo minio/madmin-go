@@ -30,10 +30,8 @@ import (
 	"time"
 )
 
-//msgp:clearomitted
 //msgp:tag json
-//msgp:timezone utc
-//go:generate msgp -file $GOFILE
+//go:generate msgp -d clearomitted -d "timezone utc" -file $GOFILE
 
 // HealScanMode represents the type of healing scan
 type HealScanMode int
@@ -169,7 +167,7 @@ type HealResultItem struct {
 // and after heal
 func (hri *HealResultItem) GetMissingCounts() (b, a int) {
 	if hri == nil {
-		return
+		return b, a
 	}
 	for _, v := range hri.Before.Drives {
 		if v.State == DriveStateMissing {
@@ -181,14 +179,14 @@ func (hri *HealResultItem) GetMissingCounts() (b, a int) {
 			a++
 		}
 	}
-	return
+	return b, a
 }
 
 // GetOfflineCounts - returns the number of offline disks before
 // and after heal
 func (hri *HealResultItem) GetOfflineCounts() (b, a int) {
 	if hri == nil {
-		return
+		return b, a
 	}
 	for _, v := range hri.Before.Drives {
 		if v.State == DriveStateOffline {
@@ -200,14 +198,14 @@ func (hri *HealResultItem) GetOfflineCounts() (b, a int) {
 			a++
 		}
 	}
-	return
+	return b, a
 }
 
 // GetCorruptedCounts - returns the number of corrupted disks before
 // and after heal
 func (hri *HealResultItem) GetCorruptedCounts() (b, a int) {
 	if hri == nil {
-		return
+		return b, a
 	}
 	for _, v := range hri.Before.Drives {
 		if v.State == DriveStateCorrupt {
@@ -219,14 +217,14 @@ func (hri *HealResultItem) GetCorruptedCounts() (b, a int) {
 			a++
 		}
 	}
-	return
+	return b, a
 }
 
 // GetOnlineCounts - returns the number of online disks before
 // and after heal
 func (hri *HealResultItem) GetOnlineCounts() (b, a int) {
 	if hri == nil {
-		return
+		return b, a
 	}
 	for _, v := range hri.Before.Drives {
 		if v.State == DriveStateOk {
@@ -238,7 +236,7 @@ func (hri *HealResultItem) GetOnlineCounts() (b, a int) {
 			a++
 		}
 	}
-	return
+	return b, a
 }
 
 // Heal - API endpoint to start heal and to fetch status

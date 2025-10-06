@@ -53,6 +53,12 @@ func (adm *AdminClient) ServiceUnfreeze(ctx context.Context) error {
 	return err
 }
 
+// ServiceCancelRestart - cancels an ongoing restart in a cluster
+func (adm *AdminClient) ServiceCancelRestart(ctx context.Context) error {
+	_, err := adm.serviceCallAction(ctx, ServiceActionOpts{Action: ServiceActionCancelRestart})
+	return err
+}
+
 // ServiceAction - type to restrict service-action values
 type ServiceAction string
 
@@ -65,6 +71,8 @@ const (
 	ServiceActionFreeze = "freeze"
 	// ServiceActionUnfreeze represents unfreeze a previous freeze action
 	ServiceActionUnfreeze = "unfreeze"
+	// ServiceActionCancelRestart represents cancelling of an ongoing restart operation
+	ServiceActionCancelRestart ServiceAction = "cancel-restart"
 )
 
 // ServiceActionOpts specifies the action that the service is requested
@@ -72,7 +80,10 @@ const (
 // that server must make best effort to restart the process.
 type ServiceActionOpts struct {
 	Action ServiceAction
+	Force  bool
 	DryRun bool
+
+	ByNode bool
 }
 
 // ServiceActionPeerResult service peer result
@@ -86,6 +97,7 @@ type ServiceActionPeerResult struct {
 type ServiceActionResult struct {
 	Action  ServiceAction             `json:"action"`
 	DryRun  bool                      `json:"dryRun"`
+	Async   bool                      `json:"async"`
 	Results []ServiceActionPeerResult `json:"results,omitempty"`
 }
 
@@ -99,6 +111,8 @@ func (adm *AdminClient) serviceCallAction(ctx context.Context, opts ServiceActio
 	queryValues := url.Values{}
 	queryValues.Set("action", string(opts.Action))
 	queryValues.Set("dry-run", strconv.FormatBool(opts.DryRun))
+	queryValues.Set("force", strconv.FormatBool(opts.Force))
+	queryValues.Set("by-node", strconv.FormatBool(opts.ByNode))
 	queryValues.Set("type", "2")
 
 	// Request API to Restart server

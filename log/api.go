@@ -23,11 +23,8 @@ import (
 	"time"
 )
 
-//msgp:clearomitted
-//msgp:timezone utc
 //msgp:tag json
-
-//go:generate msgp $GOFILE
+//go:generate msgp -d clearomitted -d "timezone utc" $GOFILE
 
 //msgp:replace Origin with:string
 

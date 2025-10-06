@@ -39,10 +39,7 @@ import (
 	"github.com/tinylib/msgp/msgp"
 )
 
-//msgp:clearomitted
-//msgp:tag json
-//msgp:timezone utc
-//go:generate msgp -unexported -file $GOFILE
+//go:generate msgp -unexported -d clearomitted -d "tag json" -d "timezone utc" -d "maps binkeys" -file $GOFILE
 
 // MetricType is a bitfield representation of different metric types.
 type MetricType uint32
@@ -81,6 +78,7 @@ const (
 	MetricsByHost                                 // Aggregate metrics by host/node.
 	MetricsByDisk                                 // Aggregate metrics by disk.
 	MetricsLegacyDiskIO                           // Add legacy disk IO metrics.
+	MetricsByDiskSet                              // Aggregate metrics by disk pool+set index.
 )
 
 // Contains returns whether m contains all of x.
@@ -229,6 +227,9 @@ type RealtimeMetrics struct {
 	// ByDisk contains metrics for each disk if requested.
 	ByDisk map[string]DiskMetric `json:"by_disk,omitempty"`
 
+	// ByDiskSet contains disk metrics aggregated by pool+set index.
+	ByDiskSet map[int]map[int]DiskMetric `json:"by_disk_set,omitempty"`
+
 	// Final indicates whether this is the final packet and the receiver can exit.
 	Final bool `json:"final"`
 }
@@ -322,6 +323,21 @@ func (r *RealtimeMetrics) Merge(other *RealtimeMetrics) {
 	}
 	for disk, metrics := range other.ByDisk {
 		r.ByDisk[disk] = metrics
+	}
+	if r.ByDiskSet == nil && len(other.ByDiskSet) > 0 {
+		r.ByDiskSet = make(map[int]map[int]DiskMetric, len(other.ByDisk))
+	}
+	for pIdx, pool := range other.ByDiskSet {
+		dstp := r.ByDiskSet[pIdx]
+		if dstp == nil {
+			dstp = make(map[int]DiskMetric, len(pool))
+			r.ByDiskSet[pIdx] = dstp
+		}
+		for sIdx, disks := range pool {
+			dsts := dstp[sIdx]
+			dsts.Merge(&disks)
+			dstp[sIdx] = dsts
+		}
 	}
 }
 
@@ -530,6 +546,10 @@ type DiskMetric struct {
 	// PoolIdx will be populated if all disks in the metrics are part of the same pool.
 	PoolIdx *int `json:"pool_idx,omitempty"`
 
+	// Disk states for non-ok disks.
+	// See madmin.DriveState for possible values.
+	State map[string]int `json:"state,omitempty"`
+
 	// Offline disks
 	Offline int `json:"offline,omitempty"`
 
@@ -632,6 +652,14 @@ func (d *DiskMetric) Merge(other *DiskMetric) {
 		d.DiskIdx = other.DiskIdx
 	} else if other.DiskIdx == nil || d.DiskIdx != nil && other.DiskIdx != nil && *d.DiskIdx != *other.DiskIdx || d.SetIdx == nil {
 		d.DiskIdx = nil
+	}
+	if len(other.State) > 0 {
+		if d.State == nil {
+			d.State = make(map[string]int, len(other.State))
+		}
+		for k, v := range other.State {
+			d.State[k] = d.State[k] + v
+		}
 	}
 	d.NDisks += other.NDisks
 	d.Offline += other.Offline
@@ -1151,10 +1179,12 @@ type APIStats struct {
 	Canceled      int64      `json:"canceled,omitempty"`      // Requests that were canceled before they finished processing.
 
 	// Request times
-	RequestTimeSecs float64 `json:"requestTimeSecs,omitempty"` // Total request time.
-	ReqReadSecs     float64 `json:"reqReadSecs,omitempty"`     // Total time spent on request reads in seconds.
-	RespSecs        float64 `json:"respSecs,omitempty"`        // Total time spent on responses in seconds.
-	RespTTFBSecs    float64 `json:"respTtfbSecs,omitempty"`    // Total time spent on TTFB (req read -> response first byte) in seconds.
+	RequestTimeSecs  float64 `json:"requestTimeSecs,omitempty"` // Total request time.
+	ReqReadSecs      float64 `json:"reqReadSecs,omitempty"`     // Total time spent on request reads in seconds.
+	RespSecs         float64 `json:"respSecs,omitempty"`        // Total time spent on responses in seconds.
+	RespTTFBSecs     float64 `json:"respTtfbSecs,omitempty"`    // Total time spent on TTFB (req read -> response first byte) in seconds.
+	ReadBlockedSecs  float64 `json:"readBlocked,omitempty"`     // Time spent waiting for reads from client.
+	WriteBlockedSecs float64 `json:"writeBlocked,omitempty"`    // Time spent waiting for writes to client.
 
 	// Request times min/max
 	RequestTimeSecsMin float64 `json:"requestTimeSecsMin,omitempty"` // Min request time.
@@ -1217,6 +1247,8 @@ func (a *APIStats) Merge(other APIStats) {
 	a.Rejected.Header += other.Rejected.Header
 	a.Rejected.Invalid += other.Rejected.Invalid
 	a.Rejected.NotImplemented += other.Rejected.NotImplemented
+	a.ReadBlockedSecs += other.ReadBlockedSecs
+	a.WriteBlockedSecs += other.WriteBlockedSecs
 
 	if a.Requests == 0 && other.Requests == 0 {
 		return

@@ -1,4 +1,3 @@
-//
 // Copyright (c) 2015-2025 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
@@ -25,10 +24,8 @@ import (
 	"time"
 )
 
-//msgp:clearomitted
 //msgp:tag json
-//msgp:timezone utc
-//go:generate msgp
+//go:generate msgp -d clearomitted -d "timezone utc"
 
 // BucketTargets represents a slice of bucket targets by type and endpoint
 type BucketTargets struct {

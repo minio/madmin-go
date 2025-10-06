@@ -22,10 +22,8 @@ package madmin
 // Provide msgp for external types.
 // If updating packages breaks this, update structs below.
 
-//msgp:clearomitted
 //msgp:tag json
-//msgp:timezone utc
-//go:generate msgp -unexported -file $GOFILE
+//go:generate msgp -d clearomitted -d "timezone utc" -unexported -file $GOFILE
 
 type cpuTimesStat struct {
 	CPU       string  `json:"cpu"`

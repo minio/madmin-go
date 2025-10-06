@@ -1012,7 +1012,7 @@ func (i IAMCacheAnalysis) HasReplicationEntities() bool {
 // IAMEntityReport returns statistics about IAM cache entities
 func (adm *AdminClient) IAMEntityReport(ctx context.Context) (IAMCacheAnalysis, error) {
 	reqData := requestData{
-		relPath: "/minio/admin/v3/iam-entity-report",
+		relPath: adminAPIPrefix + "/iam-entity-report",
 	}
 
 	// Execute GET on /minio/admin/v3/iam-entity-report

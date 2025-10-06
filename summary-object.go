@@ -28,8 +28,7 @@ import (
 	"github.com/tinylib/msgp/msgp"
 )
 
-//msgp:timezone utc
-//go:generate msgp -unexported -file=$GOFILE
+//go:generate msgp -d clearomitted -d "timezone utc" -unexported -file=$GOFILE
 
 // ObjectSummaryOptions provides options for ObjectSummary call.
 type ObjectSummaryOptions struct {
@@ -76,7 +75,7 @@ func (adm *AdminClient) ObjectSummary(ctx context.Context, objOpts ObjectSummary
 		return nil, err
 	}
 
-	return
+	return objectSummary, err
 }
 
 // ObjectMetaSummary is returned from minio when calling ObjectSummary

@@ -31,10 +31,8 @@ import (
 	"github.com/tinylib/msgp/msgp"
 )
 
-//msgp:clearomitted
 //msgp:tag json
-//msgp:timezone utc
-//go:generate msgp -file $GOFILE
+//go:generate msgp -d clearomitted -d "timezone utc" -file $GOFILE
 
 // ClusterInfo cluster level information
 type ClusterInfo struct {
@@ -390,5 +388,5 @@ func (adm *AdminClient) NodeInfo(ctx context.Context, hostname string, options .
 		}
 	}
 
-	return
+	return node, err
 }

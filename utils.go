@@ -31,10 +31,8 @@ import (
 	"github.com/minio/minio-go/v7/pkg/s3utils"
 )
 
-//msgp:clearomitted
 //msgp:tag json
-//msgp:timezone utc
-//go:generate msgp -file $GOFILE
+//go:generate msgp -d clearomitted -d "timezone utc" -file $GOFILE
 
 var (
 	// MinIO only supports last two versions

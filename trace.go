@@ -74,6 +74,8 @@ const (
 	TraceReplication
 	// TraceIAM will trace Identity and Access Management
 	TraceIAM
+	// TraceTables will trace table operations
+	TraceTables
 	// Add more here...
 
 	// TraceAll contains all valid trace modes.
@@ -171,6 +173,8 @@ type TraceCallStats struct {
 	InputBytes      int           `json:"inputbytes"`
 	OutputBytes     int           `json:"outputbytes"`
 	TimeToFirstByte time.Duration `json:"timetofirstbyte"`
+	ReadBlocked     time.Duration `json:"readBlocked"`
+	WriteBlocked    time.Duration `json:"writeBlocked"`
 }
 
 // TraceRequestInfo represents trace of http request

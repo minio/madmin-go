@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2024 MinIO, Inc.
+// Copyright (c) 2015-2025 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -28,10 +28,8 @@ import (
 	"time"
 )
 
-//msgp:clearomitted
 //msgp:tag json
-//msgp:timezone utc
-//go:generate msgp -file $GOFILE
+//go:generate msgp -d clearomitted -d "timezone utc" -file $GOFILE
 
 // BackendType - represents different backend types.
 type BackendType int
@@ -60,6 +58,10 @@ const (
 	ItemInitializing = ItemState("initializing")
 	// ItemOnline indicates that the item is online
 	ItemOnline = ItemState("online")
+	// ItemRestarting indicates that the item is restarting
+	ItemRestarting = ItemState("restarting")
+	// ItemCordoned indicates that the item is cordoned
+	ItemCordoned = ItemState("cordoned")
 )
 
 // StorageInfo - represents total capacity of underlying storage.
@@ -256,19 +258,20 @@ type ErasureSetInfo struct {
 
 // InfoMessage container to hold server admin related information.
 type InfoMessage struct {
-	Mode          string             `json:"mode,omitempty"`
-	Domain        []string           `json:"domain,omitempty"`
-	Region        string             `json:"region,omitempty"`
-	SQSARN        []string           `json:"sqsARN,omitempty"`
-	DeploymentID  string             `json:"deploymentID,omitempty"`
-	Buckets       Buckets            `json:"buckets,omitempty"`
-	Objects       Objects            `json:"objects,omitempty"`
-	Versions      Versions           `json:"versions,omitempty"`
-	DeleteMarkers DeleteMarkers      `json:"deletemarkers,omitempty"`
-	Usage         Usage              `json:"usage,omitempty"`
-	Services      Services           `json:"services,omitempty"`
-	Backend       ErasureBackend     `json:"backend,omitempty"`
-	Servers       []ServerProperties `json:"servers,omitempty"`
+	Mode             string             `json:"mode,omitempty"`
+	Domain           []string           `json:"domain,omitempty"`
+	Region           string             `json:"region,omitempty"`
+	SQSARN           []string           `json:"sqsARN,omitempty"`
+	DeploymentID     string             `json:"deploymentID,omitempty"`
+	ObjectNamingMode string             `json:"objectNamingMode,omitempty"`
+	Buckets          Buckets            `json:"buckets,omitempty"`
+	Objects          Objects            `json:"objects,omitempty"`
+	Versions         Versions           `json:"versions,omitempty"`
+	DeleteMarkers    DeleteMarkers      `json:"deletemarkers,omitempty"`
+	Usage            Usage              `json:"usage,omitempty"`
+	Services         Services           `json:"services,omitempty"`
+	Backend          ErasureBackend     `json:"backend,omitempty"`
+	Servers          []ServerProperties `json:"servers,omitempty"`
 
 	Pools map[int]map[int]ErasureSetInfo `json:"pools,omitempty"`
 }
@@ -420,6 +423,13 @@ type ErasureBackend struct {
 	DrivesPerSet []int `json:"totalDrivesPerSet"`
 }
 
+// Version represents a semantic version
+type Version struct {
+	Major uint16 `json:"major"`
+	Minor uint16 `json:"minor"`
+	Patch uint16 `json:"patch"`
+}
+
 // ServerProperties holds server information
 type ServerProperties struct {
 	State               string            `json:"state,omitempty"`
@@ -443,6 +453,8 @@ type ServerProperties struct {
 	License             *LicenseInfo      `json:"license,omitempty"`
 	IsLeader            bool              `json:"is_leader"`
 	ILMExpiryInProgress bool              `json:"ilm_expiry_in_progress"`
+	BackendVersion      Version           `json:"backend_version"`
+	Restarting          bool              `json:"restarting,omitempty"`
 }
 
 // MemStats is strip down version of runtime.MemStats containing memory stats of MinIO server.
@@ -545,13 +557,21 @@ type Disk struct {
 
 // ServerInfoOpts ask for additional data from the server
 type ServerInfoOpts struct {
-	Metrics bool
+	Uncached bool
+	Metrics  bool
 }
 
 // WithDriveMetrics asks server to return additional metrics per drive
 func WithDriveMetrics(metrics bool) func(*ServerInfoOpts) {
 	return func(opts *ServerInfoOpts) {
 		opts.Metrics = metrics
+	}
+}
+
+// Uncached forces the server to not use any cached server information
+func Uncached() func(*ServerInfoOpts) {
+	return func(opts *ServerInfoOpts) {
+		opts.Uncached = true
 	}
 }
 
@@ -566,6 +586,7 @@ func (adm *AdminClient) ServerInfo(ctx context.Context, options ...func(*ServerI
 
 	values := make(url.Values)
 	values.Set("metrics", strconv.FormatBool(srvOpts.Metrics))
+	values.Set("no-cache", strconv.FormatBool(srvOpts.Uncached))
 
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
