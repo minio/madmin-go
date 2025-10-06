@@ -80,10 +80,10 @@ const (
 // that server must make best effort to restart the process.
 type ServiceActionOpts struct {
 	Action ServiceAction
-	Force  bool
 	DryRun bool
 
-	ByNode bool
+	GracefulWait time.Duration
+	ByNode       bool
 }
 
 // ServiceActionPeerResult service peer result
@@ -97,7 +97,6 @@ type ServiceActionPeerResult struct {
 type ServiceActionResult struct {
 	Action  ServiceAction             `json:"action"`
 	DryRun  bool                      `json:"dryRun"`
-	Async   bool                      `json:"async"`
 	Results []ServiceActionPeerResult `json:"results,omitempty"`
 }
 
@@ -111,7 +110,7 @@ func (adm *AdminClient) serviceCallAction(ctx context.Context, opts ServiceActio
 	queryValues := url.Values{}
 	queryValues.Set("action", string(opts.Action))
 	queryValues.Set("dry-run", strconv.FormatBool(opts.DryRun))
-	queryValues.Set("force", strconv.FormatBool(opts.Force))
+	queryValues.Set("wait", strconv.FormatInt(int64(opts.GracefulWait), 10))
 	queryValues.Set("by-node", strconv.FormatBool(opts.ByNode))
 	queryValues.Set("type", "2")
 

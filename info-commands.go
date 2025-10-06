@@ -430,6 +430,18 @@ type Version struct {
 	Patch uint16 `json:"patch"`
 }
 
+// BackendVersion holds current/min/max version
+type BackendVersion struct {
+	Current Version `json:"current"`
+	Max     Version `json:"max"`
+	Min     Version `json:"min"`
+}
+
+// APIVersion holds backend version information
+type APIVersion struct {
+	Backend BackendVersion `json:"backend"`
+}
+
 // ServerProperties holds server information
 type ServerProperties struct {
 	State               string            `json:"state,omitempty"`
@@ -453,8 +465,9 @@ type ServerProperties struct {
 	License             *LicenseInfo      `json:"license,omitempty"`
 	IsLeader            bool              `json:"is_leader"`
 	ILMExpiryInProgress bool              `json:"ilm_expiry_in_progress"`
-	BackendVersion      Version           `json:"backend_version"`
-	Restarting          bool              `json:"restarting,omitempty"`
+
+	APIVersion      APIVersion `json:"api_version"`
+	RestartingSince time.Time  `json:"restarting_since,omitempty"`
 }
 
 // MemStats is strip down version of runtime.MemStats containing memory stats of MinIO server.
