@@ -447,6 +447,185 @@ func BenchmarkSortSlice_NestedString(b *testing.B) {
 	}
 }
 
+func TestSortSlice_CaseInsensitive(t *testing.T) {
+	// Test various case variations of field names
+	items := []Outer{
+		{ID: 3, Inner: Inner{Name: "Charlie", Score: 30}},
+		{ID: 1, Inner: Inner{Name: "Alice", Score: 10}},
+		{ID: 2, Inner: Inner{Name: "Bob", Score: 20}},
+	}
+
+	testCases := []struct {
+		name     string
+		field    string
+		reversed bool
+		wantIDs  []int
+		wantDesc string
+	}{
+		// Test different case variations for "ID"
+		{"lowercase id", "id", false, []int{1, 2, 3}, "sort by lowercase 'id'"},
+		{"uppercase ID", "ID", false, []int{1, 2, 3}, "sort by uppercase 'ID'"},
+		{"mixed case Id", "Id", false, []int{1, 2, 3}, "sort by mixed case 'Id'"},
+		{"mixed case iD", "iD", false, []int{1, 2, 3}, "sort by mixed case 'iD'"},
+
+		// Test nested field with different cases
+		{"lowercase inner.name", "inner.name", false, []int{1, 2, 3}, "sort by lowercase nested field"},
+		{"uppercase INNER.NAME", "INNER.NAME", false, []int{1, 2, 3}, "sort by uppercase nested field"},
+		{"mixed Inner.Name", "Inner.Name", false, []int{1, 2, 3}, "sort by mixed case nested field"},
+		{"mixed InNeR.NaMe", "InNeR.NaMe", false, []int{1, 2, 3}, "sort by mixed case nested field"},
+
+		// Test with score field
+		{"lowercase inner.score", "inner.score", false, []int{1, 2, 3}, "sort by lowercase score"},
+		{"uppercase INNER.SCORE", "INNER.SCORE", false, []int{1, 2, 3}, "sort by uppercase score"},
+		{"mixed Inner.Score", "Inner.Score", false, []int{1, 2, 3}, "sort by mixed case score"},
+
+		// Test reversed sorting with case variations
+		{"reverse lowercase id", "id", true, []int{3, 2, 1}, "reverse sort by lowercase 'id'"},
+		{"reverse uppercase ID", "ID", true, []int{3, 2, 1}, "reverse sort by uppercase 'ID'"},
+		{"reverse mixed Inner.Score", "inner.SCORE", true, []int{3, 2, 1}, "reverse sort by mixed case score"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Make a fresh copy for each test
+			testItems := make([]Outer, len(items))
+			copy(testItems, items)
+
+			SortSlice(testItems, tc.field, tc.reversed)
+
+			gotIDs := make([]int, len(testItems))
+			for i, item := range testItems {
+				gotIDs[i] = item.ID
+			}
+
+			if !reflect.DeepEqual(gotIDs, tc.wantIDs) {
+				t.Errorf("%s: got IDs %v, want %v", tc.wantDesc, gotIDs, tc.wantIDs)
+			}
+		})
+	}
+}
+
+func TestSortSlice_CaseInsensitiveComplexFields(t *testing.T) {
+	// Test with more complex field names like Count and Price
+	items := []Outer{
+		{ID: 1, Count: 100, Price: 19.99},
+		{ID: 2, Count: 50, Price: 9.99},
+		{ID: 3, Count: 200, Price: 29.99},
+	}
+
+	testCases := []struct {
+		name    string
+		field   string
+		wantIDs []int
+	}{
+		{"lowercase count", "count", []int{2, 1, 3}},
+		{"uppercase COUNT", "COUNT", []int{2, 1, 3}},
+		{"mixed Count", "Count", []int{2, 1, 3}},
+		{"mixed CoUnT", "CoUnT", []int{2, 1, 3}},
+
+		{"lowercase price", "price", []int{2, 1, 3}},
+		{"uppercase PRICE", "PRICE", []int{2, 1, 3}},
+		{"mixed Price", "Price", []int{2, 1, 3}},
+		{"mixed PrIcE", "PrIcE", []int{2, 1, 3}},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			testItems := make([]Outer, len(items))
+			copy(testItems, items)
+
+			SortSlice(testItems, tc.field, false)
+
+			gotIDs := make([]int, len(testItems))
+			for i, item := range testItems {
+				gotIDs[i] = item.ID
+			}
+
+			if !reflect.DeepEqual(gotIDs, tc.wantIDs) {
+				t.Errorf("field %s: got IDs %v, want %v", tc.field, gotIDs, tc.wantIDs)
+			}
+		})
+	}
+}
+
+func TestSortSlice_CaseInsensitiveWithPointers(t *testing.T) {
+	// Test case insensitive with pointer fields
+	inner1 := &Inner{Score: 10, Name: "alpha"}
+	inner2 := &Inner{Score: 5, Name: "beta"}
+	inner3 := &Inner{Score: 20, Name: "gamma"}
+
+	items := []Outer{
+		{ID: 1, InnerPtr: inner1},
+		{ID: 2, InnerPtr: inner2},
+		{ID: 3, InnerPtr: inner3},
+	}
+
+	testCases := []struct {
+		name    string
+		field   string
+		wantIDs []int
+	}{
+		{"lowercase innerptr.score", "innerptr.score", []int{2, 1, 3}},
+		{"uppercase INNERPTR.SCORE", "INNERPTR.SCORE", []int{2, 1, 3}},
+		{"mixed InnerPtr.Score", "InnerPtr.Score", []int{2, 1, 3}},
+		{"mixed iNnErPtR.sCoRe", "iNnErPtR.sCoRe", []int{2, 1, 3}},
+
+		{"lowercase innerptr.name", "innerptr.name", []int{1, 2, 3}},
+		{"uppercase INNERPTR.NAME", "INNERPTR.NAME", []int{1, 2, 3}},
+		{"mixed InnerPtr.Name", "InnerPtr.Name", []int{1, 2, 3}},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			testItems := make([]Outer, len(items))
+			copy(testItems, items)
+
+			SortSlice(testItems, tc.field, false)
+
+			gotIDs := make([]int, len(testItems))
+			for i, item := range testItems {
+				gotIDs[i] = item.ID
+			}
+
+			if !reflect.DeepEqual(gotIDs, tc.wantIDs) {
+				t.Errorf("field %s: got IDs %v, want %v", tc.field, gotIDs, tc.wantIDs)
+			}
+		})
+	}
+}
+
+func TestSortSlice_CaseInsensitiveNonExistent(t *testing.T) {
+	// Test that non-existent fields still don't sort regardless of case
+	orig := []Outer{
+		{ID: 3, Inner: Inner{Name: "c"}},
+		{ID: 1, Inner: Inner{Name: "a"}},
+		{ID: 2, Inner: Inner{Name: "b"}},
+	}
+
+	testCases := []string{
+		"nonexistent",
+		"NONEXISTENT",
+		"NonExistent",
+		"NoNeXiStEnT",
+		"inner.nonexistent",
+		"INNER.NONEXISTENT",
+		"Inner.NonExistent",
+		"InNeR.NoNeXiStEnT",
+	}
+
+	for _, field := range testCases {
+		t.Run(field, func(t *testing.T) {
+			items := slices.Clone(orig)
+			SortSlice(items, field, false)
+
+			// Should maintain original order for non-existent fields
+			if !reflect.DeepEqual(items, orig) {
+				t.Errorf("non-existent field %s should keep original order, got %v, want %v", field, items, orig)
+			}
+		})
+	}
+}
+
 func BenchmarkSortSlice_AlreadySorted(b *testing.B) {
 	orig := make([]Outer, 100)
 	for i := range orig {
@@ -458,4 +637,51 @@ func BenchmarkSortSlice_AlreadySorted(b *testing.B) {
 		copy(items, orig)
 		SortSlice(items, "ID", false)
 	}
+}
+
+func BenchmarkSortSlice_CaseInsensitive(b *testing.B) {
+	orig := make([]Outer, 100)
+	for i := range orig {
+		orig[i] = Outer{ID: 100 - i, Inner: Inner{Score: 100 - i}}
+	}
+
+	b.Run("lowercase", func(b *testing.B) {
+		for b.Loop() {
+			items := make([]Outer, len(orig))
+			copy(items, orig)
+			SortSlice(items, "id", false)
+		}
+	})
+
+	b.Run("uppercase", func(b *testing.B) {
+		for b.Loop() {
+			items := make([]Outer, len(orig))
+			copy(items, orig)
+			SortSlice(items, "ID", false)
+		}
+	})
+
+	b.Run("mixed", func(b *testing.B) {
+		for b.Loop() {
+			items := make([]Outer, len(orig))
+			copy(items, orig)
+			SortSlice(items, "iD", false)
+		}
+	})
+
+	b.Run("nested_lowercase", func(b *testing.B) {
+		for b.Loop() {
+			items := make([]Outer, len(orig))
+			copy(items, orig)
+			SortSlice(items, "inner.score", false)
+		}
+	})
+
+	b.Run("nested_mixed", func(b *testing.B) {
+		for b.Loop() {
+			items := make([]Outer, len(orig))
+			copy(items, orig)
+			SortSlice(items, "InNeR.sCoRe", false)
+		}
+	})
 }
