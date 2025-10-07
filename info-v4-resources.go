@@ -683,9 +683,26 @@ func SortSlice[T any](slice []T, field string, reversed bool) {
 		return
 	}
 
+	// findFieldByNameCaseInsensitive performs a case-insensitive field lookup
+	findFieldByNameCaseInsensitive := func(v reflect.Value, name string) reflect.Value {
+		if v.Kind() != reflect.Struct {
+			return reflect.Value{}
+		}
+		typ := v.Type()
+		nameLower := strings.ToLower(name)
+		for i := 0; i < typ.NumField(); i++ {
+			field := typ.Field(i)
+			if strings.ToLower(field.Name) == nameLower {
+				return v.Field(i)
+			}
+		}
+		return reflect.Value{}
+	}
+
 	// Resolve a dotted field path on a value. Pointers are dereferenced.
 	// Returns an invalid Value if the path cannot be fully resolved,
 	// or if a nil pointer is encountered before reaching the final field.
+	// Field lookups are case-insensitive.
 	getFieldByPath := func(v reflect.Value, parts []string) reflect.Value {
 		// Unwrap pointers at the start.
 		for v.Kind() == reflect.Ptr {
@@ -698,7 +715,7 @@ func SortSlice[T any](slice []T, field string, reversed bool) {
 			if v.Kind() != reflect.Struct {
 				return reflect.Value{}
 			}
-			f := v.FieldByName(name)
+			f := findFieldByNameCaseInsensitive(v, name)
 			if !f.IsValid() {
 				return reflect.Value{}
 			}
