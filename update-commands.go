@@ -45,6 +45,17 @@ type ServerUpdateStatus struct {
 	Error string `json:"error,omitempty"`
 }
 
+// UpdateProgress reports progress of a rolling server update
+type UpdateProgress struct {
+	StartTime     time.Time `json:"startTime"`
+	UpgradedNodes int       `json:"upgradedNodes"`
+	OfflineNodes  int       `json:"offlineNodes"`
+	PendingNodes  int       `json:"pendingNodes"`
+	ErrorNodes    int       `json:"errorNodes"`
+	ETA           int       `json:"eta,omitempty"` // in seconds
+	Err           error     `json:"-"`
+}
+
 // ServerUpdateOpts specifies the URL (optionally to download the binary from)
 // also allows a dry-run, the new API is idempotent which means you can
 // run it as many times as you want and any server that is not upgraded
@@ -156,4 +167,45 @@ func (adm *AdminClient) GetAPIDesc(ctx context.Context) (r ClusterAPIDesc, err e
 	}
 	err = json.NewDecoder(resp.Body).Decode(&r)
 	return r, err
+}
+
+// ServerUpdateStatus streams progress updates for an ongoing server update
+func (adm *AdminClient) ServerUpdateStatus(ctx context.Context) <-chan UpdateProgress {
+	progressCh := make(chan UpdateProgress)
+	go func(progressCh chan<- UpdateProgress) {
+		defer close(progressCh)
+
+		reqData := requestData{
+			relPath: adminAPIPrefix + "/update-status",
+		}
+
+		resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+		if err != nil {
+			progressCh <- UpdateProgress{Err: err}
+			return
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			closeResponse(resp)
+			progressCh <- UpdateProgress{Err: httpRespToErrorResponse(resp)}
+			return
+		}
+
+		dec := json.NewDecoder(resp.Body)
+		for {
+			var progress UpdateProgress
+			if err = dec.Decode(&progress); err != nil {
+				closeResponse(resp)
+				return
+			}
+			select {
+			case <-ctx.Done():
+				closeResponse(resp)
+				return
+			case progressCh <- progress:
+			}
+		}
+	}(progressCh)
+
+	return progressCh
 }
