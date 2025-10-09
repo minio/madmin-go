@@ -34,11 +34,12 @@ import (
 
 // ErrorLogOpts represents the options for the ErrorLogs
 type ErrorLogOpts struct {
-	Node     string        `json:"node,omitempty"`
-	API      string        `json:"api,omitempty"`
-	Bucket   string        `json:"bucket,omitempty"`
-	Prefix   string        `json:"prefix,omitempty"`
-	Interval time.Duration `json:"interval,omitempty"`
+	Node       string        `json:"node,omitempty"`
+	API        string        `json:"api,omitempty"`
+	Bucket     string        `json:"bucket,omitempty"`
+	Prefix     string        `json:"prefix,omitempty"`
+	Interval   time.Duration `json:"interval,omitempty"`
+	MaxPerNode int           `json:"maxPerNode,omitempty"`
 }
 
 // GetErrorLogs fetches the persisted error logs from MinIO
