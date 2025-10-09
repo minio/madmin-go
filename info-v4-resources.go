@@ -713,128 +713,139 @@ func SortSlice[T any](slice []T, field string, reversed bool) {
 		return
 	}
 
-	// Resolve a dotted field path on a value. Pointers are dereferenced.
-	// Returns an invalid Value if the path cannot be fully resolved,
-	// or if a nil pointer is encountered before reaching the final field.
-	// Field lookups are case-insensitive.
-	getFieldByPath := func(v reflect.Value, parts []string) reflect.Value {
-		// Unwrap pointers at the start.
-		for v.Kind() == reflect.Ptr {
-			if v.IsNil() {
-				return reflect.Value{}
-			}
-			v = v.Elem()
-		}
-		for i, name := range parts {
-			if v.Kind() != reflect.Struct {
-				return reflect.Value{}
-			}
-			typ := v.Type()
-			var f reflect.Value
-			for i := range typ.NumField() {
-				field := typ.Field(i)
-				if strings.EqualFold(field.Name, name) {
-					f = v.Field(i)
-					break
-				}
-			}
-
-			if !f.IsValid() {
-				return reflect.Value{}
-			}
-			// If not last, continue traversal after deref pointers.
-			if i < len(parts)-1 {
-				for f.Kind() == reflect.Ptr {
-					if f.IsNil() {
-						return reflect.Value{}
-					}
-					f = f.Elem()
-				}
-				v = f
-				continue
-			}
-			// Last segment: return as-is (could be pointer to primitive or primitive).
-			return f
-		}
-		return reflect.Value{}
-	}
-
-	// Compare two field values that are either primitives (string/int/uint/float)
-	// or pointers to those primitives. Nil is considered "less" than non-nil.
-	less := func(a, b reflect.Value) (bool, bool) {
-		// If pointers to primitives, allow a single level deref at the end.
-		deref := func(x reflect.Value) (reflect.Value, bool) {
-			if !x.IsValid() {
-				return reflect.Value{}, true // treat invalid as nil
-			}
-			if x.Kind() == reflect.Ptr {
-				if x.IsNil() {
-					return reflect.Value{}, true
-				}
-				x = x.Elem()
-			}
-			return x, false
-		}
-
-		av, anil := deref(a)
-		bv, bnil := deref(b)
-		// If either side is effectively nil/invalid, define ordering.
-		if anil || bnil {
-			if anil && bnil {
-				return false, true // equal, not less; handled as comparable
-			}
-			// nil < non-nil
-			return anil && !bnil, true
-		}
-
-		switch av.Kind() {
-		case reflect.String:
-			return av.String() < bv.String(), true
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			return av.Int() < bv.Int(), true
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-			return av.Uint() < bv.Uint(), true
-		case reflect.Float32, reflect.Float64:
-			return av.Float() < bv.Float(), true
-		default:
-			// Unsupported type.
-			return false, false
-		}
-	}
-
 	parts := strings.Split(field, ".")
 	sort.SliceStable(slice, func(i, j int) bool {
-		valI := reflect.ValueOf(slice[i])
-		valJ := reflect.ValueOf(slice[j])
+		valI := unwrapPointer(reflect.ValueOf(slice[i]))
+		valJ := unwrapPointer(reflect.ValueOf(slice[j]))
 
-		if valI.Kind() == reflect.Ptr {
-			if valI.IsNil() {
-				// nil < non-nil
-				return !reversed // place nil first in ascending, last in descending
-			}
-			valI = valI.Elem()
+		// Handle nil elements
+		if !valI.IsValid() {
+			return !reversed
 		}
-		if valJ.Kind() == reflect.Ptr {
-			if valJ.IsNil() {
-				// If both nil, stable order. If only J is nil, I is "less" in ascending.
-				return reversed // in descending, nil first => i<j is false
-			}
-			valJ = valJ.Elem()
+		if !valJ.IsValid() {
+			return reversed
 		}
 
-		fieldI := getFieldByPath(valI, parts)
-		fieldJ := getFieldByPath(valJ, parts)
+		fieldI := resolveFieldPath(valI, parts)
+		fieldJ := resolveFieldPath(valJ, parts)
 
-		lt, ok := less(fieldI, fieldJ)
+		lessThan, ok := compareFields(fieldI, fieldJ)
 		if !ok {
-			// If types unsupported or fields invalid, keep original order.
 			return false
 		}
+
 		if reversed {
-			return !lt && !(reflect.DeepEqual(fieldI.Interface(), fieldJ.Interface()))
+			// For stable reverse sorting, we need to check if j < i
+			greaterThan, _ := compareFields(fieldJ, fieldI)
+			return greaterThan
 		}
-		return lt
+		return lessThan
 	})
+}
+
+// unwrapPointer dereferences a pointer value, returning an invalid Value if nil
+func unwrapPointer(v reflect.Value) reflect.Value {
+	if v.Kind() == reflect.Ptr {
+		if v.IsNil() {
+			return reflect.Value{}
+		}
+		return v.Elem()
+	}
+	return v
+}
+
+// resolveFieldPath traverses a dotted field path on a struct value.
+// Field lookups are case-insensitive. Returns an invalid Value if the path
+// cannot be fully resolved or if a nil pointer is encountered.
+func resolveFieldPath(v reflect.Value, parts []string) reflect.Value {
+	current := v
+	for i, fieldName := range parts {
+		// Unwrap any pointers at this level
+		for current.Kind() == reflect.Ptr {
+			if current.IsNil() {
+				return reflect.Value{}
+			}
+			current = current.Elem()
+		}
+
+		if current.Kind() != reflect.Struct {
+			return reflect.Value{}
+		}
+
+		// Find field by case-insensitive name
+		field := findFieldCaseInsensitive(current, fieldName)
+		if !field.IsValid() {
+			return reflect.Value{}
+		}
+
+		// For intermediate fields, dereference pointers before continuing
+		if i < len(parts)-1 {
+			current = field
+		} else {
+			// Return the final field as-is (may be pointer or value)
+			return field
+		}
+	}
+	return current
+}
+
+// findFieldCaseInsensitive finds a struct field by name, case-insensitively
+func findFieldCaseInsensitive(v reflect.Value, name string) reflect.Value {
+	typ := v.Type()
+	for i := 0; i < typ.NumField(); i++ {
+		if strings.EqualFold(typ.Field(i).Name, name) {
+			return v.Field(i)
+		}
+	}
+	return reflect.Value{}
+}
+
+// compareFields compares two field values that are either primitives or pointers to primitives.
+// Returns (result, true) if comparison is possible, (false, false) if types are unsupported.
+// Nil values are considered less than non-nil values.
+func compareFields(a, b reflect.Value) (bool, bool) {
+	// Dereference pointers if needed
+	aVal, aIsNil := dereferenceValue(a)
+	bVal, bIsNil := dereferenceValue(b)
+
+	// Handle nil cases
+	if aIsNil && bIsNil {
+		return false, true // equal
+	}
+	if aIsNil {
+		return true, true // nil < non-nil
+	}
+	if bIsNil {
+		return false, true // non-nil > nil
+	}
+
+	// Compare based on kind
+	switch aVal.Kind() {
+	case reflect.String:
+		return strings.ToLower(aVal.String()) < strings.ToLower(bVal.String()), true
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return aVal.Int() < bVal.Int(), true
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		return aVal.Uint() < bVal.Uint(), true
+	case reflect.Float32, reflect.Float64:
+		return aVal.Float() < bVal.Float(), true
+	default:
+		return false, false
+	}
+}
+
+// dereferenceValue unwraps a pointer value and returns (value, isNil)
+func dereferenceValue(v reflect.Value) (reflect.Value, bool) {
+	if !v.IsValid() {
+		return reflect.Value{}, true
+	}
+	if v.Kind() == reflect.Ptr {
+		if v.IsNil() {
+			return reflect.Value{}, true
+		}
+		return v.Elem(), false
+	}
+	return v, false
 }
 
 // OptionalMetrics indicates optional metrics to include in the response.
