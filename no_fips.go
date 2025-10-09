@@ -18,7 +18,6 @@
 //
 
 //go:build !fips
-// +build !fips
 
 package madmin
 

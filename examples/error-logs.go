@@ -1,6 +1,5 @@
 //
 //go:build ignore
-// +build ignore
 
 //
 // Copyright (c) 2015-2022 MinIO, Inc.
