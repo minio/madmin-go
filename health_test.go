@@ -20,7 +20,9 @@
 package madmin
 
 import (
+	"context"
 	"encoding/json"
+	"runtime"
 	"testing"
 )
 
@@ -145,4 +147,76 @@ func TestCPUFreqStatsJSONMarshal(t *testing.T) {
 // ptr is a helper function to create a pointer to a uint64
 func ptr(val uint64) *uint64 {
 	return &val
+}
+
+// TestCPUMultithreadingDetection tests actual CPU detection on the running system
+func TestCPUMultithreadingDetection(t *testing.T) {
+	cpusInfo := GetCPUs(context.TODO(), "test-addr")
+
+	if len(cpusInfo.CPUs) == 0 {
+		t.Fatal("Expected at least one CPU entry")
+	}
+
+	for i, cpu := range cpusInfo.CPUs {
+		t.Logf("CPU %d:", i)
+		t.Logf("  ModelName: %s", cpu.ModelName)
+		t.Logf("  Cores: %d", cpu.Cores)
+		if cpu.MultithreadCapable != nil {
+			t.Logf("  MultithreadCapable: %v", *cpu.MultithreadCapable)
+		} else {
+			t.Logf("  MultithreadCapable: <not available>")
+		}
+		if cpu.MultithreadEnabled != nil {
+			t.Logf("  MultithreadEnabled: %v", *cpu.MultithreadEnabled)
+		} else {
+			t.Logf("  MultithreadEnabled: <not available>")
+		}
+
+		if cpu.Cores == 0 {
+			t.Errorf("CPU %d: Expected Cores to be greater than 0", i)
+		}
+
+		if runtime.GOOS == "linux" || runtime.GOOS == "darwin" {
+			if cpu.MultithreadCapable == nil {
+				t.Errorf("CPU %d: MultithreadCapable should be set on Linux/Darwin platforms", i)
+			}
+			if cpu.MultithreadEnabled == nil {
+				t.Errorf("CPU %d: MultithreadEnabled should be set on Linux/Darwin platforms", i)
+			}
+			if cpu.MultithreadEnabled != nil && cpu.MultithreadCapable != nil {
+				if *cpu.MultithreadEnabled && !*cpu.MultithreadCapable {
+					t.Errorf("CPU %d: MultithreadEnabled is true but MultithreadCapable is false (impossible)", i)
+				}
+			}
+		} else {
+			if cpu.MultithreadCapable != nil {
+				t.Errorf("CPU %d: MultithreadCapable should be nil on unsupported platforms", i)
+			}
+			if cpu.MultithreadEnabled != nil {
+				t.Errorf("CPU %d: MultithreadEnabled should be nil on unsupported platforms", i)
+			}
+		}
+	}
+
+	if len(cpusInfo.CPUs) > 1 {
+		first := cpusInfo.CPUs[0]
+		for i := 1; i < len(cpusInfo.CPUs); i++ {
+			if (cpusInfo.CPUs[i].MultithreadCapable == nil) != (first.MultithreadCapable == nil) {
+				t.Errorf("CPU %d has different MultithreadCapable presence than CPU 0", i)
+			}
+			if cpusInfo.CPUs[i].MultithreadCapable != nil && first.MultithreadCapable != nil {
+				if *cpusInfo.CPUs[i].MultithreadCapable != *first.MultithreadCapable {
+					t.Errorf("CPU %d has different MultithreadCapable value than CPU 0", i)
+				}
+			}
+			if (cpusInfo.CPUs[i].MultithreadEnabled == nil) != (first.MultithreadEnabled == nil) {
+				t.Errorf("CPU %d has different MultithreadEnabled presence than CPU 0", i)
+			}
+			if cpusInfo.CPUs[i].MultithreadEnabled != nil && first.MultithreadEnabled != nil {
+				if *cpusInfo.CPUs[i].MultithreadEnabled != *first.MultithreadEnabled {
+					t.Errorf("CPU %d has different MultithreadEnabled value than CPU 0", i)
+				}
+			}
+		}
+	}
 }
