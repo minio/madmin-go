@@ -61,10 +61,11 @@ type UpdateProgress struct {
 // run it as many times as you want and any server that is not upgraded
 // automatically does get upgraded eventually to the relevant version.
 type ServerUpdateOpts struct {
-	UpdateURL    string
-	DryRun       bool
-	GracefulWait time.Duration
-	ByNode       bool
+	UpdateURL           string
+	DryRun              bool
+	Rolling             bool
+	RollingGracefulWait time.Duration
+	ByNode              bool
 }
 
 // ServerUpdate - updates and restarts the MinIO cluster to latest version.
@@ -74,7 +75,9 @@ func (adm *AdminClient) ServerUpdate(ctx context.Context, opts ServerUpdateOpts)
 	queryValues.Set("type", "2")
 	queryValues.Set("updateURL", opts.UpdateURL)
 	queryValues.Set("dry-run", strconv.FormatBool(opts.DryRun))
-	queryValues.Set("wait", strconv.FormatInt(int64(opts.GracefulWait), 10))
+	if opts.Rolling {
+		queryValues.Set("wait", strconv.FormatInt(int64(opts.RollingGracefulWait), 10))
+	}
 	queryValues.Set("by-node", strconv.FormatBool(opts.ByNode))
 
 	// Request API to Restart server
