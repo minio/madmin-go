@@ -82,8 +82,9 @@ type ServiceActionOpts struct {
 	Action ServiceAction
 	DryRun bool
 
-	GracefulWait time.Duration
-	ByNode       bool
+	Rolling             bool
+	RollingGracefulWait time.Duration
+	ByNode              bool
 }
 
 // ServiceActionPeerResult service peer result
@@ -110,7 +111,9 @@ func (adm *AdminClient) serviceCallAction(ctx context.Context, opts ServiceActio
 	queryValues := url.Values{}
 	queryValues.Set("action", string(opts.Action))
 	queryValues.Set("dry-run", strconv.FormatBool(opts.DryRun))
-	queryValues.Set("wait", strconv.FormatInt(int64(opts.GracefulWait), 10))
+	if opts.Rolling {
+		queryValues.Set("wait", strconv.FormatInt(int64(opts.RollingGracefulWait), 10))
+	}
 	queryValues.Set("by-node", strconv.FormatBool(opts.ByNode))
 	queryValues.Set("type", "2")
 
