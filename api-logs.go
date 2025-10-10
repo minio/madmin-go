@@ -42,6 +42,7 @@ type APILogOpts struct {
 	Interval   time.Duration `json:"interval,omitempty"`
 	Origin     log.Origin    `json:"origin,omitempty"`
 	Type       log.APIType   `json:"type,omitempty"`
+	MaxPerNode int           `json:"maxPerNode,omitempty"`
 }
 
 // GetAPILogs fetches the persisted API logs from MinIO
