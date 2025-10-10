@@ -47,13 +47,14 @@ type ServerUpdateStatus struct {
 
 // UpdateProgress reports progress of a rolling server update
 type UpdateProgress struct {
-	StartTime     time.Time `json:"startTime"`
-	UpgradedNodes int       `json:"upgradedNodes"`
-	OfflineNodes  int       `json:"offlineNodes"`
-	PendingNodes  int       `json:"pendingNodes"`
-	ErrorNodes    int       `json:"errorNodes"`
-	ETA           int       `json:"eta,omitempty"` // in seconds
-	Err           error     `json:"-"`
+	StartTime      time.Time `json:"startTime"`
+	TotalNodes     int       `json:"totalNodes"`
+	RestartedNodes int       `json:"restartedNodes"`
+	UpgradedNodes  int       `json:"upgradedNodes"`
+	OfflineNodes   int       `json:"offlineNodes"`
+	ErrorNodes     int       `json:"errorNodes"`
+	ETA            int       `json:"eta,omitempty"` // in seconds
+	Err            error     `json:"-"`
 }
 
 // ServerUpdateOpts specifies the URL (optionally to download the binary from)
