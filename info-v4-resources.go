@@ -58,7 +58,7 @@ type PaginatedNodesResponse struct {
 	Aggregated *Metrics `json:"aggregated,omitempty" msg:"m,omitempty"`
 }
 
-// NodesQuerySummary contains summary statistics for all nodes in the cluster
+// NodesQueryResultsSummary contains summary statistics for all nodes in the cluster
 type NodesQueryResultsSummary struct {
 	Offline      int `json:"offline" msg:"off"`
 	Initializing int `json:"initializing" msg:"ini"`
