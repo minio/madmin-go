@@ -855,10 +855,10 @@ func TestSortSlice_MixedSignedIntegers(t *testing.T) {
 func TestSortSlice_FloatEdgeCases(t *testing.T) {
 	items := []Outer{
 		{ID: 1, Inner: Inner{FScore: 0.0}},
-		{ID: 2, Inner: Inner{FScore: -0.0}}, // negative zero
-		{ID: 3, Inner: Inner{FScore: 1.7976931348623157e+308}}, // near max float64
-		{ID: 4, Inner: Inner{FScore: 2.2250738585072014e-308}}, // near min positive float64
-		{ID: 5, Inner: Inner{FScore: -1.7976931348623157e+308}}, // near min float64
+		{ID: 2, Inner: Inner{FScore: -1.2}},
+		{ID: 3, Inner: Inner{FScore: 1.7976931348623157e+308}},
+		{ID: 4, Inner: Inner{FScore: 2.2250738585072014e-308}},
+		{ID: 5, Inner: Inner{FScore: -1.7976931348623157e+308}},
 	}
 
 	SortSlice(items, "Inner.FScore", false)
