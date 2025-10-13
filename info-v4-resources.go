@@ -715,14 +715,16 @@ func SortSlice[T any](slice []T, field string, reversed bool) {
 
 	parts := strings.Split(field, ".")
 	sort.SliceStable(slice, func(i, j int) bool {
-		valI := unwrapPointer(reflect.ValueOf(slice[i]))
-		valJ := unwrapPointer(reflect.ValueOf(slice[j]))
+		// valI := unwrapPointer(reflect.ValueOf(slice[i]))
+		// valJ := unwrapPointer(reflect.ValueOf(slice[j]))
 
-		// Handle nil elements
-		if !valI.IsValid() {
+		valI, valINil := dereferenceValue(reflect.ValueOf(slice[i]))
+		valJ, valJNil := dereferenceValue(reflect.ValueOf(slice[j]))
+
+		if valINil {
 			return !reversed
 		}
-		if !valJ.IsValid() {
+		if valJNil {
 			return reversed
 		}
 
@@ -741,17 +743,6 @@ func SortSlice[T any](slice []T, field string, reversed bool) {
 		}
 		return lessThan
 	})
-}
-
-// unwrapPointer dereferences a pointer value, returning an invalid Value if nil
-func unwrapPointer(v reflect.Value) reflect.Value {
-	if v.Kind() == reflect.Ptr {
-		if v.IsNil() {
-			return reflect.Value{}
-		}
-		return v.Elem()
-	}
-	return v
 }
 
 // resolveFieldPath traverses a dotted field path on a struct value.
@@ -792,7 +783,7 @@ func resolveFieldPath(v reflect.Value, parts []string) reflect.Value {
 // findFieldCaseInsensitive finds a struct field by name, case-insensitively
 func findFieldCaseInsensitive(v reflect.Value, name string) reflect.Value {
 	typ := v.Type()
-	for i := 0; i < typ.NumField(); i++ {
+	for i := range typ.NumField() {
 		if strings.EqualFold(typ.Field(i).Name, name) {
 			return v.Field(i)
 		}
