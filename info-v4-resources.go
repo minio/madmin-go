@@ -231,20 +231,37 @@ type DriveResource struct {
 
 // ErasureSetResource represents detailed information about an erasure coding set including drive counts and capacity
 type ErasureSetResource struct {
-	PoolIndex          int      `json:"poolIndex" msg:"pi"`
-	SetIndex           int      `json:"setIndex" msg:"si"`
-	DriveCount         int      `json:"driveCount" msg:"dc"`
-	OfflineDrives      int      `json:"offlineDrives" msg:"od"`
-	OnlineDrives       int      `json:"onlineDrives" msg:"ond"`
-	HealDisks          int      `json:"healDisks" msg:"hd"`
-	Nodes              []string `json:"nodes,omitempty" msg:"n,omitempty"`
-	RawUsage           uint64   `json:"rawUsage" msg:"ru"`
-	RawCapacity        uint64   `json:"rawCapacity" msg:"rc"`
-	Usage              uint64   `json:"usage" msg:"u"`
-	ObjectsCount       uint64   `json:"objectsCount" msg:"oc"`
-	VersionsCount      uint64   `json:"versionsCount" msg:"vc"`
-	DeleteMarkersCount uint64   `json:"deleteMarkersCount" msg:"dmc"`
-	State              string   `json:"state" msg:"st"`
+	PoolIndex          int                 `json:"poolIndex" msg:"pi"`
+	SetIndex           int                 `json:"setIndex" msg:"si"`
+	DriveCount         int                 `json:"driveCount" msg:"dc"`
+	Nodes              []string            `json:"nodes,omitempty" msg:"n,omitempty"`
+	RawUsage           uint64              `json:"rawUsage" msg:"ru"`
+	RawCapacity        uint64              `json:"rawCapacity" msg:"rc"`
+	Usage              uint64              `json:"usage" msg:"u"`
+	ObjectsCount       uint64              `json:"objectsCount" msg:"oc"`
+	VersionsCount      uint64              `json:"versionsCount" msg:"vc"`
+	DeleteMarkersCount uint64              `json:"deleteMarkersCount" msg:"dmc"`
+	State              string              `json:"state" msg:"st"`
+	DriveStates        DriveResourceStates `json:"driveStates" msg:"ds"`
+
+	// Deprecated (to be removed in future releases)
+	OfflineDrives int `json:"offlineDrives" msg:"od"`
+	OnlineDrives  int `json:"onlineDrives" msg:"ond"`
+	HealDisks     int `json:"healDisks" msg:"hd"`
+}
+
+// DriveResourceStates contains the possible states for erasure set drives
+type DriveResourceStates struct {
+	Ok          int `json:"ok" msg:"ok"`
+	Offline     int `json:"offline" msg:"off"`
+	Corrupt     int `json:"corrupt" msg:"cor"`
+	Missing     int `json:"missing" msg:"mis"`
+	Permission  int `json:"permission" msg:"per"`
+	Faulty      int `json:"faulty" msg:"fau"`
+	RootMount   int `json:"rootMount" msg:"rm"`
+	Unknown     int `json:"unknown" msg:"unk"`
+	Unformatted int `json:"unformatted" msg:"unf"`
+	Healing     int `json:"healing" msg:"hl"`
 }
 
 // ClusterSummaryUsage contains storage usage statistics for the cluster
