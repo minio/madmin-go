@@ -95,14 +95,23 @@ type DrivesQuerySummary struct {
 	StateUnformatted int `json:"stateUnformatted" msg:"suf"`
 }
 
+// ErasureSetsQueryResultsSummary contains summary statistics for all erasure sets in the cluster
+type ErasureSetsQueryResultsSummary struct {
+	Ok       int `json:"ok" msg:"ok"`
+	Warning  int `json:"warning" msg:"w"`
+	Critical int `json:"critical" msg:"cr"`
+	Unusable int `json:"unusable" msg:"un"`
+}
+
 // PaginatedErasureSetsResponse represents a paginated response for erasure sets
 type PaginatedErasureSetsResponse struct {
-	Results      []ErasureSetResource `json:"results" msg:"r,omitempty"`
-	Count        int                  `json:"count" msg:"c"`
-	Total        int                  `json:"total" msg:"t"`
-	Offset       int                  `json:"offset" msg:"o"`
-	Sort         string               `json:"sort" msg:"s"`
-	SortReversed bool                 `json:"sortReversed" msg:"sr"`
+	Results        []ErasureSetResource           `json:"results" msg:"r,omitempty"`
+	ResultsSummary ErasureSetsQueryResultsSummary `json:"resultsSummary" msg:"rs"`
+	Count          int                            `json:"count" msg:"c"`
+	Total          int                            `json:"total" msg:"t"`
+	Offset         int                            `json:"offset" msg:"o"`
+	Sort           string                         `json:"sort" msg:"s"`
+	SortReversed   bool                           `json:"sortReversed" msg:"sr"`
 }
 
 // PoolLayout contains layout information for a storage pool including server and drive counts
@@ -235,6 +244,7 @@ type ErasureSetResource struct {
 	ObjectsCount       uint64   `json:"objectsCount" msg:"oc"`
 	VersionsCount      uint64   `json:"versionsCount" msg:"vc"`
 	DeleteMarkersCount uint64   `json:"deleteMarkersCount" msg:"dmc"`
+	State              string   `json:"state" msg:"st"`
 }
 
 // ClusterSummaryUsage contains storage usage statistics for the cluster
