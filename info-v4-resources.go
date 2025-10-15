@@ -715,9 +715,6 @@ func SortSlice[T any](slice []T, field string, reversed bool) {
 
 	parts := strings.Split(field, ".")
 	sort.SliceStable(slice, func(i, j int) bool {
-		// valI := unwrapPointer(reflect.ValueOf(slice[i]))
-		// valJ := unwrapPointer(reflect.ValueOf(slice[j]))
-
 		valI, valINil := dereferenceValue(reflect.ValueOf(slice[i]))
 		valJ, valJNil := dereferenceValue(reflect.ValueOf(slice[j]))
 
