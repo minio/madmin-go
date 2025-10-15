@@ -33,10 +33,11 @@ import (
 
 const (
 	CordonAction   = "cordon"
-	StateCordoned  = "cordoned"
 	UncordonAction = "uncordon"
 	DrainAction    = "drain"
-	StateDraining  = "draining"
+
+	StateCordoned = "cordoned"
+	StateDraining = "draining"
 )
 
 // CordonActionValidate validates if the given action is one of the known, allowed actions.
