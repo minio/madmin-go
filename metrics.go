@@ -557,13 +557,17 @@ type DiskMetric struct {
 	Hanging int `json:"waiting,omitempty"`
 
 	// Healing disks
+	// Deprecated, will be removed in later releases
 	Healing int `json:"healing,omitempty"`
+
+	// HealingInfo gives us a high level overview of the drives healing state
+	HealingInfo *DriveHealInfo `json:"healingInfo,omitempty"`
 
 	// Cache stats if enabled.
 	Cache *CacheStats `json:"cache,omitempty"`
 
 	// Space info.
-	Space DriveSpaceInfo `json:"space,omitempty"`
+	Space DriveSpaceInfo `json:"space"`
 
 	// Number of accumulated operations by type.
 	LifetimeOps map[string]DiskAction `json:"lifetime_ops,omitempty"`
@@ -579,10 +583,19 @@ type DiskMetric struct {
 	IOStats *DiskIOStatsLegacy `json:"iostats,omitempty"`
 
 	// Rolling window last minute IO stats.
-	IOStatsMinute DiskIOStats `json:"io_min,omitempty"`
+	IOStatsMinute DiskIOStats `json:"io_min"`
 
 	// Rolling window daily IO stats.
-	IOStatsDay SegmentedDiskIO `json:"io_day,omitempty"`
+	IOStatsDay SegmentedDiskIO `json:"io_day"`
+}
+
+type DriveHealInfo struct {
+	ItemsHealed uint64    `json:"itemsHealed"`
+	ItemsFailed uint64    `json:"itemsFailed"`
+	HealID      string    `json:"healID"`
+	Finished    bool      `json:"finished"`
+	Started     time.Time `json:"started"`
+	Updated     time.Time `json:"updated"`
 }
 
 // DriveSpaceInfo is the space info of one or more drives.
