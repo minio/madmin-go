@@ -304,6 +304,7 @@ type Services struct {
 	KMS           KMS                           `json:"kms,omitempty"` // deprecated july 2023
 	KMSStatus     []KMS                         `json:"kmsStatus,omitempty"`
 	LDAP          LDAP                          `json:"ldap,omitempty"`
+	LDAPStatus    map[string]LDAP               `json:"ldapStatus,omitempty"`
 	Logger        []Logger                      `json:"logger,omitempty"`
 	Audit         []Audit                       `json:"audit,omitempty"`
 	Notifications []map[string][]TargetIDStatus `json:"notifications,omitempty"`
