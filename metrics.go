@@ -1347,16 +1347,26 @@ func (a APIMetrics) LastMinuteTotal() APIStats {
 
 // LastDayTotalSegmented returns the total SegmentedAPIMetrics for the last day.
 // There will be no node-count for values.
-func (a APIMetrics) LastDayTotalSegmented() SegmentedAPIMetrics {
+// Also returns the maximum IncomingBytes and OutgoingBytes across all time segments.
+func (a APIMetrics) LastDayTotalSegmented() (SegmentedAPIMetrics, int64, int64) {
 	var res SegmentedAPIMetrics
 	for _, stats := range a.LastDayAPI {
 		res.Add(&stats)
 	}
 	// Since we are merging across APIs must reset track node count.
+	var maxIncoming, maxOutgoing int64
 	for i := range res.Segments {
 		res.Segments[i].Nodes = a.Nodes
+
+		if res.Segments[i].IncomingBytes > maxIncoming {
+			maxIncoming = res.Segments[i].IncomingBytes
+		}
+		if res.Segments[i].OutgoingBytes > maxOutgoing {
+			maxOutgoing = res.Segments[i].OutgoingBytes
+		}
 	}
-	return res
+
+	return res, maxIncoming, maxOutgoing
 }
 
 // LastDayTotal returns the accumulated APIStats for the last day.
