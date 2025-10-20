@@ -60,6 +60,8 @@ const (
 	ItemOnline = ItemState("online")
 	// ItemRestarting indicates that the item is restarting
 	ItemRestarting = ItemState("restarting")
+	// ItemDraining indicates that the item is draining before becoming cordoned
+	ItemDraining = ItemState("draining")
 	// ItemCordoned indicates that the item is cordoned
 	ItemCordoned = ItemState("cordoned")
 )

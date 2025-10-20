@@ -138,17 +138,19 @@ type SysService struct {
 //
 //msgp:ignore CPU
 type CPU struct {
-	VendorID   string   `json:"vendor_id"`
-	Family     string   `json:"family"`
-	Model      string   `json:"model"`
-	Stepping   int32    `json:"stepping"`
-	PhysicalID string   `json:"physical_id"`
-	ModelName  string   `json:"model_name"`
-	Mhz        float64  `json:"mhz"`
-	CacheSize  int32    `json:"cache_size"`
-	Flags      []string `json:"flags"`
-	Microcode  string   `json:"microcode"`
-	Cores      int      `json:"cores"` // computed
+	VendorID           string   `json:"vendor_id"`
+	Family             string   `json:"family"`
+	Model              string   `json:"model"`
+	Stepping           int32    `json:"stepping"`
+	PhysicalID         string   `json:"physical_id"`
+	ModelName          string   `json:"model_name"`
+	Mhz                float64  `json:"mhz"`
+	CacheSize          int32    `json:"cache_size"`
+	Flags              []string `json:"flags"`
+	Microcode          string   `json:"microcode"`
+	Cores              int      `json:"cores"`                         // computed
+	MultithreadCapable *bool    `json:"multithread_capable,omitempty"` // CPU supports SMT (Intel HT/AMD SMT)
+	MultithreadEnabled *bool    `json:"multithread_enabled,omitempty"` // SMT currently active in OS
 }
 
 // CPUs contains all CPU information of a node.
@@ -190,27 +192,35 @@ func GetCPUs(ctx context.Context, addr string) CPUs {
 		}
 	}
 
+	// Get flags from first CPU for multithreading detection
+	var flags []string
+	if len(infos) > 0 {
+		flags = infos[0].Flags
+	}
+
+	mtCapable, mtEnabled := detectMultithreading(flags)
 	cpuMap := map[string]CPU{}
 	for _, info := range infos {
 		cpu, found := cpuMap[info.PhysicalID]
 		if found {
 			cpu.Cores++
 		} else {
-			cpu = CPU{
-				VendorID:   info.VendorID,
-				Family:     info.Family,
-				Model:      info.Model,
-				Stepping:   info.Stepping,
-				PhysicalID: info.PhysicalID,
-				ModelName:  info.ModelName,
-				Mhz:        info.Mhz,
-				CacheSize:  info.CacheSize,
-				Flags:      info.Flags,
-				Microcode:  info.Microcode,
-				Cores:      1,
+			cpuMap[info.PhysicalID] = CPU{
+				VendorID:           info.VendorID,
+				Family:             info.Family,
+				Model:              info.Model,
+				Stepping:           info.Stepping,
+				PhysicalID:         info.PhysicalID,
+				ModelName:          info.ModelName,
+				Mhz:                info.Mhz,
+				CacheSize:          info.CacheSize,
+				Flags:              info.Flags,
+				Microcode:          info.Microcode,
+				Cores:              1,
+				MultithreadCapable: mtCapable,
+				MultithreadEnabled: mtEnabled,
 			}
 		}
-		cpuMap[info.PhysicalID] = cpu
 	}
 
 	cpus := []CPU{}
@@ -229,6 +239,71 @@ func GetCPUs(ctx context.Context, addr string) CPUs {
 		CPUs:         cpus,
 		CPUFreqStats: freqStats,
 	}
+}
+
+// detectMultithreading detects if CPU supports and has enabled Simultaneous Multithreading (SMT).
+// SMT includes Intel Hyper-Threading and AMD SMT. Supported on Linux and Darwin.
+// Returns nil pointers on unsupported platforms to omit fields from JSON.
+func detectMultithreading(flags []string) (capable, enabled *bool) {
+	switch runtime.GOOS {
+	case "linux":
+		return detectMultithreadingLinux(flags)
+	case "darwin":
+		return detectMultithreadingDarwin()
+	default:
+		return nil, nil
+	}
+}
+
+func detectMultithreadingLinux(flags []string) (capable, enabled *bool) {
+	// Check if CPU has "ht" flag (Hyper-Threading/SMT capability)
+	hasHT := false
+	for _, flag := range flags {
+		if flag == "ht" {
+			hasHT = true
+			break
+		}
+	}
+
+	// If not capable, it cannot be enabled
+	if !hasHT {
+		return &hasHT, &hasHT // false, false
+	}
+
+	// Use gopsutil's cross-platform CountsWithContext: parses /proc/cpuinfo and /sys/devices/system/cpu/*/topology/
+	physicalCores, err := cpu.CountsWithContext(context.Background(), false)
+	if err != nil {
+		return nil, nil
+	}
+	logicalCores, err := cpu.CountsWithContext(context.Background(), true)
+	if err != nil {
+		return nil, nil
+	}
+
+	// Check if SMT is enabled: prefer sysfs, fallback to core count ratio
+	mtEnabled := false
+	if smtActive, err := readIntFromFile("/sys/devices/system/cpu/smt/active"); err == nil {
+		mtEnabled = smtActive == 1
+	} else if logicalCores > physicalCores {
+		mtEnabled = true
+	}
+
+	return &hasHT, &mtEnabled
+}
+
+func detectMultithreadingDarwin() (capable, enabled *bool) {
+	// Use gopsutil's cross-platform CountsWithContext: uses unix.SysctlUint32() for hw.physicalcpu/hw.logicalcpu
+	physicalCount, err := cpu.CountsWithContext(context.Background(), false)
+	if err != nil {
+		return nil, nil
+	}
+	logicalCount, err := cpu.CountsWithContext(context.Background(), true)
+	if err != nil {
+		return nil, nil
+	}
+
+	hasMultithreading := logicalCount > physicalCount
+	return &hasMultithreading, &hasMultithreading
 }
 
 // Partition contains disk partition's information.

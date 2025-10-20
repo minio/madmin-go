@@ -45,16 +45,26 @@ type PaginatedPoolsResponse struct {
 
 // PaginatedNodesResponse represents a paginated response for nodes
 type PaginatedNodesResponse struct {
-	Results      []NodeResource `json:"results" msg:"r,omitempty"`
-	Count        int            `json:"count" msg:"c"`
-	Total        int            `json:"total" msg:"t"`
-	Offset       int            `json:"offset" msg:"o"`
-	Sort         string         `json:"sort" msg:"s"`
-	SortReversed bool           `json:"sortReversed" msg:"sr"`
+	Results        []NodeResource           `json:"results" msg:"r,omitempty"`
+	ResultsSummary NodesQueryResultsSummary `json:"resultsSummary" msg:"rs"`
+	Count          int                      `json:"count" msg:"c"`
+	Total          int                      `json:"total" msg:"t"`
+	Offset         int                      `json:"offset" msg:"o"`
+	Sort           string                   `json:"sort" msg:"s"`
+	SortReversed   bool                     `json:"sortReversed" msg:"sr"`
 
 	// Aggregated are the metrics aggregated for all filtered nodes,
 	// not just the results.
 	Aggregated *Metrics `json:"aggregated,omitempty" msg:"m,omitempty"`
+}
+
+// NodesQueryResultsSummary contains summary statistics for all nodes in the cluster
+type NodesQueryResultsSummary struct {
+	Offline      int `json:"offline" msg:"off"`
+	Initializing int `json:"initializing" msg:"ini"`
+	Online       int `json:"online" msg:"on"`
+	Restarting   int `json:"restarting" msg:"rs"`
+	Unknown      int `json:"unknown" msg:"un"`
 }
 
 // PaginatedDrivesResponse represents a paginated response for drives
@@ -69,7 +79,7 @@ type PaginatedDrivesResponse struct {
 	// Aggregated are the metrics aggregated for all filtered drives,
 	// not just the results.
 	// Always returned, though day metrics are only available if the option is set.
-	Aggregated DiskMetric `json:"aggregated,omitempty" msg:"m,omitempty"`
+	Aggregated DiskMetric `json:"aggregated" msg:"m"`
 }
 
 // DrivesQuerySummary contains a summary for all drives, ignoring pagination and query limits.
@@ -85,14 +95,23 @@ type DrivesQuerySummary struct {
 	StateUnformatted int `json:"stateUnformatted" msg:"suf"`
 }
 
+// ErasureSetsQueryResultsSummary contains summary statistics for all erasure sets in the cluster
+type ErasureSetsQueryResultsSummary struct {
+	Ok       int `json:"ok" msg:"ok"`
+	Warning  int `json:"warning" msg:"w"`
+	Critical int `json:"critical" msg:"cr"`
+	Unusable int `json:"unusable" msg:"un"`
+}
+
 // PaginatedErasureSetsResponse represents a paginated response for erasure sets
 type PaginatedErasureSetsResponse struct {
-	Results      []ErasureSetResource `json:"results" msg:"r,omitempty"`
-	Count        int                  `json:"count" msg:"c"`
-	Total        int                  `json:"total" msg:"t"`
-	Offset       int                  `json:"offset" msg:"o"`
-	Sort         string               `json:"sort" msg:"s"`
-	SortReversed bool                 `json:"sortReversed" msg:"sr"`
+	Results        []ErasureSetResource           `json:"results" msg:"r,omitempty"`
+	ResultsSummary ErasureSetsQueryResultsSummary `json:"resultsSummary" msg:"rs"`
+	Count          int                            `json:"count" msg:"c"`
+	Total          int                            `json:"total" msg:"t"`
+	Offset         int                            `json:"offset" msg:"o"`
+	Sort           string                         `json:"sort" msg:"s"`
+	SortReversed   bool                           `json:"sortReversed" msg:"sr"`
 }
 
 // PoolLayout contains layout information for a storage pool including server and drive counts
@@ -212,28 +231,58 @@ type DriveResource struct {
 
 // ErasureSetResource represents detailed information about an erasure coding set including drive counts and capacity
 type ErasureSetResource struct {
-	PoolIndex          int      `json:"poolIndex" msg:"pi"`
-	SetIndex           int      `json:"setIndex" msg:"si"`
-	DriveCount         int      `json:"driveCount" msg:"dc"`
-	OfflineDrives      int      `json:"offlineDrives" msg:"od"`
-	OnlineDrives       int      `json:"onlineDrives" msg:"ond"`
-	HealDisks          int      `json:"healDisks" msg:"hd"`
-	ReadQuorum         int      `json:"readQuorum" msg:"rq"`
-	WriteQuorum        int      `json:"writeQuorum" msg:"wq"`
-	Nodes              []string `json:"nodes,omitempty" msg:"n,omitempty"`
-	RawUsage           uint64   `json:"rawUsage" msg:"ru"`
-	RawCapacity        uint64   `json:"rawCapacity" msg:"rc"`
-	Usage              uint64   `json:"usage" msg:"u"`
-	ObjectsCount       uint64   `json:"objectsCount" msg:"oc"`
-	VersionsCount      uint64   `json:"versionsCount" msg:"vc"`
-	DeleteMarkersCount uint64   `json:"deleteMarkersCount" msg:"dmc"`
+	PoolIndex          int                 `json:"poolIndex" msg:"pi"`
+	SetIndex           int                 `json:"setIndex" msg:"si"`
+	DriveCount         int                 `json:"driveCount" msg:"dc"`
+	Nodes              []string            `json:"nodes,omitempty" msg:"n,omitempty"`
+	RawUsage           uint64              `json:"rawUsage" msg:"ru"`
+	RawCapacity        uint64              `json:"rawCapacity" msg:"rc"`
+	Usage              uint64              `json:"usage" msg:"u"`
+	ObjectsCount       uint64              `json:"objectsCount" msg:"oc"`
+	VersionsCount      uint64              `json:"versionsCount" msg:"vc"`
+	DeleteMarkersCount uint64              `json:"deleteMarkersCount" msg:"dmc"`
+	State              string              `json:"state" msg:"st"`
+	DriveStates        DriveResourceStates `json:"driveStates" msg:"ds"`
+
+	// Deprecated (to be removed in future releases)
+	OfflineDrives int `json:"offlineDrives" msg:"od"`
+	OnlineDrives  int `json:"onlineDrives" msg:"ond"`
+	HealDisks     int `json:"healDisks" msg:"hd"`
+}
+
+// DriveResourceStates contains the possible states for erasure set drives
+type DriveResourceStates struct {
+	Ok          int `json:"ok" msg:"ok"`
+	Offline     int `json:"offline" msg:"off"`
+	Corrupt     int `json:"corrupt" msg:"cor"`
+	Missing     int `json:"missing" msg:"mis"`
+	Permission  int `json:"permission" msg:"per"`
+	Faulty      int `json:"faulty" msg:"fau"`
+	RootMount   int `json:"rootMount" msg:"rm"`
+	Unknown     int `json:"unknown" msg:"unk"`
+	Unformatted int `json:"unformatted" msg:"unf"`
+	Healing     int `json:"healing" msg:"hl"`
 }
 
 // ClusterSummaryUsage contains storage usage statistics for the cluster
 type ClusterSummaryUsage struct {
-	TotalCapacity int64 `json:"totalCapacity" msg:"tc"`
-	Available     int64 `json:"available" msg:"av"`
-	DrivesUsage   int64 `json:"drivesUsage" msg:"du"`
+	RawCapacity  int64 `json:"rawCapacity" msg:"rc"`
+	RawAvailable int64 `json:"rawAvailable" msg:"ra"`
+	RawUsage     int64 `json:"rawUsage" msg:"ru"`
+	Capacity     int64 `json:"capacity" msg:"c"`
+	Available    int64 `json:"available" msg:"a"`
+	Usage        int64 `json:"usage" msg:"u"`
+}
+
+// PoolsSummaryUsage contains storage usage statistics for the pools
+type PoolsSummaryUsage struct {
+	RawCapacity  int64   `json:"rawCapacity" msg:"rc"`
+	RawAvailable int64   `json:"rawAvailable" msg:"ra"`
+	RawUsage     int64   `json:"rawUsage" msg:"ru"`
+	Capacity     int64   `json:"capacity" msg:"c"`
+	Available    int64   `json:"available" msg:"a"`
+	Usage        int64   `json:"usage" msg:"u"`
+	Efficiency   float64 `json:"efficiency" msg:"e"`
 }
 
 // ClusterSummaryCount contains resource counts with status breakdown
@@ -244,8 +293,16 @@ type ClusterSummaryCount struct {
 	Healing int `json:"healing" msg:"hl"`
 }
 
-// DriveSummaryCount contains drive counts with status breakdown
-type DriveSummaryCount struct {
+// ServersSummaryCount contains resource counts with status breakdown
+type ServersSummaryCount struct {
+	Total   int `json:"total" msg:"t"`
+	Online  int `json:"online" msg:"on"`
+	Offline int `json:"offline" msg:"off"`
+	Healing int `json:"healing" msg:"hl"`
+}
+
+// DrivesSummaryCount contains drive counts with status breakdown
+type DrivesSummaryCount struct {
 	Total   int `json:"total" msg:"t"`
 	Online  int `json:"online" msg:"on"`
 	Offline int `json:"offline" msg:"off"`
@@ -265,10 +322,10 @@ type PoolDetails struct {
 
 // PoolSummary contains summary information for a storage pool including usage and drive statistics
 type PoolSummary struct {
-	Index   int                 `json:"index" msg:"idx"`
-	Usage   ClusterSummaryUsage `json:"usage" msg:"us"`
-	Drives  DriveSummaryCount   `json:"drives" msg:"drv"`
-	Details PoolDetails         `json:"details" msg:"dtls"`
+	Index   int                `json:"index" msg:"idx"`
+	Usage   PoolsSummaryUsage  `json:"usage" msg:"us"`
+	Drives  DrivesSummaryCount `json:"drives" msg:"drv"`
+	Details PoolDetails        `json:"details" msg:"dtls"`
 }
 
 // ClusterSummaryResponse contains a comprehensive summary of cluster resources and statistics
@@ -280,8 +337,8 @@ type ClusterSummaryResponse struct {
 	Domains      []string            `json:"domains" msg:"dom"`
 	Mode         string              `json:"mode" msg:"mod"`
 	Usage        ClusterSummaryUsage `json:"usage" msg:"us"`
-	Servers      ClusterSummaryCount `json:"servers" msg:"srv"`
-	Drives       DriveSummaryCount   `json:"drives" msg:"drv"`
+	Servers      ServersSummaryCount `json:"servers" msg:"srv"`
+	Drives       DrivesSummaryCount  `json:"drives" msg:"drv"`
 	Pools        []PoolSummary       `json:"pools" msg:"pls"`
 }
 
@@ -683,118 +740,127 @@ func SortSlice[T any](slice []T, field string, reversed bool) {
 		return
 	}
 
-	// Resolve a dotted field path on a value. Pointers are dereferenced.
-	// Returns an invalid Value if the path cannot be fully resolved,
-	// or if a nil pointer is encountered before reaching the final field.
-	getFieldByPath := func(v reflect.Value, parts []string) reflect.Value {
-		// Unwrap pointers at the start.
-		for v.Kind() == reflect.Ptr {
-			if v.IsNil() {
-				return reflect.Value{}
-			}
-			v = v.Elem()
-		}
-		for i, name := range parts {
-			if v.Kind() != reflect.Struct {
-				return reflect.Value{}
-			}
-			f := v.FieldByName(name)
-			if !f.IsValid() {
-				return reflect.Value{}
-			}
-			// If not last, continue traversal after deref pointers.
-			if i < len(parts)-1 {
-				for f.Kind() == reflect.Ptr {
-					if f.IsNil() {
-						return reflect.Value{}
-					}
-					f = f.Elem()
-				}
-				v = f
-				continue
-			}
-			// Last segment: return as-is (could be pointer to primitive or primitive).
-			return f
-		}
-		return reflect.Value{}
-	}
-
-	// Compare two field values that are either primitives (string/int/uint/float)
-	// or pointers to those primitives. Nil is considered "less" than non-nil.
-	less := func(a, b reflect.Value) (bool, bool) {
-		// If pointers to primitives, allow a single level deref at the end.
-		deref := func(x reflect.Value) (reflect.Value, bool) {
-			if !x.IsValid() {
-				return reflect.Value{}, true // treat invalid as nil
-			}
-			if x.Kind() == reflect.Ptr {
-				if x.IsNil() {
-					return reflect.Value{}, true
-				}
-				x = x.Elem()
-			}
-			return x, false
-		}
-
-		av, anil := deref(a)
-		bv, bnil := deref(b)
-		// If either side is effectively nil/invalid, define ordering.
-		if anil || bnil {
-			if anil && bnil {
-				return false, true // equal, not less; handled as comparable
-			}
-			// nil < non-nil
-			return anil && !bnil, true
-		}
-
-		switch av.Kind() {
-		case reflect.String:
-			return av.String() < bv.String(), true
-		case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-			return av.Int() < bv.Int(), true
-		case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
-			return av.Uint() < bv.Uint(), true
-		case reflect.Float32, reflect.Float64:
-			return av.Float() < bv.Float(), true
-		default:
-			// Unsupported type.
-			return false, false
-		}
-	}
-
 	parts := strings.Split(field, ".")
 	sort.SliceStable(slice, func(i, j int) bool {
-		valI := reflect.ValueOf(slice[i])
-		valJ := reflect.ValueOf(slice[j])
+		valI, valINil := dereferenceValue(reflect.ValueOf(slice[i]))
+		valJ, valJNil := dereferenceValue(reflect.ValueOf(slice[j]))
 
-		if valI.Kind() == reflect.Ptr {
-			if valI.IsNil() {
-				// nil < non-nil
-				return !reversed // place nil first in ascending, last in descending
-			}
-			valI = valI.Elem()
+		if valINil {
+			return !reversed
 		}
-		if valJ.Kind() == reflect.Ptr {
-			if valJ.IsNil() {
-				// If both nil, stable order. If only J is nil, I is "less" in ascending.
-				return reversed // in descending, nil first => i<j is false
-			}
-			valJ = valJ.Elem()
+		if valJNil {
+			return reversed
 		}
 
-		fieldI := getFieldByPath(valI, parts)
-		fieldJ := getFieldByPath(valJ, parts)
+		fieldI := resolveFieldPath(valI, parts)
+		fieldJ := resolveFieldPath(valJ, parts)
 
-		lt, ok := less(fieldI, fieldJ)
+		lessThan, ok := compareFields(fieldI, fieldJ)
 		if !ok {
-			// If types unsupported or fields invalid, keep original order.
 			return false
 		}
+
 		if reversed {
-			return !lt && !(reflect.DeepEqual(fieldI.Interface(), fieldJ.Interface()))
+			// For stable reverse sorting, we need to check if j < i
+			greaterThan, _ := compareFields(fieldJ, fieldI)
+			return greaterThan
 		}
-		return lt
+		return lessThan
 	})
+}
+
+// resolveFieldPath traverses a dotted field path on a struct value.
+// Field lookups are case-insensitive. Returns an invalid Value if the path
+// cannot be fully resolved or if a nil pointer is encountered.
+func resolveFieldPath(v reflect.Value, parts []string) reflect.Value {
+	current := v
+	for i, fieldName := range parts {
+		// Unwrap any pointers at this level
+		for current.Kind() == reflect.Ptr {
+			if current.IsNil() {
+				return reflect.Value{}
+			}
+			current = current.Elem()
+		}
+
+		if current.Kind() != reflect.Struct {
+			return reflect.Value{}
+		}
+
+		// Find field by case-insensitive name
+		field := findFieldCaseInsensitive(current, fieldName)
+		if !field.IsValid() {
+			return reflect.Value{}
+		}
+
+		// For intermediate fields, dereference pointers before continuing
+		if i < len(parts)-1 {
+			current = field
+		} else {
+			// Return the final field as-is (may be pointer or value)
+			return field
+		}
+	}
+	return current
+}
+
+// findFieldCaseInsensitive finds a struct field by name, case-insensitively
+func findFieldCaseInsensitive(v reflect.Value, name string) reflect.Value {
+	typ := v.Type()
+	for i := range typ.NumField() {
+		if strings.EqualFold(typ.Field(i).Name, name) {
+			return v.Field(i)
+		}
+	}
+	return reflect.Value{}
+}
+
+// compareFields compares two field values that are either primitives or pointers to primitives.
+// Returns (result, true) if comparison is possible, (false, false) if types are unsupported.
+// Nil values are considered less than non-nil values.
+func compareFields(a, b reflect.Value) (bool, bool) {
+	// Dereference pointers if needed
+	aVal, aIsNil := dereferenceValue(a)
+	bVal, bIsNil := dereferenceValue(b)
+
+	// Handle nil cases
+	if aIsNil && bIsNil {
+		return false, true // equal
+	}
+	if aIsNil {
+		return true, true // nil < non-nil
+	}
+	if bIsNil {
+		return false, true // non-nil > nil
+	}
+
+	// Compare based on kind
+	switch aVal.Kind() {
+	case reflect.String:
+		return strings.ToLower(aVal.String()) < strings.ToLower(bVal.String()), true
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+		return aVal.Int() < bVal.Int(), true
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64, reflect.Uintptr:
+		return aVal.Uint() < bVal.Uint(), true
+	case reflect.Float32, reflect.Float64:
+		return aVal.Float() < bVal.Float(), true
+	default:
+		return false, false
+	}
+}
+
+// dereferenceValue unwraps a pointer value and returns (value, isNil)
+func dereferenceValue(v reflect.Value) (reflect.Value, bool) {
+	if !v.IsValid() {
+		return reflect.Value{}, true
+	}
+	if v.Kind() == reflect.Ptr {
+		if v.IsNil() {
+			return reflect.Value{}, true
+		}
+		return v.Elem(), false
+	}
+	return v, false
 }
 
 // OptionalMetrics indicates optional metrics to include in the response.

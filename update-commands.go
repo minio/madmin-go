@@ -45,15 +45,28 @@ type ServerUpdateStatus struct {
 	Error string `json:"error,omitempty"`
 }
 
+// UpdateProgress reports progress of a rolling server update
+type UpdateProgress struct {
+	StartTime      time.Time `json:"startTime"`
+	TotalNodes     int       `json:"totalNodes"`
+	RestartedNodes int       `json:"restartedNodes"`
+	UpgradedNodes  int       `json:"upgradedNodes"`
+	OfflineNodes   int       `json:"offlineNodes"`
+	ErrorNodes     int       `json:"errorNodes"`
+	ETA            int       `json:"eta,omitempty"` // in seconds
+	Err            error     `json:"-"`
+}
+
 // ServerUpdateOpts specifies the URL (optionally to download the binary from)
 // also allows a dry-run, the new API is idempotent which means you can
 // run it as many times as you want and any server that is not upgraded
 // automatically does get upgraded eventually to the relevant version.
 type ServerUpdateOpts struct {
-	UpdateURL    string
-	DryRun       bool
-	GracefulWait time.Duration
-	ByNode       bool
+	UpdateURL           string
+	DryRun              bool
+	Rolling             bool
+	RollingGracefulWait time.Duration
+	ByNode              bool
 }
 
 // ServerUpdate - updates and restarts the MinIO cluster to latest version.
@@ -63,7 +76,9 @@ func (adm *AdminClient) ServerUpdate(ctx context.Context, opts ServerUpdateOpts)
 	queryValues.Set("type", "2")
 	queryValues.Set("updateURL", opts.UpdateURL)
 	queryValues.Set("dry-run", strconv.FormatBool(opts.DryRun))
-	queryValues.Set("wait", strconv.FormatInt(int64(opts.GracefulWait), 10))
+	if opts.Rolling {
+		queryValues.Set("wait", strconv.FormatInt(int64(opts.RollingGracefulWait), 10))
+	}
 	queryValues.Set("by-node", strconv.FormatBool(opts.ByNode))
 
 	// Request API to Restart server
@@ -156,4 +171,45 @@ func (adm *AdminClient) GetAPIDesc(ctx context.Context) (r ClusterAPIDesc, err e
 	}
 	err = json.NewDecoder(resp.Body).Decode(&r)
 	return r, err
+}
+
+// ServerUpdateStatus streams progress updates for an ongoing server update
+func (adm *AdminClient) ServerUpdateStatus(ctx context.Context) <-chan UpdateProgress {
+	progressCh := make(chan UpdateProgress)
+	go func(progressCh chan<- UpdateProgress) {
+		defer close(progressCh)
+
+		reqData := requestData{
+			relPath: adminAPIPrefix + "/update-status",
+		}
+
+		resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+		if err != nil {
+			progressCh <- UpdateProgress{Err: err}
+			return
+		}
+
+		if resp.StatusCode != http.StatusOK {
+			closeResponse(resp)
+			progressCh <- UpdateProgress{Err: httpRespToErrorResponse(resp)}
+			return
+		}
+
+		dec := json.NewDecoder(resp.Body)
+		for {
+			var progress UpdateProgress
+			if err = dec.Decode(&progress); err != nil {
+				closeResponse(resp)
+				return
+			}
+			select {
+			case <-ctx.Done():
+				closeResponse(resp)
+				return
+			case progressCh <- progress:
+			}
+		}
+	}(progressCh)
+
+	return progressCh
 }
