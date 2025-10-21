@@ -1000,14 +1000,7 @@ type IAMCacheAnalysis struct {
 
 // HasReplicationEntities returns true if there are any non-root IAM entities
 func (i IAMCacheAnalysis) HasReplicationEntities() bool {
-	return i.TotalPolicies > 0 ||
-		i.TotalRegularUsers > 0 ||
-		i.TotalSvcAccNonRootParent > 0 ||
-		i.TotalGroups > 0 ||
-		i.TotalUserPolicyMappings > 0 ||
-		i.TotalGroupPolicyMappings > 0 ||
-		i.TotalSTSPolicyMappings > 0
-}
+	return i == IAMCacheAnalysis{}
 
 // IAMEntityReport returns statistics about IAM cache entities
 func (adm *AdminClient) IAMEntityReport(ctx context.Context) (IAMCacheAnalysis, error) {
