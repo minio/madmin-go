@@ -1025,8 +1025,5 @@ func (adm *AdminClient) IAMEntityReport(ctx context.Context) (IAMCacheAnalysis, 
 	}
 
 	var report IAMCacheAnalysis
-	if err = json.Unmarshal(data, &report); err != nil {
-		return IAMCacheAnalysis{}, err
-	}
-	return report, nil
+	return report, json.Unmarshal(data, &report)
 }
