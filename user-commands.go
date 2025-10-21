@@ -1000,7 +1000,7 @@ type IAMCacheAnalysis struct {
 
 // HasReplicationEntities returns true if there are any non-root IAM entities
 func (i IAMCacheAnalysis) HasReplicationEntities() bool {
-	return i == IAMCacheAnalysis{}
+	return i != IAMCacheAnalysis{}
 }
 
 // IAMEntityReport returns statistics about IAM cache entities
