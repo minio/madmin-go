@@ -59,6 +59,7 @@ const (
 	MetricsRPC
 	MetricsRuntime
 	MetricsAPI
+	MetricsReplication
 
 	// MetricsAll must be last.
 	// Enables all metrics.
@@ -234,19 +235,75 @@ type RealtimeMetrics struct {
 	Final bool `json:"final"`
 }
 
+// Merge functionality:
+//
+// Overall rules: a.Merge(b)
+//
+// 1. All metrics must be accumulated and must be independent of order of merges.
+// 2. If a field is not set in the other, it is not modified.
+// 3. If a field is set in both, the value is merged.
+// 4. Only a may be mutated.
+// 5. 'a' can be the zero value.
+
+// Merge will merge other into r.
+func (r *RealtimeMetrics) Merge(other *RealtimeMetrics) {
+	if other == nil {
+		return
+	}
+
+	if len(other.Errors) > 0 {
+		r.Errors = append(r.Errors, other.Errors...)
+	}
+
+	if r.ByHost == nil && len(other.ByHost) > 0 {
+		r.ByHost = make(map[string]Metrics, len(other.ByHost))
+	}
+	for host, metrics := range other.ByHost {
+		r.ByHost[host] = metrics
+	}
+
+	r.Hosts = append(r.Hosts, other.Hosts...)
+	r.Aggregated.Merge(&other.Aggregated)
+	sort.Strings(r.Hosts)
+
+	// Gather per disk metrics
+	if r.ByDisk == nil && len(other.ByDisk) > 0 {
+		r.ByDisk = make(map[string]DiskMetric, len(other.ByDisk))
+	}
+	for disk, metrics := range other.ByDisk {
+		r.ByDisk[disk] = metrics
+	}
+	if r.ByDiskSet == nil && len(other.ByDiskSet) > 0 {
+		r.ByDiskSet = make(map[int]map[int]DiskMetric, len(other.ByDisk))
+	}
+	for pIdx, pool := range other.ByDiskSet {
+		dstp := r.ByDiskSet[pIdx]
+		if dstp == nil {
+			dstp = make(map[int]DiskMetric, len(pool))
+			r.ByDiskSet[pIdx] = dstp
+		}
+		for sIdx, disks := range pool {
+			dsts := dstp[sIdx]
+			dsts.Merge(&disks)
+			dstp[sIdx] = dsts
+		}
+	}
+}
+
 // Metrics contains all metric types.
 type Metrics struct {
-	Scanner    *ScannerMetrics    `json:"scanner,omitempty"`
-	Disk       *DiskMetric        `json:"disk,omitempty"`
-	OS         *OSMetrics         `json:"os,omitempty"`
-	BatchJobs  *BatchJobMetrics   `json:"batchJobs,omitempty"`
-	SiteResync *SiteResyncMetrics `json:"siteResync,omitempty"`
-	Net        *NetMetrics        `json:"net,omitempty"`
-	Mem        *MemMetrics        `json:"mem,omitempty"`
-	CPU        *CPUMetrics        `json:"cpu,omitempty"`
-	RPC        *RPCMetrics        `json:"rpc,omitempty"`
-	Go         *RuntimeMetrics    `json:"go,omitempty"`
-	API        *APIMetrics        `json:"api,omitempty"`
+	Scanner     *ScannerMetrics     `json:"scanner,omitempty"`
+	Disk        *DiskMetric         `json:"disk,omitempty"`
+	OS          *OSMetrics          `json:"os,omitempty"`
+	BatchJobs   *BatchJobMetrics    `json:"batchJobs,omitempty"`
+	SiteResync  *SiteResyncMetrics  `json:"siteResync,omitempty"`
+	Net         *NetMetrics         `json:"net,omitempty"`
+	Mem         *MemMetrics         `json:"mem,omitempty"`
+	CPU         *CPUMetrics         `json:"cpu,omitempty"`
+	RPC         *RPCMetrics         `json:"rpc,omitempty"`
+	Go          *RuntimeMetrics     `json:"go,omitempty"`
+	API         *APIMetrics         `json:"api,omitempty"`
+	Replication *ReplicationMetrics `json:"replication,omitempty"`
 }
 
 // Merge other into r.
@@ -294,51 +351,18 @@ func (r *Metrics) Merge(other *Metrics) {
 		r.API = &APIMetrics{}
 	}
 	r.API.Merge(other.API)
-}
-
-// Merge will merge other into r.
-func (r *RealtimeMetrics) Merge(other *RealtimeMetrics) {
-	if other == nil {
-		return
+	if r.Replication == nil && other.Replication != nil {
+		r.Replication = &ReplicationMetrics{}
 	}
-
-	if len(other.Errors) > 0 {
-		r.Errors = append(r.Errors, other.Errors...)
+	r.Replication.Merge(other.Replication)
+	if r.Mem == nil && other.Mem != nil {
+		r.Mem = &MemMetrics{}
 	}
-
-	if r.ByHost == nil && len(other.ByHost) > 0 {
-		r.ByHost = make(map[string]Metrics, len(other.ByHost))
+	r.Mem.Merge(other.Mem)
+	if r.CPU == nil && other.CPU != nil {
+		r.CPU = &CPUMetrics{}
 	}
-	for host, metrics := range other.ByHost {
-		r.ByHost[host] = metrics
-	}
-
-	r.Hosts = append(r.Hosts, other.Hosts...)
-	r.Aggregated.Merge(&other.Aggregated)
-	sort.Strings(r.Hosts)
-
-	// Gather per disk metrics
-	if r.ByDisk == nil && len(other.ByDisk) > 0 {
-		r.ByDisk = make(map[string]DiskMetric, len(other.ByDisk))
-	}
-	for disk, metrics := range other.ByDisk {
-		r.ByDisk[disk] = metrics
-	}
-	if r.ByDiskSet == nil && len(other.ByDiskSet) > 0 {
-		r.ByDiskSet = make(map[int]map[int]DiskMetric, len(other.ByDisk))
-	}
-	for pIdx, pool := range other.ByDiskSet {
-		dstp := r.ByDiskSet[pIdx]
-		if dstp == nil {
-			dstp = make(map[int]DiskMetric, len(pool))
-			r.ByDiskSet[pIdx] = dstp
-		}
-		for sIdx, disks := range pool {
-			dsts := dstp[sIdx]
-			dsts.Merge(&disks)
-			dstp[sIdx] = dsts
-		}
-	}
+	r.CPU.Merge(other.CPU)
 }
 
 // ScannerMetrics contains scanner information.
@@ -710,6 +734,7 @@ func (d *DiskMetric) Merge(other *DiskMetric) {
 	for k, v := range other.LastDaySegmented {
 		t := d.LastDaySegmented[k]
 		t.Add(&v)
+		d.LastDaySegmented[k] = t
 	}
 	if other.IOStats != nil {
 		if d.IOStats == nil {
@@ -931,9 +956,13 @@ type NetMetrics struct {
 	// Time these metrics were collected
 	CollectedAt time.Time `json:"collected"`
 
-	// net of Interface
+	// NICs contains interface -> stats map.
+	Interfaces map[string]InterfaceStats
+
+	// Deprecated: Does not merge.
 	InterfaceName string `json:"interfaceName"`
 
+	// Internode Stats.
 	NetStats procfs.NetDevLine `json:"netstats"`
 }
 
@@ -948,22 +977,26 @@ func (n *NetMetrics) Merge(other *NetMetrics) {
 		// Use latest timestamp
 		n.CollectedAt = other.CollectedAt
 	}
-	n.NetStats.RxBytes += other.NetStats.RxBytes
-	n.NetStats.RxPackets += other.NetStats.RxPackets
-	n.NetStats.RxErrors += other.NetStats.RxErrors
-	n.NetStats.RxDropped += other.NetStats.RxDropped
-	n.NetStats.RxFIFO += other.NetStats.RxFIFO
-	n.NetStats.RxFrame += other.NetStats.RxFrame
-	n.NetStats.RxCompressed += other.NetStats.RxCompressed
-	n.NetStats.RxMulticast += other.NetStats.RxMulticast
-	n.NetStats.TxBytes += other.NetStats.TxBytes
-	n.NetStats.TxPackets += other.NetStats.TxPackets
-	n.NetStats.TxErrors += other.NetStats.TxErrors
-	n.NetStats.TxDropped += other.NetStats.TxDropped
-	n.NetStats.TxFIFO += other.NetStats.TxFIFO
-	n.NetStats.TxCollisions += other.NetStats.TxCollisions
-	n.NetStats.TxCarrier += other.NetStats.TxCarrier
-	n.NetStats.TxCompressed += other.NetStats.TxCompressed
+	for k, v := range other.Interfaces {
+		if n.Interfaces == nil {
+			n.Interfaces = make(map[string]InterfaceStats, len(other.Interfaces))
+		}
+		n.Interfaces[k] = n.Interfaces[k].add(v)
+	}
+	n.NetStats = procfs.NetDevLine(procfsNetDevLine(n.NetStats).add(procfsNetDevLine(other.NetStats)))
+}
+
+// InterfaceStats contains accumulated stats for a network interface.
+type InterfaceStats struct {
+	N                 int `json:"n"`
+	procfs.NetDevLine `json:"stats"`
+}
+
+func (n InterfaceStats) add(other InterfaceStats) InterfaceStats {
+	return InterfaceStats{
+		N:          n.N,
+		NetDevLine: procfs.NetDevLine(procfsNetDevLine(n.NetDevLine).add(procfsNetDevLine(other.NetDevLine))),
+	}
 }
 
 //msgp:replace NodeCommon with:nodeCommon
@@ -975,8 +1008,31 @@ type nodeCommon struct {
 	Error string `json:"error,omitempty"`
 }
 
+type MemMetrics struct {
+	// Time these metrics were collected
+	CollectedAt time.Time `json:"collected"`
+
+	Nodes int `json:"nodes"` // Note: Will be zero for older servers.
+
+	Info MemInfo `json:"memInfo"`
+}
+
+// Merge other into 'm'.
+func (m *MemMetrics) Merge(other *MemMetrics) {
+	if other == nil {
+		return
+	}
+	m.Nodes += other.Nodes
+	if m.CollectedAt.Before(other.CollectedAt) {
+		// Use latest timestamp
+		m.CollectedAt = other.CollectedAt
+	}
+	m.Info.Merge(&other.Info)
+}
+
 // MemInfo contains system's RAM and swap information.
 type MemInfo struct {
+	// NodeCommon shouldn't be used since it cannot be merged.
 	NodeCommon
 
 	Total          uint64 `json:"total,omitempty"`
@@ -993,25 +1049,25 @@ type MemInfo struct {
 	Limit uint64 `json:"limit,omitempty"`
 }
 
-type MemMetrics struct {
-	// Time these metrics were collected
-	CollectedAt time.Time `json:"collected"`
-
-	Info MemInfo `json:"memInfo"`
-}
-
-// Merge other into 'm'.
-func (m *MemMetrics) Merge(other *MemMetrics) {
-	if m.CollectedAt.Before(other.CollectedAt) {
-		// Use latest timestamp
-		m.CollectedAt = other.CollectedAt
+func (m *MemInfo) Merge(other *MemInfo) {
+	if other == nil {
+		return
 	}
-
-	m.Info.Total += other.Info.Total
-	m.Info.Available += other.Info.Available
-	m.Info.SwapSpaceTotal += other.Info.SwapSpaceTotal
-	m.Info.SwapSpaceFree += other.Info.SwapSpaceFree
-	m.Info.Limit += other.Info.Limit
+	if m.Total == 0 && m.NodeCommon.Addr == "" {
+		m.NodeCommon = other.NodeCommon
+	} else if m.NodeCommon != other.NodeCommon {
+		m.NodeCommon = NodeCommon{}
+	}
+	m.Total += other.Total
+	m.Used += other.Used
+	m.Free += other.Free
+	m.Available += other.Available
+	m.Shared += other.Shared
+	m.Cache += other.Cache
+	m.Buffers += other.Buffers
+	m.SwapSpaceTotal += other.SwapSpaceTotal
+	m.SwapSpaceFree += other.SwapSpaceFree
+	m.Limit += other.Limit
 }
 
 //msgp:replace cpu.TimesStat with:cpuTimesStat
@@ -1021,6 +1077,8 @@ type CPUMetrics struct {
 	// Time these metrics were collected
 	CollectedAt time.Time `json:"collected"`
 
+	Nodes int `json:"nodes"` // Note: May be unset for older servers.
+
 	TimesStat *cpu.TimesStat `json:"timesStat"`
 	LoadStat  *load.AvgStat  `json:"loadStat"`
 	CPUCount  int            `json:"cpuCount"`
@@ -1028,27 +1086,41 @@ type CPUMetrics struct {
 
 // Merge other into 'm'.
 func (m *CPUMetrics) Merge(other *CPUMetrics) {
+	if other == nil {
+		return
+	}
+	m.Nodes += other.Nodes
 	if m.CollectedAt.Before(other.CollectedAt) {
 		// Use latest timestamp
 		m.CollectedAt = other.CollectedAt
 	}
-	m.TimesStat.User += other.TimesStat.User
-	m.TimesStat.System += other.TimesStat.System
-	m.TimesStat.Idle += other.TimesStat.Idle
-	m.TimesStat.Nice += other.TimesStat.Nice
-	m.TimesStat.Iowait += other.TimesStat.Iowait
-	m.TimesStat.Irq += other.TimesStat.Irq
-	m.TimesStat.Softirq += other.TimesStat.Softirq
-	m.TimesStat.Steal += other.TimesStat.Steal
-	m.TimesStat.Guest += other.TimesStat.Guest
-	m.TimesStat.GuestNice += other.TimesStat.GuestNice
+	if m.TimesStat != nil && other.TimesStat != nil {
+		m.TimesStat.User += other.TimesStat.User
+		m.TimesStat.System += other.TimesStat.System
+		m.TimesStat.Idle += other.TimesStat.Idle
+		m.TimesStat.Nice += other.TimesStat.Nice
+		m.TimesStat.Iowait += other.TimesStat.Iowait
+		m.TimesStat.Irq += other.TimesStat.Irq
+		m.TimesStat.Softirq += other.TimesStat.Softirq
+		m.TimesStat.Steal += other.TimesStat.Steal
+		m.TimesStat.Guest += other.TimesStat.Guest
+		m.TimesStat.GuestNice += other.TimesStat.GuestNice
+	} else if m.TimesStat == nil && other.TimesStat != nil {
+		m.TimesStat = other.TimesStat
+	}
 
-	m.LoadStat.Load1 += other.LoadStat.Load1
-	m.LoadStat.Load5 += other.LoadStat.Load5
-	m.LoadStat.Load15 += other.LoadStat.Load15
+	if m.LoadStat != nil && other.LoadStat != nil {
+		m.LoadStat.Load1 += other.LoadStat.Load1
+		m.LoadStat.Load5 += other.LoadStat.Load5
+		m.LoadStat.Load15 += other.LoadStat.Load15
+	} else if m.LoadStat == nil && other.LoadStat != nil {
+		m.LoadStat = other.LoadStat
+	}
+	m.CPUCount += other.CPUCount
 }
 
 // RPCMetrics contains metrics for RPC operations.
+// Metrics are collected on the sender side of RPC calls.
 type RPCMetrics struct {
 	CollectedAt      time.Time `json:"collectedAt"`
 	Connected        int       `json:"connected"`
@@ -1065,6 +1137,12 @@ type RPCMetrics struct {
 	LastPingMS       float64   `json:"lastPingMS"`
 	MaxPingDurMS     float64   `json:"maxPingDurMS"` // Maximum across all merged entries.
 	LastConnectTime  time.Time `json:"lastConnectTime"`
+
+	// Last minute operation statistics by handler.
+	LastMinute map[string]RPCStats `json:"lastMinute,omitempty"`
+
+	// Last day operation statistics by handler, segmented.
+	LastDay map[string]SegmentedRPCMetrics `json:"lastDay,omitempty"`
 
 	ByDestination map[string]RPCMetrics `json:"byDestination,omitempty"`
 	ByCaller      map[string]RPCMetrics `json:"byCaller,omitempty"`
@@ -1115,6 +1193,71 @@ func (m *RPCMetrics) Merge(other *RPCMetrics) {
 		existing.Merge(&v)
 		m.ByCaller[k] = existing
 	}
+
+	for k, v := range other.LastMinute {
+		if m.LastMinute == nil {
+			m.LastMinute = make(map[string]RPCStats, len(other.LastMinute))
+		}
+		existing := m.LastMinute[k]
+		existing.Merge(v)
+		m.LastMinute[k] = existing
+	}
+	for k, v := range other.LastDay {
+		if m.LastDay == nil {
+			m.LastDay = make(map[string]SegmentedRPCMetrics, len(other.LastDay))
+		}
+		existing, ok := m.LastDay[k]
+		if !ok {
+			m.LastDay[k] = v
+			continue
+		}
+		existing.Add(&v)
+		m.LastDay[k] = existing
+	}
+}
+
+// SegmentedRPCMetrics are segmented RPC metrics.
+type SegmentedRPCMetrics = Segmented[RPCStats, *RPCStats]
+
+type RPCStats struct {
+	Nodes           int        `json:"nodes,omitempty"`           // Number of nodes that have reported data.
+	StartTime       *time.Time `json:"startTime,omitempty"`       // Time range this data covers unless merged from sources with different start times..
+	EndTime         *time.Time `json:"endTime,omitempty"`         // Time range this data covers unless merged from sources with different end times.
+	WallTimeSecs    float64    `json:"wallTimeSecs,omitempty"`    // Wall time this data covers, accumulated from all nodes.
+	Requests        int64      `json:"requests,omitempty"`        // Total number of requests.
+	RequestTimeSecs float64    `json:"requestTimeSecs,omitempty"` // Total request time.
+	IncomingBytes   int64      `json:"incomingBytes,omitempty"`   // Total number of bytes received.
+	OutgoingBytes   int64      `json:"outgoingBytes,omitempty"`   // Total number of bytes sent.
+}
+
+// Add 'other' to a.
+func (a *RPCStats) Add(other *RPCStats) {
+	if other == nil {
+		return
+	}
+	a.Merge(*other)
+}
+
+// Merge other into 'a'.
+func (a *RPCStats) Merge(other RPCStats) {
+	if a.StartTime == nil && a.Requests == 0 {
+		a.StartTime = other.StartTime
+	}
+	if a.EndTime == nil && a.Requests == 0 {
+		a.EndTime = other.EndTime
+	}
+	if a.StartTime != nil && other.StartTime != nil && !a.StartTime.Equal(*other.StartTime) {
+		a.StartTime = nil
+	}
+	if a.EndTime != nil && other.EndTime != nil && !a.EndTime.Equal(*other.EndTime) {
+		a.EndTime = nil
+	}
+	a.WallTimeSecs += other.WallTimeSecs
+	a.Nodes += other.Nodes
+	a.Requests += other.Requests
+	a.IncomingBytes += other.IncomingBytes
+	a.OutgoingBytes += other.OutgoingBytes
+	a.RequestTimeSecs += other.RequestTimeSecs
 }
 
 //msgp:replace metrics.Float64Histogram with:localF64H
@@ -1245,6 +1388,7 @@ func (a *APIStats) Merge(other APIStats) {
 	}
 
 	a.Nodes += other.Nodes
+	a.WallTimeSecs += other.WallTimeSecs
 	a.Requests += other.Requests
 	a.IncomingBytes += other.IncomingBytes
 	a.OutgoingBytes += other.OutgoingBytes
@@ -1496,4 +1640,152 @@ func (s *Segmented[T, PT]) Total() T {
 	}
 	// Since we are merging across APIs must reset track node count.
 	return res
+}
+
+// ReplicationMetrics contains metrics for outgoing replication operations.
+type ReplicationMetrics struct {
+	// Time these metrics were collected
+	CollectedAt time.Time `json:"collected"`
+
+	// Nodes responded to the request.
+	Nodes int `json:"nodes"`
+
+	// Number of active replication events.
+	Active int64 `json:"active,omitempty"`
+
+	// Number of queued replication events.
+	Queued int64 `json:"queued,omitempty"`
+
+	// Last minute operation statistics per target.
+	LastMinuteTarget map[string]ReplicationStats `json:"last_minute,omitempty"`
+
+	// Last day operation statistics per target, time segmented.
+	LastDayTarget map[string]SegmentedReplicationStats `json:"last_day,omitempty"`
+
+	// SinceStart contains operations by target.
+	SinceStartTarget map[string]ReplicationStats `json:"since_start"`
+}
+
+func (m *ReplicationMetrics) Merge(other *ReplicationMetrics) {
+	if m == nil || other == nil {
+		return
+	}
+	if m.CollectedAt.Before(other.CollectedAt) {
+		m.CollectedAt = other.CollectedAt
+	}
+	m.Nodes += other.Nodes
+	m.Active += other.Active
+	m.Queued += other.Queued
+
+	// Merge LastMinuteTarget map
+	if len(other.LastMinuteTarget) > 0 {
+		if m.LastMinuteTarget == nil {
+			m.LastMinuteTarget = make(map[string]ReplicationStats, len(other.LastMinuteTarget))
+		}
+		for k, v := range other.LastMinuteTarget {
+			existing := m.LastMinuteTarget[k]
+			existing.Add(&v)
+			m.LastMinuteTarget[k] = existing
+		}
+	}
+
+	// Merge LastDayTarget map
+	if len(other.LastDayTarget) > 0 {
+		if m.LastDayTarget == nil {
+			m.LastDayTarget = make(map[string]SegmentedReplicationStats, len(other.LastDayTarget))
+		}
+		for k, v := range other.LastDayTarget {
+			existing, ok := m.LastDayTarget[k]
+			if !ok {
+				m.LastDayTarget[k] = v
+				continue
+			}
+			existing.Add(&v)
+			m.LastDayTarget[k] = existing
+		}
+	}
+
+	// Merge SinceStartTarget map
+	if len(other.SinceStartTarget) > 0 {
+		if m.SinceStartTarget == nil {
+			m.SinceStartTarget = make(map[string]ReplicationStats, len(other.SinceStartTarget))
+		}
+		for k, v := range other.SinceStartTarget {
+			existing := m.SinceStartTarget[k]
+			existing.Add(&v)
+			m.SinceStartTarget[k] = existing
+		}
+	}
+}
+
+// ReplicationStats is the outgoing replication stats.
+type ReplicationStats struct {
+	Nodes        int        `json:"nodes,omitempty"`        // Number of nodes that have reported data.
+	StartTime    *time.Time `json:"startTime,omitempty"`    // Time range this data covers unless merged from sources with different start times..
+	EndTime      *time.Time `json:"endTime,omitempty"`      // Time range this data covers unless merged from sources with different end times.
+	WallTimeSecs float64    `json:"wallTimeSecs,omitempty"` // Wall time this data covers, accumulated from all nodes.
+
+	// Total number of replication events.
+	Events        int64   `json:"events,omitempty"`   // Total number of requests.
+	Bytes         int64   `json:"bytes,omitempty"`    // Total number of bytes transferred.
+	EventTimeSecs float64 `json:"timeSecs,omitempty"` // Accumulated event time
+
+	// Replication event types.
+	PutObject  int64 `json:"put,omitempty"` // Total put replication requests.
+	DelObject  int64 `json:"del,omitempty"` // Total delete replication requests.
+	OtherEvent int64 `json:"other,omitempty"`
+
+	// Outcome (if not error)
+	Synced    int64 `json:"synced,omitempty"`    // Total synced replication requests (didn't exist on remote).
+	AlreadyOK int64 `json:"alreadyOK,omitempty"` // Total already-ok replication requests (already existed on remote).
+	Rejected  int64 `json:"rejected,omitempty"`  // Total rejected replication requests.
+
+	// Errors encountered.
+	Errors4xx int64 `json:"4xx,omitempty"`      // Total number of 4xx (client request) errors.
+	Errors5xx int64 `json:"5xx,omitempty"`      // Total number of 5xx (serverside) errors.
+	Canceled  int64 `json:"canceled,omitempty"` // Events that were canceled before they finished processing.
+}
+
+type SegmentedReplicationStats = Segmented[ReplicationStats, *ReplicationStats]
+
+// Add 'other' to a.
+func (a *ReplicationStats) Add(other *ReplicationStats) {
+	if other == nil {
+		return
+	}
+	// Handle start/end times
+	if a.StartTime == nil && a.Events == 0 {
+		a.StartTime = other.StartTime
+	}
+	if a.EndTime == nil && a.Events == 0 {
+		a.EndTime = other.EndTime
+	}
+	if a.StartTime != nil && other.StartTime != nil && !a.StartTime.Equal(*other.StartTime) {
+		a.StartTime = nil
+	}
+	if a.EndTime != nil && other.EndTime != nil && !a.EndTime.Equal(*other.EndTime) {
+		a.EndTime = nil
+	}
+
+	// Merge counters
+	a.Nodes += other.Nodes
+	a.WallTimeSecs += other.WallTimeSecs
+	a.Events += other.Events
+	a.Bytes += other.Bytes
+	a.EventTimeSecs += other.EventTimeSecs
+
+	// Event types
+	a.PutObject += other.PutObject
+	a.DelObject += other.DelObject
+	a.OtherEvent += other.OtherEvent
+
+	// Outcomes
+	a.Synced += other.Synced
+	a.AlreadyOK += other.AlreadyOK
+	a.Rejected += other.Rejected
+
+	// Errors
+	a.Errors4xx += other.Errors4xx
+	a.Errors5xx += other.Errors5xx
+	a.Canceled += other.Canceled
 }
