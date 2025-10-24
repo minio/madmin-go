@@ -1053,7 +1053,7 @@ func (m *MemInfo) Merge(other *MemInfo) {
 	if other == nil {
 		return
 	}
-	if m.Total == 0 && m.NodeCommon.Addr == "" {
+	if m.Total == 0 && m.Addr == "" {
 		m.NodeCommon = other.NodeCommon
 	} else if m.NodeCommon != other.NodeCommon {
 		m.NodeCommon = NodeCommon{}

@@ -232,7 +232,7 @@ func TestOSMetricsMerge(t *testing.T) {
 			name:  "merge nil other",
 			base:  &OSMetrics{},
 			other: nil,
-			verify: func(t *testing.T, result *OSMetrics) {
+			verify: func(_ *testing.T, _ *OSMetrics) {
 				// Should not panic
 			},
 		},
@@ -276,7 +276,7 @@ func TestMemMetricsMerge(t *testing.T) {
 			name:  "merge nil other",
 			base:  &MemMetrics{},
 			other: nil,
-			verify: func(t *testing.T, result *MemMetrics) {
+			verify: func(_ *testing.T, _ *MemMetrics) {
 				// Should not panic
 			},
 		},
@@ -379,7 +379,7 @@ func TestCPUMetricsMerge(t *testing.T) {
 			name:  "merge nil other",
 			base:  &CPUMetrics{},
 			other: nil,
-			verify: func(t *testing.T, result *CPUMetrics) {
+			verify: func(_ *testing.T, _ *CPUMetrics) {
 				// Should not panic
 			},
 		},
@@ -499,7 +499,7 @@ func TestAPIMetricsMerge(t *testing.T) {
 			name:  "merge nil other",
 			base:  &APIMetrics{},
 			other: nil,
-			verify: func(t *testing.T, result *APIMetrics) {
+			verify: func(_ *testing.T, _ *APIMetrics) {
 				// Should not panic
 			},
 		},
@@ -583,7 +583,7 @@ func TestReplicationMetricsMerge(t *testing.T) {
 			name:  "merge nil other",
 			base:  &ReplicationMetrics{},
 			other: nil,
-			verify: func(t *testing.T, result *ReplicationMetrics) {
+			verify: func(_ *testing.T, _ *ReplicationMetrics) {
 				// Should not panic
 			},
 		},
@@ -670,7 +670,7 @@ func TestReplicationStatsAdd(t *testing.T) {
 			name:  "add nil other",
 			base:  &ReplicationStats{},
 			other: nil,
-			verify: func(t *testing.T, result *ReplicationStats) {
+			verify: func(_ *testing.T, _ *ReplicationStats) {
 				// Should not panic
 			},
 		},
@@ -803,7 +803,7 @@ func TestMetricsMerge(t *testing.T) {
 			name:  "merge nil other",
 			base:  &Metrics{},
 			other: nil,
-			verify: func(t *testing.T, result *Metrics) {
+			verify: func(_ *testing.T, _ *Metrics) {
 				// Should not panic
 			},
 		},
@@ -919,7 +919,7 @@ func TestRealtimeMetricsMerge(t *testing.T) {
 			name:  "merge nil other",
 			base:  &RealtimeMetrics{},
 			other: nil,
-			verify: func(t *testing.T, result *RealtimeMetrics) {
+			verify: func(_ *testing.T, _ *RealtimeMetrics) {
 				// Should not panic
 			},
 		},
