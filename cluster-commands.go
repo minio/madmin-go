@@ -288,6 +288,7 @@ const (
 	SRIAMItemSTSAcc        = "sts-account"
 	SRIAMItemIAMUser       = "iam-user"
 	SRIAMItemExternalUser  = "external-user"
+	SRIAMItemLDAPUser      = "ldap-user"
 )
 
 // SRSessionPolicy - represents a session policy to be replicated.
@@ -311,20 +312,17 @@ func (s *SRSessionPolicy) UnmarshalJSON(data []byte) error {
 
 // SRSvcAccCreate - create operation
 type SRSvcAccCreate struct {
-	Parent            string                 `json:"parent"`
-	AccessKey         string                 `json:"accessKey"`
-	SecretKey         string                 `json:"secretKey"`
-	Groups            []string               `json:"groups"`
-	Claims            map[string]interface{} `json:"claims"`
-	SessionPolicy     SRSessionPolicy        `json:"sessionPolicy"`
-	Status            string                 `json:"status"`
-	Name              string                 `json:"name"`
-	Description       string                 `json:"description"`
-	ExternalIDPType   string                 `json:"externalIdpType,omitempty"`
-	ExternalIDPConfig string                 `json:"externalIdpConfig,omitempty"`
-	ExternalIDPUserID string                 `json:"externalIdpUserId,omitempty"`
-	Expiration        *time.Time             `json:"expiration,omitempty"`
-	APIVersion        string                 `json:"apiVersion,omitempty"`
+	Parent        string                 `json:"parent"`
+	AccessKey     string                 `json:"accessKey"`
+	SecretKey     string                 `json:"secretKey"`
+	Groups        []string               `json:"groups"`
+	Claims        map[string]interface{} `json:"claims"`
+	SessionPolicy SRSessionPolicy        `json:"sessionPolicy"`
+	Status        string                 `json:"status"`
+	Name          string                 `json:"name"`
+	Description   string                 `json:"description"`
+	Expiration    *time.Time             `json:"expiration,omitempty"`
+	APIVersion    string                 `json:"apiVersion,omitempty"`
 }
 
 // SRSvcAccUpdate - update operation
@@ -359,6 +357,8 @@ type SRPolicyMapping struct {
 	UserType    int       `json:"userType"`
 	IsGroup     bool      `json:"isGroup"`
 	Policy      string    `json:"policy"`
+	Provider    string    `json:"provider,omitempty"`
+	ConfigID    string    `json:"configID,omitempty"`
 	CreatedAt   time.Time `json:"createdAt,omitempty"`
 	UpdatedAt   time.Time `json:"updatedAt,omitempty"`
 	APIVersion  string    `json:"apiVersion,omitempty"`
@@ -393,6 +393,19 @@ type SRExternalUser struct {
 	IsDeleteReq bool   `json:"isDeleteReq"`
 
 	OpenIDUser *OpenIDUser `json:"openIDUser,omitempty"`
+}
+
+// SRLDAPUser - represents an LDAP user to be replicated.
+type SRLDAPUser struct {
+	DN          string    `json:"dn"`
+	Username    string    `json:"username"`
+	ValidatedDN string    `json:"validatedDN,omitempty"`
+	Groups      []string  `json:"groups,omitempty"`
+	Expiry      time.Time `json:"expiry,omitempty"`
+	IsDeleteReq bool      `json:"isDeleteReq"`
+	ConfigName  string    `json:"configName"`
+	UpdatedAt   time.Time `json:"updatedAt,omitempty"`
+	APIVersion  string    `json:"apiVersion,omitempty"`
 }
 
 // SRIAMUser - represents a regular (IAM) user to be replicated. A nil UserReq
@@ -454,6 +467,9 @@ type SRIAMItem struct {
 
 	// Used when Type = SRIAMItemExternalUser
 	ExternalUser *SRExternalUser `json:"externalUser"`
+
+	// Used when Type = SRIAMItemLDAPUser
+	LDAPUser *SRLDAPUser `json:"ldapUser"`
 
 	// UpdatedAt - timestamp of last update
 	UpdatedAt  time.Time `json:"updatedAt,omitempty"`
