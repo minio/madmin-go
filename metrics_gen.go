@@ -12430,7 +12430,7 @@ func (z *RPCStats) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 8 bits */
+	var zb0001Mask uint16 /* 9 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -12520,6 +12520,13 @@ func (z *RPCStats) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 			zb0001Mask |= 0x80
+		case "reconnects":
+			z.Reconnects, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "Reconnects")
+				return
+			}
+			zb0001Mask |= 0x100
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -12529,7 +12536,7 @@ func (z *RPCStats) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xff {
+	if zb0001Mask != 0x1ff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Nodes = 0
 		}
@@ -12554,6 +12561,9 @@ func (z *RPCStats) DecodeMsg(dc *msgp.Reader) (err error) {
 		if (zb0001Mask & 0x80) == 0 {
 			z.OutgoingBytes = 0
 		}
+		if (zb0001Mask & 0x100) == 0 {
+			z.Reconnects = 0
+		}
 	}
 	return
 }
@@ -12561,8 +12571,8 @@ func (z *RPCStats) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *RPCStats) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(8)
-	var zb0001Mask uint8 /* 8 bits */
+	zb0001Len := uint32(9)
+	var zb0001Mask uint16 /* 9 bits */
 	_ = zb0001Mask
 	if z.Nodes == 0 {
 		zb0001Len--
@@ -12595,6 +12605,10 @@ func (z *RPCStats) EncodeMsg(en *msgp.Writer) (err error) {
 	if z.OutgoingBytes == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x80
+	}
+	if z.Reconnects == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x100
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -12714,6 +12728,18 @@ func (z *RPCStats) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
+			// write "reconnects"
+			err = en.Append(0xaa, 0x72, 0x65, 0x63, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt(z.Reconnects)
+			if err != nil {
+				err = msgp.WrapError(err, "Reconnects")
+				return
+			}
+		}
 	}
 	return
 }
@@ -12722,8 +12748,8 @@ func (z *RPCStats) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *RPCStats) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(8)
-	var zb0001Mask uint8 /* 8 bits */
+	zb0001Len := uint32(9)
+	var zb0001Mask uint16 /* 9 bits */
 	_ = zb0001Mask
 	if z.Nodes == 0 {
 		zb0001Len--
@@ -12756,6 +12782,10 @@ func (z *RPCStats) MarshalMsg(b []byte) (o []byte, err error) {
 	if z.OutgoingBytes == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x80
+	}
+	if z.Reconnects == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x100
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -12810,6 +12840,11 @@ func (z *RPCStats) MarshalMsg(b []byte) (o []byte, err error) {
 			o = append(o, 0xad, 0x6f, 0x75, 0x74, 0x67, 0x6f, 0x69, 0x6e, 0x67, 0x42, 0x79, 0x74, 0x65, 0x73)
 			o = msgp.AppendInt64(o, z.OutgoingBytes)
 		}
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
+			// string "reconnects"
+			o = append(o, 0xaa, 0x72, 0x65, 0x63, 0x6f, 0x6e, 0x6e, 0x65, 0x63, 0x74, 0x73)
+			o = msgp.AppendInt(o, z.Reconnects)
+		}
 	}
 	return
 }
@@ -12824,7 +12859,7 @@ func (z *RPCStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 8 bits */
+	var zb0001Mask uint16 /* 9 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -12912,6 +12947,13 @@ func (z *RPCStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 			zb0001Mask |= 0x80
+		case "reconnects":
+			z.Reconnects, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Reconnects")
+				return
+			}
+			zb0001Mask |= 0x100
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -12921,7 +12963,7 @@ func (z *RPCStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xff {
+	if zb0001Mask != 0x1ff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Nodes = 0
 		}
@@ -12946,6 +12988,9 @@ func (z *RPCStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		if (zb0001Mask & 0x80) == 0 {
 			z.OutgoingBytes = 0
 		}
+		if (zb0001Mask & 0x100) == 0 {
+			z.Reconnects = 0
+		}
 	}
 	o = bts
 	return
@@ -12965,7 +13010,7 @@ func (z *RPCStats) Msgsize() (s int) {
 	} else {
 		s += msgp.TimeSize
 	}
-	s += 13 + msgp.Float64Size + 9 + msgp.Int64Size + 16 + msgp.Float64Size + 14 + msgp.Int64Size + 14 + msgp.Int64Size
+	s += 13 + msgp.Float64Size + 9 + msgp.Int64Size + 16 + msgp.Float64Size + 14 + msgp.Int64Size + 14 + msgp.Int64Size + 11 + msgp.IntSize
 	return
 }
 
@@ -14320,7 +14365,7 @@ func (z *ReplicationMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 4 bits */
+	var zb0001Mask uint8 /* 2 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -14356,91 +14401,33 @@ func (z *ReplicationMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 			zb0001Mask |= 0x2
-		case "last_minute":
+		case "targets":
 			var zb0002 uint32
 			zb0002, err = dc.ReadMapHeader()
 			if err != nil {
-				err = msgp.WrapError(err, "LastMinuteTarget")
+				err = msgp.WrapError(err, "Targets")
 				return
 			}
-			if z.LastMinuteTarget == nil {
-				z.LastMinuteTarget = make(map[string]ReplicationStats, zb0002)
-			} else if len(z.LastMinuteTarget) > 0 {
-				clear(z.LastMinuteTarget)
+			if z.Targets == nil {
+				z.Targets = make(map[string]ReplicationTargetStats, zb0002)
+			} else if len(z.Targets) > 0 {
+				clear(z.Targets)
 			}
 			for zb0002 > 0 {
 				zb0002--
 				var za0001 string
 				za0001, err = dc.ReadString()
 				if err != nil {
-					err = msgp.WrapError(err, "LastMinuteTarget")
+					err = msgp.WrapError(err, "Targets")
 					return
 				}
-				var za0002 ReplicationStats
+				var za0002 ReplicationTargetStats
 				err = za0002.DecodeMsg(dc)
 				if err != nil {
-					err = msgp.WrapError(err, "LastMinuteTarget", za0001)
+					err = msgp.WrapError(err, "Targets", za0001)
 					return
 				}
-				z.LastMinuteTarget[za0001] = za0002
-			}
-			zb0001Mask |= 0x4
-		case "last_day":
-			var zb0003 uint32
-			zb0003, err = dc.ReadMapHeader()
-			if err != nil {
-				err = msgp.WrapError(err, "LastDayTarget")
-				return
-			}
-			if z.LastDayTarget == nil {
-				z.LastDayTarget = make(map[string]SegmentedReplicationStats, zb0003)
-			} else if len(z.LastDayTarget) > 0 {
-				clear(z.LastDayTarget)
-			}
-			for zb0003 > 0 {
-				zb0003--
-				var za0003 string
-				za0003, err = dc.ReadString()
-				if err != nil {
-					err = msgp.WrapError(err, "LastDayTarget")
-					return
-				}
-				var za0004 SegmentedReplicationStats
-				err = za0004.DecodeMsg(dc)
-				if err != nil {
-					err = msgp.WrapError(err, "LastDayTarget", za0003)
-					return
-				}
-				z.LastDayTarget[za0003] = za0004
-			}
-			zb0001Mask |= 0x8
-		case "since_start":
-			var zb0004 uint32
-			zb0004, err = dc.ReadMapHeader()
-			if err != nil {
-				err = msgp.WrapError(err, "SinceStartTarget")
-				return
-			}
-			if z.SinceStartTarget == nil {
-				z.SinceStartTarget = make(map[string]ReplicationStats, zb0004)
-			} else if len(z.SinceStartTarget) > 0 {
-				clear(z.SinceStartTarget)
-			}
-			for zb0004 > 0 {
-				zb0004--
-				var za0005 string
-				za0005, err = dc.ReadString()
-				if err != nil {
-					err = msgp.WrapError(err, "SinceStartTarget")
-					return
-				}
-				var za0006 ReplicationStats
-				err = za0006.DecodeMsg(dc)
-				if err != nil {
-					err = msgp.WrapError(err, "SinceStartTarget", za0005)
-					return
-				}
-				z.SinceStartTarget[za0005] = za0006
+				z.Targets[za0001] = za0002
 			}
 		default:
 			err = dc.Skip()
@@ -14451,18 +14438,12 @@ func (z *ReplicationMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xf {
+	if zb0001Mask != 0x3 {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Active = 0
 		}
 		if (zb0001Mask & 0x2) == 0 {
 			z.Queued = 0
-		}
-		if (zb0001Mask & 0x4) == 0 {
-			z.LastMinuteTarget = nil
-		}
-		if (zb0001Mask & 0x8) == 0 {
-			z.LastDayTarget = nil
 		}
 	}
 	return
@@ -14471,8 +14452,8 @@ func (z *ReplicationMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *ReplicationMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(7)
-	var zb0001Mask uint8 /* 7 bits */
+	zb0001Len := uint32(5)
+	var zb0001Mask uint8 /* 5 bits */
 	_ = zb0001Mask
 	if z.Active == 0 {
 		zb0001Len--
@@ -14481,14 +14462,6 @@ func (z *ReplicationMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 	if z.Queued == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x8
-	}
-	if z.LastMinuteTarget == nil {
-		zb0001Len--
-		zb0001Mask |= 0x10
-	}
-	if z.LastDayTarget == nil {
-		zb0001Len--
-		zb0001Mask |= 0x20
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -14542,73 +14515,25 @@ func (z *ReplicationMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x10) == 0 { // if not omitted
-			// write "last_minute"
-			err = en.Append(0xab, 0x6c, 0x61, 0x73, 0x74, 0x5f, 0x6d, 0x69, 0x6e, 0x75, 0x74, 0x65)
-			if err != nil {
-				return
-			}
-			err = en.WriteMapHeader(uint32(len(z.LastMinuteTarget)))
-			if err != nil {
-				err = msgp.WrapError(err, "LastMinuteTarget")
-				return
-			}
-			for za0001, za0002 := range z.LastMinuteTarget {
-				err = en.WriteString(za0001)
-				if err != nil {
-					err = msgp.WrapError(err, "LastMinuteTarget")
-					return
-				}
-				err = za0002.EncodeMsg(en)
-				if err != nil {
-					err = msgp.WrapError(err, "LastMinuteTarget", za0001)
-					return
-				}
-			}
-		}
-		if (zb0001Mask & 0x20) == 0 { // if not omitted
-			// write "last_day"
-			err = en.Append(0xa8, 0x6c, 0x61, 0x73, 0x74, 0x5f, 0x64, 0x61, 0x79)
-			if err != nil {
-				return
-			}
-			err = en.WriteMapHeader(uint32(len(z.LastDayTarget)))
-			if err != nil {
-				err = msgp.WrapError(err, "LastDayTarget")
-				return
-			}
-			for za0003, za0004 := range z.LastDayTarget {
-				err = en.WriteString(za0003)
-				if err != nil {
-					err = msgp.WrapError(err, "LastDayTarget")
-					return
-				}
-				err = za0004.EncodeMsg(en)
-				if err != nil {
-					err = msgp.WrapError(err, "LastDayTarget", za0003)
-					return
-				}
-			}
-		}
-		// write "since_start"
-		err = en.Append(0xab, 0x73, 0x69, 0x6e, 0x63, 0x65, 0x5f, 0x73, 0x74, 0x61, 0x72, 0x74)
+		// write "targets"
+		err = en.Append(0xa7, 0x74, 0x61, 0x72, 0x67, 0x65, 0x74, 0x73)
 		if err != nil {
 			return
 		}
-		err = en.WriteMapHeader(uint32(len(z.SinceStartTarget)))
+		err = en.WriteMapHeader(uint32(len(z.Targets)))
 		if err != nil {
-			err = msgp.WrapError(err, "SinceStartTarget")
+			err = msgp.WrapError(err, "Targets")
 			return
 		}
-		for za0005, za0006 := range z.SinceStartTarget {
-			err = en.WriteString(za0005)
+		for za0001, za0002 := range z.Targets {
+			err = en.WriteString(za0001)
 			if err != nil {
-				err = msgp.WrapError(err, "SinceStartTarget")
+				err = msgp.WrapError(err, "Targets")
 				return
 			}
-			err = za0006.EncodeMsg(en)
+			err = za0002.EncodeMsg(en)
 			if err != nil {
-				err = msgp.WrapError(err, "SinceStartTarget", za0005)
+				err = msgp.WrapError(err, "Targets", za0001)
 				return
 			}
 		}
@@ -14620,8 +14545,8 @@ func (z *ReplicationMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *ReplicationMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(7)
-	var zb0001Mask uint8 /* 7 bits */
+	zb0001Len := uint32(5)
+	var zb0001Mask uint8 /* 5 bits */
 	_ = zb0001Mask
 	if z.Active == 0 {
 		zb0001Len--
@@ -14630,14 +14555,6 @@ func (z *ReplicationMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 	if z.Queued == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x8
-	}
-	if z.LastMinuteTarget == nil {
-		zb0001Len--
-		zb0001Mask |= 0x10
-	}
-	if z.LastDayTarget == nil {
-		zb0001Len--
-		zb0001Mask |= 0x20
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -14660,40 +14577,14 @@ func (z *ReplicationMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 			o = append(o, 0xa6, 0x71, 0x75, 0x65, 0x75, 0x65, 0x64)
 			o = msgp.AppendInt64(o, z.Queued)
 		}
-		if (zb0001Mask & 0x10) == 0 { // if not omitted
-			// string "last_minute"
-			o = append(o, 0xab, 0x6c, 0x61, 0x73, 0x74, 0x5f, 0x6d, 0x69, 0x6e, 0x75, 0x74, 0x65)
-			o = msgp.AppendMapHeader(o, uint32(len(z.LastMinuteTarget)))
-			for za0001, za0002 := range z.LastMinuteTarget {
-				o = msgp.AppendString(o, za0001)
-				o, err = za0002.MarshalMsg(o)
-				if err != nil {
-					err = msgp.WrapError(err, "LastMinuteTarget", za0001)
-					return
-				}
-			}
-		}
-		if (zb0001Mask & 0x20) == 0 { // if not omitted
-			// string "last_day"
-			o = append(o, 0xa8, 0x6c, 0x61, 0x73, 0x74, 0x5f, 0x64, 0x61, 0x79)
-			o = msgp.AppendMapHeader(o, uint32(len(z.LastDayTarget)))
-			for za0003, za0004 := range z.LastDayTarget {
-				o = msgp.AppendString(o, za0003)
-				o, err = za0004.MarshalMsg(o)
-				if err != nil {
-					err = msgp.WrapError(err, "LastDayTarget", za0003)
-					return
-				}
-			}
-		}
-		// string "since_start"
-		o = append(o, 0xab, 0x73, 0x69, 0x6e, 0x63, 0x65, 0x5f, 0x73, 0x74, 0x61, 0x72, 0x74)
-		o = msgp.AppendMapHeader(o, uint32(len(z.SinceStartTarget)))
-		for za0005, za0006 := range z.SinceStartTarget {
-			o = msgp.AppendString(o, za0005)
-			o, err = za0006.MarshalMsg(o)
+		// string "targets"
+		o = append(o, 0xa7, 0x74, 0x61, 0x72, 0x67, 0x65, 0x74, 0x73)
+		o = msgp.AppendMapHeader(o, uint32(len(z.Targets)))
+		for za0001, za0002 := range z.Targets {
+			o = msgp.AppendString(o, za0001)
+			o, err = za0002.MarshalMsg(o)
 			if err != nil {
-				err = msgp.WrapError(err, "SinceStartTarget", za0005)
+				err = msgp.WrapError(err, "Targets", za0001)
 				return
 			}
 		}
@@ -14711,7 +14602,7 @@ func (z *ReplicationMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 4 bits */
+	var zb0001Mask uint8 /* 2 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -14747,91 +14638,33 @@ func (z *ReplicationMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 			zb0001Mask |= 0x2
-		case "last_minute":
+		case "targets":
 			var zb0002 uint32
 			zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "LastMinuteTarget")
+				err = msgp.WrapError(err, "Targets")
 				return
 			}
-			if z.LastMinuteTarget == nil {
-				z.LastMinuteTarget = make(map[string]ReplicationStats, zb0002)
-			} else if len(z.LastMinuteTarget) > 0 {
-				clear(z.LastMinuteTarget)
+			if z.Targets == nil {
+				z.Targets = make(map[string]ReplicationTargetStats, zb0002)
+			} else if len(z.Targets) > 0 {
+				clear(z.Targets)
 			}
 			for zb0002 > 0 {
-				var za0002 ReplicationStats
+				var za0002 ReplicationTargetStats
 				zb0002--
 				var za0001 string
 				za0001, bts, err = msgp.ReadStringBytes(bts)
 				if err != nil {
-					err = msgp.WrapError(err, "LastMinuteTarget")
+					err = msgp.WrapError(err, "Targets")
 					return
 				}
 				bts, err = za0002.UnmarshalMsg(bts)
 				if err != nil {
-					err = msgp.WrapError(err, "LastMinuteTarget", za0001)
+					err = msgp.WrapError(err, "Targets", za0001)
 					return
 				}
-				z.LastMinuteTarget[za0001] = za0002
-			}
-			zb0001Mask |= 0x4
-		case "last_day":
-			var zb0003 uint32
-			zb0003, bts, err = msgp.ReadMapHeaderBytes(bts)
-			if err != nil {
-				err = msgp.WrapError(err, "LastDayTarget")
-				return
-			}
-			if z.LastDayTarget == nil {
-				z.LastDayTarget = make(map[string]SegmentedReplicationStats, zb0003)
-			} else if len(z.LastDayTarget) > 0 {
-				clear(z.LastDayTarget)
-			}
-			for zb0003 > 0 {
-				var za0004 SegmentedReplicationStats
-				zb0003--
-				var za0003 string
-				za0003, bts, err = msgp.ReadStringBytes(bts)
-				if err != nil {
-					err = msgp.WrapError(err, "LastDayTarget")
-					return
-				}
-				bts, err = za0004.UnmarshalMsg(bts)
-				if err != nil {
-					err = msgp.WrapError(err, "LastDayTarget", za0003)
-					return
-				}
-				z.LastDayTarget[za0003] = za0004
-			}
-			zb0001Mask |= 0x8
-		case "since_start":
-			var zb0004 uint32
-			zb0004, bts, err = msgp.ReadMapHeaderBytes(bts)
-			if err != nil {
-				err = msgp.WrapError(err, "SinceStartTarget")
-				return
-			}
-			if z.SinceStartTarget == nil {
-				z.SinceStartTarget = make(map[string]ReplicationStats, zb0004)
-			} else if len(z.SinceStartTarget) > 0 {
-				clear(z.SinceStartTarget)
-			}
-			for zb0004 > 0 {
-				var za0006 ReplicationStats
-				zb0004--
-				var za0005 string
-				za0005, bts, err = msgp.ReadStringBytes(bts)
-				if err != nil {
-					err = msgp.WrapError(err, "SinceStartTarget")
-					return
-				}
-				bts, err = za0006.UnmarshalMsg(bts)
-				if err != nil {
-					err = msgp.WrapError(err, "SinceStartTarget", za0005)
-					return
-				}
-				z.SinceStartTarget[za0005] = za0006
+				z.Targets[za0001] = za0002
 			}
 		default:
 			bts, err = msgp.Skip(bts)
@@ -14842,18 +14675,12 @@ func (z *ReplicationMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xf {
+	if zb0001Mask != 0x3 {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Active = 0
 		}
 		if (zb0001Mask & 0x2) == 0 {
 			z.Queued = 0
-		}
-		if (zb0001Mask & 0x4) == 0 {
-			z.LastMinuteTarget = nil
-		}
-		if (zb0001Mask & 0x8) == 0 {
-			z.LastDayTarget = nil
 		}
 	}
 	o = bts
@@ -14862,25 +14689,11 @@ func (z *ReplicationMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *ReplicationMetrics) Msgsize() (s int) {
-	s = 1 + 10 + msgp.TimeSize + 6 + msgp.IntSize + 7 + msgp.Int64Size + 7 + msgp.Int64Size + 12 + msgp.MapHeaderSize
-	if z.LastMinuteTarget != nil {
-		for za0001, za0002 := range z.LastMinuteTarget {
+	s = 1 + 10 + msgp.TimeSize + 6 + msgp.IntSize + 7 + msgp.Int64Size + 7 + msgp.Int64Size + 8 + msgp.MapHeaderSize
+	if z.Targets != nil {
+		for za0001, za0002 := range z.Targets {
 			_ = za0002
 			s += msgp.StringPrefixSize + len(za0001) + za0002.Msgsize()
-		}
-	}
-	s += 9 + msgp.MapHeaderSize
-	if z.LastDayTarget != nil {
-		for za0003, za0004 := range z.LastDayTarget {
-			_ = za0004
-			s += msgp.StringPrefixSize + len(za0003) + za0004.Msgsize()
-		}
-	}
-	s += 12 + msgp.MapHeaderSize
-	if z.SinceStartTarget != nil {
-		for za0005, za0006 := range z.SinceStartTarget {
-			_ = za0006
-			s += msgp.StringPrefixSize + len(za0005) + za0006.Msgsize()
 		}
 	}
 	return
@@ -14896,7 +14709,7 @@ func (z *ReplicationStats) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint16 /* 16 bits */
+	var zb0001Mask uint32 /* 22 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -14986,62 +14799,104 @@ func (z *ReplicationStats) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 			zb0001Mask |= 0x80
+		case "putTag":
+			z.PutTag, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "PutTag")
+				return
+			}
+			zb0001Mask |= 0x100
 		case "del":
 			z.DelObject, err = dc.ReadInt64()
 			if err != nil {
 				err = msgp.WrapError(err, "DelObject")
 				return
 			}
-			zb0001Mask |= 0x100
-		case "other":
-			z.OtherEvent, err = dc.ReadInt64()
+			zb0001Mask |= 0x200
+		case "delTag":
+			z.DelTag, err = dc.ReadInt64()
 			if err != nil {
-				err = msgp.WrapError(err, "OtherEvent")
+				err = msgp.WrapError(err, "DelTag")
 				return
 			}
-			zb0001Mask |= 0x200
+			zb0001Mask |= 0x400
 		case "synced":
 			z.Synced, err = dc.ReadInt64()
 			if err != nil {
 				err = msgp.WrapError(err, "Synced")
 				return
 			}
-			zb0001Mask |= 0x400
+			zb0001Mask |= 0x800
 		case "alreadyOK":
 			z.AlreadyOK, err = dc.ReadInt64()
 			if err != nil {
 				err = msgp.WrapError(err, "AlreadyOK")
 				return
 			}
-			zb0001Mask |= 0x800
+			zb0001Mask |= 0x1000
 		case "rejected":
 			z.Rejected, err = dc.ReadInt64()
 			if err != nil {
 				err = msgp.WrapError(err, "Rejected")
 				return
 			}
-			zb0001Mask |= 0x1000
+			zb0001Mask |= 0x2000
+		case "proxy":
+			z.ProxyEvents, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "ProxyEvents")
+				return
+			}
+			zb0001Mask |= 0x4000
+		case "proxyBytes":
+			z.ProxyBytes, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "ProxyBytes")
+				return
+			}
+			zb0001Mask |= 0x8000
+		case "proxyHead":
+			z.ProxyHead, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "ProxyHead")
+				return
+			}
+			zb0001Mask |= 0x10000
+		case "proxyGet":
+			z.ProxyGet, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "ProxyGet")
+				return
+			}
+			zb0001Mask |= 0x20000
+		case "proxyGetTag":
+			z.ProxyGetTag, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "ProxyGetTag")
+				return
+			}
+			zb0001Mask |= 0x40000
 		case "4xx":
 			z.Errors4xx, err = dc.ReadInt64()
 			if err != nil {
 				err = msgp.WrapError(err, "Errors4xx")
 				return
 			}
-			zb0001Mask |= 0x2000
+			zb0001Mask |= 0x80000
 		case "5xx":
 			z.Errors5xx, err = dc.ReadInt64()
 			if err != nil {
 				err = msgp.WrapError(err, "Errors5xx")
 				return
 			}
-			zb0001Mask |= 0x4000
+			zb0001Mask |= 0x100000
 		case "canceled":
 			z.Canceled, err = dc.ReadInt64()
 			if err != nil {
 				err = msgp.WrapError(err, "Canceled")
 				return
 			}
-			zb0001Mask |= 0x8000
+			zb0001Mask |= 0x200000
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -15051,7 +14906,7 @@ func (z *ReplicationStats) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xffff {
+	if zb0001Mask != 0x3fffff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Nodes = 0
 		}
@@ -15077,27 +14932,45 @@ func (z *ReplicationStats) DecodeMsg(dc *msgp.Reader) (err error) {
 			z.PutObject = 0
 		}
 		if (zb0001Mask & 0x100) == 0 {
-			z.DelObject = 0
+			z.PutTag = 0
 		}
 		if (zb0001Mask & 0x200) == 0 {
-			z.OtherEvent = 0
+			z.DelObject = 0
 		}
 		if (zb0001Mask & 0x400) == 0 {
-			z.Synced = 0
+			z.DelTag = 0
 		}
 		if (zb0001Mask & 0x800) == 0 {
-			z.AlreadyOK = 0
+			z.Synced = 0
 		}
 		if (zb0001Mask & 0x1000) == 0 {
-			z.Rejected = 0
+			z.AlreadyOK = 0
 		}
 		if (zb0001Mask & 0x2000) == 0 {
-			z.Errors4xx = 0
+			z.Rejected = 0
 		}
 		if (zb0001Mask & 0x4000) == 0 {
-			z.Errors5xx = 0
+			z.ProxyEvents = 0
 		}
 		if (zb0001Mask & 0x8000) == 0 {
+			z.ProxyBytes = 0
+		}
+		if (zb0001Mask & 0x10000) == 0 {
+			z.ProxyHead = 0
+		}
+		if (zb0001Mask & 0x20000) == 0 {
+			z.ProxyGet = 0
+		}
+		if (zb0001Mask & 0x40000) == 0 {
+			z.ProxyGetTag = 0
+		}
+		if (zb0001Mask & 0x80000) == 0 {
+			z.Errors4xx = 0
+		}
+		if (zb0001Mask & 0x100000) == 0 {
+			z.Errors5xx = 0
+		}
+		if (zb0001Mask & 0x200000) == 0 {
 			z.Canceled = 0
 		}
 	}
@@ -15107,8 +14980,8 @@ func (z *ReplicationStats) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *ReplicationStats) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(16)
-	var zb0001Mask uint16 /* 16 bits */
+	zb0001Len := uint32(22)
+	var zb0001Mask uint32 /* 22 bits */
 	_ = zb0001Mask
 	if z.Nodes == 0 {
 		zb0001Len--
@@ -15142,37 +15015,61 @@ func (z *ReplicationStats) EncodeMsg(en *msgp.Writer) (err error) {
 		zb0001Len--
 		zb0001Mask |= 0x80
 	}
-	if z.DelObject == 0 {
+	if z.PutTag == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x100
 	}
-	if z.OtherEvent == 0 {
+	if z.DelObject == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x200
 	}
-	if z.Synced == 0 {
+	if z.DelTag == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x400
 	}
-	if z.AlreadyOK == 0 {
+	if z.Synced == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x800
 	}
-	if z.Rejected == 0 {
+	if z.AlreadyOK == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x1000
 	}
-	if z.Errors4xx == 0 {
+	if z.Rejected == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x2000
 	}
-	if z.Errors5xx == 0 {
+	if z.ProxyEvents == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x4000
 	}
-	if z.Canceled == 0 {
+	if z.ProxyBytes == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x8000
+	}
+	if z.ProxyHead == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x10000
+	}
+	if z.ProxyGet == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x20000
+	}
+	if z.ProxyGetTag == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x40000
+	}
+	if z.Errors4xx == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x80000
+	}
+	if z.Errors5xx == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x100000
+	}
+	if z.Canceled == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x200000
 	}
 	// variable map header, size zb0001Len
 	err = en.WriteMapHeader(zb0001Len)
@@ -15293,6 +15190,18 @@ func (z *ReplicationStats) EncodeMsg(en *msgp.Writer) (err error) {
 			}
 		}
 		if (zb0001Mask & 0x100) == 0 { // if not omitted
+			// write "putTag"
+			err = en.Append(0xa6, 0x70, 0x75, 0x74, 0x54, 0x61, 0x67)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.PutTag)
+			if err != nil {
+				err = msgp.WrapError(err, "PutTag")
+				return
+			}
+		}
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
 			// write "del"
 			err = en.Append(0xa3, 0x64, 0x65, 0x6c)
 			if err != nil {
@@ -15304,19 +15213,19 @@ func (z *ReplicationStats) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x200) == 0 { // if not omitted
-			// write "other"
-			err = en.Append(0xa5, 0x6f, 0x74, 0x68, 0x65, 0x72)
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
+			// write "delTag"
+			err = en.Append(0xa6, 0x64, 0x65, 0x6c, 0x54, 0x61, 0x67)
 			if err != nil {
 				return
 			}
-			err = en.WriteInt64(z.OtherEvent)
+			err = en.WriteInt64(z.DelTag)
 			if err != nil {
-				err = msgp.WrapError(err, "OtherEvent")
+				err = msgp.WrapError(err, "DelTag")
 				return
 			}
 		}
-		if (zb0001Mask & 0x400) == 0 { // if not omitted
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
 			// write "synced"
 			err = en.Append(0xa6, 0x73, 0x79, 0x6e, 0x63, 0x65, 0x64)
 			if err != nil {
@@ -15328,7 +15237,7 @@ func (z *ReplicationStats) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x800) == 0 { // if not omitted
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
 			// write "alreadyOK"
 			err = en.Append(0xa9, 0x61, 0x6c, 0x72, 0x65, 0x61, 0x64, 0x79, 0x4f, 0x4b)
 			if err != nil {
@@ -15340,7 +15249,7 @@ func (z *ReplicationStats) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x1000) == 0 { // if not omitted
+		if (zb0001Mask & 0x2000) == 0 { // if not omitted
 			// write "rejected"
 			err = en.Append(0xa8, 0x72, 0x65, 0x6a, 0x65, 0x63, 0x74, 0x65, 0x64)
 			if err != nil {
@@ -15352,7 +15261,67 @@ func (z *ReplicationStats) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x2000) == 0 { // if not omitted
+		if (zb0001Mask & 0x4000) == 0 { // if not omitted
+			// write "proxy"
+			err = en.Append(0xa5, 0x70, 0x72, 0x6f, 0x78, 0x79)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.ProxyEvents)
+			if err != nil {
+				err = msgp.WrapError(err, "ProxyEvents")
+				return
+			}
+		}
+		if (zb0001Mask & 0x8000) == 0 { // if not omitted
+			// write "proxyBytes"
+			err = en.Append(0xaa, 0x70, 0x72, 0x6f, 0x78, 0x79, 0x42, 0x79, 0x74, 0x65, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.ProxyBytes)
+			if err != nil {
+				err = msgp.WrapError(err, "ProxyBytes")
+				return
+			}
+		}
+		if (zb0001Mask & 0x10000) == 0 { // if not omitted
+			// write "proxyHead"
+			err = en.Append(0xa9, 0x70, 0x72, 0x6f, 0x78, 0x79, 0x48, 0x65, 0x61, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.ProxyHead)
+			if err != nil {
+				err = msgp.WrapError(err, "ProxyHead")
+				return
+			}
+		}
+		if (zb0001Mask & 0x20000) == 0 { // if not omitted
+			// write "proxyGet"
+			err = en.Append(0xa8, 0x70, 0x72, 0x6f, 0x78, 0x79, 0x47, 0x65, 0x74)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.ProxyGet)
+			if err != nil {
+				err = msgp.WrapError(err, "ProxyGet")
+				return
+			}
+		}
+		if (zb0001Mask & 0x40000) == 0 { // if not omitted
+			// write "proxyGetTag"
+			err = en.Append(0xab, 0x70, 0x72, 0x6f, 0x78, 0x79, 0x47, 0x65, 0x74, 0x54, 0x61, 0x67)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.ProxyGetTag)
+			if err != nil {
+				err = msgp.WrapError(err, "ProxyGetTag")
+				return
+			}
+		}
+		if (zb0001Mask & 0x80000) == 0 { // if not omitted
 			// write "4xx"
 			err = en.Append(0xa3, 0x34, 0x78, 0x78)
 			if err != nil {
@@ -15364,7 +15333,7 @@ func (z *ReplicationStats) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x4000) == 0 { // if not omitted
+		if (zb0001Mask & 0x100000) == 0 { // if not omitted
 			// write "5xx"
 			err = en.Append(0xa3, 0x35, 0x78, 0x78)
 			if err != nil {
@@ -15376,7 +15345,7 @@ func (z *ReplicationStats) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x8000) == 0 { // if not omitted
+		if (zb0001Mask & 0x200000) == 0 { // if not omitted
 			// write "canceled"
 			err = en.Append(0xa8, 0x63, 0x61, 0x6e, 0x63, 0x65, 0x6c, 0x65, 0x64)
 			if err != nil {
@@ -15396,8 +15365,8 @@ func (z *ReplicationStats) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *ReplicationStats) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(16)
-	var zb0001Mask uint16 /* 16 bits */
+	zb0001Len := uint32(22)
+	var zb0001Mask uint32 /* 22 bits */
 	_ = zb0001Mask
 	if z.Nodes == 0 {
 		zb0001Len--
@@ -15431,37 +15400,61 @@ func (z *ReplicationStats) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x80
 	}
-	if z.DelObject == 0 {
+	if z.PutTag == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x100
 	}
-	if z.OtherEvent == 0 {
+	if z.DelObject == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x200
 	}
-	if z.Synced == 0 {
+	if z.DelTag == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x400
 	}
-	if z.AlreadyOK == 0 {
+	if z.Synced == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x800
 	}
-	if z.Rejected == 0 {
+	if z.AlreadyOK == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x1000
 	}
-	if z.Errors4xx == 0 {
+	if z.Rejected == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x2000
 	}
-	if z.Errors5xx == 0 {
+	if z.ProxyEvents == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x4000
 	}
-	if z.Canceled == 0 {
+	if z.ProxyBytes == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x8000
+	}
+	if z.ProxyHead == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x10000
+	}
+	if z.ProxyGet == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x20000
+	}
+	if z.ProxyGetTag == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x40000
+	}
+	if z.Errors4xx == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x80000
+	}
+	if z.Errors5xx == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x100000
+	}
+	if z.Canceled == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x200000
 	}
 	// variable map header, size zb0001Len
 	o = msgp.AppendMapHeader(o, zb0001Len)
@@ -15517,41 +15510,71 @@ func (z *ReplicationStats) MarshalMsg(b []byte) (o []byte, err error) {
 			o = msgp.AppendInt64(o, z.PutObject)
 		}
 		if (zb0001Mask & 0x100) == 0 { // if not omitted
+			// string "putTag"
+			o = append(o, 0xa6, 0x70, 0x75, 0x74, 0x54, 0x61, 0x67)
+			o = msgp.AppendInt64(o, z.PutTag)
+		}
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
 			// string "del"
 			o = append(o, 0xa3, 0x64, 0x65, 0x6c)
 			o = msgp.AppendInt64(o, z.DelObject)
 		}
-		if (zb0001Mask & 0x200) == 0 { // if not omitted
-			// string "other"
-			o = append(o, 0xa5, 0x6f, 0x74, 0x68, 0x65, 0x72)
-			o = msgp.AppendInt64(o, z.OtherEvent)
-		}
 		if (zb0001Mask & 0x400) == 0 { // if not omitted
+			// string "delTag"
+			o = append(o, 0xa6, 0x64, 0x65, 0x6c, 0x54, 0x61, 0x67)
+			o = msgp.AppendInt64(o, z.DelTag)
+		}
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
 			// string "synced"
 			o = append(o, 0xa6, 0x73, 0x79, 0x6e, 0x63, 0x65, 0x64)
 			o = msgp.AppendInt64(o, z.Synced)
 		}
-		if (zb0001Mask & 0x800) == 0 { // if not omitted
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
 			// string "alreadyOK"
 			o = append(o, 0xa9, 0x61, 0x6c, 0x72, 0x65, 0x61, 0x64, 0x79, 0x4f, 0x4b)
 			o = msgp.AppendInt64(o, z.AlreadyOK)
 		}
-		if (zb0001Mask & 0x1000) == 0 { // if not omitted
+		if (zb0001Mask & 0x2000) == 0 { // if not omitted
 			// string "rejected"
 			o = append(o, 0xa8, 0x72, 0x65, 0x6a, 0x65, 0x63, 0x74, 0x65, 0x64)
 			o = msgp.AppendInt64(o, z.Rejected)
 		}
-		if (zb0001Mask & 0x2000) == 0 { // if not omitted
+		if (zb0001Mask & 0x4000) == 0 { // if not omitted
+			// string "proxy"
+			o = append(o, 0xa5, 0x70, 0x72, 0x6f, 0x78, 0x79)
+			o = msgp.AppendInt64(o, z.ProxyEvents)
+		}
+		if (zb0001Mask & 0x8000) == 0 { // if not omitted
+			// string "proxyBytes"
+			o = append(o, 0xaa, 0x70, 0x72, 0x6f, 0x78, 0x79, 0x42, 0x79, 0x74, 0x65, 0x73)
+			o = msgp.AppendInt64(o, z.ProxyBytes)
+		}
+		if (zb0001Mask & 0x10000) == 0 { // if not omitted
+			// string "proxyHead"
+			o = append(o, 0xa9, 0x70, 0x72, 0x6f, 0x78, 0x79, 0x48, 0x65, 0x61, 0x64)
+			o = msgp.AppendInt64(o, z.ProxyHead)
+		}
+		if (zb0001Mask & 0x20000) == 0 { // if not omitted
+			// string "proxyGet"
+			o = append(o, 0xa8, 0x70, 0x72, 0x6f, 0x78, 0x79, 0x47, 0x65, 0x74)
+			o = msgp.AppendInt64(o, z.ProxyGet)
+		}
+		if (zb0001Mask & 0x40000) == 0 { // if not omitted
+			// string "proxyGetTag"
+			o = append(o, 0xab, 0x70, 0x72, 0x6f, 0x78, 0x79, 0x47, 0x65, 0x74, 0x54, 0x61, 0x67)
+			o = msgp.AppendInt64(o, z.ProxyGetTag)
+		}
+		if (zb0001Mask & 0x80000) == 0 { // if not omitted
 			// string "4xx"
 			o = append(o, 0xa3, 0x34, 0x78, 0x78)
 			o = msgp.AppendInt64(o, z.Errors4xx)
 		}
-		if (zb0001Mask & 0x4000) == 0 { // if not omitted
+		if (zb0001Mask & 0x100000) == 0 { // if not omitted
 			// string "5xx"
 			o = append(o, 0xa3, 0x35, 0x78, 0x78)
 			o = msgp.AppendInt64(o, z.Errors5xx)
 		}
-		if (zb0001Mask & 0x8000) == 0 { // if not omitted
+		if (zb0001Mask & 0x200000) == 0 { // if not omitted
 			// string "canceled"
 			o = append(o, 0xa8, 0x63, 0x61, 0x6e, 0x63, 0x65, 0x6c, 0x65, 0x64)
 			o = msgp.AppendInt64(o, z.Canceled)
@@ -15570,7 +15593,7 @@ func (z *ReplicationStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint16 /* 16 bits */
+	var zb0001Mask uint32 /* 22 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -15658,62 +15681,104 @@ func (z *ReplicationStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 			zb0001Mask |= 0x80
+		case "putTag":
+			z.PutTag, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "PutTag")
+				return
+			}
+			zb0001Mask |= 0x100
 		case "del":
 			z.DelObject, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "DelObject")
 				return
 			}
-			zb0001Mask |= 0x100
-		case "other":
-			z.OtherEvent, bts, err = msgp.ReadInt64Bytes(bts)
+			zb0001Mask |= 0x200
+		case "delTag":
+			z.DelTag, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "OtherEvent")
+				err = msgp.WrapError(err, "DelTag")
 				return
 			}
-			zb0001Mask |= 0x200
+			zb0001Mask |= 0x400
 		case "synced":
 			z.Synced, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Synced")
 				return
 			}
-			zb0001Mask |= 0x400
+			zb0001Mask |= 0x800
 		case "alreadyOK":
 			z.AlreadyOK, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "AlreadyOK")
 				return
 			}
-			zb0001Mask |= 0x800
+			zb0001Mask |= 0x1000
 		case "rejected":
 			z.Rejected, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Rejected")
 				return
 			}
-			zb0001Mask |= 0x1000
+			zb0001Mask |= 0x2000
+		case "proxy":
+			z.ProxyEvents, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ProxyEvents")
+				return
+			}
+			zb0001Mask |= 0x4000
+		case "proxyBytes":
+			z.ProxyBytes, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ProxyBytes")
+				return
+			}
+			zb0001Mask |= 0x8000
+		case "proxyHead":
+			z.ProxyHead, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ProxyHead")
+				return
+			}
+			zb0001Mask |= 0x10000
+		case "proxyGet":
+			z.ProxyGet, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ProxyGet")
+				return
+			}
+			zb0001Mask |= 0x20000
+		case "proxyGetTag":
+			z.ProxyGetTag, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ProxyGetTag")
+				return
+			}
+			zb0001Mask |= 0x40000
 		case "4xx":
 			z.Errors4xx, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Errors4xx")
 				return
 			}
-			zb0001Mask |= 0x2000
+			zb0001Mask |= 0x80000
 		case "5xx":
 			z.Errors5xx, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Errors5xx")
 				return
 			}
-			zb0001Mask |= 0x4000
+			zb0001Mask |= 0x100000
 		case "canceled":
 			z.Canceled, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Canceled")
 				return
 			}
-			zb0001Mask |= 0x8000
+			zb0001Mask |= 0x200000
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -15723,7 +15788,7 @@ func (z *ReplicationStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xffff {
+	if zb0001Mask != 0x3fffff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Nodes = 0
 		}
@@ -15749,27 +15814,45 @@ func (z *ReplicationStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.PutObject = 0
 		}
 		if (zb0001Mask & 0x100) == 0 {
-			z.DelObject = 0
+			z.PutTag = 0
 		}
 		if (zb0001Mask & 0x200) == 0 {
-			z.OtherEvent = 0
+			z.DelObject = 0
 		}
 		if (zb0001Mask & 0x400) == 0 {
-			z.Synced = 0
+			z.DelTag = 0
 		}
 		if (zb0001Mask & 0x800) == 0 {
-			z.AlreadyOK = 0
+			z.Synced = 0
 		}
 		if (zb0001Mask & 0x1000) == 0 {
-			z.Rejected = 0
+			z.AlreadyOK = 0
 		}
 		if (zb0001Mask & 0x2000) == 0 {
-			z.Errors4xx = 0
+			z.Rejected = 0
 		}
 		if (zb0001Mask & 0x4000) == 0 {
-			z.Errors5xx = 0
+			z.ProxyEvents = 0
 		}
 		if (zb0001Mask & 0x8000) == 0 {
+			z.ProxyBytes = 0
+		}
+		if (zb0001Mask & 0x10000) == 0 {
+			z.ProxyHead = 0
+		}
+		if (zb0001Mask & 0x20000) == 0 {
+			z.ProxyGet = 0
+		}
+		if (zb0001Mask & 0x40000) == 0 {
+			z.ProxyGetTag = 0
+		}
+		if (zb0001Mask & 0x80000) == 0 {
+			z.Errors4xx = 0
+		}
+		if (zb0001Mask & 0x100000) == 0 {
+			z.Errors5xx = 0
+		}
+		if (zb0001Mask & 0x200000) == 0 {
 			z.Canceled = 0
 		}
 	}
@@ -15791,7 +15874,346 @@ func (z *ReplicationStats) Msgsize() (s int) {
 	} else {
 		s += msgp.TimeSize
 	}
-	s += 13 + msgp.Float64Size + 7 + msgp.Int64Size + 6 + msgp.Int64Size + 9 + msgp.Float64Size + 4 + msgp.Int64Size + 4 + msgp.Int64Size + 6 + msgp.Int64Size + 7 + msgp.Int64Size + 10 + msgp.Int64Size + 9 + msgp.Int64Size + 4 + msgp.Int64Size + 4 + msgp.Int64Size + 9 + msgp.Int64Size
+	s += 13 + msgp.Float64Size + 7 + msgp.Int64Size + 6 + msgp.Int64Size + 9 + msgp.Float64Size + 4 + msgp.Int64Size + 7 + msgp.Int64Size + 4 + msgp.Int64Size + 7 + msgp.Int64Size + 7 + msgp.Int64Size + 10 + msgp.Int64Size + 9 + msgp.Int64Size + 6 + msgp.Int64Size + 11 + msgp.Int64Size + 10 + msgp.Int64Size + 9 + msgp.Int64Size + 12 + msgp.Int64Size + 4 + msgp.Int64Size + 4 + msgp.Int64Size + 9 + msgp.Int64Size
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *ReplicationTargetStats) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 2 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "nodes":
+			z.Nodes, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "Nodes")
+				return
+			}
+		case "latency":
+			z.LatencySecs, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "LatencySecs")
+				return
+			}
+		case "maxLatency":
+			z.MaxLatencySecs, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "MaxLatencySecs")
+				return
+			}
+		case "last_hour":
+			err = z.LastHour.DecodeMsg(dc)
+			if err != nil {
+				err = msgp.WrapError(err, "LastHour")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "last_day":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "LastDay")
+					return
+				}
+				z.LastDay = nil
+			} else {
+				if z.LastDay == nil {
+					z.LastDay = new(SegmentedReplicationStats)
+				}
+				err = z.LastDay.DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "LastDay")
+					return
+				}
+			}
+			zb0001Mask |= 0x2
+		case "since_start":
+			err = z.SinceStart.DecodeMsg(dc)
+			if err != nil {
+				err = msgp.WrapError(err, "SinceStart")
+				return
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x3 {
+		if (zb0001Mask & 0x1) == 0 {
+			z.LastHour = ReplicationStats{}
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.LastDay = nil
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *ReplicationTargetStats) EncodeMsg(en *msgp.Writer) (err error) {
+	// check for omitted fields
+	zb0001Len := uint32(6)
+	var zb0001Mask uint8 /* 6 bits */
+	_ = zb0001Mask
+	if z.LastDay == nil {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	// variable map header, size zb0001Len
+	err = en.Append(0x80 | uint8(zb0001Len))
+	if err != nil {
+		return
+	}
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// write "nodes"
+		err = en.Append(0xa5, 0x6e, 0x6f, 0x64, 0x65, 0x73)
+		if err != nil {
+			return
+		}
+		err = en.WriteInt(z.Nodes)
+		if err != nil {
+			err = msgp.WrapError(err, "Nodes")
+			return
+		}
+		// write "latency"
+		err = en.Append(0xa7, 0x6c, 0x61, 0x74, 0x65, 0x6e, 0x63, 0x79)
+		if err != nil {
+			return
+		}
+		err = en.WriteFloat64(z.LatencySecs)
+		if err != nil {
+			err = msgp.WrapError(err, "LatencySecs")
+			return
+		}
+		// write "maxLatency"
+		err = en.Append(0xaa, 0x6d, 0x61, 0x78, 0x4c, 0x61, 0x74, 0x65, 0x6e, 0x63, 0x79)
+		if err != nil {
+			return
+		}
+		err = en.WriteFloat64(z.MaxLatencySecs)
+		if err != nil {
+			err = msgp.WrapError(err, "MaxLatencySecs")
+			return
+		}
+		// write "last_hour"
+		err = en.Append(0xa9, 0x6c, 0x61, 0x73, 0x74, 0x5f, 0x68, 0x6f, 0x75, 0x72)
+		if err != nil {
+			return
+		}
+		err = z.LastHour.EncodeMsg(en)
+		if err != nil {
+			err = msgp.WrapError(err, "LastHour")
+			return
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// write "last_day"
+			err = en.Append(0xa8, 0x6c, 0x61, 0x73, 0x74, 0x5f, 0x64, 0x61, 0x79)
+			if err != nil {
+				return
+			}
+			if z.LastDay == nil {
+				err = en.WriteNil()
+				if err != nil {
+					return
+				}
+			} else {
+				err = z.LastDay.EncodeMsg(en)
+				if err != nil {
+					err = msgp.WrapError(err, "LastDay")
+					return
+				}
+			}
+		}
+		// write "since_start"
+		err = en.Append(0xab, 0x73, 0x69, 0x6e, 0x63, 0x65, 0x5f, 0x73, 0x74, 0x61, 0x72, 0x74)
+		if err != nil {
+			return
+		}
+		err = z.SinceStart.EncodeMsg(en)
+		if err != nil {
+			err = msgp.WrapError(err, "SinceStart")
+			return
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *ReplicationTargetStats) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// check for omitted fields
+	zb0001Len := uint32(6)
+	var zb0001Mask uint8 /* 6 bits */
+	_ = zb0001Mask
+	if z.LastDay == nil {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	// variable map header, size zb0001Len
+	o = append(o, 0x80|uint8(zb0001Len))
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// string "nodes"
+		o = append(o, 0xa5, 0x6e, 0x6f, 0x64, 0x65, 0x73)
+		o = msgp.AppendInt(o, z.Nodes)
+		// string "latency"
+		o = append(o, 0xa7, 0x6c, 0x61, 0x74, 0x65, 0x6e, 0x63, 0x79)
+		o = msgp.AppendFloat64(o, z.LatencySecs)
+		// string "maxLatency"
+		o = append(o, 0xaa, 0x6d, 0x61, 0x78, 0x4c, 0x61, 0x74, 0x65, 0x6e, 0x63, 0x79)
+		o = msgp.AppendFloat64(o, z.MaxLatencySecs)
+		// string "last_hour"
+		o = append(o, 0xa9, 0x6c, 0x61, 0x73, 0x74, 0x5f, 0x68, 0x6f, 0x75, 0x72)
+		o, err = z.LastHour.MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "LastHour")
+			return
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// string "last_day"
+			o = append(o, 0xa8, 0x6c, 0x61, 0x73, 0x74, 0x5f, 0x64, 0x61, 0x79)
+			if z.LastDay == nil {
+				o = msgp.AppendNil(o)
+			} else {
+				o, err = z.LastDay.MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "LastDay")
+					return
+				}
+			}
+		}
+		// string "since_start"
+		o = append(o, 0xab, 0x73, 0x69, 0x6e, 0x63, 0x65, 0x5f, 0x73, 0x74, 0x61, 0x72, 0x74)
+		o, err = z.SinceStart.MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "SinceStart")
+			return
+		}
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *ReplicationTargetStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 2 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "nodes":
+			z.Nodes, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Nodes")
+				return
+			}
+		case "latency":
+			z.LatencySecs, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "LatencySecs")
+				return
+			}
+		case "maxLatency":
+			z.MaxLatencySecs, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "MaxLatencySecs")
+				return
+			}
+		case "last_hour":
+			bts, err = z.LastHour.UnmarshalMsg(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "LastHour")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "last_day":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.LastDay = nil
+			} else {
+				if z.LastDay == nil {
+					z.LastDay = new(SegmentedReplicationStats)
+				}
+				bts, err = z.LastDay.UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "LastDay")
+					return
+				}
+			}
+			zb0001Mask |= 0x2
+		case "since_start":
+			bts, err = z.SinceStart.UnmarshalMsg(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "SinceStart")
+				return
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x3 {
+		if (zb0001Mask & 0x1) == 0 {
+			z.LastHour = ReplicationStats{}
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.LastDay = nil
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *ReplicationTargetStats) Msgsize() (s int) {
+	s = 1 + 6 + msgp.IntSize + 8 + msgp.Float64Size + 11 + msgp.Float64Size + 10 + z.LastHour.Msgsize() + 9
+	if z.LastDay == nil {
+		s += msgp.NilSize
+	} else {
+		s += z.LastDay.Msgsize()
+	}
+	s += 12 + z.SinceStart.Msgsize()
 	return
 }
 

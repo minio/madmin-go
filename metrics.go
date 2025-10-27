@@ -1228,6 +1228,7 @@ type RPCStats struct {
 	RequestTimeSecs float64    `json:"requestTimeSecs,omitempty"` // Total request time.
 	IncomingBytes   int64      `json:"incomingBytes,omitempty"`   // Total number of bytes received.
 	OutgoingBytes   int64      `json:"outgoingBytes,omitempty"`   // Total number of bytes sent.
+	Reconnects      int        `json:"reconnects,omitempty"`      // Total reconnects.
 }
 
 // Add 'other' to a.
@@ -1258,6 +1259,7 @@ func (a *RPCStats) Merge(other RPCStats) {
 	a.IncomingBytes += other.IncomingBytes
 	a.OutgoingBytes += other.OutgoingBytes
 	a.RequestTimeSecs += other.RequestTimeSecs
+	a.Reconnects += other.Reconnects
 }
 
 //msgp:replace metrics.Float64Histogram with:localF64H
@@ -1656,14 +1658,7 @@ type ReplicationMetrics struct {
 	// Number of queued replication events.
 	Queued int64 `json:"queued,omitempty"`
 
-	// Last minute operation statistics per target.
-	LastMinuteTarget map[string]ReplicationStats `json:"last_minute,omitempty"`
-
-	// Last day operation statistics per target, time segmented.
-	LastDayTarget map[string]SegmentedReplicationStats `json:"last_day,omitempty"`
-
-	// SinceStart contains operations by target.
-	SinceStartTarget map[string]ReplicationStats `json:"since_start"`
+	Targets map[string]ReplicationTargetStats `json:"targets"`
 }
 
 func (m *ReplicationMetrics) Merge(other *ReplicationMetrics) {
@@ -1677,45 +1672,70 @@ func (m *ReplicationMetrics) Merge(other *ReplicationMetrics) {
 	m.Active += other.Active
 	m.Queued += other.Queued
 
-	// Merge LastMinuteTarget map
-	if len(other.LastMinuteTarget) > 0 {
-		if m.LastMinuteTarget == nil {
-			m.LastMinuteTarget = make(map[string]ReplicationStats, len(other.LastMinuteTarget))
-		}
-		for k, v := range other.LastMinuteTarget {
-			existing := m.LastMinuteTarget[k]
-			existing.Add(&v)
-			m.LastMinuteTarget[k] = existing
-		}
+	if len(other.Targets) == 0 {
+		return
 	}
+	if m.Targets == nil {
+		m.Targets = make(map[string]ReplicationTargetStats, len(other.Targets))
+	}
+	for k, v := range other.Targets {
+		dst := m.Targets[k]
+		dst.Merge(&v)
+		m.Targets[k] = dst
+	}
+}
 
-	// Merge LastDayTarget map
-	if len(other.LastDayTarget) > 0 {
-		if m.LastDayTarget == nil {
-			m.LastDayTarget = make(map[string]SegmentedReplicationStats, len(other.LastDayTarget))
-		}
-		for k, v := range other.LastDayTarget {
-			existing, ok := m.LastDayTarget[k]
-			if !ok {
-				m.LastDayTarget[k] = v
-				continue
-			}
-			existing.Add(&v)
-			m.LastDayTarget[k] = existing
-		}
+// AllTargets returns aggregated stats for all targets.
+func (m *ReplicationMetrics) AllTargets() ReplicationTargetStats {
+	var dst ReplicationTargetStats
+	for _, v := range m.Targets {
+		dst.Merge(&v)
 	}
+	return dst
+}
 
-	// Merge SinceStartTarget map
-	if len(other.SinceStartTarget) > 0 {
-		if m.SinceStartTarget == nil {
-			m.SinceStartTarget = make(map[string]ReplicationStats, len(other.SinceStartTarget))
-		}
-		for k, v := range other.SinceStartTarget {
-			existing := m.SinceStartTarget[k]
-			existing.Add(&v)
-			m.SinceStartTarget[k] = existing
-		}
+// ReplicationTargetStats is replication stats for a single target.
+type ReplicationTargetStats struct {
+	// Nodes responded to the request.
+	Nodes int `json:"nodes"`
+
+	// Accumulated latency for replication events for all nodes.
+	LatencySecs float64 `json:"latency"`
+
+	// Maximum latency for a single node.
+	MaxLatencySecs float64 `json:"maxLatency"`
+
+	// Last hour operation statistics per target.
+	LastHour ReplicationStats `json:"last_hour,omitempty"`
+
+	// Last day operation statistics per target, time segmented.
+	LastDay *SegmentedReplicationStats `json:"last_day,omitempty"`
+
+	// SinceStart contains operations by target.
+	SinceStart ReplicationStats `json:"since_start"`
+}
+
+// Merge 'other' into 'r'
+func (r *ReplicationTargetStats) Merge(other *ReplicationTargetStats) {
+	if r == nil || other == nil || other.Nodes == 0 {
+		return
 	}
+	if r.Nodes == 0 {
+		r.MaxLatencySecs = other.MaxLatencySecs
+	} else {
+		r.MaxLatencySecs = max(r.MaxLatencySecs, other.MaxLatencySecs)
+	}
+	r.Nodes += other.Nodes
+	r.LatencySecs += other.LatencySecs
+	r.LastHour.Add(&other.LastHour)
+	if r.LastDay == nil && other.LastDay != nil {
+		var dst SegmentedReplicationStats
+		dst.Add(other.LastDay)
+		r.LastDay = &dst
+	} else {
+		r.LastDay.Add(other.LastDay)
+	}
+	r.SinceStart.Add(&other.SinceStart)
 }
 
 // ReplicationStats is the outgoing replication stats.
@@ -1727,18 +1747,26 @@ type ReplicationStats struct {
 
 	// Total number of replication events.
 	Events        int64   `json:"events,omitempty"`   // Total number of requests.
-	Bytes         int64   `json:"bytes,omitempty"`    // Total number of bytes transferred.
+	Bytes         int64   `json:"bytes,omitempty"`    // Total number of bytes sent to remote.
 	EventTimeSecs float64 `json:"timeSecs,omitempty"` // Accumulated event time
 
 	// Replication event types.
-	PutObject  int64 `json:"put,omitempty"` // Total put replication requests.
-	DelObject  int64 `json:"del,omitempty"` // Total delete replication requests.
-	OtherEvent int64 `json:"other,omitempty"`
+	PutObject int64 `json:"put,omitempty"`    // Total put replication requests.
+	PutTag    int64 `json:"putTag,omitempty"` // Total put tagging replication requests.
+	DelObject int64 `json:"del,omitempty"`    // Total delete replication requests.
+	DelTag    int64 `json:"delTag,omitempty"` // Number of DELETE tagging request
 
 	// Outcome (if not error)
 	Synced    int64 `json:"synced,omitempty"`    // Total synced replication requests (didn't exist on remote).
 	AlreadyOK int64 `json:"alreadyOK,omitempty"` // Total already-ok replication requests (already existed on remote).
 	Rejected  int64 `json:"rejected,omitempty"`  // Total rejected replication requests.
+
+	// Proxy to remote counted separately.
+	ProxyEvents int64 `json:"proxy,omitempty"`       // Number of proxy events.
+	ProxyBytes  int64 `json:"proxyBytes,omitempty"`  // Number of bytes transferred from proxy requests.
+	ProxyHead   int64 `json:"proxyHead,omitempty"`   // Number of HEAD requests proxied to replication target
+	ProxyGet    int64 `json:"proxyGet,omitempty"`    // Number of GET requests proxied to replication target
+	ProxyGetTag int64 `json:"proxyGetTag,omitempty"` // Number of GET tagging requests proxied to replication target
 
 	// Errors encountered.
 	Errors4xx int64 `json:"4xx,omitempty"`      // Total number of 4xx (client request) errors.
@@ -1750,7 +1778,7 @@ type SegmentedReplicationStats = Segmented[ReplicationStats, *ReplicationStats]
 
 // Add 'other' to a.
 func (a *ReplicationStats) Add(other *ReplicationStats) {
-	if other == nil {
+	if other == nil || other.Nodes == 0 {
 		return
 	}
 	// Handle start/end times
@@ -1776,13 +1804,21 @@ func (a *ReplicationStats) Add(other *ReplicationStats) {
 
 	// Event types
 	a.PutObject += other.PutObject
+	a.PutTag += other.PutTag
 	a.DelObject += other.DelObject
-	a.OtherEvent += other.OtherEvent
+	a.DelTag += other.DelTag
 
 	// Outcomes
 	a.Synced += other.Synced
 	a.AlreadyOK += other.AlreadyOK
 	a.Rejected += other.Rejected
+
+	// Proxy events
+	a.ProxyEvents += other.ProxyEvents
+	a.ProxyBytes += other.ProxyBytes
+	a.ProxyHead += other.ProxyHead
+	a.ProxyGet += other.ProxyGet
+	a.ProxyGetTag += other.ProxyGetTag
 
 	// Errors
 	a.Errors4xx += other.Errors4xx

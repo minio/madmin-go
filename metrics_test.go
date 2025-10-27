@@ -617,31 +617,154 @@ func TestReplicationMetricsMerge(t *testing.T) {
 			},
 		},
 		{
-			name: "merge LastMinuteTarget maps",
+			name: "merge Targets map - nil base",
 			base: &ReplicationMetrics{
-				LastMinuteTarget: map[string]ReplicationStats{
-					"target1": {Events: 100, Bytes: 1000},
-					"target2": {Events: 50, Bytes: 500},
-				},
+				CollectedAt: now,
+				Nodes:       2,
 			},
 			other: &ReplicationMetrics{
-				LastMinuteTarget: map[string]ReplicationStats{
-					"target1": {Events: 200, Bytes: 2000},
-					"target3": {Events: 25, Bytes: 250},
+				CollectedAt: later,
+				Nodes:       3,
+				Targets: map[string]ReplicationTargetStats{
+					"target1": {
+						Nodes:          2,
+						LatencySecs:    10.5,
+						MaxLatencySecs: 5.2,
+						LastHour:       ReplicationStats{Nodes: 2, Events: 100, Bytes: 1000},
+						SinceStart:     ReplicationStats{Nodes: 2, Events: 500, Bytes: 5000},
+					},
 				},
 			},
 			verify: func(t *testing.T, result *ReplicationMetrics) {
-				if result.LastMinuteTarget["target1"].Events != 300 {
-					t.Errorf("LastMinuteTarget[target1].Events = %d, want 300", result.LastMinuteTarget["target1"].Events)
+				if result.Targets == nil {
+					t.Fatal("Targets should not be nil after merge")
 				}
-				if result.LastMinuteTarget["target1"].Bytes != 3000 {
-					t.Errorf("LastMinuteTarget[target1].Bytes = %d, want 3000", result.LastMinuteTarget["target1"].Bytes)
+				if len(result.Targets) != 1 {
+					t.Errorf("Targets length = %d, want 1", len(result.Targets))
 				}
-				if result.LastMinuteTarget["target2"].Events != 50 {
-					t.Errorf("LastMinuteTarget[target2].Events = %d, want 50", result.LastMinuteTarget["target2"].Events)
+				target1 := result.Targets["target1"]
+				if target1.Nodes != 2 {
+					t.Errorf("Targets[target1].Nodes = %d, want 2", target1.Nodes)
 				}
-				if result.LastMinuteTarget["target3"].Events != 25 {
-					t.Errorf("LastMinuteTarget[target3].Events = %d, want 25", result.LastMinuteTarget["target3"].Events)
+				if target1.LatencySecs != 10.5 {
+					t.Errorf("Targets[target1].LatencySecs = %f, want 10.5", target1.LatencySecs)
+				}
+				if target1.MaxLatencySecs != 5.2 {
+					t.Errorf("Targets[target1].MaxLatencySecs = %f, want 5.2", target1.MaxLatencySecs)
+				}
+				if target1.LastHour.Events != 100 {
+					t.Errorf("Targets[target1].LastHour.Events = %d, want 100", target1.LastHour.Events)
+				}
+				if target1.SinceStart.Events != 500 {
+					t.Errorf("Targets[target1].SinceStart.Events = %d, want 500", target1.SinceStart.Events)
+				}
+			},
+		},
+		{
+			name: "merge Targets map - accumulate existing",
+			base: &ReplicationMetrics{
+				Targets: map[string]ReplicationTargetStats{
+					"target1": {
+						Nodes:          2,
+						LatencySecs:    10.0,
+						MaxLatencySecs: 4.0,
+						LastHour:       ReplicationStats{Nodes: 2, Events: 100, Bytes: 1000},
+						SinceStart:     ReplicationStats{Nodes: 2, Events: 200, Bytes: 2000},
+					},
+					"target2": {
+						Nodes:          1,
+						LatencySecs:    5.0,
+						MaxLatencySecs: 3.0,
+						LastHour:       ReplicationStats{Nodes: 1, Events: 50, Bytes: 500},
+						SinceStart:     ReplicationStats{Nodes: 1, Events: 150, Bytes: 1500},
+					},
+				},
+			},
+			other: &ReplicationMetrics{
+				Targets: map[string]ReplicationTargetStats{
+					"target1": {
+						Nodes:          3,
+						LatencySecs:    15.0,
+						MaxLatencySecs: 6.0,
+						LastHour:       ReplicationStats{Nodes: 3, Events: 200, Bytes: 2000},
+						SinceStart:     ReplicationStats{Nodes: 3, Events: 300, Bytes: 3000},
+					},
+					"target3": {
+						Nodes:          1,
+						LatencySecs:    8.0,
+						MaxLatencySecs: 7.0,
+						LastHour:       ReplicationStats{Nodes: 1, Events: 25, Bytes: 250},
+						SinceStart:     ReplicationStats{Nodes: 1, Events: 75, Bytes: 750},
+					},
+				},
+			},
+			verify: func(t *testing.T, result *ReplicationMetrics) {
+				if len(result.Targets) != 3 {
+					t.Errorf("Targets length = %d, want 3", len(result.Targets))
+				}
+
+				// Check target1 (merged)
+				target1 := result.Targets["target1"]
+				if target1.Nodes != 5 { // 2 + 3
+					t.Errorf("Targets[target1].Nodes = %d, want 5", target1.Nodes)
+				}
+				if target1.LatencySecs != 25.0 { // 10 + 15
+					t.Errorf("Targets[target1].LatencySecs = %f, want 25.0", target1.LatencySecs)
+				}
+				if target1.MaxLatencySecs != 6.0 { // max(4, 6)
+					t.Errorf("Targets[target1].MaxLatencySecs = %f, want 6.0", target1.MaxLatencySecs)
+				}
+				if target1.LastHour.Events != 300 { // 100 + 200
+					t.Errorf("Targets[target1].LastHour.Events = %d, want 300", target1.LastHour.Events)
+				}
+				if target1.SinceStart.Events != 500 { // 200 + 300
+					t.Errorf("Targets[target1].SinceStart.Events = %d, want 500", target1.SinceStart.Events)
+				}
+
+				// Check target2 (unchanged)
+				target2 := result.Targets["target2"]
+				if target2.Nodes != 1 {
+					t.Errorf("Targets[target2].Nodes = %d, want 1", target2.Nodes)
+				}
+				if target2.LastHour.Events != 50 {
+					t.Errorf("Targets[target2].LastHour.Events = %d, want 50", target2.LastHour.Events)
+				}
+
+				// Check target3 (new)
+				target3 := result.Targets["target3"]
+				if target3.Nodes != 1 {
+					t.Errorf("Targets[target3].Nodes = %d, want 1", target3.Nodes)
+				}
+				if target3.LastHour.Events != 25 {
+					t.Errorf("Targets[target3].LastHour.Events = %d, want 25", target3.LastHour.Events)
+				}
+			},
+		},
+		{
+			name: "merge with empty Targets in other",
+			base: &ReplicationMetrics{
+				Targets: map[string]ReplicationTargetStats{
+					"target1": {
+						Nodes:      1,
+						LastHour:   ReplicationStats{Nodes: 1, Events: 100},
+						SinceStart: ReplicationStats{Nodes: 1, Events: 500},
+					},
+				},
+			},
+			other: &ReplicationMetrics{
+				Nodes:  2,
+				Active: 50,
+			},
+			verify: func(t *testing.T, result *ReplicationMetrics) {
+				// Targets should remain unchanged
+				if len(result.Targets) != 1 {
+					t.Errorf("Targets length = %d, want 1", len(result.Targets))
+				}
+				if result.Targets["target1"].Nodes != 1 {
+					t.Errorf("Targets[target1].Nodes = %d, want 1", result.Targets["target1"].Nodes)
+				}
+				if result.Nodes != 2 {
+					t.Errorf("Nodes = %d, want 2", result.Nodes)
 				}
 			},
 		},
@@ -685,11 +808,17 @@ func TestReplicationStatsAdd(t *testing.T) {
 				Bytes:         10000,
 				EventTimeSecs: 50,
 				PutObject:     500,
+				PutTag:        50,
 				DelObject:     300,
-				OtherEvent:    200,
+				DelTag:        30,
 				Synced:        800,
 				AlreadyOK:     100,
 				Rejected:      50,
+				ProxyEvents:   20,
+				ProxyBytes:    2000,
+				ProxyHead:     5,
+				ProxyGet:      10,
+				ProxyGetTag:   5,
 				Errors4xx:     25,
 				Errors5xx:     15,
 				Canceled:      10,
@@ -703,11 +832,17 @@ func TestReplicationStatsAdd(t *testing.T) {
 				Bytes:         20000,
 				EventTimeSecs: 75,
 				PutObject:     1000,
+				PutTag:        100,
 				DelObject:     600,
-				OtherEvent:    400,
+				DelTag:        60,
 				Synced:        1600,
 				AlreadyOK:     200,
 				Rejected:      100,
+				ProxyEvents:   40,
+				ProxyBytes:    4000,
+				ProxyHead:     10,
+				ProxyGet:      20,
+				ProxyGetTag:   10,
 				Errors4xx:     50,
 				Errors5xx:     30,
 				Canceled:      20,
@@ -731,11 +866,14 @@ func TestReplicationStatsAdd(t *testing.T) {
 				if result.PutObject != 1500 {
 					t.Errorf("PutObject = %d, want 1500", result.PutObject)
 				}
+				if result.PutTag != 150 {
+					t.Errorf("PutTag = %d, want 150", result.PutTag)
+				}
 				if result.DelObject != 900 {
 					t.Errorf("DelObject = %d, want 900", result.DelObject)
 				}
-				if result.OtherEvent != 600 {
-					t.Errorf("OtherEvent = %d, want 600", result.OtherEvent)
+				if result.DelTag != 90 {
+					t.Errorf("DelTag = %d, want 90", result.DelTag)
 				}
 				if result.Synced != 2400 {
 					t.Errorf("Synced = %d, want 2400", result.Synced)
@@ -745,6 +883,21 @@ func TestReplicationStatsAdd(t *testing.T) {
 				}
 				if result.Rejected != 150 {
 					t.Errorf("Rejected = %d, want 150", result.Rejected)
+				}
+				if result.ProxyEvents != 60 {
+					t.Errorf("ProxyEvents = %d, want 60", result.ProxyEvents)
+				}
+				if result.ProxyBytes != 6000 {
+					t.Errorf("ProxyBytes = %d, want 6000", result.ProxyBytes)
+				}
+				if result.ProxyHead != 15 {
+					t.Errorf("ProxyHead = %d, want 15", result.ProxyHead)
+				}
+				if result.ProxyGet != 30 {
+					t.Errorf("ProxyGet = %d, want 30", result.ProxyGet)
+				}
+				if result.ProxyGetTag != 15 {
+					t.Errorf("ProxyGetTag = %d, want 15", result.ProxyGetTag)
 				}
 				if result.Errors4xx != 75 {
 					t.Errorf("Errors4xx = %d, want 75", result.Errors4xx)
@@ -760,11 +913,13 @@ func TestReplicationStatsAdd(t *testing.T) {
 		{
 			name: "different timestamps should nullify",
 			base: &ReplicationStats{
+				Nodes:     1,
 				StartTime: &now,
 				EndTime:   &now,
 				Events:    100,
 			},
 			other: &ReplicationStats{
+				Nodes:     1,
 				StartTime: &later,
 				EndTime:   &later,
 				Events:    200,
@@ -778,6 +933,25 @@ func TestReplicationStatsAdd(t *testing.T) {
 				}
 				if result.Events != 300 {
 					t.Errorf("Events = %d, want 300", result.Events)
+				}
+			},
+		},
+		{
+			name: "skip when other has zero nodes",
+			base: &ReplicationStats{
+				Nodes:  1,
+				Events: 100,
+			},
+			other: &ReplicationStats{
+				Nodes:  0,
+				Events: 200,
+			},
+			verify: func(t *testing.T, result *ReplicationStats) {
+				if result.Nodes != 1 {
+					t.Errorf("Nodes = %d, want 1", result.Nodes)
+				}
+				if result.Events != 100 {
+					t.Errorf("Events = %d, want 100", result.Events)
 				}
 			},
 		},
