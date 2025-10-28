@@ -348,7 +348,7 @@ type AddServiceAccountReq struct {
 
 	// Optional and only relevant for LDAP. If empty, the default
 	// configuration is used.
-	CfgName string `json:"cfgName,omitempty"`
+	ConfigName string `json:"configName,omitempty"`
 }
 
 var serviceAcctValidNameRegex = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]*`)

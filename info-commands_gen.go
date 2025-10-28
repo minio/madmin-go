@@ -11111,7 +11111,7 @@ func (z *Services) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 6 bits */
+	var zb0001Mask uint8 /* 7 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -11186,260 +11186,320 @@ func (z *Services) DecodeMsg(dc *msgp.Reader) (err error) {
 			}
 
 			zb0001Mask |= 0x4
-		case "logger":
+		case "ldapStatus":
 			var zb0004 uint32
-			zb0004, err = dc.ReadArrayHeader()
+			zb0004, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "LDAPStatus")
+				return
+			}
+			if z.LDAPStatus == nil {
+				z.LDAPStatus = make(map[string]LDAP, zb0004)
+			} else if len(z.LDAPStatus) > 0 {
+				clear(z.LDAPStatus)
+			}
+			for zb0004 > 0 {
+				zb0004--
+				var za0002 string
+				za0002, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "LDAPStatus")
+					return
+				}
+				var za0003 LDAP
+				var zb0005 uint32
+				zb0005, err = dc.ReadMapHeader()
+				if err != nil {
+					err = msgp.WrapError(err, "LDAPStatus", za0002)
+					return
+				}
+				var zb0005Mask uint8 /* 1 bits */
+				_ = zb0005Mask
+				for zb0005 > 0 {
+					zb0005--
+					field, err = dc.ReadMapKeyPtr()
+					if err != nil {
+						err = msgp.WrapError(err, "LDAPStatus", za0002)
+						return
+					}
+					switch msgp.UnsafeString(field) {
+					case "status":
+						za0003.Status, err = dc.ReadString()
+						if err != nil {
+							err = msgp.WrapError(err, "LDAPStatus", za0002, "Status")
+							return
+						}
+						zb0005Mask |= 0x1
+					default:
+						err = dc.Skip()
+						if err != nil {
+							err = msgp.WrapError(err, "LDAPStatus", za0002)
+							return
+						}
+					}
+				}
+				// Clear omitted fields.
+				if (zb0005Mask & 0x1) == 0 {
+					za0003.Status = ""
+				}
+
+				z.LDAPStatus[za0002] = za0003
+			}
+			zb0001Mask |= 0x8
+		case "logger":
+			var zb0006 uint32
+			zb0006, err = dc.ReadArrayHeader()
 			if err != nil {
 				err = msgp.WrapError(err, "Logger")
 				return
 			}
-			if cap(z.Logger) >= int(zb0004) {
-				z.Logger = (z.Logger)[:zb0004]
+			if cap(z.Logger) >= int(zb0006) {
+				z.Logger = (z.Logger)[:zb0006]
 			} else {
-				z.Logger = make([]Logger, zb0004)
+				z.Logger = make([]Logger, zb0006)
 			}
-			for za0002 := range z.Logger {
-				var zb0005 uint32
-				zb0005, err = dc.ReadMapHeader()
+			for za0004 := range z.Logger {
+				var zb0007 uint32
+				zb0007, err = dc.ReadMapHeader()
 				if err != nil {
-					err = msgp.WrapError(err, "Logger", za0002)
+					err = msgp.WrapError(err, "Logger", za0004)
 					return
 				}
-				if z.Logger[za0002] == nil {
-					z.Logger[za0002] = make(Logger, zb0005)
-				} else if len(z.Logger[za0002]) > 0 {
-					clear(z.Logger[za0002])
+				if z.Logger[za0004] == nil {
+					z.Logger[za0004] = make(Logger, zb0007)
+				} else if len(z.Logger[za0004]) > 0 {
+					clear(z.Logger[za0004])
 				}
-				for zb0005 > 0 {
-					zb0005--
-					var za0003 string
-					za0003, err = dc.ReadString()
+				for zb0007 > 0 {
+					zb0007--
+					var za0005 string
+					za0005, err = dc.ReadString()
 					if err != nil {
-						err = msgp.WrapError(err, "Logger", za0002)
+						err = msgp.WrapError(err, "Logger", za0004)
 						return
 					}
-					var za0004 Status
-					var zb0006 uint32
-					zb0006, err = dc.ReadMapHeader()
+					var za0006 Status
+					var zb0008 uint32
+					zb0008, err = dc.ReadMapHeader()
 					if err != nil {
-						err = msgp.WrapError(err, "Logger", za0002, za0003)
+						err = msgp.WrapError(err, "Logger", za0004, za0005)
 						return
 					}
-					var zb0006Mask uint8 /* 1 bits */
-					_ = zb0006Mask
-					for zb0006 > 0 {
-						zb0006--
+					var zb0008Mask uint8 /* 1 bits */
+					_ = zb0008Mask
+					for zb0008 > 0 {
+						zb0008--
 						field, err = dc.ReadMapKeyPtr()
 						if err != nil {
-							err = msgp.WrapError(err, "Logger", za0002, za0003)
+							err = msgp.WrapError(err, "Logger", za0004, za0005)
 							return
 						}
 						switch msgp.UnsafeString(field) {
 						case "status":
-							za0004.Status, err = dc.ReadString()
+							za0006.Status, err = dc.ReadString()
 							if err != nil {
-								err = msgp.WrapError(err, "Logger", za0002, za0003, "Status")
+								err = msgp.WrapError(err, "Logger", za0004, za0005, "Status")
 								return
 							}
-							zb0006Mask |= 0x1
+							zb0008Mask |= 0x1
 						default:
 							err = dc.Skip()
 							if err != nil {
-								err = msgp.WrapError(err, "Logger", za0002, za0003)
+								err = msgp.WrapError(err, "Logger", za0004, za0005)
 								return
 							}
 						}
 					}
 					// Clear omitted fields.
-					if (zb0006Mask & 0x1) == 0 {
-						za0004.Status = ""
+					if (zb0008Mask & 0x1) == 0 {
+						za0006.Status = ""
 					}
 
-					z.Logger[za0002][za0003] = za0004
+					z.Logger[za0004][za0005] = za0006
 				}
 			}
-			zb0001Mask |= 0x8
+			zb0001Mask |= 0x10
 		case "audit":
-			var zb0007 uint32
-			zb0007, err = dc.ReadArrayHeader()
+			var zb0009 uint32
+			zb0009, err = dc.ReadArrayHeader()
 			if err != nil {
 				err = msgp.WrapError(err, "Audit")
 				return
 			}
-			if cap(z.Audit) >= int(zb0007) {
-				z.Audit = (z.Audit)[:zb0007]
+			if cap(z.Audit) >= int(zb0009) {
+				z.Audit = (z.Audit)[:zb0009]
 			} else {
-				z.Audit = make([]Audit, zb0007)
+				z.Audit = make([]Audit, zb0009)
 			}
-			for za0005 := range z.Audit {
-				var zb0008 uint32
-				zb0008, err = dc.ReadMapHeader()
+			for za0007 := range z.Audit {
+				var zb0010 uint32
+				zb0010, err = dc.ReadMapHeader()
 				if err != nil {
-					err = msgp.WrapError(err, "Audit", za0005)
+					err = msgp.WrapError(err, "Audit", za0007)
 					return
 				}
-				if z.Audit[za0005] == nil {
-					z.Audit[za0005] = make(Audit, zb0008)
-				} else if len(z.Audit[za0005]) > 0 {
-					clear(z.Audit[za0005])
+				if z.Audit[za0007] == nil {
+					z.Audit[za0007] = make(Audit, zb0010)
+				} else if len(z.Audit[za0007]) > 0 {
+					clear(z.Audit[za0007])
 				}
-				for zb0008 > 0 {
-					zb0008--
-					var za0006 string
-					za0006, err = dc.ReadString()
+				for zb0010 > 0 {
+					zb0010--
+					var za0008 string
+					za0008, err = dc.ReadString()
 					if err != nil {
-						err = msgp.WrapError(err, "Audit", za0005)
+						err = msgp.WrapError(err, "Audit", za0007)
 						return
 					}
-					var za0007 Status
-					var zb0009 uint32
-					zb0009, err = dc.ReadMapHeader()
+					var za0009 Status
+					var zb0011 uint32
+					zb0011, err = dc.ReadMapHeader()
 					if err != nil {
-						err = msgp.WrapError(err, "Audit", za0005, za0006)
+						err = msgp.WrapError(err, "Audit", za0007, za0008)
 						return
 					}
-					var zb0009Mask uint8 /* 1 bits */
-					_ = zb0009Mask
-					for zb0009 > 0 {
-						zb0009--
+					var zb0011Mask uint8 /* 1 bits */
+					_ = zb0011Mask
+					for zb0011 > 0 {
+						zb0011--
 						field, err = dc.ReadMapKeyPtr()
 						if err != nil {
-							err = msgp.WrapError(err, "Audit", za0005, za0006)
+							err = msgp.WrapError(err, "Audit", za0007, za0008)
 							return
 						}
 						switch msgp.UnsafeString(field) {
 						case "status":
-							za0007.Status, err = dc.ReadString()
+							za0009.Status, err = dc.ReadString()
 							if err != nil {
-								err = msgp.WrapError(err, "Audit", za0005, za0006, "Status")
+								err = msgp.WrapError(err, "Audit", za0007, za0008, "Status")
 								return
 							}
-							zb0009Mask |= 0x1
+							zb0011Mask |= 0x1
 						default:
 							err = dc.Skip()
 							if err != nil {
-								err = msgp.WrapError(err, "Audit", za0005, za0006)
+								err = msgp.WrapError(err, "Audit", za0007, za0008)
 								return
 							}
 						}
 					}
 					// Clear omitted fields.
-					if (zb0009Mask & 0x1) == 0 {
-						za0007.Status = ""
+					if (zb0011Mask & 0x1) == 0 {
+						za0009.Status = ""
 					}
 
-					z.Audit[za0005][za0006] = za0007
+					z.Audit[za0007][za0008] = za0009
 				}
 			}
-			zb0001Mask |= 0x10
+			zb0001Mask |= 0x20
 		case "notifications":
-			var zb0010 uint32
-			zb0010, err = dc.ReadArrayHeader()
+			var zb0012 uint32
+			zb0012, err = dc.ReadArrayHeader()
 			if err != nil {
 				err = msgp.WrapError(err, "Notifications")
 				return
 			}
-			if cap(z.Notifications) >= int(zb0010) {
-				z.Notifications = (z.Notifications)[:zb0010]
+			if cap(z.Notifications) >= int(zb0012) {
+				z.Notifications = (z.Notifications)[:zb0012]
 			} else {
-				z.Notifications = make([]map[string][]TargetIDStatus, zb0010)
+				z.Notifications = make([]map[string][]TargetIDStatus, zb0012)
 			}
-			for za0008 := range z.Notifications {
-				var zb0011 uint32
-				zb0011, err = dc.ReadMapHeader()
+			for za0010 := range z.Notifications {
+				var zb0013 uint32
+				zb0013, err = dc.ReadMapHeader()
 				if err != nil {
-					err = msgp.WrapError(err, "Notifications", za0008)
+					err = msgp.WrapError(err, "Notifications", za0010)
 					return
 				}
-				if z.Notifications[za0008] == nil {
-					z.Notifications[za0008] = make(map[string][]TargetIDStatus, zb0011)
-				} else if len(z.Notifications[za0008]) > 0 {
-					clear(z.Notifications[za0008])
+				if z.Notifications[za0010] == nil {
+					z.Notifications[za0010] = make(map[string][]TargetIDStatus, zb0013)
+				} else if len(z.Notifications[za0010]) > 0 {
+					clear(z.Notifications[za0010])
 				}
-				for zb0011 > 0 {
-					zb0011--
-					var za0009 string
-					za0009, err = dc.ReadString()
+				for zb0013 > 0 {
+					zb0013--
+					var za0011 string
+					za0011, err = dc.ReadString()
 					if err != nil {
-						err = msgp.WrapError(err, "Notifications", za0008)
+						err = msgp.WrapError(err, "Notifications", za0010)
 						return
 					}
-					var za0010 []TargetIDStatus
-					var zb0012 uint32
-					zb0012, err = dc.ReadArrayHeader()
+					var za0012 []TargetIDStatus
+					var zb0014 uint32
+					zb0014, err = dc.ReadArrayHeader()
 					if err != nil {
-						err = msgp.WrapError(err, "Notifications", za0008, za0009)
+						err = msgp.WrapError(err, "Notifications", za0010, za0011)
 						return
 					}
-					if cap(za0010) >= int(zb0012) {
-						za0010 = (za0010)[:zb0012]
+					if cap(za0012) >= int(zb0014) {
+						za0012 = (za0012)[:zb0014]
 					} else {
-						za0010 = make([]TargetIDStatus, zb0012)
+						za0012 = make([]TargetIDStatus, zb0014)
 					}
-					for za0011 := range za0010 {
-						var zb0013 uint32
-						zb0013, err = dc.ReadMapHeader()
+					for za0013 := range za0012 {
+						var zb0015 uint32
+						zb0015, err = dc.ReadMapHeader()
 						if err != nil {
-							err = msgp.WrapError(err, "Notifications", za0008, za0009, za0011)
+							err = msgp.WrapError(err, "Notifications", za0010, za0011, za0013)
 							return
 						}
-						if za0010[za0011] == nil {
-							za0010[za0011] = make(TargetIDStatus, zb0013)
-						} else if len(za0010[za0011]) > 0 {
-							clear(za0010[za0011])
+						if za0012[za0013] == nil {
+							za0012[za0013] = make(TargetIDStatus, zb0015)
+						} else if len(za0012[za0013]) > 0 {
+							clear(za0012[za0013])
 						}
-						for zb0013 > 0 {
-							zb0013--
-							var za0012 string
-							za0012, err = dc.ReadString()
+						for zb0015 > 0 {
+							zb0015--
+							var za0014 string
+							za0014, err = dc.ReadString()
 							if err != nil {
-								err = msgp.WrapError(err, "Notifications", za0008, za0009, za0011)
+								err = msgp.WrapError(err, "Notifications", za0010, za0011, za0013)
 								return
 							}
-							var za0013 Status
-							var zb0014 uint32
-							zb0014, err = dc.ReadMapHeader()
+							var za0015 Status
+							var zb0016 uint32
+							zb0016, err = dc.ReadMapHeader()
 							if err != nil {
-								err = msgp.WrapError(err, "Notifications", za0008, za0009, za0011, za0012)
+								err = msgp.WrapError(err, "Notifications", za0010, za0011, za0013, za0014)
 								return
 							}
-							var zb0014Mask uint8 /* 1 bits */
-							_ = zb0014Mask
-							for zb0014 > 0 {
-								zb0014--
+							var zb0016Mask uint8 /* 1 bits */
+							_ = zb0016Mask
+							for zb0016 > 0 {
+								zb0016--
 								field, err = dc.ReadMapKeyPtr()
 								if err != nil {
-									err = msgp.WrapError(err, "Notifications", za0008, za0009, za0011, za0012)
+									err = msgp.WrapError(err, "Notifications", za0010, za0011, za0013, za0014)
 									return
 								}
 								switch msgp.UnsafeString(field) {
 								case "status":
-									za0013.Status, err = dc.ReadString()
+									za0015.Status, err = dc.ReadString()
 									if err != nil {
-										err = msgp.WrapError(err, "Notifications", za0008, za0009, za0011, za0012, "Status")
+										err = msgp.WrapError(err, "Notifications", za0010, za0011, za0013, za0014, "Status")
 										return
 									}
-									zb0014Mask |= 0x1
+									zb0016Mask |= 0x1
 								default:
 									err = dc.Skip()
 									if err != nil {
-										err = msgp.WrapError(err, "Notifications", za0008, za0009, za0011, za0012)
+										err = msgp.WrapError(err, "Notifications", za0010, za0011, za0013, za0014)
 										return
 									}
 								}
 							}
 							// Clear omitted fields.
-							if (zb0014Mask & 0x1) == 0 {
-								za0013.Status = ""
+							if (zb0016Mask & 0x1) == 0 {
+								za0015.Status = ""
 							}
 
-							za0010[za0011][za0012] = za0013
+							za0012[za0013][za0014] = za0015
 						}
 					}
-					z.Notifications[za0008][za0009] = za0010
+					z.Notifications[za0010][za0011] = za0012
 				}
 			}
-			zb0001Mask |= 0x20
+			zb0001Mask |= 0x40
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -11449,7 +11509,7 @@ func (z *Services) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3f {
+	if zb0001Mask != 0x7f {
 		if (zb0001Mask & 0x1) == 0 {
 			z.KMS = KMS{}
 		}
@@ -11460,12 +11520,15 @@ func (z *Services) DecodeMsg(dc *msgp.Reader) (err error) {
 			z.LDAP = (LDAP{})
 		}
 		if (zb0001Mask & 0x8) == 0 {
-			z.Logger = nil
+			z.LDAPStatus = nil
 		}
 		if (zb0001Mask & 0x10) == 0 {
-			z.Audit = nil
+			z.Logger = nil
 		}
 		if (zb0001Mask & 0x20) == 0 {
+			z.Audit = nil
+		}
+		if (zb0001Mask & 0x40) == 0 {
 			z.Notifications = nil
 		}
 	}
@@ -11475,8 +11538,8 @@ func (z *Services) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *Services) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(6)
-	var zb0001Mask uint8 /* 6 bits */
+	zb0001Len := uint32(7)
+	var zb0001Mask uint8 /* 7 bits */
 	_ = zb0001Mask
 	if z.KMSStatus == nil {
 		zb0001Len--
@@ -11486,17 +11549,21 @@ func (z *Services) EncodeMsg(en *msgp.Writer) (err error) {
 		zb0001Len--
 		zb0001Mask |= 0x4
 	}
-	if z.Logger == nil {
+	if z.LDAPStatus == nil {
 		zb0001Len--
 		zb0001Mask |= 0x8
 	}
-	if z.Audit == nil {
+	if z.Logger == nil {
 		zb0001Len--
 		zb0001Mask |= 0x10
 	}
-	if z.Notifications == nil {
+	if z.Audit == nil {
 		zb0001Len--
 		zb0001Mask |= 0x20
+	}
+	if z.Notifications == nil {
+		zb0001Len--
+		zb0001Mask |= 0x40
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -11568,6 +11635,50 @@ func (z *Services) EncodeMsg(en *msgp.Writer) (err error) {
 			}
 		}
 		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// write "ldapStatus"
+			err = en.Append(0xaa, 0x6c, 0x64, 0x61, 0x70, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteMapHeader(uint32(len(z.LDAPStatus)))
+			if err != nil {
+				err = msgp.WrapError(err, "LDAPStatus")
+				return
+			}
+			for za0002, za0003 := range z.LDAPStatus {
+				err = en.WriteString(za0002)
+				if err != nil {
+					err = msgp.WrapError(err, "LDAPStatus")
+					return
+				}
+				// check for omitted fields
+				zb0003Len := uint32(1)
+				var zb0003Mask uint8 /* 1 bits */
+				_ = zb0003Mask
+				if za0003.Status == "" {
+					zb0003Len--
+					zb0003Mask |= 0x1
+				}
+				// variable map header, size zb0003Len
+				err = en.Append(0x80 | uint8(zb0003Len))
+				if err != nil {
+					return
+				}
+				if (zb0003Mask & 0x1) == 0 { // if not omitted
+					// write "status"
+					err = en.Append(0xa6, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73)
+					if err != nil {
+						return
+					}
+					err = en.WriteString(za0003.Status)
+					if err != nil {
+						err = msgp.WrapError(err, "LDAPStatus", za0002, "Status")
+						return
+					}
+				}
+			}
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
 			// write "logger"
 			err = en.Append(0xa6, 0x6c, 0x6f, 0x67, 0x67, 0x65, 0x72)
 			if err != nil {
@@ -11578,74 +11689,23 @@ func (z *Services) EncodeMsg(en *msgp.Writer) (err error) {
 				err = msgp.WrapError(err, "Logger")
 				return
 			}
-			for za0002 := range z.Logger {
-				err = en.WriteMapHeader(uint32(len(z.Logger[za0002])))
+			for za0004 := range z.Logger {
+				err = en.WriteMapHeader(uint32(len(z.Logger[za0004])))
 				if err != nil {
-					err = msgp.WrapError(err, "Logger", za0002)
+					err = msgp.WrapError(err, "Logger", za0004)
 					return
 				}
-				for za0003, za0004 := range z.Logger[za0002] {
-					err = en.WriteString(za0003)
+				for za0005, za0006 := range z.Logger[za0004] {
+					err = en.WriteString(za0005)
 					if err != nil {
-						err = msgp.WrapError(err, "Logger", za0002)
-						return
-					}
-					// check for omitted fields
-					zb0003Len := uint32(1)
-					var zb0003Mask uint8 /* 1 bits */
-					_ = zb0003Mask
-					if za0004.Status == "" {
-						zb0003Len--
-						zb0003Mask |= 0x1
-					}
-					// variable map header, size zb0003Len
-					err = en.Append(0x80 | uint8(zb0003Len))
-					if err != nil {
-						return
-					}
-					if (zb0003Mask & 0x1) == 0 { // if not omitted
-						// write "status"
-						err = en.Append(0xa6, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73)
-						if err != nil {
-							return
-						}
-						err = en.WriteString(za0004.Status)
-						if err != nil {
-							err = msgp.WrapError(err, "Logger", za0002, za0003, "Status")
-							return
-						}
-					}
-				}
-			}
-		}
-		if (zb0001Mask & 0x10) == 0 { // if not omitted
-			// write "audit"
-			err = en.Append(0xa5, 0x61, 0x75, 0x64, 0x69, 0x74)
-			if err != nil {
-				return
-			}
-			err = en.WriteArrayHeader(uint32(len(z.Audit)))
-			if err != nil {
-				err = msgp.WrapError(err, "Audit")
-				return
-			}
-			for za0005 := range z.Audit {
-				err = en.WriteMapHeader(uint32(len(z.Audit[za0005])))
-				if err != nil {
-					err = msgp.WrapError(err, "Audit", za0005)
-					return
-				}
-				for za0006, za0007 := range z.Audit[za0005] {
-					err = en.WriteString(za0006)
-					if err != nil {
-						err = msgp.WrapError(err, "Audit", za0005)
+						err = msgp.WrapError(err, "Logger", za0004)
 						return
 					}
 					// check for omitted fields
 					zb0004Len := uint32(1)
 					var zb0004Mask uint8 /* 1 bits */
 					_ = zb0004Mask
-					if za0007.Status == "" {
+					if za0006.Status == "" {
 						zb0004Len--
 						zb0004Mask |= 0x1
 					}
@@ -11660,9 +11720,9 @@ func (z *Services) EncodeMsg(en *msgp.Writer) (err error) {
 						if err != nil {
 							return
 						}
-						err = en.WriteString(za0007.Status)
+						err = en.WriteString(za0006.Status)
 						if err != nil {
-							err = msgp.WrapError(err, "Audit", za0005, za0006, "Status")
+							err = msgp.WrapError(err, "Logger", za0004, za0005, "Status")
 							return
 						}
 					}
@@ -11670,6 +11730,57 @@ func (z *Services) EncodeMsg(en *msgp.Writer) (err error) {
 			}
 		}
 		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// write "audit"
+			err = en.Append(0xa5, 0x61, 0x75, 0x64, 0x69, 0x74)
+			if err != nil {
+				return
+			}
+			err = en.WriteArrayHeader(uint32(len(z.Audit)))
+			if err != nil {
+				err = msgp.WrapError(err, "Audit")
+				return
+			}
+			for za0007 := range z.Audit {
+				err = en.WriteMapHeader(uint32(len(z.Audit[za0007])))
+				if err != nil {
+					err = msgp.WrapError(err, "Audit", za0007)
+					return
+				}
+				for za0008, za0009 := range z.Audit[za0007] {
+					err = en.WriteString(za0008)
+					if err != nil {
+						err = msgp.WrapError(err, "Audit", za0007)
+						return
+					}
+					// check for omitted fields
+					zb0005Len := uint32(1)
+					var zb0005Mask uint8 /* 1 bits */
+					_ = zb0005Mask
+					if za0009.Status == "" {
+						zb0005Len--
+						zb0005Mask |= 0x1
+					}
+					// variable map header, size zb0005Len
+					err = en.Append(0x80 | uint8(zb0005Len))
+					if err != nil {
+						return
+					}
+					if (zb0005Mask & 0x1) == 0 { // if not omitted
+						// write "status"
+						err = en.Append(0xa6, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73)
+						if err != nil {
+							return
+						}
+						err = en.WriteString(za0009.Status)
+						if err != nil {
+							err = msgp.WrapError(err, "Audit", za0007, za0008, "Status")
+							return
+						}
+					}
+				}
+			}
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
 			// write "notifications"
 			err = en.Append(0xad, 0x6e, 0x6f, 0x74, 0x69, 0x66, 0x69, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73)
 			if err != nil {
@@ -11680,57 +11791,57 @@ func (z *Services) EncodeMsg(en *msgp.Writer) (err error) {
 				err = msgp.WrapError(err, "Notifications")
 				return
 			}
-			for za0008 := range z.Notifications {
-				err = en.WriteMapHeader(uint32(len(z.Notifications[za0008])))
+			for za0010 := range z.Notifications {
+				err = en.WriteMapHeader(uint32(len(z.Notifications[za0010])))
 				if err != nil {
-					err = msgp.WrapError(err, "Notifications", za0008)
+					err = msgp.WrapError(err, "Notifications", za0010)
 					return
 				}
-				for za0009, za0010 := range z.Notifications[za0008] {
-					err = en.WriteString(za0009)
+				for za0011, za0012 := range z.Notifications[za0010] {
+					err = en.WriteString(za0011)
 					if err != nil {
-						err = msgp.WrapError(err, "Notifications", za0008)
+						err = msgp.WrapError(err, "Notifications", za0010)
 						return
 					}
-					err = en.WriteArrayHeader(uint32(len(za0010)))
+					err = en.WriteArrayHeader(uint32(len(za0012)))
 					if err != nil {
-						err = msgp.WrapError(err, "Notifications", za0008, za0009)
+						err = msgp.WrapError(err, "Notifications", za0010, za0011)
 						return
 					}
-					for za0011 := range za0010 {
-						err = en.WriteMapHeader(uint32(len(za0010[za0011])))
+					for za0013 := range za0012 {
+						err = en.WriteMapHeader(uint32(len(za0012[za0013])))
 						if err != nil {
-							err = msgp.WrapError(err, "Notifications", za0008, za0009, za0011)
+							err = msgp.WrapError(err, "Notifications", za0010, za0011, za0013)
 							return
 						}
-						for za0012, za0013 := range za0010[za0011] {
-							err = en.WriteString(za0012)
+						for za0014, za0015 := range za0012[za0013] {
+							err = en.WriteString(za0014)
 							if err != nil {
-								err = msgp.WrapError(err, "Notifications", za0008, za0009, za0011)
+								err = msgp.WrapError(err, "Notifications", za0010, za0011, za0013)
 								return
 							}
 							// check for omitted fields
-							zb0005Len := uint32(1)
-							var zb0005Mask uint8 /* 1 bits */
-							_ = zb0005Mask
-							if za0013.Status == "" {
-								zb0005Len--
-								zb0005Mask |= 0x1
+							zb0006Len := uint32(1)
+							var zb0006Mask uint8 /* 1 bits */
+							_ = zb0006Mask
+							if za0015.Status == "" {
+								zb0006Len--
+								zb0006Mask |= 0x1
 							}
-							// variable map header, size zb0005Len
-							err = en.Append(0x80 | uint8(zb0005Len))
+							// variable map header, size zb0006Len
+							err = en.Append(0x80 | uint8(zb0006Len))
 							if err != nil {
 								return
 							}
-							if (zb0005Mask & 0x1) == 0 { // if not omitted
+							if (zb0006Mask & 0x1) == 0 { // if not omitted
 								// write "status"
 								err = en.Append(0xa6, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73)
 								if err != nil {
 									return
 								}
-								err = en.WriteString(za0013.Status)
+								err = en.WriteString(za0015.Status)
 								if err != nil {
-									err = msgp.WrapError(err, "Notifications", za0008, za0009, za0011, za0012, "Status")
+									err = msgp.WrapError(err, "Notifications", za0010, za0011, za0013, za0014, "Status")
 									return
 								}
 							}
@@ -11747,8 +11858,8 @@ func (z *Services) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *Services) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(6)
-	var zb0001Mask uint8 /* 6 bits */
+	zb0001Len := uint32(7)
+	var zb0001Mask uint8 /* 7 bits */
 	_ = zb0001Mask
 	if z.KMSStatus == nil {
 		zb0001Len--
@@ -11758,17 +11869,21 @@ func (z *Services) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x4
 	}
-	if z.Logger == nil {
+	if z.LDAPStatus == nil {
 		zb0001Len--
 		zb0001Mask |= 0x8
 	}
-	if z.Audit == nil {
+	if z.Logger == nil {
 		zb0001Len--
 		zb0001Mask |= 0x10
 	}
-	if z.Notifications == nil {
+	if z.Audit == nil {
 		zb0001Len--
 		zb0001Mask |= 0x20
+	}
+	if z.Notifications == nil {
+		zb0001Len--
+		zb0001Mask |= 0x40
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -11814,44 +11929,41 @@ func (z *Services) MarshalMsg(b []byte) (o []byte, err error) {
 			}
 		}
 		if (zb0001Mask & 0x8) == 0 { // if not omitted
-			// string "logger"
-			o = append(o, 0xa6, 0x6c, 0x6f, 0x67, 0x67, 0x65, 0x72)
-			o = msgp.AppendArrayHeader(o, uint32(len(z.Logger)))
-			for za0002 := range z.Logger {
-				o = msgp.AppendMapHeader(o, uint32(len(z.Logger[za0002])))
-				for za0003, za0004 := range z.Logger[za0002] {
-					o = msgp.AppendString(o, za0003)
-					// check for omitted fields
-					zb0003Len := uint32(1)
-					var zb0003Mask uint8 /* 1 bits */
-					_ = zb0003Mask
-					if za0004.Status == "" {
-						zb0003Len--
-						zb0003Mask |= 0x1
-					}
-					// variable map header, size zb0003Len
-					o = append(o, 0x80|uint8(zb0003Len))
-					if (zb0003Mask & 0x1) == 0 { // if not omitted
-						// string "status"
-						o = append(o, 0xa6, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73)
-						o = msgp.AppendString(o, za0004.Status)
-					}
+			// string "ldapStatus"
+			o = append(o, 0xaa, 0x6c, 0x64, 0x61, 0x70, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73)
+			o = msgp.AppendMapHeader(o, uint32(len(z.LDAPStatus)))
+			for za0002, za0003 := range z.LDAPStatus {
+				o = msgp.AppendString(o, za0002)
+				// check for omitted fields
+				zb0003Len := uint32(1)
+				var zb0003Mask uint8 /* 1 bits */
+				_ = zb0003Mask
+				if za0003.Status == "" {
+					zb0003Len--
+					zb0003Mask |= 0x1
+				}
+				// variable map header, size zb0003Len
+				o = append(o, 0x80|uint8(zb0003Len))
+				if (zb0003Mask & 0x1) == 0 { // if not omitted
+					// string "status"
+					o = append(o, 0xa6, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73)
+					o = msgp.AppendString(o, za0003.Status)
 				}
 			}
 		}
 		if (zb0001Mask & 0x10) == 0 { // if not omitted
-			// string "audit"
-			o = append(o, 0xa5, 0x61, 0x75, 0x64, 0x69, 0x74)
-			o = msgp.AppendArrayHeader(o, uint32(len(z.Audit)))
-			for za0005 := range z.Audit {
-				o = msgp.AppendMapHeader(o, uint32(len(z.Audit[za0005])))
-				for za0006, za0007 := range z.Audit[za0005] {
-					o = msgp.AppendString(o, za0006)
+			// string "logger"
+			o = append(o, 0xa6, 0x6c, 0x6f, 0x67, 0x67, 0x65, 0x72)
+			o = msgp.AppendArrayHeader(o, uint32(len(z.Logger)))
+			for za0004 := range z.Logger {
+				o = msgp.AppendMapHeader(o, uint32(len(z.Logger[za0004])))
+				for za0005, za0006 := range z.Logger[za0004] {
+					o = msgp.AppendString(o, za0005)
 					// check for omitted fields
 					zb0004Len := uint32(1)
 					var zb0004Mask uint8 /* 1 bits */
 					_ = zb0004Mask
-					if za0007.Status == "" {
+					if za0006.Status == "" {
 						zb0004Len--
 						zb0004Mask |= 0x1
 					}
@@ -11860,38 +11972,64 @@ func (z *Services) MarshalMsg(b []byte) (o []byte, err error) {
 					if (zb0004Mask & 0x1) == 0 { // if not omitted
 						// string "status"
 						o = append(o, 0xa6, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73)
-						o = msgp.AppendString(o, za0007.Status)
+						o = msgp.AppendString(o, za0006.Status)
 					}
 				}
 			}
 		}
 		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// string "audit"
+			o = append(o, 0xa5, 0x61, 0x75, 0x64, 0x69, 0x74)
+			o = msgp.AppendArrayHeader(o, uint32(len(z.Audit)))
+			for za0007 := range z.Audit {
+				o = msgp.AppendMapHeader(o, uint32(len(z.Audit[za0007])))
+				for za0008, za0009 := range z.Audit[za0007] {
+					o = msgp.AppendString(o, za0008)
+					// check for omitted fields
+					zb0005Len := uint32(1)
+					var zb0005Mask uint8 /* 1 bits */
+					_ = zb0005Mask
+					if za0009.Status == "" {
+						zb0005Len--
+						zb0005Mask |= 0x1
+					}
+					// variable map header, size zb0005Len
+					o = append(o, 0x80|uint8(zb0005Len))
+					if (zb0005Mask & 0x1) == 0 { // if not omitted
+						// string "status"
+						o = append(o, 0xa6, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73)
+						o = msgp.AppendString(o, za0009.Status)
+					}
+				}
+			}
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
 			// string "notifications"
 			o = append(o, 0xad, 0x6e, 0x6f, 0x74, 0x69, 0x66, 0x69, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73)
 			o = msgp.AppendArrayHeader(o, uint32(len(z.Notifications)))
-			for za0008 := range z.Notifications {
-				o = msgp.AppendMapHeader(o, uint32(len(z.Notifications[za0008])))
-				for za0009, za0010 := range z.Notifications[za0008] {
-					o = msgp.AppendString(o, za0009)
-					o = msgp.AppendArrayHeader(o, uint32(len(za0010)))
-					for za0011 := range za0010 {
-						o = msgp.AppendMapHeader(o, uint32(len(za0010[za0011])))
-						for za0012, za0013 := range za0010[za0011] {
-							o = msgp.AppendString(o, za0012)
+			for za0010 := range z.Notifications {
+				o = msgp.AppendMapHeader(o, uint32(len(z.Notifications[za0010])))
+				for za0011, za0012 := range z.Notifications[za0010] {
+					o = msgp.AppendString(o, za0011)
+					o = msgp.AppendArrayHeader(o, uint32(len(za0012)))
+					for za0013 := range za0012 {
+						o = msgp.AppendMapHeader(o, uint32(len(za0012[za0013])))
+						for za0014, za0015 := range za0012[za0013] {
+							o = msgp.AppendString(o, za0014)
 							// check for omitted fields
-							zb0005Len := uint32(1)
-							var zb0005Mask uint8 /* 1 bits */
-							_ = zb0005Mask
-							if za0013.Status == "" {
-								zb0005Len--
-								zb0005Mask |= 0x1
+							zb0006Len := uint32(1)
+							var zb0006Mask uint8 /* 1 bits */
+							_ = zb0006Mask
+							if za0015.Status == "" {
+								zb0006Len--
+								zb0006Mask |= 0x1
 							}
-							// variable map header, size zb0005Len
-							o = append(o, 0x80|uint8(zb0005Len))
-							if (zb0005Mask & 0x1) == 0 { // if not omitted
+							// variable map header, size zb0006Len
+							o = append(o, 0x80|uint8(zb0006Len))
+							if (zb0006Mask & 0x1) == 0 { // if not omitted
 								// string "status"
 								o = append(o, 0xa6, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73)
-								o = msgp.AppendString(o, za0013.Status)
+								o = msgp.AppendString(o, za0015.Status)
 							}
 						}
 					}
@@ -11912,7 +12050,7 @@ func (z *Services) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 6 bits */
+	var zb0001Mask uint8 /* 7 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -11987,260 +12125,320 @@ func (z *Services) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			}
 
 			zb0001Mask |= 0x4
-		case "logger":
+		case "ldapStatus":
 			var zb0004 uint32
-			zb0004, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			zb0004, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "LDAPStatus")
+				return
+			}
+			if z.LDAPStatus == nil {
+				z.LDAPStatus = make(map[string]LDAP, zb0004)
+			} else if len(z.LDAPStatus) > 0 {
+				clear(z.LDAPStatus)
+			}
+			for zb0004 > 0 {
+				var za0003 LDAP
+				zb0004--
+				var za0002 string
+				za0002, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "LDAPStatus")
+					return
+				}
+				var zb0005 uint32
+				zb0005, bts, err = msgp.ReadMapHeaderBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "LDAPStatus", za0002)
+					return
+				}
+				var zb0005Mask uint8 /* 1 bits */
+				_ = zb0005Mask
+				for zb0005 > 0 {
+					zb0005--
+					field, bts, err = msgp.ReadMapKeyZC(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "LDAPStatus", za0002)
+						return
+					}
+					switch msgp.UnsafeString(field) {
+					case "status":
+						za0003.Status, bts, err = msgp.ReadStringBytes(bts)
+						if err != nil {
+							err = msgp.WrapError(err, "LDAPStatus", za0002, "Status")
+							return
+						}
+						zb0005Mask |= 0x1
+					default:
+						bts, err = msgp.Skip(bts)
+						if err != nil {
+							err = msgp.WrapError(err, "LDAPStatus", za0002)
+							return
+						}
+					}
+				}
+				// Clear omitted fields.
+				if (zb0005Mask & 0x1) == 0 {
+					za0003.Status = ""
+				}
+
+				z.LDAPStatus[za0002] = za0003
+			}
+			zb0001Mask |= 0x8
+		case "logger":
+			var zb0006 uint32
+			zb0006, bts, err = msgp.ReadArrayHeaderBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Logger")
 				return
 			}
-			if cap(z.Logger) >= int(zb0004) {
-				z.Logger = (z.Logger)[:zb0004]
+			if cap(z.Logger) >= int(zb0006) {
+				z.Logger = (z.Logger)[:zb0006]
 			} else {
-				z.Logger = make([]Logger, zb0004)
+				z.Logger = make([]Logger, zb0006)
 			}
-			for za0002 := range z.Logger {
-				var zb0005 uint32
-				zb0005, bts, err = msgp.ReadMapHeaderBytes(bts)
+			for za0004 := range z.Logger {
+				var zb0007 uint32
+				zb0007, bts, err = msgp.ReadMapHeaderBytes(bts)
 				if err != nil {
-					err = msgp.WrapError(err, "Logger", za0002)
+					err = msgp.WrapError(err, "Logger", za0004)
 					return
 				}
-				if z.Logger[za0002] == nil {
-					z.Logger[za0002] = make(Logger, zb0005)
-				} else if len(z.Logger[za0002]) > 0 {
-					clear(z.Logger[za0002])
+				if z.Logger[za0004] == nil {
+					z.Logger[za0004] = make(Logger, zb0007)
+				} else if len(z.Logger[za0004]) > 0 {
+					clear(z.Logger[za0004])
 				}
-				for zb0005 > 0 {
-					var za0004 Status
-					zb0005--
-					var za0003 string
-					za0003, bts, err = msgp.ReadStringBytes(bts)
+				for zb0007 > 0 {
+					var za0006 Status
+					zb0007--
+					var za0005 string
+					za0005, bts, err = msgp.ReadStringBytes(bts)
 					if err != nil {
-						err = msgp.WrapError(err, "Logger", za0002)
+						err = msgp.WrapError(err, "Logger", za0004)
 						return
 					}
-					var zb0006 uint32
-					zb0006, bts, err = msgp.ReadMapHeaderBytes(bts)
+					var zb0008 uint32
+					zb0008, bts, err = msgp.ReadMapHeaderBytes(bts)
 					if err != nil {
-						err = msgp.WrapError(err, "Logger", za0002, za0003)
+						err = msgp.WrapError(err, "Logger", za0004, za0005)
 						return
 					}
-					var zb0006Mask uint8 /* 1 bits */
-					_ = zb0006Mask
-					for zb0006 > 0 {
-						zb0006--
+					var zb0008Mask uint8 /* 1 bits */
+					_ = zb0008Mask
+					for zb0008 > 0 {
+						zb0008--
 						field, bts, err = msgp.ReadMapKeyZC(bts)
 						if err != nil {
-							err = msgp.WrapError(err, "Logger", za0002, za0003)
+							err = msgp.WrapError(err, "Logger", za0004, za0005)
 							return
 						}
 						switch msgp.UnsafeString(field) {
 						case "status":
-							za0004.Status, bts, err = msgp.ReadStringBytes(bts)
+							za0006.Status, bts, err = msgp.ReadStringBytes(bts)
 							if err != nil {
-								err = msgp.WrapError(err, "Logger", za0002, za0003, "Status")
+								err = msgp.WrapError(err, "Logger", za0004, za0005, "Status")
 								return
 							}
-							zb0006Mask |= 0x1
+							zb0008Mask |= 0x1
 						default:
 							bts, err = msgp.Skip(bts)
 							if err != nil {
-								err = msgp.WrapError(err, "Logger", za0002, za0003)
+								err = msgp.WrapError(err, "Logger", za0004, za0005)
 								return
 							}
 						}
 					}
 					// Clear omitted fields.
-					if (zb0006Mask & 0x1) == 0 {
-						za0004.Status = ""
+					if (zb0008Mask & 0x1) == 0 {
+						za0006.Status = ""
 					}
 
-					z.Logger[za0002][za0003] = za0004
+					z.Logger[za0004][za0005] = za0006
 				}
 			}
-			zb0001Mask |= 0x8
+			zb0001Mask |= 0x10
 		case "audit":
-			var zb0007 uint32
-			zb0007, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			var zb0009 uint32
+			zb0009, bts, err = msgp.ReadArrayHeaderBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Audit")
 				return
 			}
-			if cap(z.Audit) >= int(zb0007) {
-				z.Audit = (z.Audit)[:zb0007]
+			if cap(z.Audit) >= int(zb0009) {
+				z.Audit = (z.Audit)[:zb0009]
 			} else {
-				z.Audit = make([]Audit, zb0007)
+				z.Audit = make([]Audit, zb0009)
 			}
-			for za0005 := range z.Audit {
-				var zb0008 uint32
-				zb0008, bts, err = msgp.ReadMapHeaderBytes(bts)
+			for za0007 := range z.Audit {
+				var zb0010 uint32
+				zb0010, bts, err = msgp.ReadMapHeaderBytes(bts)
 				if err != nil {
-					err = msgp.WrapError(err, "Audit", za0005)
+					err = msgp.WrapError(err, "Audit", za0007)
 					return
 				}
-				if z.Audit[za0005] == nil {
-					z.Audit[za0005] = make(Audit, zb0008)
-				} else if len(z.Audit[za0005]) > 0 {
-					clear(z.Audit[za0005])
+				if z.Audit[za0007] == nil {
+					z.Audit[za0007] = make(Audit, zb0010)
+				} else if len(z.Audit[za0007]) > 0 {
+					clear(z.Audit[za0007])
 				}
-				for zb0008 > 0 {
-					var za0007 Status
-					zb0008--
-					var za0006 string
-					za0006, bts, err = msgp.ReadStringBytes(bts)
+				for zb0010 > 0 {
+					var za0009 Status
+					zb0010--
+					var za0008 string
+					za0008, bts, err = msgp.ReadStringBytes(bts)
 					if err != nil {
-						err = msgp.WrapError(err, "Audit", za0005)
+						err = msgp.WrapError(err, "Audit", za0007)
 						return
 					}
-					var zb0009 uint32
-					zb0009, bts, err = msgp.ReadMapHeaderBytes(bts)
+					var zb0011 uint32
+					zb0011, bts, err = msgp.ReadMapHeaderBytes(bts)
 					if err != nil {
-						err = msgp.WrapError(err, "Audit", za0005, za0006)
+						err = msgp.WrapError(err, "Audit", za0007, za0008)
 						return
 					}
-					var zb0009Mask uint8 /* 1 bits */
-					_ = zb0009Mask
-					for zb0009 > 0 {
-						zb0009--
+					var zb0011Mask uint8 /* 1 bits */
+					_ = zb0011Mask
+					for zb0011 > 0 {
+						zb0011--
 						field, bts, err = msgp.ReadMapKeyZC(bts)
 						if err != nil {
-							err = msgp.WrapError(err, "Audit", za0005, za0006)
+							err = msgp.WrapError(err, "Audit", za0007, za0008)
 							return
 						}
 						switch msgp.UnsafeString(field) {
 						case "status":
-							za0007.Status, bts, err = msgp.ReadStringBytes(bts)
+							za0009.Status, bts, err = msgp.ReadStringBytes(bts)
 							if err != nil {
-								err = msgp.WrapError(err, "Audit", za0005, za0006, "Status")
+								err = msgp.WrapError(err, "Audit", za0007, za0008, "Status")
 								return
 							}
-							zb0009Mask |= 0x1
+							zb0011Mask |= 0x1
 						default:
 							bts, err = msgp.Skip(bts)
 							if err != nil {
-								err = msgp.WrapError(err, "Audit", za0005, za0006)
+								err = msgp.WrapError(err, "Audit", za0007, za0008)
 								return
 							}
 						}
 					}
 					// Clear omitted fields.
-					if (zb0009Mask & 0x1) == 0 {
-						za0007.Status = ""
+					if (zb0011Mask & 0x1) == 0 {
+						za0009.Status = ""
 					}
 
-					z.Audit[za0005][za0006] = za0007
+					z.Audit[za0007][za0008] = za0009
 				}
 			}
-			zb0001Mask |= 0x10
+			zb0001Mask |= 0x20
 		case "notifications":
-			var zb0010 uint32
-			zb0010, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			var zb0012 uint32
+			zb0012, bts, err = msgp.ReadArrayHeaderBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Notifications")
 				return
 			}
-			if cap(z.Notifications) >= int(zb0010) {
-				z.Notifications = (z.Notifications)[:zb0010]
+			if cap(z.Notifications) >= int(zb0012) {
+				z.Notifications = (z.Notifications)[:zb0012]
 			} else {
-				z.Notifications = make([]map[string][]TargetIDStatus, zb0010)
+				z.Notifications = make([]map[string][]TargetIDStatus, zb0012)
 			}
-			for za0008 := range z.Notifications {
-				var zb0011 uint32
-				zb0011, bts, err = msgp.ReadMapHeaderBytes(bts)
+			for za0010 := range z.Notifications {
+				var zb0013 uint32
+				zb0013, bts, err = msgp.ReadMapHeaderBytes(bts)
 				if err != nil {
-					err = msgp.WrapError(err, "Notifications", za0008)
+					err = msgp.WrapError(err, "Notifications", za0010)
 					return
 				}
-				if z.Notifications[za0008] == nil {
-					z.Notifications[za0008] = make(map[string][]TargetIDStatus, zb0011)
-				} else if len(z.Notifications[za0008]) > 0 {
-					clear(z.Notifications[za0008])
+				if z.Notifications[za0010] == nil {
+					z.Notifications[za0010] = make(map[string][]TargetIDStatus, zb0013)
+				} else if len(z.Notifications[za0010]) > 0 {
+					clear(z.Notifications[za0010])
 				}
-				for zb0011 > 0 {
-					var za0010 []TargetIDStatus
-					zb0011--
-					var za0009 string
-					za0009, bts, err = msgp.ReadStringBytes(bts)
+				for zb0013 > 0 {
+					var za0012 []TargetIDStatus
+					zb0013--
+					var za0011 string
+					za0011, bts, err = msgp.ReadStringBytes(bts)
 					if err != nil {
-						err = msgp.WrapError(err, "Notifications", za0008)
+						err = msgp.WrapError(err, "Notifications", za0010)
 						return
 					}
-					var zb0012 uint32
-					zb0012, bts, err = msgp.ReadArrayHeaderBytes(bts)
+					var zb0014 uint32
+					zb0014, bts, err = msgp.ReadArrayHeaderBytes(bts)
 					if err != nil {
-						err = msgp.WrapError(err, "Notifications", za0008, za0009)
+						err = msgp.WrapError(err, "Notifications", za0010, za0011)
 						return
 					}
-					if cap(za0010) >= int(zb0012) {
-						za0010 = (za0010)[:zb0012]
+					if cap(za0012) >= int(zb0014) {
+						za0012 = (za0012)[:zb0014]
 					} else {
-						za0010 = make([]TargetIDStatus, zb0012)
+						za0012 = make([]TargetIDStatus, zb0014)
 					}
-					for za0011 := range za0010 {
-						var zb0013 uint32
-						zb0013, bts, err = msgp.ReadMapHeaderBytes(bts)
+					for za0013 := range za0012 {
+						var zb0015 uint32
+						zb0015, bts, err = msgp.ReadMapHeaderBytes(bts)
 						if err != nil {
-							err = msgp.WrapError(err, "Notifications", za0008, za0009, za0011)
+							err = msgp.WrapError(err, "Notifications", za0010, za0011, za0013)
 							return
 						}
-						if za0010[za0011] == nil {
-							za0010[za0011] = make(TargetIDStatus, zb0013)
-						} else if len(za0010[za0011]) > 0 {
-							clear(za0010[za0011])
+						if za0012[za0013] == nil {
+							za0012[za0013] = make(TargetIDStatus, zb0015)
+						} else if len(za0012[za0013]) > 0 {
+							clear(za0012[za0013])
 						}
-						for zb0013 > 0 {
-							var za0013 Status
-							zb0013--
-							var za0012 string
-							za0012, bts, err = msgp.ReadStringBytes(bts)
+						for zb0015 > 0 {
+							var za0015 Status
+							zb0015--
+							var za0014 string
+							za0014, bts, err = msgp.ReadStringBytes(bts)
 							if err != nil {
-								err = msgp.WrapError(err, "Notifications", za0008, za0009, za0011)
+								err = msgp.WrapError(err, "Notifications", za0010, za0011, za0013)
 								return
 							}
-							var zb0014 uint32
-							zb0014, bts, err = msgp.ReadMapHeaderBytes(bts)
+							var zb0016 uint32
+							zb0016, bts, err = msgp.ReadMapHeaderBytes(bts)
 							if err != nil {
-								err = msgp.WrapError(err, "Notifications", za0008, za0009, za0011, za0012)
+								err = msgp.WrapError(err, "Notifications", za0010, za0011, za0013, za0014)
 								return
 							}
-							var zb0014Mask uint8 /* 1 bits */
-							_ = zb0014Mask
-							for zb0014 > 0 {
-								zb0014--
+							var zb0016Mask uint8 /* 1 bits */
+							_ = zb0016Mask
+							for zb0016 > 0 {
+								zb0016--
 								field, bts, err = msgp.ReadMapKeyZC(bts)
 								if err != nil {
-									err = msgp.WrapError(err, "Notifications", za0008, za0009, za0011, za0012)
+									err = msgp.WrapError(err, "Notifications", za0010, za0011, za0013, za0014)
 									return
 								}
 								switch msgp.UnsafeString(field) {
 								case "status":
-									za0013.Status, bts, err = msgp.ReadStringBytes(bts)
+									za0015.Status, bts, err = msgp.ReadStringBytes(bts)
 									if err != nil {
-										err = msgp.WrapError(err, "Notifications", za0008, za0009, za0011, za0012, "Status")
+										err = msgp.WrapError(err, "Notifications", za0010, za0011, za0013, za0014, "Status")
 										return
 									}
-									zb0014Mask |= 0x1
+									zb0016Mask |= 0x1
 								default:
 									bts, err = msgp.Skip(bts)
 									if err != nil {
-										err = msgp.WrapError(err, "Notifications", za0008, za0009, za0011, za0012)
+										err = msgp.WrapError(err, "Notifications", za0010, za0011, za0013, za0014)
 										return
 									}
 								}
 							}
 							// Clear omitted fields.
-							if (zb0014Mask & 0x1) == 0 {
-								za0013.Status = ""
+							if (zb0016Mask & 0x1) == 0 {
+								za0015.Status = ""
 							}
 
-							za0010[za0011][za0012] = za0013
+							za0012[za0013][za0014] = za0015
 						}
 					}
-					z.Notifications[za0008][za0009] = za0010
+					z.Notifications[za0010][za0011] = za0012
 				}
 			}
-			zb0001Mask |= 0x20
+			zb0001Mask |= 0x40
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -12250,7 +12448,7 @@ func (z *Services) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3f {
+	if zb0001Mask != 0x7f {
 		if (zb0001Mask & 0x1) == 0 {
 			z.KMS = KMS{}
 		}
@@ -12261,12 +12459,15 @@ func (z *Services) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.LDAP = (LDAP{})
 		}
 		if (zb0001Mask & 0x8) == 0 {
-			z.Logger = nil
+			z.LDAPStatus = nil
 		}
 		if (zb0001Mask & 0x10) == 0 {
-			z.Audit = nil
+			z.Logger = nil
 		}
 		if (zb0001Mask & 0x20) == 0 {
+			z.Audit = nil
+		}
+		if (zb0001Mask & 0x40) == 0 {
 			z.Notifications = nil
 		}
 	}
@@ -12280,39 +12481,46 @@ func (z *Services) Msgsize() (s int) {
 	for za0001 := range z.KMSStatus {
 		s += z.KMSStatus[za0001].Msgsize()
 	}
-	s += 5 + 1 + 7 + msgp.StringPrefixSize + len(z.LDAP.Status) + 7 + msgp.ArrayHeaderSize
-	for za0002 := range z.Logger {
+	s += 5 + 1 + 7 + msgp.StringPrefixSize + len(z.LDAP.Status) + 11 + msgp.MapHeaderSize
+	if z.LDAPStatus != nil {
+		for za0002, za0003 := range z.LDAPStatus {
+			_ = za0003
+			s += msgp.StringPrefixSize + len(za0002) + 1 + 7 + msgp.StringPrefixSize + len(za0003.Status)
+		}
+	}
+	s += 7 + msgp.ArrayHeaderSize
+	for za0004 := range z.Logger {
 		s += msgp.MapHeaderSize
-		if z.Logger[za0002] != nil {
-			for za0003, za0004 := range z.Logger[za0002] {
-				_ = za0004
-				s += msgp.StringPrefixSize + len(za0003) + 1 + 7 + msgp.StringPrefixSize + len(za0004.Status)
+		if z.Logger[za0004] != nil {
+			for za0005, za0006 := range z.Logger[za0004] {
+				_ = za0006
+				s += msgp.StringPrefixSize + len(za0005) + 1 + 7 + msgp.StringPrefixSize + len(za0006.Status)
 			}
 		}
 	}
 	s += 6 + msgp.ArrayHeaderSize
-	for za0005 := range z.Audit {
+	for za0007 := range z.Audit {
 		s += msgp.MapHeaderSize
-		if z.Audit[za0005] != nil {
-			for za0006, za0007 := range z.Audit[za0005] {
-				_ = za0007
-				s += msgp.StringPrefixSize + len(za0006) + 1 + 7 + msgp.StringPrefixSize + len(za0007.Status)
+		if z.Audit[za0007] != nil {
+			for za0008, za0009 := range z.Audit[za0007] {
+				_ = za0009
+				s += msgp.StringPrefixSize + len(za0008) + 1 + 7 + msgp.StringPrefixSize + len(za0009.Status)
 			}
 		}
 	}
 	s += 14 + msgp.ArrayHeaderSize
-	for za0008 := range z.Notifications {
+	for za0010 := range z.Notifications {
 		s += msgp.MapHeaderSize
-		if z.Notifications[za0008] != nil {
-			for za0009, za0010 := range z.Notifications[za0008] {
-				_ = za0010
-				s += msgp.StringPrefixSize + len(za0009) + msgp.ArrayHeaderSize
-				for za0011 := range za0010 {
+		if z.Notifications[za0010] != nil {
+			for za0011, za0012 := range z.Notifications[za0010] {
+				_ = za0012
+				s += msgp.StringPrefixSize + len(za0011) + msgp.ArrayHeaderSize
+				for za0013 := range za0012 {
 					s += msgp.MapHeaderSize
-					if za0010[za0011] != nil {
-						for za0012, za0013 := range za0010[za0011] {
-							_ = za0013
-							s += msgp.StringPrefixSize + len(za0012) + 1 + 7 + msgp.StringPrefixSize + len(za0013.Status)
+					if za0012[za0013] != nil {
+						for za0014, za0015 := range za0012[za0013] {
+							_ = za0015
+							s += msgp.StringPrefixSize + len(za0014) + 1 + 7 + msgp.StringPrefixSize + len(za0015.Status)
 						}
 					}
 				}

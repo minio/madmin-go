@@ -415,7 +415,7 @@ type PolicyAssociationReq struct {
 
 	// Optional and only relevant for LDAP. If empty, the default
 	// configuration is used.
-	CfgName string `json:"cfgName,omitempty"`
+	ConfigName string `json:"configName,omitempty"`
 }
 
 // IsValid validates the object and returns a reason for when it is not.
