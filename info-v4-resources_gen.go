@@ -3393,7 +3393,7 @@ func (z *ErasureSetResource) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 1 bits */
+	var zb0001Mask uint8 /* 3 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -3441,6 +3441,26 @@ func (z *ErasureSetResource) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 			}
 			zb0001Mask |= 0x1
+		case "on":
+			var zb0003 uint32
+			zb0003, err = dc.ReadArrayHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "OfflineNodes")
+				return
+			}
+			if cap(z.OfflineNodes) >= int(zb0003) {
+				z.OfflineNodes = (z.OfflineNodes)[:zb0003]
+			} else {
+				z.OfflineNodes = make([]string, zb0003)
+			}
+			for za0002 := range z.OfflineNodes {
+				z.OfflineNodes[za0002], err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "OfflineNodes", za0002)
+					return
+				}
+			}
+			zb0001Mask |= 0x2
 		case "ru":
 			z.RawUsage, err = dc.ReadUint64()
 			if err != nil {
@@ -3483,6 +3503,26 @@ func (z *ErasureSetResource) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "State")
 				return
 			}
+		case "d":
+			var zb0004 uint32
+			zb0004, err = dc.ReadArrayHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "Drives")
+				return
+			}
+			if cap(z.Drives) >= int(zb0004) {
+				z.Drives = (z.Drives)[:zb0004]
+			} else {
+				z.Drives = make([]Disk, zb0004)
+			}
+			for za0003 := range z.Drives {
+				err = z.Drives[za0003].DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "Drives", za0003)
+					return
+				}
+			}
+			zb0001Mask |= 0x4
 		case "ds":
 			err = z.DriveStates.DecodeMsg(dc)
 			if err != nil {
@@ -3516,25 +3556,40 @@ func (z *ErasureSetResource) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if (zb0001Mask & 0x1) == 0 {
-		z.Nodes = nil
+	if zb0001Mask != 0x7 {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Nodes = nil
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.OfflineNodes = nil
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.Drives = nil
+		}
 	}
-
 	return
 }
 
 // EncodeMsg implements msgp.Encodable
 func (z *ErasureSetResource) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(15)
-	var zb0001Mask uint16 /* 15 bits */
+	zb0001Len := uint32(17)
+	var zb0001Mask uint32 /* 17 bits */
 	_ = zb0001Mask
 	if z.Nodes == nil {
 		zb0001Len--
 		zb0001Mask |= 0x8
 	}
+	if z.OfflineNodes == nil {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	if z.Drives == nil {
+		zb0001Len--
+		zb0001Mask |= 0x1000
+	}
 	// variable map header, size zb0001Len
-	err = en.Append(0x80 | uint8(zb0001Len))
+	err = en.WriteMapHeader(zb0001Len)
 	if err != nil {
 		return
 	}
@@ -3586,6 +3641,25 @@ func (z *ErasureSetResource) EncodeMsg(en *msgp.Writer) (err error) {
 				err = en.WriteString(z.Nodes[za0001])
 				if err != nil {
 					err = msgp.WrapError(err, "Nodes", za0001)
+					return
+				}
+			}
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// write "on"
+			err = en.Append(0xa2, 0x6f, 0x6e)
+			if err != nil {
+				return
+			}
+			err = en.WriteArrayHeader(uint32(len(z.OfflineNodes)))
+			if err != nil {
+				err = msgp.WrapError(err, "OfflineNodes")
+				return
+			}
+			for za0002 := range z.OfflineNodes {
+				err = en.WriteString(z.OfflineNodes[za0002])
+				if err != nil {
+					err = msgp.WrapError(err, "OfflineNodes", za0002)
 					return
 				}
 			}
@@ -3660,6 +3734,25 @@ func (z *ErasureSetResource) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "State")
 			return
 		}
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
+			// write "d"
+			err = en.Append(0xa1, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteArrayHeader(uint32(len(z.Drives)))
+			if err != nil {
+				err = msgp.WrapError(err, "Drives")
+				return
+			}
+			for za0003 := range z.Drives {
+				err = z.Drives[za0003].EncodeMsg(en)
+				if err != nil {
+					err = msgp.WrapError(err, "Drives", za0003)
+					return
+				}
+			}
+		}
 		// write "ds"
 		err = en.Append(0xa2, 0x64, 0x73)
 		if err != nil {
@@ -3708,15 +3801,23 @@ func (z *ErasureSetResource) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *ErasureSetResource) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(15)
-	var zb0001Mask uint16 /* 15 bits */
+	zb0001Len := uint32(17)
+	var zb0001Mask uint32 /* 17 bits */
 	_ = zb0001Mask
 	if z.Nodes == nil {
 		zb0001Len--
 		zb0001Mask |= 0x8
 	}
+	if z.OfflineNodes == nil {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	if z.Drives == nil {
+		zb0001Len--
+		zb0001Mask |= 0x1000
+	}
 	// variable map header, size zb0001Len
-	o = append(o, 0x80|uint8(zb0001Len))
+	o = msgp.AppendMapHeader(o, zb0001Len)
 
 	// skip if no fields are to be emitted
 	if zb0001Len != 0 {
@@ -3735,6 +3836,14 @@ func (z *ErasureSetResource) MarshalMsg(b []byte) (o []byte, err error) {
 			o = msgp.AppendArrayHeader(o, uint32(len(z.Nodes)))
 			for za0001 := range z.Nodes {
 				o = msgp.AppendString(o, z.Nodes[za0001])
+			}
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// string "on"
+			o = append(o, 0xa2, 0x6f, 0x6e)
+			o = msgp.AppendArrayHeader(o, uint32(len(z.OfflineNodes)))
+			for za0002 := range z.OfflineNodes {
+				o = msgp.AppendString(o, z.OfflineNodes[za0002])
 			}
 		}
 		// string "ru"
@@ -3758,6 +3867,18 @@ func (z *ErasureSetResource) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "st"
 		o = append(o, 0xa2, 0x73, 0x74)
 		o = msgp.AppendString(o, z.State)
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
+			// string "d"
+			o = append(o, 0xa1, 0x64)
+			o = msgp.AppendArrayHeader(o, uint32(len(z.Drives)))
+			for za0003 := range z.Drives {
+				o, err = z.Drives[za0003].MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "Drives", za0003)
+					return
+				}
+			}
+		}
 		// string "ds"
 		o = append(o, 0xa2, 0x64, 0x73)
 		o, err = z.DriveStates.MarshalMsg(o)
@@ -3788,7 +3909,7 @@ func (z *ErasureSetResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 1 bits */
+	var zb0001Mask uint8 /* 3 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -3836,6 +3957,26 @@ func (z *ErasureSetResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 			}
 			zb0001Mask |= 0x1
+		case "on":
+			var zb0003 uint32
+			zb0003, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "OfflineNodes")
+				return
+			}
+			if cap(z.OfflineNodes) >= int(zb0003) {
+				z.OfflineNodes = (z.OfflineNodes)[:zb0003]
+			} else {
+				z.OfflineNodes = make([]string, zb0003)
+			}
+			for za0002 := range z.OfflineNodes {
+				z.OfflineNodes[za0002], bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "OfflineNodes", za0002)
+					return
+				}
+			}
+			zb0001Mask |= 0x2
 		case "ru":
 			z.RawUsage, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
@@ -3878,6 +4019,26 @@ func (z *ErasureSetResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "State")
 				return
 			}
+		case "d":
+			var zb0004 uint32
+			zb0004, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Drives")
+				return
+			}
+			if cap(z.Drives) >= int(zb0004) {
+				z.Drives = (z.Drives)[:zb0004]
+			} else {
+				z.Drives = make([]Disk, zb0004)
+			}
+			for za0003 := range z.Drives {
+				bts, err = z.Drives[za0003].UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Drives", za0003)
+					return
+				}
+			}
+			zb0001Mask |= 0x4
 		case "ds":
 			bts, err = z.DriveStates.UnmarshalMsg(bts)
 			if err != nil {
@@ -3911,21 +4072,36 @@ func (z *ErasureSetResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if (zb0001Mask & 0x1) == 0 {
-		z.Nodes = nil
+	if zb0001Mask != 0x7 {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Nodes = nil
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.OfflineNodes = nil
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.Drives = nil
+		}
 	}
-
 	o = bts
 	return
 }
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *ErasureSetResource) Msgsize() (s int) {
-	s = 1 + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 2 + msgp.ArrayHeaderSize
+	s = 3 + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 2 + msgp.ArrayHeaderSize
 	for za0001 := range z.Nodes {
 		s += msgp.StringPrefixSize + len(z.Nodes[za0001])
 	}
-	s += 3 + msgp.Uint64Size + 3 + msgp.Uint64Size + 2 + msgp.Uint64Size + 3 + msgp.Uint64Size + 3 + msgp.Uint64Size + 4 + msgp.Uint64Size + 3 + msgp.StringPrefixSize + len(z.State) + 3 + z.DriveStates.Msgsize() + 3 + msgp.IntSize + 4 + msgp.IntSize + 3 + msgp.IntSize
+	s += 3 + msgp.ArrayHeaderSize
+	for za0002 := range z.OfflineNodes {
+		s += msgp.StringPrefixSize + len(z.OfflineNodes[za0002])
+	}
+	s += 3 + msgp.Uint64Size + 3 + msgp.Uint64Size + 2 + msgp.Uint64Size + 3 + msgp.Uint64Size + 3 + msgp.Uint64Size + 4 + msgp.Uint64Size + 3 + msgp.StringPrefixSize + len(z.State) + 2 + msgp.ArrayHeaderSize
+	for za0003 := range z.Drives {
+		s += z.Drives[za0003].Msgsize()
+	}
+	s += 3 + z.DriveStates.Msgsize() + 3 + msgp.IntSize + 4 + msgp.IntSize + 3 + msgp.IntSize
 	return
 }
 

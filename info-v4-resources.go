@@ -235,6 +235,7 @@ type ErasureSetResource struct {
 	SetIndex           int                 `json:"setIndex" msg:"si"`
 	DriveCount         int                 `json:"driveCount" msg:"dc"`
 	Nodes              []string            `json:"nodes,omitempty" msg:"n,omitempty"`
+	OfflineNodes       []string            `json:"offlineNodes,omitempty" msg:"on,omitempty"`
 	RawUsage           uint64              `json:"rawUsage" msg:"ru"`
 	RawCapacity        uint64              `json:"rawCapacity" msg:"rc"`
 	Usage              uint64              `json:"usage" msg:"u"`
@@ -242,6 +243,7 @@ type ErasureSetResource struct {
 	VersionsCount      uint64              `json:"versionsCount" msg:"vc"`
 	DeleteMarkersCount uint64              `json:"deleteMarkersCount" msg:"dmc"`
 	State              string              `json:"state" msg:"st"`
+	Drives             []Disk              `json:"drives,omitempty" msg:"d,omitempty"`
 	DriveStates        DriveResourceStates `json:"driveStates" msg:"ds"`
 
 	// Deprecated (to be removed in future releases)
