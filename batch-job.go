@@ -207,6 +207,7 @@ const BatchJobExpireTemplate = `expire:
 type BatchJobResult struct {
 	ID      string             `json:"id"`
 	Type    BatchJobType       `json:"type"`
+	Bucket  string             `json:"bucket,omitempty"`
 	User    string             `json:"user,omitempty"`
 	Started time.Time          `json:"started"`
 	Elapsed time.Duration      `json:"elapsed,omitempty"`
@@ -391,6 +392,7 @@ type ListBatchJobsResult struct {
 // filtering params.
 type ListBatchJobsFilter struct {
 	ByJobType string
+	ByBucket  string
 }
 
 // ListBatchJobs list all the currently active batch jobs
@@ -401,6 +403,7 @@ func (adm *AdminClient) ListBatchJobs(ctx context.Context, fl *ListBatchJobsFilt
 
 	values := make(url.Values)
 	values.Set("jobType", fl.ByJobType)
+	values.Set("bucket", fl.ByBucket)
 
 	resp, err := adm.executeMethod(ctx, http.MethodGet,
 		requestData{
