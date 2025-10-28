@@ -19,6 +19,8 @@
 
 package madmin
 
+import "cmp"
+
 // Provide msgp for external types.
 // If updating packages breaks this, update structs below.
 
@@ -64,4 +66,26 @@ type procfsNetDevLine struct {
 	TxCollisions uint64 `json:"tx_collisions"` // Cumulative count of collisions detected on the interface.
 	TxCarrier    uint64 `json:"tx_carrier"`    // Cumulative count of carrier losses detected by the device driver.
 	TxCompressed uint64 `json:"tx_compressed"` // Cumulative count of compressed packets transmitted by the device driver.
+}
+
+func (p procfsNetDevLine) add(other procfsNetDevLine) procfsNetDevLine {
+	return procfsNetDevLine{
+		Name:         cmp.Or(p.Name, other.Name),
+		RxBytes:      p.RxBytes + other.RxBytes,
+		RxPackets:    p.RxPackets + other.RxPackets,
+		RxErrors:     p.RxErrors + other.RxErrors,
+		RxDropped:    p.RxDropped + other.RxDropped,
+		RxFIFO:       p.RxFIFO + other.RxFIFO,
+		RxFrame:      p.RxFrame + other.RxFrame,
+		RxCompressed: p.RxCompressed + other.RxCompressed,
+		RxMulticast:  p.RxMulticast + other.RxMulticast,
+		TxBytes:      p.TxBytes + other.TxBytes,
+		TxPackets:    p.TxPackets + other.TxPackets,
+		TxErrors:     p.TxErrors + other.TxErrors,
+		TxDropped:    p.TxDropped + other.TxDropped,
+		TxFIFO:       p.TxFIFO + other.TxFIFO,
+		TxCollisions: p.TxCollisions + other.TxCollisions,
+		TxCarrier:    p.TxCarrier + other.TxCarrier,
+		TxCompressed: p.TxCompressed + other.TxCompressed,
+	}
 }

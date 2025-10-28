@@ -35,3 +35,7 @@ formatters:
       - third_party$
       - builtin$
       - examples$
+
+issues:
+  max-issues-per-linter: 100
+  max-same-issues: 100
