@@ -76,6 +76,8 @@ const (
 	TraceIAM
 	// TraceTables will trace table operations
 	TraceTables
+	// TracePurgeOnDelete will trace purge-on-delete operations
+	TracePurgeOnDelete
 	// Add more here...
 
 	// TraceAll contains all valid trace modes.
@@ -150,11 +152,12 @@ type TraceInfo struct {
 	Duration time.Duration `json:"dur"`
 	Bytes    int64         `json:"bytes,omitempty"`
 
-	Message    string            `json:"msg,omitempty"`
-	Error      string            `json:"error,omitempty"`
-	Custom     map[string]string `json:"custom,omitempty"`
-	HTTP       *TraceHTTPStats   `json:"http,omitempty"`
-	HealResult *HealResultItem   `json:"healResult,omitempty"`
+	Message         string                  `json:"msg,omitempty"`
+	Error           string                  `json:"error,omitempty"`
+	Custom          map[string]string       `json:"custom,omitempty"`
+	HTTP            *TraceHTTPStats         `json:"http,omitempty"`
+	HealResult      *HealResultItem         `json:"healResult,omitempty"`
+	PurgeOnDeleteOp *TracePurgeOnDeleteInfo `json:"purgeOnDeleteOp,omitempty"`
 }
 
 // Mask returns the trace type as uint32.
@@ -195,4 +198,34 @@ type TraceResponseInfo struct {
 	Headers    http.Header `json:"headers,omitempty"`
 	Body       []byte      `json:"body,omitempty"`
 	StatusCode int         `json:"statuscode,omitempty"`
+}
+
+// TracePurgeOnDeleteInfo represents information about purge-on-delete operations
+type TracePurgeOnDeleteInfo struct {
+	// Tracking metadata object information
+	TrackerBucket  string `json:"trackerBucket"`
+	TrackerObject  string `json:"trackerObject"`
+	TrackerVersion string `json:"trackerVersion"`
+
+	// Main namespace object information being tracked
+	SourceBucket  string `json:"sourceBucket"`            // Original bucket name
+	SourceObject  string `json:"sourceObject"`            // Original object name/prefix
+	SourceVersion string `json:"sourceVersion,omitempty"` // Original version ID if specific version
+
+	// Operation details
+	Operation       string `json:"operation"`                 // create, update, delete, cleanup, replicate
+	Status          string `json:"status"`                    // pending, in-progress, completed, failed
+	ReplicationSite string `json:"replicationSite,omitempty"` // Site name for cross-site replication
+}
+
+// NewTracePurgeOnDeleteInfo creates a new TracePurgeOnDeleteInfo with basic information
+func NewTracePurgeOnDeleteInfo(trackerBucket, trackerObject, trackerVersion string, sourceBucket, sourceObject string) *TracePurgeOnDeleteInfo {
+	return &TracePurgeOnDeleteInfo{
+		TrackerBucket:  trackerBucket,
+		TrackerObject:  trackerObject,
+		TrackerVersion: trackerVersion,
+		SourceBucket:   sourceBucket,
+		SourceObject:   sourceObject,
+		Status:         "pending",
+	}
 }
