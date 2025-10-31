@@ -228,7 +228,7 @@ func (adm AdminClient) filterSignature(req *http.Request) {
 }
 
 // dumpHTTP - dump HTTP request and response.
-func (adm AdminClient) dumpHTTP(req *http.Request, resp *http.Response) error {
+func (adm AdminClient) dumpHTTP(req *http.Request, resp *http.Response, netErr error) error {
 	// Starts http dump.
 	_, err := fmt.Fprintln(adm.traceOutput, "---------START-HTTP---------")
 	if err != nil {
@@ -250,40 +250,56 @@ func (adm AdminClient) dumpHTTP(req *http.Request, resp *http.Response) error {
 		return err
 	}
 
-	// Only display response header.
-	var respTrace []byte
-
-	// For errors we make sure to dump response body as well.
-	if resp.StatusCode != http.StatusOK &&
-		resp.StatusCode != http.StatusPartialContent &&
-		resp.StatusCode != http.StatusNoContent {
-		respTrace, err = httputil.DumpResponse(resp, true)
+	// If there was a network error, dump the error instead of response
+	if netErr != nil {
+		_, err = fmt.Fprintln(adm.traceOutput, "\n[NETWORK ERROR]")
 		if err != nil {
 			return err
 		}
-	} else {
-		// WORKAROUND for https://github.com/golang/go/issues/13942.
-		// httputil.DumpResponse does not print response headers for
-		// all successful calls which have response ContentLength set
-		// to zero. Keep this workaround until the above bug is fixed.
-		if resp.ContentLength == 0 {
-			var buffer bytes.Buffer
-			if err = resp.Header.Write(&buffer); err != nil {
-				return err
-			}
-			respTrace = buffer.Bytes()
-			respTrace = append(respTrace, []byte("\r\n")...)
-		} else {
-			respTrace, err = httputil.DumpResponse(resp, false)
+		_, err = fmt.Fprintln(adm.traceOutput, "Note: Request was attempted but may not have been received by the server.")
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(adm.traceOutput, "Error: %v\n", netErr)
+		if err != nil {
+			return err
+		}
+	} else if resp != nil {
+		// Only display response header.
+		var respTrace []byte
+
+		// For errors we make sure to dump response body as well.
+		if resp.StatusCode != http.StatusOK &&
+			resp.StatusCode != http.StatusPartialContent &&
+			resp.StatusCode != http.StatusNoContent {
+			respTrace, err = httputil.DumpResponse(resp, true)
 			if err != nil {
 				return err
 			}
+		} else {
+			// WORKAROUND for https://github.com/golang/go/issues/13942.
+			// httputil.DumpResponse does not print response headers for
+			// all successful calls which have response ContentLength set
+			// to zero. Keep this workaround until the above bug is fixed.
+			if resp.ContentLength == 0 {
+				var buffer bytes.Buffer
+				if err = resp.Header.Write(&buffer); err != nil {
+					return err
+				}
+				respTrace = buffer.Bytes()
+				respTrace = append(respTrace, []byte("\r\n")...)
+			} else {
+				respTrace, err = httputil.DumpResponse(resp, false)
+				if err != nil {
+					return err
+				}
+			}
 		}
-	}
-	// Write response to trace output.
-	_, err = fmt.Fprint(adm.traceOutput, strings.TrimSuffix(string(respTrace), "\r\n"))
-	if err != nil {
-		return err
+		// Write response to trace output.
+		_, err = fmt.Fprint(adm.traceOutput, strings.TrimSuffix(string(respTrace), "\r\n"))
+		if err != nil {
+			return err
+		}
 	}
 
 	// Ends the http dump.
@@ -295,6 +311,13 @@ func (adm AdminClient) dumpHTTP(req *http.Request, resp *http.Response) error {
 func (adm AdminClient) do(req *http.Request) (*http.Response, error) {
 	resp, err := adm.httpClient.Do(req)
 	if err != nil {
+		// If trace is enabled, dump http request and error.
+		if adm.isTraceEnabled {
+			dumpErr := adm.dumpHTTP(req, nil, err)
+			if dumpErr != nil {
+				return nil, dumpErr
+			}
+		}
 		// Handle this specifically for now until future Golang versions fix this issue properly.
 		if urlErr, ok := err.(*url.Error); ok {
 			if strings.Contains(urlErr.Err.Error(), "EOF") {
@@ -316,7 +339,7 @@ func (adm AdminClient) do(req *http.Request) (*http.Response, error) {
 
 	// If trace is enabled, dump http request and response.
 	if adm.isTraceEnabled {
-		err = adm.dumpHTTP(req, resp)
+		err = adm.dumpHTTP(req, resp, nil)
 		if err != nil {
 			return nil, err
 		}
