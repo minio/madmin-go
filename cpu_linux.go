@@ -1,5 +1,4 @@
 //go:build linux
-// +build linux
 
 //
 // Copyright (c) 2015-2025 MinIO, Inc.
