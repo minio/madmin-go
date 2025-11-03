@@ -565,6 +565,51 @@ type OSInfo struct {
 	Sensors []sensors.TemperatureStat `json:"sensors,omitempty"`
 }
 
+// AddOSInfo adds OS information including sensors to OSMetrics aggregated data.
+// This follows the merge rules where metrics are accumulated in an order-independent way.
+func (o *OSInfo) AddOSInfo(m *OSMetrics) {
+	if o == nil || m == nil {
+		return
+	}
+
+	// Process sensor information
+	if len(o.Sensors) > 0 {
+		if m.Sensors == nil {
+			m.Sensors = make(map[string]SensorMetrics)
+		}
+
+		for _, sensor := range o.Sensors {
+			existing := m.Sensors[sensor.SensorKey]
+
+			// Initialize or update min/max
+			if existing.Count == 0 {
+				// First reading for this sensor
+				existing.MinTemp = sensor.Temperature
+				existing.MaxTemp = sensor.Temperature
+			} else {
+				if sensor.Temperature < existing.MinTemp {
+					existing.MinTemp = sensor.Temperature
+				}
+				if sensor.Temperature > existing.MaxTemp {
+					existing.MaxTemp = sensor.Temperature
+				}
+			}
+
+			// Accumulate total for averaging
+			existing.TotalTemp += sensor.Temperature
+			existing.Count++
+
+			// Check if temperature exceeds critical threshold
+			// Only count if Critical is non-zero (valid threshold)
+			if sensor.Critical > 0 && sensor.Temperature > sensor.Critical {
+				existing.ExceedsCritical++
+			}
+
+			m.Sensors[sensor.SensorKey] = existing
+		}
+	}
+}
+
 // TimeInfo contains current time with timezone, and
 // the roundtrip duration when fetching it remotely
 type TimeInfo struct {

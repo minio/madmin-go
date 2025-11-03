@@ -758,6 +758,15 @@ func (d DiskMetric) LifetimeTotal() DiskAction {
 	return res
 }
 
+// SensorMetrics aggregated sensor metrics for a single sensor key
+type SensorMetrics struct {
+	MinTemp         float64 `json:"min_temp"`                   // Minimum temperature seen
+	MaxTemp         float64 `json:"max_temp"`                   // Maximum temperature seen
+	TotalTemp       float64 `json:"total_temp"`                 // Total temperature for averaging
+	Count           int     `json:"count"`                      // Number of readings
+	ExceedsCritical int     `json:"exceeds_critical,omitempty"` // Count of readings exceeding critical threshold
+}
+
 // OSMetrics contains metrics for OS operations.
 type OSMetrics struct {
 	// Time these metrics were collected
@@ -770,6 +779,9 @@ type OSMetrics struct {
 	LastMinute struct {
 		Operations map[string]TimedAction `json:"operations,omitempty"`
 	} `json:"last_minute"`
+
+	// Aggregated temperature sensor metrics by sensor key
+	Sensors map[string]SensorMetrics `json:"sensors,omitempty"`
 }
 
 // Merge other into 'o'.
@@ -797,6 +809,34 @@ func (o *OSMetrics) Merge(other *OSMetrics) {
 		total := o.LastMinute.Operations[k]
 		total.Merge(v)
 		o.LastMinute.Operations[k] = total
+	}
+
+	// Merge sensor metrics
+	if len(other.Sensors) > 0 {
+		if o.Sensors == nil {
+			o.Sensors = make(map[string]SensorMetrics)
+		}
+		for key, otherSensor := range other.Sensors {
+			existing := o.Sensors[key]
+			// Handle min/max
+			if existing.Count == 0 {
+				// First data for this sensor
+				existing.MinTemp = otherSensor.MinTemp
+				existing.MaxTemp = otherSensor.MaxTemp
+			} else {
+				if otherSensor.MinTemp < existing.MinTemp {
+					existing.MinTemp = otherSensor.MinTemp
+				}
+				if otherSensor.MaxTemp > existing.MaxTemp {
+					existing.MaxTemp = otherSensor.MaxTemp
+				}
+			}
+			// Accumulate totals
+			existing.TotalTemp += otherSensor.TotalTemp
+			existing.Count += otherSensor.Count
+			existing.ExceedsCritical += otherSensor.ExceedsCritical
+			o.Sensors[key] = existing
+		}
 	}
 }
 

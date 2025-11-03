@@ -11753,7 +11753,7 @@ func (z *OSMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 1 bits */
+	var zb0001Mask uint8 /* 2 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -11857,6 +11857,35 @@ func (z *OSMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 				z.LastMinute.Operations = nil
 			}
 
+		case "sensors":
+			var zb0005 uint32
+			zb0005, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "Sensors")
+				return
+			}
+			if z.Sensors == nil {
+				z.Sensors = make(map[string]SensorMetrics, zb0005)
+			} else if len(z.Sensors) > 0 {
+				clear(z.Sensors)
+			}
+			for zb0005 > 0 {
+				zb0005--
+				var za0005 string
+				za0005, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "Sensors")
+					return
+				}
+				var za0006 SensorMetrics
+				err = za0006.DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "Sensors", za0005)
+					return
+				}
+				z.Sensors[za0005] = za0006
+			}
+			zb0001Mask |= 0x2
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -11866,22 +11895,30 @@ func (z *OSMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if (zb0001Mask & 0x1) == 0 {
-		z.LifeTimeOps = nil
+	if zb0001Mask != 0x3 {
+		if (zb0001Mask & 0x1) == 0 {
+			z.LifeTimeOps = nil
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.Sensors = nil
+		}
 	}
-
 	return
 }
 
 // EncodeMsg implements msgp.Encodable
 func (z *OSMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(3)
-	var zb0001Mask uint8 /* 3 bits */
+	zb0001Len := uint32(4)
+	var zb0001Mask uint8 /* 4 bits */
 	_ = zb0001Mask
 	if z.LifeTimeOps == nil {
 		zb0001Len--
 		zb0001Mask |= 0x2
+	}
+	if z.Sensors == nil {
+		zb0001Len--
+		zb0001Mask |= 0x8
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -11967,6 +12004,30 @@ func (z *OSMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// write "sensors"
+			err = en.Append(0xa7, 0x73, 0x65, 0x6e, 0x73, 0x6f, 0x72, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteMapHeader(uint32(len(z.Sensors)))
+			if err != nil {
+				err = msgp.WrapError(err, "Sensors")
+				return
+			}
+			for za0005, za0006 := range z.Sensors {
+				err = en.WriteString(za0005)
+				if err != nil {
+					err = msgp.WrapError(err, "Sensors")
+					return
+				}
+				err = za0006.EncodeMsg(en)
+				if err != nil {
+					err = msgp.WrapError(err, "Sensors", za0005)
+					return
+				}
+			}
+		}
 	}
 	return
 }
@@ -11975,12 +12036,16 @@ func (z *OSMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *OSMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(3)
-	var zb0001Mask uint8 /* 3 bits */
+	zb0001Len := uint32(4)
+	var zb0001Mask uint8 /* 4 bits */
 	_ = zb0001Mask
 	if z.LifeTimeOps == nil {
 		zb0001Len--
 		zb0001Mask |= 0x2
+	}
+	if z.Sensors == nil {
+		zb0001Len--
+		zb0001Mask |= 0x8
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -12024,6 +12089,19 @@ func (z *OSMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 				}
 			}
 		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// string "sensors"
+			o = append(o, 0xa7, 0x73, 0x65, 0x6e, 0x73, 0x6f, 0x72, 0x73)
+			o = msgp.AppendMapHeader(o, uint32(len(z.Sensors)))
+			for za0005, za0006 := range z.Sensors {
+				o = msgp.AppendString(o, za0005)
+				o, err = za0006.MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "Sensors", za0005)
+					return
+				}
+			}
+		}
 	}
 	return
 }
@@ -12038,7 +12116,7 @@ func (z *OSMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 1 bits */
+	var zb0001Mask uint8 /* 2 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -12142,6 +12220,35 @@ func (z *OSMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				z.LastMinute.Operations = nil
 			}
 
+		case "sensors":
+			var zb0005 uint32
+			zb0005, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Sensors")
+				return
+			}
+			if z.Sensors == nil {
+				z.Sensors = make(map[string]SensorMetrics, zb0005)
+			} else if len(z.Sensors) > 0 {
+				clear(z.Sensors)
+			}
+			for zb0005 > 0 {
+				var za0006 SensorMetrics
+				zb0005--
+				var za0005 string
+				za0005, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Sensors")
+					return
+				}
+				bts, err = za0006.UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Sensors", za0005)
+					return
+				}
+				z.Sensors[za0005] = za0006
+			}
+			zb0001Mask |= 0x2
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -12151,10 +12258,14 @@ func (z *OSMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if (zb0001Mask & 0x1) == 0 {
-		z.LifeTimeOps = nil
+	if zb0001Mask != 0x3 {
+		if (zb0001Mask & 0x1) == 0 {
+			z.LifeTimeOps = nil
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.Sensors = nil
+		}
 	}
-
 	o = bts
 	return
 }
@@ -12173,6 +12284,13 @@ func (z *OSMetrics) Msgsize() (s int) {
 		for za0003, za0004 := range z.LastMinute.Operations {
 			_ = za0004
 			s += msgp.StringPrefixSize + len(za0003) + za0004.Msgsize()
+		}
+	}
+	s += 8 + msgp.MapHeaderSize
+	if z.Sensors != nil {
+		for za0005, za0006 := range z.Sensors {
+			_ = za0006
+			s += msgp.StringPrefixSize + len(za0005) + za0006.Msgsize()
 		}
 	}
 	return
@@ -18418,6 +18536,258 @@ func (z *ScannerMetrics) Msgsize() (s int) {
 	for za0013 := range z.ExcessivePrefixes {
 		s += msgp.StringPrefixSize + len(z.ExcessivePrefixes[za0013])
 	}
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *SensorMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 1 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "min_temp":
+			z.MinTemp, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "MinTemp")
+				return
+			}
+		case "max_temp":
+			z.MaxTemp, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "MaxTemp")
+				return
+			}
+		case "total_temp":
+			z.TotalTemp, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "TotalTemp")
+				return
+			}
+		case "count":
+			z.Count, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "Count")
+				return
+			}
+		case "exceeds_critical":
+			z.ExceedsCritical, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "ExceedsCritical")
+				return
+			}
+			zb0001Mask |= 0x1
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if (zb0001Mask & 0x1) == 0 {
+		z.ExceedsCritical = 0
+	}
+
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *SensorMetrics) EncodeMsg(en *msgp.Writer) (err error) {
+	// check for omitted fields
+	zb0001Len := uint32(5)
+	var zb0001Mask uint8 /* 5 bits */
+	_ = zb0001Mask
+	if z.ExceedsCritical == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	// variable map header, size zb0001Len
+	err = en.Append(0x80 | uint8(zb0001Len))
+	if err != nil {
+		return
+	}
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// write "min_temp"
+		err = en.Append(0xa8, 0x6d, 0x69, 0x6e, 0x5f, 0x74, 0x65, 0x6d, 0x70)
+		if err != nil {
+			return
+		}
+		err = en.WriteFloat64(z.MinTemp)
+		if err != nil {
+			err = msgp.WrapError(err, "MinTemp")
+			return
+		}
+		// write "max_temp"
+		err = en.Append(0xa8, 0x6d, 0x61, 0x78, 0x5f, 0x74, 0x65, 0x6d, 0x70)
+		if err != nil {
+			return
+		}
+		err = en.WriteFloat64(z.MaxTemp)
+		if err != nil {
+			err = msgp.WrapError(err, "MaxTemp")
+			return
+		}
+		// write "total_temp"
+		err = en.Append(0xaa, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x74, 0x65, 0x6d, 0x70)
+		if err != nil {
+			return
+		}
+		err = en.WriteFloat64(z.TotalTemp)
+		if err != nil {
+			err = msgp.WrapError(err, "TotalTemp")
+			return
+		}
+		// write "count"
+		err = en.Append(0xa5, 0x63, 0x6f, 0x75, 0x6e, 0x74)
+		if err != nil {
+			return
+		}
+		err = en.WriteInt(z.Count)
+		if err != nil {
+			err = msgp.WrapError(err, "Count")
+			return
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// write "exceeds_critical"
+			err = en.Append(0xb0, 0x65, 0x78, 0x63, 0x65, 0x65, 0x64, 0x73, 0x5f, 0x63, 0x72, 0x69, 0x74, 0x69, 0x63, 0x61, 0x6c)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt(z.ExceedsCritical)
+			if err != nil {
+				err = msgp.WrapError(err, "ExceedsCritical")
+				return
+			}
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *SensorMetrics) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// check for omitted fields
+	zb0001Len := uint32(5)
+	var zb0001Mask uint8 /* 5 bits */
+	_ = zb0001Mask
+	if z.ExceedsCritical == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	// variable map header, size zb0001Len
+	o = append(o, 0x80|uint8(zb0001Len))
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// string "min_temp"
+		o = append(o, 0xa8, 0x6d, 0x69, 0x6e, 0x5f, 0x74, 0x65, 0x6d, 0x70)
+		o = msgp.AppendFloat64(o, z.MinTemp)
+		// string "max_temp"
+		o = append(o, 0xa8, 0x6d, 0x61, 0x78, 0x5f, 0x74, 0x65, 0x6d, 0x70)
+		o = msgp.AppendFloat64(o, z.MaxTemp)
+		// string "total_temp"
+		o = append(o, 0xaa, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x74, 0x65, 0x6d, 0x70)
+		o = msgp.AppendFloat64(o, z.TotalTemp)
+		// string "count"
+		o = append(o, 0xa5, 0x63, 0x6f, 0x75, 0x6e, 0x74)
+		o = msgp.AppendInt(o, z.Count)
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// string "exceeds_critical"
+			o = append(o, 0xb0, 0x65, 0x78, 0x63, 0x65, 0x65, 0x64, 0x73, 0x5f, 0x63, 0x72, 0x69, 0x74, 0x69, 0x63, 0x61, 0x6c)
+			o = msgp.AppendInt(o, z.ExceedsCritical)
+		}
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *SensorMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 1 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "min_temp":
+			z.MinTemp, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "MinTemp")
+				return
+			}
+		case "max_temp":
+			z.MaxTemp, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "MaxTemp")
+				return
+			}
+		case "total_temp":
+			z.TotalTemp, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "TotalTemp")
+				return
+			}
+		case "count":
+			z.Count, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Count")
+				return
+			}
+		case "exceeds_critical":
+			z.ExceedsCritical, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ExceedsCritical")
+				return
+			}
+			zb0001Mask |= 0x1
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if (zb0001Mask & 0x1) == 0 {
+		z.ExceedsCritical = 0
+	}
+
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *SensorMetrics) Msgsize() (s int) {
+	s = 1 + 9 + msgp.Float64Size + 9 + msgp.Float64Size + 11 + msgp.Float64Size + 6 + msgp.IntSize + 17 + msgp.IntSize
 	return
 }
 
