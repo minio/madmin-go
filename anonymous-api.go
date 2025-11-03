@@ -225,6 +225,13 @@ func (an AnonymousClient) makeTargetURL(r requestData) (*url.URL, error) {
 func (an AnonymousClient) do(req *http.Request) (*http.Response, error) {
 	resp, err := an.httpClient.Do(req)
 	if err != nil {
+		// If trace is enabled, dump http request and error.
+		if an.isTraceEnabled {
+			dumpErr := an.dumpHTTP(req, nil, err)
+			if dumpErr != nil {
+				return nil, dumpErr
+			}
+		}
 		// Handle this specifically for now until future Golang versions fix this issue properly.
 		if urlErr, ok := err.(*url.Error); ok {
 			if strings.Contains(urlErr.Err.Error(), "EOF") {
@@ -246,7 +253,7 @@ func (an AnonymousClient) do(req *http.Request) (*http.Response, error) {
 
 	// If trace is enabled, dump http request and response.
 	if an.isTraceEnabled {
-		err = an.dumpHTTP(req, resp)
+		err = an.dumpHTTP(req, resp, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -256,7 +263,7 @@ func (an AnonymousClient) do(req *http.Request) (*http.Response, error) {
 }
 
 // dumpHTTP - dump HTTP request and response.
-func (an AnonymousClient) dumpHTTP(req *http.Request, resp *http.Response) error {
+func (an AnonymousClient) dumpHTTP(req *http.Request, resp *http.Response, netErr error) error {
 	// Starts http dump.
 	_, err := fmt.Fprintln(an.traceOutput, "---------START-HTTP---------")
 	if err != nil {
@@ -275,40 +282,56 @@ func (an AnonymousClient) dumpHTTP(req *http.Request, resp *http.Response) error
 		return err
 	}
 
-	// Only display response header.
-	var respTrace []byte
-
-	// For errors we make sure to dump response body as well.
-	if resp.StatusCode != http.StatusOK &&
-		resp.StatusCode != http.StatusPartialContent &&
-		resp.StatusCode != http.StatusNoContent {
-		respTrace, err = httputil.DumpResponse(resp, true)
+	// If there was a network error, dump the error instead of response
+	if netErr != nil {
+		_, err = fmt.Fprintln(an.traceOutput, "\n[NETWORK ERROR]")
 		if err != nil {
 			return err
 		}
-	} else {
-		// WORKAROUND for https://github.com/golang/go/issues/13942.
-		// httputil.DumpResponse does not print response headers for
-		// all successful calls which have response ContentLength set
-		// to zero. Keep this workaround until the above bug is fixed.
-		if resp.ContentLength == 0 {
-			var buffer bytes.Buffer
-			if err = resp.Header.Write(&buffer); err != nil {
-				return err
-			}
-			respTrace = buffer.Bytes()
-			respTrace = append(respTrace, []byte("\r\n")...)
-		} else {
-			respTrace, err = httputil.DumpResponse(resp, false)
+		_, err = fmt.Fprintln(an.traceOutput, "Note: Request was attempted but may not have been received by the server.")
+		if err != nil {
+			return err
+		}
+		_, err = fmt.Fprintf(an.traceOutput, "Error: %v\n", netErr)
+		if err != nil {
+			return err
+		}
+	} else if resp != nil {
+		// Only display response header.
+		var respTrace []byte
+
+		// For errors we make sure to dump response body as well.
+		if resp.StatusCode != http.StatusOK &&
+			resp.StatusCode != http.StatusPartialContent &&
+			resp.StatusCode != http.StatusNoContent {
+			respTrace, err = httputil.DumpResponse(resp, true)
 			if err != nil {
 				return err
 			}
+		} else {
+			// WORKAROUND for https://github.com/golang/go/issues/13942.
+			// httputil.DumpResponse does not print response headers for
+			// all successful calls which have response ContentLength set
+			// to zero. Keep this workaround until the above bug is fixed.
+			if resp.ContentLength == 0 {
+				var buffer bytes.Buffer
+				if err = resp.Header.Write(&buffer); err != nil {
+					return err
+				}
+				respTrace = buffer.Bytes()
+				respTrace = append(respTrace, []byte("\r\n")...)
+			} else {
+				respTrace, err = httputil.DumpResponse(resp, false)
+				if err != nil {
+					return err
+				}
+			}
 		}
-	}
-	// Write response to trace output.
-	_, err = fmt.Fprint(an.traceOutput, strings.TrimSuffix(string(respTrace), "\r\n"))
-	if err != nil {
-		return err
+		// Write response to trace output.
+		_, err = fmt.Fprint(an.traceOutput, strings.TrimSuffix(string(respTrace), "\r\n"))
+		if err != nil {
+			return err
+		}
 	}
 
 	// Ends the http dump.
