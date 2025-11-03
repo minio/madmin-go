@@ -1207,6 +1207,84 @@ func GetProcInfo(ctx context.Context, addr string) ProcInfo {
 	return procInfo
 }
 
+// AddProcInfo aggregates process information into ProcessMetrics
+func (p *ProcInfo) AddProcInfo(metrics *ProcessMetrics) {
+	if p == nil || metrics == nil {
+		return
+	}
+
+	// Set collection time
+	metrics.CollectedAt = time.Now()
+	metrics.Nodes = 1
+	metrics.Count++
+
+	// Aggregate numeric values
+	metrics.TotalCPUPercent += p.CPUPercent
+	metrics.TotalNumConnections += p.NumConnections
+
+	// Convert CreateTime (timestamp in milliseconds since epoch) to running seconds
+	if p.CreateTime > 0 {
+		createTimeSeconds := float64(p.CreateTime) / 1000.0
+		nowSeconds := float64(time.Now().Unix())
+		runningSecs := nowSeconds - createTimeSeconds
+		metrics.TotalRunningSecs += runningSecs
+	}
+
+	metrics.TotalNumFDs += int64(p.NumFDs)
+	metrics.TotalNumThreads += int64(p.NumThreads)
+	metrics.TotalNice += int64(p.Nice)
+
+	// Count boolean fields
+	if p.IsBackground {
+		metrics.BackgroundProcesses++
+	}
+	if p.IsRunning {
+		metrics.RunningProcesses++
+	}
+
+	// Aggregate memory info
+	metrics.MemInfo.RSS += p.MemInfo.RSS
+	metrics.MemInfo.VMS += p.MemInfo.VMS
+	// Note: Some fields like HWM, Data, Stack, Locked, Swap, Shared may not be available on all platforms
+	// For basic compatibility, only use RSS and VMS which are most commonly available
+	metrics.MemInfo.Count++
+
+	// Aggregate IO counters
+	metrics.IOCounters.ReadCount += p.IOCounters.ReadCount
+	metrics.IOCounters.WriteCount += p.IOCounters.WriteCount
+	metrics.IOCounters.ReadBytes += p.IOCounters.ReadBytes
+	metrics.IOCounters.WriteBytes += p.IOCounters.WriteBytes
+	metrics.IOCounters.Count++
+
+	// Aggregate context switches
+	metrics.NumCtxSwitches.Voluntary += p.NumCtxSwitches.Voluntary
+	metrics.NumCtxSwitches.Involuntary += p.NumCtxSwitches.Involuntary
+	metrics.NumCtxSwitches.Count++
+
+	// Aggregate page faults
+	metrics.PageFaults.MinorFaults += p.PageFaults.MinorFaults
+	metrics.PageFaults.MajorFaults += p.PageFaults.MajorFaults
+	metrics.PageFaults.ChildMinorFaults += p.PageFaults.ChildMinorFaults
+	metrics.PageFaults.ChildMajorFaults += p.PageFaults.ChildMajorFaults
+	metrics.PageFaults.Count++
+
+	// Aggregate CPU times
+	metrics.CPUTimes.User += p.Times.User
+	metrics.CPUTimes.System += p.Times.System
+	metrics.CPUTimes.Idle += p.Times.Idle
+	metrics.CPUTimes.Nice += p.Times.Nice
+	metrics.CPUTimes.Iowait += p.Times.Iowait
+	metrics.CPUTimes.Irq += p.Times.Irq
+	metrics.CPUTimes.Softirq += p.Times.Softirq
+	metrics.CPUTimes.Steal += p.Times.Steal
+	metrics.CPUTimes.Guest += p.Times.Guest
+	metrics.CPUTimes.GuestNice += p.Times.GuestNice
+	metrics.CPUTimes.Count++
+
+	// Aggregate memory maps (platform-specific)
+	addMemoryMaps(p.MemMaps, &metrics.MemMaps)
+}
+
 // SysInfo - Includes hardware and system information of the MinIO cluster
 type SysInfo struct {
 	CPUInfo        []CPUs         `json:"cpus,omitempty"`
