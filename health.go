@@ -195,7 +195,7 @@ func (c *CPUs) AddCPUs(m *CPUMetrics) {
 			if m.CPUByModel == nil {
 				m.CPUByModel = make(map[string]int)
 			}
-			m.CPUByModel[cpu.ModelName]++
+			m.CPUByModel[strings.TrimSpace(cpu.ModelName)]++
 		}
 
 		// Accumulate MHz
@@ -218,7 +218,7 @@ func (c *CPUs) AddCPUs(m *CPUMetrics) {
 			if m.GovernorFreq == nil {
 				m.GovernorFreq = make(map[string]int)
 			}
-			m.GovernorFreq[freq.Governor]++
+			m.GovernorFreq[strings.TrimSpace(freq.Governor)]++
 		}
 
 		// Accumulate current frequencies
@@ -633,42 +633,23 @@ type XFSErrorConfig struct {
 
 // GetOSInfo returns linux only operating system's information.
 func GetOSInfo(ctx context.Context, addr string) OSInfo {
-	if runtime.GOOS != "linux" {
-		return OSInfo{
-			NodeCommon: NodeCommon{
-				Addr:  addr,
-				Error: "unsupported operating system " + runtime.GOOS,
-			},
-		}
+	osInfo := OSInfo{
+		NodeCommon: NodeCommon{Addr: addr},
 	}
+	osInfo.Sensors, _ = sensors.TemperaturesWithContext(ctx)
 
 	kr, err := kernel.CurrentRelease()
 	if err != nil {
-		return OSInfo{
-			NodeCommon: NodeCommon{
-				Addr:  addr,
-				Error: err.Error(),
-			},
-		}
+		osInfo.Error += fmt.Sprintf("[kernel.CurrentRelease: %q]", err.Error())
 	}
 
 	info, err := host.InfoWithContext(ctx)
 	if err != nil {
-		return OSInfo{
-			NodeCommon: NodeCommon{
-				Addr:  addr,
-				Error: err.Error(),
-			},
-		}
+		osInfo.Error += fmt.Sprintf("[host.Info: %q]", err.Error())
+	} else {
+		info.KernelVersion = kr
+		osInfo.Info = *info
 	}
-
-	osInfo := OSInfo{
-		NodeCommon: NodeCommon{Addr: addr},
-		Info:       *info,
-	}
-	osInfo.Info.KernelVersion = kr
-
-	osInfo.Sensors, _ = sensors.TemperaturesWithContext(ctx)
 
 	return osInfo
 }
