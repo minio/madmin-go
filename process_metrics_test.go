@@ -403,11 +403,11 @@ func TestProcessMetricsMerge(t *testing.T) {
 					Count:            2,
 				},
 				CPUTimes: ProcessCPUTimes{
-					User:      20.5,
-					System:    10.2,
-					Idle:      5.0,
-					Nice:      2.0,
-					Count:     2,
+					User:   20.5,
+					System: 10.2,
+					Idle:   5.0,
+					Nice:   2.0,
+					Count:  2,
 				},
 				MemMaps: ProcessMemoryMaps{
 					TotalSize: 1024 * 1024,
@@ -452,11 +452,11 @@ func TestProcessMetricsMerge(t *testing.T) {
 					Count:            2,
 				},
 				CPUTimes: ProcessCPUTimes{
-					User:      20.5,
-					System:    10.2,
-					Idle:      5.0,
-					Nice:      2.0,
-					Count:     2,
+					User:   20.5,
+					System: 10.2,
+					Idle:   5.0,
+					Nice:   2.0,
+					Count:  2,
 				},
 				MemMaps: ProcessMemoryMaps{
 					TotalSize: 1024 * 1024,
@@ -529,7 +529,7 @@ func TestProcessMetricsMerge(t *testing.T) {
 			},
 			expected: ProcessMetrics{
 				CollectedAt:         time.Date(2024, 1, 1, 11, 0, 0, 0, time.UTC), // Later time
-				Nodes:               4, // 1 + 3
+				Nodes:               4,                                            // 1 + 3
 				TotalCPUPercent:     40.0,
 				TotalNumConnections: 30,
 				TotalRunningSecs:    7200.0,

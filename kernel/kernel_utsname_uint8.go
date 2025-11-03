@@ -18,7 +18,6 @@
 //
 
 //go:build (linux && arm) || (linux && ppc64) || (linux && ppc64le) || (linux && s390x) || (linux && riscv64)
-// +build linux,arm linux,ppc64 linux,ppc64le linux,s390x linux,riscv64
 
 package kernel
 
