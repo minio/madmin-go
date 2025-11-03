@@ -345,6 +345,10 @@ type AddServiceAccountReq struct {
 	Description string `json:"description,omitempty"`
 	// Time at which this access key expires
 	Expiration *time.Time `json:"expiration,omitempty"`
+
+	// Optional and only relevant for LDAP. If empty, the default
+	// configuration is used.
+	ConfigName string `json:"configName,omitempty"`
 }
 
 var serviceAcctValidNameRegex = regexp.MustCompile(`^[a-zA-Z][a-zA-Z0-9_-]*`)

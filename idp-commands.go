@@ -354,9 +354,10 @@ type PolicyEntities struct {
 
 // PolicyEntitiesQuery - contains request info for policy entities query.
 type PolicyEntitiesQuery struct {
-	Users  []string
-	Groups []string
-	Policy []string
+	ConfigName string // Optional, for LDAP only
+	Users      []string
+	Groups     []string
+	Policy     []string
 }
 
 // GetLDAPPolicyEntities - returns LDAP policy entities.
@@ -367,6 +368,9 @@ func (adm *AdminClient) GetLDAPPolicyEntities(ctx context.Context,
 	params["user"] = q.Users
 	params["group"] = q.Groups
 	params["policy"] = q.Policy
+	if q.ConfigName != "" {
+		params.Set("configName", q.ConfigName)
+	}
 
 	reqData := requestData{
 		relPath:     adminAPIPrefix + "/idp/ldap/policy-entities",
@@ -408,6 +412,10 @@ type PolicyAssociationReq struct {
 	// Exactly one of the following must be non-empty in a valid request.
 	User  string `json:"user,omitempty"`
 	Group string `json:"group,omitempty"`
+
+	// Optional and only relevant for LDAP. If empty, the default
+	// configuration is used.
+	ConfigName string `json:"configName,omitempty"`
 }
 
 // IsValid validates the object and returns a reason for when it is not.

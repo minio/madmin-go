@@ -288,6 +288,7 @@ const (
 	SRIAMItemSTSAcc        = "sts-account"
 	SRIAMItemIAMUser       = "iam-user"
 	SRIAMItemExternalUser  = "external-user"
+	SRIAMItemLDAPUser      = "ldap-user"
 )
 
 // SRSessionPolicy - represents a session policy to be replicated.
@@ -356,6 +357,8 @@ type SRPolicyMapping struct {
 	UserType    int       `json:"userType"`
 	IsGroup     bool      `json:"isGroup"`
 	Policy      string    `json:"policy"`
+	Provider    string    `json:"provider,omitempty"`
+	ConfigID    string    `json:"configID,omitempty"`
 	CreatedAt   time.Time `json:"createdAt,omitempty"`
 	UpdatedAt   time.Time `json:"updatedAt,omitempty"`
 	APIVersion  string    `json:"apiVersion,omitempty"`
@@ -390,6 +393,19 @@ type SRExternalUser struct {
 	IsDeleteReq bool   `json:"isDeleteReq"`
 
 	OpenIDUser *OpenIDUser `json:"openIDUser,omitempty"`
+}
+
+// SRLDAPUser - represents an LDAP user to be replicated.
+type SRLDAPUser struct {
+	DN          string    `json:"dn"`
+	Username    string    `json:"username"`
+	ValidatedDN string    `json:"validatedDN,omitempty"`
+	Groups      []string  `json:"groups,omitempty"`
+	Expiry      time.Time `json:"expiry,omitempty"`
+	IsDeleteReq bool      `json:"isDeleteReq"`
+	ConfigName  string    `json:"configName"`
+	UpdatedAt   time.Time `json:"updatedAt,omitempty"`
+	APIVersion  string    `json:"apiVersion,omitempty"`
 }
 
 // SRIAMUser - represents a regular (IAM) user to be replicated. A nil UserReq
@@ -451,6 +467,9 @@ type SRIAMItem struct {
 
 	// Used when Type = SRIAMItemExternalUser
 	ExternalUser *SRExternalUser `json:"externalUser"`
+
+	// Used when Type = SRIAMItemLDAPUser
+	LDAPUser *SRLDAPUser `json:"ldapUser"`
 
 	// UpdatedAt - timestamp of last update
 	UpdatedAt  time.Time `json:"updatedAt,omitempty"`
@@ -638,8 +657,9 @@ type OpenIDSettings struct {
 // IDPSettings contains key IDentity Provider settings to validate that all
 // peers have the same configuration.
 type IDPSettings struct {
-	LDAP   LDAPSettings
-	OpenID OpenIDSettings
+	LDAP        LDAPSettings
+	LDAPConfigs LDAPConfigSettings
+	OpenID      OpenIDSettings
 }
 
 // LDAPSettings contains LDAP configuration info of a cluster.
@@ -649,6 +669,19 @@ type LDAPSettings struct {
 	LDAPUserDNSearchFilter string
 	LDAPGroupSearchBase    string
 	LDAPGroupSearchFilter  string
+}
+
+type LDAPProviderSettings struct {
+	UserDNSearchBase   string
+	UserDNSearchFilter string
+	GroupSearchBase    string
+	GroupSearchFilter  string
+}
+
+// LDAPConfigSettings contains LDAP configuration info of all providers in a cluster.
+type LDAPConfigSettings struct {
+	Enabled bool
+	Configs map[string]LDAPProviderSettings
 }
 
 // SRPeerGetIDPSettings - fetches IDP settings from the server.
