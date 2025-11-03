@@ -24,6 +24,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -1039,14 +1040,12 @@ func GetProcInfo(ctx context.Context, addr string) ProcInfo {
 
 	procInfo.IsBackground, err = proc.BackgroundWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[BackgroundWithContext: %q]", err.Error())
 	}
 
 	procInfo.CPUPercent, err = proc.CPUPercentWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[CPUPercentWithContext: %q]", err.Error())
 	}
 
 	procInfo.ChildrenPIDs = []int32{}
@@ -1057,145 +1056,134 @@ func GetProcInfo(ctx context.Context, addr string) ProcInfo {
 
 	procInfo.CmdLine, err = proc.CmdlineWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[CmdlineWithContext: %q]", err.Error())
 	}
 
 	connections, err := proc.ConnectionsWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[ConnectionsWithContext: %q]", err.Error())
+	} else {
+		procInfo.NumConnections = len(connections)
 	}
-	procInfo.NumConnections = len(connections)
 
 	procInfo.CreateTime, err = proc.CreateTimeWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[CreateTimeWithContext: %q]", err.Error())
 	}
 
 	procInfo.CWD, err = proc.CwdWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[CwdWithContext: %q]", err.Error())
 	}
 
 	procInfo.ExecPath, err = proc.ExeWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[ExeWithContext: %q]", err.Error())
 	}
 
 	gids, err := proc.GidsWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[GidsWithContext: %q]", err.Error())
+	} else {
+		procInfo.GIDs = aTob[uint32, int32](gids, func(item uint32) int32 {
+			return int32(item)
+		})
 	}
-	procInfo.GIDs = aTob[uint32, int32](gids, func(item uint32) int32 {
-		return int32(item)
-	})
 
 	ioCounters, err := proc.IOCountersWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[IOCountersWithContext: %q]", err.Error())
+	} else {
+		procInfo.IOCounters = *ioCounters
 	}
-	procInfo.IOCounters = *ioCounters
 
 	procInfo.IsRunning, err = proc.IsRunningWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[IsRunningWithContext: %q]", err.Error())
 	}
 
 	memInfo, err := proc.MemoryInfoWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[MemoryInfoWithContext: %q]", err.Error())
+	} else {
+		procInfo.MemInfo = *memInfo
 	}
-	procInfo.MemInfo = *memInfo
 
 	memMaps, err := proc.MemoryMapsWithContext(ctx, true)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[MemoryMapsWithContext: %q]", err.Error())
+	} else {
+		procInfo.MemMaps = *memMaps
 	}
-	procInfo.MemMaps = *memMaps
 
 	procInfo.MemPercent, err = proc.MemoryPercentWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[MemoryPercentWithContext: %q]", err.Error())
 	}
 
 	procInfo.Name, err = proc.NameWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[NameWithContext: %q]", err.Error())
 	}
 
 	procInfo.Nice, err = proc.NiceWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[NiceWithContext: %q]", err.Error())
 	}
 
 	numCtxSwitches, err := proc.NumCtxSwitchesWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[NumCtxSwitchesWithContext: %q]", err.Error())
+	} else {
+		procInfo.NumCtxSwitches = *numCtxSwitches
 	}
-	procInfo.NumCtxSwitches = *numCtxSwitches
 
 	procInfo.NumFDs, err = proc.NumFDsWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[NumFDsWithContext: %q]", err.Error())
 	}
 
 	procInfo.NumThreads, err = proc.NumThreadsWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[NumThreadsWithContext: %q]", err.Error())
 	}
 
 	pageFaults, err := proc.PageFaultsWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[PageFaultsWithContext: %q]", err.Error())
+	} else {
+		procInfo.PageFaults = *pageFaults
 	}
-	procInfo.PageFaults = *pageFaults
 
 	procInfo.PPID, _ = proc.PpidWithContext(ctx)
 
 	status, err := proc.StatusWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[StatusWithContext: %q]", err.Error())
+	} else {
+		procInfo.Status = status[0]
 	}
-	procInfo.Status = status[0]
 
 	procInfo.TGID, err = proc.Tgid()
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[Tgid: %q]", err.Error())
 	}
 
 	times, err := proc.TimesWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[TimesWithContext: %q]", err.Error())
+	} else {
+		procInfo.Times = *times
 	}
-	procInfo.Times = *times
 
 	uids, err := proc.UidsWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[UidsWithContext: %q]", err.Error())
+	} else {
+		procInfo.UIDs = aTob[uint32, int32](uids, func(item uint32) int32 {
+			return int32(item)
+		})
 	}
-	procInfo.UIDs = aTob[uint32, int32](uids, func(item uint32) int32 {
-		return int32(item)
-	})
 
 	// In certain environments, it is not possible to get username e.g. minio-operator
 	// Plus it's not a serious error. So ignore error if any.

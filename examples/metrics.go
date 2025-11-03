@@ -66,7 +66,6 @@ var (
 	secretKey    = flag.String("secret-key", "", "MinIO secret key")
 	useSSL       = flag.Bool("ssl", false, "Use HTTPS connection")
 	insecure     = flag.Bool("insecure", false, "Skip SSL certificate verification")
-	duration     = flag.Duration("duration", 10*time.Second, "Duration to collect metrics")
 	interval     = flag.Duration("interval", 1*time.Second, "Interval between metric collections")
 	metricType   = flag.String("types", "mem,cpu", "Comma-separated metric types: all,mem,cpu,disk,net,process,os,scanner,batchjobs,siteresync,rpc,runtime,api,replication")
 	hosts        = flag.String("hosts", "", "Comma-separated list of specific hosts (optional)")
@@ -221,7 +220,6 @@ func main() {
 	if *verbose {
 		fmt.Printf("Connecting to: %s\n", *endpoint)
 		fmt.Printf("Metric types: %s\n", metricTypeToString(types))
-		fmt.Printf("Duration: %v\n", *duration)
 		fmt.Printf("Interval: %v\n", *interval)
 		fmt.Printf("Max samples: %d\n", *maxSamples)
 		if len(hostList) > 0 {
@@ -259,8 +257,7 @@ func main() {
 	}
 
 	// Context with timeout
-	ctx, cancel := context.WithTimeout(context.Background(), *duration)
-	defer cancel()
+	ctx := context.Background()
 
 	// Counter for metrics received
 	metricsReceived := 0
@@ -401,7 +398,7 @@ func parseMetricTypes(typeStr string) madmin.MetricType {
 func displayMetrics(metrics madmin.RealtimeMetrics, sampleNum int) {
 	fmt.Printf("=== Metrics Sample %d ===\n", sampleNum)
 	fmt.Printf("Timestamp: %s\n", time.Now().Format(time.RFC3339))
-	fmt.Printf("Hosts: %d\n", len(metrics.ByHost))
+	fmt.Printf("Hosts: %d\n", len(metrics.Hosts))
 
 	// Display aggregated metrics
 	agg := metrics.Aggregated
