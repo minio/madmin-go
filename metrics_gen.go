@@ -107,7 +107,7 @@ func (z *APIMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 				var za0004 SegmentedAPIMetrics
-				err = (*Segmented[APIStats, *APIStats])(&za0004).DecodeMsg(dc)
+				err = za0004.DecodeMsg(dc)
 				if err != nil {
 					err = msgp.WrapError(err, "LastDayAPI", za0003)
 					return
@@ -262,7 +262,7 @@ func (z *APIMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 					err = msgp.WrapError(err, "LastDayAPI")
 					return
 				}
-				err = (*Segmented[APIStats, *APIStats])(&za0004).EncodeMsg(en)
+				err = za0004.EncodeMsg(en)
 				if err != nil {
 					err = msgp.WrapError(err, "LastDayAPI", za0003)
 					return
@@ -346,7 +346,7 @@ func (z *APIMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 			o = msgp.AppendMapHeader(o, uint32(len(z.LastDayAPI)))
 			for za0003, za0004 := range z.LastDayAPI {
 				o = msgp.AppendString(o, za0003)
-				o, err = (*Segmented[APIStats, *APIStats])(&za0004).MarshalMsg(o)
+				o, err = za0004.MarshalMsg(o)
 				if err != nil {
 					err = msgp.WrapError(err, "LastDayAPI", za0003)
 					return
@@ -460,7 +460,7 @@ func (z *APIMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					err = msgp.WrapError(err, "LastDayAPI")
 					return
 				}
-				bts, err = (*Segmented[APIStats, *APIStats])(&za0004).UnmarshalMsg(bts)
+				bts, err = za0004.UnmarshalMsg(bts)
 				if err != nil {
 					err = msgp.WrapError(err, "LastDayAPI", za0003)
 					return
@@ -514,7 +514,7 @@ func (z *APIMetrics) Msgsize() (s int) {
 	if z.LastDayAPI != nil {
 		for za0003, za0004 := range z.LastDayAPI {
 			_ = za0004
-			s += msgp.StringPrefixSize + len(za0003) + (*Segmented[APIStats, *APIStats])(&za0004).Msgsize()
+			s += msgp.StringPrefixSize + len(za0003) + za0004.Msgsize()
 		}
 	}
 	s += 12 + z.SinceStart.Msgsize()
@@ -5703,7 +5703,7 @@ func (z *DiskMetric) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 				var za0008 SegmentedDiskActions
-				err = (*Segmented[DiskAction, *DiskAction])(&za0008).DecodeMsg(dc)
+				err = za0008.DecodeMsg(dc)
 				if err != nil {
 					err = msgp.WrapError(err, "LastDaySegmented", za0007)
 					return
@@ -5737,7 +5737,7 @@ func (z *DiskMetric) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 		case "io_day":
-			err = (*Segmented[DiskIOStats, *DiskIOStats])(&z.IOStatsDay).DecodeMsg(dc)
+			err = z.IOStatsDay.DecodeMsg(dc)
 			if err != nil {
 				err = msgp.WrapError(err, "IOStatsDay")
 				return
@@ -6111,7 +6111,7 @@ func (z *DiskMetric) EncodeMsg(en *msgp.Writer) (err error) {
 					err = msgp.WrapError(err, "LastDaySegmented")
 					return
 				}
-				err = (*Segmented[DiskAction, *DiskAction])(&za0008).EncodeMsg(en)
+				err = za0008.EncodeMsg(en)
 				if err != nil {
 					err = msgp.WrapError(err, "LastDaySegmented", za0007)
 					return
@@ -6152,7 +6152,7 @@ func (z *DiskMetric) EncodeMsg(en *msgp.Writer) (err error) {
 		if err != nil {
 			return
 		}
-		err = (*Segmented[DiskIOStats, *DiskIOStats])(&z.IOStatsDay).EncodeMsg(en)
+		err = z.IOStatsDay.EncodeMsg(en)
 		if err != nil {
 			err = msgp.WrapError(err, "IOStatsDay")
 			return
@@ -6347,7 +6347,7 @@ func (z *DiskMetric) MarshalMsg(b []byte) (o []byte, err error) {
 			o = msgp.AppendMapHeader(o, uint32(len(z.LastDaySegmented)))
 			for za0007, za0008 := range z.LastDaySegmented {
 				o = msgp.AppendString(o, za0007)
-				o, err = (*Segmented[DiskAction, *DiskAction])(&za0008).MarshalMsg(o)
+				o, err = za0008.MarshalMsg(o)
 				if err != nil {
 					err = msgp.WrapError(err, "LastDaySegmented", za0007)
 					return
@@ -6376,7 +6376,7 @@ func (z *DiskMetric) MarshalMsg(b []byte) (o []byte, err error) {
 		}
 		// string "io_day"
 		o = append(o, 0xa6, 0x69, 0x6f, 0x5f, 0x64, 0x61, 0x79)
-		o, err = (*Segmented[DiskIOStats, *DiskIOStats])(&z.IOStatsDay).MarshalMsg(o)
+		o, err = z.IOStatsDay.MarshalMsg(o)
 		if err != nil {
 			err = msgp.WrapError(err, "IOStatsDay")
 			return
@@ -6642,7 +6642,7 @@ func (z *DiskMetric) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					err = msgp.WrapError(err, "LastDaySegmented")
 					return
 				}
-				bts, err = (*Segmented[DiskAction, *DiskAction])(&za0008).UnmarshalMsg(bts)
+				bts, err = za0008.UnmarshalMsg(bts)
 				if err != nil {
 					err = msgp.WrapError(err, "LastDaySegmented", za0007)
 					return
@@ -6675,7 +6675,7 @@ func (z *DiskMetric) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 		case "io_day":
-			bts, err = (*Segmented[DiskIOStats, *DiskIOStats])(&z.IOStatsDay).UnmarshalMsg(bts)
+			bts, err = z.IOStatsDay.UnmarshalMsg(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "IOStatsDay")
 				return
@@ -6791,7 +6791,7 @@ func (z *DiskMetric) Msgsize() (s int) {
 	if z.LastDaySegmented != nil {
 		for za0007, za0008 := range z.LastDaySegmented {
 			_ = za0008
-			s += msgp.StringPrefixSize + len(za0007) + (*Segmented[DiskAction, *DiskAction])(&za0008).Msgsize()
+			s += msgp.StringPrefixSize + len(za0007) + za0008.Msgsize()
 		}
 	}
 	s += 8
@@ -6800,7 +6800,7 @@ func (z *DiskMetric) Msgsize() (s int) {
 	} else {
 		s += z.IOStats.Msgsize()
 	}
-	s += 7 + z.IOStatsMinute.Msgsize() + 7 + (*Segmented[DiskIOStats, *DiskIOStats])(&z.IOStatsDay).Msgsize()
+	s += 7 + z.IOStatsMinute.Msgsize() + 7 + z.IOStatsDay.Msgsize()
 	return
 }
 
@@ -16209,7 +16209,7 @@ func (z *RPCMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 				var za0004 SegmentedRPCMetrics
-				err = (*Segmented[RPCStats, *RPCStats])(&za0004).DecodeMsg(dc)
+				err = za0004.DecodeMsg(dc)
 				if err != nil {
 					err = msgp.WrapError(err, "LastDay", za0003)
 					return
@@ -16522,7 +16522,7 @@ func (z *RPCMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 					err = msgp.WrapError(err, "LastDay")
 					return
 				}
-				err = (*Segmented[RPCStats, *RPCStats])(&za0004).EncodeMsg(en)
+				err = za0004.EncodeMsg(en)
 				if err != nil {
 					err = msgp.WrapError(err, "LastDay", za0003)
 					return
@@ -16673,7 +16673,7 @@ func (z *RPCMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 			o = msgp.AppendMapHeader(o, uint32(len(z.LastDay)))
 			for za0003, za0004 := range z.LastDay {
 				o = msgp.AppendString(o, za0003)
-				o, err = (*Segmented[RPCStats, *RPCStats])(&za0004).MarshalMsg(o)
+				o, err = za0004.MarshalMsg(o)
 				if err != nil {
 					err = msgp.WrapError(err, "LastDay", za0003)
 					return
@@ -16870,7 +16870,7 @@ func (z *RPCMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					err = msgp.WrapError(err, "LastDay")
 					return
 				}
-				bts, err = (*Segmented[RPCStats, *RPCStats])(&za0004).UnmarshalMsg(bts)
+				bts, err = za0004.UnmarshalMsg(bts)
 				if err != nil {
 					err = msgp.WrapError(err, "LastDay", za0003)
 					return
@@ -16976,7 +16976,7 @@ func (z *RPCMetrics) Msgsize() (s int) {
 	if z.LastDay != nil {
 		for za0003, za0004 := range z.LastDay {
 			_ = za0004
-			s += msgp.StringPrefixSize + len(za0003) + (*Segmented[RPCStats, *RPCStats])(&za0004).Msgsize()
+			s += msgp.StringPrefixSize + len(za0003) + za0004.Msgsize()
 		}
 	}
 	s += 14 + msgp.MapHeaderSize
@@ -20511,7 +20511,7 @@ func (z *ReplicationTargetStats) DecodeMsg(dc *msgp.Reader) (err error) {
 				if z.LastDay == nil {
 					z.LastDay = new(SegmentedReplicationStats)
 				}
-				err = (*Segmented[ReplicationStats, *ReplicationStats])(z.LastDay).DecodeMsg(dc)
+				err = z.LastDay.DecodeMsg(dc)
 				if err != nil {
 					err = msgp.WrapError(err, "LastDay")
 					return
@@ -20614,7 +20614,7 @@ func (z *ReplicationTargetStats) EncodeMsg(en *msgp.Writer) (err error) {
 					return
 				}
 			} else {
-				err = (*Segmented[ReplicationStats, *ReplicationStats])(z.LastDay).EncodeMsg(en)
+				err = z.LastDay.EncodeMsg(en)
 				if err != nil {
 					err = msgp.WrapError(err, "LastDay")
 					return
@@ -20673,7 +20673,7 @@ func (z *ReplicationTargetStats) MarshalMsg(b []byte) (o []byte, err error) {
 			if z.LastDay == nil {
 				o = msgp.AppendNil(o)
 			} else {
-				o, err = (*Segmented[ReplicationStats, *ReplicationStats])(z.LastDay).MarshalMsg(o)
+				o, err = z.LastDay.MarshalMsg(o)
 				if err != nil {
 					err = msgp.WrapError(err, "LastDay")
 					return
@@ -20747,7 +20747,7 @@ func (z *ReplicationTargetStats) UnmarshalMsg(bts []byte) (o []byte, err error) 
 				if z.LastDay == nil {
 					z.LastDay = new(SegmentedReplicationStats)
 				}
-				bts, err = (*Segmented[ReplicationStats, *ReplicationStats])(z.LastDay).UnmarshalMsg(bts)
+				bts, err = z.LastDay.UnmarshalMsg(bts)
 				if err != nil {
 					err = msgp.WrapError(err, "LastDay")
 					return
@@ -20787,7 +20787,7 @@ func (z *ReplicationTargetStats) Msgsize() (s int) {
 	if z.LastDay == nil {
 		s += msgp.NilSize
 	} else {
-		s += (*Segmented[ReplicationStats, *ReplicationStats])(z.LastDay).Msgsize()
+		s += z.LastDay.Msgsize()
 	}
 	s += 12 + z.SinceStart.Msgsize()
 	return
