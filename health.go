@@ -180,6 +180,85 @@ type CPUFreqStats struct {
 	SetSpeed                 string  `json:",omitempty"`
 }
 
+// AddCPUs adds CPU information from CPUs struct to CPUMetrics aggregated data.
+// This follows the merge rules where metrics are accumulated in an order-independent way.
+func (c *CPUs) AddCPUs(m *CPUMetrics) {
+	if c == nil || m == nil {
+		return
+	}
+
+	// Process CPU information
+	for _, cpu := range c.CPUs {
+		// Accumulate model name counts
+		if cpu.ModelName != "" {
+			if m.CPUByModel == nil {
+				m.CPUByModel = make(map[string]int)
+			}
+			m.CPUByModel[cpu.ModelName]++
+		}
+
+		// Accumulate MHz
+		m.TotalMhz += cpu.Mhz
+
+		// Accumulate cores
+		m.TotalCores += cpu.Cores
+
+		// Accumulate cache size (converting from int32 KB to int64 bytes)
+		m.TotalCacheSize += int64(cpu.CacheSize) * 1024
+
+		// Count CPU entries
+		m.CPUCount++
+	}
+
+	// Process CPU frequency stats
+	for _, freq := range c.CPUFreqStats {
+		// Count governors
+		if freq.Governor != "" {
+			if m.GovernorFreq == nil {
+				m.GovernorFreq = make(map[string]int)
+			}
+			m.GovernorFreq[freq.Governor]++
+		}
+
+		// Accumulate current frequencies
+		if freq.CpuinfoCurrentFrequency != nil {
+			m.TotalCurrentFreq += *freq.CpuinfoCurrentFrequency
+		}
+		if freq.ScalingCurrentFrequency != nil {
+			m.TotalScalingCurrentFreq += *freq.ScalingCurrentFrequency
+		}
+
+		// Handle min/max frequencies with proper initialization
+		// Use FreqStatsCount to determine if this is the first frequency stat
+		if freq.CpuinfoMinimumFrequency != nil {
+			if m.FreqStatsCount == 0 || *freq.CpuinfoMinimumFrequency < m.MinCPUInfoFreq {
+				m.MinCPUInfoFreq = *freq.CpuinfoMinimumFrequency
+			}
+		}
+
+		if freq.CpuinfoMaximumFrequency != nil {
+			if *freq.CpuinfoMaximumFrequency > m.MaxCPUInfoFreq {
+				m.MaxCPUInfoFreq = *freq.CpuinfoMaximumFrequency
+			}
+		}
+
+		if freq.ScalingMinimumFrequency != nil {
+			if m.FreqStatsCount == 0 || *freq.ScalingMinimumFrequency < m.MinScalingFreq {
+				m.MinScalingFreq = *freq.ScalingMinimumFrequency
+			}
+		}
+
+		if freq.ScalingMaximumFrequency != nil {
+			if *freq.ScalingMaximumFrequency > m.MaxScalingFreq {
+				m.MaxScalingFreq = *freq.ScalingMaximumFrequency
+			}
+		}
+
+		// Count frequency stats entries
+		m.FreqStatsCount++
+	}
+}
+
 // GetCPUs returns system's all CPU information.
 func GetCPUs(ctx context.Context, addr string) CPUs {
 	infos, err := cpu.InfoWithContext(ctx)

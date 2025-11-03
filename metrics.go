@@ -1082,6 +1082,22 @@ type CPUMetrics struct {
 	TimesStat *cpu.TimesStat `json:"timesStat"`
 	LoadStat  *load.AvgStat  `json:"loadStat"`
 	CPUCount  int            `json:"cpuCount"`
+
+	// Aggregated CPU information
+	CPUByModel     map[string]int `json:"cpu_by_model,omitempty"`     // ModelName -> count of CPUs
+	TotalMhz       float64        `json:"total_mhz,omitempty"`        // Accumulated MHz
+	TotalCores     int            `json:"total_cores,omitempty"`      // Accumulated cores
+	TotalCacheSize int64          `json:"total_cache_size,omitempty"` // Accumulated cache size in bytes
+
+	// Aggregated CPU frequency information
+	FreqStatsCount          int            `json:"freq_stats_count,omitempty"`           // Number of freq stats (for averaging)
+	GovernorFreq            map[string]int `json:"governor_freq,omitempty"`              // Governor -> count
+	TotalCurrentFreq        uint64         `json:"total_current_freq,omitempty"`         // Accumulated current freq
+	TotalScalingCurrentFreq uint64         `json:"total_scaling_current_freq,omitempty"` // Accumulated scaling current freq
+	MinCPUInfoFreq          uint64         `json:"min_freq,omitempty"`                   // Minimum of CpuinfoMinimumFrequency
+	MaxCPUInfoFreq          uint64         `json:"max_freq,omitempty"`                   // Maximum of CpuinfoMaximumFrequency
+	MinScalingFreq          uint64         `json:"min_scaling_freq,omitempty"`           // Minimum of ScalingMinimumFrequency
+	MaxScalingFreq          uint64         `json:"max_scaling_freq,omitempty"`           // Maximum of ScalingMaximumFrequency
 }
 
 // Merge other into 'm'.
@@ -1117,6 +1133,52 @@ func (m *CPUMetrics) Merge(other *CPUMetrics) {
 		m.LoadStat = other.LoadStat
 	}
 	m.CPUCount += other.CPUCount
+
+	// Merge aggregated CPU information
+	if len(other.CPUByModel) > 0 {
+		if m.CPUByModel == nil {
+			m.CPUByModel = make(map[string]int)
+		}
+		for model, count := range other.CPUByModel {
+			m.CPUByModel[model] += count
+		}
+	}
+	m.TotalMhz += other.TotalMhz
+	m.TotalCores += other.TotalCores
+	m.TotalCacheSize += other.TotalCacheSize
+
+	// Merge aggregated CPU frequency information
+	if len(other.GovernorFreq) > 0 {
+		if m.GovernorFreq == nil {
+			m.GovernorFreq = make(map[string]int)
+		}
+		for governor, count := range other.GovernorFreq {
+			m.GovernorFreq[governor] += count
+		}
+	}
+	m.TotalCurrentFreq += other.TotalCurrentFreq
+	m.TotalScalingCurrentFreq += other.TotalScalingCurrentFreq
+
+	// Handle min/max frequencies properly
+	// Use FreqStatsCount to determine if this is the first merge
+	if other.MinCPUInfoFreq > 0 {
+		if m.FreqStatsCount == 0 || other.MinCPUInfoFreq < m.MinCPUInfoFreq {
+			m.MinCPUInfoFreq = other.MinCPUInfoFreq
+		}
+	}
+	if other.MaxCPUInfoFreq > m.MaxCPUInfoFreq {
+		m.MaxCPUInfoFreq = other.MaxCPUInfoFreq
+	}
+	if other.MinScalingFreq > 0 {
+		if m.FreqStatsCount == 0 || other.MinScalingFreq < m.MinScalingFreq {
+			m.MinScalingFreq = other.MinScalingFreq
+		}
+	}
+	if other.MaxScalingFreq > m.MaxScalingFreq {
+		m.MaxScalingFreq = other.MaxScalingFreq
+	}
+
+	m.FreqStatsCount += other.FreqStatsCount
 }
 
 // RPCMetrics contains metrics for RPC operations.
