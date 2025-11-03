@@ -60,6 +60,7 @@ const (
 	MetricsRuntime
 	MetricsAPI
 	MetricsReplication
+	MetricsProcess
 
 	// MetricsAll must be last.
 	// Enables all metrics.
@@ -304,6 +305,7 @@ type Metrics struct {
 	Go          *RuntimeMetrics     `json:"go,omitempty"`
 	API         *APIMetrics         `json:"api,omitempty"`
 	Replication *ReplicationMetrics `json:"replication,omitempty"`
+	Process     *ProcessMetrics     `json:"process,omitempty"`
 }
 
 // Merge other into r.
@@ -363,6 +365,10 @@ func (r *Metrics) Merge(other *Metrics) {
 		r.CPU = &CPUMetrics{}
 	}
 	r.CPU.Merge(other.CPU)
+	if r.Process == nil && other.Process != nil {
+		r.Process = &ProcessMetrics{}
+	}
+	r.Process.Merge(other.Process)
 }
 
 // ScannerMetrics contains scanner information.
@@ -758,6 +764,15 @@ func (d DiskMetric) LifetimeTotal() DiskAction {
 	return res
 }
 
+// SensorMetrics aggregated sensor metrics for a single sensor key
+type SensorMetrics struct {
+	MinTemp         float64 `json:"min_temp"`                   // Minimum temperature seen
+	MaxTemp         float64 `json:"max_temp"`                   // Maximum temperature seen
+	TotalTemp       float64 `json:"total_temp"`                 // Total temperature for averaging
+	Count           int     `json:"count"`                      // Number of readings
+	ExceedsCritical int     `json:"exceeds_critical,omitempty"` // Count of readings exceeding critical threshold
+}
+
 // OSMetrics contains metrics for OS operations.
 type OSMetrics struct {
 	// Time these metrics were collected
@@ -770,6 +785,9 @@ type OSMetrics struct {
 	LastMinute struct {
 		Operations map[string]TimedAction `json:"operations,omitempty"`
 	} `json:"last_minute"`
+
+	// Aggregated temperature sensor metrics by sensor key
+	Sensors map[string]SensorMetrics `json:"sensors,omitempty"`
 }
 
 // Merge other into 'o'.
@@ -797,6 +815,34 @@ func (o *OSMetrics) Merge(other *OSMetrics) {
 		total := o.LastMinute.Operations[k]
 		total.Merge(v)
 		o.LastMinute.Operations[k] = total
+	}
+
+	// Merge sensor metrics
+	if len(other.Sensors) > 0 {
+		if o.Sensors == nil {
+			o.Sensors = make(map[string]SensorMetrics)
+		}
+		for key, otherSensor := range other.Sensors {
+			existing := o.Sensors[key]
+			// Handle min/max
+			if existing.Count == 0 {
+				// First data for this sensor
+				existing.MinTemp = otherSensor.MinTemp
+				existing.MaxTemp = otherSensor.MaxTemp
+			} else {
+				if otherSensor.MinTemp < existing.MinTemp {
+					existing.MinTemp = otherSensor.MinTemp
+				}
+				if otherSensor.MaxTemp > existing.MaxTemp {
+					existing.MaxTemp = otherSensor.MaxTemp
+				}
+			}
+			// Accumulate totals
+			existing.TotalTemp += otherSensor.TotalTemp
+			existing.Count += otherSensor.Count
+			existing.ExceedsCritical += otherSensor.ExceedsCritical
+			o.Sensors[key] = existing
+		}
 	}
 }
 
@@ -1082,6 +1128,22 @@ type CPUMetrics struct {
 	TimesStat *cpu.TimesStat `json:"timesStat"`
 	LoadStat  *load.AvgStat  `json:"loadStat"`
 	CPUCount  int            `json:"cpuCount"`
+
+	// Aggregated CPU information
+	CPUByModel     map[string]int `json:"cpu_by_model,omitempty"`     // ModelName -> count of CPUs
+	TotalMhz       float64        `json:"total_mhz,omitempty"`        // Accumulated MHz
+	TotalCores     int            `json:"total_cores,omitempty"`      // Accumulated cores
+	TotalCacheSize int64          `json:"total_cache_size,omitempty"` // Accumulated cache size in bytes
+
+	// Aggregated CPU frequency information
+	FreqStatsCount          int            `json:"freq_stats_count,omitempty"`           // Number of freq stats (for averaging)
+	GovernorFreq            map[string]int `json:"governor_freq,omitempty"`              // Governor -> count
+	TotalCurrentFreq        uint64         `json:"total_current_freq,omitempty"`         // Accumulated current freq
+	TotalScalingCurrentFreq uint64         `json:"total_scaling_current_freq,omitempty"` // Accumulated scaling current freq
+	MinCPUInfoFreq          uint64         `json:"min_freq,omitempty"`                   // Minimum of CpuinfoMinimumFrequency
+	MaxCPUInfoFreq          uint64         `json:"max_freq,omitempty"`                   // Maximum of CpuinfoMaximumFrequency
+	MinScalingFreq          uint64         `json:"min_scaling_freq,omitempty"`           // Minimum of ScalingMinimumFrequency
+	MaxScalingFreq          uint64         `json:"max_scaling_freq,omitempty"`           // Maximum of ScalingMaximumFrequency
 }
 
 // Merge other into 'm'.
@@ -1117,6 +1179,52 @@ func (m *CPUMetrics) Merge(other *CPUMetrics) {
 		m.LoadStat = other.LoadStat
 	}
 	m.CPUCount += other.CPUCount
+
+	// Merge aggregated CPU information
+	if len(other.CPUByModel) > 0 {
+		if m.CPUByModel == nil {
+			m.CPUByModel = make(map[string]int)
+		}
+		for model, count := range other.CPUByModel {
+			m.CPUByModel[model] += count
+		}
+	}
+	m.TotalMhz += other.TotalMhz
+	m.TotalCores += other.TotalCores
+	m.TotalCacheSize += other.TotalCacheSize
+
+	// Merge aggregated CPU frequency information
+	if len(other.GovernorFreq) > 0 {
+		if m.GovernorFreq == nil {
+			m.GovernorFreq = make(map[string]int)
+		}
+		for governor, count := range other.GovernorFreq {
+			m.GovernorFreq[governor] += count
+		}
+	}
+	m.TotalCurrentFreq += other.TotalCurrentFreq
+	m.TotalScalingCurrentFreq += other.TotalScalingCurrentFreq
+
+	// Handle min/max frequencies properly
+	// Use FreqStatsCount to determine if this is the first merge
+	if other.MinCPUInfoFreq > 0 {
+		if m.FreqStatsCount == 0 || other.MinCPUInfoFreq < m.MinCPUInfoFreq {
+			m.MinCPUInfoFreq = other.MinCPUInfoFreq
+		}
+	}
+	if other.MaxCPUInfoFreq > m.MaxCPUInfoFreq {
+		m.MaxCPUInfoFreq = other.MaxCPUInfoFreq
+	}
+	if other.MinScalingFreq > 0 {
+		if m.FreqStatsCount == 0 || other.MinScalingFreq < m.MinScalingFreq {
+			m.MinScalingFreq = other.MinScalingFreq
+		}
+	}
+	if other.MaxScalingFreq > m.MaxScalingFreq {
+		m.MaxScalingFreq = other.MaxScalingFreq
+	}
+
+	m.FreqStatsCount += other.FreqStatsCount
 }
 
 // RPCMetrics contains metrics for RPC operations.
@@ -1824,4 +1932,190 @@ func (a *ReplicationStats) Add(other *ReplicationStats) {
 	a.Errors4xx += other.Errors4xx
 	a.Errors5xx += other.Errors5xx
 	a.Canceled += other.Canceled
+}
+
+// ProcessMetrics contains aggregated minio process metrics
+type ProcessMetrics struct {
+	CollectedAt time.Time `json:"collected_at,omitempty"`
+	Nodes       int       `json:"nodes,omitempty"`
+
+	// Aggregated values
+	TotalCPUPercent     float64 `json:"total_cpu_percent,omitempty"`
+	TotalNumConnections int     `json:"total_num_connections,omitempty"`
+	TotalRunningSecs    float64 `json:"total_running_secs,omitempty"`
+	TotalNumFDs         int64   `json:"total_num_fds,omitempty"`
+	TotalNumThreads     int64   `json:"total_num_threads,omitempty"`
+	TotalNice           int64   `json:"total_nice,omitempty"`
+	Count               int     `json:"count,omitempty"`
+
+	// Counters for boolean fields
+	BackgroundProcesses int `json:"background_processes,omitempty"`
+	RunningProcesses    int `json:"running_processes,omitempty"`
+
+	// Aggregated memory info
+	MemInfo ProcessMemoryInfo `json:"mem_info,omitempty"`
+
+	// Aggregated IO counters
+	IOCounters ProcessIOCounters `json:"io_counters,omitempty"`
+
+	// Aggregated context switches
+	NumCtxSwitches ProcessCtxSwitches `json:"num_ctx_switches,omitempty"`
+
+	// Aggregated page faults
+	PageFaults ProcessPageFaults `json:"page_faults,omitempty"`
+
+	// Aggregated CPU times
+	CPUTimes ProcessCPUTimes `json:"cpu_times,omitempty"`
+
+	// Aggregated memory maps (platform-specific)
+	MemMaps ProcessMemoryMaps `json:"mem_maps,omitempty"`
+}
+
+// ProcessMemoryInfo represents aggregated memory information
+type ProcessMemoryInfo struct {
+	RSS    uint64 `json:"rss,omitempty"`
+	VMS    uint64 `json:"vms,omitempty"`
+	HWM    uint64 `json:"hwm,omitempty"`
+	Data   uint64 `json:"data,omitempty"`
+	Stack  uint64 `json:"stack,omitempty"`
+	Locked uint64 `json:"locked,omitempty"`
+	Swap   uint64 `json:"swap,omitempty"`
+	Count  int    `json:"count,omitempty"`
+	Shared uint64 `json:"shared,omitempty"`
+}
+
+// ProcessIOCounters represents aggregated IO counters
+type ProcessIOCounters struct {
+	ReadCount  uint64 `json:"read_count,omitempty"`
+	WriteCount uint64 `json:"write_count,omitempty"`
+	ReadBytes  uint64 `json:"read_bytes,omitempty"`
+	WriteBytes uint64 `json:"write_bytes,omitempty"`
+	Count      int    `json:"count,omitempty"`
+}
+
+// ProcessCtxSwitches represents aggregated context switches
+type ProcessCtxSwitches struct {
+	Voluntary   int64 `json:"voluntary,omitempty"`
+	Involuntary int64 `json:"involuntary,omitempty"`
+	Count       int   `json:"count,omitempty"`
+}
+
+// ProcessPageFaults represents aggregated page faults
+type ProcessPageFaults struct {
+	MinorFaults      uint64 `json:"minor_faults,omitempty"`
+	MajorFaults      uint64 `json:"major_faults,omitempty"`
+	ChildMinorFaults uint64 `json:"child_minor_faults,omitempty"`
+	ChildMajorFaults uint64 `json:"child_major_faults,omitempty"`
+	Count            int    `json:"count,omitempty"`
+}
+
+// ProcessCPUTimes represents aggregated CPU times
+type ProcessCPUTimes struct {
+	User      float64 `json:"user,omitempty"`
+	System    float64 `json:"system,omitempty"`
+	Idle      float64 `json:"idle,omitempty"`
+	Nice      float64 `json:"nice,omitempty"`
+	Iowait    float64 `json:"iowait,omitempty"`
+	Irq       float64 `json:"irq,omitempty"`
+	Softirq   float64 `json:"softirq,omitempty"`
+	Steal     float64 `json:"steal,omitempty"`
+	Guest     float64 `json:"guest,omitempty"`
+	GuestNice float64 `json:"guest_nice,omitempty"`
+	Count     int     `json:"count,omitempty"`
+}
+
+// ProcessMemoryMaps represents aggregated memory maps (platform-specific)
+type ProcessMemoryMaps struct {
+	TotalSize         uint64 `json:"total_size,omitempty"`
+	TotalRSS          uint64 `json:"total_rss,omitempty"`
+	TotalPSS          uint64 `json:"total_pss,omitempty"`
+	TotalSharedClean  uint64 `json:"total_shared_clean,omitempty"`
+	TotalSharedDirty  uint64 `json:"total_shared_dirty,omitempty"`
+	TotalPrivateClean uint64 `json:"total_private_clean,omitempty"`
+	TotalPrivateDirty uint64 `json:"total_private_dirty,omitempty"`
+	TotalReferenced   uint64 `json:"total_referenced,omitempty"`
+	TotalAnonymous    uint64 `json:"total_anonymous,omitempty"`
+	TotalSwap         uint64 `json:"total_swap,omitempty"`
+	Count             int    `json:"count,omitempty"`
+}
+
+// Merge merges process metrics from another ProcessMetrics
+func (m *ProcessMetrics) Merge(other *ProcessMetrics) {
+	if other == nil {
+		return
+	}
+
+	// Update timestamp to the latest
+	if other.CollectedAt.After(m.CollectedAt) {
+		m.CollectedAt = other.CollectedAt
+	}
+
+	m.Nodes += other.Nodes
+	m.TotalCPUPercent += other.TotalCPUPercent
+	m.TotalNumConnections += other.TotalNumConnections
+	m.TotalRunningSecs += other.TotalRunningSecs
+	m.TotalNumFDs += other.TotalNumFDs
+	m.TotalNumThreads += other.TotalNumThreads
+	m.TotalNice += other.TotalNice
+	m.Count += other.Count
+
+	// Merge boolean counters
+	m.BackgroundProcesses += other.BackgroundProcesses
+	m.RunningProcesses += other.RunningProcesses
+
+	// Merge memory info
+	m.MemInfo.RSS += other.MemInfo.RSS
+	m.MemInfo.VMS += other.MemInfo.VMS
+	m.MemInfo.HWM += other.MemInfo.HWM
+	m.MemInfo.Data += other.MemInfo.Data
+	m.MemInfo.Stack += other.MemInfo.Stack
+	m.MemInfo.Locked += other.MemInfo.Locked
+	m.MemInfo.Swap += other.MemInfo.Swap
+	m.MemInfo.Count += other.MemInfo.Count
+	m.MemInfo.Shared += other.MemInfo.Shared
+
+	// Merge IO counters
+	m.IOCounters.ReadCount += other.IOCounters.ReadCount
+	m.IOCounters.WriteCount += other.IOCounters.WriteCount
+	m.IOCounters.ReadBytes += other.IOCounters.ReadBytes
+	m.IOCounters.WriteBytes += other.IOCounters.WriteBytes
+	m.IOCounters.Count += other.IOCounters.Count
+
+	// Merge context switches
+	m.NumCtxSwitches.Voluntary += other.NumCtxSwitches.Voluntary
+	m.NumCtxSwitches.Involuntary += other.NumCtxSwitches.Involuntary
+	m.NumCtxSwitches.Count += other.NumCtxSwitches.Count
+
+	// Merge page faults
+	m.PageFaults.MinorFaults += other.PageFaults.MinorFaults
+	m.PageFaults.MajorFaults += other.PageFaults.MajorFaults
+	m.PageFaults.ChildMinorFaults += other.PageFaults.ChildMinorFaults
+	m.PageFaults.ChildMajorFaults += other.PageFaults.ChildMajorFaults
+	m.PageFaults.Count += other.PageFaults.Count
+
+	// Merge CPU times
+	m.CPUTimes.User += other.CPUTimes.User
+	m.CPUTimes.System += other.CPUTimes.System
+	m.CPUTimes.Idle += other.CPUTimes.Idle
+	m.CPUTimes.Nice += other.CPUTimes.Nice
+	m.CPUTimes.Iowait += other.CPUTimes.Iowait
+	m.CPUTimes.Irq += other.CPUTimes.Irq
+	m.CPUTimes.Softirq += other.CPUTimes.Softirq
+	m.CPUTimes.Steal += other.CPUTimes.Steal
+	m.CPUTimes.Guest += other.CPUTimes.Guest
+	m.CPUTimes.GuestNice += other.CPUTimes.GuestNice
+	m.CPUTimes.Count += other.CPUTimes.Count
+
+	// Merge memory maps
+	m.MemMaps.TotalSize += other.MemMaps.TotalSize
+	m.MemMaps.TotalRSS += other.MemMaps.TotalRSS
+	m.MemMaps.TotalPSS += other.MemMaps.TotalPSS
+	m.MemMaps.TotalSharedClean += other.MemMaps.TotalSharedClean
+	m.MemMaps.TotalSharedDirty += other.MemMaps.TotalSharedDirty
+	m.MemMaps.TotalPrivateClean += other.MemMaps.TotalPrivateClean
+	m.MemMaps.TotalPrivateDirty += other.MemMaps.TotalPrivateDirty
+	m.MemMaps.TotalReferenced += other.MemMaps.TotalReferenced
+	m.MemMaps.TotalAnonymous += other.MemMaps.TotalAnonymous
+	m.MemMaps.TotalSwap += other.MemMaps.TotalSwap
+	m.MemMaps.Count += other.MemMaps.Count
 }

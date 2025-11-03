@@ -18,7 +18,6 @@
 //
 
 //go:build (linux && 386) || (linux && amd64) || (linux && arm64) || (linux && loong64) || (linux && mips64) || (linux && mips64le) || (linux && mips)
-// +build linux,386 linux,amd64 linux,arm64 linux,loong64 linux,mips64 linux,mips64le linux,mips
 
 package kernel
 

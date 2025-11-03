@@ -24,6 +24,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -178,6 +179,85 @@ type CPUFreqStats struct {
 	Driver                   string  `json:",omitempty"`
 	RelatedCpus              string  `json:",omitempty"`
 	SetSpeed                 string  `json:",omitempty"`
+}
+
+// AddCPUs adds CPU information from CPUs struct to CPUMetrics aggregated data.
+// This follows the merge rules where metrics are accumulated in an order-independent way.
+func (c *CPUs) AddCPUs(m *CPUMetrics) {
+	if c == nil || m == nil {
+		return
+	}
+
+	// Process CPU information
+	for _, cpu := range c.CPUs {
+		// Accumulate model name counts
+		if cpu.ModelName != "" {
+			if m.CPUByModel == nil {
+				m.CPUByModel = make(map[string]int)
+			}
+			m.CPUByModel[strings.TrimSpace(cpu.ModelName)]++
+		}
+
+		// Accumulate MHz
+		m.TotalMhz += cpu.Mhz
+
+		// Accumulate cores
+		m.TotalCores += cpu.Cores
+
+		// Accumulate cache size (converting from int32 KB to int64 bytes)
+		m.TotalCacheSize += int64(cpu.CacheSize) * 1024
+
+		// Count CPU entries
+		m.CPUCount++
+	}
+
+	// Process CPU frequency stats
+	for _, freq := range c.CPUFreqStats {
+		// Count governors
+		if freq.Governor != "" {
+			if m.GovernorFreq == nil {
+				m.GovernorFreq = make(map[string]int)
+			}
+			m.GovernorFreq[strings.TrimSpace(freq.Governor)]++
+		}
+
+		// Accumulate current frequencies
+		if freq.CpuinfoCurrentFrequency != nil {
+			m.TotalCurrentFreq += *freq.CpuinfoCurrentFrequency
+		}
+		if freq.ScalingCurrentFrequency != nil {
+			m.TotalScalingCurrentFreq += *freq.ScalingCurrentFrequency
+		}
+
+		// Handle min/max frequencies with proper initialization
+		// Use FreqStatsCount to determine if this is the first frequency stat
+		if freq.CpuinfoMinimumFrequency != nil {
+			if m.FreqStatsCount == 0 || *freq.CpuinfoMinimumFrequency < m.MinCPUInfoFreq {
+				m.MinCPUInfoFreq = *freq.CpuinfoMinimumFrequency
+			}
+		}
+
+		if freq.CpuinfoMaximumFrequency != nil {
+			if *freq.CpuinfoMaximumFrequency > m.MaxCPUInfoFreq {
+				m.MaxCPUInfoFreq = *freq.CpuinfoMaximumFrequency
+			}
+		}
+
+		if freq.ScalingMinimumFrequency != nil {
+			if m.FreqStatsCount == 0 || *freq.ScalingMinimumFrequency < m.MinScalingFreq {
+				m.MinScalingFreq = *freq.ScalingMinimumFrequency
+			}
+		}
+
+		if freq.ScalingMaximumFrequency != nil {
+			if *freq.ScalingMaximumFrequency > m.MaxScalingFreq {
+				m.MaxScalingFreq = *freq.ScalingMaximumFrequency
+			}
+		}
+
+		// Count frequency stats entries
+		m.FreqStatsCount++
+	}
 }
 
 // GetCPUs returns system's all CPU information.
@@ -486,6 +566,51 @@ type OSInfo struct {
 	Sensors []sensors.TemperatureStat `json:"sensors,omitempty"`
 }
 
+// AddOSInfo adds OS information including sensors to OSMetrics aggregated data.
+// This follows the merge rules where metrics are accumulated in an order-independent way.
+func (o *OSInfo) AddOSInfo(m *OSMetrics) {
+	if o == nil || m == nil {
+		return
+	}
+
+	// Process sensor information
+	if len(o.Sensors) > 0 {
+		if m.Sensors == nil {
+			m.Sensors = make(map[string]SensorMetrics)
+		}
+
+		for _, sensor := range o.Sensors {
+			existing := m.Sensors[sensor.SensorKey]
+
+			// Initialize or update min/max
+			if existing.Count == 0 {
+				// First reading for this sensor
+				existing.MinTemp = sensor.Temperature
+				existing.MaxTemp = sensor.Temperature
+			} else {
+				if sensor.Temperature < existing.MinTemp {
+					existing.MinTemp = sensor.Temperature
+				}
+				if sensor.Temperature > existing.MaxTemp {
+					existing.MaxTemp = sensor.Temperature
+				}
+			}
+
+			// Accumulate total for averaging
+			existing.TotalTemp += sensor.Temperature
+			existing.Count++
+
+			// Check if temperature exceeds critical threshold
+			// Only count if Critical is non-zero (valid threshold)
+			if sensor.Critical > 0 && sensor.Temperature > sensor.Critical {
+				existing.ExceedsCritical++
+			}
+
+			m.Sensors[sensor.SensorKey] = existing
+		}
+	}
+}
+
 // TimeInfo contains current time with timezone, and
 // the roundtrip duration when fetching it remotely
 type TimeInfo struct {
@@ -508,42 +633,23 @@ type XFSErrorConfig struct {
 
 // GetOSInfo returns linux only operating system's information.
 func GetOSInfo(ctx context.Context, addr string) OSInfo {
-	if runtime.GOOS != "linux" {
-		return OSInfo{
-			NodeCommon: NodeCommon{
-				Addr:  addr,
-				Error: "unsupported operating system " + runtime.GOOS,
-			},
-		}
+	osInfo := OSInfo{
+		NodeCommon: NodeCommon{Addr: addr},
 	}
+	osInfo.Sensors, _ = sensors.TemperaturesWithContext(ctx)
 
 	kr, err := kernel.CurrentRelease()
 	if err != nil {
-		return OSInfo{
-			NodeCommon: NodeCommon{
-				Addr:  addr,
-				Error: err.Error(),
-			},
-		}
+		osInfo.Error += fmt.Sprintf("[kernel.CurrentRelease: %q]", err.Error())
 	}
 
 	info, err := host.InfoWithContext(ctx)
 	if err != nil {
-		return OSInfo{
-			NodeCommon: NodeCommon{
-				Addr:  addr,
-				Error: err.Error(),
-			},
-		}
+		osInfo.Error += fmt.Sprintf("[host.Info: %q]", err.Error())
+	} else {
+		info.KernelVersion = kr
+		osInfo.Info = *info
 	}
-
-	osInfo := OSInfo{
-		NodeCommon: NodeCommon{Addr: addr},
-		Info:       *info,
-	}
-	osInfo.Info.KernelVersion = kr
-
-	osInfo.Sensors, _ = sensors.TemperaturesWithContext(ctx)
 
 	return osInfo
 }
@@ -915,14 +1021,12 @@ func GetProcInfo(ctx context.Context, addr string) ProcInfo {
 
 	procInfo.IsBackground, err = proc.BackgroundWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[BackgroundWithContext: %q]", err.Error())
 	}
 
 	procInfo.CPUPercent, err = proc.CPUPercentWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[CPUPercentWithContext: %q]", err.Error())
 	}
 
 	procInfo.ChildrenPIDs = []int32{}
@@ -933,145 +1037,134 @@ func GetProcInfo(ctx context.Context, addr string) ProcInfo {
 
 	procInfo.CmdLine, err = proc.CmdlineWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[CmdlineWithContext: %q]", err.Error())
 	}
 
 	connections, err := proc.ConnectionsWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[ConnectionsWithContext: %q]", err.Error())
+	} else {
+		procInfo.NumConnections = len(connections)
 	}
-	procInfo.NumConnections = len(connections)
 
 	procInfo.CreateTime, err = proc.CreateTimeWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[CreateTimeWithContext: %q]", err.Error())
 	}
 
 	procInfo.CWD, err = proc.CwdWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[CwdWithContext: %q]", err.Error())
 	}
 
 	procInfo.ExecPath, err = proc.ExeWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[ExeWithContext: %q]", err.Error())
 	}
 
 	gids, err := proc.GidsWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[GidsWithContext: %q]", err.Error())
+	} else {
+		procInfo.GIDs = aTob[uint32, int32](gids, func(item uint32) int32 {
+			return int32(item)
+		})
 	}
-	procInfo.GIDs = aTob[uint32, int32](gids, func(item uint32) int32 {
-		return int32(item)
-	})
 
 	ioCounters, err := proc.IOCountersWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[IOCountersWithContext: %q]", err.Error())
+	} else {
+		procInfo.IOCounters = *ioCounters
 	}
-	procInfo.IOCounters = *ioCounters
 
 	procInfo.IsRunning, err = proc.IsRunningWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[IsRunningWithContext: %q]", err.Error())
 	}
 
 	memInfo, err := proc.MemoryInfoWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[MemoryInfoWithContext: %q]", err.Error())
+	} else {
+		procInfo.MemInfo = *memInfo
 	}
-	procInfo.MemInfo = *memInfo
 
 	memMaps, err := proc.MemoryMapsWithContext(ctx, true)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[MemoryMapsWithContext: %q]", err.Error())
+	} else {
+		procInfo.MemMaps = *memMaps
 	}
-	procInfo.MemMaps = *memMaps
 
 	procInfo.MemPercent, err = proc.MemoryPercentWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[MemoryPercentWithContext: %q]", err.Error())
 	}
 
 	procInfo.Name, err = proc.NameWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[NameWithContext: %q]", err.Error())
 	}
 
 	procInfo.Nice, err = proc.NiceWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[NiceWithContext: %q]", err.Error())
 	}
 
 	numCtxSwitches, err := proc.NumCtxSwitchesWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[NumCtxSwitchesWithContext: %q]", err.Error())
+	} else {
+		procInfo.NumCtxSwitches = *numCtxSwitches
 	}
-	procInfo.NumCtxSwitches = *numCtxSwitches
 
 	procInfo.NumFDs, err = proc.NumFDsWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[NumFDsWithContext: %q]", err.Error())
 	}
 
 	procInfo.NumThreads, err = proc.NumThreadsWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[NumThreadsWithContext: %q]", err.Error())
 	}
 
 	pageFaults, err := proc.PageFaultsWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[PageFaultsWithContext: %q]", err.Error())
+	} else {
+		procInfo.PageFaults = *pageFaults
 	}
-	procInfo.PageFaults = *pageFaults
 
 	procInfo.PPID, _ = proc.PpidWithContext(ctx)
 
 	status, err := proc.StatusWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[StatusWithContext: %q]", err.Error())
+	} else {
+		procInfo.Status = status[0]
 	}
-	procInfo.Status = status[0]
 
 	procInfo.TGID, err = proc.Tgid()
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[Tgid: %q]", err.Error())
 	}
 
 	times, err := proc.TimesWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[TimesWithContext: %q]", err.Error())
+	} else {
+		procInfo.Times = *times
 	}
-	procInfo.Times = *times
 
 	uids, err := proc.UidsWithContext(ctx)
 	if err != nil {
-		procInfo.Error = err.Error()
-		return procInfo
+		procInfo.Error += fmt.Sprintf("[UidsWithContext: %q]", err.Error())
+	} else {
+		procInfo.UIDs = aTob[uint32, int32](uids, func(item uint32) int32 {
+			return int32(item)
+		})
 	}
-	procInfo.UIDs = aTob[uint32, int32](uids, func(item uint32) int32 {
-		return int32(item)
-	})
 
 	// In certain environments, it is not possible to get username e.g. minio-operator
 	// Plus it's not a serious error. So ignore error if any.
@@ -1081,6 +1174,84 @@ func GetProcInfo(ctx context.Context, addr string) ProcInfo {
 	}
 
 	return procInfo
+}
+
+// AddProcInfo aggregates process information into ProcessMetrics
+func (p *ProcInfo) AddProcInfo(metrics *ProcessMetrics) {
+	if p == nil || metrics == nil {
+		return
+	}
+
+	// Set collection time
+	metrics.CollectedAt = time.Now()
+	metrics.Nodes = 1
+	metrics.Count++
+
+	// Aggregate numeric values
+	metrics.TotalCPUPercent += p.CPUPercent
+	metrics.TotalNumConnections += p.NumConnections
+
+	// Convert CreateTime (timestamp in milliseconds since epoch) to running seconds
+	if p.CreateTime > 0 {
+		createTimeSeconds := float64(p.CreateTime) / 1000.0
+		nowSeconds := float64(time.Now().Unix())
+		runningSecs := nowSeconds - createTimeSeconds
+		metrics.TotalRunningSecs += runningSecs
+	}
+
+	metrics.TotalNumFDs += int64(p.NumFDs)
+	metrics.TotalNumThreads += int64(p.NumThreads)
+	metrics.TotalNice += int64(p.Nice)
+
+	// Count boolean fields
+	if p.IsBackground {
+		metrics.BackgroundProcesses++
+	}
+	if p.IsRunning {
+		metrics.RunningProcesses++
+	}
+
+	// Aggregate memory info
+	metrics.MemInfo.RSS += p.MemInfo.RSS
+	metrics.MemInfo.VMS += p.MemInfo.VMS
+	// Note: Some fields like HWM, Data, Stack, Locked, Swap, Shared may not be available on all platforms
+	// For basic compatibility, only use RSS and VMS which are most commonly available
+	metrics.MemInfo.Count++
+
+	// Aggregate IO counters
+	metrics.IOCounters.ReadCount += p.IOCounters.ReadCount
+	metrics.IOCounters.WriteCount += p.IOCounters.WriteCount
+	metrics.IOCounters.ReadBytes += p.IOCounters.ReadBytes
+	metrics.IOCounters.WriteBytes += p.IOCounters.WriteBytes
+	metrics.IOCounters.Count++
+
+	// Aggregate context switches
+	metrics.NumCtxSwitches.Voluntary += p.NumCtxSwitches.Voluntary
+	metrics.NumCtxSwitches.Involuntary += p.NumCtxSwitches.Involuntary
+	metrics.NumCtxSwitches.Count++
+
+	// Aggregate page faults
+	metrics.PageFaults.MinorFaults += p.PageFaults.MinorFaults
+	metrics.PageFaults.MajorFaults += p.PageFaults.MajorFaults
+	metrics.PageFaults.ChildMinorFaults += p.PageFaults.ChildMinorFaults
+	metrics.PageFaults.ChildMajorFaults += p.PageFaults.ChildMajorFaults
+	metrics.PageFaults.Count++
+
+	// Aggregate CPU times
+	metrics.CPUTimes.User += p.Times.User
+	metrics.CPUTimes.System += p.Times.System
+	metrics.CPUTimes.Idle += p.Times.Idle
+	metrics.CPUTimes.Nice += p.Times.Nice
+	metrics.CPUTimes.Iowait += p.Times.Iowait
+	metrics.CPUTimes.Irq += p.Times.Irq
+	metrics.CPUTimes.Softirq += p.Times.Softirq
+	metrics.CPUTimes.Steal += p.Times.Steal
+	metrics.CPUTimes.Guest += p.Times.Guest
+	metrics.CPUTimes.GuestNice += p.Times.GuestNice
+	metrics.CPUTimes.Count++
+
+	// Aggregate memory maps (platform-specific)
+	addMemoryMaps(p.MemMaps, &metrics.MemMaps)
 }
 
 // SysInfo - Includes hardware and system information of the MinIO cluster

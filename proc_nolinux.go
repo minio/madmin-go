@@ -1,4 +1,4 @@
-//go:build linux
+//go:build !linux
 
 //
 // Copyright (c) 2015-2025 MinIO, Inc.
@@ -22,35 +22,17 @@
 package madmin
 
 import (
-	"bytes"
-	"os"
-	"path/filepath"
-	"strconv"
+	"github.com/shirou/gopsutil/v4/process"
 )
 
-func getCPUFreqStats() (stats []CPUFreqStats, err error) {
-	// Attempt to read CPU stats for governor on CPU0
-	// which is enough indicating atleast the system
-	// has one CPU.
-	cpuName := "cpu" + strconv.Itoa(0)
-
-	governorPath := filepath.Join(
-		"/sys/devices/system/cpu",
-		cpuName,
-		"cpufreq",
-		"scaling_governor",
-	)
-
-	content, err1 := os.ReadFile(governorPath)
-	if err1 != nil {
-		err = err1
-		return stats, err
+// addMemoryMaps aggregates memory map information for non-Linux platforms
+// Non-Linux implementation with limited memory map support
+func addMemoryMaps(memMaps []process.MemoryMapsStat, metrics *ProcessMemoryMaps) {
+	// For non-Linux platforms, we can't get detailed memory map information
+	// Just count the number of memory maps if available
+	if len(memMaps) > 0 {
+		metrics.Count += len(memMaps)
+		// Note: memory map fields like Size and RSS may not be available on non-Linux platforms
+		// Skip detailed aggregation for cross-platform compatibility
 	}
-
-	stats = append(stats, CPUFreqStats{
-		Name:     cpuName,
-		Governor: string(bytes.TrimSpace(content)),
-	})
-
-	return stats, nil
 }

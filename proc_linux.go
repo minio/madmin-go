@@ -22,35 +22,22 @@
 package madmin
 
 import (
-	"bytes"
-	"os"
-	"path/filepath"
-	"strconv"
+	"github.com/shirou/gopsutil/v4/process"
 )
 
-func getCPUFreqStats() (stats []CPUFreqStats, err error) {
-	// Attempt to read CPU stats for governor on CPU0
-	// which is enough indicating atleast the system
-	// has one CPU.
-	cpuName := "cpu" + strconv.Itoa(0)
-
-	governorPath := filepath.Join(
-		"/sys/devices/system/cpu",
-		cpuName,
-		"cpufreq",
-		"scaling_governor",
-	)
-
-	content, err1 := os.ReadFile(governorPath)
-	if err1 != nil {
-		err = err1
-		return stats, err
+// addMemoryMaps aggregates Linux-specific memory map information
+func addMemoryMaps(memMaps []process.MemoryMapsStat, metrics *ProcessMemoryMaps) {
+	for _, memMap := range memMaps {
+		metrics.TotalSize += memMap.Size
+		metrics.TotalRSS += memMap.Rss
+		metrics.TotalPSS += memMap.Pss
+		metrics.TotalSharedClean += memMap.SharedClean
+		metrics.TotalSharedDirty += memMap.SharedDirty
+		metrics.TotalPrivateClean += memMap.PrivateClean
+		metrics.TotalPrivateDirty += memMap.PrivateDirty
+		metrics.TotalReferenced += memMap.Referenced
+		metrics.TotalAnonymous += memMap.Anonymous
+		metrics.TotalSwap += memMap.Swap
+		metrics.Count++
 	}
-
-	stats = append(stats, CPUFreqStats{
-		Name:     cpuName,
-		Governor: string(bytes.TrimSpace(content)),
-	})
-
-	return stats, nil
 }
