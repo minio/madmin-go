@@ -2750,6 +2750,819 @@ func (z Buckets) Msgsize() (s int) {
 }
 
 // DecodeMsg implements msgp.Decodable
+func (z *CPU) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint16 /* 13 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "vendor_id":
+			z.VendorID, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "VendorID")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "family":
+			z.Family, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "Family")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "model":
+			z.Model, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "Model")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "stepping":
+			z.Stepping, err = dc.ReadInt32()
+			if err != nil {
+				err = msgp.WrapError(err, "Stepping")
+				return
+			}
+			zb0001Mask |= 0x8
+		case "physical_id":
+			z.PhysicalID, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "PhysicalID")
+				return
+			}
+			zb0001Mask |= 0x10
+		case "model_name":
+			z.ModelName, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "ModelName")
+				return
+			}
+			zb0001Mask |= 0x20
+		case "mhz":
+			z.Mhz, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "Mhz")
+				return
+			}
+			zb0001Mask |= 0x40
+		case "cache_size":
+			z.CacheSize, err = dc.ReadInt32()
+			if err != nil {
+				err = msgp.WrapError(err, "CacheSize")
+				return
+			}
+			zb0001Mask |= 0x80
+		case "flags":
+			var zb0002 uint32
+			zb0002, err = dc.ReadArrayHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "Flags")
+				return
+			}
+			if cap(z.Flags) >= int(zb0002) {
+				z.Flags = (z.Flags)[:zb0002]
+			} else {
+				z.Flags = make([]string, zb0002)
+			}
+			for za0001 := range z.Flags {
+				z.Flags[za0001], err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "Flags", za0001)
+					return
+				}
+			}
+			zb0001Mask |= 0x100
+		case "microcode":
+			z.Microcode, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "Microcode")
+				return
+			}
+			zb0001Mask |= 0x200
+		case "cores":
+			z.Cores, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "Cores")
+				return
+			}
+			zb0001Mask |= 0x400
+		case "multithread_capable":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "MultithreadCapable")
+					return
+				}
+				z.MultithreadCapable = nil
+			} else {
+				if z.MultithreadCapable == nil {
+					z.MultithreadCapable = new(bool)
+				}
+				*z.MultithreadCapable, err = dc.ReadBool()
+				if err != nil {
+					err = msgp.WrapError(err, "MultithreadCapable")
+					return
+				}
+			}
+			zb0001Mask |= 0x800
+		case "multithread_enabled":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "MultithreadEnabled")
+					return
+				}
+				z.MultithreadEnabled = nil
+			} else {
+				if z.MultithreadEnabled == nil {
+					z.MultithreadEnabled = new(bool)
+				}
+				*z.MultithreadEnabled, err = dc.ReadBool()
+				if err != nil {
+					err = msgp.WrapError(err, "MultithreadEnabled")
+					return
+				}
+			}
+			zb0001Mask |= 0x1000
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x1fff {
+		if (zb0001Mask & 0x1) == 0 {
+			z.VendorID = ""
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.Family = ""
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.Model = ""
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.Stepping = 0
+		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.PhysicalID = ""
+		}
+		if (zb0001Mask & 0x20) == 0 {
+			z.ModelName = ""
+		}
+		if (zb0001Mask & 0x40) == 0 {
+			z.Mhz = 0
+		}
+		if (zb0001Mask & 0x80) == 0 {
+			z.CacheSize = 0
+		}
+		if (zb0001Mask & 0x100) == 0 {
+			z.Flags = nil
+		}
+		if (zb0001Mask & 0x200) == 0 {
+			z.Microcode = ""
+		}
+		if (zb0001Mask & 0x400) == 0 {
+			z.Cores = 0
+		}
+		if (zb0001Mask & 0x800) == 0 {
+			z.MultithreadCapable = nil
+		}
+		if (zb0001Mask & 0x1000) == 0 {
+			z.MultithreadEnabled = nil
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *CPU) EncodeMsg(en *msgp.Writer) (err error) {
+	// check for omitted fields
+	zb0001Len := uint32(13)
+	var zb0001Mask uint16 /* 13 bits */
+	_ = zb0001Mask
+	if z.VendorID == "" {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.Family == "" {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.Model == "" {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	if z.Stepping == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.PhysicalID == "" {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	if z.ModelName == "" {
+		zb0001Len--
+		zb0001Mask |= 0x20
+	}
+	if z.Mhz == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x40
+	}
+	if z.CacheSize == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x80
+	}
+	if z.Flags == nil {
+		zb0001Len--
+		zb0001Mask |= 0x100
+	}
+	if z.Microcode == "" {
+		zb0001Len--
+		zb0001Mask |= 0x200
+	}
+	if z.Cores == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x400
+	}
+	if z.MultithreadCapable == nil {
+		zb0001Len--
+		zb0001Mask |= 0x800
+	}
+	if z.MultithreadEnabled == nil {
+		zb0001Len--
+		zb0001Mask |= 0x1000
+	}
+	// variable map header, size zb0001Len
+	err = en.Append(0x80 | uint8(zb0001Len))
+	if err != nil {
+		return
+	}
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// write "vendor_id"
+			err = en.Append(0xa9, 0x76, 0x65, 0x6e, 0x64, 0x6f, 0x72, 0x5f, 0x69, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.VendorID)
+			if err != nil {
+				err = msgp.WrapError(err, "VendorID")
+				return
+			}
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// write "family"
+			err = en.Append(0xa6, 0x66, 0x61, 0x6d, 0x69, 0x6c, 0x79)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.Family)
+			if err != nil {
+				err = msgp.WrapError(err, "Family")
+				return
+			}
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// write "model"
+			err = en.Append(0xa5, 0x6d, 0x6f, 0x64, 0x65, 0x6c)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.Model)
+			if err != nil {
+				err = msgp.WrapError(err, "Model")
+				return
+			}
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// write "stepping"
+			err = en.Append(0xa8, 0x73, 0x74, 0x65, 0x70, 0x70, 0x69, 0x6e, 0x67)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt32(z.Stepping)
+			if err != nil {
+				err = msgp.WrapError(err, "Stepping")
+				return
+			}
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// write "physical_id"
+			err = en.Append(0xab, 0x70, 0x68, 0x79, 0x73, 0x69, 0x63, 0x61, 0x6c, 0x5f, 0x69, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.PhysicalID)
+			if err != nil {
+				err = msgp.WrapError(err, "PhysicalID")
+				return
+			}
+		}
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// write "model_name"
+			err = en.Append(0xaa, 0x6d, 0x6f, 0x64, 0x65, 0x6c, 0x5f, 0x6e, 0x61, 0x6d, 0x65)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.ModelName)
+			if err != nil {
+				err = msgp.WrapError(err, "ModelName")
+				return
+			}
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
+			// write "mhz"
+			err = en.Append(0xa3, 0x6d, 0x68, 0x7a)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.Mhz)
+			if err != nil {
+				err = msgp.WrapError(err, "Mhz")
+				return
+			}
+		}
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
+			// write "cache_size"
+			err = en.Append(0xaa, 0x63, 0x61, 0x63, 0x68, 0x65, 0x5f, 0x73, 0x69, 0x7a, 0x65)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt32(z.CacheSize)
+			if err != nil {
+				err = msgp.WrapError(err, "CacheSize")
+				return
+			}
+		}
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
+			// write "flags"
+			err = en.Append(0xa5, 0x66, 0x6c, 0x61, 0x67, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteArrayHeader(uint32(len(z.Flags)))
+			if err != nil {
+				err = msgp.WrapError(err, "Flags")
+				return
+			}
+			for za0001 := range z.Flags {
+				err = en.WriteString(z.Flags[za0001])
+				if err != nil {
+					err = msgp.WrapError(err, "Flags", za0001)
+					return
+				}
+			}
+		}
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
+			// write "microcode"
+			err = en.Append(0xa9, 0x6d, 0x69, 0x63, 0x72, 0x6f, 0x63, 0x6f, 0x64, 0x65)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.Microcode)
+			if err != nil {
+				err = msgp.WrapError(err, "Microcode")
+				return
+			}
+		}
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
+			// write "cores"
+			err = en.Append(0xa5, 0x63, 0x6f, 0x72, 0x65, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt(z.Cores)
+			if err != nil {
+				err = msgp.WrapError(err, "Cores")
+				return
+			}
+		}
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
+			// write "multithread_capable"
+			err = en.Append(0xb3, 0x6d, 0x75, 0x6c, 0x74, 0x69, 0x74, 0x68, 0x72, 0x65, 0x61, 0x64, 0x5f, 0x63, 0x61, 0x70, 0x61, 0x62, 0x6c, 0x65)
+			if err != nil {
+				return
+			}
+			if z.MultithreadCapable == nil {
+				err = en.WriteNil()
+				if err != nil {
+					return
+				}
+			} else {
+				err = en.WriteBool(*z.MultithreadCapable)
+				if err != nil {
+					err = msgp.WrapError(err, "MultithreadCapable")
+					return
+				}
+			}
+		}
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
+			// write "multithread_enabled"
+			err = en.Append(0xb3, 0x6d, 0x75, 0x6c, 0x74, 0x69, 0x74, 0x68, 0x72, 0x65, 0x61, 0x64, 0x5f, 0x65, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x64)
+			if err != nil {
+				return
+			}
+			if z.MultithreadEnabled == nil {
+				err = en.WriteNil()
+				if err != nil {
+					return
+				}
+			} else {
+				err = en.WriteBool(*z.MultithreadEnabled)
+				if err != nil {
+					err = msgp.WrapError(err, "MultithreadEnabled")
+					return
+				}
+			}
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *CPU) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// check for omitted fields
+	zb0001Len := uint32(13)
+	var zb0001Mask uint16 /* 13 bits */
+	_ = zb0001Mask
+	if z.VendorID == "" {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.Family == "" {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.Model == "" {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	if z.Stepping == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.PhysicalID == "" {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	if z.ModelName == "" {
+		zb0001Len--
+		zb0001Mask |= 0x20
+	}
+	if z.Mhz == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x40
+	}
+	if z.CacheSize == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x80
+	}
+	if z.Flags == nil {
+		zb0001Len--
+		zb0001Mask |= 0x100
+	}
+	if z.Microcode == "" {
+		zb0001Len--
+		zb0001Mask |= 0x200
+	}
+	if z.Cores == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x400
+	}
+	if z.MultithreadCapable == nil {
+		zb0001Len--
+		zb0001Mask |= 0x800
+	}
+	if z.MultithreadEnabled == nil {
+		zb0001Len--
+		zb0001Mask |= 0x1000
+	}
+	// variable map header, size zb0001Len
+	o = append(o, 0x80|uint8(zb0001Len))
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// string "vendor_id"
+			o = append(o, 0xa9, 0x76, 0x65, 0x6e, 0x64, 0x6f, 0x72, 0x5f, 0x69, 0x64)
+			o = msgp.AppendString(o, z.VendorID)
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// string "family"
+			o = append(o, 0xa6, 0x66, 0x61, 0x6d, 0x69, 0x6c, 0x79)
+			o = msgp.AppendString(o, z.Family)
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// string "model"
+			o = append(o, 0xa5, 0x6d, 0x6f, 0x64, 0x65, 0x6c)
+			o = msgp.AppendString(o, z.Model)
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// string "stepping"
+			o = append(o, 0xa8, 0x73, 0x74, 0x65, 0x70, 0x70, 0x69, 0x6e, 0x67)
+			o = msgp.AppendInt32(o, z.Stepping)
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// string "physical_id"
+			o = append(o, 0xab, 0x70, 0x68, 0x79, 0x73, 0x69, 0x63, 0x61, 0x6c, 0x5f, 0x69, 0x64)
+			o = msgp.AppendString(o, z.PhysicalID)
+		}
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// string "model_name"
+			o = append(o, 0xaa, 0x6d, 0x6f, 0x64, 0x65, 0x6c, 0x5f, 0x6e, 0x61, 0x6d, 0x65)
+			o = msgp.AppendString(o, z.ModelName)
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
+			// string "mhz"
+			o = append(o, 0xa3, 0x6d, 0x68, 0x7a)
+			o = msgp.AppendFloat64(o, z.Mhz)
+		}
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
+			// string "cache_size"
+			o = append(o, 0xaa, 0x63, 0x61, 0x63, 0x68, 0x65, 0x5f, 0x73, 0x69, 0x7a, 0x65)
+			o = msgp.AppendInt32(o, z.CacheSize)
+		}
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
+			// string "flags"
+			o = append(o, 0xa5, 0x66, 0x6c, 0x61, 0x67, 0x73)
+			o = msgp.AppendArrayHeader(o, uint32(len(z.Flags)))
+			for za0001 := range z.Flags {
+				o = msgp.AppendString(o, z.Flags[za0001])
+			}
+		}
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
+			// string "microcode"
+			o = append(o, 0xa9, 0x6d, 0x69, 0x63, 0x72, 0x6f, 0x63, 0x6f, 0x64, 0x65)
+			o = msgp.AppendString(o, z.Microcode)
+		}
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
+			// string "cores"
+			o = append(o, 0xa5, 0x63, 0x6f, 0x72, 0x65, 0x73)
+			o = msgp.AppendInt(o, z.Cores)
+		}
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
+			// string "multithread_capable"
+			o = append(o, 0xb3, 0x6d, 0x75, 0x6c, 0x74, 0x69, 0x74, 0x68, 0x72, 0x65, 0x61, 0x64, 0x5f, 0x63, 0x61, 0x70, 0x61, 0x62, 0x6c, 0x65)
+			if z.MultithreadCapable == nil {
+				o = msgp.AppendNil(o)
+			} else {
+				o = msgp.AppendBool(o, *z.MultithreadCapable)
+			}
+		}
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
+			// string "multithread_enabled"
+			o = append(o, 0xb3, 0x6d, 0x75, 0x6c, 0x74, 0x69, 0x74, 0x68, 0x72, 0x65, 0x61, 0x64, 0x5f, 0x65, 0x6e, 0x61, 0x62, 0x6c, 0x65, 0x64)
+			if z.MultithreadEnabled == nil {
+				o = msgp.AppendNil(o)
+			} else {
+				o = msgp.AppendBool(o, *z.MultithreadEnabled)
+			}
+		}
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *CPU) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint16 /* 13 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "vendor_id":
+			z.VendorID, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "VendorID")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "family":
+			z.Family, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Family")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "model":
+			z.Model, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Model")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "stepping":
+			z.Stepping, bts, err = msgp.ReadInt32Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Stepping")
+				return
+			}
+			zb0001Mask |= 0x8
+		case "physical_id":
+			z.PhysicalID, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "PhysicalID")
+				return
+			}
+			zb0001Mask |= 0x10
+		case "model_name":
+			z.ModelName, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ModelName")
+				return
+			}
+			zb0001Mask |= 0x20
+		case "mhz":
+			z.Mhz, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Mhz")
+				return
+			}
+			zb0001Mask |= 0x40
+		case "cache_size":
+			z.CacheSize, bts, err = msgp.ReadInt32Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "CacheSize")
+				return
+			}
+			zb0001Mask |= 0x80
+		case "flags":
+			var zb0002 uint32
+			zb0002, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Flags")
+				return
+			}
+			if cap(z.Flags) >= int(zb0002) {
+				z.Flags = (z.Flags)[:zb0002]
+			} else {
+				z.Flags = make([]string, zb0002)
+			}
+			for za0001 := range z.Flags {
+				z.Flags[za0001], bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Flags", za0001)
+					return
+				}
+			}
+			zb0001Mask |= 0x100
+		case "microcode":
+			z.Microcode, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Microcode")
+				return
+			}
+			zb0001Mask |= 0x200
+		case "cores":
+			z.Cores, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Cores")
+				return
+			}
+			zb0001Mask |= 0x400
+		case "multithread_capable":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.MultithreadCapable = nil
+			} else {
+				if z.MultithreadCapable == nil {
+					z.MultithreadCapable = new(bool)
+				}
+				*z.MultithreadCapable, bts, err = msgp.ReadBoolBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "MultithreadCapable")
+					return
+				}
+			}
+			zb0001Mask |= 0x800
+		case "multithread_enabled":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.MultithreadEnabled = nil
+			} else {
+				if z.MultithreadEnabled == nil {
+					z.MultithreadEnabled = new(bool)
+				}
+				*z.MultithreadEnabled, bts, err = msgp.ReadBoolBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "MultithreadEnabled")
+					return
+				}
+			}
+			zb0001Mask |= 0x1000
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x1fff {
+		if (zb0001Mask & 0x1) == 0 {
+			z.VendorID = ""
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.Family = ""
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.Model = ""
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.Stepping = 0
+		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.PhysicalID = ""
+		}
+		if (zb0001Mask & 0x20) == 0 {
+			z.ModelName = ""
+		}
+		if (zb0001Mask & 0x40) == 0 {
+			z.Mhz = 0
+		}
+		if (zb0001Mask & 0x80) == 0 {
+			z.CacheSize = 0
+		}
+		if (zb0001Mask & 0x100) == 0 {
+			z.Flags = nil
+		}
+		if (zb0001Mask & 0x200) == 0 {
+			z.Microcode = ""
+		}
+		if (zb0001Mask & 0x400) == 0 {
+			z.Cores = 0
+		}
+		if (zb0001Mask & 0x800) == 0 {
+			z.MultithreadCapable = nil
+		}
+		if (zb0001Mask & 0x1000) == 0 {
+			z.MultithreadEnabled = nil
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *CPU) Msgsize() (s int) {
+	s = 1 + 10 + msgp.StringPrefixSize + len(z.VendorID) + 7 + msgp.StringPrefixSize + len(z.Family) + 6 + msgp.StringPrefixSize + len(z.Model) + 9 + msgp.Int32Size + 12 + msgp.StringPrefixSize + len(z.PhysicalID) + 11 + msgp.StringPrefixSize + len(z.ModelName) + 4 + msgp.Float64Size + 11 + msgp.Int32Size + 6 + msgp.ArrayHeaderSize
+	for za0001 := range z.Flags {
+		s += msgp.StringPrefixSize + len(z.Flags[za0001])
+	}
+	s += 10 + msgp.StringPrefixSize + len(z.Microcode) + 6 + msgp.IntSize + 20
+	if z.MultithreadCapable == nil {
+		s += msgp.NilSize
+	} else {
+		s += msgp.BoolSize
+	}
+	s += 20
+	if z.MultithreadEnabled == nil {
+		s += msgp.NilSize
+	} else {
+		s += msgp.BoolSize
+	}
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *CacheStats) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field

@@ -666,3 +666,20 @@ type HostInfoStat struct {
 	VirtualizationRole   string `json:"virtualizationRole,omitempty"` // guest or host
 	HostID               string `json:"hostId,omitempty"`             // ex: uuid
 }
+
+// CPU contains system's CPU information.
+type CPU struct {
+	VendorID           string   `json:"vendor_id,omitempty"`
+	Family             string   `json:"family,omitempty"`
+	Model              string   `json:"model,omitempty"`
+	Stepping           int32    `json:"stepping,omitempty"`
+	PhysicalID         string   `json:"physical_id,omitempty"`
+	ModelName          string   `json:"model_name,omitempty"`
+	Mhz                float64  `json:"mhz,omitempty"`
+	CacheSize          int32    `json:"cache_size,omitempty"`
+	Flags              []string `json:"flags,omitempty"`
+	Microcode          string   `json:"microcode,omitempty"`
+	Cores              int      `json:"cores,omitempty"`               // computed
+	MultithreadCapable *bool    `json:"multithread_capable,omitempty"` // CPU supports SMT (Intel HT/AMD SMT)
+	MultithreadEnabled *bool    `json:"multithread_enabled,omitempty"` // SMT currently active in OS
+}
