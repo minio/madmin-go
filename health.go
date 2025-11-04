@@ -1310,7 +1310,6 @@ type ServerInfo struct {
 	GoMaxProcs     int               `json:"go_max_procs"`
 	NumCPU         int               `json:"num_cpu"`
 	RuntimeVersion string            `json:"runtime_version"`
-	GCStats        *GCStats          `json:"gc_stats,omitempty"`
 	MinioEnvVars   map[string]string `json:"minio_env_vars,omitempty"`
 	Edition        string            `json:"edition"`
 	License        *LicenseInfo      `json:"license,omitempty"`
