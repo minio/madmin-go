@@ -23,6 +23,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 
@@ -32,9 +33,9 @@ import (
 var client *madmin.AdminClient
 
 func main() {
-	verifyTLS := true
+	verifyTLS := false
 	var err error
-	client, err = madmin.New("your-minio.example.com:9000", "YOUR-ACCESSKEYID", "YOUR-SECRETACCESSKEY", verifyTLS)
+	client, err = madmin.New("127.0.0.1:9001", "minio", "minio123", verifyTLS)
 	if err != nil {
 		log.Fatalln(err)
 	}
@@ -44,6 +45,7 @@ func main() {
 	getSinglePool()
 	getErasureSetsForSinglePool()
 	getDrivesForSinglePool()
+	getNode()
 }
 
 func getClusterSummary() {
@@ -118,4 +120,19 @@ func getDrivesForSinglePool() {
 	for _, v := range resp.Results {
 		fmt.Printf("%+v\n", v)
 	}
+}
+
+func getNode() {
+	resp, xerr := client.NodesQuery(context.Background(), &madmin.NodesResourceOpts{
+		Offset:       0,
+		Limit:        1,
+		Filter:       "",
+		Sort:         "",
+		SortReversed: false,
+	})
+	if xerr != nil {
+		log.Fatalln(xerr)
+	}
+	b, _ := json.MarshalIndent(resp, "", "  ")
+	fmt.Println(string(b))
 }

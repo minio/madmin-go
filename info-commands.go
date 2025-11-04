@@ -470,6 +470,12 @@ type ServerProperties struct {
 	IsLeader            bool              `json:"is_leader"`
 	ILMExpiryInProgress bool              `json:"ilm_expiry_in_progress"`
 	Host                *HostInfoStat     `json:"host,omitempty"`
+	PID                 int32             `json:"pid,omitempty"`
+	CmdLine             string            `json:"cmd_line,omitempty"`
+	Username            string            `json:"username,omitempty"`
+	IsBackground        bool              `json:"is_background,omitempty"`
+	FirstCPU            *CPU              `json:"first_cpu,omitempty"`
+	CPUCount            int               `json:"cpu_count,omitempty"`
 
 	APIVersion      APIVersion `json:"api_version"`
 	RestartingSince time.Time  `json:"restarting_since,omitempty"`
@@ -659,4 +665,21 @@ type HostInfoStat struct {
 	VirtualizationSystem string `json:"virtualizationSystem,omitempty"`
 	VirtualizationRole   string `json:"virtualizationRole,omitempty"` // guest or host
 	HostID               string `json:"hostId,omitempty"`             // ex: uuid
+}
+
+// CPU contains system's CPU information.
+type CPU struct {
+	VendorID           string   `json:"vendor_id,omitempty"`
+	Family             string   `json:"family,omitempty"`
+	Model              string   `json:"model,omitempty"`
+	Stepping           int32    `json:"stepping,omitempty"`
+	PhysicalID         string   `json:"physical_id,omitempty"`
+	ModelName          string   `json:"model_name,omitempty"`
+	Mhz                float64  `json:"mhz,omitempty"`
+	CacheSize          int32    `json:"cache_size,omitempty"`
+	Flags              []string `json:"flags,omitempty"`
+	Microcode          string   `json:"microcode,omitempty"`
+	Cores              int      `json:"cores,omitempty"`               // computed
+	MultithreadCapable *bool    `json:"multithread_capable,omitempty"` // CPU supports SMT (Intel HT/AMD SMT)
+	MultithreadEnabled *bool    `json:"multithread_enabled,omitempty"` // SMT currently active in OS
 }

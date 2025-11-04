@@ -135,25 +135,6 @@ type SysService struct {
 	Status string `json:"status"`
 }
 
-// CPU contains system's CPU information.
-//
-//msgp:ignore CPU
-type CPU struct {
-	VendorID           string   `json:"vendor_id"`
-	Family             string   `json:"family"`
-	Model              string   `json:"model"`
-	Stepping           int32    `json:"stepping"`
-	PhysicalID         string   `json:"physical_id"`
-	ModelName          string   `json:"model_name"`
-	Mhz                float64  `json:"mhz"`
-	CacheSize          int32    `json:"cache_size"`
-	Flags              []string `json:"flags"`
-	Microcode          string   `json:"microcode"`
-	Cores              int      `json:"cores"`                         // computed
-	MultithreadCapable *bool    `json:"multithread_capable,omitempty"` // CPU supports SMT (Intel HT/AMD SMT)
-	MultithreadEnabled *bool    `json:"multithread_enabled,omitempty"` // SMT currently active in OS
-}
-
 // CPUs contains all CPU information of a node.
 type CPUs struct {
 	NodeCommon
