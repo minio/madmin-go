@@ -26,6 +26,8 @@ import (
 	"net/url"
 	"strconv"
 	"time"
+
+	"github.com/shirou/gopsutil/v4/host"
 )
 
 //msgp:tag json
@@ -461,13 +463,13 @@ type ServerProperties struct {
 	GoMaxProcs          int               `json:"go_max_procs,omitempty"`
 	NumCPU              int               `json:"num_cpu,omitempty"`
 	RuntimeVersion      string            `json:"runtime_version,omitempty"`
-	GCStats             *GCStats          `json:"gc_stats,omitempty"`
 	MinioEnvVars        map[string]string `json:"minio_env_vars,omitempty"`
 	MinioEnvHash        string            `json:"minio_env_hash,omitempty"`
 	Edition             string            `json:"edition"`
 	License             *LicenseInfo      `json:"license,omitempty"`
 	IsLeader            bool              `json:"is_leader"`
 	ILMExpiryInProgress bool              `json:"ilm_expiry_in_progress"`
+	Host                *HostInfoStat     `json:"host,omitempty"`
 
 	APIVersion      APIVersion `json:"api_version"`
 	RestartingSince time.Time  `json:"restarting_since,omitempty"`
@@ -627,4 +629,34 @@ func (adm *AdminClient) ServerInfo(ctx context.Context, options ...func(*ServerI
 	}
 
 	return message, nil
+}
+
+// NewHostInfoStat creates a new HostInfoStat from a host.InfoStat.
+// If nil is passed, it will create a new host.InfoStat for current host.
+func NewHostInfoStat(src *host.InfoStat) *HostInfoStat {
+	if src == nil {
+		var err error
+		if src, err = host.InfoWithContext(context.Background()); err != nil {
+			return nil
+		}
+	}
+	dst := HostInfoStat(*src)
+	return &dst
+}
+
+// A HostInfoStat describes the host status.
+type HostInfoStat struct {
+	Hostname             string `json:"hostname,omitempty"`
+	Uptime               uint64 `json:"uptime,omitempty"`
+	BootTime             uint64 `json:"bootTime,omitempty"`
+	Procs                uint64 `json:"procs,omitempty"`           // number of processes
+	OS                   string `json:"os,omitempty"`              // ex: freebsd, linux
+	Platform             string `json:"platform,omitempty"`        // ex: ubuntu, linuxmint
+	PlatformFamily       string `json:"platformFamily,omitempty"`  // ex: debian, rhel
+	PlatformVersion      string `json:"platformVersion,omitempty"` // version of the complete OS
+	KernelVersion        string `json:"kernelVersion,omitempty"`   // version of the OS kernel (if available)
+	KernelArch           string `json:"kernelArch,omitempty"`      // native cpu architecture queried at runtime, as returned by `uname -m` or empty string in case of error
+	VirtualizationSystem string `json:"virtualizationSystem,omitempty"`
+	VirtualizationRole   string `json:"virtualizationRole,omitempty"` // guest or host
+	HostID               string `json:"hostId,omitempty"`             // ex: uuid
 }

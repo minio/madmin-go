@@ -7009,6 +7009,700 @@ func (z *GCStats) Msgsize() (s int) {
 }
 
 // DecodeMsg implements msgp.Decodable
+func (z *HostInfoStat) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint16 /* 13 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "hostname":
+			z.Hostname, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "Hostname")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "uptime":
+			z.Uptime, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "Uptime")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "bootTime":
+			z.BootTime, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "BootTime")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "procs":
+			z.Procs, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "Procs")
+				return
+			}
+			zb0001Mask |= 0x8
+		case "os":
+			z.OS, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "OS")
+				return
+			}
+			zb0001Mask |= 0x10
+		case "platform":
+			z.Platform, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "Platform")
+				return
+			}
+			zb0001Mask |= 0x20
+		case "platformFamily":
+			z.PlatformFamily, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "PlatformFamily")
+				return
+			}
+			zb0001Mask |= 0x40
+		case "platformVersion":
+			z.PlatformVersion, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "PlatformVersion")
+				return
+			}
+			zb0001Mask |= 0x80
+		case "kernelVersion":
+			z.KernelVersion, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "KernelVersion")
+				return
+			}
+			zb0001Mask |= 0x100
+		case "kernelArch":
+			z.KernelArch, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "KernelArch")
+				return
+			}
+			zb0001Mask |= 0x200
+		case "virtualizationSystem":
+			z.VirtualizationSystem, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "VirtualizationSystem")
+				return
+			}
+			zb0001Mask |= 0x400
+		case "virtualizationRole":
+			z.VirtualizationRole, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "VirtualizationRole")
+				return
+			}
+			zb0001Mask |= 0x800
+		case "hostId":
+			z.HostID, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "HostID")
+				return
+			}
+			zb0001Mask |= 0x1000
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x1fff {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Hostname = ""
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.Uptime = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.BootTime = 0
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.Procs = 0
+		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.OS = ""
+		}
+		if (zb0001Mask & 0x20) == 0 {
+			z.Platform = ""
+		}
+		if (zb0001Mask & 0x40) == 0 {
+			z.PlatformFamily = ""
+		}
+		if (zb0001Mask & 0x80) == 0 {
+			z.PlatformVersion = ""
+		}
+		if (zb0001Mask & 0x100) == 0 {
+			z.KernelVersion = ""
+		}
+		if (zb0001Mask & 0x200) == 0 {
+			z.KernelArch = ""
+		}
+		if (zb0001Mask & 0x400) == 0 {
+			z.VirtualizationSystem = ""
+		}
+		if (zb0001Mask & 0x800) == 0 {
+			z.VirtualizationRole = ""
+		}
+		if (zb0001Mask & 0x1000) == 0 {
+			z.HostID = ""
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *HostInfoStat) EncodeMsg(en *msgp.Writer) (err error) {
+	// check for omitted fields
+	zb0001Len := uint32(13)
+	var zb0001Mask uint16 /* 13 bits */
+	_ = zb0001Mask
+	if z.Hostname == "" {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.Uptime == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.BootTime == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	if z.Procs == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.OS == "" {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	if z.Platform == "" {
+		zb0001Len--
+		zb0001Mask |= 0x20
+	}
+	if z.PlatformFamily == "" {
+		zb0001Len--
+		zb0001Mask |= 0x40
+	}
+	if z.PlatformVersion == "" {
+		zb0001Len--
+		zb0001Mask |= 0x80
+	}
+	if z.KernelVersion == "" {
+		zb0001Len--
+		zb0001Mask |= 0x100
+	}
+	if z.KernelArch == "" {
+		zb0001Len--
+		zb0001Mask |= 0x200
+	}
+	if z.VirtualizationSystem == "" {
+		zb0001Len--
+		zb0001Mask |= 0x400
+	}
+	if z.VirtualizationRole == "" {
+		zb0001Len--
+		zb0001Mask |= 0x800
+	}
+	if z.HostID == "" {
+		zb0001Len--
+		zb0001Mask |= 0x1000
+	}
+	// variable map header, size zb0001Len
+	err = en.Append(0x80 | uint8(zb0001Len))
+	if err != nil {
+		return
+	}
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// write "hostname"
+			err = en.Append(0xa8, 0x68, 0x6f, 0x73, 0x74, 0x6e, 0x61, 0x6d, 0x65)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.Hostname)
+			if err != nil {
+				err = msgp.WrapError(err, "Hostname")
+				return
+			}
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// write "uptime"
+			err = en.Append(0xa6, 0x75, 0x70, 0x74, 0x69, 0x6d, 0x65)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.Uptime)
+			if err != nil {
+				err = msgp.WrapError(err, "Uptime")
+				return
+			}
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// write "bootTime"
+			err = en.Append(0xa8, 0x62, 0x6f, 0x6f, 0x74, 0x54, 0x69, 0x6d, 0x65)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.BootTime)
+			if err != nil {
+				err = msgp.WrapError(err, "BootTime")
+				return
+			}
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// write "procs"
+			err = en.Append(0xa5, 0x70, 0x72, 0x6f, 0x63, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.Procs)
+			if err != nil {
+				err = msgp.WrapError(err, "Procs")
+				return
+			}
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// write "os"
+			err = en.Append(0xa2, 0x6f, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.OS)
+			if err != nil {
+				err = msgp.WrapError(err, "OS")
+				return
+			}
+		}
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// write "platform"
+			err = en.Append(0xa8, 0x70, 0x6c, 0x61, 0x74, 0x66, 0x6f, 0x72, 0x6d)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.Platform)
+			if err != nil {
+				err = msgp.WrapError(err, "Platform")
+				return
+			}
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
+			// write "platformFamily"
+			err = en.Append(0xae, 0x70, 0x6c, 0x61, 0x74, 0x66, 0x6f, 0x72, 0x6d, 0x46, 0x61, 0x6d, 0x69, 0x6c, 0x79)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.PlatformFamily)
+			if err != nil {
+				err = msgp.WrapError(err, "PlatformFamily")
+				return
+			}
+		}
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
+			// write "platformVersion"
+			err = en.Append(0xaf, 0x70, 0x6c, 0x61, 0x74, 0x66, 0x6f, 0x72, 0x6d, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.PlatformVersion)
+			if err != nil {
+				err = msgp.WrapError(err, "PlatformVersion")
+				return
+			}
+		}
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
+			// write "kernelVersion"
+			err = en.Append(0xad, 0x6b, 0x65, 0x72, 0x6e, 0x65, 0x6c, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.KernelVersion)
+			if err != nil {
+				err = msgp.WrapError(err, "KernelVersion")
+				return
+			}
+		}
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
+			// write "kernelArch"
+			err = en.Append(0xaa, 0x6b, 0x65, 0x72, 0x6e, 0x65, 0x6c, 0x41, 0x72, 0x63, 0x68)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.KernelArch)
+			if err != nil {
+				err = msgp.WrapError(err, "KernelArch")
+				return
+			}
+		}
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
+			// write "virtualizationSystem"
+			err = en.Append(0xb4, 0x76, 0x69, 0x72, 0x74, 0x75, 0x61, 0x6c, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x53, 0x79, 0x73, 0x74, 0x65, 0x6d)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.VirtualizationSystem)
+			if err != nil {
+				err = msgp.WrapError(err, "VirtualizationSystem")
+				return
+			}
+		}
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
+			// write "virtualizationRole"
+			err = en.Append(0xb2, 0x76, 0x69, 0x72, 0x74, 0x75, 0x61, 0x6c, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x6f, 0x6c, 0x65)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.VirtualizationRole)
+			if err != nil {
+				err = msgp.WrapError(err, "VirtualizationRole")
+				return
+			}
+		}
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
+			// write "hostId"
+			err = en.Append(0xa6, 0x68, 0x6f, 0x73, 0x74, 0x49, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.HostID)
+			if err != nil {
+				err = msgp.WrapError(err, "HostID")
+				return
+			}
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *HostInfoStat) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// check for omitted fields
+	zb0001Len := uint32(13)
+	var zb0001Mask uint16 /* 13 bits */
+	_ = zb0001Mask
+	if z.Hostname == "" {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.Uptime == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.BootTime == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	if z.Procs == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.OS == "" {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	if z.Platform == "" {
+		zb0001Len--
+		zb0001Mask |= 0x20
+	}
+	if z.PlatformFamily == "" {
+		zb0001Len--
+		zb0001Mask |= 0x40
+	}
+	if z.PlatformVersion == "" {
+		zb0001Len--
+		zb0001Mask |= 0x80
+	}
+	if z.KernelVersion == "" {
+		zb0001Len--
+		zb0001Mask |= 0x100
+	}
+	if z.KernelArch == "" {
+		zb0001Len--
+		zb0001Mask |= 0x200
+	}
+	if z.VirtualizationSystem == "" {
+		zb0001Len--
+		zb0001Mask |= 0x400
+	}
+	if z.VirtualizationRole == "" {
+		zb0001Len--
+		zb0001Mask |= 0x800
+	}
+	if z.HostID == "" {
+		zb0001Len--
+		zb0001Mask |= 0x1000
+	}
+	// variable map header, size zb0001Len
+	o = append(o, 0x80|uint8(zb0001Len))
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// string "hostname"
+			o = append(o, 0xa8, 0x68, 0x6f, 0x73, 0x74, 0x6e, 0x61, 0x6d, 0x65)
+			o = msgp.AppendString(o, z.Hostname)
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// string "uptime"
+			o = append(o, 0xa6, 0x75, 0x70, 0x74, 0x69, 0x6d, 0x65)
+			o = msgp.AppendUint64(o, z.Uptime)
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// string "bootTime"
+			o = append(o, 0xa8, 0x62, 0x6f, 0x6f, 0x74, 0x54, 0x69, 0x6d, 0x65)
+			o = msgp.AppendUint64(o, z.BootTime)
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// string "procs"
+			o = append(o, 0xa5, 0x70, 0x72, 0x6f, 0x63, 0x73)
+			o = msgp.AppendUint64(o, z.Procs)
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// string "os"
+			o = append(o, 0xa2, 0x6f, 0x73)
+			o = msgp.AppendString(o, z.OS)
+		}
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// string "platform"
+			o = append(o, 0xa8, 0x70, 0x6c, 0x61, 0x74, 0x66, 0x6f, 0x72, 0x6d)
+			o = msgp.AppendString(o, z.Platform)
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
+			// string "platformFamily"
+			o = append(o, 0xae, 0x70, 0x6c, 0x61, 0x74, 0x66, 0x6f, 0x72, 0x6d, 0x46, 0x61, 0x6d, 0x69, 0x6c, 0x79)
+			o = msgp.AppendString(o, z.PlatformFamily)
+		}
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
+			// string "platformVersion"
+			o = append(o, 0xaf, 0x70, 0x6c, 0x61, 0x74, 0x66, 0x6f, 0x72, 0x6d, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
+			o = msgp.AppendString(o, z.PlatformVersion)
+		}
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
+			// string "kernelVersion"
+			o = append(o, 0xad, 0x6b, 0x65, 0x72, 0x6e, 0x65, 0x6c, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
+			o = msgp.AppendString(o, z.KernelVersion)
+		}
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
+			// string "kernelArch"
+			o = append(o, 0xaa, 0x6b, 0x65, 0x72, 0x6e, 0x65, 0x6c, 0x41, 0x72, 0x63, 0x68)
+			o = msgp.AppendString(o, z.KernelArch)
+		}
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
+			// string "virtualizationSystem"
+			o = append(o, 0xb4, 0x76, 0x69, 0x72, 0x74, 0x75, 0x61, 0x6c, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x53, 0x79, 0x73, 0x74, 0x65, 0x6d)
+			o = msgp.AppendString(o, z.VirtualizationSystem)
+		}
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
+			// string "virtualizationRole"
+			o = append(o, 0xb2, 0x76, 0x69, 0x72, 0x74, 0x75, 0x61, 0x6c, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x52, 0x6f, 0x6c, 0x65)
+			o = msgp.AppendString(o, z.VirtualizationRole)
+		}
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
+			// string "hostId"
+			o = append(o, 0xa6, 0x68, 0x6f, 0x73, 0x74, 0x49, 0x64)
+			o = msgp.AppendString(o, z.HostID)
+		}
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *HostInfoStat) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint16 /* 13 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "hostname":
+			z.Hostname, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Hostname")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "uptime":
+			z.Uptime, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Uptime")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "bootTime":
+			z.BootTime, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "BootTime")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "procs":
+			z.Procs, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Procs")
+				return
+			}
+			zb0001Mask |= 0x8
+		case "os":
+			z.OS, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "OS")
+				return
+			}
+			zb0001Mask |= 0x10
+		case "platform":
+			z.Platform, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Platform")
+				return
+			}
+			zb0001Mask |= 0x20
+		case "platformFamily":
+			z.PlatformFamily, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "PlatformFamily")
+				return
+			}
+			zb0001Mask |= 0x40
+		case "platformVersion":
+			z.PlatformVersion, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "PlatformVersion")
+				return
+			}
+			zb0001Mask |= 0x80
+		case "kernelVersion":
+			z.KernelVersion, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "KernelVersion")
+				return
+			}
+			zb0001Mask |= 0x100
+		case "kernelArch":
+			z.KernelArch, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "KernelArch")
+				return
+			}
+			zb0001Mask |= 0x200
+		case "virtualizationSystem":
+			z.VirtualizationSystem, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "VirtualizationSystem")
+				return
+			}
+			zb0001Mask |= 0x400
+		case "virtualizationRole":
+			z.VirtualizationRole, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "VirtualizationRole")
+				return
+			}
+			zb0001Mask |= 0x800
+		case "hostId":
+			z.HostID, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "HostID")
+				return
+			}
+			zb0001Mask |= 0x1000
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x1fff {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Hostname = ""
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.Uptime = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.BootTime = 0
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.Procs = 0
+		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.OS = ""
+		}
+		if (zb0001Mask & 0x20) == 0 {
+			z.Platform = ""
+		}
+		if (zb0001Mask & 0x40) == 0 {
+			z.PlatformFamily = ""
+		}
+		if (zb0001Mask & 0x80) == 0 {
+			z.PlatformVersion = ""
+		}
+		if (zb0001Mask & 0x100) == 0 {
+			z.KernelVersion = ""
+		}
+		if (zb0001Mask & 0x200) == 0 {
+			z.KernelArch = ""
+		}
+		if (zb0001Mask & 0x400) == 0 {
+			z.VirtualizationSystem = ""
+		}
+		if (zb0001Mask & 0x800) == 0 {
+			z.VirtualizationRole = ""
+		}
+		if (zb0001Mask & 0x1000) == 0 {
+			z.HostID = ""
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *HostInfoStat) Msgsize() (s int) {
+	s = 1 + 9 + msgp.StringPrefixSize + len(z.Hostname) + 7 + msgp.Uint64Size + 9 + msgp.Uint64Size + 6 + msgp.Uint64Size + 3 + msgp.StringPrefixSize + len(z.OS) + 9 + msgp.StringPrefixSize + len(z.Platform) + 15 + msgp.StringPrefixSize + len(z.PlatformFamily) + 16 + msgp.StringPrefixSize + len(z.PlatformVersion) + 14 + msgp.StringPrefixSize + len(z.KernelVersion) + 11 + msgp.StringPrefixSize + len(z.KernelArch) + 21 + msgp.StringPrefixSize + len(z.VirtualizationSystem) + 19 + msgp.StringPrefixSize + len(z.VirtualizationRole) + 7 + msgp.StringPrefixSize + len(z.HostID)
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *InfoMessage) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
@@ -9912,25 +10606,6 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 			zb0001Mask |= 0x1000
-		case "gc_stats":
-			if dc.IsNil() {
-				err = dc.ReadNil()
-				if err != nil {
-					err = msgp.WrapError(err, "GCStats")
-					return
-				}
-				z.GCStats = nil
-			} else {
-				if z.GCStats == nil {
-					z.GCStats = new(GCStats)
-				}
-				err = z.GCStats.DecodeMsg(dc)
-				if err != nil {
-					err = msgp.WrapError(err, "GCStats")
-					return
-				}
-			}
-			zb0001Mask |= 0x2000
 		case "minio_env_vars":
 			var zb0005 uint32
 			zb0005, err = dc.ReadMapHeader()
@@ -9959,14 +10634,14 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.MinioEnvVars[za0005] = za0006
 			}
-			zb0001Mask |= 0x4000
+			zb0001Mask |= 0x2000
 		case "minio_env_hash":
 			z.MinioEnvHash, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "MinioEnvHash")
 				return
 			}
-			zb0001Mask |= 0x8000
+			zb0001Mask |= 0x4000
 		case "edition":
 			z.Edition, err = dc.ReadString()
 			if err != nil {
@@ -9991,7 +10666,7 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x10000
+			zb0001Mask |= 0x8000
 		case "is_leader":
 			z.IsLeader, err = dc.ReadBool()
 			if err != nil {
@@ -10004,6 +10679,25 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "ILMExpiryInProgress")
 				return
 			}
+		case "host":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "Host")
+					return
+				}
+				z.Host = nil
+			} else {
+				if z.Host == nil {
+					z.Host = new(HostInfoStat)
+				}
+				err = z.Host.DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "Host")
+					return
+				}
+			}
+			zb0001Mask |= 0x10000
 		case "api_version":
 			err = z.APIVersion.DecodeMsg(dc)
 			if err != nil {
@@ -10067,16 +10761,16 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 			z.RuntimeVersion = ""
 		}
 		if (zb0001Mask & 0x2000) == 0 {
-			z.GCStats = nil
-		}
-		if (zb0001Mask & 0x4000) == 0 {
 			z.MinioEnvVars = nil
 		}
-		if (zb0001Mask & 0x8000) == 0 {
+		if (zb0001Mask & 0x4000) == 0 {
 			z.MinioEnvHash = ""
 		}
-		if (zb0001Mask & 0x10000) == 0 {
+		if (zb0001Mask & 0x8000) == 0 {
 			z.License = nil
+		}
+		if (zb0001Mask & 0x10000) == 0 {
+			z.Host = nil
 		}
 		if (zb0001Mask & 0x20000) == 0 {
 			z.RestartingSince = (time.Time{})
@@ -10143,21 +10837,21 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 		zb0001Len--
 		zb0001Mask |= 0x2000
 	}
-	if z.GCStats == nil {
+	if z.MinioEnvVars == nil {
 		zb0001Len--
 		zb0001Mask |= 0x4000
 	}
-	if z.MinioEnvVars == nil {
+	if z.MinioEnvHash == "" {
 		zb0001Len--
 		zb0001Mask |= 0x8000
 	}
-	if z.MinioEnvHash == "" {
-		zb0001Len--
-		zb0001Mask |= 0x10000
-	}
 	if z.License == nil {
 		zb0001Len--
-		zb0001Mask |= 0x40000
+		zb0001Mask |= 0x20000
+	}
+	if z.Host == nil {
+		zb0001Len--
+		zb0001Mask |= 0x100000
 	}
 	if z.RestartingSince == (time.Time{}) {
 		zb0001Len--
@@ -10364,25 +11058,6 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 			}
 		}
 		if (zb0001Mask & 0x4000) == 0 { // if not omitted
-			// write "gc_stats"
-			err = en.Append(0xa8, 0x67, 0x63, 0x5f, 0x73, 0x74, 0x61, 0x74, 0x73)
-			if err != nil {
-				return
-			}
-			if z.GCStats == nil {
-				err = en.WriteNil()
-				if err != nil {
-					return
-				}
-			} else {
-				err = z.GCStats.EncodeMsg(en)
-				if err != nil {
-					err = msgp.WrapError(err, "GCStats")
-					return
-				}
-			}
-		}
-		if (zb0001Mask & 0x8000) == 0 { // if not omitted
 			// write "minio_env_vars"
 			err = en.Append(0xae, 0x6d, 0x69, 0x6e, 0x69, 0x6f, 0x5f, 0x65, 0x6e, 0x76, 0x5f, 0x76, 0x61, 0x72, 0x73)
 			if err != nil {
@@ -10406,7 +11081,7 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x10000) == 0 { // if not omitted
+		if (zb0001Mask & 0x8000) == 0 { // if not omitted
 			// write "minio_env_hash"
 			err = en.Append(0xae, 0x6d, 0x69, 0x6e, 0x69, 0x6f, 0x5f, 0x65, 0x6e, 0x76, 0x5f, 0x68, 0x61, 0x73, 0x68)
 			if err != nil {
@@ -10428,7 +11103,7 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "Edition")
 			return
 		}
-		if (zb0001Mask & 0x40000) == 0 { // if not omitted
+		if (zb0001Mask & 0x20000) == 0 { // if not omitted
 			// write "license"
 			err = en.Append(0xa7, 0x6c, 0x69, 0x63, 0x65, 0x6e, 0x73, 0x65)
 			if err != nil {
@@ -10466,6 +11141,25 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 		if err != nil {
 			err = msgp.WrapError(err, "ILMExpiryInProgress")
 			return
+		}
+		if (zb0001Mask & 0x100000) == 0 { // if not omitted
+			// write "host"
+			err = en.Append(0xa4, 0x68, 0x6f, 0x73, 0x74)
+			if err != nil {
+				return
+			}
+			if z.Host == nil {
+				err = en.WriteNil()
+				if err != nil {
+					return
+				}
+			} else {
+				err = z.Host.EncodeMsg(en)
+				if err != nil {
+					err = msgp.WrapError(err, "Host")
+					return
+				}
+			}
 		}
 		// write "api_version"
 		err = en.Append(0xab, 0x61, 0x70, 0x69, 0x5f, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
@@ -10552,21 +11246,21 @@ func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x2000
 	}
-	if z.GCStats == nil {
+	if z.MinioEnvVars == nil {
 		zb0001Len--
 		zb0001Mask |= 0x4000
 	}
-	if z.MinioEnvVars == nil {
+	if z.MinioEnvHash == "" {
 		zb0001Len--
 		zb0001Mask |= 0x8000
 	}
-	if z.MinioEnvHash == "" {
-		zb0001Len--
-		zb0001Mask |= 0x10000
-	}
 	if z.License == nil {
 		zb0001Len--
-		zb0001Mask |= 0x40000
+		zb0001Mask |= 0x20000
+	}
+	if z.Host == nil {
+		zb0001Len--
+		zb0001Mask |= 0x100000
 	}
 	if z.RestartingSince == (time.Time{}) {
 		zb0001Len--
@@ -10664,19 +11358,6 @@ func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 			o = msgp.AppendString(o, z.RuntimeVersion)
 		}
 		if (zb0001Mask & 0x4000) == 0 { // if not omitted
-			// string "gc_stats"
-			o = append(o, 0xa8, 0x67, 0x63, 0x5f, 0x73, 0x74, 0x61, 0x74, 0x73)
-			if z.GCStats == nil {
-				o = msgp.AppendNil(o)
-			} else {
-				o, err = z.GCStats.MarshalMsg(o)
-				if err != nil {
-					err = msgp.WrapError(err, "GCStats")
-					return
-				}
-			}
-		}
-		if (zb0001Mask & 0x8000) == 0 { // if not omitted
 			// string "minio_env_vars"
 			o = append(o, 0xae, 0x6d, 0x69, 0x6e, 0x69, 0x6f, 0x5f, 0x65, 0x6e, 0x76, 0x5f, 0x76, 0x61, 0x72, 0x73)
 			o = msgp.AppendMapHeader(o, uint32(len(z.MinioEnvVars)))
@@ -10685,7 +11366,7 @@ func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 				o = msgp.AppendString(o, za0006)
 			}
 		}
-		if (zb0001Mask & 0x10000) == 0 { // if not omitted
+		if (zb0001Mask & 0x8000) == 0 { // if not omitted
 			// string "minio_env_hash"
 			o = append(o, 0xae, 0x6d, 0x69, 0x6e, 0x69, 0x6f, 0x5f, 0x65, 0x6e, 0x76, 0x5f, 0x68, 0x61, 0x73, 0x68)
 			o = msgp.AppendString(o, z.MinioEnvHash)
@@ -10693,7 +11374,7 @@ func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "edition"
 		o = append(o, 0xa7, 0x65, 0x64, 0x69, 0x74, 0x69, 0x6f, 0x6e)
 		o = msgp.AppendString(o, z.Edition)
-		if (zb0001Mask & 0x40000) == 0 { // if not omitted
+		if (zb0001Mask & 0x20000) == 0 { // if not omitted
 			// string "license"
 			o = append(o, 0xa7, 0x6c, 0x69, 0x63, 0x65, 0x6e, 0x73, 0x65)
 			if z.License == nil {
@@ -10712,6 +11393,19 @@ func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "ilm_expiry_in_progress"
 		o = append(o, 0xb6, 0x69, 0x6c, 0x6d, 0x5f, 0x65, 0x78, 0x70, 0x69, 0x72, 0x79, 0x5f, 0x69, 0x6e, 0x5f, 0x70, 0x72, 0x6f, 0x67, 0x72, 0x65, 0x73, 0x73)
 		o = msgp.AppendBool(o, z.ILMExpiryInProgress)
+		if (zb0001Mask & 0x100000) == 0 { // if not omitted
+			// string "host"
+			o = append(o, 0xa4, 0x68, 0x6f, 0x73, 0x74)
+			if z.Host == nil {
+				o = msgp.AppendNil(o)
+			} else {
+				o, err = z.Host.MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "Host")
+					return
+				}
+			}
+		}
 		// string "api_version"
 		o = append(o, 0xab, 0x61, 0x70, 0x69, 0x5f, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e)
 		o, err = z.APIVersion.MarshalMsg(o)
@@ -10893,24 +11587,6 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 			zb0001Mask |= 0x1000
-		case "gc_stats":
-			if msgp.IsNil(bts) {
-				bts, err = msgp.ReadNilBytes(bts)
-				if err != nil {
-					return
-				}
-				z.GCStats = nil
-			} else {
-				if z.GCStats == nil {
-					z.GCStats = new(GCStats)
-				}
-				bts, err = z.GCStats.UnmarshalMsg(bts)
-				if err != nil {
-					err = msgp.WrapError(err, "GCStats")
-					return
-				}
-			}
-			zb0001Mask |= 0x2000
 		case "minio_env_vars":
 			var zb0005 uint32
 			zb0005, bts, err = msgp.ReadMapHeaderBytes(bts)
@@ -10939,14 +11615,14 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.MinioEnvVars[za0005] = za0006
 			}
-			zb0001Mask |= 0x4000
+			zb0001Mask |= 0x2000
 		case "minio_env_hash":
 			z.MinioEnvHash, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "MinioEnvHash")
 				return
 			}
-			zb0001Mask |= 0x8000
+			zb0001Mask |= 0x4000
 		case "edition":
 			z.Edition, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
@@ -10970,7 +11646,7 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x10000
+			zb0001Mask |= 0x8000
 		case "is_leader":
 			z.IsLeader, bts, err = msgp.ReadBoolBytes(bts)
 			if err != nil {
@@ -10983,6 +11659,24 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "ILMExpiryInProgress")
 				return
 			}
+		case "host":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.Host = nil
+			} else {
+				if z.Host == nil {
+					z.Host = new(HostInfoStat)
+				}
+				bts, err = z.Host.UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Host")
+					return
+				}
+			}
+			zb0001Mask |= 0x10000
 		case "api_version":
 			bts, err = z.APIVersion.UnmarshalMsg(bts)
 			if err != nil {
@@ -11046,16 +11740,16 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.RuntimeVersion = ""
 		}
 		if (zb0001Mask & 0x2000) == 0 {
-			z.GCStats = nil
-		}
-		if (zb0001Mask & 0x4000) == 0 {
 			z.MinioEnvVars = nil
 		}
-		if (zb0001Mask & 0x8000) == 0 {
+		if (zb0001Mask & 0x4000) == 0 {
 			z.MinioEnvHash = ""
 		}
-		if (zb0001Mask & 0x10000) == 0 {
+		if (zb0001Mask & 0x8000) == 0 {
 			z.License = nil
+		}
+		if (zb0001Mask & 0x10000) == 0 {
+			z.Host = nil
 		}
 		if (zb0001Mask & 0x20000) == 0 {
 			z.RestartingSince = (time.Time{})
@@ -11078,13 +11772,7 @@ func (z *ServerProperties) Msgsize() (s int) {
 	for za0003 := range z.Disks {
 		s += z.Disks[za0003].Msgsize()
 	}
-	s += 11 + msgp.IntSize + 12 + msgp.ArrayHeaderSize + (len(z.PoolNumbers) * (msgp.IntSize)) + 10 + z.MemStats.Msgsize() + 13 + msgp.IntSize + 8 + msgp.IntSize + 16 + msgp.StringPrefixSize + len(z.RuntimeVersion) + 9
-	if z.GCStats == nil {
-		s += msgp.NilSize
-	} else {
-		s += z.GCStats.Msgsize()
-	}
-	s += 15 + msgp.MapHeaderSize
+	s += 11 + msgp.IntSize + 12 + msgp.ArrayHeaderSize + (len(z.PoolNumbers) * (msgp.IntSize)) + 10 + z.MemStats.Msgsize() + 13 + msgp.IntSize + 8 + msgp.IntSize + 16 + msgp.StringPrefixSize + len(z.RuntimeVersion) + 15 + msgp.MapHeaderSize
 	if z.MinioEnvVars != nil {
 		for za0005, za0006 := range z.MinioEnvVars {
 			_ = za0006
@@ -11097,7 +11785,13 @@ func (z *ServerProperties) Msgsize() (s int) {
 	} else {
 		s += z.License.Msgsize()
 	}
-	s += 10 + msgp.BoolSize + 23 + msgp.BoolSize + 12 + z.APIVersion.Msgsize() + 17 + msgp.TimeSize
+	s += 10 + msgp.BoolSize + 23 + msgp.BoolSize + 5
+	if z.Host == nil {
+		s += msgp.NilSize
+	} else {
+		s += z.Host.Msgsize()
+	}
+	s += 12 + z.APIVersion.Msgsize() + 17 + msgp.TimeSize
 	return
 }
 
