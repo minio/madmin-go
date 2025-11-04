@@ -205,7 +205,7 @@ type NodeResource struct {
 	CmdLine      string        `json:"cmdLine,omitempty" msg:"cl,omitempty"`
 	Username     string        `json:"username,omitempty" msg:"un,omitempty"`
 	IsBackground bool          `json:"isBackground,omitempty"`
-	FirstCPU     *CPU          `json:"firstCpu,omitempty msg:cpu,omitempty"`
+	FirstCPU     *CPU          `json:"firstCpu,omitempty" msg:"cpu,omitempty"`
 	CPUCount     int           `json:"cpuCount,omitempty" msg:"cc,omitempty"`
 	PoolIndex    int           `json:"poolIndex" msg:"pi"`
 	PoolIndexes  []int         `json:"poolIndexes,omitempty" msg:"pis,omitempty"`

@@ -4293,7 +4293,7 @@ func (z *NodeResource) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 7 bits */
+	var zb0001Mask uint8 /* 8 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -4372,7 +4372,7 @@ func (z *NodeResource) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "IsBackground")
 				return
 			}
-		case "FirstCPU":
+		case "cpu":
 			if dc.IsNil() {
 				err = dc.ReadNil()
 				if err != nil {
@@ -4390,13 +4390,14 @@ func (z *NodeResource) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
+			zb0001Mask |= 0x8
 		case "cc":
 			z.CPUCount, err = dc.ReadInt()
 			if err != nil {
 				err = msgp.WrapError(err, "CPUCount")
 				return
 			}
-			zb0001Mask |= 0x8
+			zb0001Mask |= 0x10
 		case "pi":
 			z.PoolIndex, err = dc.ReadInt()
 			if err != nil {
@@ -4422,7 +4423,7 @@ func (z *NodeResource) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x10
+			zb0001Mask |= 0x20
 		case "hi":
 			if dc.IsNil() {
 				err = dc.ReadNil()
@@ -4441,7 +4442,7 @@ func (z *NodeResource) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x20
+			zb0001Mask |= 0x40
 		case "m":
 			if dc.IsNil() {
 				err = dc.ReadNil()
@@ -4460,7 +4461,7 @@ func (z *NodeResource) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x40
+			zb0001Mask |= 0x80
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -4470,7 +4471,7 @@ func (z *NodeResource) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x7f {
+	if zb0001Mask != 0xff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.PID = 0
 		}
@@ -4481,15 +4482,18 @@ func (z *NodeResource) DecodeMsg(dc *msgp.Reader) (err error) {
 			z.Username = ""
 		}
 		if (zb0001Mask & 0x8) == 0 {
-			z.CPUCount = 0
+			z.FirstCPU = nil
 		}
 		if (zb0001Mask & 0x10) == 0 {
-			z.PoolIndexes = nil
+			z.CPUCount = 0
 		}
 		if (zb0001Mask & 0x20) == 0 {
-			z.HostInfo = nil
+			z.PoolIndexes = nil
 		}
 		if (zb0001Mask & 0x40) == 0 {
+			z.HostInfo = nil
+		}
+		if (zb0001Mask & 0x80) == 0 {
 			z.Metrics = nil
 		}
 	}
@@ -4513,6 +4517,10 @@ func (z *NodeResource) EncodeMsg(en *msgp.Writer) (err error) {
 	if z.Username == "" {
 		zb0001Len--
 		zb0001Mask |= 0x200
+	}
+	if z.FirstCPU == nil {
+		zb0001Len--
+		zb0001Mask |= 0x800
 	}
 	if z.CPUCount == 0 {
 		zb0001Len--
@@ -4654,21 +4662,23 @@ func (z *NodeResource) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "IsBackground")
 			return
 		}
-		// write "FirstCPU"
-		err = en.Append(0xa8, 0x46, 0x69, 0x72, 0x73, 0x74, 0x43, 0x50, 0x55)
-		if err != nil {
-			return
-		}
-		if z.FirstCPU == nil {
-			err = en.WriteNil()
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
+			// write "cpu"
+			err = en.Append(0xa3, 0x63, 0x70, 0x75)
 			if err != nil {
 				return
 			}
-		} else {
-			err = z.FirstCPU.EncodeMsg(en)
-			if err != nil {
-				err = msgp.WrapError(err, "FirstCPU")
-				return
+			if z.FirstCPU == nil {
+				err = en.WriteNil()
+				if err != nil {
+					return
+				}
+			} else {
+				err = z.FirstCPU.EncodeMsg(en)
+				if err != nil {
+					err = msgp.WrapError(err, "FirstCPU")
+					return
+				}
 			}
 		}
 		if (zb0001Mask & 0x1000) == 0 { // if not omitted
@@ -4773,6 +4783,10 @@ func (z *NodeResource) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x200
 	}
+	if z.FirstCPU == nil {
+		zb0001Len--
+		zb0001Mask |= 0x800
+	}
 	if z.CPUCount == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x1000
@@ -4837,15 +4851,17 @@ func (z *NodeResource) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "IsBackground"
 		o = append(o, 0xac, 0x49, 0x73, 0x42, 0x61, 0x63, 0x6b, 0x67, 0x72, 0x6f, 0x75, 0x6e, 0x64)
 		o = msgp.AppendBool(o, z.IsBackground)
-		// string "FirstCPU"
-		o = append(o, 0xa8, 0x46, 0x69, 0x72, 0x73, 0x74, 0x43, 0x50, 0x55)
-		if z.FirstCPU == nil {
-			o = msgp.AppendNil(o)
-		} else {
-			o, err = z.FirstCPU.MarshalMsg(o)
-			if err != nil {
-				err = msgp.WrapError(err, "FirstCPU")
-				return
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
+			// string "cpu"
+			o = append(o, 0xa3, 0x63, 0x70, 0x75)
+			if z.FirstCPU == nil {
+				o = msgp.AppendNil(o)
+			} else {
+				o, err = z.FirstCPU.MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "FirstCPU")
+					return
+				}
 			}
 		}
 		if (zb0001Mask & 0x1000) == 0 { // if not omitted
@@ -4904,7 +4920,7 @@ func (z *NodeResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 7 bits */
+	var zb0001Mask uint8 /* 8 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -4983,7 +4999,7 @@ func (z *NodeResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "IsBackground")
 				return
 			}
-		case "FirstCPU":
+		case "cpu":
 			if msgp.IsNil(bts) {
 				bts, err = msgp.ReadNilBytes(bts)
 				if err != nil {
@@ -5000,13 +5016,14 @@ func (z *NodeResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
+			zb0001Mask |= 0x8
 		case "cc":
 			z.CPUCount, bts, err = msgp.ReadIntBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "CPUCount")
 				return
 			}
-			zb0001Mask |= 0x8
+			zb0001Mask |= 0x10
 		case "pi":
 			z.PoolIndex, bts, err = msgp.ReadIntBytes(bts)
 			if err != nil {
@@ -5032,7 +5049,7 @@ func (z *NodeResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x10
+			zb0001Mask |= 0x20
 		case "hi":
 			if msgp.IsNil(bts) {
 				bts, err = msgp.ReadNilBytes(bts)
@@ -5050,7 +5067,7 @@ func (z *NodeResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x20
+			zb0001Mask |= 0x40
 		case "m":
 			if msgp.IsNil(bts) {
 				bts, err = msgp.ReadNilBytes(bts)
@@ -5068,7 +5085,7 @@ func (z *NodeResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x40
+			zb0001Mask |= 0x80
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -5078,7 +5095,7 @@ func (z *NodeResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x7f {
+	if zb0001Mask != 0xff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.PID = 0
 		}
@@ -5089,15 +5106,18 @@ func (z *NodeResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.Username = ""
 		}
 		if (zb0001Mask & 0x8) == 0 {
-			z.CPUCount = 0
+			z.FirstCPU = nil
 		}
 		if (zb0001Mask & 0x10) == 0 {
-			z.PoolIndexes = nil
+			z.CPUCount = 0
 		}
 		if (zb0001Mask & 0x20) == 0 {
-			z.HostInfo = nil
+			z.PoolIndexes = nil
 		}
 		if (zb0001Mask & 0x40) == 0 {
+			z.HostInfo = nil
+		}
+		if (zb0001Mask & 0x80) == 0 {
 			z.Metrics = nil
 		}
 	}
@@ -5107,7 +5127,7 @@ func (z *NodeResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *NodeResource) Msgsize() (s int) {
-	s = 3 + 2 + msgp.StringPrefixSize + len(z.Host) + 2 + msgp.StringPrefixSize + len(z.Version) + 2 + msgp.StringPrefixSize + len(z.CommitID) + 2 + msgp.Int64Size + 2 + msgp.StringPrefixSize + len(z.State) + 3 + msgp.IntSize + 3 + z.DriveCounts.Msgsize() + 4 + msgp.Int32Size + 3 + msgp.StringPrefixSize + len(z.CmdLine) + 3 + msgp.StringPrefixSize + len(z.Username) + 13 + msgp.BoolSize + 9
+	s = 3 + 2 + msgp.StringPrefixSize + len(z.Host) + 2 + msgp.StringPrefixSize + len(z.Version) + 2 + msgp.StringPrefixSize + len(z.CommitID) + 2 + msgp.Int64Size + 2 + msgp.StringPrefixSize + len(z.State) + 3 + msgp.IntSize + 3 + z.DriveCounts.Msgsize() + 4 + msgp.Int32Size + 3 + msgp.StringPrefixSize + len(z.CmdLine) + 3 + msgp.StringPrefixSize + len(z.Username) + 13 + msgp.BoolSize + 4
 	if z.FirstCPU == nil {
 		s += msgp.NilSize
 	} else {
