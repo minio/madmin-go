@@ -470,6 +470,12 @@ type ServerProperties struct {
 	IsLeader            bool              `json:"is_leader"`
 	ILMExpiryInProgress bool              `json:"ilm_expiry_in_progress"`
 	Host                *HostInfoStat     `json:"host,omitempty"`
+	PID                 int32             `json:"pid,omitempty"`
+	CmdLine             string            `json:"cmd_line,omitempty"`
+	Username            string            `json:"username,omitempty"`
+	IsBackground        bool              `json:"is_background,omitempty"`
+	FirstCPU            *CPU              `json:"first_cpu,omitempty"`
+	CPUCount            int               `json:"cpu_count,omitempty"`
 
 	APIVersion      APIVersion `json:"api_version"`
 	RestartingSince time.Time  `json:"restarting_since,omitempty"`

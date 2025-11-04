@@ -194,16 +194,22 @@ type DriveCounts struct {
 
 // NodeResource represents detailed information about a MinIO server node including version, state, and drive counts
 type NodeResource struct {
-	Host        string        `json:"host" msg:"h"`
-	Version     string        `json:"version" msg:"v"`
-	CommitID    string        `json:"commitId" msg:"c"`
-	Uptime      int64         `json:"uptime" msg:"u"`
-	State       string        `json:"state" msg:"s"`
-	TotalDrives int           `json:"totalDrives" msg:"td"`
-	DriveCounts DriveCounts   `json:"driveCounts" msg:"dc"`
-	PoolIndex   int           `json:"poolIndex" msg:"pi"`
-	PoolIndexes []int         `json:"poolIndexes,omitempty" msg:"pis,omitempty"`
-	HostInfo    *HostInfoStat `json:"hostInfo,omitempty" msg:"hi,omitempty"`
+	Host         string        `json:"host" msg:"h"`
+	Version      string        `json:"version" msg:"v"`
+	CommitID     string        `json:"commitId" msg:"c"`
+	Uptime       int64         `json:"uptime" msg:"u"`
+	State        string        `json:"state" msg:"s"`
+	TotalDrives  int           `json:"totalDrives" msg:"td"`
+	DriveCounts  DriveCounts   `json:"driveCounts" msg:"dc"`
+	PID          int32         `json:"pid,omitempty" msg:"pid,omitempty"`
+	CmdLine      string        `json:"cmdLine,omitempty" msg:"cl,omitempty"`
+	Username     string        `json:"username,omitempty" msg:"un,omitempty"`
+	IsBackground bool          `json:"isBackground,omitempty"`
+	FirstCPU     *CPU          `json:"firstCpu,omitempty msg:cpu,omitempty"`
+	CPUCount     int           `json:"cpuCount,omitempty" msg:"cc,omitempty"`
+	PoolIndex    int           `json:"poolIndex" msg:"pi"`
+	PoolIndexes  []int         `json:"poolIndexes,omitempty" msg:"pis,omitempty"`
+	HostInfo     *HostInfoStat `json:"hostInfo,omitempty" msg:"hi,omitempty"`
 
 	// Metrics contains the metrics aggregated for node if requested.
 	Metrics *Metrics `json:"metrics,omitempty" msg:"m,omitempty"`
