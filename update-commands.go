@@ -104,6 +104,23 @@ func (adm *AdminClient) ServerUpdate(ctx context.Context, opts ServerUpdateOpts)
 	return us, nil
 }
 
+// CancelServerUpdate will cancel an ongoing update and the rolling restart if already engaged
+func (adm *AdminClient) CancelServerUpdate(ctx context.Context) error {
+	resp, err := adm.executeMethod(ctx,
+		http.MethodPost, requestData{
+			relPath: adminAPIPrefix + "/cancel-update",
+		},
+	)
+	defer closeResponse(resp)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+	return nil
+}
+
 // NodeBumpVersionResp is the result of BumpVersion API in a single node
 type NodeBumpVersionResp struct {
 	Done    bool   `json:"done"`
