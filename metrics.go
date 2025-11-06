@@ -1847,8 +1847,8 @@ type ReplicationStats struct {
 	EventTimeSecs float64 `json:"timeSecs,omitempty"` // Accumulated event time
 
 	// Latency from queue time to completion.
-	LatencySecs    float64 `json:"latency"`    // Accumulated event latency for replication events for all nodes.
-	MaxLatencySecs float64 `json:"maxLatency"` // Maximum latency for a single node.
+	LatencySecs    float64 `json:"latency,omitempty"`    // Accumulated event latency for replication events for all nodes.
+	MaxLatencySecs float64 `json:"maxLatency,omitempty"` // Maximum latency for a single node.
 
 	// Replication event types.
 	PutObject int64 `json:"put,omitempty"`    // Total put replication requests.
