@@ -1856,10 +1856,10 @@ type ReplicationStats struct {
 	DelObject int64 `json:"del,omitempty"`    // Total delete replication requests.
 	DelTag    int64 `json:"delTag,omitempty"` // Number of DELETE tagging request
 
-	PutErrors    int64 `json:"PutErrors,omitempty"`    // Replication PutObject event errors.
-	PutTagErrors int64 `json:"PutTagErrors,omitempty"` // Replication PutTag event errors.
-	DelErrors    int64 `json:"DelErrors,omitempty"`    // Replication DelObject event errors.
-	DelTagErrors int64 `json:"DelTagErrors,omitempty"` // Replication DelTag event errors.
+	PutErrors    int64 `json:"putErrs,omitempty"`    // Replication PutObject event errors.
+	PutTagErrors int64 `json:"putTagErrs,omitempty"` // Replication PutTag event errors.
+	DelErrors    int64 `json:"delErrs,omitempty"`    // Replication DelObject event errors.
+	DelTagErrors int64 `json:"delTagErrs,omitempty"` // Replication DelTag event errors.
 
 	// Outcome (if not error)
 	Synced    int64 `json:"synced,omitempty"`    // Total synced replication requests (didn't exist on remote).
