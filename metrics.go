@@ -1807,12 +1807,6 @@ type ReplicationTargetStats struct {
 	// Nodes responded to the request.
 	Nodes int `json:"nodes"`
 
-	// Accumulated latency for replication events for all nodes.
-	LatencySecs float64 `json:"latency"`
-
-	// Maximum latency for a single node.
-	MaxLatencySecs float64 `json:"maxLatency"`
-
 	// Last hour operation statistics per target.
 	LastHour ReplicationStats `json:"last_hour,omitempty"`
 
@@ -1828,13 +1822,7 @@ func (r *ReplicationTargetStats) Merge(other *ReplicationTargetStats) {
 	if r == nil || other == nil || other.Nodes == 0 {
 		return
 	}
-	if r.Nodes == 0 {
-		r.MaxLatencySecs = other.MaxLatencySecs
-	} else {
-		r.MaxLatencySecs = max(r.MaxLatencySecs, other.MaxLatencySecs)
-	}
 	r.Nodes += other.Nodes
-	r.LatencySecs += other.LatencySecs
 	r.LastHour.Add(&other.LastHour)
 	if r.LastDay == nil && other.LastDay != nil {
 		var dst SegmentedReplicationStats
@@ -1858,11 +1846,20 @@ type ReplicationStats struct {
 	Bytes         int64   `json:"bytes,omitempty"`    // Total number of bytes sent to remote.
 	EventTimeSecs float64 `json:"timeSecs,omitempty"` // Accumulated event time
 
+	// Latency from queue time to completion.
+	LatencySecs    float64 `json:"latency"`    // Accumulated event latency for replication events for all nodes.
+	MaxLatencySecs float64 `json:"maxLatency"` // Maximum latency for a single node.
+
 	// Replication event types.
 	PutObject int64 `json:"put,omitempty"`    // Total put replication requests.
 	PutTag    int64 `json:"putTag,omitempty"` // Total put tagging replication requests.
 	DelObject int64 `json:"del,omitempty"`    // Total delete replication requests.
 	DelTag    int64 `json:"delTag,omitempty"` // Number of DELETE tagging request
+
+	PutErrors    int64 `json:"PutErrors,omitempty"`    // Replication PutObject event errors.
+	PutTagErrors int64 `json:"PutTagErrors,omitempty"` // Replication PutTag event errors.
+	DelErrors    int64 `json:"DelErrors,omitempty"`    // Replication DelObject event errors.
+	DelTagErrors int64 `json:"DelTagErrors,omitempty"` // Replication DelTag event errors.
 
 	// Outcome (if not error)
 	Synced    int64 `json:"synced,omitempty"`    // Total synced replication requests (didn't exist on remote).
@@ -1876,10 +1873,9 @@ type ReplicationStats struct {
 	ProxyGet    int64 `json:"proxyGet,omitempty"`    // Number of GET requests proxied to replication target
 	ProxyGetTag int64 `json:"proxyGetTag,omitempty"` // Number of GET tagging requests proxied to replication target
 
-	// Errors encountered.
-	Errors4xx int64 `json:"4xx,omitempty"`      // Total number of 4xx (client request) errors.
-	Errors5xx int64 `json:"5xx,omitempty"`      // Total number of 5xx (serverside) errors.
-	Canceled  int64 `json:"canceled,omitempty"` // Events that were canceled before they finished processing.
+	ProxyHeadOK   int64 `json:"proxyHeadOK,omitempty"`   // Proxy HEAD requests that were successful.
+	ProxyGetOK    int64 `json:"proxyGetOK,omitempty"`    // Proxy GET requests that were successful.
+	ProxyGetTagOK int64 `json:"proxyGetTagOK,omitempty"` // Proxy GET TAG requests that were successful.
 }
 
 type SegmentedReplicationStats = Segmented[ReplicationStats, *ReplicationStats]
@@ -1916,6 +1912,14 @@ func (a *ReplicationStats) Add(other *ReplicationStats) {
 	a.DelObject += other.DelObject
 	a.DelTag += other.DelTag
 
+	a.LatencySecs += other.LatencySecs
+	a.MaxLatencySecs = max(a.MaxLatencySecs, other.MaxLatencySecs)
+
+	a.PutErrors += other.PutErrors
+	a.PutTagErrors += other.PutTagErrors
+	a.DelErrors += other.DelErrors
+	a.DelTagErrors += other.DelTagErrors
+
 	// Outcomes
 	a.Synced += other.Synced
 	a.AlreadyOK += other.AlreadyOK
@@ -1928,10 +1932,9 @@ func (a *ReplicationStats) Add(other *ReplicationStats) {
 	a.ProxyGet += other.ProxyGet
 	a.ProxyGetTag += other.ProxyGetTag
 
-	// Errors
-	a.Errors4xx += other.Errors4xx
-	a.Errors5xx += other.Errors5xx
-	a.Canceled += other.Canceled
+	a.ProxyGetOK += other.ProxyGetOK
+	a.ProxyGetTagOK += other.ProxyGetTagOK
+	a.ProxyHeadOK += other.ProxyHeadOK
 }
 
 // ProcessMetrics contains aggregated minio process metrics
