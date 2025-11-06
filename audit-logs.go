@@ -34,10 +34,12 @@ import (
 
 // AuditLogOpts represents the options for the audit logs
 type AuditLogOpts struct {
-	Node     string        `json:"node,omitempty"`
-	API      string        `json:"api,omitempty"`
-	Bucket   string        `json:"bucket,omitempty"`
-	Interval time.Duration `json:"interval,omitempty"`
+	Node       string            `json:"node,omitempty"`
+	API        string            `json:"api,omitempty"`
+	Bucket     string            `json:"bucket,omitempty"`
+	Interval   time.Duration     `json:"interval,omitempty"`
+	Category   log.AuditCategory `json:"category,omitempty"`
+	MaxPerNode int               `json:"maxPerNode,omitempty"`
 }
 
 // GetAuditLogs fetches the persisted audit logs from MinIO
