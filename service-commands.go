@@ -161,6 +161,7 @@ type ServiceTraceOpts struct {
 	BatchReplication  bool
 	BatchKeyRotation  bool
 	BatchExpire       bool
+	Tables            bool
 	BatchAll          bool
 	Rebalance         bool
 	ReplicationResync bool
@@ -190,6 +191,7 @@ func (t ServiceTraceOpts) TraceTypes() TraceType {
 	tt.SetIf(t.BatchAll || t.BatchExpire, TraceBatchExpire)
 
 	tt.SetIf(t.Rebalance, TraceRebalance)
+	tt.SetIf(t.Tables, TraceTables)
 	tt.SetIf(t.ReplicationResync, TraceReplicationResync)
 	tt.SetIf(t.Bootstrap, TraceBootstrap)
 	tt.SetIf(t.FTP, TraceFTP)
@@ -217,6 +219,7 @@ func (t ServiceTraceOpts) AddParams(u url.Values) {
 	u.Set("batch-keyrotation", strconv.FormatBool(t.BatchAll || t.BatchKeyRotation))
 	u.Set("batch-expire", strconv.FormatBool(t.BatchAll || t.BatchExpire))
 	u.Set("rebalance", strconv.FormatBool(t.Rebalance))
+	u.Set("tables", strconv.FormatBool(t.Tables))
 	u.Set("replication-resync", strconv.FormatBool(t.ReplicationResync))
 	u.Set("bootstrap", strconv.FormatBool(t.Bootstrap))
 	u.Set("ftp", strconv.FormatBool(t.FTP))
@@ -236,6 +239,7 @@ func (t *ServiceTraceOpts) ParseParams(r *http.Request) (err error) {
 	t.BatchKeyRotation = r.Form.Get("batch-keyrotation") == "true"
 	t.BatchExpire = r.Form.Get("batch-expire") == "true"
 	t.Rebalance = r.Form.Get("rebalance") == "true"
+	t.Tables = r.Form.Get("tables") == "true"
 	t.Storage = r.Form.Get("storage") == "true"
 	t.Internal = r.Form.Get("internal") == "true"
 	t.OnlyErrors = r.Form.Get("err") == "true"
