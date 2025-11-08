@@ -1252,8 +1252,8 @@ type RPCMetrics struct {
 	// Last day operation statistics by handler, segmented.
 	LastDay map[string]SegmentedRPCMetrics `json:"lastDay,omitempty"`
 
-	ByDestination map[string]RPCMetrics `json:"byDestination,omitempty"`
-	ByCaller      map[string]RPCMetrics `json:"byCaller,omitempty"`
+	ByDestination map[string]RPCStats `json:"byDestination,omitempty"`
+	ByCaller      map[string]RPCStats `json:"byCaller,omitempty"`
 }
 
 // Merge other into 'm'.
@@ -1287,18 +1287,18 @@ func (m *RPCMetrics) Merge(other *RPCMetrics) {
 	}
 	for k, v := range other.ByDestination {
 		if m.ByDestination == nil {
-			m.ByDestination = make(map[string]RPCMetrics, len(other.ByDestination))
+			m.ByDestination = make(map[string]RPCStats, len(other.ByDestination))
 		}
 		existing := m.ByDestination[k]
-		existing.Merge(&v)
+		existing.Merge(v)
 		m.ByDestination[k] = existing
 	}
 	for k, v := range other.ByCaller {
 		if m.ByCaller == nil {
-			m.ByCaller = make(map[string]RPCMetrics, len(other.ByCaller))
+			m.ByCaller = make(map[string]RPCStats, len(other.ByCaller))
 		}
 		existing := m.ByCaller[k]
-		existing.Merge(&v)
+		existing.Merge(v)
 		m.ByCaller[k] = existing
 	}
 
@@ -1328,7 +1328,9 @@ func (m *RPCMetrics) Merge(other *RPCMetrics) {
 type SegmentedRPCMetrics = Segmented[RPCStats, *RPCStats]
 
 type RPCStats struct {
-	Nodes           int        `json:"nodes,omitempty"`           // Number of nodes that have reported data.
+	Nodes           int        `json:"nodes,omitempty"` // Number of nodes that have reported data.
+	Connected       int        `json:"connected,omitempty"`
+	Disconnected    int        `json:"disconnected,omitempty"`
 	StartTime       *time.Time `json:"startTime,omitempty"`       // Time range this data covers unless merged from sources with different start times..
 	EndTime         *time.Time `json:"endTime,omitempty"`         // Time range this data covers unless merged from sources with different end times.
 	WallTimeSecs    float64    `json:"wallTimeSecs,omitempty"`    // Wall time this data covers, accumulated from all nodes.
@@ -1337,6 +1339,16 @@ type RPCStats struct {
 	IncomingBytes   int64      `json:"incomingBytes,omitempty"`   // Total number of bytes received.
 	OutgoingBytes   int64      `json:"outgoingBytes,omitempty"`   // Total number of bytes sent.
 	Reconnects      int        `json:"reconnects,omitempty"`      // Total reconnects.
+
+	OutgoingStreams  int       `json:"outgoingStreams,omitempty"`
+	IncomingStreams  int       `json:"incomingStreams,omitempty"`
+	OutgoingMessages int64     `json:"outgoingMessages,omitempty"`
+	IncomingMessages int64     `json:"incomingMessages,omitempty"`
+	OutQueue         int       `json:"outQueue,omitempty"`
+	LastPongTime     time.Time `json:"lastPongTime,omitempty"`
+	LastConnectTime  time.Time `json:"lastConnectTime,omitempty"`
+	LastPingMS       float64   `json:"lastPingMS,omitempty"`
+	MaxPingDurMS     float64   `json:"maxPingDurMS,omitempty"` // Maximum across all merged entries.
 }
 
 // Add 'other' to a.
@@ -1363,11 +1375,28 @@ func (a *RPCStats) Merge(other RPCStats) {
 	}
 	a.WallTimeSecs += other.WallTimeSecs
 	a.Nodes += other.Nodes
+	a.Connected += other.Connected
+	a.Disconnected += other.Disconnected
 	a.Requests += other.Requests
 	a.IncomingBytes += other.IncomingBytes
 	a.OutgoingBytes += other.OutgoingBytes
 	a.RequestTimeSecs += other.RequestTimeSecs
 	a.Reconnects += other.Reconnects
+	a.OutgoingStreams += other.OutgoingStreams
+	a.IncomingStreams += other.IncomingStreams
+	a.OutgoingMessages += other.OutgoingMessages
+	a.IncomingMessages += other.IncomingMessages
+	a.OutQueue += other.OutQueue
+	if a.LastPongTime.Before(other.LastPongTime) {
+		a.LastPongTime = other.LastPongTime
+		a.LastPingMS = other.LastPingMS
+	}
+	if a.LastConnectTime.Before(other.LastConnectTime) {
+		a.LastConnectTime = other.LastConnectTime
+	}
+	if a.MaxPingDurMS < other.MaxPingDurMS {
+		a.MaxPingDurMS = other.MaxPingDurMS
+	}
 }
 
 //msgp:replace metrics.Float64Histogram with:localF64H
