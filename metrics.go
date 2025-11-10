@@ -1232,6 +1232,8 @@ func (m *CPUMetrics) Merge(other *CPUMetrics) {
 type RPCMetrics struct {
 	RPCStats `msg:",flatten"`
 
+	Nodes int `json:"nodes,omitempty"`
+
 	CollectedAt time.Time `json:"collected"`
 
 	// Last minute operation statistics by handler.
@@ -1249,6 +1251,7 @@ func (m *RPCMetrics) Merge(other *RPCMetrics) {
 	if m == nil || other == nil {
 		return
 	}
+	m.Nodes += other.Nodes
 	if m.CollectedAt.Before(other.CollectedAt) {
 		// Use latest timestamp
 		m.CollectedAt = other.CollectedAt
@@ -1256,23 +1259,9 @@ func (m *RPCMetrics) Merge(other *RPCMetrics) {
 	if m.LastConnectTime.Before(other.LastConnectTime) {
 		m.LastConnectTime = other.LastConnectTime
 	}
-	m.Connected += other.Connected
-	m.Disconnected += other.Disconnected
-	m.ReconnectCount += other.ReconnectCount
-	m.OutgoingStreams += other.OutgoingStreams
-	m.IncomingStreams += other.IncomingStreams
-	m.OutgoingBytes += other.OutgoingBytes
-	m.IncomingBytes += other.IncomingBytes
-	m.OutgoingMessages += other.OutgoingMessages
-	m.IncomingMessages += other.IncomingMessages
-	m.OutQueue += other.OutQueue
-	if m.LastPongTime.Before(other.LastPongTime) {
-		m.LastPongTime = other.LastPongTime
-		m.LastPingMS = other.LastPingMS
-	}
-	if m.MaxPingDurMS < other.MaxPingDurMS {
-		m.MaxPingDurMS = other.MaxPingDurMS
-	}
+	// Base stats
+	m.RPCStats.Merge(other.RPCStats)
+
 	for k, v := range other.ByDestination {
 		if m.ByDestination == nil {
 			m.ByDestination = make(map[string]RPCStats, len(other.ByDestination))
@@ -1281,6 +1270,7 @@ func (m *RPCMetrics) Merge(other *RPCMetrics) {
 		existing.Merge(v)
 		m.ByDestination[k] = existing
 	}
+
 	for k, v := range other.ByCaller {
 		if m.ByCaller == nil {
 			m.ByCaller = make(map[string]RPCStats, len(other.ByCaller))
@@ -1316,8 +1306,6 @@ func (m *RPCMetrics) Merge(other *RPCMetrics) {
 type SegmentedRPCMetrics = Segmented[RPCStats, *RPCStats]
 
 type RPCStats struct {
-	Nodes int `json:"nodes,omitempty"` // Number of nodes that have reported data.
-
 	Connected       int        `json:"connected,omitempty"`
 	Disconnected    int        `json:"disconnected,omitempty"`
 	StartTime       *time.Time `json:"startTime,omitempty"`       // Time range this data covers unless merged from sources with different start times..
@@ -1363,7 +1351,6 @@ func (a *RPCStats) Merge(other RPCStats) {
 		a.EndTime = nil
 	}
 	a.WallTimeSecs += other.WallTimeSecs
-	a.Nodes += other.Nodes
 	a.Connected += other.Connected
 	a.Disconnected += other.Disconnected
 	a.Requests += other.Requests
