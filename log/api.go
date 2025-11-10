@@ -68,23 +68,28 @@ type API struct {
 
 // CallInfo represents the info for the external call
 type CallInfo struct {
-	HTTPStatusCode  int                    `json:"httpStatusCode,omitempty"`
-	InputBytes      int64                  `json:"rx,omitempty"`
-	OutputBytes     int64                  `json:"tx,omitempty"`
-	HeaderBytes     int64                  `json:"txHeaders,omitempty"`
-	TimeToFirstByte string                 `json:"timeToFirstByte,omitempty"`
-	TimeToResponse  string                 `json:"timeToResponse,omitempty"`
-	SourceHost      string                 `json:"sourceHost,omitempty"`
-	RequestID       string                 `json:"requestID,omitempty"`
-	UserAgent       string                 `json:"userAgent,omitempty"`
-	ReqPath         string                 `json:"requestPath,omitempty"`
-	ReqHost         string                 `json:"requestHost,omitempty"`
-	ReqClaims       map[string]interface{} `json:"requestClaims,omitempty"`
-	ReqQuery        map[string]string      `json:"requestQuery,omitempty"`
-	ReqHeader       map[string]string      `json:"requestHeader,omitempty"`
-	RespHeader      map[string]string      `json:"responseHeader,omitempty"`
-	AccessKey       string                 `json:"accessKey,omitempty"`
-	ParentUser      string                 `json:"parentUser,omitempty"`
+	HTTPStatusCode    int                    `json:"httpStatusCode,omitempty"`
+	InputBytes        int64                  `json:"rx,omitempty"`
+	OutputBytes       int64                  `json:"tx,omitempty"`
+	HeaderBytes       int64                  `json:"txHeaders,omitempty"`
+	TimeToFirstByte   string                 `json:"timeToFirstByte,omitempty"`
+	RequestReadTime   string                 `json:"requestReadTime,omitempty"`
+	ResponseWriteTime string                 `json:"responseWriteTime,omitempty"`
+	RequestTime       string                 `json:"requestTime,omitempty"`
+	TimeToResponse    string                 `json:"timeToResponse,omitempty"`
+	ReadBlocked       string                 `json:"readBlocked,omitempty"`
+	WriteBlocked      string                 `json:"writeBlocked,omitempty"`
+	SourceHost        string                 `json:"sourceHost,omitempty"`
+	RequestID         string                 `json:"requestID,omitempty"`
+	UserAgent         string                 `json:"userAgent,omitempty"`
+	ReqPath           string                 `json:"requestPath,omitempty"`
+	ReqHost           string                 `json:"requestHost,omitempty"`
+	ReqClaims         map[string]interface{} `json:"requestClaims,omitempty"`
+	ReqQuery          map[string]string      `json:"requestQuery,omitempty"`
+	ReqHeader         map[string]string      `json:"requestHeader,omitempty"`
+	RespHeader        map[string]string      `json:"responseHeader,omitempty"`
+	AccessKey         string                 `json:"accessKey,omitempty"`
+	ParentUser        string                 `json:"parentUser,omitempty"`
 }
 
 // String provides a canonical representation for API
@@ -116,7 +121,12 @@ func (c CallInfo) String() string {
 		toInt64("tx", c.OutputBytes),
 		toInt64("txHeaders", c.HeaderBytes),
 		toString("timeToFirstByte", c.TimeToFirstByte),
+		toString("requestReadTime", c.RequestReadTime),
+		toString("responseWriteTime", c.ResponseWriteTime),
+		toString("requestTime", c.RequestTime),
 		toString("timeToResponse", c.TimeToResponse),
+		toString("readBlocked", c.ReadBlocked),
+		toString("writeBlocked", c.WriteBlocked),
 		toString("sourceHost", c.SourceHost),
 		toString("requestID", c.RequestID),
 		toString("userAgent", c.UserAgent),
