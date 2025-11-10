@@ -1256,9 +1256,7 @@ func (m *RPCMetrics) Merge(other *RPCMetrics) {
 		// Use latest timestamp
 		m.CollectedAt = other.CollectedAt
 	}
-	if m.LastConnectTime.Before(other.LastConnectTime) {
-		m.LastConnectTime = other.LastConnectTime
-	}
+
 	// Base stats
 	m.RPCStats.Merge(other.RPCStats)
 
