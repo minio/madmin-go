@@ -1230,21 +1230,9 @@ func (m *CPUMetrics) Merge(other *CPUMetrics) {
 // RPCMetrics contains metrics for RPC operations.
 // Metrics are collected on the sender side of RPC calls.
 type RPCMetrics struct {
-	CollectedAt      time.Time `json:"collectedAt"`
-	Connected        int       `json:"connected"`
-	ReconnectCount   int       `json:"reconnectCount"`
-	Disconnected     int       `json:"disconnected"`
-	OutgoingStreams  int       `json:"outgoingStreams"`
-	IncomingStreams  int       `json:"incomingStreams"`
-	OutgoingBytes    int64     `json:"outgoingBytes"`
-	IncomingBytes    int64     `json:"incomingBytes"`
-	OutgoingMessages int64     `json:"outgoingMessages"`
-	IncomingMessages int64     `json:"incomingMessages"`
-	OutQueue         int       `json:"outQueue"`
-	LastPongTime     time.Time `json:"lastPongTime"`
-	LastPingMS       float64   `json:"lastPingMS"`
-	MaxPingDurMS     float64   `json:"maxPingDurMS"` // Maximum across all merged entries.
-	LastConnectTime  time.Time `json:"lastConnectTime"`
+	RPCStats `msg:",flatten"`
+
+	CollectedAt time.Time `json:"collected"`
 
 	// Last minute operation statistics by handler.
 	LastMinute map[string]RPCStats `json:"lastMinute,omitempty"`
@@ -1328,7 +1316,8 @@ func (m *RPCMetrics) Merge(other *RPCMetrics) {
 type SegmentedRPCMetrics = Segmented[RPCStats, *RPCStats]
 
 type RPCStats struct {
-	Nodes           int        `json:"nodes,omitempty"` // Number of nodes that have reported data.
+	Nodes int `json:"nodes,omitempty"` // Number of nodes that have reported data.
+
 	Connected       int        `json:"connected,omitempty"`
 	Disconnected    int        `json:"disconnected,omitempty"`
 	StartTime       *time.Time `json:"startTime,omitempty"`       // Time range this data covers unless merged from sources with different start times..
@@ -1338,7 +1327,7 @@ type RPCStats struct {
 	RequestTimeSecs float64    `json:"requestTimeSecs,omitempty"` // Total request time.
 	IncomingBytes   int64      `json:"incomingBytes,omitempty"`   // Total number of bytes received.
 	OutgoingBytes   int64      `json:"outgoingBytes,omitempty"`   // Total number of bytes sent.
-	Reconnects      int        `json:"reconnects,omitempty"`      // Total reconnects.
+	ReconnectCount  int        `json:"reconnectCount,omitempty"`  // Total reconnects.
 
 	OutgoingStreams  int       `json:"outgoingStreams,omitempty"`
 	IncomingStreams  int       `json:"incomingStreams,omitempty"`
@@ -1381,7 +1370,7 @@ func (a *RPCStats) Merge(other RPCStats) {
 	a.IncomingBytes += other.IncomingBytes
 	a.OutgoingBytes += other.OutgoingBytes
 	a.RequestTimeSecs += other.RequestTimeSecs
-	a.Reconnects += other.Reconnects
+	a.ReconnectCount += other.ReconnectCount
 	a.OutgoingStreams += other.OutgoingStreams
 	a.IncomingStreams += other.IncomingStreams
 	a.OutgoingMessages += other.OutgoingMessages
