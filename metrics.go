@@ -1851,15 +1851,15 @@ type ReplicationStats struct {
 	MaxLatencySecs float64 `json:"maxLatency,omitempty"` // Maximum latency for a single node.
 
 	// Replication event types.
-	PutObject int64 `json:"put,omitempty"`    // Total put replication requests.
-	PutTag    int64 `json:"putTag,omitempty"` // Total put tagging replication requests.
-	DelObject int64 `json:"del,omitempty"`    // Total delete replication requests.
-	DelTag    int64 `json:"delTag,omitempty"` // Number of DELETE tagging request
+	PutObject  int64 `json:"put,omitempty"`        // Total put replication requests.
+	UpdateMeta int64 `json:"updateMeta,omitempty"` // Total metadata update requests.
+	DelObject  int64 `json:"del,omitempty"`        // Total delete replication requests.
+	DelTag     int64 `json:"delTag,omitempty"`     // Number of DELETE tagging request
 
-	PutErrors    int64 `json:"putErrs,omitempty"`    // Replication PutObject event errors.
-	PutTagErrors int64 `json:"putTagErrs,omitempty"` // Replication PutTag event errors.
-	DelErrors    int64 `json:"delErrs,omitempty"`    // Replication DelObject event errors.
-	DelTagErrors int64 `json:"delTagErrs,omitempty"` // Replication DelTag event errors.
+	PutErrors        int64 `json:"putErrs,omitempty"`    // Replication PutObject event errors.
+	UpdateMetaErrors int64 `json:"putTagErrs,omitempty"` // Replication Update Metadata errors.
+	DelErrors        int64 `json:"delErrs,omitempty"`    // Replication DelObject event errors.
+	DelTagErrors     int64 `json:"delTagErrs,omitempty"` // Replication DelTag event errors.
 
 	// Outcome (if not error)
 	Synced    int64 `json:"synced,omitempty"`    // Total synced replication requests (didn't exist on remote).
@@ -1908,7 +1908,7 @@ func (a *ReplicationStats) Add(other *ReplicationStats) {
 
 	// Event types
 	a.PutObject += other.PutObject
-	a.PutTag += other.PutTag
+	a.UpdateMeta += other.UpdateMeta
 	a.DelObject += other.DelObject
 	a.DelTag += other.DelTag
 
@@ -1916,7 +1916,7 @@ func (a *ReplicationStats) Add(other *ReplicationStats) {
 	a.MaxLatencySecs = max(a.MaxLatencySecs, other.MaxLatencySecs)
 
 	a.PutErrors += other.PutErrors
-	a.PutTagErrors += other.PutTagErrors
+	a.UpdateMetaErrors += other.UpdateMetaErrors
 	a.DelErrors += other.DelErrors
 	a.DelTagErrors += other.DelTagErrors
 

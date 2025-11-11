@@ -958,64 +958,64 @@ func TestReplicationStatsAdd(t *testing.T) {
 		{
 			name: "add all fields",
 			base: &ReplicationStats{
-				Nodes:          2,
-				StartTime:      &now,
-				EndTime:        &later,
-				WallTimeSecs:   100,
-				Events:         1000,
-				Bytes:          10000,
-				EventTimeSecs:  50,
-				PutObject:      500,
-				PutTag:         50,
-				DelObject:      300,
-				DelTag:         30,
-				LatencySecs:    10.0,
-				MaxLatencySecs: 5.0,
-				PutErrors:      10,
-				PutTagErrors:   5,
-				DelErrors:      8,
-				DelTagErrors:   2,
-				Synced:         800,
-				AlreadyOK:      100,
-				Rejected:       50,
-				ProxyEvents:    20,
-				ProxyBytes:     2000,
-				ProxyHead:      5,
-				ProxyGet:       10,
-				ProxyGetTag:    5,
-				ProxyGetOK:     8,
-				ProxyGetTagOK:  4,
-				ProxyHeadOK:    3,
+				Nodes:            2,
+				StartTime:        &now,
+				EndTime:          &later,
+				WallTimeSecs:     100,
+				Events:           1000,
+				Bytes:            10000,
+				EventTimeSecs:    50,
+				PutObject:        500,
+				UpdateMeta:       50,
+				DelObject:        300,
+				DelTag:           30,
+				LatencySecs:      10.0,
+				MaxLatencySecs:   5.0,
+				PutErrors:        10,
+				UpdateMetaErrors: 5,
+				DelErrors:        8,
+				DelTagErrors:     2,
+				Synced:           800,
+				AlreadyOK:        100,
+				Rejected:         50,
+				ProxyEvents:      20,
+				ProxyBytes:       2000,
+				ProxyHead:        5,
+				ProxyGet:         10,
+				ProxyGetTag:      5,
+				ProxyGetOK:       8,
+				ProxyGetTagOK:    4,
+				ProxyHeadOK:      3,
 			},
 			other: &ReplicationStats{
-				Nodes:          3,
-				StartTime:      &now,
-				EndTime:        &later,
-				WallTimeSecs:   150,
-				Events:         2000,
-				Bytes:          20000,
-				EventTimeSecs:  75,
-				PutObject:      1000,
-				PutTag:         100,
-				DelObject:      600,
-				DelTag:         60,
-				LatencySecs:    15.0,
-				MaxLatencySecs: 7.0,
-				PutErrors:      20,
-				PutTagErrors:   10,
-				DelErrors:      15,
-				DelTagErrors:   5,
-				Synced:         1600,
-				AlreadyOK:      200,
-				Rejected:       100,
-				ProxyEvents:    40,
-				ProxyBytes:     4000,
-				ProxyHead:      10,
-				ProxyGet:       20,
-				ProxyGetTag:    10,
-				ProxyGetOK:     16,
-				ProxyGetTagOK:  8,
-				ProxyHeadOK:    7,
+				Nodes:            3,
+				StartTime:        &now,
+				EndTime:          &later,
+				WallTimeSecs:     150,
+				Events:           2000,
+				Bytes:            20000,
+				EventTimeSecs:    75,
+				PutObject:        1000,
+				UpdateMeta:       100,
+				DelObject:        600,
+				DelTag:           60,
+				LatencySecs:      15.0,
+				MaxLatencySecs:   7.0,
+				PutErrors:        20,
+				UpdateMetaErrors: 10,
+				DelErrors:        15,
+				DelTagErrors:     5,
+				Synced:           1600,
+				AlreadyOK:        200,
+				Rejected:         100,
+				ProxyEvents:      40,
+				ProxyBytes:       4000,
+				ProxyHead:        10,
+				ProxyGet:         20,
+				ProxyGetTag:      10,
+				ProxyGetOK:       16,
+				ProxyGetTagOK:    8,
+				ProxyHeadOK:      7,
 			},
 			verify: func(t *testing.T, result *ReplicationStats) {
 				if result.Nodes != 5 {
@@ -1042,8 +1042,8 @@ func TestReplicationStatsAdd(t *testing.T) {
 				if result.PutObject != 1500 {
 					t.Errorf("PutObject = %d, want 1500", result.PutObject)
 				}
-				if result.PutTag != 150 {
-					t.Errorf("PutTag = %d, want 150", result.PutTag)
+				if result.UpdateMeta != 150 {
+					t.Errorf("UpdateMeta = %d, want 150", result.UpdateMeta)
 				}
 				if result.DelObject != 900 {
 					t.Errorf("DelObject = %d, want 900", result.DelObject)
@@ -1054,8 +1054,8 @@ func TestReplicationStatsAdd(t *testing.T) {
 				if result.PutErrors != 30 {
 					t.Errorf("PutErrors = %d, want 30", result.PutErrors)
 				}
-				if result.PutTagErrors != 15 {
-					t.Errorf("PutTagErrors = %d, want 15", result.PutTagErrors)
+				if result.UpdateMetaErrors != 15 {
+					t.Errorf("UpdateMetaErrors = %d, want 15", result.UpdateMetaErrors)
 				}
 				if result.DelErrors != 23 {
 					t.Errorf("DelErrors = %d, want 23", result.DelErrors)

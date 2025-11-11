@@ -19389,10 +19389,10 @@ func (z *ReplicationStats) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 			zb0001Mask |= 0x200
-		case "putTag":
-			z.PutTag, err = dc.ReadInt64()
+		case "updateMeta":
+			z.UpdateMeta, err = dc.ReadInt64()
 			if err != nil {
-				err = msgp.WrapError(err, "PutTag")
+				err = msgp.WrapError(err, "UpdateMeta")
 				return
 			}
 			zb0001Mask |= 0x400
@@ -19418,9 +19418,9 @@ func (z *ReplicationStats) DecodeMsg(dc *msgp.Reader) (err error) {
 			}
 			zb0001Mask |= 0x2000
 		case "putTagErrs":
-			z.PutTagErrors, err = dc.ReadInt64()
+			z.UpdateMetaErrors, err = dc.ReadInt64()
 			if err != nil {
-				err = msgp.WrapError(err, "PutTagErrors")
+				err = msgp.WrapError(err, "UpdateMetaErrors")
 				return
 			}
 			zb0001Mask |= 0x4000
@@ -19556,7 +19556,7 @@ func (z *ReplicationStats) DecodeMsg(dc *msgp.Reader) (err error) {
 			z.PutObject = 0
 		}
 		if (zb0001Mask & 0x400) == 0 {
-			z.PutTag = 0
+			z.UpdateMeta = 0
 		}
 		if (zb0001Mask & 0x800) == 0 {
 			z.DelObject = 0
@@ -19568,7 +19568,7 @@ func (z *ReplicationStats) DecodeMsg(dc *msgp.Reader) (err error) {
 			z.PutErrors = 0
 		}
 		if (zb0001Mask & 0x4000) == 0 {
-			z.PutTagErrors = 0
+			z.UpdateMetaErrors = 0
 		}
 		if (zb0001Mask & 0x8000) == 0 {
 			z.DelErrors = 0
@@ -19659,7 +19659,7 @@ func (z *ReplicationStats) EncodeMsg(en *msgp.Writer) (err error) {
 		zb0001Len--
 		zb0001Mask |= 0x200
 	}
-	if z.PutTag == 0 {
+	if z.UpdateMeta == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x400
 	}
@@ -19675,7 +19675,7 @@ func (z *ReplicationStats) EncodeMsg(en *msgp.Writer) (err error) {
 		zb0001Len--
 		zb0001Mask |= 0x2000
 	}
-	if z.PutTagErrors == 0 {
+	if z.UpdateMetaErrors == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x4000
 	}
@@ -19874,14 +19874,14 @@ func (z *ReplicationStats) EncodeMsg(en *msgp.Writer) (err error) {
 			}
 		}
 		if (zb0001Mask & 0x400) == 0 { // if not omitted
-			// write "putTag"
-			err = en.Append(0xa6, 0x70, 0x75, 0x74, 0x54, 0x61, 0x67)
+			// write "updateMeta"
+			err = en.Append(0xaa, 0x75, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4d, 0x65, 0x74, 0x61)
 			if err != nil {
 				return
 			}
-			err = en.WriteInt64(z.PutTag)
+			err = en.WriteInt64(z.UpdateMeta)
 			if err != nil {
-				err = msgp.WrapError(err, "PutTag")
+				err = msgp.WrapError(err, "UpdateMeta")
 				return
 			}
 		}
@@ -19927,9 +19927,9 @@ func (z *ReplicationStats) EncodeMsg(en *msgp.Writer) (err error) {
 			if err != nil {
 				return
 			}
-			err = en.WriteInt64(z.PutTagErrors)
+			err = en.WriteInt64(z.UpdateMetaErrors)
 			if err != nil {
-				err = msgp.WrapError(err, "PutTagErrors")
+				err = msgp.WrapError(err, "UpdateMetaErrors")
 				return
 			}
 		}
@@ -20140,7 +20140,7 @@ func (z *ReplicationStats) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x200
 	}
-	if z.PutTag == 0 {
+	if z.UpdateMeta == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x400
 	}
@@ -20156,7 +20156,7 @@ func (z *ReplicationStats) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x2000
 	}
-	if z.PutTagErrors == 0 {
+	if z.UpdateMetaErrors == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x4000
 	}
@@ -20276,9 +20276,9 @@ func (z *ReplicationStats) MarshalMsg(b []byte) (o []byte, err error) {
 			o = msgp.AppendInt64(o, z.PutObject)
 		}
 		if (zb0001Mask & 0x400) == 0 { // if not omitted
-			// string "putTag"
-			o = append(o, 0xa6, 0x70, 0x75, 0x74, 0x54, 0x61, 0x67)
-			o = msgp.AppendInt64(o, z.PutTag)
+			// string "updateMeta"
+			o = append(o, 0xaa, 0x75, 0x70, 0x64, 0x61, 0x74, 0x65, 0x4d, 0x65, 0x74, 0x61)
+			o = msgp.AppendInt64(o, z.UpdateMeta)
 		}
 		if (zb0001Mask & 0x800) == 0 { // if not omitted
 			// string "del"
@@ -20298,7 +20298,7 @@ func (z *ReplicationStats) MarshalMsg(b []byte) (o []byte, err error) {
 		if (zb0001Mask & 0x4000) == 0 { // if not omitted
 			// string "putTagErrs"
 			o = append(o, 0xaa, 0x70, 0x75, 0x74, 0x54, 0x61, 0x67, 0x45, 0x72, 0x72, 0x73)
-			o = msgp.AppendInt64(o, z.PutTagErrors)
+			o = msgp.AppendInt64(o, z.UpdateMetaErrors)
 		}
 		if (zb0001Mask & 0x8000) == 0 { // if not omitted
 			// string "delErrs"
@@ -20481,10 +20481,10 @@ func (z *ReplicationStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 			zb0001Mask |= 0x200
-		case "putTag":
-			z.PutTag, bts, err = msgp.ReadInt64Bytes(bts)
+		case "updateMeta":
+			z.UpdateMeta, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "PutTag")
+				err = msgp.WrapError(err, "UpdateMeta")
 				return
 			}
 			zb0001Mask |= 0x400
@@ -20510,9 +20510,9 @@ func (z *ReplicationStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			}
 			zb0001Mask |= 0x2000
 		case "putTagErrs":
-			z.PutTagErrors, bts, err = msgp.ReadInt64Bytes(bts)
+			z.UpdateMetaErrors, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "PutTagErrors")
+				err = msgp.WrapError(err, "UpdateMetaErrors")
 				return
 			}
 			zb0001Mask |= 0x4000
@@ -20648,7 +20648,7 @@ func (z *ReplicationStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.PutObject = 0
 		}
 		if (zb0001Mask & 0x400) == 0 {
-			z.PutTag = 0
+			z.UpdateMeta = 0
 		}
 		if (zb0001Mask & 0x800) == 0 {
 			z.DelObject = 0
@@ -20660,7 +20660,7 @@ func (z *ReplicationStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.PutErrors = 0
 		}
 		if (zb0001Mask & 0x4000) == 0 {
-			z.PutTagErrors = 0
+			z.UpdateMetaErrors = 0
 		}
 		if (zb0001Mask & 0x8000) == 0 {
 			z.DelErrors = 0
@@ -20720,7 +20720,7 @@ func (z *ReplicationStats) Msgsize() (s int) {
 	} else {
 		s += msgp.TimeSize
 	}
-	s += 13 + msgp.Float64Size + 7 + msgp.Int64Size + 6 + msgp.Int64Size + 9 + msgp.Float64Size + 8 + msgp.Float64Size + 11 + msgp.Float64Size + 4 + msgp.Int64Size + 7 + msgp.Int64Size + 4 + msgp.Int64Size + 7 + msgp.Int64Size + 8 + msgp.Int64Size + 11 + msgp.Int64Size + 8 + msgp.Int64Size + 11 + msgp.Int64Size + 7 + msgp.Int64Size + 10 + msgp.Int64Size + 9 + msgp.Int64Size + 6 + msgp.Int64Size + 11 + msgp.Int64Size + 10 + msgp.Int64Size + 9 + msgp.Int64Size + 12 + msgp.Int64Size + 12 + msgp.Int64Size + 11 + msgp.Int64Size + 14 + msgp.Int64Size
+	s += 13 + msgp.Float64Size + 7 + msgp.Int64Size + 6 + msgp.Int64Size + 9 + msgp.Float64Size + 8 + msgp.Float64Size + 11 + msgp.Float64Size + 4 + msgp.Int64Size + 11 + msgp.Int64Size + 4 + msgp.Int64Size + 7 + msgp.Int64Size + 8 + msgp.Int64Size + 11 + msgp.Int64Size + 8 + msgp.Int64Size + 11 + msgp.Int64Size + 7 + msgp.Int64Size + 10 + msgp.Int64Size + 9 + msgp.Int64Size + 6 + msgp.Int64Size + 11 + msgp.Int64Size + 10 + msgp.Int64Size + 9 + msgp.Int64Size + 12 + msgp.Int64Size + 12 + msgp.Int64Size + 11 + msgp.Int64Size + 14 + msgp.Int64Size
 	return
 }
 
