@@ -992,7 +992,7 @@ func TestMetricsMerge(t *testing.T) {
 				Net:         &NetMetrics{},
 				Mem:         &MemMetrics{},
 				CPU:         &CPUMetrics{CPUCount: 4},
-				RPC:         &RPCMetrics{Connected: 5},
+				RPC:         &RPCMetrics{Nodes: 2, ConnectionStats: ConnectionStats{Connected: 5}},
 				Go:          &RuntimeMetrics{N: 1},
 				API:         &APIMetrics{Nodes: 3},
 				Replication: &ReplicationMetrics{Active: 100},
@@ -1006,7 +1006,7 @@ func TestMetricsMerge(t *testing.T) {
 				Net:         &NetMetrics{},
 				Mem:         &MemMetrics{},
 				CPU:         &CPUMetrics{CPUCount: 4},
-				RPC:         &RPCMetrics{Connected: 3},
+				RPC:         &RPCMetrics{Nodes: 3, ConnectionStats: ConnectionStats{Connected: 3}},
 				Go:          &RuntimeMetrics{N: 1},
 				API:         &APIMetrics{Nodes: 2},
 				Replication: &ReplicationMetrics{Active: 50},
@@ -1020,6 +1020,9 @@ func TestMetricsMerge(t *testing.T) {
 				}
 				if result.CPU.CPUCount != 8 {
 					t.Errorf("CPU.CPUCount = %d, want 8", result.CPU.CPUCount)
+				}
+				if result.RPC.Nodes != 5 {
+					t.Errorf("RPC.Nodes = %d, want 5", result.RPC.Nodes)
 				}
 				if result.RPC.Connected != 8 {
 					t.Errorf("RPC.Connected = %d, want 8", result.RPC.Connected)
@@ -1221,51 +1224,32 @@ func TestRPCStatsMerge(t *testing.T) {
 		{
 			name: "merge basic fields",
 			base: &RPCStats{
-				Nodes:            2,
-				Connected:        5,
-				Disconnected:     1,
-				Requests:         100,
-				IncomingBytes:    1000,
-				OutgoingBytes:    2000,
-				RequestTimeSecs:  10.0,
-				Reconnects:       2,
-				OutgoingStreams:  3,
-				IncomingStreams:  4,
-				OutgoingMessages: 500,
-				IncomingMessages: 600,
-				OutQueue:         10,
-				LastPingMS:       5.0,
-				MaxPingDurMS:     8.0,
+				StartTime:       &now,
+				EndTime:         &now,
+				WallTimeSecs:    10.0,
+				Requests:        100,
+				RequestTimeSecs: 10.0,
+				IncomingBytes:   1000,
+				OutgoingBytes:   2000,
 			},
 			other: &RPCStats{
-				Nodes:            3,
-				Connected:        3,
-				Disconnected:     2,
-				Requests:         200,
-				IncomingBytes:    1500,
-				OutgoingBytes:    2500,
-				RequestTimeSecs:  15.0,
-				Reconnects:       3,
-				OutgoingStreams:  2,
-				IncomingStreams:  3,
-				OutgoingMessages: 300,
-				IncomingMessages: 400,
-				OutQueue:         5,
-				LastPingMS:       7.0,
-				MaxPingDurMS:     6.0,
+				StartTime:       &now,
+				EndTime:         &now,
+				WallTimeSecs:    15.0,
+				Requests:        200,
+				RequestTimeSecs: 15.0,
+				IncomingBytes:   1500,
+				OutgoingBytes:   2500,
 			},
 			verify: func(t *testing.T, result *RPCStats) {
-				if result.Nodes != 5 {
-					t.Errorf("Nodes = %d, want 5", result.Nodes)
-				}
-				if result.Connected != 8 {
-					t.Errorf("Connected = %d, want 8", result.Connected)
-				}
-				if result.Disconnected != 3 {
-					t.Errorf("Disconnected = %d, want 3", result.Disconnected)
+				if result.WallTimeSecs != 25.0 {
+					t.Errorf("WallTimeSecs = %f, want 25.0", result.WallTimeSecs)
 				}
 				if result.Requests != 300 {
 					t.Errorf("Requests = %d, want 300", result.Requests)
+				}
+				if result.RequestTimeSecs != 25.0 {
+					t.Errorf("RequestTimeSecs = %f, want 25.0", result.RequestTimeSecs)
 				}
 				if result.IncomingBytes != 2500 {
 					t.Errorf("IncomingBytes = %d, want 2500", result.IncomingBytes)
@@ -1273,105 +1257,29 @@ func TestRPCStatsMerge(t *testing.T) {
 				if result.OutgoingBytes != 4500 {
 					t.Errorf("OutgoingBytes = %d, want 4500", result.OutgoingBytes)
 				}
-				if result.RequestTimeSecs != 25.0 {
-					t.Errorf("RequestTimeSecs = %f, want 25.0", result.RequestTimeSecs)
-				}
-				if result.Reconnects != 5 {
-					t.Errorf("Reconnects = %d, want 5", result.Reconnects)
-				}
-				if result.OutgoingStreams != 5 {
-					t.Errorf("OutgoingStreams = %d, want 5", result.OutgoingStreams)
-				}
-				if result.IncomingStreams != 7 {
-					t.Errorf("IncomingStreams = %d, want 7", result.IncomingStreams)
-				}
-				if result.OutgoingMessages != 800 {
-					t.Errorf("OutgoingMessages = %d, want 800", result.OutgoingMessages)
-				}
-				if result.IncomingMessages != 1000 {
-					t.Errorf("IncomingMessages = %d, want 1000", result.IncomingMessages)
-				}
-				if result.OutQueue != 15 {
-					t.Errorf("OutQueue = %d, want 15", result.OutQueue)
-				}
-				if result.MaxPingDurMS != 8.0 { // max(8, 6)
-					t.Errorf("MaxPingDurMS = %f, want 8.0", result.MaxPingDurMS)
-				}
 			},
 		},
 		{
-			name: "merge time-based fields - latest wins",
-			base: &RPCStats{
-				Nodes:           1,
-				LastPongTime:    now,
-				LastConnectTime: now,
-				LastPingMS:      5.0,
-			},
-			other: &RPCStats{
-				Nodes:           1,
-				LastPongTime:    later,
-				LastConnectTime: later,
-				LastPingMS:      7.0,
-			},
-			verify: func(t *testing.T, result *RPCStats) {
-				if !result.LastPongTime.Equal(later) {
-					t.Errorf("LastPongTime = %v, want %v", result.LastPongTime, later)
-				}
-				if !result.LastConnectTime.Equal(later) {
-					t.Errorf("LastConnectTime = %v, want %v", result.LastConnectTime, later)
-				}
-				if result.LastPingMS != 7.0 {
-					t.Errorf("LastPingMS = %f, want 7.0", result.LastPingMS)
-				}
-			},
-		},
-		{
-			name: "merge with older times - keep existing",
-			base: &RPCStats{
-				Nodes:           1,
-				LastPongTime:    later,
-				LastConnectTime: later,
-				LastPingMS:      5.0,
-			},
-			other: &RPCStats{
-				Nodes:           1,
-				LastPongTime:    now,
-				LastConnectTime: now,
-				LastPingMS:      7.0,
-			},
-			verify: func(t *testing.T, result *RPCStats) {
-				if !result.LastPongTime.Equal(later) {
-					t.Errorf("LastPongTime = %v, want %v", result.LastPongTime, later)
-				}
-				if !result.LastConnectTime.Equal(later) {
-					t.Errorf("LastConnectTime = %v, want %v", result.LastConnectTime, later)
-				}
-				if result.LastPingMS != 5.0 {
-					t.Errorf("LastPingMS = %f, want 5.0", result.LastPingMS)
-				}
-			},
-		},
-		{
-			name: "merge start/end time handling",
+			name: "merge with same timestamps",
 			base: &RPCStats{
 				StartTime: &now,
-				EndTime:   &now,
-				Requests:  0,
-			},
-			other: &RPCStats{
-				StartTime: &now,
-				EndTime:   &now,
+				EndTime:   &later,
 				Requests:  100,
+			},
+			other: &RPCStats{
+				StartTime: &now,
+				EndTime:   &later,
+				Requests:  200,
 			},
 			verify: func(t *testing.T, result *RPCStats) {
 				if result.StartTime == nil || !result.StartTime.Equal(now) {
 					t.Error("StartTime should be preserved when times are equal")
 				}
-				if result.EndTime == nil || !result.EndTime.Equal(now) {
+				if result.EndTime == nil || !result.EndTime.Equal(later) {
 					t.Error("EndTime should be preserved when times are equal")
 				}
-				if result.Requests != 100 {
-					t.Errorf("Requests = %d, want 100", result.Requests)
+				if result.Requests != 300 {
+					t.Errorf("Requests = %d, want 300", result.Requests)
 				}
 			},
 		},
@@ -1400,23 +1308,36 @@ func TestRPCStatsMerge(t *testing.T) {
 			},
 		},
 		{
-			name: "merge zero time values",
+			name: "merge with nil timestamps",
 			base: &RPCStats{
-				Nodes:           1,
-				LastPongTime:    time.Time{},
-				LastConnectTime: time.Time{},
+				Requests:        100,
+				IncomingBytes:   1000,
+				OutgoingBytes:   2000,
+				RequestTimeSecs: 5.0,
+				WallTimeSecs:    10.0,
 			},
 			other: &RPCStats{
-				Nodes:           1,
-				LastPongTime:    now,
-				LastConnectTime: later,
+				Requests:        50,
+				IncomingBytes:   500,
+				OutgoingBytes:   1000,
+				RequestTimeSecs: 2.5,
+				WallTimeSecs:    5.0,
 			},
 			verify: func(t *testing.T, result *RPCStats) {
-				if !result.LastPongTime.Equal(now) {
-					t.Errorf("LastPongTime = %v, want %v", result.LastPongTime, now)
+				if result.Requests != 150 {
+					t.Errorf("Requests = %d, want 150", result.Requests)
 				}
-				if !result.LastConnectTime.Equal(later) {
-					t.Errorf("LastConnectTime = %v, want %v", result.LastConnectTime, later)
+				if result.IncomingBytes != 1500 {
+					t.Errorf("IncomingBytes = %d, want 1500", result.IncomingBytes)
+				}
+				if result.OutgoingBytes != 3000 {
+					t.Errorf("OutgoingBytes = %d, want 3000", result.OutgoingBytes)
+				}
+				if result.RequestTimeSecs != 7.5 {
+					t.Errorf("RequestTimeSecs = %f, want 7.5", result.RequestTimeSecs)
+				}
+				if result.WallTimeSecs != 15.0 {
+					t.Errorf("WallTimeSecs = %f, want 15.0", result.WallTimeSecs)
 				}
 			},
 		},
@@ -1425,6 +1346,543 @@ func TestRPCStatsMerge(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.base.Merge(*tt.other)
+			tt.verify(t, tt.base)
+		})
+	}
+}
+
+// TestConnectionStatsMerge tests ConnectionStats.Merge functionality
+func TestConnectionStatsMerge(t *testing.T) {
+	now := time.Now()
+	later := now.Add(time.Hour)
+
+	tests := []struct {
+		name   string
+		base   *ConnectionStats
+		other  *ConnectionStats
+		verify func(t *testing.T, result *ConnectionStats)
+	}{
+		{
+			name:  "merge nil other",
+			base:  &ConnectionStats{Connected: 5},
+			other: nil,
+			verify: func(t *testing.T, result *ConnectionStats) {
+				if result.Connected != 5 {
+					t.Errorf("Connected = %d, want 5", result.Connected)
+				}
+			},
+		},
+		{
+			name: "merge all fields",
+			base: &ConnectionStats{
+				Connected:        5,
+				Disconnected:     2,
+				ReconnectCount:   3,
+				OutgoingStreams:  10,
+				IncomingStreams:  8,
+				OutgoingMessages: 1000,
+				IncomingMessages: 800,
+				OutgoingBytes:    50000,
+				IncomingBytes:    40000,
+				OutQueue:         15,
+				LastPongTime:     now,
+				LastConnectTime:  now,
+				LastPingMS:       5.5,
+				MaxPingDurMS:     10.0,
+			},
+			other: &ConnectionStats{
+				Connected:        3,
+				Disconnected:     1,
+				ReconnectCount:   2,
+				OutgoingStreams:  5,
+				IncomingStreams:  4,
+				OutgoingMessages: 500,
+				IncomingMessages: 400,
+				OutgoingBytes:    25000,
+				IncomingBytes:    20000,
+				OutQueue:         10,
+				LastPongTime:     later,
+				LastConnectTime:  later,
+				LastPingMS:       8.0,
+				MaxPingDurMS:     7.0,
+			},
+			verify: func(t *testing.T, result *ConnectionStats) {
+				if result.Connected != 8 {
+					t.Errorf("Connected = %d, want 8", result.Connected)
+				}
+				if result.Disconnected != 3 {
+					t.Errorf("Disconnected = %d, want 3", result.Disconnected)
+				}
+				if result.ReconnectCount != 5 {
+					t.Errorf("ReconnectCount = %d, want 5", result.ReconnectCount)
+				}
+				if result.OutgoingStreams != 15 {
+					t.Errorf("OutgoingStreams = %d, want 15", result.OutgoingStreams)
+				}
+				if result.IncomingStreams != 12 {
+					t.Errorf("IncomingStreams = %d, want 12", result.IncomingStreams)
+				}
+				if result.OutgoingMessages != 1500 {
+					t.Errorf("OutgoingMessages = %d, want 1500", result.OutgoingMessages)
+				}
+				if result.IncomingMessages != 1200 {
+					t.Errorf("IncomingMessages = %d, want 1200", result.IncomingMessages)
+				}
+				if result.OutgoingBytes != 75000 {
+					t.Errorf("OutgoingBytes = %d, want 75000", result.OutgoingBytes)
+				}
+				if result.IncomingBytes != 60000 {
+					t.Errorf("IncomingBytes = %d, want 60000", result.IncomingBytes)
+				}
+				if result.OutQueue != 25 {
+					t.Errorf("OutQueue = %d, want 25", result.OutQueue)
+				}
+				// Latest timestamps should win
+				if !result.LastPongTime.Equal(later) {
+					t.Errorf("LastPongTime = %v, want %v", result.LastPongTime, later)
+				}
+				if !result.LastConnectTime.Equal(later) {
+					t.Errorf("LastConnectTime = %v, want %v", result.LastConnectTime, later)
+				}
+				// LastPingMS should come from the source with the later LastPongTime
+				if result.LastPingMS != 8.0 {
+					t.Errorf("LastPingMS = %f, want 8.0", result.LastPingMS)
+				}
+				// MaxPingDurMS should be the maximum
+				if result.MaxPingDurMS != 10.0 {
+					t.Errorf("MaxPingDurMS = %f, want 10.0", result.MaxPingDurMS)
+				}
+			},
+		},
+		{
+			name: "merge with older times - keep existing",
+			base: &ConnectionStats{
+				LastPongTime:    later,
+				LastConnectTime: later,
+				LastPingMS:      5.0,
+				MaxPingDurMS:    8.0,
+			},
+			other: &ConnectionStats{
+				LastPongTime:    now,
+				LastConnectTime: now,
+				LastPingMS:      7.0,
+				MaxPingDurMS:    6.0,
+			},
+			verify: func(t *testing.T, result *ConnectionStats) {
+				if !result.LastPongTime.Equal(later) {
+					t.Errorf("LastPongTime = %v, want %v", result.LastPongTime, later)
+				}
+				if !result.LastConnectTime.Equal(later) {
+					t.Errorf("LastConnectTime = %v, want %v", result.LastConnectTime, later)
+				}
+				if result.LastPingMS != 5.0 {
+					t.Errorf("LastPingMS = %f, want 5.0", result.LastPingMS)
+				}
+				if result.MaxPingDurMS != 8.0 {
+					t.Errorf("MaxPingDurMS = %f, want 8.0", result.MaxPingDurMS)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.base.Merge(tt.other)
+			tt.verify(t, tt.base)
+		})
+	}
+}
+
+// TestRPCMetricsMerge tests RPCMetrics.Merge functionality with embedded ConnectionStats
+func TestRPCMetricsMerge(t *testing.T) {
+	now := time.Now()
+	later := now.Add(time.Hour)
+
+	tests := []struct {
+		name   string
+		base   *RPCMetrics
+		other  *RPCMetrics
+		verify func(t *testing.T, result *RPCMetrics)
+	}{
+		{
+			name:  "merge nil other",
+			base:  &RPCMetrics{Nodes: 3},
+			other: nil,
+			verify: func(t *testing.T, result *RPCMetrics) {
+				if result.Nodes != 3 {
+					t.Errorf("Nodes = %d, want 3", result.Nodes)
+				}
+			},
+		},
+		{
+			name: "merge basic fields and embedded ConnectionStats",
+			base: &RPCMetrics{
+				Nodes:       2,
+				CollectedAt: now,
+				ConnectionStats: ConnectionStats{
+					Connected:        5,
+					Disconnected:     1,
+					ReconnectCount:   2,
+					OutgoingStreams:  10,
+					IncomingStreams:  8,
+					OutgoingMessages: 1000,
+					IncomingMessages: 800,
+					OutgoingBytes:    50000,
+					IncomingBytes:    40000,
+					OutQueue:         15,
+					LastPongTime:     now,
+					LastConnectTime:  now,
+					LastPingMS:       5.5,
+					MaxPingDurMS:     10.0,
+				},
+			},
+			other: &RPCMetrics{
+				Nodes:       3,
+				CollectedAt: later,
+				ConnectionStats: ConnectionStats{
+					Connected:        3,
+					Disconnected:     2,
+					ReconnectCount:   1,
+					OutgoingStreams:  5,
+					IncomingStreams:  4,
+					OutgoingMessages: 500,
+					IncomingMessages: 400,
+					OutgoingBytes:    25000,
+					IncomingBytes:    20000,
+					OutQueue:         10,
+					LastPongTime:     later,
+					LastConnectTime:  later,
+					LastPingMS:       8.0,
+					MaxPingDurMS:     7.0,
+				},
+			},
+			verify: func(t *testing.T, result *RPCMetrics) {
+				// Check Nodes
+				if result.Nodes != 5 {
+					t.Errorf("Nodes = %d, want 5", result.Nodes)
+				}
+				// Check CollectedAt
+				if !result.CollectedAt.Equal(later) {
+					t.Errorf("CollectedAt = %v, want %v", result.CollectedAt, later)
+				}
+				// Check embedded ConnectionStats fields
+				if result.Connected != 8 {
+					t.Errorf("Connected = %d, want 8", result.Connected)
+				}
+				if result.Disconnected != 3 {
+					t.Errorf("Disconnected = %d, want 3", result.Disconnected)
+				}
+				if result.ReconnectCount != 3 {
+					t.Errorf("ReconnectCount = %d, want 3", result.ReconnectCount)
+				}
+				if result.OutgoingStreams != 15 {
+					t.Errorf("OutgoingStreams = %d, want 15", result.OutgoingStreams)
+				}
+				if result.IncomingStreams != 12 {
+					t.Errorf("IncomingStreams = %d, want 12", result.IncomingStreams)
+				}
+				if result.OutgoingMessages != 1500 {
+					t.Errorf("OutgoingMessages = %d, want 1500", result.OutgoingMessages)
+				}
+				if result.IncomingMessages != 1200 {
+					t.Errorf("IncomingMessages = %d, want 1200", result.IncomingMessages)
+				}
+				if result.OutgoingBytes != 75000 {
+					t.Errorf("OutgoingBytes = %d, want 75000", result.OutgoingBytes)
+				}
+				if result.IncomingBytes != 60000 {
+					t.Errorf("IncomingBytes = %d, want 60000", result.IncomingBytes)
+				}
+				if result.OutQueue != 25 {
+					t.Errorf("OutQueue = %d, want 25", result.OutQueue)
+				}
+				if !result.LastPongTime.Equal(later) {
+					t.Errorf("LastPongTime = %v, want %v", result.LastPongTime, later)
+				}
+				if !result.LastConnectTime.Equal(later) {
+					t.Errorf("LastConnectTime = %v, want %v", result.LastConnectTime, later)
+				}
+				if result.LastPingMS != 8.0 {
+					t.Errorf("LastPingMS = %f, want 8.0", result.LastPingMS)
+				}
+				if result.MaxPingDurMS != 10.0 {
+					t.Errorf("MaxPingDurMS = %f, want 10.0", result.MaxPingDurMS)
+				}
+			},
+		},
+		{
+			name: "merge LastMinute map",
+			base: &RPCMetrics{
+				Nodes: 1,
+				LastMinute: map[string]RPCStats{
+					"handler1": {Requests: 100, IncomingBytes: 1000},
+					"handler2": {Requests: 50, IncomingBytes: 500},
+				},
+			},
+			other: &RPCMetrics{
+				Nodes: 1,
+				LastMinute: map[string]RPCStats{
+					"handler1": {Requests: 200, IncomingBytes: 2000},
+					"handler3": {Requests: 75, IncomingBytes: 750},
+				},
+			},
+			verify: func(t *testing.T, result *RPCMetrics) {
+				if len(result.LastMinute) != 3 {
+					t.Errorf("LastMinute length = %d, want 3", len(result.LastMinute))
+				}
+				// handler1 should be merged
+				if result.LastMinute["handler1"].Requests != 300 {
+					t.Errorf("LastMinute[handler1].Requests = %d, want 300", result.LastMinute["handler1"].Requests)
+				}
+				if result.LastMinute["handler1"].IncomingBytes != 3000 {
+					t.Errorf("LastMinute[handler1].IncomingBytes = %d, want 3000", result.LastMinute["handler1"].IncomingBytes)
+				}
+				// handler2 should remain unchanged
+				if result.LastMinute["handler2"].Requests != 50 {
+					t.Errorf("LastMinute[handler2].Requests = %d, want 50", result.LastMinute["handler2"].Requests)
+				}
+				// handler3 should be added
+				if result.LastMinute["handler3"].Requests != 75 {
+					t.Errorf("LastMinute[handler3].Requests = %d, want 75", result.LastMinute["handler3"].Requests)
+				}
+			},
+		},
+		{
+			name: "merge LastDay map with SegmentedRPCMetrics",
+			base: &RPCMetrics{
+				Nodes: 1,
+				LastDay: map[string]SegmentedRPCMetrics{
+					"handler1": {
+						Interval:  60,
+						FirstTime: now,
+						Segments:  []RPCStats{{Requests: 100}},
+					},
+				},
+			},
+			other: &RPCMetrics{
+				Nodes: 1,
+				LastDay: map[string]SegmentedRPCMetrics{
+					"handler1": {
+						Interval:  60,
+						FirstTime: now,
+						Segments:  []RPCStats{{Requests: 200}},
+					},
+					"handler2": {
+						Interval:  60,
+						FirstTime: now,
+						Segments:  []RPCStats{{Requests: 150}},
+					},
+				},
+			},
+			verify: func(t *testing.T, result *RPCMetrics) {
+				if len(result.LastDay) != 2 {
+					t.Errorf("LastDay length = %d, want 2", len(result.LastDay))
+				}
+				// handler1 should be merged (same interval and start time, so segments are merged in place)
+				if len(result.LastDay["handler1"].Segments) != 1 {
+					t.Errorf("LastDay[handler1].Segments length = %d, want 1", len(result.LastDay["handler1"].Segments))
+				}
+				if result.LastDay["handler1"].Segments[0].Requests != 300 {
+					t.Errorf("LastDay[handler1].Segments[0].Requests = %d, want 300", result.LastDay["handler1"].Segments[0].Requests)
+				}
+				// handler2 should be added
+				if len(result.LastDay["handler2"].Segments) != 1 {
+					t.Errorf("LastDay[handler2].Segments length = %d, want 1", len(result.LastDay["handler2"].Segments))
+				}
+				if result.LastDay["handler2"].Segments[0].Requests != 150 {
+					t.Errorf("LastDay[handler2].Segments[0].Requests = %d, want 150", result.LastDay["handler2"].Segments[0].Requests)
+				}
+			},
+		},
+		{
+			name: "merge ByDestination map with ConnectionStats",
+			base: &RPCMetrics{
+				Nodes: 1,
+				ByDestination: map[string]ConnectionStats{
+					"server1": {
+						Connected:        3,
+						OutgoingMessages: 500,
+						IncomingMessages: 400,
+						MaxPingDurMS:     5.0,
+					},
+					"server2": {
+						Connected:        2,
+						OutgoingMessages: 300,
+						IncomingMessages: 250,
+						MaxPingDurMS:     3.0,
+					},
+				},
+			},
+			other: &RPCMetrics{
+				Nodes: 1,
+				ByDestination: map[string]ConnectionStats{
+					"server1": {
+						Connected:        2,
+						OutgoingMessages: 300,
+						IncomingMessages: 250,
+						MaxPingDurMS:     7.0,
+					},
+					"server3": {
+						Connected:        1,
+						OutgoingMessages: 100,
+						IncomingMessages: 80,
+						MaxPingDurMS:     2.0,
+					},
+				},
+			},
+			verify: func(t *testing.T, result *RPCMetrics) {
+				if len(result.ByDestination) != 3 {
+					t.Errorf("ByDestination length = %d, want 3", len(result.ByDestination))
+				}
+				// server1 should be merged
+				if result.ByDestination["server1"].Connected != 5 {
+					t.Errorf("ByDestination[server1].Connected = %d, want 5", result.ByDestination["server1"].Connected)
+				}
+				if result.ByDestination["server1"].OutgoingMessages != 800 {
+					t.Errorf("ByDestination[server1].OutgoingMessages = %d, want 800", result.ByDestination["server1"].OutgoingMessages)
+				}
+				if result.ByDestination["server1"].MaxPingDurMS != 7.0 {
+					t.Errorf("ByDestination[server1].MaxPingDurMS = %f, want 7.0", result.ByDestination["server1"].MaxPingDurMS)
+				}
+				// server2 should remain unchanged
+				if result.ByDestination["server2"].Connected != 2 {
+					t.Errorf("ByDestination[server2].Connected = %d, want 2", result.ByDestination["server2"].Connected)
+				}
+				// server3 should be added
+				if result.ByDestination["server3"].Connected != 1 {
+					t.Errorf("ByDestination[server3].Connected = %d, want 1", result.ByDestination["server3"].Connected)
+				}
+			},
+		},
+		{
+			name: "merge ByCaller map with ConnectionStats",
+			base: &RPCMetrics{
+				Nodes: 1,
+				ByCaller: map[string]ConnectionStats{
+					"client1": {
+						Connected:        2,
+						IncomingMessages: 300,
+						OutgoingMessages: 250,
+						LastPingMS:       4.0,
+					},
+				},
+			},
+			other: &RPCMetrics{
+				Nodes: 1,
+				ByCaller: map[string]ConnectionStats{
+					"client1": {
+						Connected:        3,
+						IncomingMessages: 400,
+						OutgoingMessages: 350,
+						LastPingMS:       6.0,
+					},
+					"client2": {
+						Connected:        1,
+						IncomingMessages: 100,
+						OutgoingMessages: 80,
+						LastPingMS:       2.0,
+					},
+				},
+			},
+			verify: func(t *testing.T, result *RPCMetrics) {
+				if len(result.ByCaller) != 2 {
+					t.Errorf("ByCaller length = %d, want 2", len(result.ByCaller))
+				}
+				// client1 should be merged
+				if result.ByCaller["client1"].Connected != 5 {
+					t.Errorf("ByCaller[client1].Connected = %d, want 5", result.ByCaller["client1"].Connected)
+				}
+				if result.ByCaller["client1"].IncomingMessages != 700 {
+					t.Errorf("ByCaller[client1].IncomingMessages = %d, want 700", result.ByCaller["client1"].IncomingMessages)
+				}
+				// client2 should be added
+				if result.ByCaller["client2"].Connected != 1 {
+					t.Errorf("ByCaller[client2].Connected = %d, want 1", result.ByCaller["client2"].Connected)
+				}
+			},
+		},
+		{
+			name: "merge all fields together",
+			base: &RPCMetrics{
+				Nodes:       2,
+				CollectedAt: now,
+				ConnectionStats: ConnectionStats{
+					Connected:        5,
+					OutgoingMessages: 1000,
+					MaxPingDurMS:     10.0,
+				},
+				LastMinute: map[string]RPCStats{
+					"handler1": {Requests: 100},
+				},
+				LastDay: map[string]SegmentedRPCMetrics{
+					"handler1": {Segments: []RPCStats{{Requests: 1000}}},
+				},
+				ByDestination: map[string]ConnectionStats{
+					"server1": {Connected: 3},
+				},
+				ByCaller: map[string]ConnectionStats{
+					"client1": {Connected: 2},
+				},
+			},
+			other: &RPCMetrics{
+				Nodes:       3,
+				CollectedAt: later,
+				ConnectionStats: ConnectionStats{
+					Connected:        3,
+					OutgoingMessages: 500,
+					MaxPingDurMS:     7.0,
+				},
+				LastMinute: map[string]RPCStats{
+					"handler2": {Requests: 50},
+				},
+				LastDay: map[string]SegmentedRPCMetrics{
+					"handler2": {Segments: []RPCStats{{Requests: 500}}},
+				},
+				ByDestination: map[string]ConnectionStats{
+					"server2": {Connected: 1},
+				},
+				ByCaller: map[string]ConnectionStats{
+					"client2": {Connected: 1},
+				},
+			},
+			verify: func(t *testing.T, result *RPCMetrics) {
+				// Check basic fields
+				if result.Nodes != 5 {
+					t.Errorf("Nodes = %d, want 5", result.Nodes)
+				}
+				if !result.CollectedAt.Equal(later) {
+					t.Errorf("CollectedAt = %v, want %v", result.CollectedAt, later)
+				}
+				// Check ConnectionStats
+				if result.Connected != 8 {
+					t.Errorf("Connected = %d, want 8", result.Connected)
+				}
+				if result.OutgoingMessages != 1500 {
+					t.Errorf("OutgoingMessages = %d, want 1500", result.OutgoingMessages)
+				}
+				if result.MaxPingDurMS != 10.0 {
+					t.Errorf("MaxPingDurMS = %f, want 10.0", result.MaxPingDurMS)
+				}
+				// Check maps
+				if len(result.LastMinute) != 2 {
+					t.Errorf("LastMinute length = %d, want 2", len(result.LastMinute))
+				}
+				if len(result.LastDay) != 2 {
+					t.Errorf("LastDay length = %d, want 2", len(result.LastDay))
+				}
+				if len(result.ByDestination) != 2 {
+					t.Errorf("ByDestination length = %d, want 2", len(result.ByDestination))
+				}
+				if len(result.ByCaller) != 2 {
+					t.Errorf("ByCaller length = %d, want 2", len(result.ByCaller))
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.base.Merge(tt.other)
 			tt.verify(t, tt.base)
 		})
 	}

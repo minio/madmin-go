@@ -1328,6 +1328,8 @@ func (c *ConnectionStats) Merge(other *ConnectionStats) {
 	c.IncomingStreams += other.IncomingStreams
 	c.OutgoingMessages += other.OutgoingMessages
 	c.IncomingMessages += other.IncomingMessages
+	c.OutgoingBytes += other.OutgoingBytes
+	c.IncomingBytes += other.IncomingBytes
 	c.OutQueue += other.OutQueue
 	if c.LastPongTime.Before(other.LastPongTime) {
 		c.LastPongTime = other.LastPongTime
