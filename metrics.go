@@ -1234,18 +1234,7 @@ type RPCMetrics struct {
 
 	CollectedAt time.Time `json:"collected"`
 
-	Connected        int       `json:"connected,omitempty"`
-	Disconnected     int       `json:"disconnected,omitempty"`
-	ReconnectCount   int       `json:"reconnectCount,omitempty"` // Total reconnects.
-	OutgoingStreams  int       `json:"outgoingStreams,omitempty"`
-	IncomingStreams  int       `json:"incomingStreams,omitempty"`
-	OutgoingMessages int64     `json:"outgoingMessages,omitempty"`
-	IncomingMessages int64     `json:"incomingMessages,omitempty"`
-	OutQueue         int       `json:"outQueue,omitempty"`
-	LastPongTime     time.Time `json:"lastPongTime,omitempty"`
-	LastConnectTime  time.Time `json:"lastConnectTime,omitempty"`
-	LastPingMS       float64   `json:"lastPingMS,omitempty"`
-	MaxPingDurMS     float64   `json:"maxPingDurMS,omitempty"` // Maximum across all merged entries.
+	ConnectionStats
 
 	// Last minute operation statistics by handler.
 	LastMinute map[string]RPCStats `json:"lastMinute,omitempty"`
@@ -1253,8 +1242,8 @@ type RPCMetrics struct {
 	// Last day operation statistics by handler, segmented.
 	LastDay map[string]SegmentedRPCMetrics `json:"lastDay,omitempty"`
 
-	ByDestination map[string]RPCStats `json:"byDestination,omitempty"`
-	ByCaller      map[string]RPCStats `json:"byCaller,omitempty"`
+	ByDestination map[string]ConnectionStats `json:"byDestination,omitempty"`
+	ByCaller      map[string]ConnectionStats `json:"byCaller,omitempty"`
 }
 
 // Merge other into 'm'.
@@ -1268,40 +1257,23 @@ func (m *RPCMetrics) Merge(other *RPCMetrics) {
 		m.CollectedAt = other.CollectedAt
 	}
 
-	m.Connected += other.Connected
-	m.Disconnected += other.Disconnected
-	m.ReconnectCount += other.ReconnectCount
-	m.OutgoingStreams += other.OutgoingStreams
-	m.IncomingStreams += other.IncomingStreams
-	m.OutgoingMessages += other.OutgoingMessages
-	m.IncomingMessages += other.IncomingMessages
-	m.OutQueue += other.OutQueue
-	if m.LastPongTime.Before(other.LastPongTime) {
-		m.LastPongTime = other.LastPongTime
-		m.LastPingMS = other.LastPingMS
-	}
-	if m.LastConnectTime.Before(other.LastConnectTime) {
-		m.LastConnectTime = other.LastConnectTime
-	}
-	if m.MaxPingDurMS < other.MaxPingDurMS {
-		m.MaxPingDurMS = other.MaxPingDurMS
-	}
+	m.ConnectionStats.Merge(&other.ConnectionStats)
 
 	for k, v := range other.ByDestination {
 		if m.ByDestination == nil {
-			m.ByDestination = make(map[string]RPCStats, len(other.ByDestination))
+			m.ByDestination = make(map[string]ConnectionStats, len(other.ByDestination))
 		}
 		existing := m.ByDestination[k]
-		existing.Merge(v)
+		existing.Merge(&v)
 		m.ByDestination[k] = existing
 	}
 
 	for k, v := range other.ByCaller {
 		if m.ByCaller == nil {
-			m.ByCaller = make(map[string]RPCStats, len(other.ByCaller))
+			m.ByCaller = make(map[string]ConnectionStats, len(other.ByCaller))
 		}
 		existing := m.ByCaller[k]
-		existing.Merge(v)
+		existing.Merge(&v)
 		m.ByCaller[k] = existing
 	}
 
@@ -1324,6 +1296,48 @@ func (m *RPCMetrics) Merge(other *RPCMetrics) {
 		}
 		existing.Add(&v)
 		m.LastDay[k] = existing
+	}
+}
+
+// ConnectionStats are the overall connection stats.
+type ConnectionStats struct {
+	Connected        int       `json:"connected,omitempty"`
+	Disconnected     int       `json:"disconnected,omitempty"`
+	ReconnectCount   int       `json:"reconnectCount,omitempty"` // Total reconnects.
+	OutgoingStreams  int       `json:"outgoingStreams,omitempty"`
+	IncomingStreams  int       `json:"incomingStreams,omitempty"`
+	OutgoingMessages int64     `json:"outgoingMessages,omitempty"`
+	IncomingMessages int64     `json:"incomingMessages,omitempty"`
+	OutgoingBytes    int64     `json:"outgoingBytes,omitempty"` // Total number of bytes sent.
+	IncomingBytes    int64     `json:"incomingBytes,omitempty"` // Total number of bytes received.
+	OutQueue         int       `json:"outQueue,omitempty"`
+	LastPongTime     time.Time `json:"lastPongTime,omitempty"`
+	LastConnectTime  time.Time `json:"lastConnectTime,omitempty"`
+	LastPingMS       float64   `json:"lastPingMS,omitempty"`
+	MaxPingDurMS     float64   `json:"maxPingDurMS,omitempty"` // Maximum across all merged entries.
+}
+
+func (c *ConnectionStats) Merge(other *ConnectionStats) {
+	if other == nil {
+		return
+	}
+	c.Connected += other.Connected
+	c.Disconnected += other.Disconnected
+	c.ReconnectCount += other.ReconnectCount
+	c.OutgoingStreams += other.OutgoingStreams
+	c.IncomingStreams += other.IncomingStreams
+	c.OutgoingMessages += other.OutgoingMessages
+	c.IncomingMessages += other.IncomingMessages
+	c.OutQueue += other.OutQueue
+	if c.LastPongTime.Before(other.LastPongTime) {
+		c.LastPongTime = other.LastPongTime
+		c.LastPingMS = other.LastPingMS
+	}
+	if c.LastConnectTime.Before(other.LastConnectTime) {
+		c.LastConnectTime = other.LastConnectTime
+	}
+	if c.MaxPingDurMS < other.MaxPingDurMS {
+		c.MaxPingDurMS = other.MaxPingDurMS
 	}
 }
 
