@@ -1230,11 +1230,22 @@ func (m *CPUMetrics) Merge(other *CPUMetrics) {
 // RPCMetrics contains metrics for RPC operations.
 // Metrics are collected on the sender side of RPC calls.
 type RPCMetrics struct {
-	RPCStats `msg:",flatten"`
-
 	Nodes int `json:"nodes,omitempty"`
 
 	CollectedAt time.Time `json:"collected"`
+
+	Connected        int       `json:"connected,omitempty"`
+	Disconnected     int       `json:"disconnected,omitempty"`
+	ReconnectCount   int       `json:"reconnectCount,omitempty"` // Total reconnects.
+	OutgoingStreams  int       `json:"outgoingStreams,omitempty"`
+	IncomingStreams  int       `json:"incomingStreams,omitempty"`
+	OutgoingMessages int64     `json:"outgoingMessages,omitempty"`
+	IncomingMessages int64     `json:"incomingMessages,omitempty"`
+	OutQueue         int       `json:"outQueue,omitempty"`
+	LastPongTime     time.Time `json:"lastPongTime,omitempty"`
+	LastConnectTime  time.Time `json:"lastConnectTime,omitempty"`
+	LastPingMS       float64   `json:"lastPingMS,omitempty"`
+	MaxPingDurMS     float64   `json:"maxPingDurMS,omitempty"` // Maximum across all merged entries.
 
 	// Last minute operation statistics by handler.
 	LastMinute map[string]RPCStats `json:"lastMinute,omitempty"`
@@ -1257,8 +1268,24 @@ func (m *RPCMetrics) Merge(other *RPCMetrics) {
 		m.CollectedAt = other.CollectedAt
 	}
 
-	// Base stats
-	m.RPCStats.Merge(other.RPCStats)
+	m.Connected += other.Connected
+	m.Disconnected += other.Disconnected
+	m.ReconnectCount += other.ReconnectCount
+	m.OutgoingStreams += other.OutgoingStreams
+	m.IncomingStreams += other.IncomingStreams
+	m.OutgoingMessages += other.OutgoingMessages
+	m.IncomingMessages += other.IncomingMessages
+	m.OutQueue += other.OutQueue
+	if m.LastPongTime.Before(other.LastPongTime) {
+		m.LastPongTime = other.LastPongTime
+		m.LastPingMS = other.LastPingMS
+	}
+	if m.LastConnectTime.Before(other.LastConnectTime) {
+		m.LastConnectTime = other.LastConnectTime
+	}
+	if m.MaxPingDurMS < other.MaxPingDurMS {
+		m.MaxPingDurMS = other.MaxPingDurMS
+	}
 
 	for k, v := range other.ByDestination {
 		if m.ByDestination == nil {
@@ -1304,8 +1331,6 @@ func (m *RPCMetrics) Merge(other *RPCMetrics) {
 type SegmentedRPCMetrics = Segmented[RPCStats, *RPCStats]
 
 type RPCStats struct {
-	Connected       int        `json:"connected,omitempty"`
-	Disconnected    int        `json:"disconnected,omitempty"`
 	StartTime       *time.Time `json:"startTime,omitempty"`       // Time range this data covers unless merged from sources with different start times..
 	EndTime         *time.Time `json:"endTime,omitempty"`         // Time range this data covers unless merged from sources with different end times.
 	WallTimeSecs    float64    `json:"wallTimeSecs,omitempty"`    // Wall time this data covers, accumulated from all nodes.
@@ -1313,17 +1338,6 @@ type RPCStats struct {
 	RequestTimeSecs float64    `json:"requestTimeSecs,omitempty"` // Total request time.
 	IncomingBytes   int64      `json:"incomingBytes,omitempty"`   // Total number of bytes received.
 	OutgoingBytes   int64      `json:"outgoingBytes,omitempty"`   // Total number of bytes sent.
-	ReconnectCount  int        `json:"reconnectCount,omitempty"`  // Total reconnects.
-
-	OutgoingStreams  int       `json:"outgoingStreams,omitempty"`
-	IncomingStreams  int       `json:"incomingStreams,omitempty"`
-	OutgoingMessages int64     `json:"outgoingMessages,omitempty"`
-	IncomingMessages int64     `json:"incomingMessages,omitempty"`
-	OutQueue         int       `json:"outQueue,omitempty"`
-	LastPongTime     time.Time `json:"lastPongTime,omitempty"`
-	LastConnectTime  time.Time `json:"lastConnectTime,omitempty"`
-	LastPingMS       float64   `json:"lastPingMS,omitempty"`
-	MaxPingDurMS     float64   `json:"maxPingDurMS,omitempty"` // Maximum across all merged entries.
 }
 
 // Add 'other' to a.
@@ -1349,28 +1363,10 @@ func (a *RPCStats) Merge(other RPCStats) {
 		a.EndTime = nil
 	}
 	a.WallTimeSecs += other.WallTimeSecs
-	a.Connected += other.Connected
-	a.Disconnected += other.Disconnected
 	a.Requests += other.Requests
 	a.IncomingBytes += other.IncomingBytes
 	a.OutgoingBytes += other.OutgoingBytes
 	a.RequestTimeSecs += other.RequestTimeSecs
-	a.ReconnectCount += other.ReconnectCount
-	a.OutgoingStreams += other.OutgoingStreams
-	a.IncomingStreams += other.IncomingStreams
-	a.OutgoingMessages += other.OutgoingMessages
-	a.IncomingMessages += other.IncomingMessages
-	a.OutQueue += other.OutQueue
-	if a.LastPongTime.Before(other.LastPongTime) {
-		a.LastPongTime = other.LastPongTime
-		a.LastPingMS = other.LastPingMS
-	}
-	if a.LastConnectTime.Before(other.LastConnectTime) {
-		a.LastConnectTime = other.LastConnectTime
-	}
-	if a.MaxPingDurMS < other.MaxPingDurMS {
-		a.MaxPingDurMS = other.MaxPingDurMS
-	}
 }
 
 //msgp:replace metrics.Float64Histogram with:localF64H
