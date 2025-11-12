@@ -1235,7 +1235,7 @@ type RPCMetrics struct {
 	CollectedAt time.Time `json:"collected"`
 
 	// Connection stats accumulated for grid systems running on nodes.
-	ConnectionStats
+	ConnectionStats `json:",flatten"`
 
 	// Last minute operation statistics by handler.
 	LastMinute map[string]RPCStats `json:"lastMinute,omitempty"`
