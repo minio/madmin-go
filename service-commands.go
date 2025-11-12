@@ -161,6 +161,7 @@ type ServiceTraceOpts struct {
 	BatchReplication  bool
 	BatchKeyRotation  bool
 	BatchExpire       bool
+	Tables            bool
 	BatchAll          bool
 	Rebalance         bool
 	ReplicationResync bool
@@ -169,6 +170,7 @@ type ServiceTraceOpts struct {
 	ILM               bool
 	KMS               bool
 	Formatting        bool
+	PurgeOnDelete     bool
 
 	OnlyErrors    bool
 	Threshold     time.Duration
@@ -190,12 +192,14 @@ func (t ServiceTraceOpts) TraceTypes() TraceType {
 	tt.SetIf(t.BatchAll || t.BatchExpire, TraceBatchExpire)
 
 	tt.SetIf(t.Rebalance, TraceRebalance)
+	tt.SetIf(t.Tables, TraceTables)
 	tt.SetIf(t.ReplicationResync, TraceReplicationResync)
 	tt.SetIf(t.Bootstrap, TraceBootstrap)
 	tt.SetIf(t.FTP, TraceFTP)
 	tt.SetIf(t.ILM, TraceILM)
 	tt.SetIf(t.KMS, TraceKMS)
 	tt.SetIf(t.Formatting, TraceFormatting)
+	tt.SetIf(t.PurgeOnDelete, TracePurgeOnDelete)
 
 	return tt
 }
@@ -217,12 +221,14 @@ func (t ServiceTraceOpts) AddParams(u url.Values) {
 	u.Set("batch-keyrotation", strconv.FormatBool(t.BatchAll || t.BatchKeyRotation))
 	u.Set("batch-expire", strconv.FormatBool(t.BatchAll || t.BatchExpire))
 	u.Set("rebalance", strconv.FormatBool(t.Rebalance))
+	u.Set("tables", strconv.FormatBool(t.Tables))
 	u.Set("replication-resync", strconv.FormatBool(t.ReplicationResync))
 	u.Set("bootstrap", strconv.FormatBool(t.Bootstrap))
 	u.Set("ftp", strconv.FormatBool(t.FTP))
 	u.Set("ilm", strconv.FormatBool(t.ILM))
 	u.Set("kms", strconv.FormatBool(t.KMS))
 	u.Set("formatting", strconv.FormatBool(t.Formatting))
+	u.Set("purgeondelete", strconv.FormatBool(t.PurgeOnDelete))
 }
 
 // ParseParams will parse parameters and set them to t.
@@ -236,6 +242,7 @@ func (t *ServiceTraceOpts) ParseParams(r *http.Request) (err error) {
 	t.BatchKeyRotation = r.Form.Get("batch-keyrotation") == "true"
 	t.BatchExpire = r.Form.Get("batch-expire") == "true"
 	t.Rebalance = r.Form.Get("rebalance") == "true"
+	t.Tables = r.Form.Get("tables") == "true"
 	t.Storage = r.Form.Get("storage") == "true"
 	t.Internal = r.Form.Get("internal") == "true"
 	t.OnlyErrors = r.Form.Get("err") == "true"
@@ -245,6 +252,7 @@ func (t *ServiceTraceOpts) ParseParams(r *http.Request) (err error) {
 	t.ILM = r.Form.Get("ilm") == "true"
 	t.KMS = r.Form.Get("kms") == "true"
 	t.Formatting = r.Form.Get("formatting") == "true"
+	t.PurgeOnDelete = r.Form.Get("purgeondelete") == "true"
 
 	if th := r.Form.Get("threshold"); th != "" {
 		d, err := time.ParseDuration(th)

@@ -758,7 +758,7 @@ func (z *CallInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint32 /* 17 bits */
+	var zb0001Mask uint32 /* 22 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -803,48 +803,83 @@ func (z *CallInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 			zb0001Mask |= 0x10
+		case "requestReadTime":
+			z.RequestReadTime, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "RequestReadTime")
+				return
+			}
+			zb0001Mask |= 0x20
+		case "responseWriteTime":
+			z.ResponseWriteTime, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "ResponseWriteTime")
+				return
+			}
+			zb0001Mask |= 0x40
+		case "requestTime":
+			z.RequestTime, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "RequestTime")
+				return
+			}
+			zb0001Mask |= 0x80
 		case "timeToResponse":
 			z.TimeToResponse, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "TimeToResponse")
 				return
 			}
-			zb0001Mask |= 0x20
+			zb0001Mask |= 0x100
+		case "readBlocked":
+			z.ReadBlocked, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "ReadBlocked")
+				return
+			}
+			zb0001Mask |= 0x200
+		case "writeBlocked":
+			z.WriteBlocked, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "WriteBlocked")
+				return
+			}
+			zb0001Mask |= 0x400
 		case "sourceHost":
 			z.SourceHost, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "SourceHost")
 				return
 			}
-			zb0001Mask |= 0x40
+			zb0001Mask |= 0x800
 		case "requestID":
 			z.RequestID, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "RequestID")
 				return
 			}
-			zb0001Mask |= 0x80
+			zb0001Mask |= 0x1000
 		case "userAgent":
 			z.UserAgent, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "UserAgent")
 				return
 			}
-			zb0001Mask |= 0x100
+			zb0001Mask |= 0x2000
 		case "requestPath":
 			z.ReqPath, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "ReqPath")
 				return
 			}
-			zb0001Mask |= 0x200
+			zb0001Mask |= 0x4000
 		case "requestHost":
 			z.ReqHost, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "ReqHost")
 				return
 			}
-			zb0001Mask |= 0x400
+			zb0001Mask |= 0x8000
 		case "requestClaims":
 			var zb0002 uint32
 			zb0002, err = dc.ReadMapHeader()
@@ -873,7 +908,7 @@ func (z *CallInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.ReqClaims[za0001] = za0002
 			}
-			zb0001Mask |= 0x800
+			zb0001Mask |= 0x10000
 		case "requestQuery":
 			var zb0003 uint32
 			zb0003, err = dc.ReadMapHeader()
@@ -902,7 +937,7 @@ func (z *CallInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.ReqQuery[za0003] = za0004
 			}
-			zb0001Mask |= 0x1000
+			zb0001Mask |= 0x20000
 		case "requestHeader":
 			var zb0004 uint32
 			zb0004, err = dc.ReadMapHeader()
@@ -931,7 +966,7 @@ func (z *CallInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.ReqHeader[za0005] = za0006
 			}
-			zb0001Mask |= 0x2000
+			zb0001Mask |= 0x40000
 		case "responseHeader":
 			var zb0005 uint32
 			zb0005, err = dc.ReadMapHeader()
@@ -960,21 +995,21 @@ func (z *CallInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.RespHeader[za0007] = za0008
 			}
-			zb0001Mask |= 0x4000
+			zb0001Mask |= 0x80000
 		case "accessKey":
 			z.AccessKey, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "AccessKey")
 				return
 			}
-			zb0001Mask |= 0x8000
+			zb0001Mask |= 0x100000
 		case "parentUser":
 			z.ParentUser, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "ParentUser")
 				return
 			}
-			zb0001Mask |= 0x10000
+			zb0001Mask |= 0x200000
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -984,7 +1019,7 @@ func (z *CallInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x1ffff {
+	if zb0001Mask != 0x3fffff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.HTTPStatusCode = 0
 		}
@@ -1001,39 +1036,54 @@ func (z *CallInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 			z.TimeToFirstByte = ""
 		}
 		if (zb0001Mask & 0x20) == 0 {
-			z.TimeToResponse = ""
+			z.RequestReadTime = ""
 		}
 		if (zb0001Mask & 0x40) == 0 {
-			z.SourceHost = ""
+			z.ResponseWriteTime = ""
 		}
 		if (zb0001Mask & 0x80) == 0 {
-			z.RequestID = ""
+			z.RequestTime = ""
 		}
 		if (zb0001Mask & 0x100) == 0 {
-			z.UserAgent = ""
+			z.TimeToResponse = ""
 		}
 		if (zb0001Mask & 0x200) == 0 {
-			z.ReqPath = ""
+			z.ReadBlocked = ""
 		}
 		if (zb0001Mask & 0x400) == 0 {
-			z.ReqHost = ""
+			z.WriteBlocked = ""
 		}
 		if (zb0001Mask & 0x800) == 0 {
-			z.ReqClaims = nil
+			z.SourceHost = ""
 		}
 		if (zb0001Mask & 0x1000) == 0 {
-			z.ReqQuery = nil
+			z.RequestID = ""
 		}
 		if (zb0001Mask & 0x2000) == 0 {
-			z.ReqHeader = nil
+			z.UserAgent = ""
 		}
 		if (zb0001Mask & 0x4000) == 0 {
-			z.RespHeader = nil
+			z.ReqPath = ""
 		}
 		if (zb0001Mask & 0x8000) == 0 {
-			z.AccessKey = ""
+			z.ReqHost = ""
 		}
 		if (zb0001Mask & 0x10000) == 0 {
+			z.ReqClaims = nil
+		}
+		if (zb0001Mask & 0x20000) == 0 {
+			z.ReqQuery = nil
+		}
+		if (zb0001Mask & 0x40000) == 0 {
+			z.ReqHeader = nil
+		}
+		if (zb0001Mask & 0x80000) == 0 {
+			z.RespHeader = nil
+		}
+		if (zb0001Mask & 0x100000) == 0 {
+			z.AccessKey = ""
+		}
+		if (zb0001Mask & 0x200000) == 0 {
 			z.ParentUser = ""
 		}
 	}
@@ -1043,8 +1093,8 @@ func (z *CallInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *CallInfo) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(17)
-	var zb0001Mask uint32 /* 17 bits */
+	zb0001Len := uint32(22)
+	var zb0001Mask uint32 /* 22 bits */
 	_ = zb0001Mask
 	if z.HTTPStatusCode == 0 {
 		zb0001Len--
@@ -1066,53 +1116,73 @@ func (z *CallInfo) EncodeMsg(en *msgp.Writer) (err error) {
 		zb0001Len--
 		zb0001Mask |= 0x10
 	}
-	if z.TimeToResponse == "" {
+	if z.RequestReadTime == "" {
 		zb0001Len--
 		zb0001Mask |= 0x20
 	}
-	if z.SourceHost == "" {
+	if z.ResponseWriteTime == "" {
 		zb0001Len--
 		zb0001Mask |= 0x40
 	}
-	if z.RequestID == "" {
+	if z.RequestTime == "" {
 		zb0001Len--
 		zb0001Mask |= 0x80
 	}
-	if z.UserAgent == "" {
+	if z.TimeToResponse == "" {
 		zb0001Len--
 		zb0001Mask |= 0x100
 	}
-	if z.ReqPath == "" {
+	if z.ReadBlocked == "" {
 		zb0001Len--
 		zb0001Mask |= 0x200
 	}
-	if z.ReqHost == "" {
+	if z.WriteBlocked == "" {
 		zb0001Len--
 		zb0001Mask |= 0x400
 	}
-	if z.ReqClaims == nil {
+	if z.SourceHost == "" {
 		zb0001Len--
 		zb0001Mask |= 0x800
 	}
-	if z.ReqQuery == nil {
+	if z.RequestID == "" {
 		zb0001Len--
 		zb0001Mask |= 0x1000
 	}
-	if z.ReqHeader == nil {
+	if z.UserAgent == "" {
 		zb0001Len--
 		zb0001Mask |= 0x2000
 	}
-	if z.RespHeader == nil {
+	if z.ReqPath == "" {
 		zb0001Len--
 		zb0001Mask |= 0x4000
 	}
-	if z.AccessKey == "" {
+	if z.ReqHost == "" {
 		zb0001Len--
 		zb0001Mask |= 0x8000
 	}
-	if z.ParentUser == "" {
+	if z.ReqClaims == nil {
 		zb0001Len--
 		zb0001Mask |= 0x10000
+	}
+	if z.ReqQuery == nil {
+		zb0001Len--
+		zb0001Mask |= 0x20000
+	}
+	if z.ReqHeader == nil {
+		zb0001Len--
+		zb0001Mask |= 0x40000
+	}
+	if z.RespHeader == nil {
+		zb0001Len--
+		zb0001Mask |= 0x80000
+	}
+	if z.AccessKey == "" {
+		zb0001Len--
+		zb0001Mask |= 0x100000
+	}
+	if z.ParentUser == "" {
+		zb0001Len--
+		zb0001Mask |= 0x200000
 	}
 	// variable map header, size zb0001Len
 	err = en.WriteMapHeader(zb0001Len)
@@ -1183,6 +1253,42 @@ func (z *CallInfo) EncodeMsg(en *msgp.Writer) (err error) {
 			}
 		}
 		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// write "requestReadTime"
+			err = en.Append(0xaf, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x52, 0x65, 0x61, 0x64, 0x54, 0x69, 0x6d, 0x65)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.RequestReadTime)
+			if err != nil {
+				err = msgp.WrapError(err, "RequestReadTime")
+				return
+			}
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
+			// write "responseWriteTime"
+			err = en.Append(0xb1, 0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x57, 0x72, 0x69, 0x74, 0x65, 0x54, 0x69, 0x6d, 0x65)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.ResponseWriteTime)
+			if err != nil {
+				err = msgp.WrapError(err, "ResponseWriteTime")
+				return
+			}
+		}
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
+			// write "requestTime"
+			err = en.Append(0xab, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x54, 0x69, 0x6d, 0x65)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.RequestTime)
+			if err != nil {
+				err = msgp.WrapError(err, "RequestTime")
+				return
+			}
+		}
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
 			// write "timeToResponse"
 			err = en.Append(0xae, 0x74, 0x69, 0x6d, 0x65, 0x54, 0x6f, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65)
 			if err != nil {
@@ -1194,7 +1300,31 @@ func (z *CallInfo) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x40) == 0 { // if not omitted
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
+			// write "readBlocked"
+			err = en.Append(0xab, 0x72, 0x65, 0x61, 0x64, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x65, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.ReadBlocked)
+			if err != nil {
+				err = msgp.WrapError(err, "ReadBlocked")
+				return
+			}
+		}
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
+			// write "writeBlocked"
+			err = en.Append(0xac, 0x77, 0x72, 0x69, 0x74, 0x65, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x65, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.WriteBlocked)
+			if err != nil {
+				err = msgp.WrapError(err, "WriteBlocked")
+				return
+			}
+		}
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
 			// write "sourceHost"
 			err = en.Append(0xaa, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x48, 0x6f, 0x73, 0x74)
 			if err != nil {
@@ -1206,7 +1336,7 @@ func (z *CallInfo) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x80) == 0 { // if not omitted
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
 			// write "requestID"
 			err = en.Append(0xa9, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x49, 0x44)
 			if err != nil {
@@ -1218,7 +1348,7 @@ func (z *CallInfo) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x100) == 0 { // if not omitted
+		if (zb0001Mask & 0x2000) == 0 { // if not omitted
 			// write "userAgent"
 			err = en.Append(0xa9, 0x75, 0x73, 0x65, 0x72, 0x41, 0x67, 0x65, 0x6e, 0x74)
 			if err != nil {
@@ -1230,7 +1360,7 @@ func (z *CallInfo) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x200) == 0 { // if not omitted
+		if (zb0001Mask & 0x4000) == 0 { // if not omitted
 			// write "requestPath"
 			err = en.Append(0xab, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x50, 0x61, 0x74, 0x68)
 			if err != nil {
@@ -1242,7 +1372,7 @@ func (z *CallInfo) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x400) == 0 { // if not omitted
+		if (zb0001Mask & 0x8000) == 0 { // if not omitted
 			// write "requestHost"
 			err = en.Append(0xab, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x48, 0x6f, 0x73, 0x74)
 			if err != nil {
@@ -1254,7 +1384,7 @@ func (z *CallInfo) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x800) == 0 { // if not omitted
+		if (zb0001Mask & 0x10000) == 0 { // if not omitted
 			// write "requestClaims"
 			err = en.Append(0xad, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x43, 0x6c, 0x61, 0x69, 0x6d, 0x73)
 			if err != nil {
@@ -1278,7 +1408,7 @@ func (z *CallInfo) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x1000) == 0 { // if not omitted
+		if (zb0001Mask & 0x20000) == 0 { // if not omitted
 			// write "requestQuery"
 			err = en.Append(0xac, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x51, 0x75, 0x65, 0x72, 0x79)
 			if err != nil {
@@ -1302,7 +1432,7 @@ func (z *CallInfo) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x2000) == 0 { // if not omitted
+		if (zb0001Mask & 0x40000) == 0 { // if not omitted
 			// write "requestHeader"
 			err = en.Append(0xad, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x48, 0x65, 0x61, 0x64, 0x65, 0x72)
 			if err != nil {
@@ -1326,7 +1456,7 @@ func (z *CallInfo) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x4000) == 0 { // if not omitted
+		if (zb0001Mask & 0x80000) == 0 { // if not omitted
 			// write "responseHeader"
 			err = en.Append(0xae, 0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x48, 0x65, 0x61, 0x64, 0x65, 0x72)
 			if err != nil {
@@ -1350,7 +1480,7 @@ func (z *CallInfo) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x8000) == 0 { // if not omitted
+		if (zb0001Mask & 0x100000) == 0 { // if not omitted
 			// write "accessKey"
 			err = en.Append(0xa9, 0x61, 0x63, 0x63, 0x65, 0x73, 0x73, 0x4b, 0x65, 0x79)
 			if err != nil {
@@ -1362,7 +1492,7 @@ func (z *CallInfo) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x10000) == 0 { // if not omitted
+		if (zb0001Mask & 0x200000) == 0 { // if not omitted
 			// write "parentUser"
 			err = en.Append(0xaa, 0x70, 0x61, 0x72, 0x65, 0x6e, 0x74, 0x55, 0x73, 0x65, 0x72)
 			if err != nil {
@@ -1382,8 +1512,8 @@ func (z *CallInfo) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *CallInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(17)
-	var zb0001Mask uint32 /* 17 bits */
+	zb0001Len := uint32(22)
+	var zb0001Mask uint32 /* 22 bits */
 	_ = zb0001Mask
 	if z.HTTPStatusCode == 0 {
 		zb0001Len--
@@ -1405,53 +1535,73 @@ func (z *CallInfo) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x10
 	}
-	if z.TimeToResponse == "" {
+	if z.RequestReadTime == "" {
 		zb0001Len--
 		zb0001Mask |= 0x20
 	}
-	if z.SourceHost == "" {
+	if z.ResponseWriteTime == "" {
 		zb0001Len--
 		zb0001Mask |= 0x40
 	}
-	if z.RequestID == "" {
+	if z.RequestTime == "" {
 		zb0001Len--
 		zb0001Mask |= 0x80
 	}
-	if z.UserAgent == "" {
+	if z.TimeToResponse == "" {
 		zb0001Len--
 		zb0001Mask |= 0x100
 	}
-	if z.ReqPath == "" {
+	if z.ReadBlocked == "" {
 		zb0001Len--
 		zb0001Mask |= 0x200
 	}
-	if z.ReqHost == "" {
+	if z.WriteBlocked == "" {
 		zb0001Len--
 		zb0001Mask |= 0x400
 	}
-	if z.ReqClaims == nil {
+	if z.SourceHost == "" {
 		zb0001Len--
 		zb0001Mask |= 0x800
 	}
-	if z.ReqQuery == nil {
+	if z.RequestID == "" {
 		zb0001Len--
 		zb0001Mask |= 0x1000
 	}
-	if z.ReqHeader == nil {
+	if z.UserAgent == "" {
 		zb0001Len--
 		zb0001Mask |= 0x2000
 	}
-	if z.RespHeader == nil {
+	if z.ReqPath == "" {
 		zb0001Len--
 		zb0001Mask |= 0x4000
 	}
-	if z.AccessKey == "" {
+	if z.ReqHost == "" {
 		zb0001Len--
 		zb0001Mask |= 0x8000
 	}
-	if z.ParentUser == "" {
+	if z.ReqClaims == nil {
 		zb0001Len--
 		zb0001Mask |= 0x10000
+	}
+	if z.ReqQuery == nil {
+		zb0001Len--
+		zb0001Mask |= 0x20000
+	}
+	if z.ReqHeader == nil {
+		zb0001Len--
+		zb0001Mask |= 0x40000
+	}
+	if z.RespHeader == nil {
+		zb0001Len--
+		zb0001Mask |= 0x80000
+	}
+	if z.AccessKey == "" {
+		zb0001Len--
+		zb0001Mask |= 0x100000
+	}
+	if z.ParentUser == "" {
+		zb0001Len--
+		zb0001Mask |= 0x200000
 	}
 	// variable map header, size zb0001Len
 	o = msgp.AppendMapHeader(o, zb0001Len)
@@ -1484,36 +1634,61 @@ func (z *CallInfo) MarshalMsg(b []byte) (o []byte, err error) {
 			o = msgp.AppendString(o, z.TimeToFirstByte)
 		}
 		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// string "requestReadTime"
+			o = append(o, 0xaf, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x52, 0x65, 0x61, 0x64, 0x54, 0x69, 0x6d, 0x65)
+			o = msgp.AppendString(o, z.RequestReadTime)
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
+			// string "responseWriteTime"
+			o = append(o, 0xb1, 0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x57, 0x72, 0x69, 0x74, 0x65, 0x54, 0x69, 0x6d, 0x65)
+			o = msgp.AppendString(o, z.ResponseWriteTime)
+		}
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
+			// string "requestTime"
+			o = append(o, 0xab, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x54, 0x69, 0x6d, 0x65)
+			o = msgp.AppendString(o, z.RequestTime)
+		}
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
 			// string "timeToResponse"
 			o = append(o, 0xae, 0x74, 0x69, 0x6d, 0x65, 0x54, 0x6f, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65)
 			o = msgp.AppendString(o, z.TimeToResponse)
 		}
-		if (zb0001Mask & 0x40) == 0 { // if not omitted
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
+			// string "readBlocked"
+			o = append(o, 0xab, 0x72, 0x65, 0x61, 0x64, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x65, 0x64)
+			o = msgp.AppendString(o, z.ReadBlocked)
+		}
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
+			// string "writeBlocked"
+			o = append(o, 0xac, 0x77, 0x72, 0x69, 0x74, 0x65, 0x42, 0x6c, 0x6f, 0x63, 0x6b, 0x65, 0x64)
+			o = msgp.AppendString(o, z.WriteBlocked)
+		}
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
 			// string "sourceHost"
 			o = append(o, 0xaa, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x48, 0x6f, 0x73, 0x74)
 			o = msgp.AppendString(o, z.SourceHost)
 		}
-		if (zb0001Mask & 0x80) == 0 { // if not omitted
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
 			// string "requestID"
 			o = append(o, 0xa9, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x49, 0x44)
 			o = msgp.AppendString(o, z.RequestID)
 		}
-		if (zb0001Mask & 0x100) == 0 { // if not omitted
+		if (zb0001Mask & 0x2000) == 0 { // if not omitted
 			// string "userAgent"
 			o = append(o, 0xa9, 0x75, 0x73, 0x65, 0x72, 0x41, 0x67, 0x65, 0x6e, 0x74)
 			o = msgp.AppendString(o, z.UserAgent)
 		}
-		if (zb0001Mask & 0x200) == 0 { // if not omitted
+		if (zb0001Mask & 0x4000) == 0 { // if not omitted
 			// string "requestPath"
 			o = append(o, 0xab, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x50, 0x61, 0x74, 0x68)
 			o = msgp.AppendString(o, z.ReqPath)
 		}
-		if (zb0001Mask & 0x400) == 0 { // if not omitted
+		if (zb0001Mask & 0x8000) == 0 { // if not omitted
 			// string "requestHost"
 			o = append(o, 0xab, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x48, 0x6f, 0x73, 0x74)
 			o = msgp.AppendString(o, z.ReqHost)
 		}
-		if (zb0001Mask & 0x800) == 0 { // if not omitted
+		if (zb0001Mask & 0x10000) == 0 { // if not omitted
 			// string "requestClaims"
 			o = append(o, 0xad, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x43, 0x6c, 0x61, 0x69, 0x6d, 0x73)
 			o = msgp.AppendMapHeader(o, uint32(len(z.ReqClaims)))
@@ -1526,7 +1701,7 @@ func (z *CallInfo) MarshalMsg(b []byte) (o []byte, err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x1000) == 0 { // if not omitted
+		if (zb0001Mask & 0x20000) == 0 { // if not omitted
 			// string "requestQuery"
 			o = append(o, 0xac, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x51, 0x75, 0x65, 0x72, 0x79)
 			o = msgp.AppendMapHeader(o, uint32(len(z.ReqQuery)))
@@ -1535,7 +1710,7 @@ func (z *CallInfo) MarshalMsg(b []byte) (o []byte, err error) {
 				o = msgp.AppendString(o, za0004)
 			}
 		}
-		if (zb0001Mask & 0x2000) == 0 { // if not omitted
+		if (zb0001Mask & 0x40000) == 0 { // if not omitted
 			// string "requestHeader"
 			o = append(o, 0xad, 0x72, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x48, 0x65, 0x61, 0x64, 0x65, 0x72)
 			o = msgp.AppendMapHeader(o, uint32(len(z.ReqHeader)))
@@ -1544,7 +1719,7 @@ func (z *CallInfo) MarshalMsg(b []byte) (o []byte, err error) {
 				o = msgp.AppendString(o, za0006)
 			}
 		}
-		if (zb0001Mask & 0x4000) == 0 { // if not omitted
+		if (zb0001Mask & 0x80000) == 0 { // if not omitted
 			// string "responseHeader"
 			o = append(o, 0xae, 0x72, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x48, 0x65, 0x61, 0x64, 0x65, 0x72)
 			o = msgp.AppendMapHeader(o, uint32(len(z.RespHeader)))
@@ -1553,12 +1728,12 @@ func (z *CallInfo) MarshalMsg(b []byte) (o []byte, err error) {
 				o = msgp.AppendString(o, za0008)
 			}
 		}
-		if (zb0001Mask & 0x8000) == 0 { // if not omitted
+		if (zb0001Mask & 0x100000) == 0 { // if not omitted
 			// string "accessKey"
 			o = append(o, 0xa9, 0x61, 0x63, 0x63, 0x65, 0x73, 0x73, 0x4b, 0x65, 0x79)
 			o = msgp.AppendString(o, z.AccessKey)
 		}
-		if (zb0001Mask & 0x10000) == 0 { // if not omitted
+		if (zb0001Mask & 0x200000) == 0 { // if not omitted
 			// string "parentUser"
 			o = append(o, 0xaa, 0x70, 0x61, 0x72, 0x65, 0x6e, 0x74, 0x55, 0x73, 0x65, 0x72)
 			o = msgp.AppendString(o, z.ParentUser)
@@ -1577,7 +1752,7 @@ func (z *CallInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint32 /* 17 bits */
+	var zb0001Mask uint32 /* 22 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -1622,48 +1797,83 @@ func (z *CallInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 			zb0001Mask |= 0x10
+		case "requestReadTime":
+			z.RequestReadTime, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "RequestReadTime")
+				return
+			}
+			zb0001Mask |= 0x20
+		case "responseWriteTime":
+			z.ResponseWriteTime, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ResponseWriteTime")
+				return
+			}
+			zb0001Mask |= 0x40
+		case "requestTime":
+			z.RequestTime, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "RequestTime")
+				return
+			}
+			zb0001Mask |= 0x80
 		case "timeToResponse":
 			z.TimeToResponse, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "TimeToResponse")
 				return
 			}
-			zb0001Mask |= 0x20
+			zb0001Mask |= 0x100
+		case "readBlocked":
+			z.ReadBlocked, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ReadBlocked")
+				return
+			}
+			zb0001Mask |= 0x200
+		case "writeBlocked":
+			z.WriteBlocked, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "WriteBlocked")
+				return
+			}
+			zb0001Mask |= 0x400
 		case "sourceHost":
 			z.SourceHost, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "SourceHost")
 				return
 			}
-			zb0001Mask |= 0x40
+			zb0001Mask |= 0x800
 		case "requestID":
 			z.RequestID, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "RequestID")
 				return
 			}
-			zb0001Mask |= 0x80
+			zb0001Mask |= 0x1000
 		case "userAgent":
 			z.UserAgent, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "UserAgent")
 				return
 			}
-			zb0001Mask |= 0x100
+			zb0001Mask |= 0x2000
 		case "requestPath":
 			z.ReqPath, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ReqPath")
 				return
 			}
-			zb0001Mask |= 0x200
+			zb0001Mask |= 0x4000
 		case "requestHost":
 			z.ReqHost, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ReqHost")
 				return
 			}
-			zb0001Mask |= 0x400
+			zb0001Mask |= 0x8000
 		case "requestClaims":
 			var zb0002 uint32
 			zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
@@ -1692,7 +1902,7 @@ func (z *CallInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.ReqClaims[za0001] = za0002
 			}
-			zb0001Mask |= 0x800
+			zb0001Mask |= 0x10000
 		case "requestQuery":
 			var zb0003 uint32
 			zb0003, bts, err = msgp.ReadMapHeaderBytes(bts)
@@ -1721,7 +1931,7 @@ func (z *CallInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.ReqQuery[za0003] = za0004
 			}
-			zb0001Mask |= 0x1000
+			zb0001Mask |= 0x20000
 		case "requestHeader":
 			var zb0004 uint32
 			zb0004, bts, err = msgp.ReadMapHeaderBytes(bts)
@@ -1750,7 +1960,7 @@ func (z *CallInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.ReqHeader[za0005] = za0006
 			}
-			zb0001Mask |= 0x2000
+			zb0001Mask |= 0x40000
 		case "responseHeader":
 			var zb0005 uint32
 			zb0005, bts, err = msgp.ReadMapHeaderBytes(bts)
@@ -1779,21 +1989,21 @@ func (z *CallInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.RespHeader[za0007] = za0008
 			}
-			zb0001Mask |= 0x4000
+			zb0001Mask |= 0x80000
 		case "accessKey":
 			z.AccessKey, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "AccessKey")
 				return
 			}
-			zb0001Mask |= 0x8000
+			zb0001Mask |= 0x100000
 		case "parentUser":
 			z.ParentUser, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ParentUser")
 				return
 			}
-			zb0001Mask |= 0x10000
+			zb0001Mask |= 0x200000
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -1803,7 +2013,7 @@ func (z *CallInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x1ffff {
+	if zb0001Mask != 0x3fffff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.HTTPStatusCode = 0
 		}
@@ -1820,39 +2030,54 @@ func (z *CallInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.TimeToFirstByte = ""
 		}
 		if (zb0001Mask & 0x20) == 0 {
-			z.TimeToResponse = ""
+			z.RequestReadTime = ""
 		}
 		if (zb0001Mask & 0x40) == 0 {
-			z.SourceHost = ""
+			z.ResponseWriteTime = ""
 		}
 		if (zb0001Mask & 0x80) == 0 {
-			z.RequestID = ""
+			z.RequestTime = ""
 		}
 		if (zb0001Mask & 0x100) == 0 {
-			z.UserAgent = ""
+			z.TimeToResponse = ""
 		}
 		if (zb0001Mask & 0x200) == 0 {
-			z.ReqPath = ""
+			z.ReadBlocked = ""
 		}
 		if (zb0001Mask & 0x400) == 0 {
-			z.ReqHost = ""
+			z.WriteBlocked = ""
 		}
 		if (zb0001Mask & 0x800) == 0 {
-			z.ReqClaims = nil
+			z.SourceHost = ""
 		}
 		if (zb0001Mask & 0x1000) == 0 {
-			z.ReqQuery = nil
+			z.RequestID = ""
 		}
 		if (zb0001Mask & 0x2000) == 0 {
-			z.ReqHeader = nil
+			z.UserAgent = ""
 		}
 		if (zb0001Mask & 0x4000) == 0 {
-			z.RespHeader = nil
+			z.ReqPath = ""
 		}
 		if (zb0001Mask & 0x8000) == 0 {
-			z.AccessKey = ""
+			z.ReqHost = ""
 		}
 		if (zb0001Mask & 0x10000) == 0 {
+			z.ReqClaims = nil
+		}
+		if (zb0001Mask & 0x20000) == 0 {
+			z.ReqQuery = nil
+		}
+		if (zb0001Mask & 0x40000) == 0 {
+			z.ReqHeader = nil
+		}
+		if (zb0001Mask & 0x80000) == 0 {
+			z.RespHeader = nil
+		}
+		if (zb0001Mask & 0x100000) == 0 {
+			z.AccessKey = ""
+		}
+		if (zb0001Mask & 0x200000) == 0 {
 			z.ParentUser = ""
 		}
 	}
@@ -1862,7 +2087,7 @@ func (z *CallInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *CallInfo) Msgsize() (s int) {
-	s = 3 + 15 + msgp.IntSize + 3 + msgp.Int64Size + 3 + msgp.Int64Size + 10 + msgp.Int64Size + 16 + msgp.StringPrefixSize + len(z.TimeToFirstByte) + 15 + msgp.StringPrefixSize + len(z.TimeToResponse) + 11 + msgp.StringPrefixSize + len(z.SourceHost) + 10 + msgp.StringPrefixSize + len(z.RequestID) + 10 + msgp.StringPrefixSize + len(z.UserAgent) + 12 + msgp.StringPrefixSize + len(z.ReqPath) + 12 + msgp.StringPrefixSize + len(z.ReqHost) + 14 + msgp.MapHeaderSize
+	s = 3 + 15 + msgp.IntSize + 3 + msgp.Int64Size + 3 + msgp.Int64Size + 10 + msgp.Int64Size + 16 + msgp.StringPrefixSize + len(z.TimeToFirstByte) + 16 + msgp.StringPrefixSize + len(z.RequestReadTime) + 18 + msgp.StringPrefixSize + len(z.ResponseWriteTime) + 12 + msgp.StringPrefixSize + len(z.RequestTime) + 15 + msgp.StringPrefixSize + len(z.TimeToResponse) + 12 + msgp.StringPrefixSize + len(z.ReadBlocked) + 13 + msgp.StringPrefixSize + len(z.WriteBlocked) + 11 + msgp.StringPrefixSize + len(z.SourceHost) + 10 + msgp.StringPrefixSize + len(z.RequestID) + 10 + msgp.StringPrefixSize + len(z.UserAgent) + 12 + msgp.StringPrefixSize + len(z.ReqPath) + 12 + msgp.StringPrefixSize + len(z.ReqHost) + 14 + msgp.MapHeaderSize
 	if z.ReqClaims != nil {
 		for za0001, za0002 := range z.ReqClaims {
 			_ = za0002
