@@ -1235,6 +1235,7 @@ type RPCMetrics struct {
 	CollectedAt time.Time `json:"collected"`
 
 	// Connection stats accumulated for grid systems running on nodes.
+	//nolint:staticcheck // SA5008
 	ConnectionStats `json:",flatten"`
 
 	// Last minute operation statistics by handler.
@@ -1301,9 +1302,9 @@ func (m *RPCMetrics) Merge(other *RPCMetrics) {
 }
 
 // LastMinuteTotal returns the total RPCStats for the last minute.
-func (r *RPCMetrics) LastMinuteTotal() RPCStats {
+func (m *RPCMetrics) LastMinuteTotal() RPCStats {
 	var res RPCStats
-	for _, stats := range r.LastMinute {
+	for _, stats := range m.LastMinute {
 		res.Merge(stats)
 	}
 	// Since we are merging across APIs must reset track node count.
@@ -1311,18 +1312,18 @@ func (r *RPCMetrics) LastMinuteTotal() RPCStats {
 }
 
 // LastDayTotalSegmented returns the total SegmentedRPCMetrics for the last day.
-func (r *RPCMetrics) LastDayTotalSegmented() SegmentedRPCMetrics {
+func (m *RPCMetrics) LastDayTotalSegmented() SegmentedRPCMetrics {
 	var res SegmentedRPCMetrics
-	for _, stats := range r.LastDay {
+	for _, stats := range m.LastDay {
 		res.Add(&stats)
 	}
 	return res
 }
 
 // LastDayTotal returns the accumulated RPCStats for the last day.
-func (r *RPCMetrics) LastDayTotal() RPCStats {
+func (m *RPCMetrics) LastDayTotal() RPCStats {
 	var res RPCStats
-	for _, stats := range r.LastDay {
+	for _, stats := range m.LastDay {
 		for _, s := range stats.Segments {
 			res.Merge(s)
 		}

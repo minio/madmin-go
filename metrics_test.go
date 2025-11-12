@@ -2208,18 +2208,18 @@ func TestRPCMetricsLastMinuteTotal(t *testing.T) {
 			input: &RPCMetrics{
 				LastMinute: map[string]RPCStats{
 					"handler1": {
-						StartTime:       &now,
-						EndTime:         &now,
-						Requests:        100,
-						IncomingBytes:   1000,
-						OutgoingBytes:   2000,
+						StartTime:     &now,
+						EndTime:       &now,
+						Requests:      100,
+						IncomingBytes: 1000,
+						OutgoingBytes: 2000,
 					},
 					"handler2": {
-						StartTime:       nil,
-						EndTime:         nil,
-						Requests:        200,
-						IncomingBytes:   1500,
-						OutgoingBytes:   2500,
+						StartTime:     nil,
+						EndTime:       nil,
+						Requests:      200,
+						IncomingBytes: 1500,
+						OutgoingBytes: 2500,
 					},
 				},
 			},
