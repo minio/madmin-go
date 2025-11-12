@@ -1234,6 +1234,7 @@ type RPCMetrics struct {
 
 	CollectedAt time.Time `json:"collected"`
 
+	// Connection stats accumulated for grid systems running on nodes.
 	ConnectionStats
 
 	// Last minute operation statistics by handler.
@@ -1299,6 +1300,36 @@ func (m *RPCMetrics) Merge(other *RPCMetrics) {
 	}
 }
 
+// LastMinuteTotal returns the total RPCStats for the last minute.
+func (r *RPCMetrics) LastMinuteTotal() RPCStats {
+	var res RPCStats
+	for _, stats := range r.LastMinute {
+		res.Merge(stats)
+	}
+	// Since we are merging across APIs must reset track node count.
+	return res
+}
+
+// LastDayTotalSegmented returns the total SegmentedRPCMetrics for the last day.
+func (r *RPCMetrics) LastDayTotalSegmented() SegmentedRPCMetrics {
+	var res SegmentedRPCMetrics
+	for _, stats := range r.LastDay {
+		res.Add(&stats)
+	}
+	return res
+}
+
+// LastDayTotal returns the accumulated RPCStats for the last day.
+func (r *RPCMetrics) LastDayTotal() RPCStats {
+	var res RPCStats
+	for _, stats := range r.LastDay {
+		for _, s := range stats.Segments {
+			res.Merge(s)
+		}
+	}
+	return res
+}
+
 // ConnectionStats are the overall connection stats.
 type ConnectionStats struct {
 	Connected        int       `json:"connected,omitempty"`
@@ -1317,6 +1348,7 @@ type ConnectionStats struct {
 	MaxPingDurMS     float64   `json:"maxPingDurMS,omitempty"` // Maximum across all merged entries.
 }
 
+// Merge other into c.
 func (c *ConnectionStats) Merge(other *ConnectionStats) {
 	if other == nil {
 		return
@@ -1346,6 +1378,7 @@ func (c *ConnectionStats) Merge(other *ConnectionStats) {
 // SegmentedRPCMetrics are segmented RPC metrics.
 type SegmentedRPCMetrics = Segmented[RPCStats, *RPCStats]
 
+// RPCStats contains RPC statistics for RPC requests through grid.
 type RPCStats struct {
 	StartTime       *time.Time `json:"startTime,omitempty"`       // Time range this data covers unless merged from sources with different start times..
 	EndTime         *time.Time `json:"endTime,omitempty"`         // Time range this data covers unless merged from sources with different end times.
