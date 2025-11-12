@@ -1180,7 +1180,7 @@ func TestMetricsMerge(t *testing.T) {
 				Net:         &NetMetrics{},
 				Mem:         &MemMetrics{},
 				CPU:         &CPUMetrics{CPUCount: 4},
-				RPC:         &RPCMetrics{Connected: 5},
+				RPC:         &RPCMetrics{Nodes: 2, ConnectionStats: ConnectionStats{Connected: 5}},
 				Go:          &RuntimeMetrics{N: 1},
 				API:         &APIMetrics{Nodes: 3},
 				Replication: &ReplicationMetrics{Active: 100},
@@ -1194,7 +1194,7 @@ func TestMetricsMerge(t *testing.T) {
 				Net:         &NetMetrics{},
 				Mem:         &MemMetrics{},
 				CPU:         &CPUMetrics{CPUCount: 4},
-				RPC:         &RPCMetrics{Connected: 3},
+				RPC:         &RPCMetrics{Nodes: 3, ConnectionStats: ConnectionStats{Connected: 3}},
 				Go:          &RuntimeMetrics{N: 1},
 				API:         &APIMetrics{Nodes: 2},
 				Replication: &ReplicationMetrics{Active: 50},
@@ -1208,6 +1208,9 @@ func TestMetricsMerge(t *testing.T) {
 				}
 				if result.CPU.CPUCount != 8 {
 					t.Errorf("CPU.CPUCount = %d, want 8", result.CPU.CPUCount)
+				}
+				if result.RPC.Nodes != 5 {
+					t.Errorf("RPC.Nodes = %d, want 5", result.RPC.Nodes)
 				}
 				if result.RPC.Connected != 8 {
 					t.Errorf("RPC.Connected = %d, want 8", result.RPC.Connected)
@@ -1391,6 +1394,1325 @@ func TestRealtimeMetricsMerge(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.base.Merge(tt.other)
 			tt.verify(t, tt.base)
+		})
+	}
+}
+
+// TestRPCStatsMerge tests RPCStats.Merge functionality
+func TestRPCStatsMerge(t *testing.T) {
+	now := time.Now()
+	later := now.Add(time.Hour)
+
+	tests := []struct {
+		name   string
+		base   *RPCStats
+		other  *RPCStats
+		verify func(t *testing.T, result *RPCStats)
+	}{
+		{
+			name: "merge basic fields",
+			base: &RPCStats{
+				StartTime:       &now,
+				EndTime:         &now,
+				WallTimeSecs:    10.0,
+				Requests:        100,
+				RequestTimeSecs: 10.0,
+				IncomingBytes:   1000,
+				OutgoingBytes:   2000,
+			},
+			other: &RPCStats{
+				StartTime:       &now,
+				EndTime:         &now,
+				WallTimeSecs:    15.0,
+				Requests:        200,
+				RequestTimeSecs: 15.0,
+				IncomingBytes:   1500,
+				OutgoingBytes:   2500,
+			},
+			verify: func(t *testing.T, result *RPCStats) {
+				if result.WallTimeSecs != 25.0 {
+					t.Errorf("WallTimeSecs = %f, want 25.0", result.WallTimeSecs)
+				}
+				if result.Requests != 300 {
+					t.Errorf("Requests = %d, want 300", result.Requests)
+				}
+				if result.RequestTimeSecs != 25.0 {
+					t.Errorf("RequestTimeSecs = %f, want 25.0", result.RequestTimeSecs)
+				}
+				if result.IncomingBytes != 2500 {
+					t.Errorf("IncomingBytes = %d, want 2500", result.IncomingBytes)
+				}
+				if result.OutgoingBytes != 4500 {
+					t.Errorf("OutgoingBytes = %d, want 4500", result.OutgoingBytes)
+				}
+			},
+		},
+		{
+			name: "merge with same timestamps",
+			base: &RPCStats{
+				StartTime: &now,
+				EndTime:   &later,
+				Requests:  100,
+			},
+			other: &RPCStats{
+				StartTime: &now,
+				EndTime:   &later,
+				Requests:  200,
+			},
+			verify: func(t *testing.T, result *RPCStats) {
+				if result.StartTime == nil || !result.StartTime.Equal(now) {
+					t.Error("StartTime should be preserved when times are equal")
+				}
+				if result.EndTime == nil || !result.EndTime.Equal(later) {
+					t.Error("EndTime should be preserved when times are equal")
+				}
+				if result.Requests != 300 {
+					t.Errorf("Requests = %d, want 300", result.Requests)
+				}
+			},
+		},
+		{
+			name: "merge different start/end times - should nullify",
+			base: &RPCStats{
+				StartTime: &now,
+				EndTime:   &now,
+				Requests:  100,
+			},
+			other: &RPCStats{
+				StartTime: &later,
+				EndTime:   &later,
+				Requests:  200,
+			},
+			verify: func(t *testing.T, result *RPCStats) {
+				if result.StartTime != nil {
+					t.Error("StartTime should be nil when merging different times")
+				}
+				if result.EndTime != nil {
+					t.Error("EndTime should be nil when merging different times")
+				}
+				if result.Requests != 300 {
+					t.Errorf("Requests = %d, want 300", result.Requests)
+				}
+			},
+		},
+		{
+			name: "merge with nil timestamps",
+			base: &RPCStats{
+				Requests:        100,
+				IncomingBytes:   1000,
+				OutgoingBytes:   2000,
+				RequestTimeSecs: 5.0,
+				WallTimeSecs:    10.0,
+			},
+			other: &RPCStats{
+				Requests:        50,
+				IncomingBytes:   500,
+				OutgoingBytes:   1000,
+				RequestTimeSecs: 2.5,
+				WallTimeSecs:    5.0,
+			},
+			verify: func(t *testing.T, result *RPCStats) {
+				if result.Requests != 150 {
+					t.Errorf("Requests = %d, want 150", result.Requests)
+				}
+				if result.IncomingBytes != 1500 {
+					t.Errorf("IncomingBytes = %d, want 1500", result.IncomingBytes)
+				}
+				if result.OutgoingBytes != 3000 {
+					t.Errorf("OutgoingBytes = %d, want 3000", result.OutgoingBytes)
+				}
+				if result.RequestTimeSecs != 7.5 {
+					t.Errorf("RequestTimeSecs = %f, want 7.5", result.RequestTimeSecs)
+				}
+				if result.WallTimeSecs != 15.0 {
+					t.Errorf("WallTimeSecs = %f, want 15.0", result.WallTimeSecs)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.base.Merge(*tt.other)
+			tt.verify(t, tt.base)
+		})
+	}
+}
+
+// TestConnectionStatsMerge tests ConnectionStats.Merge functionality
+func TestConnectionStatsMerge(t *testing.T) {
+	now := time.Now()
+	later := now.Add(time.Hour)
+
+	tests := []struct {
+		name   string
+		base   *ConnectionStats
+		other  *ConnectionStats
+		verify func(t *testing.T, result *ConnectionStats)
+	}{
+		{
+			name:  "merge nil other",
+			base:  &ConnectionStats{Connected: 5},
+			other: nil,
+			verify: func(t *testing.T, result *ConnectionStats) {
+				if result.Connected != 5 {
+					t.Errorf("Connected = %d, want 5", result.Connected)
+				}
+			},
+		},
+		{
+			name: "merge all fields",
+			base: &ConnectionStats{
+				Connected:        5,
+				Disconnected:     2,
+				ReconnectCount:   3,
+				OutgoingStreams:  10,
+				IncomingStreams:  8,
+				OutgoingMessages: 1000,
+				IncomingMessages: 800,
+				OutgoingBytes:    50000,
+				IncomingBytes:    40000,
+				OutQueue:         15,
+				LastPongTime:     now,
+				LastConnectTime:  now,
+				LastPingMS:       5.5,
+				MaxPingDurMS:     10.0,
+			},
+			other: &ConnectionStats{
+				Connected:        3,
+				Disconnected:     1,
+				ReconnectCount:   2,
+				OutgoingStreams:  5,
+				IncomingStreams:  4,
+				OutgoingMessages: 500,
+				IncomingMessages: 400,
+				OutgoingBytes:    25000,
+				IncomingBytes:    20000,
+				OutQueue:         10,
+				LastPongTime:     later,
+				LastConnectTime:  later,
+				LastPingMS:       8.0,
+				MaxPingDurMS:     7.0,
+			},
+			verify: func(t *testing.T, result *ConnectionStats) {
+				if result.Connected != 8 {
+					t.Errorf("Connected = %d, want 8", result.Connected)
+				}
+				if result.Disconnected != 3 {
+					t.Errorf("Disconnected = %d, want 3", result.Disconnected)
+				}
+				if result.ReconnectCount != 5 {
+					t.Errorf("ReconnectCount = %d, want 5", result.ReconnectCount)
+				}
+				if result.OutgoingStreams != 15 {
+					t.Errorf("OutgoingStreams = %d, want 15", result.OutgoingStreams)
+				}
+				if result.IncomingStreams != 12 {
+					t.Errorf("IncomingStreams = %d, want 12", result.IncomingStreams)
+				}
+				if result.OutgoingMessages != 1500 {
+					t.Errorf("OutgoingMessages = %d, want 1500", result.OutgoingMessages)
+				}
+				if result.IncomingMessages != 1200 {
+					t.Errorf("IncomingMessages = %d, want 1200", result.IncomingMessages)
+				}
+				if result.OutgoingBytes != 75000 {
+					t.Errorf("OutgoingBytes = %d, want 75000", result.OutgoingBytes)
+				}
+				if result.IncomingBytes != 60000 {
+					t.Errorf("IncomingBytes = %d, want 60000", result.IncomingBytes)
+				}
+				if result.OutQueue != 25 {
+					t.Errorf("OutQueue = %d, want 25", result.OutQueue)
+				}
+				// Latest timestamps should win
+				if !result.LastPongTime.Equal(later) {
+					t.Errorf("LastPongTime = %v, want %v", result.LastPongTime, later)
+				}
+				if !result.LastConnectTime.Equal(later) {
+					t.Errorf("LastConnectTime = %v, want %v", result.LastConnectTime, later)
+				}
+				// LastPingMS should come from the source with the later LastPongTime
+				if result.LastPingMS != 8.0 {
+					t.Errorf("LastPingMS = %f, want 8.0", result.LastPingMS)
+				}
+				// MaxPingDurMS should be the maximum
+				if result.MaxPingDurMS != 10.0 {
+					t.Errorf("MaxPingDurMS = %f, want 10.0", result.MaxPingDurMS)
+				}
+			},
+		},
+		{
+			name: "merge with older times - keep existing",
+			base: &ConnectionStats{
+				LastPongTime:    later,
+				LastConnectTime: later,
+				LastPingMS:      5.0,
+				MaxPingDurMS:    8.0,
+			},
+			other: &ConnectionStats{
+				LastPongTime:    now,
+				LastConnectTime: now,
+				LastPingMS:      7.0,
+				MaxPingDurMS:    6.0,
+			},
+			verify: func(t *testing.T, result *ConnectionStats) {
+				if !result.LastPongTime.Equal(later) {
+					t.Errorf("LastPongTime = %v, want %v", result.LastPongTime, later)
+				}
+				if !result.LastConnectTime.Equal(later) {
+					t.Errorf("LastConnectTime = %v, want %v", result.LastConnectTime, later)
+				}
+				if result.LastPingMS != 5.0 {
+					t.Errorf("LastPingMS = %f, want 5.0", result.LastPingMS)
+				}
+				if result.MaxPingDurMS != 8.0 {
+					t.Errorf("MaxPingDurMS = %f, want 8.0", result.MaxPingDurMS)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.base.Merge(tt.other)
+			tt.verify(t, tt.base)
+		})
+	}
+}
+
+// TestRPCMetricsMerge tests RPCMetrics.Merge functionality with embedded ConnectionStats
+func TestRPCMetricsMerge(t *testing.T) {
+	now := time.Now()
+	later := now.Add(time.Hour)
+
+	tests := []struct {
+		name   string
+		base   *RPCMetrics
+		other  *RPCMetrics
+		verify func(t *testing.T, result *RPCMetrics)
+	}{
+		{
+			name:  "merge nil other",
+			base:  &RPCMetrics{Nodes: 3},
+			other: nil,
+			verify: func(t *testing.T, result *RPCMetrics) {
+				if result.Nodes != 3 {
+					t.Errorf("Nodes = %d, want 3", result.Nodes)
+				}
+			},
+		},
+		{
+			name: "merge basic fields and embedded ConnectionStats",
+			base: &RPCMetrics{
+				Nodes:       2,
+				CollectedAt: now,
+				ConnectionStats: ConnectionStats{
+					Connected:        5,
+					Disconnected:     1,
+					ReconnectCount:   2,
+					OutgoingStreams:  10,
+					IncomingStreams:  8,
+					OutgoingMessages: 1000,
+					IncomingMessages: 800,
+					OutgoingBytes:    50000,
+					IncomingBytes:    40000,
+					OutQueue:         15,
+					LastPongTime:     now,
+					LastConnectTime:  now,
+					LastPingMS:       5.5,
+					MaxPingDurMS:     10.0,
+				},
+			},
+			other: &RPCMetrics{
+				Nodes:       3,
+				CollectedAt: later,
+				ConnectionStats: ConnectionStats{
+					Connected:        3,
+					Disconnected:     2,
+					ReconnectCount:   1,
+					OutgoingStreams:  5,
+					IncomingStreams:  4,
+					OutgoingMessages: 500,
+					IncomingMessages: 400,
+					OutgoingBytes:    25000,
+					IncomingBytes:    20000,
+					OutQueue:         10,
+					LastPongTime:     later,
+					LastConnectTime:  later,
+					LastPingMS:       8.0,
+					MaxPingDurMS:     7.0,
+				},
+			},
+			verify: func(t *testing.T, result *RPCMetrics) {
+				// Check Nodes
+				if result.Nodes != 5 {
+					t.Errorf("Nodes = %d, want 5", result.Nodes)
+				}
+				// Check CollectedAt
+				if !result.CollectedAt.Equal(later) {
+					t.Errorf("CollectedAt = %v, want %v", result.CollectedAt, later)
+				}
+				// Check embedded ConnectionStats fields
+				if result.Connected != 8 {
+					t.Errorf("Connected = %d, want 8", result.Connected)
+				}
+				if result.Disconnected != 3 {
+					t.Errorf("Disconnected = %d, want 3", result.Disconnected)
+				}
+				if result.ReconnectCount != 3 {
+					t.Errorf("ReconnectCount = %d, want 3", result.ReconnectCount)
+				}
+				if result.OutgoingStreams != 15 {
+					t.Errorf("OutgoingStreams = %d, want 15", result.OutgoingStreams)
+				}
+				if result.IncomingStreams != 12 {
+					t.Errorf("IncomingStreams = %d, want 12", result.IncomingStreams)
+				}
+				if result.OutgoingMessages != 1500 {
+					t.Errorf("OutgoingMessages = %d, want 1500", result.OutgoingMessages)
+				}
+				if result.IncomingMessages != 1200 {
+					t.Errorf("IncomingMessages = %d, want 1200", result.IncomingMessages)
+				}
+				if result.OutgoingBytes != 75000 {
+					t.Errorf("OutgoingBytes = %d, want 75000", result.OutgoingBytes)
+				}
+				if result.IncomingBytes != 60000 {
+					t.Errorf("IncomingBytes = %d, want 60000", result.IncomingBytes)
+				}
+				if result.OutQueue != 25 {
+					t.Errorf("OutQueue = %d, want 25", result.OutQueue)
+				}
+				if !result.LastPongTime.Equal(later) {
+					t.Errorf("LastPongTime = %v, want %v", result.LastPongTime, later)
+				}
+				if !result.LastConnectTime.Equal(later) {
+					t.Errorf("LastConnectTime = %v, want %v", result.LastConnectTime, later)
+				}
+				if result.LastPingMS != 8.0 {
+					t.Errorf("LastPingMS = %f, want 8.0", result.LastPingMS)
+				}
+				if result.MaxPingDurMS != 10.0 {
+					t.Errorf("MaxPingDurMS = %f, want 10.0", result.MaxPingDurMS)
+				}
+			},
+		},
+		{
+			name: "merge LastMinute map",
+			base: &RPCMetrics{
+				Nodes: 1,
+				LastMinute: map[string]RPCStats{
+					"handler1": {Requests: 100, IncomingBytes: 1000},
+					"handler2": {Requests: 50, IncomingBytes: 500},
+				},
+			},
+			other: &RPCMetrics{
+				Nodes: 1,
+				LastMinute: map[string]RPCStats{
+					"handler1": {Requests: 200, IncomingBytes: 2000},
+					"handler3": {Requests: 75, IncomingBytes: 750},
+				},
+			},
+			verify: func(t *testing.T, result *RPCMetrics) {
+				if len(result.LastMinute) != 3 {
+					t.Errorf("LastMinute length = %d, want 3", len(result.LastMinute))
+				}
+				// handler1 should be merged
+				if result.LastMinute["handler1"].Requests != 300 {
+					t.Errorf("LastMinute[handler1].Requests = %d, want 300", result.LastMinute["handler1"].Requests)
+				}
+				if result.LastMinute["handler1"].IncomingBytes != 3000 {
+					t.Errorf("LastMinute[handler1].IncomingBytes = %d, want 3000", result.LastMinute["handler1"].IncomingBytes)
+				}
+				// handler2 should remain unchanged
+				if result.LastMinute["handler2"].Requests != 50 {
+					t.Errorf("LastMinute[handler2].Requests = %d, want 50", result.LastMinute["handler2"].Requests)
+				}
+				// handler3 should be added
+				if result.LastMinute["handler3"].Requests != 75 {
+					t.Errorf("LastMinute[handler3].Requests = %d, want 75", result.LastMinute["handler3"].Requests)
+				}
+			},
+		},
+		{
+			name: "merge LastDay map with SegmentedRPCMetrics",
+			base: &RPCMetrics{
+				Nodes: 1,
+				LastDay: map[string]SegmentedRPCMetrics{
+					"handler1": {
+						Interval:  60,
+						FirstTime: now,
+						Segments:  []RPCStats{{Requests: 100}},
+					},
+				},
+			},
+			other: &RPCMetrics{
+				Nodes: 1,
+				LastDay: map[string]SegmentedRPCMetrics{
+					"handler1": {
+						Interval:  60,
+						FirstTime: now,
+						Segments:  []RPCStats{{Requests: 200}},
+					},
+					"handler2": {
+						Interval:  60,
+						FirstTime: now,
+						Segments:  []RPCStats{{Requests: 150}},
+					},
+				},
+			},
+			verify: func(t *testing.T, result *RPCMetrics) {
+				if len(result.LastDay) != 2 {
+					t.Errorf("LastDay length = %d, want 2", len(result.LastDay))
+				}
+				// handler1 should be merged (same interval and start time, so segments are merged in place)
+				if len(result.LastDay["handler1"].Segments) != 1 {
+					t.Errorf("LastDay[handler1].Segments length = %d, want 1", len(result.LastDay["handler1"].Segments))
+				}
+				if result.LastDay["handler1"].Segments[0].Requests != 300 {
+					t.Errorf("LastDay[handler1].Segments[0].Requests = %d, want 300", result.LastDay["handler1"].Segments[0].Requests)
+				}
+				// handler2 should be added
+				if len(result.LastDay["handler2"].Segments) != 1 {
+					t.Errorf("LastDay[handler2].Segments length = %d, want 1", len(result.LastDay["handler2"].Segments))
+				}
+				if result.LastDay["handler2"].Segments[0].Requests != 150 {
+					t.Errorf("LastDay[handler2].Segments[0].Requests = %d, want 150", result.LastDay["handler2"].Segments[0].Requests)
+				}
+			},
+		},
+		{
+			name: "merge ByDestination map with ConnectionStats",
+			base: &RPCMetrics{
+				Nodes: 1,
+				ByDestination: map[string]ConnectionStats{
+					"server1": {
+						Connected:        3,
+						OutgoingMessages: 500,
+						IncomingMessages: 400,
+						MaxPingDurMS:     5.0,
+					},
+					"server2": {
+						Connected:        2,
+						OutgoingMessages: 300,
+						IncomingMessages: 250,
+						MaxPingDurMS:     3.0,
+					},
+				},
+			},
+			other: &RPCMetrics{
+				Nodes: 1,
+				ByDestination: map[string]ConnectionStats{
+					"server1": {
+						Connected:        2,
+						OutgoingMessages: 300,
+						IncomingMessages: 250,
+						MaxPingDurMS:     7.0,
+					},
+					"server3": {
+						Connected:        1,
+						OutgoingMessages: 100,
+						IncomingMessages: 80,
+						MaxPingDurMS:     2.0,
+					},
+				},
+			},
+			verify: func(t *testing.T, result *RPCMetrics) {
+				if len(result.ByDestination) != 3 {
+					t.Errorf("ByDestination length = %d, want 3", len(result.ByDestination))
+				}
+				// server1 should be merged
+				if result.ByDestination["server1"].Connected != 5 {
+					t.Errorf("ByDestination[server1].Connected = %d, want 5", result.ByDestination["server1"].Connected)
+				}
+				if result.ByDestination["server1"].OutgoingMessages != 800 {
+					t.Errorf("ByDestination[server1].OutgoingMessages = %d, want 800", result.ByDestination["server1"].OutgoingMessages)
+				}
+				if result.ByDestination["server1"].MaxPingDurMS != 7.0 {
+					t.Errorf("ByDestination[server1].MaxPingDurMS = %f, want 7.0", result.ByDestination["server1"].MaxPingDurMS)
+				}
+				// server2 should remain unchanged
+				if result.ByDestination["server2"].Connected != 2 {
+					t.Errorf("ByDestination[server2].Connected = %d, want 2", result.ByDestination["server2"].Connected)
+				}
+				// server3 should be added
+				if result.ByDestination["server3"].Connected != 1 {
+					t.Errorf("ByDestination[server3].Connected = %d, want 1", result.ByDestination["server3"].Connected)
+				}
+			},
+		},
+		{
+			name: "merge ByCaller map with ConnectionStats",
+			base: &RPCMetrics{
+				Nodes: 1,
+				ByCaller: map[string]ConnectionStats{
+					"client1": {
+						Connected:        2,
+						IncomingMessages: 300,
+						OutgoingMessages: 250,
+						LastPingMS:       4.0,
+					},
+				},
+			},
+			other: &RPCMetrics{
+				Nodes: 1,
+				ByCaller: map[string]ConnectionStats{
+					"client1": {
+						Connected:        3,
+						IncomingMessages: 400,
+						OutgoingMessages: 350,
+						LastPingMS:       6.0,
+					},
+					"client2": {
+						Connected:        1,
+						IncomingMessages: 100,
+						OutgoingMessages: 80,
+						LastPingMS:       2.0,
+					},
+				},
+			},
+			verify: func(t *testing.T, result *RPCMetrics) {
+				if len(result.ByCaller) != 2 {
+					t.Errorf("ByCaller length = %d, want 2", len(result.ByCaller))
+				}
+				// client1 should be merged
+				if result.ByCaller["client1"].Connected != 5 {
+					t.Errorf("ByCaller[client1].Connected = %d, want 5", result.ByCaller["client1"].Connected)
+				}
+				if result.ByCaller["client1"].IncomingMessages != 700 {
+					t.Errorf("ByCaller[client1].IncomingMessages = %d, want 700", result.ByCaller["client1"].IncomingMessages)
+				}
+				// client2 should be added
+				if result.ByCaller["client2"].Connected != 1 {
+					t.Errorf("ByCaller[client2].Connected = %d, want 1", result.ByCaller["client2"].Connected)
+				}
+			},
+		},
+		{
+			name: "merge all fields together",
+			base: &RPCMetrics{
+				Nodes:       2,
+				CollectedAt: now,
+				ConnectionStats: ConnectionStats{
+					Connected:        5,
+					OutgoingMessages: 1000,
+					MaxPingDurMS:     10.0,
+				},
+				LastMinute: map[string]RPCStats{
+					"handler1": {Requests: 100},
+				},
+				LastDay: map[string]SegmentedRPCMetrics{
+					"handler1": {Segments: []RPCStats{{Requests: 1000}}},
+				},
+				ByDestination: map[string]ConnectionStats{
+					"server1": {Connected: 3},
+				},
+				ByCaller: map[string]ConnectionStats{
+					"client1": {Connected: 2},
+				},
+			},
+			other: &RPCMetrics{
+				Nodes:       3,
+				CollectedAt: later,
+				ConnectionStats: ConnectionStats{
+					Connected:        3,
+					OutgoingMessages: 500,
+					MaxPingDurMS:     7.0,
+				},
+				LastMinute: map[string]RPCStats{
+					"handler2": {Requests: 50},
+				},
+				LastDay: map[string]SegmentedRPCMetrics{
+					"handler2": {Segments: []RPCStats{{Requests: 500}}},
+				},
+				ByDestination: map[string]ConnectionStats{
+					"server2": {Connected: 1},
+				},
+				ByCaller: map[string]ConnectionStats{
+					"client2": {Connected: 1},
+				},
+			},
+			verify: func(t *testing.T, result *RPCMetrics) {
+				// Check basic fields
+				if result.Nodes != 5 {
+					t.Errorf("Nodes = %d, want 5", result.Nodes)
+				}
+				if !result.CollectedAt.Equal(later) {
+					t.Errorf("CollectedAt = %v, want %v", result.CollectedAt, later)
+				}
+				// Check ConnectionStats
+				if result.Connected != 8 {
+					t.Errorf("Connected = %d, want 8", result.Connected)
+				}
+				if result.OutgoingMessages != 1500 {
+					t.Errorf("OutgoingMessages = %d, want 1500", result.OutgoingMessages)
+				}
+				if result.MaxPingDurMS != 10.0 {
+					t.Errorf("MaxPingDurMS = %f, want 10.0", result.MaxPingDurMS)
+				}
+				// Check maps
+				if len(result.LastMinute) != 2 {
+					t.Errorf("LastMinute length = %d, want 2", len(result.LastMinute))
+				}
+				if len(result.LastDay) != 2 {
+					t.Errorf("LastDay length = %d, want 2", len(result.LastDay))
+				}
+				if len(result.ByDestination) != 2 {
+					t.Errorf("ByDestination length = %d, want 2", len(result.ByDestination))
+				}
+				if len(result.ByCaller) != 2 {
+					t.Errorf("ByCaller length = %d, want 2", len(result.ByCaller))
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.base.Merge(tt.other)
+			tt.verify(t, tt.base)
+		})
+	}
+}
+
+// TestRPCMetricsLastMinuteTotal tests RPCMetrics.LastMinuteTotal functionality
+func TestRPCMetricsLastMinuteTotal(t *testing.T) {
+	now := time.Now()
+
+	tests := []struct {
+		name   string
+		input  *RPCMetrics
+		verify func(t *testing.T, result RPCStats)
+	}{
+		{
+			name: "empty LastMinute map",
+			input: &RPCMetrics{
+				LastMinute: map[string]RPCStats{},
+			},
+			verify: func(t *testing.T, result RPCStats) {
+				if result.Requests != 0 {
+					t.Errorf("Requests = %d, want 0", result.Requests)
+				}
+				if result.IncomingBytes != 0 {
+					t.Errorf("IncomingBytes = %d, want 0", result.IncomingBytes)
+				}
+				if result.OutgoingBytes != 0 {
+					t.Errorf("OutgoingBytes = %d, want 0", result.OutgoingBytes)
+				}
+			},
+		},
+		{
+			name: "nil LastMinute map",
+			input: &RPCMetrics{
+				LastMinute: nil,
+			},
+			verify: func(t *testing.T, result RPCStats) {
+				if result.Requests != 0 {
+					t.Errorf("Requests = %d, want 0", result.Requests)
+				}
+				if result.IncomingBytes != 0 {
+					t.Errorf("IncomingBytes = %d, want 0", result.IncomingBytes)
+				}
+				if result.OutgoingBytes != 0 {
+					t.Errorf("OutgoingBytes = %d, want 0", result.OutgoingBytes)
+				}
+			},
+		},
+		{
+			name: "single handler stats",
+			input: &RPCMetrics{
+				LastMinute: map[string]RPCStats{
+					"handler1": {
+						StartTime:       &now,
+						EndTime:         &now,
+						WallTimeSecs:    10.0,
+						Requests:        100,
+						RequestTimeSecs: 5.0,
+						IncomingBytes:   1000,
+						OutgoingBytes:   2000,
+					},
+				},
+			},
+			verify: func(t *testing.T, result RPCStats) {
+				if result.Requests != 100 {
+					t.Errorf("Requests = %d, want 100", result.Requests)
+				}
+				if result.RequestTimeSecs != 5.0 {
+					t.Errorf("RequestTimeSecs = %f, want 5.0", result.RequestTimeSecs)
+				}
+				if result.IncomingBytes != 1000 {
+					t.Errorf("IncomingBytes = %d, want 1000", result.IncomingBytes)
+				}
+				if result.OutgoingBytes != 2000 {
+					t.Errorf("OutgoingBytes = %d, want 2000", result.OutgoingBytes)
+				}
+				if result.WallTimeSecs != 10.0 {
+					t.Errorf("WallTimeSecs = %f, want 10.0", result.WallTimeSecs)
+				}
+			},
+		},
+		{
+			name: "multiple handler stats",
+			input: &RPCMetrics{
+				LastMinute: map[string]RPCStats{
+					"handler1": {
+						StartTime:       &now,
+						EndTime:         &now,
+						WallTimeSecs:    10.0,
+						Requests:        100,
+						RequestTimeSecs: 5.0,
+						IncomingBytes:   1000,
+						OutgoingBytes:   2000,
+					},
+					"handler2": {
+						StartTime:       &now,
+						EndTime:         &now,
+						WallTimeSecs:    15.0,
+						Requests:        200,
+						RequestTimeSecs: 10.0,
+						IncomingBytes:   1500,
+						OutgoingBytes:   2500,
+					},
+					"handler3": {
+						StartTime:       &now,
+						EndTime:         &now,
+						WallTimeSecs:    5.0,
+						Requests:        50,
+						RequestTimeSecs: 2.5,
+						IncomingBytes:   500,
+						OutgoingBytes:   1000,
+					},
+				},
+			},
+			verify: func(t *testing.T, result RPCStats) {
+				if result.Requests != 350 { // 100 + 200 + 50
+					t.Errorf("Requests = %d, want 350", result.Requests)
+				}
+				if result.RequestTimeSecs != 17.5 { // 5.0 + 10.0 + 2.5
+					t.Errorf("RequestTimeSecs = %f, want 17.5", result.RequestTimeSecs)
+				}
+				if result.IncomingBytes != 3000 { // 1000 + 1500 + 500
+					t.Errorf("IncomingBytes = %d, want 3000", result.IncomingBytes)
+				}
+				if result.OutgoingBytes != 5500 { // 2000 + 2500 + 1000
+					t.Errorf("OutgoingBytes = %d, want 5500", result.OutgoingBytes)
+				}
+				if result.WallTimeSecs != 30.0 { // 10.0 + 15.0 + 5.0
+					t.Errorf("WallTimeSecs = %f, want 30.0", result.WallTimeSecs)
+				}
+			},
+		},
+		{
+			name: "different timestamps should nullify in merge",
+			input: &RPCMetrics{
+				LastMinute: map[string]RPCStats{
+					"handler1": {
+						StartTime:     &now,
+						EndTime:       &now,
+						Requests:      100,
+						IncomingBytes: 1000,
+						OutgoingBytes: 2000,
+					},
+					"handler2": {
+						StartTime:     nil,
+						EndTime:       nil,
+						Requests:      200,
+						IncomingBytes: 1500,
+						OutgoingBytes: 2500,
+					},
+				},
+			},
+			verify: func(t *testing.T, result RPCStats) {
+				// When merging different timestamps, they should be nullified
+				if result.StartTime != nil {
+					t.Error("StartTime should be nil when merging different timestamps")
+				}
+				if result.EndTime != nil {
+					t.Error("EndTime should be nil when merging different timestamps")
+				}
+				if result.Requests != 300 {
+					t.Errorf("Requests = %d, want 300", result.Requests)
+				}
+				if result.IncomingBytes != 2500 {
+					t.Errorf("IncomingBytes = %d, want 2500", result.IncomingBytes)
+				}
+				if result.OutgoingBytes != 4500 {
+					t.Errorf("OutgoingBytes = %d, want 4500", result.OutgoingBytes)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.input.LastMinuteTotal()
+			tt.verify(t, result)
+		})
+	}
+}
+
+// TestRPCMetricsLastDayTotalSegmented tests RPCMetrics.LastDayTotalSegmented functionality
+func TestRPCMetricsLastDayTotalSegmented(t *testing.T) {
+	now := time.Now()
+
+	tests := []struct {
+		name   string
+		input  *RPCMetrics
+		verify func(t *testing.T, result SegmentedRPCMetrics)
+	}{
+		{
+			name: "empty LastDay map",
+			input: &RPCMetrics{
+				LastDay: map[string]SegmentedRPCMetrics{},
+			},
+			verify: func(t *testing.T, result SegmentedRPCMetrics) {
+				if len(result.Segments) != 0 {
+					t.Errorf("Segments length = %d, want 0", len(result.Segments))
+				}
+			},
+		},
+		{
+			name: "nil LastDay map",
+			input: &RPCMetrics{
+				LastDay: nil,
+			},
+			verify: func(t *testing.T, result SegmentedRPCMetrics) {
+				if len(result.Segments) != 0 {
+					t.Errorf("Segments length = %d, want 0", len(result.Segments))
+				}
+			},
+		},
+		{
+			name: "single handler with segments",
+			input: &RPCMetrics{
+				LastDay: map[string]SegmentedRPCMetrics{
+					"handler1": {
+						Interval:  60,
+						FirstTime: now,
+						Segments: []RPCStats{
+							{Requests: 100, IncomingBytes: 1000, OutgoingBytes: 2000},
+							{Requests: 200, IncomingBytes: 1500, OutgoingBytes: 2500},
+							{Requests: 150, IncomingBytes: 1200, OutgoingBytes: 2200},
+						},
+					},
+				},
+			},
+			verify: func(t *testing.T, result SegmentedRPCMetrics) {
+				if result.Interval != 60 {
+					t.Errorf("Interval = %d, want 60", result.Interval)
+				}
+				if !result.FirstTime.Equal(now) {
+					t.Errorf("FirstTime = %v, want %v", result.FirstTime, now)
+				}
+				if len(result.Segments) != 3 {
+					t.Errorf("Segments length = %d, want 3", len(result.Segments))
+				}
+				// Check individual segments
+				if result.Segments[0].Requests != 100 {
+					t.Errorf("Segments[0].Requests = %d, want 100", result.Segments[0].Requests)
+				}
+				if result.Segments[1].Requests != 200 {
+					t.Errorf("Segments[1].Requests = %d, want 200", result.Segments[1].Requests)
+				}
+				if result.Segments[2].Requests != 150 {
+					t.Errorf("Segments[2].Requests = %d, want 150", result.Segments[2].Requests)
+				}
+			},
+		},
+		{
+			name: "multiple handlers with same interval and time - should merge",
+			input: &RPCMetrics{
+				LastDay: map[string]SegmentedRPCMetrics{
+					"handler1": {
+						Interval:  60,
+						FirstTime: now,
+						Segments: []RPCStats{
+							{Requests: 100, IncomingBytes: 1000},
+							{Requests: 200, IncomingBytes: 1500},
+						},
+					},
+					"handler2": {
+						Interval:  60,
+						FirstTime: now,
+						Segments: []RPCStats{
+							{Requests: 50, IncomingBytes: 500},
+							{Requests: 75, IncomingBytes: 750},
+						},
+					},
+				},
+			},
+			verify: func(t *testing.T, result SegmentedRPCMetrics) {
+				if result.Interval != 60 {
+					t.Errorf("Interval = %d, want 60", result.Interval)
+				}
+				if !result.FirstTime.Equal(now) {
+					t.Errorf("FirstTime = %v, want %v", result.FirstTime, now)
+				}
+				if len(result.Segments) != 2 {
+					t.Errorf("Segments length = %d, want 2", len(result.Segments))
+				}
+				// Check merged segments
+				if result.Segments[0].Requests != 150 { // 100 + 50
+					t.Errorf("Segments[0].Requests = %d, want 150", result.Segments[0].Requests)
+				}
+				if result.Segments[0].IncomingBytes != 1500 { // 1000 + 500
+					t.Errorf("Segments[0].IncomingBytes = %d, want 1500", result.Segments[0].IncomingBytes)
+				}
+				if result.Segments[1].Requests != 275 { // 200 + 75
+					t.Errorf("Segments[1].Requests = %d, want 275", result.Segments[1].Requests)
+				}
+				if result.Segments[1].IncomingBytes != 2250 { // 1500 + 750
+					t.Errorf("Segments[1].IncomingBytes = %d, want 2250", result.Segments[1].IncomingBytes)
+				}
+			},
+		},
+		{
+			name: "multiple handlers with different intervals - should not merge",
+			input: &RPCMetrics{
+				LastDay: map[string]SegmentedRPCMetrics{
+					"handler1": {
+						Interval:  60,
+						FirstTime: now,
+						Segments: []RPCStats{
+							{Requests: 100},
+							{Requests: 200},
+						},
+					},
+					"handler2": {
+						Interval:  120, // Different interval
+						FirstTime: now,
+						Segments: []RPCStats{
+							{Requests: 50},
+						},
+					},
+				},
+			},
+			verify: func(t *testing.T, result SegmentedRPCMetrics) {
+				// When intervals differ, the second one is silently ignored
+				if result.Interval != 60 {
+					t.Errorf("Interval = %d, want 60", result.Interval)
+				}
+				if len(result.Segments) != 2 { // Only handler1's segments
+					t.Errorf("Segments length = %d, want 2", len(result.Segments))
+				}
+				// Only handler1's data should be present
+				if result.Segments[0].Requests != 100 {
+					t.Errorf("Segments[0].Requests = %d, want 100", result.Segments[0].Requests)
+				}
+				if result.Segments[1].Requests != 200 {
+					t.Errorf("Segments[1].Requests = %d, want 200", result.Segments[1].Requests)
+				}
+			},
+		},
+		{
+			name: "multiple handlers with different first times - should create timeline",
+			input: &RPCMetrics{
+				LastDay: map[string]SegmentedRPCMetrics{
+					"handler1": {
+						Interval:  60,
+						FirstTime: now,
+						Segments: []RPCStats{
+							{Requests: 100},
+						},
+					},
+					"handler2": {
+						Interval:  60,
+						FirstTime: now.Add(time.Hour), // 1 hour later = 60 segments later
+						Segments: []RPCStats{
+							{Requests: 50},
+						},
+					},
+				},
+			},
+			verify: func(t *testing.T, result SegmentedRPCMetrics) {
+				if result.Interval != 60 {
+					t.Errorf("Interval = %d, want 60", result.Interval)
+				}
+				// Should create a timeline from earliest to latest (61 segments total)
+				if len(result.Segments) != 61 { // 60 minute gap + 1 segment on each end
+					t.Errorf("Segments length = %d, want 61", len(result.Segments))
+				}
+				// First segment should have handler1's data
+				if result.Segments[0].Requests != 100 {
+					t.Errorf("Segments[0].Requests = %d, want 100", result.Segments[0].Requests)
+				}
+				// Last segment should have handler2's data
+				if result.Segments[60].Requests != 50 {
+					t.Errorf("Segments[60].Requests = %d, want 50", result.Segments[60].Requests)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.input.LastDayTotalSegmented()
+			tt.verify(t, result)
+		})
+	}
+}
+
+// TestRPCMetricsLastDayTotal tests RPCMetrics.LastDayTotal functionality
+func TestRPCMetricsLastDayTotal(t *testing.T) {
+	now := time.Now()
+
+	tests := []struct {
+		name   string
+		input  *RPCMetrics
+		verify func(t *testing.T, result RPCStats)
+	}{
+		{
+			name: "empty LastDay map",
+			input: &RPCMetrics{
+				LastDay: map[string]SegmentedRPCMetrics{},
+			},
+			verify: func(t *testing.T, result RPCStats) {
+				if result.Requests != 0 {
+					t.Errorf("Requests = %d, want 0", result.Requests)
+				}
+				if result.IncomingBytes != 0 {
+					t.Errorf("IncomingBytes = %d, want 0", result.IncomingBytes)
+				}
+				if result.OutgoingBytes != 0 {
+					t.Errorf("OutgoingBytes = %d, want 0", result.OutgoingBytes)
+				}
+			},
+		},
+		{
+			name: "nil LastDay map",
+			input: &RPCMetrics{
+				LastDay: nil,
+			},
+			verify: func(t *testing.T, result RPCStats) {
+				if result.Requests != 0 {
+					t.Errorf("Requests = %d, want 0", result.Requests)
+				}
+				if result.IncomingBytes != 0 {
+					t.Errorf("IncomingBytes = %d, want 0", result.IncomingBytes)
+				}
+				if result.OutgoingBytes != 0 {
+					t.Errorf("OutgoingBytes = %d, want 0", result.OutgoingBytes)
+				}
+			},
+		},
+		{
+			name: "single handler with single segment",
+			input: &RPCMetrics{
+				LastDay: map[string]SegmentedRPCMetrics{
+					"handler1": {
+						Interval:  60,
+						FirstTime: now,
+						Segments: []RPCStats{
+							{
+								StartTime:       &now,
+								EndTime:         &now,
+								WallTimeSecs:    10.0,
+								Requests:        100,
+								RequestTimeSecs: 5.0,
+								IncomingBytes:   1000,
+								OutgoingBytes:   2000,
+							},
+						},
+					},
+				},
+			},
+			verify: func(t *testing.T, result RPCStats) {
+				if result.Requests != 100 {
+					t.Errorf("Requests = %d, want 100", result.Requests)
+				}
+				if result.RequestTimeSecs != 5.0 {
+					t.Errorf("RequestTimeSecs = %f, want 5.0", result.RequestTimeSecs)
+				}
+				if result.IncomingBytes != 1000 {
+					t.Errorf("IncomingBytes = %d, want 1000", result.IncomingBytes)
+				}
+				if result.OutgoingBytes != 2000 {
+					t.Errorf("OutgoingBytes = %d, want 2000", result.OutgoingBytes)
+				}
+				if result.WallTimeSecs != 10.0 {
+					t.Errorf("WallTimeSecs = %f, want 10.0", result.WallTimeSecs)
+				}
+			},
+		},
+		{
+			name: "single handler with multiple segments",
+			input: &RPCMetrics{
+				LastDay: map[string]SegmentedRPCMetrics{
+					"handler1": {
+						Interval:  60,
+						FirstTime: now,
+						Segments: []RPCStats{
+							{
+								StartTime:       &now,
+								EndTime:         &now,
+								WallTimeSecs:    10.0,
+								Requests:        100,
+								RequestTimeSecs: 5.0,
+								IncomingBytes:   1000,
+								OutgoingBytes:   2000,
+							},
+							{
+								StartTime:       &now,
+								EndTime:         &now,
+								WallTimeSecs:    15.0,
+								Requests:        200,
+								RequestTimeSecs: 10.0,
+								IncomingBytes:   1500,
+								OutgoingBytes:   2500,
+							},
+							{
+								StartTime:       &now,
+								EndTime:         &now,
+								WallTimeSecs:    5.0,
+								Requests:        50,
+								RequestTimeSecs: 2.5,
+								IncomingBytes:   500,
+								OutgoingBytes:   1000,
+							},
+						},
+					},
+				},
+			},
+			verify: func(t *testing.T, result RPCStats) {
+				if result.Requests != 350 { // 100 + 200 + 50
+					t.Errorf("Requests = %d, want 350", result.Requests)
+				}
+				if result.RequestTimeSecs != 17.5 { // 5.0 + 10.0 + 2.5
+					t.Errorf("RequestTimeSecs = %f, want 17.5", result.RequestTimeSecs)
+				}
+				if result.IncomingBytes != 3000 { // 1000 + 1500 + 500
+					t.Errorf("IncomingBytes = %d, want 3000", result.IncomingBytes)
+				}
+				if result.OutgoingBytes != 5500 { // 2000 + 2500 + 1000
+					t.Errorf("OutgoingBytes = %d, want 5500", result.OutgoingBytes)
+				}
+				if result.WallTimeSecs != 30.0 { // 10.0 + 15.0 + 5.0
+					t.Errorf("WallTimeSecs = %f, want 30.0", result.WallTimeSecs)
+				}
+			},
+		},
+		{
+			name: "multiple handlers with segments",
+			input: &RPCMetrics{
+				LastDay: map[string]SegmentedRPCMetrics{
+					"handler1": {
+						Interval:  60,
+						FirstTime: now,
+						Segments: []RPCStats{
+							{Requests: 100, IncomingBytes: 1000, OutgoingBytes: 2000},
+							{Requests: 200, IncomingBytes: 1500, OutgoingBytes: 2500},
+						},
+					},
+					"handler2": {
+						Interval:  60,
+						FirstTime: now,
+						Segments: []RPCStats{
+							{Requests: 50, IncomingBytes: 500, OutgoingBytes: 1000},
+							{Requests: 75, IncomingBytes: 750, OutgoingBytes: 1250},
+						},
+					},
+					"handler3": {
+						Interval:  60,
+						FirstTime: now,
+						Segments: []RPCStats{
+							{Requests: 25, IncomingBytes: 250, OutgoingBytes: 500},
+						},
+					},
+				},
+			},
+			verify: func(t *testing.T, result RPCStats) {
+				// Total across all handlers and all segments
+				if result.Requests != 450 { // 100+200+50+75+25
+					t.Errorf("Requests = %d, want 450", result.Requests)
+				}
+				if result.IncomingBytes != 4000 { // 1000+1500+500+750+250
+					t.Errorf("IncomingBytes = %d, want 4000", result.IncomingBytes)
+				}
+				if result.OutgoingBytes != 7250 { // 2000+2500+1000+1250+500
+					t.Errorf("OutgoingBytes = %d, want 7250", result.OutgoingBytes)
+				}
+			},
+		},
+		{
+			name: "handlers with empty segments",
+			input: &RPCMetrics{
+				LastDay: map[string]SegmentedRPCMetrics{
+					"handler1": {
+						Interval:  60,
+						FirstTime: now,
+						Segments:  []RPCStats{}, // Empty segments
+					},
+					"handler2": {
+						Interval:  60,
+						FirstTime: now,
+						Segments: []RPCStats{
+							{Requests: 100, IncomingBytes: 1000, OutgoingBytes: 2000},
+						},
+					},
+				},
+			},
+			verify: func(t *testing.T, result RPCStats) {
+				// Only handler2's data should be counted
+				if result.Requests != 100 {
+					t.Errorf("Requests = %d, want 100", result.Requests)
+				}
+				if result.IncomingBytes != 1000 {
+					t.Errorf("IncomingBytes = %d, want 1000", result.IncomingBytes)
+				}
+				if result.OutgoingBytes != 2000 {
+					t.Errorf("OutgoingBytes = %d, want 2000", result.OutgoingBytes)
+				}
+			},
+		},
+		{
+			name: "merging with different timestamps across segments",
+			input: &RPCMetrics{
+				LastDay: map[string]SegmentedRPCMetrics{
+					"handler1": {
+						Interval:  60,
+						FirstTime: now,
+						Segments: []RPCStats{
+							{
+								StartTime:     &now,
+								EndTime:       &now,
+								Requests:      100,
+								IncomingBytes: 1000,
+							},
+							{
+								StartTime:     nil, // Different timestamps
+								EndTime:       nil,
+								Requests:      200,
+								IncomingBytes: 2000,
+							},
+						},
+					},
+				},
+			},
+			verify: func(t *testing.T, result RPCStats) {
+				// When first segment has timestamps and requests, they stay
+				// But when merging with nil timestamps, they should stay as is
+				// because the first merge copies the timestamp
+				if result.StartTime == nil || !result.StartTime.Equal(now) {
+					t.Error("StartTime should be preserved from first segment")
+				}
+				if result.EndTime == nil || !result.EndTime.Equal(now) {
+					t.Error("EndTime should be preserved from first segment")
+				}
+				if result.Requests != 300 {
+					t.Errorf("Requests = %d, want 300", result.Requests)
+				}
+				if result.IncomingBytes != 3000 {
+					t.Errorf("IncomingBytes = %d, want 3000", result.IncomingBytes)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := tt.input.LastDayTotal()
+			tt.verify(t, result)
 		})
 	}
 }
