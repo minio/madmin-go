@@ -1296,8 +1296,7 @@ func (m *RPCMetrics) Merge(other *RPCMetrics) {
 			// Deep copy to avoid sharing slice references
 			vCopy := v
 			if len(v.Segments) > 0 {
-				vCopy.Segments = make([]RPCStats, len(v.Segments))
-				copy(vCopy.Segments, v.Segments)
+				vCopy.Segments = append([]RPCStats{}, v.Segments...)
 			}
 			m.LastDay[k] = vCopy
 			continue
@@ -1650,8 +1649,7 @@ func (a *APIMetrics) Merge(b *APIMetrics) {
 			// Deep copy to avoid sharing slice references
 			vCopy := v
 			if len(v.Segments) > 0 {
-				vCopy.Segments = make([]APIStats, len(v.Segments))
-				copy(vCopy.Segments, v.Segments)
+				vCopy.Segments = append([]APIStats{}, v.Segments...)
 			}
 			a.LastDayAPI[k] = vCopy
 			continue
