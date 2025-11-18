@@ -28,12 +28,13 @@ import (
 	"time"
 
 	"github.com/minio/madmin-go/v4"
+	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
 func main() {
 	// Initialize madmin client
 	mdmClnt, err := madmin.NewWithOptions("localhost:9000", &madmin.Options{
-		Creds:  madmin.NewStaticCredentials("minioadmin", "minioadmin", ""),
+		Creds:  credentials.NewStaticV4("minioadmin", "minioadmin", ""),
 		Secure: false,
 	})
 	if err != nil {
@@ -44,43 +45,54 @@ func main() {
 
 	// Example 1: Get current log configuration
 	fmt.Println("Getting current log configuration...")
-	logStatus, err := mdmClnt.GetLogConfig(ctx)
+
+	apiStatus, err := mdmClnt.GetAPILogConfig(ctx)
 	if err != nil {
-		log.Fatalln("Error getting log config:", err)
+		log.Fatalln("Error getting API log config:", err)
+	}
+
+	errorStatus, err := mdmClnt.GetErrorLogConfig(ctx)
+	if err != nil {
+		log.Fatalln("Error getting Error log config:", err)
+	}
+
+	auditStatus, err := mdmClnt.GetAuditLogConfig(ctx)
+	if err != nil {
+		log.Fatalln("Error getting Audit log config:", err)
 	}
 
 	fmt.Printf("Current Log Configuration:\n")
 	fmt.Printf("  API Logs:\n")
-	fmt.Printf("    Enabled: %v\n", logStatus.API.Enabled)
-	if logStatus.API.DriveLimit != "" {
-		fmt.Printf("    Drive Limit: %s\n", logStatus.API.DriveLimit)
+	fmt.Printf("    Enabled: %v\n", apiStatus.Enabled)
+	if apiStatus.DriveLimit != "" {
+		fmt.Printf("    Drive Limit: %s\n", apiStatus.DriveLimit)
 	}
-	if logStatus.API.FlushCount > 0 {
-		fmt.Printf("    Flush Count: %d\n", logStatus.API.FlushCount)
+	if apiStatus.FlushCount > 0 {
+		fmt.Printf("    Flush Count: %d\n", apiStatus.FlushCount)
 	}
-	if logStatus.API.FlushInterval > 0 {
-		fmt.Printf("    Flush Interval: %v\n", logStatus.API.FlushInterval)
+	if apiStatus.FlushInterval > 0 {
+		fmt.Printf("    Flush Interval: %v\n", apiStatus.FlushInterval)
 	}
 
 	fmt.Printf("  Error Logs:\n")
-	fmt.Printf("    Enabled: %v\n", logStatus.Error.Enabled)
-	if logStatus.Error.DriveLimit != "" {
-		fmt.Printf("    Drive Limit: %s\n", logStatus.Error.DriveLimit)
+	fmt.Printf("    Enabled: %v\n", errorStatus.Enabled)
+	if errorStatus.DriveLimit != "" {
+		fmt.Printf("    Drive Limit: %s\n", errorStatus.DriveLimit)
 	}
-	if logStatus.Error.FlushCount > 0 {
-		fmt.Printf("    Flush Count: %d\n", logStatus.Error.FlushCount)
+	if errorStatus.FlushCount > 0 {
+		fmt.Printf("    Flush Count: %d\n", errorStatus.FlushCount)
 	}
-	if logStatus.Error.FlushInterval > 0 {
-		fmt.Printf("    Flush Interval: %v\n", logStatus.Error.FlushInterval)
+	if errorStatus.FlushInterval > 0 {
+		fmt.Printf("    Flush Interval: %v\n", errorStatus.FlushInterval)
 	}
 
 	fmt.Printf("  Audit Logs:\n")
-	fmt.Printf("    Enabled: %v\n", logStatus.Audit.Enabled)
-	if logStatus.Audit.FlushCount > 0 {
-		fmt.Printf("    Flush Count: %d\n", logStatus.Audit.FlushCount)
+	fmt.Printf("    Enabled: %v\n", auditStatus.Enabled)
+	if auditStatus.FlushCount > 0 {
+		fmt.Printf("    Flush Count: %d\n", auditStatus.FlushCount)
 	}
-	if logStatus.Audit.FlushInterval > 0 {
-		fmt.Printf("    Flush Interval: %v\n", logStatus.Audit.FlushInterval)
+	if auditStatus.FlushInterval > 0 {
+		fmt.Printf("    Flush Interval: %v\n", auditStatus.FlushInterval)
 	}
 	fmt.Println()
 
@@ -93,77 +105,98 @@ func main() {
 	apiFlushCount := 1000
 	apiFlushInterval := 5 * time.Minute
 
+	apiConfig := &madmin.LogRecorderAPIConfig{
+		Enable:        &enableAPI,
+		DriveLimit:    &apiDriveLimit,
+		FlushCount:    &apiFlushCount,
+		FlushInterval: &apiFlushInterval,
+	}
+
+	err = mdmClnt.SetAPILogConfig(ctx, apiConfig)
+	if err != nil {
+		log.Fatalln("Error setting API log config:", err)
+	}
+
 	// Disable error logs
 	disableError := false
+	errorConfig := &madmin.LogRecorderErrorConfig{
+		Enable: &disableError,
+	}
+
+	err = mdmClnt.SetErrorLogConfig(ctx, errorConfig)
+	if err != nil {
+		log.Fatalln("Error setting Error log config:", err)
+	}
 
 	// Enable audit logs with flush count of 500 and 2 minute flush interval
 	enableAudit := true
 	auditFlushCount := 500
 	auditFlushInterval := 2 * time.Minute
 
-	newConfig := &madmin.LogRecorderConfig{
-		API: &madmin.LogRecorderAPIConfig{
-			Enable:        &enableAPI,
-			DriveLimit:    &apiDriveLimit,
-			FlushCount:    &apiFlushCount,
-			FlushInterval: &apiFlushInterval,
-		},
-		Error: &madmin.LogRecorderErrorConfig{
-			Enable: &disableError,
-		},
-		Audit: &madmin.LogRecorderAuditConfig{
-			Enable:        &enableAudit,
-			FlushCount:    &auditFlushCount,
-			FlushInterval: &auditFlushInterval,
-		},
+	auditConfig := &madmin.LogRecorderAuditConfig{
+		Enable:        &enableAudit,
+		FlushCount:    &auditFlushCount,
+		FlushInterval: &auditFlushInterval,
 	}
 
-	err = mdmClnt.SetLogConfig(ctx, newConfig)
+	err = mdmClnt.SetAuditLogConfig(ctx, auditConfig)
 	if err != nil {
-		log.Fatalln("Error setting log config:", err)
+		log.Fatalln("Error setting Audit log config:", err)
 	}
+
 	fmt.Println("Log configuration updated successfully")
 	fmt.Println()
 
 	// Example 3: Verify the updated configuration
 	fmt.Println("Verifying updated configuration...")
-	updatedStatus, err := mdmClnt.GetLogConfig(ctx)
+
+	updatedAPIStatus, err := mdmClnt.GetAPILogConfig(ctx)
 	if err != nil {
-		log.Fatalln("Error getting updated log config:", err)
+		log.Fatalln("Error getting updated API log config:", err)
+	}
+
+	updatedErrorStatus, err := mdmClnt.GetErrorLogConfig(ctx)
+	if err != nil {
+		log.Fatalln("Error getting updated Error log config:", err)
+	}
+
+	updatedAuditStatus, err := mdmClnt.GetAuditLogConfig(ctx)
+	if err != nil {
+		log.Fatalln("Error getting updated Audit log config:", err)
 	}
 
 	fmt.Printf("Updated Log Configuration:\n")
 	fmt.Printf("  API Logs:\n")
-	fmt.Printf("    Enabled: %v\n", updatedStatus.API.Enabled)
-	if updatedStatus.API.DriveLimit != "" {
-		fmt.Printf("    Drive Limit: %s\n", updatedStatus.API.DriveLimit)
+	fmt.Printf("    Enabled: %v\n", updatedAPIStatus.Enabled)
+	if updatedAPIStatus.DriveLimit != "" {
+		fmt.Printf("    Drive Limit: %s\n", updatedAPIStatus.DriveLimit)
 	}
-	if updatedStatus.API.FlushCount > 0 {
-		fmt.Printf("    Flush Count: %d\n", updatedStatus.API.FlushCount)
+	if updatedAPIStatus.FlushCount > 0 {
+		fmt.Printf("    Flush Count: %d\n", updatedAPIStatus.FlushCount)
 	}
-	if updatedStatus.API.FlushInterval > 0 {
-		fmt.Printf("    Flush Interval: %v\n", updatedStatus.API.FlushInterval)
+	if updatedAPIStatus.FlushInterval > 0 {
+		fmt.Printf("    Flush Interval: %v\n", updatedAPIStatus.FlushInterval)
 	}
 
 	fmt.Printf("  Error Logs:\n")
-	fmt.Printf("    Enabled: %v\n", updatedStatus.Error.Enabled)
-	if updatedStatus.Error.DriveLimit != "" {
-		fmt.Printf("    Drive Limit: %s\n", updatedStatus.Error.DriveLimit)
+	fmt.Printf("    Enabled: %v\n", updatedErrorStatus.Enabled)
+	if updatedErrorStatus.DriveLimit != "" {
+		fmt.Printf("    Drive Limit: %s\n", updatedErrorStatus.DriveLimit)
 	}
-	if updatedStatus.Error.FlushCount > 0 {
-		fmt.Printf("    Flush Count: %d\n", updatedStatus.Error.FlushCount)
+	if updatedErrorStatus.FlushCount > 0 {
+		fmt.Printf("    Flush Count: %d\n", updatedErrorStatus.FlushCount)
 	}
-	if updatedStatus.Error.FlushInterval > 0 {
-		fmt.Printf("    Flush Interval: %v\n", updatedStatus.Error.FlushInterval)
+	if updatedErrorStatus.FlushInterval > 0 {
+		fmt.Printf("    Flush Interval: %v\n", updatedErrorStatus.FlushInterval)
 	}
 
 	fmt.Printf("  Audit Logs:\n")
-	fmt.Printf("    Enabled: %v\n", updatedStatus.Audit.Enabled)
-	if updatedStatus.Audit.FlushCount > 0 {
-		fmt.Printf("    Flush Count: %d\n", updatedStatus.Audit.FlushCount)
+	fmt.Printf("    Enabled: %v\n", updatedAuditStatus.Enabled)
+	if updatedAuditStatus.FlushCount > 0 {
+		fmt.Printf("    Flush Count: %d\n", updatedAuditStatus.FlushCount)
 	}
-	if updatedStatus.Audit.FlushInterval > 0 {
-		fmt.Printf("    Flush Interval: %v\n", updatedStatus.Audit.FlushInterval)
+	if updatedAuditStatus.FlushInterval > 0 {
+		fmt.Printf("    Flush Interval: %v\n", updatedAuditStatus.FlushInterval)
 	}
 	fmt.Println()
 
@@ -176,17 +209,14 @@ func main() {
 	errorFlushCount := 750
 	errorFlushInterval := 3 * time.Minute
 
-	partialConfig := &madmin.LogRecorderConfig{
-		Error: &madmin.LogRecorderErrorConfig{
-			Enable:        &enableErrorAgain,
-			DriveLimit:    &errorDriveLimit,
-			FlushCount:    &errorFlushCount,
-			FlushInterval: &errorFlushInterval,
-		},
-		// API and Audit fields are nil, so they won't be modified
+	partialErrorConfig := &madmin.LogRecorderErrorConfig{
+		Enable:        &enableErrorAgain,
+		DriveLimit:    &errorDriveLimit,
+		FlushCount:    &errorFlushCount,
+		FlushInterval: &errorFlushInterval,
 	}
 
-	err = mdmClnt.SetLogConfig(ctx, partialConfig)
+	err = mdmClnt.SetErrorLogConfig(ctx, partialErrorConfig)
 	if err != nil {
 		log.Fatalln("Error setting partial log config:", err)
 	}
@@ -195,51 +225,74 @@ func main() {
 
 	// Example 5: Reset to default configuration
 	fmt.Println("Resetting log configuration to defaults...")
-	err = mdmClnt.ResetLogConfig(ctx)
+
+	err = mdmClnt.ResetAPILogConfig(ctx)
 	if err != nil {
-		log.Fatalln("Error resetting log config:", err)
+		log.Fatalln("Error resetting API log config:", err)
 	}
+
+	err = mdmClnt.ResetErrorLogConfig(ctx)
+	if err != nil {
+		log.Fatalln("Error resetting Error log config:", err)
+	}
+
+	err = mdmClnt.ResetAuditLogConfig(ctx)
+	if err != nil {
+		log.Fatalln("Error resetting Audit log config:", err)
+	}
+
 	fmt.Println("Log configuration reset to defaults successfully")
 	fmt.Println()
 
 	// Verify reset
 	fmt.Println("Verifying reset configuration...")
-	resetStatus, err := mdmClnt.GetLogConfig(ctx)
+
+	resetAPIStatus, err := mdmClnt.GetAPILogConfig(ctx)
 	if err != nil {
-		log.Fatalln("Error getting reset log config:", err)
+		log.Fatalln("Error getting reset API log config:", err)
+	}
+
+	resetErrorStatus, err := mdmClnt.GetErrorLogConfig(ctx)
+	if err != nil {
+		log.Fatalln("Error getting reset Error log config:", err)
+	}
+
+	resetAuditStatus, err := mdmClnt.GetAuditLogConfig(ctx)
+	if err != nil {
+		log.Fatalln("Error getting reset Audit log config:", err)
 	}
 
 	fmt.Printf("Reset Log Configuration (Defaults):\n")
 	fmt.Printf("  API Logs:\n")
-	fmt.Printf("    Enabled: %v\n", resetStatus.API.Enabled)
-	if resetStatus.API.DriveLimit != "" {
-		fmt.Printf("    Drive Limit: %s (default)\n", resetStatus.API.DriveLimit)
+	fmt.Printf("    Enabled: %v\n", resetAPIStatus.Enabled)
+	if resetAPIStatus.DriveLimit != "" {
+		fmt.Printf("    Drive Limit: %s (default)\n", resetAPIStatus.DriveLimit)
 	}
-	if resetStatus.API.FlushCount > 0 {
-		fmt.Printf("    Flush Count: %d (default)\n", resetStatus.API.FlushCount)
+	if resetAPIStatus.FlushCount > 0 {
+		fmt.Printf("    Flush Count: %d (default)\n", resetAPIStatus.FlushCount)
 	}
-	if resetStatus.API.FlushInterval > 0 {
-		fmt.Printf("    Flush Interval: %v (default)\n", resetStatus.API.FlushInterval)
+	if resetAPIStatus.FlushInterval > 0 {
+		fmt.Printf("    Flush Interval: %v (default)\n", resetAPIStatus.FlushInterval)
 	}
 
 	fmt.Printf("  Error Logs:\n")
-	fmt.Printf("    Enabled: %v\n", resetStatus.Error.Enabled)
-	if resetStatus.Error.DriveLimit != "" {
-		fmt.Printf("    Drive Limit: %s (default)\n", resetStatus.Error.DriveLimit)
+	fmt.Printf("    Enabled: %v\n", resetErrorStatus.Enabled)
+	if resetErrorStatus.DriveLimit != "" {
+		fmt.Printf("    Drive Limit: %s (default)\n", resetErrorStatus.DriveLimit)
 	}
-	if resetStatus.Error.FlushCount > 0 {
-		fmt.Printf("    Flush Count: %d (default)\n", resetStatus.Error.FlushCount)
+	if resetErrorStatus.FlushCount > 0 {
+		fmt.Printf("    Flush Count: %d (default)\n", resetErrorStatus.FlushCount)
 	}
-	if resetStatus.Error.FlushInterval > 0 {
-		fmt.Printf("    Flush Interval: %v (default)\n", resetStatus.Error.FlushInterval)
+	if resetErrorStatus.FlushInterval > 0 {
+		fmt.Printf("    Flush Interval: %v (default)\n", resetErrorStatus.FlushInterval)
 	}
 
 	fmt.Printf("  Audit Logs:\n")
-	fmt.Printf("    Enabled: %v\n", resetStatus.Audit.Enabled)
-	if resetStatus.Audit.FlushCount > 0 {
-		fmt.Printf("    Flush Count: %d (default)\n", resetStatus.Audit.FlushCount)
+	fmt.Printf("    Enabled: %v\n", resetAuditStatus.Enabled)
+	if resetAuditStatus.FlushCount > 0 {
+		fmt.Printf("    Flush Count: %d (default)\n", resetAuditStatus.FlushCount)
 	}
-	if resetStatus.Audit.FlushInterval > 0 {
-		fmt.Printf("    Flush Interval: %v (default)\n", resetStatus.Audit.FlushInterval)
+	if resetAuditStatus.FlushInterval > 0 {
+		fmt.Printf("    Flush Interval: %v (default)\n", resetAuditStatus.FlushInterval)
 	}
 }

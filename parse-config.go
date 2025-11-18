@@ -77,6 +77,10 @@ const (
 	BucketEventQueueSubSys = "bucket_event_queue"
 	TelemetryTargetSubSys  = "telemetry_target"
 	LogRecorderSubSys      = "log"
+
+	APILogRecorderSubSys   = "log_api"
+	ErrorLogRecorderSubSys = "log_error"
+	AuditLogRecorderSubSys = "log_audit"
 )
 
 // SubSystems - list of all subsystems in MinIO
@@ -167,6 +171,9 @@ var EOSSubSystems = set.CreateStringSet(
 	KubernetesSubSys,
 	TelemetryTargetSubSys,
 	LogRecorderSubSys,
+	APILogRecorderSubSys,
+	ErrorLogRecorderSubSys,
+	AuditLogRecorderSubSys,
 )
 
 // Standard config keys and values.
