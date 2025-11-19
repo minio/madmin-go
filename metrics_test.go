@@ -117,6 +117,50 @@ func TestScannerMetricsMerge(t *testing.T) {
 	}
 }
 
+func TestSegmentedAddCopySlice(t *testing.T) {
+	now := time.Now()
+
+	original := &SegmentedReplicationStats{
+		Interval:  60,
+		FirstTime: now,
+		Segments: []ReplicationStats{
+			{Nodes: 1, Events: 100, Bytes: 1000},
+			{Nodes: 1, Events: 200, Bytes: 2000},
+		},
+	}
+
+	empty := &SegmentedReplicationStats{}
+
+	empty.Add(original)
+
+	if len(empty.Segments) != 2 {
+		t.Fatalf("empty.Segments length = %d, want 2", len(empty.Segments))
+	}
+	if empty.Segments[0].Events != 100 {
+		t.Errorf("empty.Segments[0].Events = %d, want 100", empty.Segments[0].Events)
+	}
+	if empty.Segments[1].Events != 200 {
+		t.Errorf("empty.Segments[1].Events = %d, want 200", empty.Segments[1].Events)
+	}
+
+	empty.Segments[0].Events = 999
+	empty.Segments[1].Events = 888
+
+	if original.Segments[0].Events != 100 {
+		t.Errorf("original.Segments[0].Events = %d, want 100 (should not be modified)", original.Segments[0].Events)
+	}
+	if original.Segments[1].Events != 200 {
+		t.Errorf("original.Segments[1].Events = %d, want 200 (should not be modified)", original.Segments[1].Events)
+	}
+
+	if empty.Segments[0].Events != 999 {
+		t.Errorf("empty.Segments[0].Events = %d, want 999", empty.Segments[0].Events)
+	}
+	if empty.Segments[1].Events != 888 {
+		t.Errorf("empty.Segments[1].Events = %d, want 888", empty.Segments[1].Events)
+	}
+}
+
 // TestDiskMetricMerge tests DiskMetric.Merge functionality
 func TestDiskMetricMerge(t *testing.T) {
 	now := time.Now()
