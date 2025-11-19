@@ -1731,7 +1731,9 @@ func (s *Segmented[T, PT]) Add(other *Segmented[T, PT]) {
 		return
 	}
 	if len(s.Segments) == 0 {
+		// Copy slice to avoid overriding the original segment
 		*s = *other
+		s.Segments = append([]T{}, other.Segments...)
 		return
 	}
 
