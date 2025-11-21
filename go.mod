@@ -1,6 +1,8 @@
 module github.com/minio/madmin-go/v4
 
-go 1.25.4
+go 1.25
+
+toolchain go1.25.4
 
 // Install tools using 'go install tool'.
 tool (
