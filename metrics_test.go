@@ -2259,8 +2259,8 @@ func TestRPCMetricsLastMinuteTotal(t *testing.T) {
 						OutgoingBytes: 2000,
 					},
 					"handler2": {
-						StartTime:     nil,
-						EndTime:       nil,
+						StartTime:     func() *time.Time { t := now.Add(time.Minute); return &t }(),
+						EndTime:       func() *time.Time { t := now.Add(time.Minute); return &t }(),
 						Requests:      200,
 						IncomingBytes: 1500,
 						OutgoingBytes: 2500,
