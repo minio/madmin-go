@@ -763,13 +763,14 @@ func (adm *AdminClient) ListAccessKeysOpenIDBulk(ctx context.Context, users []st
 
 // InfoServiceAccountResp is the response body of the info service account call
 type InfoServiceAccountResp struct {
-	ParentUser    string     `json:"parentUser"`
-	AccountStatus string     `json:"accountStatus"`
-	ImpliedPolicy bool       `json:"impliedPolicy"`
-	Policy        string     `json:"policy"`
-	Name          string     `json:"name,omitempty"`
-	Description   string     `json:"description,omitempty"`
-	Expiration    *time.Time `json:"expiration,omitempty"`
+	ParentUser       string     `json:"parentUser"`
+	ParentUserStatus string     `json:"parentUserStatus,omitempty"`
+	AccountStatus    string     `json:"accountStatus"`
+	ImpliedPolicy    bool       `json:"impliedPolicy"`
+	Policy           string     `json:"policy"`
+	Name             string     `json:"name,omitempty"`
+	Description      string     `json:"description,omitempty"`
+	Expiration       *time.Time `json:"expiration,omitempty"`
 }
 
 // InfoServiceAccount - returns the info of service account belonging to the specified user
