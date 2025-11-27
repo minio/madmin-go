@@ -194,22 +194,23 @@ type DriveCounts struct {
 
 // NodeResource represents detailed information about a MinIO server node including version, state, and drive counts
 type NodeResource struct {
-	Host         string        `json:"host" msg:"h"`
-	Version      string        `json:"version" msg:"v"`
-	CommitID     string        `json:"commitId" msg:"c"`
-	Uptime       int64         `json:"uptime" msg:"u"`
-	State        string        `json:"state" msg:"s"`
-	TotalDrives  int           `json:"totalDrives" msg:"td"`
-	DriveCounts  DriveCounts   `json:"driveCounts" msg:"dc"`
-	PID          int32         `json:"pid,omitempty" msg:"pid,omitempty"`
-	CmdLine      string        `json:"cmdLine,omitempty" msg:"cl,omitempty"`
-	Username     string        `json:"username,omitempty" msg:"un,omitempty"`
-	IsBackground bool          `json:"isBackground,omitempty"`
-	FirstCPU     *CPU          `json:"firstCpu,omitempty" msg:"cpu,omitempty"`
-	CPUCount     int           `json:"cpuCount,omitempty" msg:"cc,omitempty"`
-	PoolIndex    int           `json:"poolIndex" msg:"pi"`
-	PoolIndexes  []int         `json:"poolIndexes,omitempty" msg:"pis,omitempty"`
-	HostInfo     *HostInfoStat `json:"hostInfo,omitempty" msg:"hi,omitempty"`
+	Host         string      `json:"host" msg:"h"`
+	Version      string      `json:"version" msg:"v"`
+	CommitID     string      `json:"commitId" msg:"c"`
+	Uptime       int64       `json:"uptime" msg:"u"`
+	State        string      `json:"state" msg:"s"`
+	TotalDrives  int         `json:"totalDrives" msg:"td"`
+	DriveCounts  DriveCounts `json:"driveCounts" msg:"dc"`
+	PID          int32       `json:"pid,omitempty" msg:"pid,omitempty"`
+	CmdLine      string      `json:"cmdLine,omitempty" msg:"cl,omitempty"`
+	Username     string      `json:"username,omitempty" msg:"un,omitempty"`
+	IsBackground bool        `json:"isBackground,omitempty"`
+	FirstCPU     *CPU        `json:"firstCpu,omitempty" msg:"cpu,omitempty"`
+	CPUCount     int         `json:"cpuCount,omitempty" msg:"cc,omitempty"`
+	// Deprecated: Use PoolIndexes field instead. This field will be removed in a future release.
+	PoolIndex   int           `json:"poolIndex" msg:"pi"`
+	PoolIndexes []int         `json:"poolIndexes,omitempty" msg:"pis,omitempty"`
+	HostInfo    *HostInfoStat `json:"hostInfo,omitempty" msg:"hi,omitempty"`
 
 	// Metrics contains the metrics aggregated for node if requested.
 	Metrics *Metrics `json:"metrics,omitempty" msg:"m,omitempty"`
@@ -530,7 +531,7 @@ type NodesResourceOpts struct {
 	Filter string
 	// Sort fields contained in NodeResource.
 	//
-	// Example: NodesResourceOpts.Sort = "PoolIndex"
+	// Example: NodesResourceOpts.Sort = "PoolIndex" (Deprecated: prefer PoolIndexes for nodes in multiple pools)
 	// Assuming the value of PoolIndex is of a supported value type.
 	//
 	// Supported Values Types: int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, float32, float64, string

@@ -282,7 +282,6 @@ func main() {
 			displayMetrics(metrics, metricsReceived)
 		}
 	})
-
 	if err != nil {
 		log.Fatalln("Error collecting metrics:", err)
 	}
