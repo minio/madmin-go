@@ -1303,9 +1303,34 @@ func (m *RPCMetrics) Merge(other *RPCMetrics) {
 // LastMinuteTotal returns the total RPCStats for the last minute.
 func (m *RPCMetrics) LastMinuteTotal() RPCStats {
 	var res RPCStats
+
+	// First, check if we have mixed timestamp states across handlers
+	hasTimestamps := false
+	hasNilTimestamps := false
 	for _, stats := range m.LastMinute {
-		res.Merge(stats)
+		if stats.StartTime != nil || stats.EndTime != nil {
+			hasTimestamps = true
+		} else {
+			hasNilTimestamps = true
+		}
 	}
+
+	// If we have mixed timestamp states, we need to nullify them during merge
+	if hasTimestamps && hasNilTimestamps {
+		for _, stats := range m.LastMinute {
+			// Create a copy without timestamps to merge
+			cleanStats := stats
+			cleanStats.StartTime = nil
+			cleanStats.EndTime = nil
+			res.Merge(cleanStats)
+		}
+	} else {
+		// Normal merge when all handlers have consistent timestamp state
+		for _, stats := range m.LastMinute {
+			res.Merge(stats)
+		}
+	}
+
 	// Since we are merging across APIs must reset track node count.
 	return res
 }

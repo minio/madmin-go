@@ -432,12 +432,13 @@ func TestCPUMetricsMerge(t *testing.T) {
 			base: &CPUMetrics{
 				CollectedAt: now,
 				Nodes:       2,
-				TimesStat: &cpu.TimesStat{
+				TimesStat: cpu.TimesStat{
 					User:   100,
 					System: 50,
 					Idle:   1000,
 				},
-				LoadStat: &load.AvgStat{
+				TimesCount: 2,
+				LoadStat: load.AvgStat{
 					Load1:  1.5,
 					Load5:  2.0,
 					Load15: 1.8,
@@ -447,17 +448,19 @@ func TestCPUMetricsMerge(t *testing.T) {
 			other: &CPUMetrics{
 				CollectedAt: later,
 				Nodes:       3,
-				TimesStat: &cpu.TimesStat{
+				TimesStat: cpu.TimesStat{
 					User:   50,
 					System: 25,
 					Idle:   500,
 				},
-				LoadStat: &load.AvgStat{
+				TimesCount: 3,
+				LoadStat: load.AvgStat{
 					Load1:  0.5,
 					Load5:  1.0,
 					Load15: 0.8,
 				},
-				CPUCount: 4,
+				LoadStatCount: 3,
+				CPUCount:      4,
 			},
 			verify: func(t *testing.T, result *CPUMetrics) {
 				if !result.CollectedAt.Equal(later) {
@@ -492,26 +495,26 @@ func TestCPUMetricsMerge(t *testing.T) {
 		{
 			name: "merge nil TimesStat",
 			base: &CPUMetrics{
-				Nodes:     1,
-				TimesStat: nil,
-				CPUCount:  2,
+				Nodes:    1,
+				CPUCount: 2,
 			},
 			other: &CPUMetrics{
 				Nodes: 1,
-				TimesStat: &cpu.TimesStat{
+				TimesStat: cpu.TimesStat{
 					User: 100,
 				},
-				CPUCount: 2,
+				TimesCount: 1,
+				CPUCount:   2,
 			},
 			verify: func(t *testing.T, result *CPUMetrics) {
 				if result.Nodes != 2 {
 					t.Errorf("Nodes = %d, want 2", result.Nodes)
 				}
-				if result.TimesStat == nil {
-					t.Error("TimesStat is nil, should be set")
+				want := cpu.TimesStat{
+					User: 100,
 				}
-				if result.TimesStat != nil && result.TimesStat.User != 100 {
-					t.Errorf("TimesStat.User = %f, want 100", result.TimesStat.User)
+				if result.TimesStat != want {
+					t.Error("TimesStat is nil, should be set")
 				}
 				if result.CPUCount != 4 {
 					t.Errorf("CPUCount = %d, want 4", result.CPUCount)

@@ -19,7 +19,6 @@
 package madmin
 
 import (
-	"fmt"
 	"strings"
 	"testing"
 )
@@ -105,7 +104,6 @@ func TestARNString(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.arn.String()
-			fmt.Println(tt.expected, got)
 			if got != tt.expected {
 				t.Errorf("String() = %q, want %q", got, tt.expected)
 			}

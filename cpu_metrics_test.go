@@ -250,8 +250,8 @@ func TestCPUMetricsMergeAggregated(t *testing.T) {
 			other: CPUMetrics{
 				CollectedAt:             time.Now(),
 				Nodes:                   2,
-				TimesStat:               &cpu.TimesStat{User: 100, System: 50},
-				LoadStat:                &load.AvgStat{Load1: 1.5, Load5: 2.0, Load15: 1.8},
+				TimesStat:               cpu.TimesStat{User: 100, System: 50},
+				LoadStat:                load.AvgStat{Load1: 1.5, Load5: 2.0, Load15: 1.8},
 				CPUCount:                4,
 				CPUByModel:              map[string]int{"Intel Core i7": 4},
 				TotalMhz:                10400.0,
@@ -268,8 +268,8 @@ func TestCPUMetricsMergeAggregated(t *testing.T) {
 			},
 			expected: CPUMetrics{
 				Nodes:                   2,
-				TimesStat:               &cpu.TimesStat{User: 100, System: 50},
-				LoadStat:                &load.AvgStat{Load1: 1.5, Load5: 2.0, Load15: 1.8},
+				TimesStat:               cpu.TimesStat{User: 100, System: 50},
+				LoadStat:                load.AvgStat{Load1: 1.5, Load5: 2.0, Load15: 1.8},
 				CPUCount:                4,
 				CPUByModel:              map[string]int{"Intel Core i7": 4},
 				TotalMhz:                10400.0,
@@ -289,8 +289,8 @@ func TestCPUMetricsMergeAggregated(t *testing.T) {
 			name: "Merge two non-empty metrics",
 			m: CPUMetrics{
 				Nodes:                   1,
-				TimesStat:               &cpu.TimesStat{User: 100, System: 50},
-				LoadStat:                &load.AvgStat{Load1: 1.0, Load5: 1.5, Load15: 1.2},
+				TimesStat:               cpu.TimesStat{User: 100, System: 50},
+				LoadStat:                load.AvgStat{Load1: 1.0, Load5: 1.5, Load15: 1.2},
 				CPUCount:                2,
 				CPUByModel:              map[string]int{"Intel Core i7": 2},
 				TotalMhz:                5200.0,
@@ -307,8 +307,8 @@ func TestCPUMetricsMergeAggregated(t *testing.T) {
 			},
 			other: CPUMetrics{
 				Nodes:                   2,
-				TimesStat:               &cpu.TimesStat{User: 150, System: 75},
-				LoadStat:                &load.AvgStat{Load1: 2.0, Load5: 2.5, Load15: 2.2},
+				TimesStat:               cpu.TimesStat{User: 150, System: 75},
+				LoadStat:                load.AvgStat{Load1: 2.0, Load5: 2.5, Load15: 2.2},
 				CPUCount:                4,
 				CPUByModel:              map[string]int{"Intel Core i7": 2, "AMD Ryzen 9": 2},
 				TotalMhz:                7600.0,
@@ -325,8 +325,8 @@ func TestCPUMetricsMergeAggregated(t *testing.T) {
 			},
 			expected: CPUMetrics{
 				Nodes:                   3,
-				TimesStat:               &cpu.TimesStat{User: 250, System: 125},
-				LoadStat:                &load.AvgStat{Load1: 3.0, Load5: 4.0, Load15: 3.4},
+				TimesStat:               cpu.TimesStat{User: 250, System: 125},
+				LoadStat:                load.AvgStat{Load1: 3.0, Load5: 4.0, Load15: 3.4},
 				CPUCount:                6,
 				CPUByModel:              map[string]int{"Intel Core i7": 4, "AMD Ryzen 9": 2},
 				TotalMhz:                12800.0,
@@ -350,14 +350,14 @@ func TestCPUMetricsMergeAggregated(t *testing.T) {
 			},
 			other: CPUMetrics{
 				Nodes:     2,
-				TimesStat: &cpu.TimesStat{User: 100, System: 50},
-				LoadStat:  &load.AvgStat{Load1: 1.5, Load5: 2.0, Load15: 1.8},
+				TimesStat: cpu.TimesStat{User: 100, System: 50},
+				LoadStat:  load.AvgStat{Load1: 1.5, Load5: 2.0, Load15: 1.8},
 				CPUCount:  4,
 			},
 			expected: CPUMetrics{
 				Nodes:     3,
-				TimesStat: &cpu.TimesStat{User: 100, System: 50},
-				LoadStat:  &load.AvgStat{Load1: 1.5, Load5: 2.0, Load15: 1.8},
+				TimesStat: cpu.TimesStat{User: 100, System: 50},
+				LoadStat:  load.AvgStat{Load1: 1.5, Load5: 2.0, Load15: 1.8},
 				CPUCount:  6,
 			},
 		},
@@ -419,34 +419,22 @@ func TestCPUMetricsMergeAggregated(t *testing.T) {
 			}
 
 			// Check TimesStat
-			if tt.expected.TimesStat != nil {
-				if m.TimesStat == nil {
-					t.Error("TimesStat: got nil, want non-nil")
-				} else {
-					if m.TimesStat.User != tt.expected.TimesStat.User {
-						t.Errorf("TimesStat.User: got %f, want %f", m.TimesStat.User, tt.expected.TimesStat.User)
-					}
-					if m.TimesStat.System != tt.expected.TimesStat.System {
-						t.Errorf("TimesStat.System: got %f, want %f", m.TimesStat.System, tt.expected.TimesStat.System)
-					}
-				}
+			if m.TimesStat.User != tt.expected.TimesStat.User {
+				t.Errorf("TimesStat.User: got %f, want %f", m.TimesStat.User, tt.expected.TimesStat.User)
+			}
+			if m.TimesStat.System != tt.expected.TimesStat.System {
+				t.Errorf("TimesStat.System: got %f, want %f", m.TimesStat.System, tt.expected.TimesStat.System)
 			}
 
 			// Check LoadStat
-			if tt.expected.LoadStat != nil {
-				if m.LoadStat == nil {
-					t.Error("LoadStat: got nil, want non-nil")
-				} else {
-					if !almostEqual(m.LoadStat.Load1, tt.expected.LoadStat.Load1) {
-						t.Errorf("LoadStat.Load1: got %f, want %f", m.LoadStat.Load1, tt.expected.LoadStat.Load1)
-					}
-					if !almostEqual(m.LoadStat.Load5, tt.expected.LoadStat.Load5) {
-						t.Errorf("LoadStat.Load5: got %f, want %f", m.LoadStat.Load5, tt.expected.LoadStat.Load5)
-					}
-					if !almostEqual(m.LoadStat.Load15, tt.expected.LoadStat.Load15) {
-						t.Errorf("LoadStat.Load15: got %f, want %f", m.LoadStat.Load15, tt.expected.LoadStat.Load15)
-					}
-				}
+			if !almostEqual(m.LoadStat.Load1, tt.expected.LoadStat.Load1) {
+				t.Errorf("LoadStat.Load1: got %f, want %f", m.LoadStat.Load1, tt.expected.LoadStat.Load1)
+			}
+			if !almostEqual(m.LoadStat.Load5, tt.expected.LoadStat.Load5) {
+				t.Errorf("LoadStat.Load5: got %f, want %f", m.LoadStat.Load5, tt.expected.LoadStat.Load5)
+			}
+			if !almostEqual(m.LoadStat.Load15, tt.expected.LoadStat.Load15) {
+				t.Errorf("LoadStat.Load15: got %f, want %f", m.LoadStat.Load15, tt.expected.LoadStat.Load15)
 			}
 
 			// Check CPU model counts
