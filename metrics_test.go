@@ -2262,8 +2262,8 @@ func TestRPCMetricsLastMinuteTotal(t *testing.T) {
 						OutgoingBytes: 2000,
 					},
 					"handler2": {
-						StartTime:     nil,
-						EndTime:       nil,
+						StartTime:     func() *time.Time { t := now.Add(time.Minute); return &t }(),
+						EndTime:       func() *time.Time { t := now.Add(time.Minute); return &t }(),
 						Requests:      200,
 						IncomingBytes: 1500,
 						OutgoingBytes: 2500,
@@ -2436,19 +2436,31 @@ func TestRPCMetricsLastDayTotalSegmented(t *testing.T) {
 				},
 			},
 			verify: func(t *testing.T, result SegmentedRPCMetrics) {
-				// When intervals differ, the second one is silently ignored
-				if result.Interval != 60 {
-					t.Errorf("Interval = %d, want 60", result.Interval)
+				// When intervals differ, only one handler's data is kept (whichever is processed first in map iteration)
+				// Due to Go's non-deterministic map iteration, we accept either handler's data
+				if result.Interval != 60 && result.Interval != 120 {
+					t.Errorf("Interval = %d, want 60 or 120", result.Interval)
 				}
-				if len(result.Segments) != 2 { // Only handler1's segments
-					t.Errorf("Segments length = %d, want 2", len(result.Segments))
-				}
-				// Only handler1's data should be present
-				if result.Segments[0].Requests != 100 {
-					t.Errorf("Segments[0].Requests = %d, want 100", result.Segments[0].Requests)
-				}
-				if result.Segments[1].Requests != 200 {
-					t.Errorf("Segments[1].Requests = %d, want 200", result.Segments[1].Requests)
+
+				if result.Interval == 60 {
+					// handler1 was processed first
+					if len(result.Segments) != 2 {
+						t.Errorf("Segments length = %d, want 2", len(result.Segments))
+					}
+					if len(result.Segments) >= 1 && result.Segments[0].Requests != 100 {
+						t.Errorf("Segments[0].Requests = %d, want 100", result.Segments[0].Requests)
+					}
+					if len(result.Segments) >= 2 && result.Segments[1].Requests != 200 {
+						t.Errorf("Segments[1].Requests = %d, want 200", result.Segments[1].Requests)
+					}
+				} else {
+					// handler2 was processed first
+					if len(result.Segments) != 1 {
+						t.Errorf("Segments length = %d, want 1", len(result.Segments))
+					}
+					if len(result.Segments) >= 1 && result.Segments[0].Requests != 50 {
+						t.Errorf("Segments[0].Requests = %d, want 50", result.Segments[0].Requests)
+					}
 				}
 			},
 		},
