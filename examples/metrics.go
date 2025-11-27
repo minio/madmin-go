@@ -418,13 +418,15 @@ func displayMetrics(metrics madmin.RealtimeMetrics, sampleNum int) {
 	if agg.CPU != nil {
 		fmt.Printf("\n--- CPU Metrics ---\n")
 		fmt.Printf("Nodes: %d\n", agg.CPU.Nodes)
-		if agg.CPU.TimesStat != nil {
+		if agg.CPU.TimesCount > 0 {
+			div := float64(agg.CPU.TimesCount)
 			fmt.Printf("User: %.2f%%, System: %.2f%%, Idle: %.2f%%\n",
-				agg.CPU.TimesStat.User, agg.CPU.TimesStat.System, agg.CPU.TimesStat.Idle)
+				agg.CPU.TimesStat.User/div, agg.CPU.TimesStat.System/div, agg.CPU.TimesStat.Idle/div)
 		}
-		if agg.CPU.LoadStat != nil {
+		if agg.CPU.LoadStatCount > 0 {
+			div := float64(agg.CPU.LoadStatCount)
 			fmt.Printf("Load Average: %.2f, %.2f, %.2f\n",
-				agg.CPU.LoadStat.Load1, agg.CPU.LoadStat.Load5, agg.CPU.LoadStat.Load15)
+				agg.CPU.LoadStat.Load1/div, agg.CPU.LoadStat.Load5/div, agg.CPU.LoadStat.Load15/div)
 		}
 
 		// Display aggregated CPU information
