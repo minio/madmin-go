@@ -89,8 +89,11 @@ type IAMErrEntities struct {
 type IAMErrEntity struct {
 	// Name of the errored IAM entity
 	Name string `json:"name,omitempty"`
-	// Actual error
+	// Actual error (incorrect for JSON)
+	// Deprecated: Use Err instead
 	Error error `json:"error,omitempty"`
+	// Actual error
+	Err string `json:"error,omitempty"`
 }
 
 // IAMErrPolicyEntity - represents errored out IAM policies
@@ -99,8 +102,11 @@ type IAMErrPolicyEntity struct {
 	Name string `json:"name,omitempty"`
 	// List of policies
 	Policies []string `json:"policies,omitempty"`
-	// Actual error
+	// Actual error (incorrect for JSON)
+	// Deprecated: Use Err instead
 	Error error `json:"error,omitempty"`
+	// Actual error
+	Err string `json:"error,omitempty"`
 }
 
 // ExportIAM makes an admin call to export IAM data
