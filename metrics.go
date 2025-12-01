@@ -95,6 +95,25 @@ func (m *MetricFlags) Add(x ...MetricFlags) {
 	}
 }
 
+// String returns a comma separated list of flags as string.
+func (m MetricFlags) String() string {
+	var b strings.Builder
+	addIf := func(cond bool, str string) {
+		if b.Len() > 0 {
+			b.WriteByte(',')
+		}
+		if cond {
+			b.WriteString(str)
+		}
+	}
+	addIf(m.Contains(MetricsDayStats), "DayStats")
+	addIf(m.Contains(MetricsByHost), "ByHost")
+	addIf(m.Contains(MetricsByDisk), "ByDisk")
+	addIf(m.Contains(MetricsLegacyDiskIO), "LegacyIO")
+	addIf(m.Contains(MetricsByDiskSet), "ByDiskSet")
+	return b.String()
+}
+
 // MetricsOptions are options provided to Metrics call.
 type MetricsOptions struct {
 	Type         MetricType    // Return only these metric types. Several types can be combined using |. Leave at 0 to return all.
