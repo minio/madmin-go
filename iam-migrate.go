@@ -93,7 +93,7 @@ type IAMErrEntity struct {
 	// Deprecated: Use Err instead
 	Error error `json:"error,omitempty"`
 	// Actual error
-	Err string `json:"error,omitempty"`
+	Err string `json:"err,omitempty"`
 }
 
 // IAMErrPolicyEntity - represents errored out IAM policies
