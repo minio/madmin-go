@@ -93,7 +93,7 @@ type IAMErrEntity struct {
 	// Deprecated: Use Err instead
 	Error error `json:"-"`
 	// Actual error
-	Err string `json:"err,omitempty"`
+	Err string `json:"error,omitempty"`
 }
 
 // IAMErrPolicyEntity - represents errored out IAM policies
@@ -106,7 +106,7 @@ type IAMErrPolicyEntity struct {
 	// Deprecated: Use Err instead
 	Error error `json:"-"`
 	// Actual error
-	Err string `json:"err,omitempty"`
+	Err string `json:"error,omitempty"`
 }
 
 // ExportIAM makes an admin call to export IAM data
