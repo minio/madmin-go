@@ -118,8 +118,8 @@ func getNodeOpts(node MetricNode) madmin.MetricsOptions {
 	if parent != nil {
 		// This will also fetch from parent.
 		pOpts := parent.GetOpts()
-		opts.Type |= parent.GetMetricType()
-		opts.Flags |= parent.GetMetricFlags()
+		opts.Type |= pOpts.Type
+		opts.Flags |= pOpts.Flags
 		opts.Hosts = append(opts.Hosts, pOpts.Hosts...)
 		opts.Disks = append(opts.Disks, pOpts.Disks...)
 		opts.DrivePoolIdx = append(opts.DrivePoolIdx, pOpts.DrivePoolIdx...)
