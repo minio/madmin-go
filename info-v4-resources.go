@@ -208,9 +208,10 @@ type NodeResource struct {
 	FirstCPU     *CPU        `json:"firstCpu,omitempty" msg:"cpu,omitempty"`
 	CPUCount     int         `json:"cpuCount,omitempty" msg:"cc,omitempty"`
 	// Deprecated: Use PoolIndexes field instead. This field will be removed in a future release.
-	PoolIndex   int           `json:"poolIndex" msg:"pi"`
-	PoolIndexes []int         `json:"poolIndexes,omitempty" msg:"pis,omitempty"`
-	HostInfo    *HostInfoStat `json:"hostInfo,omitempty" msg:"hi,omitempty"`
+	PoolIndex   int               `json:"poolIndex" msg:"pi"`
+	PoolIndexes []int             `json:"poolIndexes,omitempty" msg:"pis,omitempty"`
+	HostInfo    *HostInfoStat     `json:"hostInfo,omitempty" msg:"hi,omitempty"`
+	Network     map[string]string `json:"Network" msg:"net,omitempty"`
 
 	// Metrics contains the metrics aggregated for node if requested.
 	Metrics *Metrics `json:"metrics,omitempty" msg:"m,omitempty"`
