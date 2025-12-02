@@ -4293,7 +4293,7 @@ func (z *NodeResource) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 8 bits */
+	var zb0001Mask uint16 /* 9 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -4443,6 +4443,35 @@ func (z *NodeResource) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 			}
 			zb0001Mask |= 0x40
+		case "net":
+			var zb0003 uint32
+			zb0003, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "Network")
+				return
+			}
+			if z.Network == nil {
+				z.Network = make(map[string]string, zb0003)
+			} else if len(z.Network) > 0 {
+				clear(z.Network)
+			}
+			for zb0003 > 0 {
+				zb0003--
+				var za0002 string
+				za0002, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "Network")
+					return
+				}
+				var za0003 string
+				za0003, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "Network", za0002)
+					return
+				}
+				z.Network[za0002] = za0003
+			}
+			zb0001Mask |= 0x80
 		case "m":
 			if dc.IsNil() {
 				err = dc.ReadNil()
@@ -4461,7 +4490,7 @@ func (z *NodeResource) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x80
+			zb0001Mask |= 0x100
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -4471,7 +4500,7 @@ func (z *NodeResource) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xff {
+	if zb0001Mask != 0x1ff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.PID = 0
 		}
@@ -4494,6 +4523,9 @@ func (z *NodeResource) DecodeMsg(dc *msgp.Reader) (err error) {
 			z.HostInfo = nil
 		}
 		if (zb0001Mask & 0x80) == 0 {
+			z.Network = nil
+		}
+		if (zb0001Mask & 0x100) == 0 {
 			z.Metrics = nil
 		}
 	}
@@ -4503,8 +4535,8 @@ func (z *NodeResource) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *NodeResource) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(17)
-	var zb0001Mask uint32 /* 17 bits */
+	zb0001Len := uint32(18)
+	var zb0001Mask uint32 /* 18 bits */
 	_ = zb0001Mask
 	if z.PID == 0 {
 		zb0001Len--
@@ -4534,9 +4566,13 @@ func (z *NodeResource) EncodeMsg(en *msgp.Writer) (err error) {
 		zb0001Len--
 		zb0001Mask |= 0x8000
 	}
-	if z.Metrics == nil {
+	if z.Network == nil {
 		zb0001Len--
 		zb0001Mask |= 0x10000
+	}
+	if z.Metrics == nil {
+		zb0001Len--
+		zb0001Mask |= 0x20000
 	}
 	// variable map header, size zb0001Len
 	err = en.WriteMapHeader(zb0001Len)
@@ -4742,6 +4778,30 @@ func (z *NodeResource) EncodeMsg(en *msgp.Writer) (err error) {
 			}
 		}
 		if (zb0001Mask & 0x10000) == 0 { // if not omitted
+			// write "net"
+			err = en.Append(0xa3, 0x6e, 0x65, 0x74)
+			if err != nil {
+				return
+			}
+			err = en.WriteMapHeader(uint32(len(z.Network)))
+			if err != nil {
+				err = msgp.WrapError(err, "Network")
+				return
+			}
+			for za0002, za0003 := range z.Network {
+				err = en.WriteString(za0002)
+				if err != nil {
+					err = msgp.WrapError(err, "Network")
+					return
+				}
+				err = en.WriteString(za0003)
+				if err != nil {
+					err = msgp.WrapError(err, "Network", za0002)
+					return
+				}
+			}
+		}
+		if (zb0001Mask & 0x20000) == 0 { // if not omitted
 			// write "m"
 			err = en.Append(0xa1, 0x6d)
 			if err != nil {
@@ -4768,8 +4828,8 @@ func (z *NodeResource) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *NodeResource) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(17)
-	var zb0001Mask uint32 /* 17 bits */
+	zb0001Len := uint32(18)
+	var zb0001Mask uint32 /* 18 bits */
 	_ = zb0001Mask
 	if z.PID == 0 {
 		zb0001Len--
@@ -4799,9 +4859,13 @@ func (z *NodeResource) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x8000
 	}
-	if z.Metrics == nil {
+	if z.Network == nil {
 		zb0001Len--
 		zb0001Mask |= 0x10000
+	}
+	if z.Metrics == nil {
+		zb0001Len--
+		zb0001Mask |= 0x20000
 	}
 	// variable map header, size zb0001Len
 	o = msgp.AppendMapHeader(o, zb0001Len)
@@ -4894,6 +4958,15 @@ func (z *NodeResource) MarshalMsg(b []byte) (o []byte, err error) {
 			}
 		}
 		if (zb0001Mask & 0x10000) == 0 { // if not omitted
+			// string "net"
+			o = append(o, 0xa3, 0x6e, 0x65, 0x74)
+			o = msgp.AppendMapHeader(o, uint32(len(z.Network)))
+			for za0002, za0003 := range z.Network {
+				o = msgp.AppendString(o, za0002)
+				o = msgp.AppendString(o, za0003)
+			}
+		}
+		if (zb0001Mask & 0x20000) == 0 { // if not omitted
 			// string "m"
 			o = append(o, 0xa1, 0x6d)
 			if z.Metrics == nil {
@@ -4920,7 +4993,7 @@ func (z *NodeResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 8 bits */
+	var zb0001Mask uint16 /* 9 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -5068,6 +5141,35 @@ func (z *NodeResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 			}
 			zb0001Mask |= 0x40
+		case "net":
+			var zb0003 uint32
+			zb0003, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Network")
+				return
+			}
+			if z.Network == nil {
+				z.Network = make(map[string]string, zb0003)
+			} else if len(z.Network) > 0 {
+				clear(z.Network)
+			}
+			for zb0003 > 0 {
+				var za0003 string
+				zb0003--
+				var za0002 string
+				za0002, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Network")
+					return
+				}
+				za0003, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Network", za0002)
+					return
+				}
+				z.Network[za0002] = za0003
+			}
+			zb0001Mask |= 0x80
 		case "m":
 			if msgp.IsNil(bts) {
 				bts, err = msgp.ReadNilBytes(bts)
@@ -5085,7 +5187,7 @@ func (z *NodeResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x80
+			zb0001Mask |= 0x100
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -5095,7 +5197,7 @@ func (z *NodeResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xff {
+	if zb0001Mask != 0x1ff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.PID = 0
 		}
@@ -5118,6 +5220,9 @@ func (z *NodeResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.HostInfo = nil
 		}
 		if (zb0001Mask & 0x80) == 0 {
+			z.Network = nil
+		}
+		if (zb0001Mask & 0x100) == 0 {
 			z.Metrics = nil
 		}
 	}
@@ -5138,6 +5243,13 @@ func (z *NodeResource) Msgsize() (s int) {
 		s += msgp.NilSize
 	} else {
 		s += z.HostInfo.Msgsize()
+	}
+	s += 4 + msgp.MapHeaderSize
+	if z.Network != nil {
+		for za0002, za0003 := range z.Network {
+			_ = za0003
+			s += msgp.StringPrefixSize + len(za0002) + msgp.StringPrefixSize + len(za0003)
+		}
 	}
 	s += 2
 	if z.Metrics == nil {

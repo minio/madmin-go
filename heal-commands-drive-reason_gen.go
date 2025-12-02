@@ -17,8 +17,9 @@ const _HealingDriveReason_name = "FreshDiskOfflineDisk"
 var _HealingDriveReason_index = [...]uint8{0, 9, 20}
 
 func (i HealingDriveReason) String() string {
-	if i < 0 || i >= HealingDriveReason(len(_HealingDriveReason_index)-1) {
+	idx := int(i) - 0
+	if i < 0 || idx >= len(_HealingDriveReason_index)-1 {
 		return "HealingDriveReason(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
-	return _HealingDriveReason_name[_HealingDriveReason_index[i]:_HealingDriveReason_index[i+1]]
+	return _HealingDriveReason_name[_HealingDriveReason_index[idx]:_HealingDriveReason_index[idx+1]]
 }
