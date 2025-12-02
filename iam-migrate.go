@@ -106,7 +106,7 @@ type IAMErrPolicyEntity struct {
 	// Deprecated: Use Err instead
 	Error error `json:"error,omitempty"`
 	// Actual error
-	Err string `json:"error,omitempty"`
+	Err string `json:"err,omitempty"`
 }
 
 // ExportIAM makes an admin call to export IAM data
