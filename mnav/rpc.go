@@ -101,7 +101,7 @@ func (node *RPCLastMinuteNode) GetLeafData() map[string]string {
 	data := make(map[string]string)
 
 	// Get sorted handler names
-	var handlers []string
+	handlers := make([]string, 0, len(node.rpc.LastMinute))
 	for handler := range node.rpc.LastMinute {
 		handlers = append(handlers, handler)
 	}
@@ -158,7 +158,7 @@ func (node *RPCLastMinuteNode) GetMetricFlags() madmin.MetricFlags { return 0 }
 func (node *RPCLastMinuteNode) GetParent() MetricNode              { return node.parent }
 func (node *RPCLastMinuteNode) GetPath() string                    { return node.path }
 
-func (node *RPCLastMinuteNode) GetChild(name string) (MetricNode, error) {
+func (node *RPCLastMinuteNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available for last minute RPC stats")
 }
 
@@ -180,7 +180,7 @@ func (node *RPCLastDayNode) GetChildren() []MetricChild {
 		return []MetricChild{}
 	}
 
-	var children []MetricChild
+	children := make([]MetricChild, 0, len(node.rpc.LastDay)+1)
 
 	// Add "All" entry first
 	children = append(children, MetricChild{
@@ -189,7 +189,7 @@ func (node *RPCLastDayNode) GetChildren() []MetricChild {
 	})
 
 	// Add individual handlers, sorted alphabetically
-	var handlerNames []string
+	handlerNames := make([]string, 0, len(node.rpc.LastDay))
 	for handlerName := range node.rpc.LastDay {
 		handlerNames = append(handlerNames, handlerName)
 	}
@@ -361,7 +361,7 @@ func (node *RPCLastDayAllNode) calculateAllTimeSegments() []timeSegmentInfo {
 	}
 
 	// Convert map to slice and sort by time
-	var segments []timeSegmentInfo
+	segments := make([]timeSegmentInfo, 0, len(segmentMap))
 	for _, segment := range segmentMap {
 		segments = append(segments, segment)
 	}
@@ -473,7 +473,7 @@ func (node *RPCLastDayTotalNode) GetMetricType() madmin.MetricType   { return ma
 func (node *RPCLastDayTotalNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
 func (node *RPCLastDayTotalNode) GetParent() MetricNode              { return node.parent }
 func (node *RPCLastDayTotalNode) GetPath() string                    { return node.path }
-func (node *RPCLastDayTotalNode) GetChild(name string) (MetricNode, error) {
+func (node *RPCLastDayTotalNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available for last day total node")
 }
 
@@ -500,7 +500,7 @@ func (node *RPCTimeSegmentAllNode) GetMetricType() madmin.MetricType   { return 
 func (node *RPCTimeSegmentAllNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
 func (node *RPCTimeSegmentAllNode) GetParent() MetricNode              { return node.parent }
 func (node *RPCTimeSegmentAllNode) GetPath() string                    { return node.path }
-func (node *RPCTimeSegmentAllNode) GetChild(name string) (MetricNode, error) {
+func (node *RPCTimeSegmentAllNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available for time segment")
 }
 
@@ -725,7 +725,7 @@ func (node *RPCConnectionSummaryNode) GetMetricType() madmin.MetricType   { retu
 func (node *RPCConnectionSummaryNode) GetMetricFlags() madmin.MetricFlags { return 0 }
 func (node *RPCConnectionSummaryNode) GetParent() MetricNode              { return node.parent }
 func (node *RPCConnectionSummaryNode) GetPath() string                    { return node.path }
-func (node *RPCConnectionSummaryNode) GetChild(name string) (MetricNode, error) {
+func (node *RPCConnectionSummaryNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available for connection summary")
 }
 
@@ -747,13 +747,13 @@ func (node *RPCByDestinationNode) GetChildren() []MetricChild {
 		return []MetricChild{}
 	}
 
-	var destinations []string
+	destinations := make([]string, 0, len(node.rpc.ByDestination))
 	for dest := range node.rpc.ByDestination {
 		destinations = append(destinations, dest)
 	}
 	sort.Strings(destinations)
 
-	var children []MetricChild
+	children := make([]MetricChild, 0, len(node.rpc.ByDestination))
 	for _, dest := range destinations {
 		stats := node.rpc.ByDestination[dest]
 
@@ -866,13 +866,13 @@ func (node *RPCByCallerNode) GetChildren() []MetricChild {
 		return []MetricChild{}
 	}
 
-	var callers []string
+	callers := make([]string, 0, len(node.rpc.ByCaller))
 	for caller := range node.rpc.ByCaller {
 		callers = append(callers, caller)
 	}
 	sort.Strings(callers)
 
-	var children []MetricChild
+	children := make([]MetricChild, 0, len(node.rpc.ByCaller))
 	for _, caller := range callers {
 		stats := node.rpc.ByCaller[caller]
 
@@ -1038,7 +1038,7 @@ func (node *RPCDestinationNode) GetMetricType() madmin.MetricType   { return mad
 func (node *RPCDestinationNode) GetMetricFlags() madmin.MetricFlags { return 0 }
 func (node *RPCDestinationNode) GetParent() MetricNode              { return node.parent }
 func (node *RPCDestinationNode) GetPath() string                    { return node.path }
-func (node *RPCDestinationNode) GetChild(name string) (MetricNode, error) {
+func (node *RPCDestinationNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available for destination")
 }
 
@@ -1111,16 +1111,15 @@ func (node *RPCCallerNode) GetMetricType() madmin.MetricType   { return madmin.M
 func (node *RPCCallerNode) GetMetricFlags() madmin.MetricFlags { return 0 }
 func (node *RPCCallerNode) GetParent() MetricNode              { return node.parent }
 func (node *RPCCallerNode) GetPath() string                    { return node.path }
-func (node *RPCCallerNode) GetChild(name string) (MetricNode, error) {
+func (node *RPCCallerNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available for caller")
 }
 
 // RPCHandlerNode shows detailed statistics for a specific RPC handler
 type RPCHandlerNode struct {
-	handler string
-	stats   madmin.RPCStats
-	parent  MetricNode
-	path    string
+	stats  madmin.RPCStats
+	parent MetricNode
+	path   string
 }
 
 func (node *RPCHandlerNode) GetOpts() madmin.MetricsOptions {
@@ -1138,7 +1137,7 @@ func (node *RPCHandlerNode) GetMetricType() madmin.MetricType   { return madmin.
 func (node *RPCHandlerNode) GetMetricFlags() madmin.MetricFlags { return 0 }
 func (node *RPCHandlerNode) GetParent() MetricNode              { return node.parent }
 func (node *RPCHandlerNode) GetPath() string                    { return node.path }
-func (node *RPCHandlerNode) GetChild(name string) (MetricNode, error) {
+func (node *RPCHandlerNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available for RPC handler")
 }
 
@@ -1169,7 +1168,7 @@ func (node *RPCHandlerTotalNode) GetMetricType() madmin.MetricType   { return ma
 func (node *RPCHandlerTotalNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
 func (node *RPCHandlerTotalNode) GetParent() MetricNode              { return node.parent }
 func (node *RPCHandlerTotalNode) GetPath() string                    { return node.path }
-func (node *RPCHandlerTotalNode) GetChild(name string) (MetricNode, error) {
+func (node *RPCHandlerTotalNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available for handler total")
 }
 
@@ -1200,12 +1199,12 @@ func (node *RPCHandlerSegmentNode) GetMetricType() madmin.MetricType   { return 
 func (node *RPCHandlerSegmentNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
 func (node *RPCHandlerSegmentNode) GetParent() MetricNode              { return node.parent }
 func (node *RPCHandlerSegmentNode) GetPath() string                    { return node.path }
-func (node *RPCHandlerSegmentNode) GetChild(name string) (MetricNode, error) {
+func (node *RPCHandlerSegmentNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available for handler segment")
 }
 
 // Helper function to generate RPC statistics display
-func generateRPCStatsDisplay(stats madmin.RPCStats, handlerCount int, showHandlerBreakdown bool, lastMinute map[string]madmin.RPCStats) map[string]string {
+func generateRPCStatsDisplay(stats madmin.RPCStats, _ int, showHandlerBreakdown bool, lastMinute map[string]madmin.RPCStats) map[string]string {
 	data := make(map[string]string)
 
 	// Basic request statistics

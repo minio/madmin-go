@@ -7,6 +7,8 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/minio/madmin-go/v4"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // formatNumber formats large numbers with thousand separators
@@ -60,7 +62,7 @@ func (node *OSMetricsNavigator) GetLeafData() map[string]string {
 	for _, count := range node.os.LifeTimeOps {
 		totalLifetimeOps += count
 	}
-	data["Total Lifetime Operations"] = fmt.Sprintf("%s", formatNumber(totalLifetimeOps))
+	data["Total Lifetime Operations"] = formatNumber(totalLifetimeOps)
 
 	return data
 }
@@ -99,7 +101,6 @@ func (node *OSMetricsNavigator) GetChild(name string) (MetricNode, error) {
 }
 
 type OSMetricsNode struct {
-	os     *madmin.OSMetrics
 	parent MetricNode
 	path   string
 }
@@ -164,7 +165,8 @@ func (node *OSLifetimeOpsNode) GetLeafData() map[string]string {
 	var total uint64
 	for opType, count := range node.ops {
 		// Convert technical operation names to display names
-		displayName := strings.ReplaceAll(strings.Title(strings.ReplaceAll(opType, "_", " ")), "Api", "API")
+		titleCaser := cases.Title(language.Und)
+		displayName := strings.ReplaceAll(titleCaser.String(strings.ReplaceAll(opType, "_", " ")), "Api", "API")
 		data[displayName] = formatNumber(count)
 		total += count
 	}
@@ -181,7 +183,7 @@ func (node *OSLifetimeOpsNode) ShouldPauseRefresh() bool {
 	return false
 }
 
-func (node *OSLifetimeOpsNode) GetChild(name string) (MetricNode, error) {
+func (node *OSLifetimeOpsNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("lifetime operations node has no children")
 }
 
@@ -214,7 +216,8 @@ func (node *OSLastMinuteNode) GetLeafData() map[string]string {
 	}
 	var totalCount, totalTime uint64
 	for opType, action := range node.operations {
-		displayName := strings.ReplaceAll(strings.Title(strings.ReplaceAll(opType, "_", " ")), "Api", "API")
+		titleCaser := cases.Title(language.Und)
+		displayName := strings.ReplaceAll(titleCaser.String(strings.ReplaceAll(opType, "_", " ")), "Api", "API")
 
 		// Enhanced single-line format with comprehensive timing stats
 		var statsParts []string
@@ -260,7 +263,7 @@ func (node *OSLastMinuteNode) ShouldPauseRefresh() bool {
 	return false
 }
 
-func (node *OSLastMinuteNode) GetChild(name string) (MetricNode, error) {
+func (node *OSLastMinuteNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("last minute operations node has no children")
 }
 
@@ -298,7 +301,8 @@ func (node *OSSensorsNode) GetLeafData() map[string]string {
 	first := true
 
 	for sensorKey, sensor := range node.sensors {
-		displayKey := strings.Title(strings.ReplaceAll(sensorKey, "_", " "))
+		titleCaser := cases.Title(language.Und)
+		displayKey := titleCaser.String(strings.ReplaceAll(sensorKey, "_", " "))
 
 		// Enhanced single-line format with comprehensive sensor stats
 		var statsParts []string
@@ -366,6 +370,6 @@ func (node *OSSensorsNode) ShouldPauseRefresh() bool {
 	return false
 }
 
-func (node *OSSensorsNode) GetChild(name string) (MetricNode, error) {
+func (node *OSSensorsNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("sensors node has no children")
 }

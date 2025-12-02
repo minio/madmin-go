@@ -353,7 +353,7 @@ func (node *DiskLifetimeOpsNode) GetLeafData() map[string]string {
 	}
 
 	// Format each operation with statistics
-	var operations []string
+	operations := make([]string, 0, len(node.ops))
 	for opType := range node.ops {
 		operations = append(operations, opType)
 	}
@@ -448,7 +448,7 @@ func (node *DiskLastMinuteNode) GetLeafData() map[string]string {
 	}
 
 	// Format each operation with statistics
-	var operations []string
+	operations := make([]string, 0, len(node.ops))
 	for opType := range node.ops {
 		operations = append(operations, opType)
 	}
@@ -516,7 +516,7 @@ func (node *DiskLastDayNode) GetChildren() []MetricChild {
 		return []MetricChild{}
 	}
 
-	var children []MetricChild
+	children := make([]MetricChild, 0, len(node.segmented))
 
 	// Collect operation types with their total counts
 	type operationInfo struct {
@@ -797,7 +797,7 @@ func (node *DiskIOMinuteStatsNode) ShouldPauseRefresh() bool {
 	return false
 }
 
-func (node *DiskIOMinuteStatsNode) GetChild(name string) (MetricNode, error) {
+func (node *DiskIOMinuteStatsNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("minute IO stats is a leaf node")
 }
 
@@ -1022,7 +1022,7 @@ func (node *DiskHealingNode) ShouldPauseRefresh() bool {
 	return false
 }
 
-func (node *DiskHealingNode) GetChild(name string) (MetricNode, error) {
+func (node *DiskHealingNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("disk healing is a leaf node")
 }
 
@@ -1060,7 +1060,7 @@ func (node *DiskLastDayOperationNode) GetChildren() []MetricChild {
 		segmentName := segmentTime.UTC().Format("15:04Z")
 
 		// Get operation count for this segment
-		var operations uint64 = 0
+		var operations uint64
 		if i < len(node.segmented.Segments) {
 			operations = node.segmented.Segments[i].Count
 		}
@@ -1153,7 +1153,7 @@ func (node *DiskOperationTotalNode) GetMetricFlags() madmin.MetricFlags { return
 func (node *DiskOperationTotalNode) GetParent() MetricNode              { return node.parent }
 func (node *DiskOperationTotalNode) GetPath() string                    { return node.path }
 func (node *DiskOperationTotalNode) ShouldPauseRefresh() bool           { return false }
-func (node *DiskOperationTotalNode) GetChild(name string) (MetricNode, error) {
+func (node *DiskOperationTotalNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("operation total is a leaf node")
 }
 
@@ -1227,7 +1227,7 @@ func (node *DiskOperationTimeSegmentNode) GetMetricFlags() madmin.MetricFlags { 
 func (node *DiskOperationTimeSegmentNode) GetParent() MetricNode              { return node.parent }
 func (node *DiskOperationTimeSegmentNode) GetPath() string                    { return node.path }
 func (node *DiskOperationTimeSegmentNode) ShouldPauseRefresh() bool           { return false }
-func (node *DiskOperationTimeSegmentNode) GetChild(name string) (MetricNode, error) {
+func (node *DiskOperationTimeSegmentNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("operation time segment is a leaf node")
 }
 
@@ -1295,7 +1295,7 @@ func (node *DiskIOTimeSegmentNode) GetMetricFlags() madmin.MetricFlags { return 
 func (node *DiskIOTimeSegmentNode) GetParent() MetricNode              { return node.parent }
 func (node *DiskIOTimeSegmentNode) GetPath() string                    { return node.path }
 func (node *DiskIOTimeSegmentNode) ShouldPauseRefresh() bool           { return false }
-func (node *DiskIOTimeSegmentNode) GetChild(name string) (MetricNode, error) {
+func (node *DiskIOTimeSegmentNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("IO time segment is a leaf node")
 }
 
@@ -1313,7 +1313,7 @@ func (node *DiskIOTimeSegmentNode) GetLeafData() map[string]string {
 	if totalIOs > 0 {
 		// Use proper segment timeframe
 		timeframeSeconds := float64(node.interval)
-		numDrives := int(node.segment.N) // Number of drives for this segment
+		numDrives := node.segment.N // Number of drives for this segment
 		if numDrives == 0 {
 			numDrives = 1 // Avoid division by zero
 		}
@@ -1368,7 +1368,7 @@ func (node *DiskIOTotalNode) GetMetricFlags() madmin.MetricFlags { return 0 }
 func (node *DiskIOTotalNode) GetParent() MetricNode              { return node.parent }
 func (node *DiskIOTotalNode) GetPath() string                    { return node.path }
 func (node *DiskIOTotalNode) ShouldPauseRefresh() bool           { return false }
-func (node *DiskIOTotalNode) GetChild(name string) (MetricNode, error) {
+func (node *DiskIOTotalNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("IO total is a leaf node")
 }
 
@@ -1475,7 +1475,7 @@ func (node *DiskCacheNode) ShouldPauseRefresh() bool {
 	return false
 }
 
-func (node *DiskCacheNode) GetChild(name string) (MetricNode, error) {
+func (node *DiskCacheNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("disk cache is a leaf node")
 }
 
@@ -1653,7 +1653,7 @@ func (node *DiskSummaryNode) ShouldPauseRefresh() bool {
 	return false
 }
 
-func (node *DiskSummaryNode) GetChild(name string) (MetricNode, error) {
+func (node *DiskSummaryNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("disk summary is a leaf node")
 }
 
@@ -1706,7 +1706,7 @@ func (node *DiskActionNode) ShouldPauseRefresh() bool {
 	return false
 }
 
-func (node *DiskActionNode) GetChild(name string) (MetricNode, error) {
+func (node *DiskActionNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("disk action is a leaf node")
 }
 

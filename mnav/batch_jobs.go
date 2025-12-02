@@ -35,9 +35,9 @@ func (node *BatchJobMetricsNode) GetChildren() []MetricChild {
 		return []MetricChild{}
 	}
 
-	var children []MetricChild
+	children := make([]MetricChild, 0, len(node.batch.Jobs))
 	// Sort jobs by status (active first) then by last update
-	var jobIDs []string
+	jobIDs := make([]string, 0, len(node.batch.Jobs))
 	for jobID := range node.batch.Jobs {
 		jobIDs = append(jobIDs, jobID)
 	}
@@ -279,7 +279,7 @@ func (node *BatchJobNode) ShouldPauseRefresh() bool {
 	return false
 }
 
-func (node *BatchJobNode) GetChild(name string) (MetricNode, error) {
+func (node *BatchJobNode) GetChild(_ string) (MetricNode, error) {
 	// This is a leaf node
 	return nil, fmt.Errorf("batch job is a leaf node - no children available")
 }

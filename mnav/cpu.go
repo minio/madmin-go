@@ -319,6 +319,6 @@ func (node *CPUMetricsNavigator) GetPath() string {
 	return node.path
 }
 
-func (node *CPUMetricsNavigator) GetChild(name string) (MetricNode, error) {
+func (node *CPUMetricsNavigator) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available - all CPU data shown in main display")
 }

@@ -215,7 +215,7 @@ func (node *ProcessCPUTimesNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *ProcessCPUTimesNode) GetChild(name string) (MetricNode, error) {
+func (node *ProcessCPUTimesNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("CPU times node has no children")
 }
 
@@ -291,7 +291,7 @@ func (node *ProcessMemoryInfoNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *ProcessMemoryInfoNode) GetChild(name string) (MetricNode, error) {
+func (node *ProcessMemoryInfoNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("memory info node has no children")
 }
 
@@ -365,7 +365,7 @@ func (node *ProcessIOCountersNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *ProcessIOCountersNode) GetChild(name string) (MetricNode, error) {
+func (node *ProcessIOCountersNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("I/O counters node has no children")
 }
 
@@ -431,7 +431,7 @@ func (node *ProcessCtxSwitchesNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *ProcessCtxSwitchesNode) GetChild(name string) (MetricNode, error) {
+func (node *ProcessCtxSwitchesNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("context switches node has no children")
 }
 
@@ -510,7 +510,7 @@ func (node *ProcessPageFaultsNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *ProcessPageFaultsNode) GetChild(name string) (MetricNode, error) {
+func (node *ProcessPageFaultsNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("page faults node has no children")
 }
 
@@ -595,7 +595,7 @@ func (node *ProcessMemoryMapsNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *ProcessMemoryMapsNode) GetChild(name string) (MetricNode, error) {
+func (node *ProcessMemoryMapsNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("memory maps node has no children")
 }
 
@@ -612,9 +612,8 @@ func formatDuration(d time.Duration) string {
 		return fmt.Sprintf("%.1f minutes", d.Minutes())
 	} else if d < 24*time.Hour {
 		return fmt.Sprintf("%.1f hours", d.Hours())
-	} else {
-		days := int(d.Hours() / 24)
-		hours := d.Hours() - float64(days*24)
-		return fmt.Sprintf("%d days, %.1f hours", days, hours)
 	}
+	days := int(d.Hours() / 24)
+	hours := d.Hours() - float64(days*24)
+	return fmt.Sprintf("%d days, %.1f hours", days, hours)
 }

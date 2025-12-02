@@ -350,7 +350,7 @@ func (node *ReplicationLastHourNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *ReplicationLastHourNode) GetChild(name string) (MetricNode, error) {
+func (node *ReplicationLastHourNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("last hour node has no children")
 }
 
@@ -498,7 +498,7 @@ func (node *ReplicationTargetLastHourNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *ReplicationTargetLastHourNode) GetChild(name string) (MetricNode, error) {
+func (node *ReplicationTargetLastHourNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("target last hour node has no children")
 }
 
@@ -544,7 +544,7 @@ func (node *ReplicationSinceStartNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *ReplicationSinceStartNode) GetChild(name string) (MetricNode, error) {
+func (node *ReplicationSinceStartNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("since start node has no children")
 }
 
@@ -717,7 +717,7 @@ func (node *ReplicationLastDayTotalNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *ReplicationLastDayTotalNode) GetChild(name string) (MetricNode, error) {
+func (node *ReplicationLastDayTotalNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("total node has no children")
 }
 
@@ -766,7 +766,7 @@ func (node *ReplicationTimeSegmentNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *ReplicationTimeSegmentNode) GetChild(name string) (MetricNode, error) {
+func (node *ReplicationTimeSegmentNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("time segment node has no children")
 }
 
@@ -852,7 +852,7 @@ func (node *ReplicationLastDayAggregatedNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *ReplicationLastDayAggregatedNode) GetChild(name string) (MetricNode, error) {
+func (node *ReplicationLastDayAggregatedNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available - all aggregated data shown in main display")
 }
 

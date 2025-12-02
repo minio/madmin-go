@@ -153,7 +153,7 @@ func (node *NetInterfacesNode) GetChildren() []MetricChild {
 		return []MetricChild{}
 	}
 
-	var children []MetricChild
+	children := make([]MetricChild, 0, len(node.metrics.Interfaces))
 	for name, stats := range node.metrics.Interfaces {
 		children = append(children, MetricChild{
 			Name: name,
@@ -274,8 +274,8 @@ func (node *NetInterfaceNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *NetInterfaceNode) GetChild(name string) (MetricNode, error) {
-	return nil, fmt.Errorf("child %q not found", name)
+func (node *NetInterfaceNode) GetChild(_ string) (MetricNode, error) {
+	return nil, fmt.Errorf("interface node has no children")
 }
 
 func (node *NetInterfaceNode) ShouldPauseRefresh() bool {
@@ -343,8 +343,8 @@ func (node *NetInternodeNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *NetInternodeNode) GetChild(name string) (MetricNode, error) {
-	return nil, fmt.Errorf("child %q not found", name)
+func (node *NetInternodeNode) GetChild(_ string) (MetricNode, error) {
+	return nil, fmt.Errorf("internode node has no children")
 }
 
 func (node *NetInternodeNode) ShouldPauseRefresh() bool {

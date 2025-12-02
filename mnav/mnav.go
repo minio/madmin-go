@@ -238,8 +238,10 @@ func (node *RealtimeMetricsNode) GetChild(name string) (MetricNode, error) {
 			path:        "by_host",
 			nodeFactory: func(key string, value interface{}) MetricNode {
 				if metrics, ok := value.(madmin.Metrics); ok {
-					return &MetricsNode{metrics: &metrics, parent: node, path: fmt.Sprintf("by_host/%s", key),
-						opts: madmin.MetricsOptions{Type: madmin.MetricsNone, Flags: madmin.MetricsByHost, Hosts: []string{key}}}
+					return &MetricsNode{
+						metrics: &metrics, parent: node, path: fmt.Sprintf("by_host/%s", key),
+						opts: madmin.MetricsOptions{Type: madmin.MetricsNone, Flags: madmin.MetricsByHost, Hosts: []string{key}},
+					}
 				}
 				return nil
 			},
@@ -465,19 +467,6 @@ func (node *MapNode) ShouldPauseRefresh() bool {
 	return false
 }
 
-func (node *MapNode) getMapSize() int {
-	switch data := node.data.(type) {
-	case map[string]madmin.Metrics:
-		return len(data)
-	case map[string]madmin.DiskMetric:
-		return len(data)
-	case map[int]map[int]madmin.DiskMetric:
-		return len(data)
-	default:
-		return 0
-	}
-}
-
 func (node *MapNode) GetMetricType() madmin.MetricType {
 	return node.metricType
 }
@@ -542,11 +531,11 @@ func (node *DiskSetMapNode) ShouldPauseUpdates() bool {
 }
 
 func (node *DiskSetMapNode) GetChildren() []MetricChild {
-	var children []MetricChild
+	children := make([]MetricChild, 0, len(node.data))
 	for poolID, pool := range node.data {
 		// Calculate pool-level statistics for better description
 		var poolDisks int
-		var poolSets int = len(pool)
+		poolSets := len(pool)
 		var poolHealthyDisks int
 		var poolCurrentIOs uint64
 		for _, diskSet := range pool {
@@ -766,7 +755,7 @@ func (node *DiskSetPoolNavigator) ShouldPauseUpdates() bool {
 }
 
 func (node *DiskSetPoolNavigator) GetChildren() []MetricChild {
-	var children []MetricChild
+	children := make([]MetricChild, 0, len(node.poolSets))
 	for setID, diskSet := range node.poolSets {
 		healthyDisks := diskSet.NDisks - diskSet.Offline - diskSet.Hanging - diskSet.Healing
 		currentIOs := diskSet.IOStatsMinute.CurrentIOs
@@ -791,7 +780,7 @@ func (node *DiskSetPoolNavigator) GetLeafData() map[string]string {
 	data := map[string]string{}
 
 	// Pool-level aggregated statistics
-	var totalSets int = len(node.poolSets)
+	totalSets := len(node.poolSets)
 	var totalDisks int
 	var totalHealthyDisks int
 	var totalOfflineDisks int

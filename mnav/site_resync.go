@@ -3,11 +3,12 @@ package mnav
 import (
 	"fmt"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/minio/madmin-go/v4"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // SiteResyncMetricsNode handles navigation for SiteResyncMetrics
@@ -48,7 +49,8 @@ func (node *SiteResyncMetricsNode) GetLeafData() map[string]string {
 	if status == "" {
 		status = "unknown"
 	}
-	data["Status"] = strings.Title(status)
+	titleCaser := cases.Title(language.Und)
+	data["Status"] = titleCaser.String(status)
 
 	if node.resync.ResyncID != "" {
 		data["Resync ID"] = node.resync.ResyncID
@@ -146,7 +148,7 @@ func (node *SiteResyncMetricsNode) ShouldPauseRefresh() bool {
 	return false
 }
 
-func (node *SiteResyncMetricsNode) GetChild(name string) (MetricNode, error) {
+func (node *SiteResyncMetricsNode) GetChild(_ string) (MetricNode, error) {
 	// This is a leaf node - no children
 	return nil, fmt.Errorf("site resync is a leaf node - no children available")
 }

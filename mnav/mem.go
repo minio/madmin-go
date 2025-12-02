@@ -13,11 +13,6 @@ func formatMemoryBytes(bytes uint64) string {
 	return humanize.Bytes(bytes)
 }
 
-// formatMemoryNumber formats large numbers with thousand separators for memory
-func formatMemoryNumber(n uint64) string {
-	return humanize.Comma(int64(n))
-}
-
 // calculatePercentage calculates percentage with 1 decimal place
 func calculatePercentage(used, total uint64) string {
 	if total == 0 {
@@ -232,7 +227,7 @@ func (node *MemUsageNode) ShouldPauseRefresh() bool {
 	return false
 }
 
-func (node *MemUsageNode) GetChild(name string) (MetricNode, error) {
+func (node *MemUsageNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("memory usage node has no children")
 }
 
@@ -328,7 +323,7 @@ func (node *MemSystemNode) ShouldPauseRefresh() bool {
 	return false
 }
 
-func (node *MemSystemNode) GetChild(name string) (MetricNode, error) {
+func (node *MemSystemNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("system memory node has no children")
 }
 
@@ -436,7 +431,7 @@ func (node *MemSwapNode) ShouldPauseRefresh() bool {
 	return false
 }
 
-func (node *MemSwapNode) GetChild(name string) (MetricNode, error) {
+func (node *MemSwapNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("swap memory node has no children")
 }
 
@@ -469,7 +464,7 @@ func (node *MemLimitsNode) GetLeafData() map[string]string {
 
 	// Cgroup memory limit analysis
 	if info.Limit > 0 {
-		data["Limit"] = fmt.Sprintf("%s", formatMemoryBytes(info.Limit))
+		data["Limit"] = formatMemoryBytes(info.Limit)
 
 		// Compare limit to physical memory
 		if info.Total > 0 {
@@ -541,6 +536,6 @@ func (node *MemLimitsNode) ShouldPauseRefresh() bool {
 	return false
 }
 
-func (node *MemLimitsNode) GetChild(name string) (MetricNode, error) {
+func (node *MemLimitsNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("memory limits node has no children")
 }

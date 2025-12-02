@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
-	"strings"
 
 	"github.com/dustin/go-humanize"
 	"github.com/minio/madmin-go/v4"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 )
 
 // ScannerMetricsNode handles navigation for ScannerMetrics
@@ -90,7 +91,8 @@ func (node *ScannerMetricsNode) GetLeafData() map[string]string {
 					totalTimeS := float64(action.AccTime) / 1e9
 					data["Yield/min"] = fmt.Sprintf("%.1fs total", totalTimeS)
 				default:
-					data[strings.Title(actionName)+"/min"] = fmt.Sprintf("%s (%.1fms avg)",
+					titleCaser := cases.Title(language.Und)
+					data[titleCaser.String(actionName)+"/min"] = fmt.Sprintf("%s (%.1fms avg)",
 						humanize.Comma(int64(action.Count)), avgTimeMs)
 				}
 			}
@@ -205,7 +207,7 @@ func (node *ScannerLifetimeOpsNode) GetLeafData() map[string]string {
 	}
 
 	var total uint64
-	var opTypes []string
+	opTypes := make([]string, 0, len(node.ops))
 	for opType := range node.ops {
 		opTypes = append(opTypes, opType)
 	}
@@ -234,7 +236,7 @@ func (node *ScannerLifetimeOpsNode) ShouldPauseRefresh() bool {
 	return false
 }
 
-func (node *ScannerLifetimeOpsNode) GetChild(name string) (MetricNode, error) {
+func (node *ScannerLifetimeOpsNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available - operation counts are displayed as leaf data")
 }
 
@@ -253,7 +255,7 @@ func NewScannerLifetimeILMNode(ilm map[string]uint64, parent MetricNode, path st
 }
 
 func (node *ScannerLifetimeILMNode) GetChildren() []MetricChild {
-	var children []MetricChild
+	children := make([]MetricChild, 0, len(node.ilm))
 	for ilmType := range node.ilm {
 		children = append(children, MetricChild{
 			Name:        ilmType,
@@ -415,7 +417,7 @@ func (node *ScannerTimedActionsNode) GetLeafData() map[string]string {
 	var totalCount, totalTime uint64
 
 	// Sort action types for consistent display
-	var actionTypes []string
+	actionTypes := make([]string, 0, len(node.actions))
 	for actionType := range node.actions {
 		actionTypes = append(actionTypes, actionType)
 	}
@@ -456,7 +458,7 @@ func (node *ScannerTimedActionsNode) ShouldPauseRefresh() bool {
 	return false
 }
 
-func (node *ScannerTimedActionsNode) GetChild(name string) (MetricNode, error) {
+func (node *ScannerTimedActionsNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available - actions are displayed as leaf data")
 }
 
@@ -494,7 +496,7 @@ func (node *ScannerTimedActionNode) ShouldPauseRefresh() bool {
 	return false
 }
 
-func (node *ScannerTimedActionNode) GetChild(name string) (MetricNode, error) {
+func (node *ScannerTimedActionNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("timed action is a leaf node")
 }
 
@@ -532,7 +534,7 @@ func (node *ScannerPathsNode) ShouldPauseRefresh() bool {
 	return false
 }
 
-func (node *ScannerPathsNode) GetChild(name string) (MetricNode, error) {
+func (node *ScannerPathsNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("paths node is a leaf node")
 }
 
@@ -566,6 +568,6 @@ func (node *ScannerOpCountNode) ShouldPauseRefresh() bool {
 	return false
 }
 
-func (node *ScannerOpCountNode) GetChild(name string) (MetricNode, error) {
+func (node *ScannerOpCountNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("operation count is a leaf node")
 }

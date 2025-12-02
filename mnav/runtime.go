@@ -9,23 +9,6 @@ import (
 	"github.com/minio/madmin-go/v4"
 )
 
-// formatNanosecondsToString formats nanoseconds into human-readable duration
-func formatNanosecondsToString(ns float64) string {
-	if ns == 0 {
-		return "0s"
-	}
-	if ns < 1000 {
-		return fmt.Sprintf("%.0fns", ns)
-	}
-	if ns < 1000000 {
-		return fmt.Sprintf("%.1fμs", ns/1000)
-	}
-	if ns < 1000000000 {
-		return fmt.Sprintf("%.1fms", ns/1000000)
-	}
-	return fmt.Sprintf("%.1fs", ns/1000000000)
-}
-
 // formatBytes formats bytes in human readable format
 func formatRuntimeBytes(bytes uint64) string {
 	return humanize.Bytes(bytes)
@@ -227,7 +210,7 @@ func (node *GCMetricsNode) ShouldPauseRefresh() bool {
 	return false
 }
 
-func (node *GCMetricsNode) GetChild(name string) (MetricNode, error) {
+func (node *GCMetricsNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("GC metrics node has no children")
 }
 
@@ -319,7 +302,7 @@ func (node *MemoryMetricsNode) ShouldPauseRefresh() bool {
 	return false
 }
 
-func (node *MemoryMetricsNode) GetChild(name string) (MetricNode, error) {
+func (node *MemoryMetricsNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("memory metrics node has no children")
 }
 
@@ -396,7 +379,7 @@ func (node *SchedulerMetricsNode) ShouldPauseRefresh() bool {
 	return false
 }
 
-func (node *SchedulerMetricsNode) GetChild(name string) (MetricNode, error) {
+func (node *SchedulerMetricsNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("scheduler metrics node has no children")
 }
 
@@ -471,7 +454,7 @@ func (node *CPUClassesMetricsNode) ShouldPauseRefresh() bool {
 	return false
 }
 
-func (node *CPUClassesMetricsNode) GetChild(name string) (MetricNode, error) {
+func (node *CPUClassesMetricsNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("CPU classes metrics node has no children")
 }
 
@@ -536,6 +519,6 @@ func (node *SyncMetricsNode) ShouldPauseRefresh() bool {
 	return false
 }
 
-func (node *SyncMetricsNode) GetChild(name string) (MetricNode, error) {
+func (node *SyncMetricsNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("sync metrics node has no children")
 }

@@ -19,11 +19,11 @@ type APIMetricsNode struct {
 	path   string
 }
 
-func (a *APIMetricsNode) GetOpts() madmin.MetricsOptions {
-	return getNodeOpts(a)
+func (node *APIMetricsNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
 }
 
-func (n *APIMetricsNode) ShouldPauseRefresh() bool {
+func (node *APIMetricsNode) ShouldPauseRefresh() bool {
 	return false
 }
 
@@ -90,18 +90,18 @@ func (node *APILastMinuteNode) ShouldPauseRefresh() bool {
 }
 
 func (node *APILastMinuteNode) GetChildren() []MetricChild {
-	if node.api.LastMinuteAPI == nil || len(node.api.LastMinuteAPI) == 0 {
+	if len(node.api.LastMinuteAPI) == 0 {
 		return []MetricChild{}
 	}
 
 	// Get sorted endpoint names to ensure consistent ordering
-	var endpoints []string
+	endpoints := make([]string, 0, len(node.api.LastMinuteAPI))
 	for endpoint := range node.api.LastMinuteAPI {
 		endpoints = append(endpoints, endpoint)
 	}
 	sort.Strings(endpoints)
 
-	var children []MetricChild
+	children := make([]MetricChild, 0, len(endpoints))
 	for _, endpoint := range endpoints {
 		if node.api.LastMinuteAPI[endpoint].Requests == 0 {
 			continue
@@ -367,7 +367,7 @@ func (node *APILastDayNode) GetChildren() []MetricChild {
 		return []MetricChild{}
 	}
 
-	var children []MetricChild
+	children := make([]MetricChild, 0, len(node.api.LastDayAPI)+1)
 
 	// Add "All" entry first - shows aggregated time segments
 	children = append(children, MetricChild{
@@ -376,7 +376,7 @@ func (node *APILastDayNode) GetChildren() []MetricChild {
 	})
 
 	// Add individual API endpoints, sorted alphabetically
-	var apiNames []string
+	apiNames := make([]string, 0, len(node.api.LastDayAPI))
 	for apiName := range node.api.LastDayAPI {
 		apiNames = append(apiNames, apiName)
 	}
@@ -709,7 +709,7 @@ func (node *APISinceStartNode) ShouldPauseRefresh() bool {
 	return false
 }
 
-func (node *APISinceStartNode) GetChild(name string) (MetricNode, error) {
+func (node *APISinceStartNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available for since_start node")
 }
 
@@ -746,11 +746,10 @@ func (node *APILastDayTotalNode) ShouldPauseRefresh() bool {
 	return true
 }
 
-func (node *APILastDayTotalNode) GetChild(name string) (MetricNode, error) {
+func (node *APILastDayTotalNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available for last day total node")
 }
 
-// APITimeSegmentNode shows statistics for a specific time segment
 // APITimeSegmentAllNode shows aggregated API statistics for a specific time segment
 type APITimeSegmentAllNode struct {
 	segment     madmin.APIStats
@@ -767,7 +766,7 @@ func (node *APITimeSegmentAllNode) GetChildren() []MetricChild {
 	return []MetricChild{}
 }
 
-func (node *APITimeSegmentAllNode) GetChild(name string) (MetricNode, error) {
+func (node *APITimeSegmentAllNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available for time segment")
 }
 
@@ -1001,13 +1000,12 @@ func (node *APIEndpointNode) GetMetricType() madmin.MetricType   { return madmin
 func (node *APIEndpointNode) GetMetricFlags() madmin.MetricFlags { return 0 }
 func (node *APIEndpointNode) GetParent() MetricNode              { return node.parent }
 func (node *APIEndpointNode) GetPath() string                    { return node.path }
-func (node *APIEndpointNode) GetChild(name string) (MetricNode, error) {
+func (node *APIEndpointNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available for endpoint node")
 }
 
 // APISegmentedNode shows segmented statistics for a specific endpoint over the last day
 type APISegmentedNode struct {
-	endpoint  string
 	segmented madmin.SegmentedAPIMetrics
 	parent    MetricNode
 	path      string
@@ -1018,7 +1016,7 @@ func (node *APISegmentedNode) GetOpts() madmin.MetricsOptions {
 }
 
 func (node *APISegmentedNode) GetChildren() []MetricChild {
-	var children []MetricChild
+	children := make([]MetricChild, 0, len(node.segmented.Segments))
 	for i := range node.segmented.Segments {
 		children = append(children, MetricChild{
 			Name:        fmt.Sprintf("segment_%d", i),
@@ -1219,128 +1217,4 @@ func (node *APIMetricsNode) generateAPIOverviewDashboard() map[string]string {
 	}
 
 	return data
-}
-
-// calculateAPIHealthScore computes health score based on error rates, latency, and queue status
-func (node *APIMetricsNode) calculateAPIHealthScore(lastMinute *madmin.APIStats) float64 {
-	score := 10.0
-
-	if lastMinute.Requests == 0 {
-		return 8.0 // Neutral score for no activity
-	}
-
-	// Error rate penalty
-	errorRate := float64(lastMinute.Errors4xx+lastMinute.Errors5xx) / float64(lastMinute.Requests) * 100
-	if errorRate > 5.0 {
-		score -= 3.0
-	} else if errorRate > 1.0 {
-		score -= 1.0
-	}
-
-	// Latency penalty
-	avgLatency := (lastMinute.RequestTimeSecs / float64(lastMinute.Requests)) * 1000
-	if avgLatency > 5000 {
-		score -= 2.0
-	} else if avgLatency > 1000 {
-		score -= 1.0
-	}
-
-	// Queue buildup penalty
-	if node.api.QueuedRequests > 100 {
-		score -= 2.0
-	} else if node.api.QueuedRequests > 10 {
-		score -= 1.0
-	}
-
-	// High rejection penalty
-	totalRejected := lastMinute.Rejected.Auth + lastMinute.Rejected.Header +
-		lastMinute.Rejected.Invalid + lastMinute.Rejected.NotImplemented + lastMinute.Rejected.RequestsTime
-	if totalRejected > 0 {
-		rejectionRate := float64(totalRejected) / float64(lastMinute.Requests) * 100
-		if rejectionRate > 10.0 {
-			score -= 2.0
-		} else if rejectionRate > 5.0 {
-			score -= 1.0
-		}
-	}
-
-	if score < 0.0 {
-		return 0.0
-	}
-	return score
-}
-
-// getHealthStatus returns health status string based on score
-func (node *APIMetricsNode) getHealthStatus(score float64) string {
-	switch {
-	case score >= 9.0:
-		return "🟢 EXCELLENT"
-	case score >= 8.0:
-		return "🟢 GOOD"
-	case score >= 6.0:
-		return "🟡 FAIR"
-	case score >= 4.0:
-		return "🟠 POOR"
-	default:
-		return "🔴 CRITICAL"
-	}
-}
-
-// generateAPIRecommendations provides actionable insights
-func (node *APIMetricsNode) generateAPIRecommendations(lastMinute, sinceStart *madmin.APIStats) []string {
-	var recommendations []string
-
-	if lastMinute.Requests == 0 {
-		return []string{"No recent API activity to analyze"}
-	}
-
-	// Error rate recommendations
-	errorRate := float64(lastMinute.Errors4xx+lastMinute.Errors5xx) / float64(lastMinute.Requests) * 100
-	if errorRate > 5.0 {
-		recommendations = append(recommendations, "High error rate detected - investigate failing endpoints")
-	}
-
-	if lastMinute.Errors5xx > lastMinute.Errors4xx && lastMinute.Errors5xx > 0 {
-		recommendations = append(recommendations, "Server errors exceed client errors - check system health")
-	}
-
-	// Latency recommendations
-	avgLatency := (lastMinute.RequestTimeSecs / float64(lastMinute.Requests)) * 1000
-	if avgLatency > 2000 {
-		recommendations = append(recommendations, "High average latency - consider performance optimization")
-	}
-
-	if lastMinute.RequestTimeSecsMax > 0 && lastMinute.RequestTimeSecsMax*1000 > avgLatency*5 {
-		recommendations = append(recommendations, "High latency variance detected - investigate slow endpoints")
-	}
-
-	// Queue recommendations
-	if node.api.QueuedRequests > 50 {
-		recommendations = append(recommendations, "Request queue buildup - consider scaling or load balancing")
-	}
-
-	// TTFB recommendations
-	if lastMinute.RespTTFBSecs > 0 && lastMinute.Requests > 0 {
-		avgTTFB := (lastMinute.RespTTFBSecs / float64(lastMinute.Requests)) * 1000
-		if avgTTFB > 500 {
-			recommendations = append(recommendations, "Slow time-to-first-byte - optimize request processing")
-		}
-	}
-
-	// Rejection recommendations
-	rejections := lastMinute.Rejected
-	if rejections.Auth > 0 {
-		recommendations = append(recommendations, "Authentication failures detected - verify client credentials")
-	}
-
-	if rejections.Invalid > 0 {
-		recommendations = append(recommendations, "Invalid request signatures - check client request formatting")
-	}
-
-	// Throughput recommendations
-	if len(node.api.LastMinuteAPI) > 10 {
-		recommendations = append(recommendations, "High endpoint diversity - monitor for unused or deprecated APIs")
-	}
-
-	return recommendations
 }
