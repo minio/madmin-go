@@ -254,33 +254,68 @@ func NewDiskSpaceNode(space *madmin.DriveSpaceInfo, parent MetricNode, path stri
 }
 
 func (node *DiskSpaceNode) GetChildren() []MetricChild {
-	return []MetricChild{
-		{Name: "free", Description: "Free space statistics"},
-		{Name: "used", Description: "Used space statistics"},
-		{Name: "inodes", Description: "Inode usage statistics"},
-	}
+	return []MetricChild{}
 }
 
 func (node *DiskSpaceNode) GetLeafData() map[string]string {
 	if node.space == nil {
-		return map[string]string{"error": "space info not available"}
+		return map[string]string{"Status": "No space info available"}
 	}
 
-	return map[string]string{
-		"n":                 strconv.Itoa(node.space.N),
-		"free_total":        strconv.FormatUint(node.space.Free.Total, 10),
-		"free_min":          strconv.FormatUint(node.space.Free.Min, 10),
-		"free_max":          strconv.FormatUint(node.space.Free.Max, 10),
-		"used_total":        strconv.FormatUint(node.space.Used.Total, 10),
-		"used_min":          strconv.FormatUint(node.space.Used.Min, 10),
-		"used_max":          strconv.FormatUint(node.space.Used.Max, 10),
-		"used_inodes_total": strconv.FormatUint(node.space.UsedInodes.Total, 10),
-		"used_inodes_min":   strconv.FormatUint(node.space.UsedInodes.Min, 10),
-		"used_inodes_max":   strconv.FormatUint(node.space.UsedInodes.Max, 10),
-		"free_inodes_total": strconv.FormatUint(node.space.FreeInodes.Total, 10),
-		"free_inodes_min":   strconv.FormatUint(node.space.FreeInodes.Min, 10),
-		"free_inodes_max":   strconv.FormatUint(node.space.FreeInodes.Max, 10),
+	data := map[string]string{}
+
+	// Space Overview
+	data["Disks"] = fmt.Sprintf("%d drives", node.space.N)
+	totalCapacity := node.space.Used.Total + node.space.Free.Total
+	if totalCapacity > 0 {
+		usagePercent := float64(node.space.Used.Total) / float64(totalCapacity) * 100
+		data["Total capacity"] = fmt.Sprintf("%s (used: %s, free: %s)",
+			humanize.Bytes(totalCapacity),
+			humanize.Bytes(node.space.Used.Total),
+			humanize.Bytes(node.space.Free.Total))
+
+		// Calculate inode usage percentage
+		totalInodes := node.space.UsedInodes.Total + node.space.FreeInodes.Total
+		var inodeUsageText string
+		if totalInodes > 0 {
+			inodeUsagePercent := float64(node.space.UsedInodes.Total) / float64(totalInodes) * 100
+			inodeUsageText = fmt.Sprintf(", %.1f%% inodes", inodeUsagePercent)
+		} else {
+			inodeUsageText = ", 0.0% inodes"
+		}
+
+		data["Usage"] = fmt.Sprintf("%.1f%% space%s", usagePercent, inodeUsageText)
 	}
+
+	// Space Distribution
+	if node.space.Used.Total > 0 {
+		data["Used space"] = fmt.Sprintf("%s (min: %s, max: %s per disk)",
+			humanize.Bytes(node.space.Used.Total),
+			humanize.Bytes(node.space.Used.Min),
+			humanize.Bytes(node.space.Used.Max))
+	}
+	if node.space.Free.Total > 0 {
+		data["Free space"] = fmt.Sprintf("%s (min: %s, max: %s per disk)",
+			humanize.Bytes(node.space.Free.Total),
+			humanize.Bytes(node.space.Free.Min),
+			humanize.Bytes(node.space.Free.Max))
+	}
+
+	// Inode Usage
+	if node.space.UsedInodes.Total > 0 {
+		data["Used inodes"] = fmt.Sprintf("%s total (min: %s, max: %s per disk)",
+			humanize.Comma(int64(node.space.UsedInodes.Total)),
+			humanize.Comma(int64(node.space.UsedInodes.Min)),
+			humanize.Comma(int64(node.space.UsedInodes.Max)))
+	}
+	if node.space.FreeInodes.Total > 0 {
+		data["Free inodes"] = fmt.Sprintf("%s total (min: %s, max: %s per disk)",
+			humanize.Comma(int64(node.space.FreeInodes.Total)),
+			humanize.Comma(int64(node.space.FreeInodes.Min)),
+			humanize.Comma(int64(node.space.FreeInodes.Max)))
+	}
+
+	return data
 }
 
 func (node *DiskSpaceNode) GetMetricType() madmin.MetricType   { return madmin.MetricsDisk }
@@ -292,9 +327,8 @@ func (node *DiskSpaceNode) ShouldPauseRefresh() bool {
 	return false
 }
 
-func (node *DiskSpaceNode) GetChild(name string) (MetricNode, error) {
-	// Could implement sub-navigation for free/used/inodes
-	return nil, fmt.Errorf("disk space component navigation not yet implemented for: %s", name)
+func (node *DiskSpaceNode) GetChild(_ string) (MetricNode, error) {
+	return nil, fmt.Errorf("disk space is a leaf node - no children available")
 }
 
 // DiskLifetimeOpsNode handles navigation for lifetime disk operations
@@ -999,18 +1033,59 @@ func (node *DiskHealingNode) GetChildren() []MetricChild { return []MetricChild{
 
 func (node *DiskHealingNode) GetLeafData() map[string]string {
 	if node.healing == nil {
-		return map[string]string{"healing_active": "false"}
+		return map[string]string{"Status": "No healing activity"}
 	}
 
-	return map[string]string{
-		"healing_active": "true",
-		"items_healed":   strconv.FormatUint(node.healing.ItemsHealed, 10),
-		"items_failed":   strconv.FormatUint(node.healing.ItemsFailed, 10),
-		"heal_id":        node.healing.HealID,
-		"finished":       strconv.FormatBool(node.healing.Finished),
-		"started":        node.healing.Started.Format(time.RFC3339),
-		"updated":        node.healing.Updated.Format(time.RFC3339),
+	data := map[string]string{}
+
+	// Healing Status
+	if node.healing.Finished {
+		data["Status"] = "Healing completed"
+	} else {
+		data["Status"] = "Healing in progress"
 	}
+
+	// Progress Information
+	if node.healing.ItemsHealed > 0 {
+		data["Items healed"] = humanize.Comma(int64(node.healing.ItemsHealed))
+	}
+	if node.healing.ItemsFailed > 0 {
+		data["Items failed"] = humanize.Comma(int64(node.healing.ItemsFailed))
+	}
+
+	// Success Rate
+	totalItems := node.healing.ItemsHealed + node.healing.ItemsFailed
+	if totalItems > 0 {
+		successRate := float64(node.healing.ItemsHealed) / float64(totalItems) * 100
+		data["Success rate"] = fmt.Sprintf("%.1f%%", successRate)
+		data["Total processed"] = humanize.Comma(int64(totalItems))
+	}
+
+	// Timing Information
+	if !node.healing.Started.IsZero() {
+		data["Started"] = node.healing.Started.Format("15:04:05")
+
+		// Calculate duration
+		endTime := node.healing.Updated
+		if endTime.IsZero() || !node.healing.Finished {
+			endTime = time.Now()
+		}
+		if !endTime.IsZero() {
+			duration := endTime.Sub(node.healing.Started)
+			data["Duration"] = formatDuration(duration)
+		}
+	}
+
+	if !node.healing.Updated.IsZero() {
+		data["Last updated"] = node.healing.Updated.Format("15:04:05")
+	}
+
+	// Heal ID (technical info)
+	if node.healing.HealID != "" {
+		data["Heal ID"] = node.healing.HealID
+	}
+
+	return data
 }
 
 func (node *DiskHealingNode) GetMetricType() madmin.MetricType   { return madmin.MetricsDisk }
@@ -1445,7 +1520,7 @@ func (node *DiskIOTotalNode) GetLeafData() map[string]string {
 
 // DiskCacheNode handles navigation for cache statistics
 type DiskCacheNode struct {
-	cache  interface{} // CacheStats type
+	cache  *madmin.CacheStats
 	parent MetricNode
 	path   string
 }
@@ -1455,15 +1530,66 @@ func (node *DiskCacheNode) GetOpts() madmin.MetricsOptions {
 }
 
 func NewDiskCacheNode(cache interface{}, parent MetricNode, path string) *DiskCacheNode {
-	return &DiskCacheNode{cache: cache, parent: parent, path: path}
+	if cacheStats, ok := cache.(*madmin.CacheStats); ok {
+		return &DiskCacheNode{cache: cacheStats, parent: parent, path: path}
+	}
+	return &DiskCacheNode{cache: nil, parent: parent, path: path}
 }
 
 func (node *DiskCacheNode) GetChildren() []MetricChild { return []MetricChild{} }
 
 func (node *DiskCacheNode) GetLeafData() map[string]string {
-	return map[string]string{
-		"cache_available": strconv.FormatBool(node.cache != nil),
+	if node.cache == nil {
+		return map[string]string{"Status": "Cache not available"}
 	}
+
+	data := map[string]string{}
+
+	// Cache Overview
+	data["Status"] = "Cache enabled"
+	if node.cache.N > 0 {
+		data["Cache nodes"] = strconv.Itoa(node.cache.N)
+	}
+
+	// Capacity and Usage
+	if node.cache.Capacity > 0 {
+		data["Total capacity"] = humanize.Bytes(uint64(node.cache.Capacity))
+		if node.cache.Used > 0 {
+			usagePercent := float64(node.cache.Used) / float64(node.cache.Capacity) * 100
+			data["Used space"] = fmt.Sprintf("%s (%.1f%%)", humanize.Bytes(uint64(node.cache.Used)), usagePercent)
+			freeSpace := node.cache.Capacity - node.cache.Used
+			data["Free space"] = humanize.Bytes(uint64(freeSpace))
+		} else {
+			data["Used space"] = "0 B (0.0%)"
+			data["Free space"] = humanize.Bytes(uint64(node.cache.Capacity))
+		}
+	}
+
+	// Hit/Miss Statistics
+	totalRequests := node.cache.Hits + node.cache.Misses
+	if totalRequests > 0 {
+		hitRate := float64(node.cache.Hits) / float64(totalRequests) * 100
+		data["Hit rate"] = fmt.Sprintf("%.1f%%", hitRate)
+		data["Total requests"] = humanize.Comma(totalRequests)
+		data["Cache hits"] = humanize.Comma(node.cache.Hits)
+		data["Cache misses"] = humanize.Comma(node.cache.Misses)
+	}
+
+	// Deletion Statistics
+	totalDeletes := node.cache.DelHits + node.cache.DelMisses
+	if totalDeletes > 0 {
+		delHitRate := float64(node.cache.DelHits) / float64(totalDeletes) * 100
+		data["Delete hit rate"] = fmt.Sprintf("%.1f%%", delHitRate)
+		data["Delete hits"] = humanize.Comma(node.cache.DelHits)
+		data["Delete misses"] = humanize.Comma(node.cache.DelMisses)
+	}
+
+	// Collision Information
+	if node.cache.Collisions > 0 {
+		data["Hash collisions"] = humanize.Comma(node.cache.Collisions)
+	}
+
+	return data
 }
 
 func (node *DiskCacheNode) GetMetricType() madmin.MetricType   { return madmin.MetricsDisk }
