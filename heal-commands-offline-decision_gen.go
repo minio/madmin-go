@@ -18,8 +18,9 @@ const _OfflineDecision_name = "NoneHealDriveSkipHealing"
 var _OfflineDecision_index = [...]uint8{0, 4, 13, 24}
 
 func (i OfflineDecision) String() string {
-	if i < 0 || i >= OfflineDecision(len(_OfflineDecision_index)-1) {
+	idx := int(i) - 0
+	if i < 0 || idx >= len(_OfflineDecision_index)-1 {
 		return "OfflineDecision(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
-	return _OfflineDecision_name[_OfflineDecision_index[i]:_OfflineDecision_index[i+1]]
+	return _OfflineDecision_name[_OfflineDecision_index[idx]:_OfflineDecision_index[idx+1]]
 }
