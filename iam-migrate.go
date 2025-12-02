@@ -91,7 +91,7 @@ type IAMErrEntity struct {
 	Name string `json:"name,omitempty"`
 	// Actual error (incorrect for JSON)
 	// Deprecated: Use Err instead
-	Error error `json:"error_object,omitempty"`
+	Error error `json:"-"`
 	// Actual error
 	Err string `json:"err,omitempty"`
 }
@@ -104,7 +104,7 @@ type IAMErrPolicyEntity struct {
 	Policies []string `json:"policies,omitempty"`
 	// Actual error (incorrect for JSON)
 	// Deprecated: Use Err instead
-	Error error `json:"error_object,omitempty"`
+	Error error `json:"-"`
 	// Actual error
 	Err string `json:"err,omitempty"`
 }
