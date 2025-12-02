@@ -72,6 +72,33 @@ func (m MetricType) Contains(x MetricType) bool {
 	return m&x == x
 }
 
+// String returns a comma separated list of flags as string.
+func (m MetricType) String() string {
+	var b strings.Builder
+	addIf := func(cond bool, str string) {
+		if cond {
+			if b.Len() > 0 {
+				b.WriteByte(',')
+			}
+			b.WriteString(str)
+		}
+	}
+	addIf(m.Contains(MetricsScanner), "Scanner")
+	addIf(m.Contains(MetricsDisk), "Disk")
+	addIf(m.Contains(MetricsOS), "OS")
+	addIf(m.Contains(MetricsBatchJobs), "BatchJobs")
+	addIf(m.Contains(MetricsSiteResync), "SiteResync")
+	addIf(m.Contains(MetricNet), "Net")
+	addIf(m.Contains(MetricsMem), "Mem")
+	addIf(m.Contains(MetricsCPU), "CPU")
+	addIf(m.Contains(MetricsRPC), "RPC")
+	addIf(m.Contains(MetricsRuntime), "Runtime")
+	addIf(m.Contains(MetricsAPI), "API")
+	addIf(m.Contains(MetricsReplication), "Replication")
+	addIf(m.Contains(MetricsProcess), "Process")
+	return b.String()
+}
+
 // MetricFlags is a bitfield representation of different metric flags.
 type MetricFlags uint64
 
@@ -99,10 +126,10 @@ func (m *MetricFlags) Add(x ...MetricFlags) {
 func (m MetricFlags) String() string {
 	var b strings.Builder
 	addIf := func(cond bool, str string) {
-		if b.Len() > 0 {
-			b.WriteByte(',')
-		}
 		if cond {
+			if b.Len() > 0 {
+				b.WriteByte(',')
+			}
 			b.WriteString(str)
 		}
 	}

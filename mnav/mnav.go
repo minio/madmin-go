@@ -230,38 +230,40 @@ func (node *RealtimeMetricsNode) GetChild(name string) (MetricNode, error) {
 
 	// Grouping nodes - preserved as-is
 	case "by_host":
-		return &MapNode{
+		mapNode := &MapNode{
 			data:        node.metrics.ByHost,
 			metricType:  madmin.MetricsNone,
 			metricFlags: madmin.MetricsByHost,
 			parent:      node,
 			path:        "by_host",
-			nodeFactory: func(key string, value interface{}) MetricNode {
-				if metrics, ok := value.(madmin.Metrics); ok {
-					return &MetricsNode{
-						metrics: &metrics, parent: node, path: fmt.Sprintf("by_host/%s", key),
-						opts: madmin.MetricsOptions{Type: madmin.MetricsNone, Flags: madmin.MetricsByHost, Hosts: []string{key}},
-					}
+		}
+		mapNode.nodeFactory = func(key string, value interface{}) MetricNode {
+			if metrics, ok := value.(madmin.Metrics); ok {
+				return &MetricsNode{
+					metrics: &metrics, parent: mapNode, path: fmt.Sprintf("by_host/%s", key),
+					opts: madmin.MetricsOptions{Type: madmin.MetricsNone, Flags: madmin.MetricsByHost, Hosts: []string{key}},
 				}
-				return nil
-			},
-		}, nil
+			}
+			return nil
+		}
+		return mapNode, nil
 	case "by_disk":
-		return &MapNode{
+		mapNode := &MapNode{
 			data:        node.metrics.ByDisk,
 			metricType:  madmin.MetricsDisk,
 			metricFlags: madmin.MetricsByDisk,
 			parent:      node,
 			path:        "by_disk",
-			nodeFactory: func(key string, value interface{}) MetricNode {
-				if diskMetric, ok := value.(madmin.DiskMetric); ok {
-					// URL-encode the disk name to handle slashes and special characters
-					encodedKey := url.PathEscape(key)
-					return NewDiskMetricsNavigator(&diskMetric, node, fmt.Sprintf("by_disk/%s", encodedKey), madmin.MetricsOptions{Flags: madmin.MetricsByDisk, Disks: []string{key}})
-				}
-				return nil
-			},
-		}, nil
+		}
+		mapNode.nodeFactory = func(key string, value interface{}) MetricNode {
+			if diskMetric, ok := value.(madmin.DiskMetric); ok {
+				// URL-encode the disk name to handle slashes and special characters
+				encodedKey := url.PathEscape(key)
+				return NewDiskMetricsNavigator(&diskMetric, mapNode, fmt.Sprintf("by_disk/%s", encodedKey), madmin.MetricsOptions{Flags: madmin.MetricsByDisk, Disks: []string{key}})
+			}
+			return nil
+		}
+		return mapNode, nil
 	case "by_disk_set":
 		return &DiskSetMapNode{
 			data:        node.metrics.ByDiskSet,
@@ -885,7 +887,9 @@ func (node *DiskSetPoolNavigator) GetChild(name string) (MetricNode, error) {
 	}
 
 	if diskMetric, exists := node.poolSets[setID]; exists {
-		return NewDiskMetricsNavigator(&diskMetric, node, fmt.Sprintf("%s/set_%d", node.path, setID), madmin.MetricsOptions{DriveSetIdx: []int{setID}}), nil
+		opts := getNodeOpts(node)
+		opts.DriveSetIdx = append(opts.DriveSetIdx, setID)
+		return NewDiskMetricsNavigator(&diskMetric, node, fmt.Sprintf("%s/set_%d", node.path, setID), opts), nil
 	}
 
 	return nil, fmt.Errorf("set not found: %d", setID)
