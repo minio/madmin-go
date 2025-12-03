@@ -72,6 +72,33 @@ func (m MetricType) Contains(x MetricType) bool {
 	return m&x == x
 }
 
+// String returns a comma separated list of flags as string.
+func (m MetricType) String() string {
+	var b strings.Builder
+	addIf := func(cond bool, str string) {
+		if cond {
+			if b.Len() > 0 {
+				b.WriteByte(',')
+			}
+			b.WriteString(str)
+		}
+	}
+	addIf(m.Contains(MetricsScanner), "Scanner")
+	addIf(m.Contains(MetricsDisk), "Disk")
+	addIf(m.Contains(MetricsOS), "OS")
+	addIf(m.Contains(MetricsBatchJobs), "BatchJobs")
+	addIf(m.Contains(MetricsSiteResync), "SiteResync")
+	addIf(m.Contains(MetricNet), "Net")
+	addIf(m.Contains(MetricsMem), "Mem")
+	addIf(m.Contains(MetricsCPU), "CPU")
+	addIf(m.Contains(MetricsRPC), "RPC")
+	addIf(m.Contains(MetricsRuntime), "Runtime")
+	addIf(m.Contains(MetricsAPI), "API")
+	addIf(m.Contains(MetricsReplication), "Replication")
+	addIf(m.Contains(MetricsProcess), "Process")
+	return b.String()
+}
+
 // MetricFlags is a bitfield representation of different metric flags.
 type MetricFlags uint64
 
@@ -93,6 +120,25 @@ func (m *MetricFlags) Add(x ...MetricFlags) {
 	for _, v := range x {
 		*m = *m | v
 	}
+}
+
+// String returns a comma separated list of flags as string.
+func (m MetricFlags) String() string {
+	var b strings.Builder
+	addIf := func(cond bool, str string) {
+		if cond {
+			if b.Len() > 0 {
+				b.WriteByte(',')
+			}
+			b.WriteString(str)
+		}
+	}
+	addIf(m.Contains(MetricsDayStats), "DayStats")
+	addIf(m.Contains(MetricsByHost), "ByHost")
+	addIf(m.Contains(MetricsByDisk), "ByDisk")
+	addIf(m.Contains(MetricsLegacyDiskIO), "LegacyIO")
+	addIf(m.Contains(MetricsByDiskSet), "ByDiskSet")
+	return b.String()
 }
 
 // MetricsOptions are options provided to Metrics call.
@@ -203,6 +249,9 @@ func (adm *AdminClient) Metrics(ctx context.Context, o MetricsOptions, out func(
 			}
 			return err
 		}
+		if m.CollectedAt.IsZero() {
+			m.CollectedAt = time.Now()
+		}
 		out(m)
 		if m.Final {
 			break
@@ -214,6 +263,9 @@ func (adm *AdminClient) Metrics(ctx context.Context, o MetricsOptions, out func(
 // RealtimeMetrics provides realtime metrics.
 // This is intended to be expanded over time to cover more types.
 type RealtimeMetrics struct {
+	// CollectedAt is the time these metrics were collected.
+	CollectedAt time.Time `json:"collected"`
+
 	// Error indicates an error occurred.
 	Errors []string `json:"errors,omitempty"`
 
@@ -250,6 +302,9 @@ type RealtimeMetrics struct {
 func (r *RealtimeMetrics) Merge(other *RealtimeMetrics) {
 	if other == nil {
 		return
+	}
+	if r.CollectedAt.Before(other.CollectedAt) {
+		r.CollectedAt = other.CollectedAt
 	}
 
 	if len(other.Errors) > 0 {
