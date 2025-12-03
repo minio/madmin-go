@@ -249,6 +249,9 @@ func (adm *AdminClient) Metrics(ctx context.Context, o MetricsOptions, out func(
 			}
 			return err
 		}
+		if m.CollectedAt.IsZero() {
+			m.CollectedAt = time.Now()
+		}
 		out(m)
 		if m.Final {
 			break
@@ -260,6 +263,9 @@ func (adm *AdminClient) Metrics(ctx context.Context, o MetricsOptions, out func(
 // RealtimeMetrics provides realtime metrics.
 // This is intended to be expanded over time to cover more types.
 type RealtimeMetrics struct {
+	// CollectedAt is the time these metrics were collected.
+	CollectedAt time.Time `json:"collected"`
+
 	// Error indicates an error occurred.
 	Errors []string `json:"errors,omitempty"`
 
@@ -296,6 +302,9 @@ type RealtimeMetrics struct {
 func (r *RealtimeMetrics) Merge(other *RealtimeMetrics) {
 	if other == nil {
 		return
+	}
+	if r.CollectedAt.Before(other.CollectedAt) {
+		r.CollectedAt = other.CollectedAt
 	}
 
 	if len(other.Errors) > 0 {

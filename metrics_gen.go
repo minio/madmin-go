@@ -18612,6 +18612,12 @@ func (z *RealtimeMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
+		case "collected":
+			z.CollectedAt, err = dc.ReadTimeUTC()
+			if err != nil {
+				err = msgp.WrapError(err, "CollectedAt")
+				return
+			}
 		case "errors":
 			var zb0002 uint32
 			zb0002, err = dc.ReadArrayHeader()
@@ -18801,24 +18807,24 @@ func (z *RealtimeMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *RealtimeMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(7)
-	var zb0001Mask uint8 /* 7 bits */
+	zb0001Len := uint32(8)
+	var zb0001Mask uint8 /* 8 bits */
 	_ = zb0001Mask
 	if z.Errors == nil {
 		zb0001Len--
-		zb0001Mask |= 0x1
+		zb0001Mask |= 0x2
 	}
 	if z.ByHost == nil {
 		zb0001Len--
-		zb0001Mask |= 0x8
+		zb0001Mask |= 0x10
 	}
 	if z.ByDisk == nil {
 		zb0001Len--
-		zb0001Mask |= 0x10
+		zb0001Mask |= 0x20
 	}
 	if z.ByDiskSet == nil {
 		zb0001Len--
-		zb0001Mask |= 0x20
+		zb0001Mask |= 0x40
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -18828,7 +18834,17 @@ func (z *RealtimeMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 
 	// skip if no fields are to be emitted
 	if zb0001Len != 0 {
-		if (zb0001Mask & 0x1) == 0 { // if not omitted
+		// write "collected"
+		err = en.Append(0xa9, 0x63, 0x6f, 0x6c, 0x6c, 0x65, 0x63, 0x74, 0x65, 0x64)
+		if err != nil {
+			return
+		}
+		err = en.WriteTime(z.CollectedAt)
+		if err != nil {
+			err = msgp.WrapError(err, "CollectedAt")
+			return
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
 			// write "errors"
 			err = en.Append(0xa6, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x73)
 			if err != nil {
@@ -18874,7 +18890,7 @@ func (z *RealtimeMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "Aggregated")
 			return
 		}
-		if (zb0001Mask & 0x8) == 0 { // if not omitted
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
 			// write "by_host"
 			err = en.Append(0xa7, 0x62, 0x79, 0x5f, 0x68, 0x6f, 0x73, 0x74)
 			if err != nil {
@@ -18898,7 +18914,7 @@ func (z *RealtimeMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x10) == 0 { // if not omitted
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
 			// write "by_disk"
 			err = en.Append(0xa7, 0x62, 0x79, 0x5f, 0x64, 0x69, 0x73, 0x6b)
 			if err != nil {
@@ -18922,7 +18938,7 @@ func (z *RealtimeMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x20) == 0 { // if not omitted
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
 			// write "by_disk_set"
 			err = en.Append(0xab, 0x62, 0x79, 0x5f, 0x64, 0x69, 0x73, 0x6b, 0x5f, 0x73, 0x65, 0x74)
 			if err != nil {
@@ -18976,31 +18992,34 @@ func (z *RealtimeMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *RealtimeMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(7)
-	var zb0001Mask uint8 /* 7 bits */
+	zb0001Len := uint32(8)
+	var zb0001Mask uint8 /* 8 bits */
 	_ = zb0001Mask
 	if z.Errors == nil {
 		zb0001Len--
-		zb0001Mask |= 0x1
+		zb0001Mask |= 0x2
 	}
 	if z.ByHost == nil {
 		zb0001Len--
-		zb0001Mask |= 0x8
+		zb0001Mask |= 0x10
 	}
 	if z.ByDisk == nil {
 		zb0001Len--
-		zb0001Mask |= 0x10
+		zb0001Mask |= 0x20
 	}
 	if z.ByDiskSet == nil {
 		zb0001Len--
-		zb0001Mask |= 0x20
+		zb0001Mask |= 0x40
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
 
 	// skip if no fields are to be emitted
 	if zb0001Len != 0 {
-		if (zb0001Mask & 0x1) == 0 { // if not omitted
+		// string "collected"
+		o = append(o, 0xa9, 0x63, 0x6f, 0x6c, 0x6c, 0x65, 0x63, 0x74, 0x65, 0x64)
+		o = msgp.AppendTime(o, z.CollectedAt)
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
 			// string "errors"
 			o = append(o, 0xa6, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x73)
 			o = msgp.AppendArrayHeader(o, uint32(len(z.Errors)))
@@ -19021,7 +19040,7 @@ func (z *RealtimeMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 			err = msgp.WrapError(err, "Aggregated")
 			return
 		}
-		if (zb0001Mask & 0x8) == 0 { // if not omitted
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
 			// string "by_host"
 			o = append(o, 0xa7, 0x62, 0x79, 0x5f, 0x68, 0x6f, 0x73, 0x74)
 			o = msgp.AppendMapHeader(o, uint32(len(z.ByHost)))
@@ -19034,7 +19053,7 @@ func (z *RealtimeMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x10) == 0 { // if not omitted
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
 			// string "by_disk"
 			o = append(o, 0xa7, 0x62, 0x79, 0x5f, 0x64, 0x69, 0x73, 0x6b)
 			o = msgp.AppendMapHeader(o, uint32(len(z.ByDisk)))
@@ -19047,7 +19066,7 @@ func (z *RealtimeMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x20) == 0 { // if not omitted
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
 			// string "by_disk_set"
 			o = append(o, 0xab, 0x62, 0x79, 0x5f, 0x64, 0x69, 0x73, 0x6b, 0x5f, 0x73, 0x65, 0x74)
 			o = msgp.AppendMapHeader(o, uint32(len(z.ByDiskSet)))
@@ -19091,6 +19110,12 @@ func (z *RealtimeMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
+		case "collected":
+			z.CollectedAt, bts, err = msgp.ReadTimeUTCBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "CollectedAt")
+				return
+			}
 		case "errors":
 			var zb0002 uint32
 			zb0002, bts, err = msgp.ReadArrayHeaderBytes(bts)
@@ -19280,7 +19305,7 @@ func (z *RealtimeMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *RealtimeMetrics) Msgsize() (s int) {
-	s = 1 + 7 + msgp.ArrayHeaderSize
+	s = 1 + 10 + msgp.TimeSize + 7 + msgp.ArrayHeaderSize
 	for za0001 := range z.Errors {
 		s += msgp.StringPrefixSize + len(z.Errors[za0001])
 	}
