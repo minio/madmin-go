@@ -276,7 +276,7 @@ func NewScannerLifetimeILMNode(ilm map[string]uint64, parent MetricNode, path st
 }
 
 func (node *ScannerLifetimeILMNode) GetChildren() []MetricChild {
-	if node.ilm == nil || len(node.ilm) == 0 {
+	if len(node.ilm) == 0 {
 		return []MetricChild{}
 	}
 	children := make([]MetricChild, 0, len(node.ilm))
