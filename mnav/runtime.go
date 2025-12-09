@@ -53,6 +53,9 @@ func NewRuntimeMetricsNavigator(runtime *madmin.RuntimeMetrics, parent MetricNod
 }
 
 func (node *RuntimeMetricsNavigator) GetChildren() []MetricChild {
+	if node.runtime == nil {
+		return []MetricChild{}
+	}
 	return []MetricChild{
 		{Name: "gc", Description: "Garbage collection metrics and heap statistics"},
 		{Name: "memory", Description: "Memory management and allocation metrics"},

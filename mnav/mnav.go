@@ -774,6 +774,9 @@ func (node *DiskSetPoolNavigator) ShouldPauseUpdates() bool {
 }
 
 func (node *DiskSetPoolNavigator) GetChildren() []MetricChild {
+	if node.poolSets == nil {
+		return []MetricChild{}
+	}
 	children := make([]MetricChild, 0, len(node.poolSets))
 	for setID, diskSet := range node.poolSets {
 		healthyDisks := diskSet.NDisks - diskSet.Offline - diskSet.Hanging - diskSet.Healing

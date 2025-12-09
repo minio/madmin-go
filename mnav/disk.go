@@ -51,16 +51,33 @@ func NewDiskMetricsNavigator(disk *madmin.DiskMetric, parent MetricNode, path st
 }
 
 func (node *DiskMetricsNavigator) GetChildren() []MetricChild {
-	return []MetricChild{
-		{Name: "ops_last_minute", Description: "Last minute disk operations by type"},
-		{Name: "ops_last_day", Description: "Last day segmented disk operations"},
-		{Name: "ops_lifetime", Description: "Lifetime disk operations by type"},
-		{Name: "io_last_minute", Description: "Last minute IO statistics (real-time)"},
-		{Name: "io_last_day", Description: "Daily IO statistics (historical)"},
-		{Name: "space", Description: "Disk space information"},
-		{Name: "healing", Description: "Disk healing information"},
-		{Name: "cache", Description: "Disk cache statistics"},
+	if node.disk == nil {
+		return []MetricChild{}
 	}
+
+	var children []MetricChild
+
+	// Always available basic operations
+	children = append(children, MetricChild{Name: "ops_last_minute", Description: "Last minute disk operations by type"})
+	children = append(children, MetricChild{Name: "ops_last_day", Description: "Last day segmented disk operations"})
+	children = append(children, MetricChild{Name: "ops_lifetime", Description: "Lifetime disk operations by type"})
+
+	// IO statistics - always available as they use the whole disk object
+	children = append(children, MetricChild{Name: "io_last_minute", Description: "Last minute IO statistics (real-time)"})
+	children = append(children, MetricChild{Name: "io_last_day", Description: "Daily IO statistics (historical)"})
+
+	// Space information - always available as it's a direct field
+	children = append(children, MetricChild{Name: "space", Description: "Disk space information"})
+
+	// Optional features - only add if data exists
+	if node.disk.HealingInfo != nil {
+		children = append(children, MetricChild{Name: "healing", Description: "Disk healing information"})
+	}
+	if node.disk.Cache != nil {
+		children = append(children, MetricChild{Name: "cache", Description: "Disk cache statistics"})
+	}
+
+	return children
 }
 
 func (node *DiskMetricsNavigator) GetLeafData() map[string]string {

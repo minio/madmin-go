@@ -49,6 +49,10 @@ func NewScannerMetricsNode(scanner *madmin.ScannerMetrics, parent MetricNode, pa
 }
 
 func (node *ScannerMetricsNode) GetChildren() []MetricChild {
+	if node.scanner == nil {
+		return []MetricChild{}
+	}
+
 	return []MetricChild{
 		{Name: "lifetime_ops", Description: "Accumulated operations since server start"},
 		{Name: "lifetime_ilm", Description: "Accumulated ILM operations since server start"},
@@ -272,6 +276,9 @@ func NewScannerLifetimeILMNode(ilm map[string]uint64, parent MetricNode, path st
 }
 
 func (node *ScannerLifetimeILMNode) GetChildren() []MetricChild {
+	if node.ilm == nil || len(node.ilm) == 0 {
+		return []MetricChild{}
+	}
 	children := make([]MetricChild, 0, len(node.ilm))
 	for ilmType := range node.ilm {
 		children = append(children, MetricChild{

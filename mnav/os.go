@@ -55,11 +55,18 @@ func NewOSMetricsNavigator(os *madmin.OSMetrics, parent MetricNode, path string)
 }
 
 func (node *OSMetricsNavigator) GetChildren() []MetricChild {
-	return []MetricChild{
+	if node.os == nil {
+		return []MetricChild{}
+	}
+
+	m := []MetricChild{
 		{Name: "lifetime_ops", Description: "Accumulated operations since server start"},
 		{Name: "last_minute", Description: "Last minute operation statistics"},
-		{Name: "sensors", Description: "Temperature sensor metrics"},
 	}
+	if len(node.os.Sensors) > 0 {
+		m = append(m, MetricChild{Name: "sensors", Description: "Temperature sensor metrics"})
+	}
+	return m
 }
 
 func (node *OSMetricsNavigator) GetLeafData() map[string]string {

@@ -56,6 +56,9 @@ func NewMemMetricsNavigator(mem *madmin.MemMetrics, parent MetricNode, path stri
 }
 
 func (node *MemMetricsNavigator) GetChildren() []MetricChild {
+	if node.mem == nil {
+		return []MetricChild{}
+	}
 	return []MetricChild{
 		{Name: "usage", Description: "Core memory usage statistics and utilization"},
 		{Name: "system", Description: "System memory details (cache, buffers, shared)"},
