@@ -76,7 +76,18 @@ const (
 	ErasureSubSys          = "erasure"
 	BucketEventQueueSubSys = "bucket_event_queue"
 	TelemetryTargetSubSys  = "telemetry_target"
-	LogRecorderSubSys      = "log"
+
+	LogAPIInternalSubSys   = "log_api_internal"
+	LogErrorInternalSubSys = "log_error_internal"
+	LogAuditInternalSubSys = "log_audit_internal"
+
+	LogAPIWebhookSubSys   = "log_api_webhook"
+	LogErrorWebhookSubSys = "log_error_webhook"
+	LogAuditWebhookSubSys = "log_audit_webhook"
+
+	LogAPIKafkaSubSys   = "log_api_kafka"
+	LogErrorKafkaSubSys = "log_error_kafka"
+	LogAuditKafkaSubSys = "log_audit_kafka"
 )
 
 // SubSystems - list of all subsystems in MinIO
@@ -166,7 +177,15 @@ var EOSSubSystems = set.CreateStringSet(
 	BucketEventQueueSubSys,
 	KubernetesSubSys,
 	TelemetryTargetSubSys,
-	LogRecorderSubSys,
+	LogAPIInternalSubSys,
+	LogErrorInternalSubSys,
+	LogAuditInternalSubSys,
+	LogAPIWebhookSubSys,
+	LogErrorWebhookSubSys,
+	LogAuditWebhookSubSys,
+	LogAPIKafkaSubSys,
+	LogErrorKafkaSubSys,
+	LogAuditKafkaSubSys,
 )
 
 // Standard config keys and values.
