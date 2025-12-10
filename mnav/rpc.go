@@ -39,6 +39,9 @@ func (node *RPCMetricsNode) GetOpts() madmin.MetricsOptions {
 }
 
 func (node *RPCMetricsNode) GetChildren() []MetricChild {
+	if node.rpc == nil {
+		return []MetricChild{}
+	}
 	return []MetricChild{
 		{Name: "last_minute", Description: "Last minute RPC statistics by handler"},
 		{Name: "last_day", Description: "Last day RPC statistics segmented"},
@@ -643,6 +646,9 @@ func (node *RPCConnectionsNode) GetOpts() madmin.MetricsOptions {
 func (node *RPCConnectionsNode) ShouldPauseRefresh() bool { return false }
 
 func (node *RPCConnectionsNode) GetChildren() []MetricChild {
+	if node.rpc == nil {
+		return []MetricChild{}
+	}
 	var children []MetricChild
 
 	// Connection summary

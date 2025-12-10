@@ -45,6 +45,9 @@ func (node *APIMetricsNode) ShouldPauseRefresh() bool {
 }
 
 func (node *APIMetricsNode) GetChildren() []MetricChild {
+	if node.api == nil {
+		return []MetricChild{}
+	}
 	return []MetricChild{
 		{Name: "last_minute", Description: "Last minute API statistics by endpoint"},
 		{Name: "last_day", Description: "Last day API statistics segmented"},
