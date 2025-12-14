@@ -58,15 +58,15 @@ func (an *AnonymousClient) Healthy(ctx context.Context, opts HealthOpts) (result
 	if opts.ClusterRead {
 		return an.clusterReadCheck(ctx)
 	}
-	return an.clusterCheck(ctx, opts.Maintenance, opts.Distributed)
+	return an.clusterCheck(ctx, opts)
 }
 
-func (an *AnonymousClient) clusterCheck(ctx context.Context, maintenance, distributed bool) (result HealthResult, err error) {
+func (an *AnonymousClient) clusterCheck(ctx context.Context, opts HealthOpts) (result HealthResult, err error) {
 	urlValues := make(url.Values)
-	if maintenance {
+	if opts.Maintenance {
 		urlValues.Set(maintanenceURLParameterKey, "true")
 	}
-	if distributed {
+	if opts.Distributed {
 		urlValues.Set(distributedURLParameterKey, "true")
 	}
 
