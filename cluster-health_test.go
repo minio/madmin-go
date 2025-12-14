@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2024 MinIO, Inc.
+// Copyright (c) 2015-2025 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -26,6 +26,16 @@ import (
 	"net/url"
 	"testing"
 )
+
+// mustParseHost extracts the host from a URL string for use with NewAnonymousClient
+func mustParseHost(t *testing.T, rawURL string) string {
+	t.Helper()
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		t.Fatalf("Failed to parse URL %q: %v", rawURL, err)
+	}
+	return u.Host
+}
 
 // TestHealthOptsURLParameters tests that Maintenance and Distributed fields
 // correctly add or omit URL parameters
@@ -105,7 +115,7 @@ func TestHealthOptsURLParameters(t *testing.T) {
 			}))
 			defer server.Close()
 
-			client, err := NewAnonymousClient(server.URL[7:], false) // strip "http://"
+			client, err := NewAnonymousClient(mustParseHost(t, server.URL), false)
 			if err != nil {
 				t.Fatalf("Failed to create anonymous client: %v", err)
 			}
@@ -329,7 +339,7 @@ func TestHealthResultParsing(t *testing.T) {
 			}))
 			defer server.Close()
 
-			client, err := NewAnonymousClient(server.URL[7:], false)
+			client, err := NewAnonymousClient(mustParseHost(t, server.URL), false)
 			if err != nil {
 				t.Fatalf("Failed to create anonymous client: %v", err)
 			}
@@ -383,7 +393,7 @@ func TestClusterReadCheck(t *testing.T) {
 			}))
 			defer server.Close()
 
-			client, err := NewAnonymousClient(server.URL[7:], false)
+			client, err := NewAnonymousClient(mustParseHost(t, server.URL), false)
 			if err != nil {
 				t.Fatalf("Failed to create anonymous client: %v", err)
 			}
