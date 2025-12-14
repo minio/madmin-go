@@ -35,6 +35,7 @@ const (
 	clusterCheckEndpoint       = "/minio/health/cluster"
 	clusterReadCheckEndpoint   = "/minio/health/cluster/read"
 	maintanenceURLParameterKey = "maintenance"
+	distributedURLParameterKey = "distributed"
 )
 
 // HealthResult represents the cluster health result
@@ -66,7 +67,7 @@ func (an *AnonymousClient) clusterCheck(ctx context.Context, maintenance, distri
 		urlValues.Set(maintanenceURLParameterKey, "true")
 	}
 	if distributed {
-		urlValues.Set("distributed", "true")
+		urlValues.Set(distributedURLParameterKey, "true")
 	}
 
 	resp, err := an.executeMethod(ctx, http.MethodGet, requestData{
