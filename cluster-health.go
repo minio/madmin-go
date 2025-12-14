@@ -49,6 +49,7 @@ type HealthResult struct {
 type HealthOpts struct {
 	ClusterRead bool
 	Maintenance bool
+	Distributed bool // Verify health from ALL nodes' perspectives via Grid RPC
 }
 
 // Healthy will hit `/minio/health/cluster` and `/minio/health/cluster/ready` anonymous APIs to check the cluster health
@@ -56,13 +57,16 @@ func (an *AnonymousClient) Healthy(ctx context.Context, opts HealthOpts) (result
 	if opts.ClusterRead {
 		return an.clusterReadCheck(ctx)
 	}
-	return an.clusterCheck(ctx, opts.Maintenance)
+	return an.clusterCheck(ctx, opts.Maintenance, opts.Distributed)
 }
 
-func (an *AnonymousClient) clusterCheck(ctx context.Context, maintenance bool) (result HealthResult, err error) {
+func (an *AnonymousClient) clusterCheck(ctx context.Context, maintenance, distributed bool) (result HealthResult, err error) {
 	urlValues := make(url.Values)
 	if maintenance {
 		urlValues.Set(maintanenceURLParameterKey, "true")
+	}
+	if distributed {
+		urlValues.Set("distributed", "true")
 	}
 
 	resp, err := an.executeMethod(ctx, http.MethodGet, requestData{
