@@ -246,8 +246,8 @@ func (hri *HealResultItem) Healed() bool {
 	if hri == nil {
 		return false
 	}
-	b, a := hri.GetOnlineCounts()
-	return a > b
+	before, after := hri.GetOnlineCounts()
+	return after > before
 }
 
 // Heal - API endpoint to start heal and to fetch status
