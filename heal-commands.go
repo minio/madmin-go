@@ -239,6 +239,27 @@ func (hri *HealResultItem) GetOnlineCounts() (b, a int) {
 	return b, a
 }
 
+// Healed - returns whether the item has been healed.
+// An item is considered healed when the number of online drives
+// after heal is greater than before heal.
+func (hri *HealResultItem) Healed() bool {
+	if hri == nil {
+		return false
+	}
+	var b, a int
+	for _, v := range hri.Before.Drives {
+		if v.State == DriveStateOk {
+			b++
+		}
+	}
+	for _, v := range hri.After.Drives {
+		if v.State == DriveStateOk {
+			a++
+		}
+	}
+	return a > b
+}
+
 // Heal - API endpoint to start heal and to fetch status
 // forceStart and forceStop are mutually exclusive, you can either
 // set one of them to 'true'. If both are set 'forceStart' will be
