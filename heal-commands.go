@@ -246,17 +246,7 @@ func (hri *HealResultItem) Healed() bool {
 	if hri == nil {
 		return false
 	}
-	var b, a int
-	for _, v := range hri.Before.Drives {
-		if v.State == DriveStateOk {
-			b++
-		}
-	}
-	for _, v := range hri.After.Drives {
-		if v.State == DriveStateOk {
-			a++
-		}
-	}
+	b, a := hri.GetOnlineCounts()
 	return a > b
 }
 
