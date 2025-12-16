@@ -1,7 +1,7 @@
 name: Golangci-lint
 
 on:
-  workflow_dispatch:   # ability to manually run from the github actions UI
+  workflow_dispatch: # ability to manually run from the github actions UI
   pull_request:
     branches:
       - main
@@ -35,7 +35,7 @@ jobs:
         with:
           args: --timeout 5m --config ./.golangci.yml
 
-      - name:  Staticcheck run with go vet
+      - name: Staticcheck run with go vet
         run: |
           echo "Running go vet..."
           go vet -vettool=$(which staticcheck) ./...
