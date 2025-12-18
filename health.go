@@ -1491,9 +1491,7 @@ func (adm *AdminClient) ServerHealthInfo(ctx context.Context, types []HealthData
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		err = httpRespToErrorResponse(resp)
-		closeResponse(resp)
-		return nil, "", err
+		return nil, "", httpRespToErrorResponse(resp)
 	}
 
 	decoder := json.NewDecoder(resp.Body)
