@@ -1491,7 +1491,6 @@ func (adm *AdminClient) ServerHealthInfo(ctx context.Context, types []HealthData
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		closeResponse(resp)
 		return nil, "", httpRespToErrorResponse(resp)
 	}
 
