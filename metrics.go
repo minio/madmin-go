@@ -584,8 +584,6 @@ type DiskIOStatsLegacy struct {
 	DiscardTicks   uint64 `json:"discard_ticks,omitempty"`
 	FlushIOs       uint64 `json:"flush_ios,omitempty"`
 	FlushTicks     uint64 `json:"flush_ticks,omitempty"`
-	BitrotDetected uint64 `json:"bitrot_detected,omitempty"`
-	BitrotHealed   uint64 `json:"bitrot_healed,omitempty"`
 }
 
 // Add 'other' to 'd'.
