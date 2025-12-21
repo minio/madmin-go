@@ -70,7 +70,6 @@ func (adm *AdminClient) Inspect(ctx context.Context, d InspectOptions) (key []by
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		closeResponse(resp)
 		return nil, nil, httpRespToErrorResponse(resp)
 	}
 
