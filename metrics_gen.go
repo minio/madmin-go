@@ -5389,7 +5389,7 @@ func (z *DiskIOStatsLegacy) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint32 /* 20 bits */
+	var zb0001Mask uint32 /* 18 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -5525,20 +5525,6 @@ func (z *DiskIOStatsLegacy) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 			zb0001Mask |= 0x20000
-		case "bitrot_detected":
-			z.BitrotDetected, err = dc.ReadUint64()
-			if err != nil {
-				err = msgp.WrapError(err, "BitrotDetected")
-				return
-			}
-			zb0001Mask |= 0x40000
-		case "bitrot_healed":
-			z.BitrotHealed, err = dc.ReadUint64()
-			if err != nil {
-				err = msgp.WrapError(err, "BitrotHealed")
-				return
-			}
-			zb0001Mask |= 0x80000
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -5548,7 +5534,7 @@ func (z *DiskIOStatsLegacy) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xfffff {
+	if zb0001Mask != 0x3ffff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.N = 0
 		}
@@ -5603,12 +5589,6 @@ func (z *DiskIOStatsLegacy) DecodeMsg(dc *msgp.Reader) (err error) {
 		if (zb0001Mask & 0x20000) == 0 {
 			z.FlushTicks = 0
 		}
-		if (zb0001Mask & 0x40000) == 0 {
-			z.BitrotDetected = 0
-		}
-		if (zb0001Mask & 0x80000) == 0 {
-			z.BitrotHealed = 0
-		}
 	}
 	return
 }
@@ -5616,8 +5596,8 @@ func (z *DiskIOStatsLegacy) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *DiskIOStatsLegacy) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(20)
-	var zb0001Mask uint32 /* 20 bits */
+	zb0001Len := uint32(18)
+	var zb0001Mask uint32 /* 18 bits */
 	_ = zb0001Mask
 	if z.N == 0 {
 		zb0001Len--
@@ -5690,14 +5670,6 @@ func (z *DiskIOStatsLegacy) EncodeMsg(en *msgp.Writer) (err error) {
 	if z.FlushTicks == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x20000
-	}
-	if z.BitrotDetected == 0 {
-		zb0001Len--
-		zb0001Mask |= 0x40000
-	}
-	if z.BitrotHealed == 0 {
-		zb0001Len--
-		zb0001Mask |= 0x80000
 	}
 	// variable map header, size zb0001Len
 	err = en.WriteMapHeader(zb0001Len)
@@ -5923,30 +5895,6 @@ func (z *DiskIOStatsLegacy) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x40000) == 0 { // if not omitted
-			// write "bitrot_detected"
-			err = en.Append(0xaf, 0x62, 0x69, 0x74, 0x72, 0x6f, 0x74, 0x5f, 0x64, 0x65, 0x74, 0x65, 0x63, 0x74, 0x65, 0x64)
-			if err != nil {
-				return
-			}
-			err = en.WriteUint64(z.BitrotDetected)
-			if err != nil {
-				err = msgp.WrapError(err, "BitrotDetected")
-				return
-			}
-		}
-		if (zb0001Mask & 0x80000) == 0 { // if not omitted
-			// write "bitrot_healed"
-			err = en.Append(0xad, 0x62, 0x69, 0x74, 0x72, 0x6f, 0x74, 0x5f, 0x68, 0x65, 0x61, 0x6c, 0x65, 0x64)
-			if err != nil {
-				return
-			}
-			err = en.WriteUint64(z.BitrotHealed)
-			if err != nil {
-				err = msgp.WrapError(err, "BitrotHealed")
-				return
-			}
-		}
 	}
 	return
 }
@@ -5955,8 +5903,8 @@ func (z *DiskIOStatsLegacy) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *DiskIOStatsLegacy) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(20)
-	var zb0001Mask uint32 /* 20 bits */
+	zb0001Len := uint32(18)
+	var zb0001Mask uint32 /* 18 bits */
 	_ = zb0001Mask
 	if z.N == 0 {
 		zb0001Len--
@@ -6029,14 +5977,6 @@ func (z *DiskIOStatsLegacy) MarshalMsg(b []byte) (o []byte, err error) {
 	if z.FlushTicks == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x20000
-	}
-	if z.BitrotDetected == 0 {
-		zb0001Len--
-		zb0001Mask |= 0x40000
-	}
-	if z.BitrotHealed == 0 {
-		zb0001Len--
-		zb0001Mask |= 0x80000
 	}
 	// variable map header, size zb0001Len
 	o = msgp.AppendMapHeader(o, zb0001Len)
@@ -6133,16 +6073,6 @@ func (z *DiskIOStatsLegacy) MarshalMsg(b []byte) (o []byte, err error) {
 			o = append(o, 0xab, 0x66, 0x6c, 0x75, 0x73, 0x68, 0x5f, 0x74, 0x69, 0x63, 0x6b, 0x73)
 			o = msgp.AppendUint64(o, z.FlushTicks)
 		}
-		if (zb0001Mask & 0x40000) == 0 { // if not omitted
-			// string "bitrot_detected"
-			o = append(o, 0xaf, 0x62, 0x69, 0x74, 0x72, 0x6f, 0x74, 0x5f, 0x64, 0x65, 0x74, 0x65, 0x63, 0x74, 0x65, 0x64)
-			o = msgp.AppendUint64(o, z.BitrotDetected)
-		}
-		if (zb0001Mask & 0x80000) == 0 { // if not omitted
-			// string "bitrot_healed"
-			o = append(o, 0xad, 0x62, 0x69, 0x74, 0x72, 0x6f, 0x74, 0x5f, 0x68, 0x65, 0x61, 0x6c, 0x65, 0x64)
-			o = msgp.AppendUint64(o, z.BitrotHealed)
-		}
 	}
 	return
 }
@@ -6157,7 +6087,7 @@ func (z *DiskIOStatsLegacy) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint32 /* 20 bits */
+	var zb0001Mask uint32 /* 18 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -6293,20 +6223,6 @@ func (z *DiskIOStatsLegacy) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 			zb0001Mask |= 0x20000
-		case "bitrot_detected":
-			z.BitrotDetected, bts, err = msgp.ReadUint64Bytes(bts)
-			if err != nil {
-				err = msgp.WrapError(err, "BitrotDetected")
-				return
-			}
-			zb0001Mask |= 0x40000
-		case "bitrot_healed":
-			z.BitrotHealed, bts, err = msgp.ReadUint64Bytes(bts)
-			if err != nil {
-				err = msgp.WrapError(err, "BitrotHealed")
-				return
-			}
-			zb0001Mask |= 0x80000
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -6316,7 +6232,7 @@ func (z *DiskIOStatsLegacy) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xfffff {
+	if zb0001Mask != 0x3ffff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.N = 0
 		}
@@ -6371,12 +6287,6 @@ func (z *DiskIOStatsLegacy) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		if (zb0001Mask & 0x20000) == 0 {
 			z.FlushTicks = 0
 		}
-		if (zb0001Mask & 0x40000) == 0 {
-			z.BitrotDetected = 0
-		}
-		if (zb0001Mask & 0x80000) == 0 {
-			z.BitrotHealed = 0
-		}
 	}
 	o = bts
 	return
@@ -6384,7 +6294,7 @@ func (z *DiskIOStatsLegacy) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *DiskIOStatsLegacy) Msgsize() (s int) {
-	s = 3 + 2 + msgp.IntSize + 9 + msgp.Uint64Size + 12 + msgp.Uint64Size + 13 + msgp.Uint64Size + 11 + msgp.Uint64Size + 10 + msgp.Uint64Size + 13 + msgp.Uint64Size + 13 + msgp.Uint64Size + 12 + msgp.Uint64Size + 12 + msgp.Uint64Size + 12 + msgp.Uint64Size + 10 + msgp.Uint64Size + 12 + msgp.Uint64Size + 15 + msgp.Uint64Size + 16 + msgp.Uint64Size + 14 + msgp.Uint64Size + 10 + msgp.Uint64Size + 12 + msgp.Uint64Size + 16 + msgp.Uint64Size + 14 + msgp.Uint64Size
+	s = 3 + 2 + msgp.IntSize + 9 + msgp.Uint64Size + 12 + msgp.Uint64Size + 13 + msgp.Uint64Size + 11 + msgp.Uint64Size + 10 + msgp.Uint64Size + 13 + msgp.Uint64Size + 13 + msgp.Uint64Size + 12 + msgp.Uint64Size + 12 + msgp.Uint64Size + 12 + msgp.Uint64Size + 10 + msgp.Uint64Size + 12 + msgp.Uint64Size + 15 + msgp.Uint64Size + 16 + msgp.Uint64Size + 14 + msgp.Uint64Size + 10 + msgp.Uint64Size + 12 + msgp.Uint64Size
 	return
 }
 
