@@ -112,6 +112,9 @@ func (node *OSMetricsNavigator) ShouldPauseRefresh() bool {
 }
 
 func (node *OSMetricsNavigator) GetChild(name string) (MetricNode, error) {
+	if node.os == nil {
+		return nil, fmt.Errorf("os metrics not available")
+	}
 	switch name {
 	case "lifetime_ops":
 		return NewOSLifetimeOpsNode(node.os.LifeTimeOps, node, fmt.Sprintf("%s/lifetime_ops", node.path)), nil
