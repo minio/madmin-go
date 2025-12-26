@@ -76,7 +76,18 @@ const (
 	ErasureSubSys          = "erasure"
 	BucketEventQueueSubSys = "bucket_event_queue"
 	TelemetryTargetSubSys  = "telemetry_target"
-	LogRecorderSubSys      = "log"
+
+	LogAPIInternalSubSys   = "log_api_internal"
+	LogErrorInternalSubSys = "log_error_internal"
+	LogAuditInternalSubSys = "log_audit_internal"
+
+	LogAPIWebhookSubSys   = "log_api_webhook"
+	LogErrorWebhookSubSys = "log_error_webhook"
+	LogAuditWebhookSubSys = "log_audit_webhook"
+
+	LogAPIKafkaSubSys   = "log_api_kafka"
+	LogErrorKafkaSubSys = "log_error_kafka"
+	LogAuditKafkaSubSys = "log_audit_kafka"
 )
 
 // SubSystems - list of all subsystems in MinIO
@@ -166,7 +177,15 @@ var EOSSubSystems = set.CreateStringSet(
 	BucketEventQueueSubSys,
 	KubernetesSubSys,
 	TelemetryTargetSubSys,
-	LogRecorderSubSys,
+	LogAPIInternalSubSys,
+	LogErrorInternalSubSys,
+	LogAuditInternalSubSys,
+	LogAPIWebhookSubSys,
+	LogErrorWebhookSubSys,
+	LogAuditWebhookSubSys,
+	LogAPIKafkaSubSys,
+	LogErrorKafkaSubSys,
+	LogAuditKafkaSubSys,
 )
 
 // Standard config keys and values.
@@ -288,6 +307,17 @@ func (c *SubsysConfig) LookupEnv(key string) (val string, envVal string, present
 
 	val = c.KV[idx].Value
 	return val, envVal, true
+}
+
+// GetEnvOverrides returns all environment variable overrides set for this subsystem config
+func (c *SubsysConfig) GetEnvOverrides() []EnvOverride {
+	var envs []EnvOverride
+	for _, kv := range c.KV {
+		if kv.EnvOverride != nil {
+			envs = append(envs, *kv.EnvOverride)
+		}
+	}
+	return envs
 }
 
 var (
