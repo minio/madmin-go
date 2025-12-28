@@ -512,6 +512,12 @@ type DiskStatus struct {
 
 	// Captures all timeout only errors
 	TotalErrorsTimeout uint64 `json:"totalErrorsTimeout,omitempty"`
+
+	// Captures silent data corruption errors (bitrot)
+	TotalCorruptionDetected uint64 `json:"totalCorruptionDetected,omitempty"`
+
+	// Captures healed corruption count
+	TotalCorruptionHealed uint64 `json:"totalCorruptionHealed,omitempty"`
 }
 
 // CacheStats drive cache stats
