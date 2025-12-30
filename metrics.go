@@ -221,7 +221,6 @@ func (adm *AdminClient) Metrics(ctx context.Context, o MetricsOptions, out func(
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		closeResponse(resp)
 		return httpRespToErrorResponse(resp)
 	}
 	defer closeResponse(resp)
