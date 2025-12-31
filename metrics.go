@@ -677,6 +677,9 @@ type DiskMetric struct {
 
 	// Rolling window daily IO stats.
 	IOStatsDay SegmentedDiskIO `json:"io_day"`
+
+	// SMART health data for the disk.
+	SMART *SMARTInfo `json:"smart,omitempty"`
 }
 
 type DriveHealInfo struct {
@@ -813,6 +816,8 @@ func (d *DiskMetric) Merge(other *DiskMetric) {
 	}
 	d.IOStatsMinute.Add(&other.IOStatsMinute)
 	d.IOStatsDay.Add(&other.IOStatsDay)
+	// SMART is per-disk and doesn't make sense when aggregating.
+	d.SMART = nil
 }
 
 // LifetimeTotal returns the accumulated Disk metrics for all operations

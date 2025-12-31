@@ -1989,7 +1989,7 @@ func (z *DriveResource) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 2 bits */
+	var zb0001Mask uint8 /* 1 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -2114,25 +2114,6 @@ func (z *DriveResource) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 			}
 			zb0001Mask |= 0x1
-		case "smart":
-			if dc.IsNil() {
-				err = dc.ReadNil()
-				if err != nil {
-					err = msgp.WrapError(err, "SMART")
-					return
-				}
-				z.SMART = nil
-			} else {
-				if z.SMART == nil {
-					z.SMART = new(SMARTInfo)
-				}
-				err = z.SMART.DecodeMsg(dc)
-				if err != nil {
-					err = msgp.WrapError(err, "SMART")
-					return
-				}
-			}
-			zb0001Mask |= 0x2
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -2142,30 +2123,22 @@ func (z *DriveResource) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3 {
-		if (zb0001Mask & 0x1) == 0 {
-			z.Metrics = nil
-		}
-		if (zb0001Mask & 0x2) == 0 {
-			z.SMART = nil
-		}
+	if (zb0001Mask & 0x1) == 0 {
+		z.Metrics = nil
 	}
+
 	return
 }
 
 // EncodeMsg implements msgp.Encodable
 func (z *DriveResource) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(18)
-	var zb0001Mask uint32 /* 18 bits */
+	zb0001Len := uint32(17)
+	var zb0001Mask uint32 /* 17 bits */
 	_ = zb0001Mask
 	if z.Metrics == nil {
 		zb0001Len--
 		zb0001Mask |= 0x10000
-	}
-	if z.SMART == nil {
-		zb0001Len--
-		zb0001Mask |= 0x20000
 	}
 	// variable map header, size zb0001Len
 	err = en.WriteMapHeader(zb0001Len)
@@ -2354,25 +2327,6 @@ func (z *DriveResource) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x20000) == 0 { // if not omitted
-			// write "smart"
-			err = en.Append(0xa5, 0x73, 0x6d, 0x61, 0x72, 0x74)
-			if err != nil {
-				return
-			}
-			if z.SMART == nil {
-				err = en.WriteNil()
-				if err != nil {
-					return
-				}
-			} else {
-				err = z.SMART.EncodeMsg(en)
-				if err != nil {
-					err = msgp.WrapError(err, "SMART")
-					return
-				}
-			}
-		}
 	}
 	return
 }
@@ -2381,16 +2335,12 @@ func (z *DriveResource) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *DriveResource) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(18)
-	var zb0001Mask uint32 /* 18 bits */
+	zb0001Len := uint32(17)
+	var zb0001Mask uint32 /* 17 bits */
 	_ = zb0001Mask
 	if z.Metrics == nil {
 		zb0001Len--
 		zb0001Mask |= 0x10000
-	}
-	if z.SMART == nil {
-		zb0001Len--
-		zb0001Mask |= 0x20000
 	}
 	// variable map header, size zb0001Len
 	o = msgp.AppendMapHeader(o, zb0001Len)
@@ -2458,19 +2408,6 @@ func (z *DriveResource) MarshalMsg(b []byte) (o []byte, err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x20000) == 0 { // if not omitted
-			// string "smart"
-			o = append(o, 0xa5, 0x73, 0x6d, 0x61, 0x72, 0x74)
-			if z.SMART == nil {
-				o = msgp.AppendNil(o)
-			} else {
-				o, err = z.SMART.MarshalMsg(o)
-				if err != nil {
-					err = msgp.WrapError(err, "SMART")
-					return
-				}
-			}
-		}
 	}
 	return
 }
@@ -2485,7 +2422,7 @@ func (z *DriveResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 2 bits */
+	var zb0001Mask uint8 /* 1 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -2609,24 +2546,6 @@ func (z *DriveResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 			}
 			zb0001Mask |= 0x1
-		case "smart":
-			if msgp.IsNil(bts) {
-				bts, err = msgp.ReadNilBytes(bts)
-				if err != nil {
-					return
-				}
-				z.SMART = nil
-			} else {
-				if z.SMART == nil {
-					z.SMART = new(SMARTInfo)
-				}
-				bts, err = z.SMART.UnmarshalMsg(bts)
-				if err != nil {
-					err = msgp.WrapError(err, "SMART")
-					return
-				}
-			}
-			zb0001Mask |= 0x2
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -2636,14 +2555,10 @@ func (z *DriveResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3 {
-		if (zb0001Mask & 0x1) == 0 {
-			z.Metrics = nil
-		}
-		if (zb0001Mask & 0x2) == 0 {
-			z.SMART = nil
-		}
+	if (zb0001Mask & 0x1) == 0 {
+		z.Metrics = nil
 	}
+
 	o = bts
 	return
 }
@@ -2655,12 +2570,6 @@ func (z *DriveResource) Msgsize() (s int) {
 		s += msgp.NilSize
 	} else {
 		s += z.Metrics.Msgsize()
-	}
-	s += 6
-	if z.SMART == nil {
-		s += msgp.NilSize
-	} else {
-		s += z.SMART.Msgsize()
 	}
 	return
 }

@@ -236,7 +236,6 @@ type DriveResource struct {
 	InodesUsed     uint64      `json:"inodesUsed" msg:"iu"`
 	UUID           string      `json:"uuid" msg:"uid"`
 	Metrics        *DiskMetric `json:"metrics,omitempty" msg:"m,omitempty"`
-	SMART          *SMARTInfo  `json:"smart,omitempty" msg:"smart,omitempty"`
 }
 
 // SMARTInfo contains S.M.A.R.T. health information for a drive
