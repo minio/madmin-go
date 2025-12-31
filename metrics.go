@@ -108,6 +108,7 @@ const (
 	MetricsByDisk                                 // Aggregate metrics by disk.
 	MetricsLegacyDiskIO                           // Add legacy disk IO metrics.
 	MetricsByDiskSet                              // Aggregate metrics by disk pool+set index.
+	MetricsSMART                                  // Include S.M.A.R.T. disk health data.
 )
 
 // Contains returns whether m contains all of x.
