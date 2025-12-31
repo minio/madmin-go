@@ -236,6 +236,34 @@ type DriveResource struct {
 	InodesUsed     uint64      `json:"inodesUsed" msg:"iu"`
 	UUID           string      `json:"uuid" msg:"uid"`
 	Metrics        *DiskMetric `json:"metrics,omitempty" msg:"m,omitempty"`
+	SMART          *SMARTInfo  `json:"smart,omitempty" msg:"smart,omitempty"`
+}
+
+// SMARTInfo contains S.M.A.R.T. health information for a drive
+type SMARTInfo struct {
+	Status       string     `json:"status" msg:"st"` // healthy, warning, critical, unknown
+	StatusReason string     `json:"statusReason,omitempty" msg:"sr,omitempty"`
+	Temperature  int64      `json:"temperature" msg:"t"` // Celsius
+	PowerOnHours uint64     `json:"powerOnHours" msg:"poh"`
+	PowerCycles  uint64     `json:"powerCycles" msg:"pc"`
+	FailureRisk  float64    `json:"failureRisk" msg:"fr"` // Annual failure rate (0.0-1.0+)
+	NVMe         *SMARTNVMe `json:"nvme,omitempty" msg:"nvme,omitempty"`
+	SATA         *SMARTSATA `json:"sata,omitempty" msg:"sata,omitempty"`
+}
+
+// SMARTNVMe contains NVMe-specific S.M.A.R.T. attributes
+type SMARTNVMe struct {
+	CriticalWarning uint8  `json:"criticalWarning" msg:"cw"`
+	AvailableSpare  uint8  `json:"availableSpare" msg:"as"` // Percentage
+	PercentageUsed  uint8  `json:"percentageUsed" msg:"pu"` // Percentage of endurance used
+	MediaErrors     uint64 `json:"mediaErrors" msg:"me"`
+}
+
+// SMARTSATA contains SATA-specific S.M.A.R.T. attributes
+type SMARTSATA struct {
+	ReallocatedSectors   uint64 `json:"reallocatedSectors" msg:"rs"`
+	PendingSectors       uint64 `json:"pendingSectors" msg:"ps"`
+	OfflineUncorrectable uint64 `json:"offlineUncorrectable" msg:"ou"`
 }
 
 // ErasureSetResource represents detailed information about an erasure coding set including drive counts and capacity
@@ -614,6 +642,7 @@ type DrivesResourceOpts struct {
 	Metrics      bool // Include per-drive metrics in the response
 	LastMinute   bool // Include rolling 1 minute drive metrics. Requires Metrics.
 	LastDay      bool // Include segmented 1 day drive metrics. Requires Metrics.
+	SMART        bool // Include S.M.A.R.T. health data in the response (Linux only)
 }
 
 // DrivesQuery - Get list of drives
@@ -647,6 +676,9 @@ func (adm *AdminClient) DrivesQuery(ctx context.Context, options *DrivesResource
 		}
 		if options.LastDay {
 			values.Set("24h", "true")
+		}
+		if options.SMART {
+			values.Set("smart", "true")
 		}
 	}
 

@@ -20,8 +20,9 @@ const _OfflineReason_name = "InvalidNodeDownDriveIOErrorDriveDownDriveTimeout"
 var _OfflineReason_index = [...]uint8{0, 7, 15, 27, 36, 48}
 
 func (i OfflineReason) String() string {
-	if i < 0 || i >= OfflineReason(len(_OfflineReason_index)-1) {
+	idx := int(i) - 0
+	if i < 0 || idx >= len(_OfflineReason_index)-1 {
 		return "OfflineReason(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
-	return _OfflineReason_name[_OfflineReason_index[i]:_OfflineReason_index[i+1]]
+	return _OfflineReason_name[_OfflineReason_index[idx]:_OfflineReason_index[idx+1]]
 }

@@ -1989,7 +1989,7 @@ func (z *DriveResource) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 1 bits */
+	var zb0001Mask uint8 /* 2 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -2114,6 +2114,25 @@ func (z *DriveResource) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 			}
 			zb0001Mask |= 0x1
+		case "smart":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "SMART")
+					return
+				}
+				z.SMART = nil
+			} else {
+				if z.SMART == nil {
+					z.SMART = new(SMARTInfo)
+				}
+				err = z.SMART.DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "SMART")
+					return
+				}
+			}
+			zb0001Mask |= 0x2
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -2123,22 +2142,30 @@ func (z *DriveResource) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if (zb0001Mask & 0x1) == 0 {
-		z.Metrics = nil
+	if zb0001Mask != 0x3 {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Metrics = nil
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.SMART = nil
+		}
 	}
-
 	return
 }
 
 // EncodeMsg implements msgp.Encodable
 func (z *DriveResource) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(17)
-	var zb0001Mask uint32 /* 17 bits */
+	zb0001Len := uint32(18)
+	var zb0001Mask uint32 /* 18 bits */
 	_ = zb0001Mask
 	if z.Metrics == nil {
 		zb0001Len--
 		zb0001Mask |= 0x10000
+	}
+	if z.SMART == nil {
+		zb0001Len--
+		zb0001Mask |= 0x20000
 	}
 	// variable map header, size zb0001Len
 	err = en.WriteMapHeader(zb0001Len)
@@ -2327,6 +2354,25 @@ func (z *DriveResource) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
+		if (zb0001Mask & 0x20000) == 0 { // if not omitted
+			// write "smart"
+			err = en.Append(0xa5, 0x73, 0x6d, 0x61, 0x72, 0x74)
+			if err != nil {
+				return
+			}
+			if z.SMART == nil {
+				err = en.WriteNil()
+				if err != nil {
+					return
+				}
+			} else {
+				err = z.SMART.EncodeMsg(en)
+				if err != nil {
+					err = msgp.WrapError(err, "SMART")
+					return
+				}
+			}
+		}
 	}
 	return
 }
@@ -2335,12 +2381,16 @@ func (z *DriveResource) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *DriveResource) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(17)
-	var zb0001Mask uint32 /* 17 bits */
+	zb0001Len := uint32(18)
+	var zb0001Mask uint32 /* 18 bits */
 	_ = zb0001Mask
 	if z.Metrics == nil {
 		zb0001Len--
 		zb0001Mask |= 0x10000
+	}
+	if z.SMART == nil {
+		zb0001Len--
+		zb0001Mask |= 0x20000
 	}
 	// variable map header, size zb0001Len
 	o = msgp.AppendMapHeader(o, zb0001Len)
@@ -2408,6 +2458,19 @@ func (z *DriveResource) MarshalMsg(b []byte) (o []byte, err error) {
 				}
 			}
 		}
+		if (zb0001Mask & 0x20000) == 0 { // if not omitted
+			// string "smart"
+			o = append(o, 0xa5, 0x73, 0x6d, 0x61, 0x72, 0x74)
+			if z.SMART == nil {
+				o = msgp.AppendNil(o)
+			} else {
+				o, err = z.SMART.MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "SMART")
+					return
+				}
+			}
+		}
 	}
 	return
 }
@@ -2422,7 +2485,7 @@ func (z *DriveResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 1 bits */
+	var zb0001Mask uint8 /* 2 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -2546,6 +2609,24 @@ func (z *DriveResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 			}
 			zb0001Mask |= 0x1
+		case "smart":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.SMART = nil
+			} else {
+				if z.SMART == nil {
+					z.SMART = new(SMARTInfo)
+				}
+				bts, err = z.SMART.UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "SMART")
+					return
+				}
+			}
+			zb0001Mask |= 0x2
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -2555,10 +2636,14 @@ func (z *DriveResource) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if (zb0001Mask & 0x1) == 0 {
-		z.Metrics = nil
+	if zb0001Mask != 0x3 {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Metrics = nil
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.SMART = nil
+		}
 	}
-
 	o = bts
 	return
 }
@@ -2570,6 +2655,12 @@ func (z *DriveResource) Msgsize() (s int) {
 		s += msgp.NilSize
 	} else {
 		s += z.Metrics.Msgsize()
+	}
+	s += 6
+	if z.SMART == nil {
+		s += msgp.NilSize
+	} else {
+		s += z.SMART.Msgsize()
 	}
 	return
 }
@@ -8548,6 +8639,894 @@ func (z *PoolsSummaryUsage) UnmarshalMsg(bts []byte) (o []byte, err error) {
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *PoolsSummaryUsage) Msgsize() (s int) {
 	s = 1 + 3 + msgp.Int64Size + 3 + msgp.Int64Size + 3 + msgp.Int64Size + 2 + msgp.Int64Size + 2 + msgp.Int64Size + 2 + msgp.Int64Size + 2 + msgp.Float64Size
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *SMARTInfo) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 3 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "st":
+			z.Status, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "Status")
+				return
+			}
+		case "sr":
+			z.StatusReason, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "StatusReason")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "t":
+			z.Temperature, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "Temperature")
+				return
+			}
+		case "poh":
+			z.PowerOnHours, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "PowerOnHours")
+				return
+			}
+		case "pc":
+			z.PowerCycles, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "PowerCycles")
+				return
+			}
+		case "fr":
+			z.FailureRisk, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "FailureRisk")
+				return
+			}
+		case "nvme":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "NVMe")
+					return
+				}
+				z.NVMe = nil
+			} else {
+				if z.NVMe == nil {
+					z.NVMe = new(SMARTNVMe)
+				}
+				err = z.NVMe.DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "NVMe")
+					return
+				}
+			}
+			zb0001Mask |= 0x2
+		case "sata":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "SATA")
+					return
+				}
+				z.SATA = nil
+			} else {
+				if z.SATA == nil {
+					z.SATA = new(SMARTSATA)
+				}
+				var zb0002 uint32
+				zb0002, err = dc.ReadMapHeader()
+				if err != nil {
+					err = msgp.WrapError(err, "SATA")
+					return
+				}
+				for zb0002 > 0 {
+					zb0002--
+					field, err = dc.ReadMapKeyPtr()
+					if err != nil {
+						err = msgp.WrapError(err, "SATA")
+						return
+					}
+					switch msgp.UnsafeString(field) {
+					case "rs":
+						z.SATA.ReallocatedSectors, err = dc.ReadUint64()
+						if err != nil {
+							err = msgp.WrapError(err, "SATA", "ReallocatedSectors")
+							return
+						}
+					case "ps":
+						z.SATA.PendingSectors, err = dc.ReadUint64()
+						if err != nil {
+							err = msgp.WrapError(err, "SATA", "PendingSectors")
+							return
+						}
+					case "ou":
+						z.SATA.OfflineUncorrectable, err = dc.ReadUint64()
+						if err != nil {
+							err = msgp.WrapError(err, "SATA", "OfflineUncorrectable")
+							return
+						}
+					default:
+						err = dc.Skip()
+						if err != nil {
+							err = msgp.WrapError(err, "SATA")
+							return
+						}
+					}
+				}
+			}
+			zb0001Mask |= 0x4
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x7 {
+		if (zb0001Mask & 0x1) == 0 {
+			z.StatusReason = ""
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.NVMe = nil
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.SATA = nil
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *SMARTInfo) EncodeMsg(en *msgp.Writer) (err error) {
+	// check for omitted fields
+	zb0001Len := uint32(8)
+	var zb0001Mask uint8 /* 8 bits */
+	_ = zb0001Mask
+	if z.StatusReason == "" {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.NVMe == nil {
+		zb0001Len--
+		zb0001Mask |= 0x40
+	}
+	if z.SATA == nil {
+		zb0001Len--
+		zb0001Mask |= 0x80
+	}
+	// variable map header, size zb0001Len
+	err = en.Append(0x80 | uint8(zb0001Len))
+	if err != nil {
+		return
+	}
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// write "st"
+		err = en.Append(0xa2, 0x73, 0x74)
+		if err != nil {
+			return
+		}
+		err = en.WriteString(z.Status)
+		if err != nil {
+			err = msgp.WrapError(err, "Status")
+			return
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// write "sr"
+			err = en.Append(0xa2, 0x73, 0x72)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.StatusReason)
+			if err != nil {
+				err = msgp.WrapError(err, "StatusReason")
+				return
+			}
+		}
+		// write "t"
+		err = en.Append(0xa1, 0x74)
+		if err != nil {
+			return
+		}
+		err = en.WriteInt64(z.Temperature)
+		if err != nil {
+			err = msgp.WrapError(err, "Temperature")
+			return
+		}
+		// write "poh"
+		err = en.Append(0xa3, 0x70, 0x6f, 0x68)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint64(z.PowerOnHours)
+		if err != nil {
+			err = msgp.WrapError(err, "PowerOnHours")
+			return
+		}
+		// write "pc"
+		err = en.Append(0xa2, 0x70, 0x63)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint64(z.PowerCycles)
+		if err != nil {
+			err = msgp.WrapError(err, "PowerCycles")
+			return
+		}
+		// write "fr"
+		err = en.Append(0xa2, 0x66, 0x72)
+		if err != nil {
+			return
+		}
+		err = en.WriteFloat64(z.FailureRisk)
+		if err != nil {
+			err = msgp.WrapError(err, "FailureRisk")
+			return
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
+			// write "nvme"
+			err = en.Append(0xa4, 0x6e, 0x76, 0x6d, 0x65)
+			if err != nil {
+				return
+			}
+			if z.NVMe == nil {
+				err = en.WriteNil()
+				if err != nil {
+					return
+				}
+			} else {
+				err = z.NVMe.EncodeMsg(en)
+				if err != nil {
+					err = msgp.WrapError(err, "NVMe")
+					return
+				}
+			}
+		}
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
+			// write "sata"
+			err = en.Append(0xa4, 0x73, 0x61, 0x74, 0x61)
+			if err != nil {
+				return
+			}
+			if z.SATA == nil {
+				err = en.WriteNil()
+				if err != nil {
+					return
+				}
+			} else {
+				// map header, size 3
+				// write "rs"
+				err = en.Append(0x83, 0xa2, 0x72, 0x73)
+				if err != nil {
+					return
+				}
+				err = en.WriteUint64(z.SATA.ReallocatedSectors)
+				if err != nil {
+					err = msgp.WrapError(err, "SATA", "ReallocatedSectors")
+					return
+				}
+				// write "ps"
+				err = en.Append(0xa2, 0x70, 0x73)
+				if err != nil {
+					return
+				}
+				err = en.WriteUint64(z.SATA.PendingSectors)
+				if err != nil {
+					err = msgp.WrapError(err, "SATA", "PendingSectors")
+					return
+				}
+				// write "ou"
+				err = en.Append(0xa2, 0x6f, 0x75)
+				if err != nil {
+					return
+				}
+				err = en.WriteUint64(z.SATA.OfflineUncorrectable)
+				if err != nil {
+					err = msgp.WrapError(err, "SATA", "OfflineUncorrectable")
+					return
+				}
+			}
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *SMARTInfo) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// check for omitted fields
+	zb0001Len := uint32(8)
+	var zb0001Mask uint8 /* 8 bits */
+	_ = zb0001Mask
+	if z.StatusReason == "" {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.NVMe == nil {
+		zb0001Len--
+		zb0001Mask |= 0x40
+	}
+	if z.SATA == nil {
+		zb0001Len--
+		zb0001Mask |= 0x80
+	}
+	// variable map header, size zb0001Len
+	o = append(o, 0x80|uint8(zb0001Len))
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		// string "st"
+		o = append(o, 0xa2, 0x73, 0x74)
+		o = msgp.AppendString(o, z.Status)
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// string "sr"
+			o = append(o, 0xa2, 0x73, 0x72)
+			o = msgp.AppendString(o, z.StatusReason)
+		}
+		// string "t"
+		o = append(o, 0xa1, 0x74)
+		o = msgp.AppendInt64(o, z.Temperature)
+		// string "poh"
+		o = append(o, 0xa3, 0x70, 0x6f, 0x68)
+		o = msgp.AppendUint64(o, z.PowerOnHours)
+		// string "pc"
+		o = append(o, 0xa2, 0x70, 0x63)
+		o = msgp.AppendUint64(o, z.PowerCycles)
+		// string "fr"
+		o = append(o, 0xa2, 0x66, 0x72)
+		o = msgp.AppendFloat64(o, z.FailureRisk)
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
+			// string "nvme"
+			o = append(o, 0xa4, 0x6e, 0x76, 0x6d, 0x65)
+			if z.NVMe == nil {
+				o = msgp.AppendNil(o)
+			} else {
+				o, err = z.NVMe.MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "NVMe")
+					return
+				}
+			}
+		}
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
+			// string "sata"
+			o = append(o, 0xa4, 0x73, 0x61, 0x74, 0x61)
+			if z.SATA == nil {
+				o = msgp.AppendNil(o)
+			} else {
+				// map header, size 3
+				// string "rs"
+				o = append(o, 0x83, 0xa2, 0x72, 0x73)
+				o = msgp.AppendUint64(o, z.SATA.ReallocatedSectors)
+				// string "ps"
+				o = append(o, 0xa2, 0x70, 0x73)
+				o = msgp.AppendUint64(o, z.SATA.PendingSectors)
+				// string "ou"
+				o = append(o, 0xa2, 0x6f, 0x75)
+				o = msgp.AppendUint64(o, z.SATA.OfflineUncorrectable)
+			}
+		}
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *SMARTInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 3 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "st":
+			z.Status, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Status")
+				return
+			}
+		case "sr":
+			z.StatusReason, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "StatusReason")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "t":
+			z.Temperature, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Temperature")
+				return
+			}
+		case "poh":
+			z.PowerOnHours, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "PowerOnHours")
+				return
+			}
+		case "pc":
+			z.PowerCycles, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "PowerCycles")
+				return
+			}
+		case "fr":
+			z.FailureRisk, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "FailureRisk")
+				return
+			}
+		case "nvme":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.NVMe = nil
+			} else {
+				if z.NVMe == nil {
+					z.NVMe = new(SMARTNVMe)
+				}
+				bts, err = z.NVMe.UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "NVMe")
+					return
+				}
+			}
+			zb0001Mask |= 0x2
+		case "sata":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.SATA = nil
+			} else {
+				if z.SATA == nil {
+					z.SATA = new(SMARTSATA)
+				}
+				var zb0002 uint32
+				zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "SATA")
+					return
+				}
+				for zb0002 > 0 {
+					zb0002--
+					field, bts, err = msgp.ReadMapKeyZC(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "SATA")
+						return
+					}
+					switch msgp.UnsafeString(field) {
+					case "rs":
+						z.SATA.ReallocatedSectors, bts, err = msgp.ReadUint64Bytes(bts)
+						if err != nil {
+							err = msgp.WrapError(err, "SATA", "ReallocatedSectors")
+							return
+						}
+					case "ps":
+						z.SATA.PendingSectors, bts, err = msgp.ReadUint64Bytes(bts)
+						if err != nil {
+							err = msgp.WrapError(err, "SATA", "PendingSectors")
+							return
+						}
+					case "ou":
+						z.SATA.OfflineUncorrectable, bts, err = msgp.ReadUint64Bytes(bts)
+						if err != nil {
+							err = msgp.WrapError(err, "SATA", "OfflineUncorrectable")
+							return
+						}
+					default:
+						bts, err = msgp.Skip(bts)
+						if err != nil {
+							err = msgp.WrapError(err, "SATA")
+							return
+						}
+					}
+				}
+			}
+			zb0001Mask |= 0x4
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x7 {
+		if (zb0001Mask & 0x1) == 0 {
+			z.StatusReason = ""
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.NVMe = nil
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.SATA = nil
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *SMARTInfo) Msgsize() (s int) {
+	s = 1 + 3 + msgp.StringPrefixSize + len(z.Status) + 3 + msgp.StringPrefixSize + len(z.StatusReason) + 2 + msgp.Int64Size + 4 + msgp.Uint64Size + 3 + msgp.Uint64Size + 3 + msgp.Float64Size + 5
+	if z.NVMe == nil {
+		s += msgp.NilSize
+	} else {
+		s += z.NVMe.Msgsize()
+	}
+	s += 5
+	if z.SATA == nil {
+		s += msgp.NilSize
+	} else {
+		s += 1 + 3 + msgp.Uint64Size + 3 + msgp.Uint64Size + 3 + msgp.Uint64Size
+	}
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *SMARTNVMe) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "cw":
+			z.CriticalWarning, err = dc.ReadUint8()
+			if err != nil {
+				err = msgp.WrapError(err, "CriticalWarning")
+				return
+			}
+		case "as":
+			z.AvailableSpare, err = dc.ReadUint8()
+			if err != nil {
+				err = msgp.WrapError(err, "AvailableSpare")
+				return
+			}
+		case "pu":
+			z.PercentageUsed, err = dc.ReadUint8()
+			if err != nil {
+				err = msgp.WrapError(err, "PercentageUsed")
+				return
+			}
+		case "me":
+			z.MediaErrors, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "MediaErrors")
+				return
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *SMARTNVMe) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 4
+	// write "cw"
+	err = en.Append(0x84, 0xa2, 0x63, 0x77)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint8(z.CriticalWarning)
+	if err != nil {
+		err = msgp.WrapError(err, "CriticalWarning")
+		return
+	}
+	// write "as"
+	err = en.Append(0xa2, 0x61, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint8(z.AvailableSpare)
+	if err != nil {
+		err = msgp.WrapError(err, "AvailableSpare")
+		return
+	}
+	// write "pu"
+	err = en.Append(0xa2, 0x70, 0x75)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint8(z.PercentageUsed)
+	if err != nil {
+		err = msgp.WrapError(err, "PercentageUsed")
+		return
+	}
+	// write "me"
+	err = en.Append(0xa2, 0x6d, 0x65)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint64(z.MediaErrors)
+	if err != nil {
+		err = msgp.WrapError(err, "MediaErrors")
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *SMARTNVMe) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 4
+	// string "cw"
+	o = append(o, 0x84, 0xa2, 0x63, 0x77)
+	o = msgp.AppendUint8(o, z.CriticalWarning)
+	// string "as"
+	o = append(o, 0xa2, 0x61, 0x73)
+	o = msgp.AppendUint8(o, z.AvailableSpare)
+	// string "pu"
+	o = append(o, 0xa2, 0x70, 0x75)
+	o = msgp.AppendUint8(o, z.PercentageUsed)
+	// string "me"
+	o = append(o, 0xa2, 0x6d, 0x65)
+	o = msgp.AppendUint64(o, z.MediaErrors)
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *SMARTNVMe) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "cw":
+			z.CriticalWarning, bts, err = msgp.ReadUint8Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "CriticalWarning")
+				return
+			}
+		case "as":
+			z.AvailableSpare, bts, err = msgp.ReadUint8Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "AvailableSpare")
+				return
+			}
+		case "pu":
+			z.PercentageUsed, bts, err = msgp.ReadUint8Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "PercentageUsed")
+				return
+			}
+		case "me":
+			z.MediaErrors, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "MediaErrors")
+				return
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *SMARTNVMe) Msgsize() (s int) {
+	s = 1 + 3 + msgp.Uint8Size + 3 + msgp.Uint8Size + 3 + msgp.Uint8Size + 3 + msgp.Uint64Size
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *SMARTSATA) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "rs":
+			z.ReallocatedSectors, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "ReallocatedSectors")
+				return
+			}
+		case "ps":
+			z.PendingSectors, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "PendingSectors")
+				return
+			}
+		case "ou":
+			z.OfflineUncorrectable, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "OfflineUncorrectable")
+				return
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z SMARTSATA) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 3
+	// write "rs"
+	err = en.Append(0x83, 0xa2, 0x72, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint64(z.ReallocatedSectors)
+	if err != nil {
+		err = msgp.WrapError(err, "ReallocatedSectors")
+		return
+	}
+	// write "ps"
+	err = en.Append(0xa2, 0x70, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint64(z.PendingSectors)
+	if err != nil {
+		err = msgp.WrapError(err, "PendingSectors")
+		return
+	}
+	// write "ou"
+	err = en.Append(0xa2, 0x6f, 0x75)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint64(z.OfflineUncorrectable)
+	if err != nil {
+		err = msgp.WrapError(err, "OfflineUncorrectable")
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z SMARTSATA) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 3
+	// string "rs"
+	o = append(o, 0x83, 0xa2, 0x72, 0x73)
+	o = msgp.AppendUint64(o, z.ReallocatedSectors)
+	// string "ps"
+	o = append(o, 0xa2, 0x70, 0x73)
+	o = msgp.AppendUint64(o, z.PendingSectors)
+	// string "ou"
+	o = append(o, 0xa2, 0x6f, 0x75)
+	o = msgp.AppendUint64(o, z.OfflineUncorrectable)
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *SMARTSATA) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "rs":
+			z.ReallocatedSectors, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ReallocatedSectors")
+				return
+			}
+		case "ps":
+			z.PendingSectors, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "PendingSectors")
+				return
+			}
+		case "ou":
+			z.OfflineUncorrectable, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "OfflineUncorrectable")
+				return
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z SMARTSATA) Msgsize() (s int) {
+	s = 1 + 3 + msgp.Uint64Size + 3 + msgp.Uint64Size + 3 + msgp.Uint64Size
 	return
 }
 
