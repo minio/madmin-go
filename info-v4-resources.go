@@ -240,29 +240,137 @@ type DriveResource struct {
 
 // SMARTInfo contains S.M.A.R.T. health information for a drive
 type SMARTInfo struct {
-	Status       string     `json:"status" msg:"st"` // healthy, warning, critical, unknown
-	StatusReason string     `json:"statusReason,omitempty" msg:"sr,omitempty"`
-	Temperature  int64      `json:"temperature" msg:"t"` // Celsius
-	PowerOnHours uint64     `json:"powerOnHours" msg:"poh"`
-	PowerCycles  uint64     `json:"powerCycles" msg:"pc"`
-	FailureRisk  float64    `json:"failureRisk" msg:"fr"` // Annual failure rate (0.0-1.0+)
-	NVMe         *SMARTNVMe `json:"nvme,omitempty" msg:"nvme,omitempty"`
-	SATA         *SMARTSATA `json:"sata,omitempty" msg:"sata,omitempty"`
+	N      int            `json:"n" msg:"n"`       // Number of drives included.
+	Status map[string]int `json:"status" msg:"st"` // healthy, warning, critical, unknown
+
+	StatsN       int     `json:"stats_n" msg:"stats_n"`  // Drives with following fields filled.
+	Temperature  float64 `json:"temperature" msg:"t"`    // Accumulated temperature Celsius
+	PowerOnHours float64 `json:"powerOnHours" msg:"poh"` // Accumulated power on hours
+	PowerCycles  uint64  `json:"powerCycles" msg:"pc"`   // Accumulated power cycles
+	FailureRisk  float64 `json:"failureRisk" msg:"fr"`   // Accumulated annual failure rate (0.0-1.0+)
+
+	// Min/Max values are excluded if StatsN <= 1
+	MaxTemperature  float64 `json:"maxTemperature" msg:"mt,omitempty"`    // Max temperature in Celsius
+	MaxFailureRisk  float64 `json:"maxFailureRisk" msg:"mfr,omitempty"`   // Max estimated annual failure rate (0.0-1.0+)
+	MaxPowerOnHours float64 `json:"maxPowerOnHours" msg:"mpoh,omitempty"` // Max single drive power on hours
+	MaxPowerCycles  uint64  `json:"maxPowerCycles" msg:"mpc,omitempty"`   // Max single drive power cycles
+
+	NVMe *SMARTNVMe `json:"nvme,omitempty" msg:"nvme,omitempty"`
+	SATA *SMARTSATA `json:"sata,omitempty" msg:"sata,omitempty"`
+}
+
+// Merge merges another SMARTInfo into this one.
+func (s *SMARTInfo) Merge(other *SMARTInfo) {
+	if s == nil || other == nil {
+		return
+	}
+	s.N += other.N
+
+	// Merge Status map
+	if other.Status != nil {
+		if s.Status == nil {
+			s.Status = make(map[string]int, len(other.Status))
+		}
+		for k, v := range other.Status {
+			s.Status[k] += v
+		}
+	}
+
+	s.StatsN += other.StatsN
+	s.Temperature += other.Temperature
+	s.PowerOnHours += other.PowerOnHours
+	s.PowerCycles += other.PowerCycles
+	s.FailureRisk += other.FailureRisk
+
+	// Handle Max values
+	s.MaxTemperature = max(s.MaxTemperature, other.MaxTemperature)
+	s.MaxFailureRisk = max(s.MaxFailureRisk, other.MaxFailureRisk)
+	s.MaxPowerOnHours = max(s.MaxPowerOnHours, other.MaxPowerOnHours)
+	s.MaxPowerCycles = max(s.MaxPowerCycles, other.MaxPowerCycles)
+
+	// Merge nested NVMe
+	if other.NVMe != nil {
+		if s.NVMe == nil {
+			s.NVMe = &SMARTNVMe{}
+			*s.NVMe = *other.NVMe
+		} else {
+			s.NVMe.Merge(other.NVMe)
+		}
+	}
+
+	// Merge nested SATA
+	if other.SATA != nil {
+		if s.SATA == nil {
+			s.SATA = &SMARTSATA{}
+			*s.SATA = *other.SATA
+		} else {
+			s.SATA.Merge(other.SATA)
+		}
+	}
 }
 
 // SMARTNVMe contains NVMe-specific S.M.A.R.T. attributes
 type SMARTNVMe struct {
-	CriticalWarning uint8  `json:"criticalWarning" msg:"cw"`
-	AvailableSpare  uint8  `json:"availableSpare" msg:"as"` // Percentage
-	PercentageUsed  uint8  `json:"percentageUsed" msg:"pu"` // Percentage of endurance used
+	N               int    `json:"n" msg:"n"`
+	CriticalWarning uint   `json:"criticalWarning" msg:"cw"`
+	AvailableSpare  uint   `json:"availableSpare" msg:"as"` // Percentage of spare space available
+	PercentageUsed  uint   `json:"percentageUsed" msg:"pu"` // Percentage of endurance used
 	MediaErrors     uint64 `json:"mediaErrors" msg:"me"`
+
+	// Min/Max values are excluded if N == 1
+	MaxCriticalWarning uint   `json:"maxCriticalWarning" msg:"mcw,omitempty"`
+	MinAvailableSpare  uint   `json:"minAvailableSpare" msg:"mas,omitempty"`
+	MaxPercentageUsed  uint   `json:"maxPercentageUsed" msg:"mpu,omitempty"`
+	MaxMediaErrors     uint64 `json:"maxMediaErrors" msg:"mme,omitempty"`
+}
+
+// Merge merges another SMARTNVMe into this one.
+func (s *SMARTNVMe) Merge(other *SMARTNVMe) {
+	if s == nil || other == nil {
+		return
+	}
+	s.N += other.N
+	s.CriticalWarning += other.CriticalWarning
+	s.AvailableSpare += other.AvailableSpare
+	s.PercentageUsed += other.PercentageUsed
+	s.MediaErrors += other.MediaErrors
+
+	// Handle Min/Max values
+	s.MaxCriticalWarning = max(s.MaxCriticalWarning, other.MaxCriticalWarning)
+	if other.MinAvailableSpare > 0 && (s.MinAvailableSpare == 0 || other.MinAvailableSpare < s.MinAvailableSpare) {
+		s.MinAvailableSpare = other.MinAvailableSpare
+	}
+	s.MaxPercentageUsed = max(s.MaxPercentageUsed, other.MaxPercentageUsed)
+	s.MaxMediaErrors = max(s.MaxMediaErrors, other.MaxMediaErrors)
 }
 
 // SMARTSATA contains SATA-specific S.M.A.R.T. attributes
 type SMARTSATA struct {
+	N                    int    `json:"n" msg:"n"`
 	ReallocatedSectors   uint64 `json:"reallocatedSectors" msg:"rs"`
 	PendingSectors       uint64 `json:"pendingSectors" msg:"ps"`
 	OfflineUncorrectable uint64 `json:"offlineUncorrectable" msg:"ou"`
+
+	// Min/Max values are omitted if N == 1
+	MaxReallocatedSectors   uint64 `json:"maxReallocatedSectors" msg:"mrs,omitempty"`
+	MaxPendingSectors       uint64 `json:"maxPendingSectors" msg:"mps,omitempty"`
+	MaxOfflineUncorrectable uint64 `json:"maxOfflineUncorrectable" msg:"mou,omitempty"`
+}
+
+// Merge merges another SMARTSATA into this one.
+func (s *SMARTSATA) Merge(other *SMARTSATA) {
+	if s == nil || other == nil {
+		return
+	}
+	s.N += other.N
+	s.ReallocatedSectors += other.ReallocatedSectors
+	s.PendingSectors += other.PendingSectors
+	s.OfflineUncorrectable += other.OfflineUncorrectable
+
+	// Handle Max values
+	s.MaxReallocatedSectors = max(s.MaxReallocatedSectors, other.MaxReallocatedSectors)
+	s.MaxPendingSectors = max(s.MaxPendingSectors, other.MaxPendingSectors)
+	s.MaxOfflineUncorrectable = max(s.MaxOfflineUncorrectable, other.MaxOfflineUncorrectable)
 }
 
 // ErasureSetResource represents detailed information about an erasure coding set including drive counts and capacity

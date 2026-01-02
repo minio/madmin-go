@@ -817,8 +817,13 @@ func (d *DiskMetric) Merge(other *DiskMetric) {
 	}
 	d.IOStatsMinute.Add(&other.IOStatsMinute)
 	d.IOStatsDay.Add(&other.IOStatsDay)
-	// SMART is per-disk and doesn't make sense when aggregating.
-	d.SMART = nil
+	// Merge SMART data
+	if other.SMART != nil {
+		if d.SMART == nil {
+			d.SMART = &SMARTInfo{}
+		}
+		d.SMART.Merge(other.SMART)
+	}
 }
 
 // LifetimeTotal returns the accumulated Disk metrics for all operations
