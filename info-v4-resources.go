@@ -240,29 +240,226 @@ type DriveResource struct {
 
 // SMARTInfo contains S.M.A.R.T. health information for a drive
 type SMARTInfo struct {
-	Status       string     `json:"status" msg:"st"` // healthy, warning, critical, unknown
-	StatusReason string     `json:"statusReason,omitempty" msg:"sr,omitempty"`
-	Temperature  int64      `json:"temperature" msg:"t"` // Celsius
-	PowerOnHours uint64     `json:"powerOnHours" msg:"poh"`
-	PowerCycles  uint64     `json:"powerCycles" msg:"pc"`
-	FailureRisk  float64    `json:"failureRisk" msg:"fr"` // Annual failure rate (0.0-1.0+)
-	NVMe         *SMARTNVMe `json:"nvme,omitempty" msg:"nvme,omitempty"`
-	SATA         *SMARTSATA `json:"sata,omitempty" msg:"sata,omitempty"`
+	N      int            `json:"n" msg:"n"`       // Number of drives included.
+	Status map[string]int `json:"status" msg:"st"` // healthy, warning, critical, unknown
+
+	StatsN       int     `json:"stats_n" msg:"stats_n"`  // Drives with following fields filled.
+	Temperature  float64 `json:"temperature" msg:"t"`    // Accumulated temperature Celsius
+	PowerOnHours float64 `json:"powerOnHours" msg:"poh"` // Accumulated power on hours
+	PowerCycles  uint64  `json:"powerCycles" msg:"pc"`   // Accumulated power cycles
+	FailureRisk  float64 `json:"failureRisk" msg:"fr"`   // Accumulated annual failure rate (0.0-1.0+)
+
+	// Min/Max values are excluded if StatsN <= 1
+	MaxTemperature  float64 `json:"maxTemperature" msg:"mt,omitempty"`    // Max temperature in Celsius
+	MaxFailureRisk  float64 `json:"maxFailureRisk" msg:"mfr,omitempty"`   // Max estimated annual failure rate (0.0-1.0+)
+	MaxPowerOnHours float64 `json:"maxPowerOnHours" msg:"mpoh,omitempty"` // Max single drive power on hours
+	MaxPowerCycles  uint64  `json:"maxPowerCycles" msg:"mpc,omitempty"`   // Max single drive power cycles
+
+	NVMe *SMARTNVMe `json:"nvme,omitempty" msg:"nvme,omitempty"`
+	SATA *SMARTSATA `json:"sata,omitempty" msg:"sata,omitempty"`
+}
+
+// Merge merges another SMARTInfo into this one.
+func (s *SMARTInfo) Merge(other *SMARTInfo) {
+	if s == nil || other == nil {
+		return
+	}
+	s.N += other.N
+
+	// Merge Status map
+	if other.Status != nil {
+		if s.Status == nil {
+			s.Status = make(map[string]int, len(other.Status))
+		}
+		for k, v := range other.Status {
+			s.Status[k] += v
+		}
+	}
+
+	s.StatsN += other.StatsN
+	s.Temperature += other.Temperature
+	s.PowerOnHours += other.PowerOnHours
+	s.PowerCycles += other.PowerCycles
+	s.FailureRisk += other.FailureRisk
+
+	// Handle Max values
+	s.MaxTemperature = max(s.MaxTemperature, other.MaxTemperature)
+	s.MaxFailureRisk = max(s.MaxFailureRisk, other.MaxFailureRisk)
+	s.MaxPowerOnHours = max(s.MaxPowerOnHours, other.MaxPowerOnHours)
+	s.MaxPowerCycles = max(s.MaxPowerCycles, other.MaxPowerCycles)
+
+	// Merge nested NVMe
+	if other.NVMe != nil {
+		if s.NVMe == nil {
+			s.NVMe = &SMARTNVMe{}
+			*s.NVMe = *other.NVMe
+		} else {
+			s.NVMe.Merge(other.NVMe)
+		}
+	}
+
+	// Merge nested SATA
+	if other.SATA != nil {
+		if s.SATA == nil {
+			s.SATA = &SMARTSATA{}
+			*s.SATA = *other.SATA
+		} else {
+			s.SATA.Merge(other.SATA)
+		}
+	}
 }
 
 // SMARTNVMe contains NVMe-specific S.M.A.R.T. attributes
 type SMARTNVMe struct {
-	CriticalWarning uint8  `json:"criticalWarning" msg:"cw"`
-	AvailableSpare  uint8  `json:"availableSpare" msg:"as"` // Percentage
-	PercentageUsed  uint8  `json:"percentageUsed" msg:"pu"` // Percentage of endurance used
-	MediaErrors     uint64 `json:"mediaErrors" msg:"me"`
+	N int `json:"n" msg:"n"`
+
+	// Critical Warning flags
+	// Bit 0: Available spare below threshold
+	// Bit 1: Temperature above or below threshold
+	// Bit 2: NVM subsystem reliability degraded
+	// Bit 3: Media placed in read-only mode
+	// Bit 4: Volatile memory backup device has failed
+	// Bit 5: Persistent memory region became read-only
+	CriticalWarningFlags   uint8   `json:"criticalWarning" msg:"cw"`
+	AvailableSpare         uint    `json:"availableSpare" msg:"as"` // Percentage of spare space available
+	PercentageUsed         uint    `json:"percentageUsed" msg:"pu"` // Percentage of endurance used
+	MediaErrors            uint64  `json:"mediaErrors" msg:"me"`
+	DataUnitsRead          float64 `json:"dataUnitsRead" msg:"dur"`    // (in 1000s of 512-byte units)
+	DataUnitsWritten       float64 `json:"dataUnitsWritten" msg:"duw"` // (in 1000s of 512-byte units)
+	HostReads              float64 `json:"hostReads" msg:"hr"`
+	HostWrites             float64 `json:"hostWrites" msg:"hw"`
+	CtrlBusyTime           float64 `json:"ctrlBusyTime" msg:"bus"` // Controller Busy Time in minutes
+	UnsafeShutdowns        uint64  `json:"unsafeShutdowns" msg:"sh"`
+	WarningTempTime        float64 `json:"warningTempTime" msg:"tt"`         // Warning Composite Temperature Time in minutes
+	CritCompTime           float64 `json:"critCompTime" msg:"cc"`            // Critical Composite Temperature Time in minutes
+	ThermalTransitionCount uint64  `json:"thermalTransitionCount" msg:"ttc"` // Thermal Management Transition Count (total)
+	ThermalManagementTime  uint64  `json:"thermalManagementTime" msg:"ttt"`  // Total Time For Thermal Management - seconds (total)
+
+	// Min/Max values are excluded if N == 1
+	MinAvailableSpare         uint    `json:"minAvailableSpare" msg:"mas,omitempty"`
+	MaxPercentageUsed         uint    `json:"maxPercentageUsed" msg:"mpu,omitempty"`
+	MaxMediaErrors            uint64  `json:"maxMediaErrors" msg:"mme,omitempty"`
+	MaxDataUnitsRead          float64 `json:"maxDataUnitsRead" msg:"mdur,omitempty"`
+	MaxDataUnitsWritten       float64 `json:"maxDataUnitsWritten" msg:"mduw,omitempty"`
+	MaxHostReads              float64 `json:"maxHostReads" msg:"mhr,omitempty"`
+	MaxHostWrites             float64 `json:"maxHostWrites" msg:"mhw,omitempty"`
+	MaxCtrlBusyTime           float64 `json:"maxCtrlBusyTime" msg:"mbus,omitempty"`
+	MaxUnsafeShutdowns        uint64  `json:"maxUnsafeShutdowns" msg:"msh,omitempty"`
+	MaxWarningTempTime        float64 `json:"maxWarningTempTime" msg:"mtt,omitempty"`
+	MaxCritCompTime           float64 `json:"maxCritCompTime" msg:"mcc,omitempty"`
+	MaxThermalTransitionCount uint64  `json:"maxThermalTransitionCount" msg:"mttc,omitempty"`
+	MaxThermalManagementTime  uint64  `json:"maxThermalManagementTime" msg:"mttt,omitempty"`
+}
+
+// normalize populates Min/Max fields from raw values when N==1.
+// This should be called before merging to ensure single-drive values are captured.
+func (s *SMARTNVMe) normalize() {
+	if s == nil || s.N != 1 {
+		return
+	}
+	s.MinAvailableSpare = s.AvailableSpare
+	s.MaxPercentageUsed = s.PercentageUsed
+	s.MaxMediaErrors = s.MediaErrors
+	s.MaxDataUnitsRead = s.DataUnitsRead
+	s.MaxDataUnitsWritten = s.DataUnitsWritten
+	s.MaxHostReads = s.HostReads
+	s.MaxHostWrites = s.HostWrites
+	s.MaxCtrlBusyTime = s.CtrlBusyTime
+	s.MaxUnsafeShutdowns = s.UnsafeShutdowns
+	s.MaxWarningTempTime = s.WarningTempTime
+	s.MaxCritCompTime = s.CritCompTime
+	s.MaxThermalTransitionCount = s.ThermalTransitionCount
+	s.MaxThermalManagementTime = s.ThermalManagementTime
+}
+
+// Merge merges another SMARTNVMe into this one.
+func (s *SMARTNVMe) Merge(other *SMARTNVMe) {
+	if s == nil || other == nil {
+		return
+	}
+
+	// Populate min/max from raw values for single-drive structs
+	s.normalize()
+	other.normalize()
+
+	// Accumulate values
+	s.N += other.N
+	s.CriticalWarningFlags |= other.CriticalWarningFlags
+	s.AvailableSpare += other.AvailableSpare
+	s.PercentageUsed += other.PercentageUsed
+	s.MediaErrors += other.MediaErrors
+	s.DataUnitsRead += other.DataUnitsRead
+	s.DataUnitsWritten += other.DataUnitsWritten
+	s.HostReads += other.HostReads
+	s.HostWrites += other.HostWrites
+	s.CtrlBusyTime += other.CtrlBusyTime
+	s.UnsafeShutdowns += other.UnsafeShutdowns
+	s.WarningTempTime += other.WarningTempTime
+	s.CritCompTime += other.CritCompTime
+	s.ThermalTransitionCount += other.ThermalTransitionCount
+	s.ThermalManagementTime += other.ThermalManagementTime
+
+	// Merge min/max values
+	if other.MinAvailableSpare > 0 && (s.MinAvailableSpare == 0 || other.MinAvailableSpare < s.MinAvailableSpare) {
+		s.MinAvailableSpare = other.MinAvailableSpare
+	}
+	s.MaxPercentageUsed = max(s.MaxPercentageUsed, other.MaxPercentageUsed)
+	s.MaxMediaErrors = max(s.MaxMediaErrors, other.MaxMediaErrors)
+	s.MaxDataUnitsRead = max(s.MaxDataUnitsRead, other.MaxDataUnitsRead)
+	s.MaxDataUnitsWritten = max(s.MaxDataUnitsWritten, other.MaxDataUnitsWritten)
+	s.MaxHostReads = max(s.MaxHostReads, other.MaxHostReads)
+	s.MaxHostWrites = max(s.MaxHostWrites, other.MaxHostWrites)
+	s.MaxCtrlBusyTime = max(s.MaxCtrlBusyTime, other.MaxCtrlBusyTime)
+	s.MaxUnsafeShutdowns = max(s.MaxUnsafeShutdowns, other.MaxUnsafeShutdowns)
+	s.MaxWarningTempTime = max(s.MaxWarningTempTime, other.MaxWarningTempTime)
+	s.MaxCritCompTime = max(s.MaxCritCompTime, other.MaxCritCompTime)
+	s.MaxThermalTransitionCount = max(s.MaxThermalTransitionCount, other.MaxThermalTransitionCount)
+	s.MaxThermalManagementTime = max(s.MaxThermalManagementTime, other.MaxThermalManagementTime)
 }
 
 // SMARTSATA contains SATA-specific S.M.A.R.T. attributes
 type SMARTSATA struct {
+	N                    int    `json:"n" msg:"n"`
 	ReallocatedSectors   uint64 `json:"reallocatedSectors" msg:"rs"`
 	PendingSectors       uint64 `json:"pendingSectors" msg:"ps"`
 	OfflineUncorrectable uint64 `json:"offlineUncorrectable" msg:"ou"`
+
+	// Min/Max values are omitted if N == 1
+	MaxReallocatedSectors   uint64 `json:"maxReallocatedSectors" msg:"mrs,omitempty"`
+	MaxPendingSectors       uint64 `json:"maxPendingSectors" msg:"mps,omitempty"`
+	MaxOfflineUncorrectable uint64 `json:"maxOfflineUncorrectable" msg:"mou,omitempty"`
+}
+
+// normalize populates Max fields from raw values when N==1.
+func (s *SMARTSATA) normalize() {
+	if s == nil || s.N != 1 {
+		return
+	}
+	s.MaxReallocatedSectors = s.ReallocatedSectors
+	s.MaxPendingSectors = s.PendingSectors
+	s.MaxOfflineUncorrectable = s.OfflineUncorrectable
+}
+
+// Merge merges another SMARTSATA into this one.
+func (s *SMARTSATA) Merge(other *SMARTSATA) {
+	if s == nil || other == nil {
+		return
+	}
+
+	// Populate max from raw values for single-drive structs
+	s.normalize()
+	other.normalize()
+
+	// Accumulate values
+	s.N += other.N
+	s.ReallocatedSectors += other.ReallocatedSectors
+	s.PendingSectors += other.PendingSectors
+	s.OfflineUncorrectable += other.OfflineUncorrectable
+
+	// Merge max values
+	s.MaxReallocatedSectors = max(s.MaxReallocatedSectors, other.MaxReallocatedSectors)
+	s.MaxPendingSectors = max(s.MaxPendingSectors, other.MaxPendingSectors)
+	s.MaxOfflineUncorrectable = max(s.MaxOfflineUncorrectable, other.MaxOfflineUncorrectable)
 }
 
 // ErasureSetResource represents detailed information about an erasure coding set including drive counts and capacity
