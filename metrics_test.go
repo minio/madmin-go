@@ -3188,21 +3188,18 @@ func TestSMARTSATAMerge(t *testing.T) {
 		{
 			name: "merge counts and max values",
 			base: &SMARTSATA{
-				N:                     1,
-				ReallocatedSectors:    10,
-				PendingSectors:        5,
-				OfflineUncorrectable:  2,
-				MaxReallocatedSectors: 10,
-				MaxPendingSectors:     5,
+				N:                    1,
+				ReallocatedSectors:   10,
+				PendingSectors:       5,
+				OfflineUncorrectable: 2,
+				// Max values are NOT preset - they are auto-populated from raw values since N==1
 			},
 			other: &SMARTSATA{
-				N:                       1,
-				ReallocatedSectors:      15,
-				PendingSectors:          3,
-				OfflineUncorrectable:    1,
-				MaxReallocatedSectors:   20,
-				MaxPendingSectors:       3,
-				MaxOfflineUncorrectable: 1,
+				N:                    1,
+				ReallocatedSectors:   15,
+				PendingSectors:       3,
+				OfflineUncorrectable: 1,
+				// Max values are NOT preset - they are auto-populated from raw values since N==1
 			},
 			verify: func(t *testing.T, result *SMARTSATA) {
 				if result.N != 2 {
@@ -3217,14 +3214,15 @@ func TestSMARTSATAMerge(t *testing.T) {
 				if result.OfflineUncorrectable != 3 {
 					t.Errorf("OfflineUncorrectable = %d, want 3", result.OfflineUncorrectable)
 				}
-				if result.MaxReallocatedSectors != 20 {
-					t.Errorf("MaxReallocatedSectors = %d, want 20", result.MaxReallocatedSectors)
+				// Max values should be max of raw values from both single-drive entries
+				if result.MaxReallocatedSectors != 15 {
+					t.Errorf("MaxReallocatedSectors = %d, want 15", result.MaxReallocatedSectors)
 				}
 				if result.MaxPendingSectors != 5 {
 					t.Errorf("MaxPendingSectors = %d, want 5", result.MaxPendingSectors)
 				}
-				if result.MaxOfflineUncorrectable != 1 {
-					t.Errorf("MaxOfflineUncorrectable = %d, want 1", result.MaxOfflineUncorrectable)
+				if result.MaxOfflineUncorrectable != 2 {
+					t.Errorf("MaxOfflineUncorrectable = %d, want 2", result.MaxOfflineUncorrectable)
 				}
 			},
 		},
@@ -3278,32 +3276,47 @@ func TestSMARTNVMeMerge(t *testing.T) {
 		{
 			name: "merge counts and min/max values",
 			base: &SMARTNVMe{
-				N:                  1,
-				CriticalWarning:    0,
-				AvailableSpare:     90,
-				PercentageUsed:     10,
-				MediaErrors:        0,
-				MaxCriticalWarning: 0,
-				MinAvailableSpare:  90,
-				MaxPercentageUsed:  10,
+				N:                      1,
+				CriticalWarningFlags:   0,
+				AvailableSpare:         90,
+				PercentageUsed:         10,
+				MediaErrors:            0,
+				DataUnitsRead:          1000,
+				DataUnitsWritten:       500,
+				HostReads:              2000,
+				HostWrites:             1000,
+				CtrlBusyTime:           100,
+				UnsafeShutdowns:        2,
+				WarningTempTime:        10,
+				CritCompTime:           5,
+				ThermalTransitionCount: 3,
+				ThermalManagementTime:  60,
+				// Min/Max values are NOT pre-set - they should be auto-populated from raw values since N==1
 			},
 			other: &SMARTNVMe{
-				N:                  1,
-				CriticalWarning:    1,
-				AvailableSpare:     80,
-				PercentageUsed:     20,
-				MediaErrors:        5,
-				MaxCriticalWarning: 1,
-				MinAvailableSpare:  80,
-				MaxPercentageUsed:  20,
-				MaxMediaErrors:     5,
+				N:                      1,
+				CriticalWarningFlags:   1,
+				AvailableSpare:         80,
+				PercentageUsed:         20,
+				MediaErrors:            5,
+				DataUnitsRead:          2000,
+				DataUnitsWritten:       1000,
+				HostReads:              3000,
+				HostWrites:             1500,
+				CtrlBusyTime:           150,
+				UnsafeShutdowns:        1,
+				WarningTempTime:        20,
+				CritCompTime:           10,
+				ThermalTransitionCount: 5,
+				ThermalManagementTime:  120,
+				// Min/Max values are NOT pre-set - they should be auto-populated from raw values since N==1
 			},
 			verify: func(t *testing.T, result *SMARTNVMe) {
 				if result.N != 2 {
 					t.Errorf("N = %d, want 2", result.N)
 				}
-				if result.CriticalWarning != 1 {
-					t.Errorf("CriticalWarning = %d, want 1", result.CriticalWarning)
+				if result.CriticalWarningFlags != 1 {
+					t.Errorf("CriticalWarningFlags = %d, want 1", result.CriticalWarningFlags)
 				}
 				if result.AvailableSpare != 170 {
 					t.Errorf("AvailableSpare = %d, want 170", result.AvailableSpare)
@@ -3314,17 +3327,74 @@ func TestSMARTNVMeMerge(t *testing.T) {
 				if result.MediaErrors != 5 {
 					t.Errorf("MediaErrors = %d, want 5", result.MediaErrors)
 				}
+				if result.DataUnitsRead != 3000 {
+					t.Errorf("DataUnitsRead = %f, want 3000", result.DataUnitsRead)
+				}
+				if result.DataUnitsWritten != 1500 {
+					t.Errorf("DataUnitsWritten = %f, want 1500", result.DataUnitsWritten)
+				}
+				if result.HostReads != 5000 {
+					t.Errorf("HostReads = %f, want 5000", result.HostReads)
+				}
+				if result.HostWrites != 2500 {
+					t.Errorf("HostWrites = %f, want 2500", result.HostWrites)
+				}
+				if result.CtrlBusyTime != 250 {
+					t.Errorf("CtrlBusyTime = %f, want 250", result.CtrlBusyTime)
+				}
+				if result.UnsafeShutdowns != 3 {
+					t.Errorf("UnsafeShutdowns = %d, want 3", result.UnsafeShutdowns)
+				}
+				if result.WarningTempTime != 30 {
+					t.Errorf("WarningTempTime = %f, want 30", result.WarningTempTime)
+				}
+				if result.CritCompTime != 15 {
+					t.Errorf("CritCompTime = %f, want 15", result.CritCompTime)
+				}
+				if result.ThermalTransitionCount != 8 {
+					t.Errorf("ThermalTransitionCount = %d, want 8", result.ThermalTransitionCount)
+				}
+				if result.ThermalManagementTime != 180 {
+					t.Errorf("ThermalManagementTime = %d, want 180", result.ThermalManagementTime)
+				}
 				if result.MinAvailableSpare != 80 {
 					t.Errorf("MinAvailableSpare = %d, want 80", result.MinAvailableSpare)
 				}
 				if result.MaxPercentageUsed != 20 {
 					t.Errorf("MaxPercentageUsed = %d, want 20", result.MaxPercentageUsed)
 				}
-				if result.MaxCriticalWarning != 1 {
-					t.Errorf("MaxCriticalWarning = %d, want 1", result.MaxCriticalWarning)
-				}
 				if result.MaxMediaErrors != 5 {
 					t.Errorf("MaxMediaErrors = %d, want 5", result.MaxMediaErrors)
+				}
+				if result.MaxDataUnitsRead != 2000 {
+					t.Errorf("MaxDataUnitsRead = %f, want 2000", result.MaxDataUnitsRead)
+				}
+				if result.MaxDataUnitsWritten != 1000 {
+					t.Errorf("MaxDataUnitsWritten = %f, want 1000", result.MaxDataUnitsWritten)
+				}
+				if result.MaxHostReads != 3000 {
+					t.Errorf("MaxHostReads = %f, want 3000", result.MaxHostReads)
+				}
+				if result.MaxHostWrites != 1500 {
+					t.Errorf("MaxHostWrites = %f, want 1500", result.MaxHostWrites)
+				}
+				if result.MaxCtrlBusyTime != 150 {
+					t.Errorf("MaxCtrlBusyTime = %f, want 150", result.MaxCtrlBusyTime)
+				}
+				if result.MaxUnsafeShutdowns != 2 {
+					t.Errorf("MaxUnsafeShutdowns = %d, want 2", result.MaxUnsafeShutdowns)
+				}
+				if result.MaxWarningTempTime != 20 {
+					t.Errorf("MaxWarningTempTime = %f, want 20", result.MaxWarningTempTime)
+				}
+				if result.MaxCritCompTime != 10 {
+					t.Errorf("MaxCritCompTime = %f, want 10", result.MaxCritCompTime)
+				}
+				if result.MaxThermalTransitionCount != 5 {
+					t.Errorf("MaxThermalTransitionCount = %d, want 5", result.MaxThermalTransitionCount)
+				}
+				if result.MaxThermalManagementTime != 120 {
+					t.Errorf("MaxThermalManagementTime = %d, want 120", result.MaxThermalManagementTime)
 				}
 			},
 		},
