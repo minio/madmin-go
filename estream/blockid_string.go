@@ -23,9 +23,9 @@ const _blockID_name = "PlainKeyEncryptedKeyEncStreamPlainStreamDatablockEOSEOFEr
 var _blockID_index = [...]uint8{0, 8, 20, 29, 40, 49, 52, 55, 60}
 
 func (i blockID) String() string {
-	idx := int(i) - 1
-	if i < 1 || idx >= len(_blockID_index)-1 {
-		return "blockID(" + strconv.FormatInt(int64(i), 10) + ")"
+	i -= 1
+	if i < 0 || i >= blockID(len(_blockID_index)-1) {
+		return "blockID(" + strconv.FormatInt(int64(i+1), 10) + ")"
 	}
-	return _blockID_name[_blockID_index[idx]:_blockID_index[idx+1]]
+	return _blockID_name[_blockID_index[i]:_blockID_index[i+1]]
 }
