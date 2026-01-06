@@ -1714,9 +1714,16 @@ func (node *DiskSMARTNode) GetLeafData() map[string]string {
 		// Temperature
 		if node.smart.Temperature > 0 {
 			avgTemp := node.smart.Temperature / float64(node.smart.StatsN)
-			tempStr := fmt.Sprintf("%.1f°C average", avgTemp)
-			if node.smart.StatsN > 1 && node.smart.MaxTemperature > 0 {
-				tempStr += fmt.Sprintf(", %.1f°C max", node.smart.MaxTemperature)
+			tempStr := ""
+			if node.smart.StatsN == 1 {
+				// For single drive, just show the temperature without "average"
+				tempStr = fmt.Sprintf("%.1f°C", avgTemp)
+			} else {
+				// For multiple drives, show average and max if available
+				tempStr = fmt.Sprintf("%.1f°C average", avgTemp)
+				if node.smart.MaxTemperature > 0 {
+					tempStr += fmt.Sprintf(", %.1f°C max", node.smart.MaxTemperature)
+				}
 			}
 			data["Temperature"] = tempStr
 		}
@@ -1727,18 +1734,26 @@ func (node *DiskSMARTNode) GetLeafData() map[string]string {
 			// Convert to more readable units
 			avgDays := avgHours / 24
 			hoursStr := ""
-			if avgDays > 365 {
-				years := avgDays / 365
-				hoursStr = fmt.Sprintf("%.1f years average", years)
-			} else if avgDays > 30 {
-				months := avgDays / 30
-				hoursStr = fmt.Sprintf("%.1f months average", months)
-			} else if avgDays > 1 {
-				hoursStr = fmt.Sprintf("%.1f days average", avgDays)
-			} else {
-				hoursStr = fmt.Sprintf("%.1f hours average", avgHours)
+
+			// Format based on single vs multiple drives
+			avgLabel := ""
+			if node.smart.StatsN > 1 {
+				avgLabel = " average"
 			}
 
+			if avgDays > 365 {
+				years := avgDays / 365
+				hoursStr = fmt.Sprintf("%.1f years%s", years, avgLabel)
+			} else if avgDays > 30 {
+				months := avgDays / 30
+				hoursStr = fmt.Sprintf("%.1f months%s", months, avgLabel)
+			} else if avgDays > 1 {
+				hoursStr = fmt.Sprintf("%.1f days%s", avgDays, avgLabel)
+			} else {
+				hoursStr = fmt.Sprintf("%.1f hours%s", avgHours, avgLabel)
+			}
+
+			// Show max for multiple drives if available
 			if node.smart.StatsN > 1 && node.smart.MaxPowerOnHours > 0 {
 				maxDays := node.smart.MaxPowerOnHours / 24
 				if maxDays > 365 {
@@ -1759,9 +1774,14 @@ func (node *DiskSMARTNode) GetLeafData() map[string]string {
 		// Power cycles
 		if node.smart.PowerCycles > 0 {
 			avgCycles := float64(node.smart.PowerCycles) / float64(node.smart.StatsN)
-			cyclesStr := fmt.Sprintf("%.0f average", avgCycles)
-			if node.smart.StatsN > 1 && node.smart.MaxPowerCycles > 0 {
-				cyclesStr += fmt.Sprintf(", %d max", node.smart.MaxPowerCycles)
+			cyclesStr := ""
+			if node.smart.StatsN == 1 {
+				cyclesStr = fmt.Sprintf("%.0f", avgCycles)
+			} else {
+				cyclesStr = fmt.Sprintf("%.0f average", avgCycles)
+				if node.smart.MaxPowerCycles > 0 {
+					cyclesStr += fmt.Sprintf(", %d max", node.smart.MaxPowerCycles)
+				}
 			}
 			data["Power Cycles"] = cyclesStr
 		}
@@ -1769,9 +1789,14 @@ func (node *DiskSMARTNode) GetLeafData() map[string]string {
 		// Failure risk
 		if node.smart.FailureRisk > 0 {
 			avgRisk := (node.smart.FailureRisk / float64(node.smart.StatsN)) * 100
-			riskStr := fmt.Sprintf("%.2f%% average annual failure rate", avgRisk)
-			if node.smart.StatsN > 1 && node.smart.MaxFailureRisk > 0 {
-				riskStr += fmt.Sprintf(", %.2f%% max", node.smart.MaxFailureRisk*100)
+			riskStr := ""
+			if node.smart.StatsN == 1 {
+				riskStr = fmt.Sprintf("%.2f%% annual failure rate", avgRisk)
+			} else {
+				riskStr = fmt.Sprintf("%.2f%% average annual failure rate", avgRisk)
+				if node.smart.MaxFailureRisk > 0 {
+					riskStr += fmt.Sprintf(", %.2f%% max", node.smart.MaxFailureRisk*100)
+				}
 			}
 			data["Failure Risk"] = riskStr
 		}
