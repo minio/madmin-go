@@ -263,10 +263,8 @@ func GetCPUs(ctx context.Context, addr string) CPUs {
 	cpuMap := map[string]CPU{}
 	for _, info := range infos {
 		cpu, found := cpuMap[info.PhysicalID]
-		if found {
-			cpu.Cores++
-		} else {
-			cpuMap[info.PhysicalID] = CPU{
+		if !found {
+			cpu = CPU{
 				VendorID:           info.VendorID,
 				Family:             info.Family,
 				Model:              info.Model,
@@ -277,11 +275,12 @@ func GetCPUs(ctx context.Context, addr string) CPUs {
 				CacheSize:          info.CacheSize,
 				Flags:              info.Flags,
 				Microcode:          info.Microcode,
-				Cores:              1,
 				MultithreadCapable: mtCapable,
 				MultithreadEnabled: mtEnabled,
 			}
 		}
+		cpu.Cores += int(info.Cores)
+		cpuMap[info.PhysicalID] = cpu
 	}
 
 	cpus := []CPU{}
