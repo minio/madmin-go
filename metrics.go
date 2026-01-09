@@ -451,6 +451,9 @@ type ScannerMetrics struct {
 		ILM map[string]TimedAction `json:"ilm,omitempty"`
 	} `json:"last_minute"`
 
+	// LastDay operation statistics.
+	LastDay map[string]SegmentedActions `json:"last_day,omitempty"`
+
 	// Currently active path(s) being scanned.
 	ActivePaths []string `json:"active,omitempty"`
 
@@ -458,6 +461,9 @@ type ScannerMetrics struct {
 	// Paths that have been marked as having excessive number of entries within the last 24 hours.
 	ExcessivePrefixes []string `json:"excessive,omitempty"`
 }
+
+// SegmentedActions are time segmented scanner activity.
+type SegmentedActions = Segmented[TimedAction, *TimedAction]
 
 // Merge other into 's'.
 func (s *ScannerMetrics) Merge(other *ScannerMetrics) {
@@ -502,6 +508,13 @@ func (s *ScannerMetrics) Merge(other *ScannerMetrics) {
 		total := s.LastMinute.Actions[k]
 		total.Merge(v)
 		s.LastMinute.Actions[k] = total
+	}
+	if s.LastDay == nil && len(other.LastDay) > 0 {
+		s.LastDay = make(map[string]SegmentedActions, len(other.LastDay))
+	}
+	for k, v := range other.LastDay {
+		total := s.LastDay[k]
+		total.Add(&v)
 	}
 
 	// ILM
@@ -857,6 +870,9 @@ type OSMetrics struct {
 		Operations map[string]TimedAction `json:"operations,omitempty"`
 	} `json:"last_minute"`
 
+	// LastDay operation statistics.
+	LastDay map[string]SegmentedActions `json:"last_day,omitempty"`
+
 	// Aggregated temperature sensor metrics by sensor key
 	Sensors map[string]SensorMetrics `json:"sensors,omitempty"`
 }
@@ -1069,12 +1085,18 @@ func (o *SiteResyncMetrics) Merge(other *SiteResyncMetrics) {
 	}
 }
 
+// SegmentedInterfaceStats is Time segmented interface stats.
+type SegmentedInterfaceStats = Segmented[InterfaceStats, *InterfaceStats]
+
 type NetMetrics struct {
 	// Time these metrics were collected
 	CollectedAt time.Time `json:"collected"`
 
 	// NICs contains interface -> stats map.
 	Interfaces map[string]InterfaceStats
+
+	// Last day delta statistics.
+	LastDay *SegmentedInterfaceStats `json:"last_day,omitempty"`
 
 	// Deprecated: Does not merge.
 	InterfaceName string `json:"interfaceName"`
@@ -1100,6 +1122,10 @@ func (n *NetMetrics) Merge(other *NetMetrics) {
 		}
 		n.Interfaces[k] = n.Interfaces[k].add(v)
 	}
+	if other.LastDay != nil && n.LastDay == nil {
+		n.LastDay = new(SegmentedInterfaceStats)
+	}
+	n.LastDay.Add(other.LastDay)
 	n.NetStats = procfs.NetDevLine(procfsNetDevLine(n.NetStats).add(procfsNetDevLine(other.NetStats)))
 }
 
@@ -1109,9 +1135,17 @@ type InterfaceStats struct {
 	procfs.NetDevLine `json:"stats"`
 }
 
+func (n *InterfaceStats) Add(other *InterfaceStats) {
+	if other == nil || n == nil || other.N == 0 {
+		return
+	}
+	n.N = n.N + other.N
+	n.NetDevLine = procfs.NetDevLine(procfsNetDevLine(n.NetDevLine).add(procfsNetDevLine(other.NetDevLine)))
+}
+
 func (n InterfaceStats) add(other InterfaceStats) InterfaceStats {
 	return InterfaceStats{
-		N:          n.N,
+		N:          n.N + other.N,
 		NetDevLine: procfs.NetDevLine(procfsNetDevLine(n.NetDevLine).add(procfsNetDevLine(other.NetDevLine))),
 	}
 }
