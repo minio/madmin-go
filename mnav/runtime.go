@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/minio/madmin-go/v4"
@@ -56,13 +57,15 @@ func (node *RuntimeMetricsNavigator) GetChildren() []MetricChild {
 	if node.runtime == nil {
 		return []MetricChild{}
 	}
-	return []MetricChild{
+	children := []MetricChild{
 		{Name: "gc", Description: "Garbage collection metrics and heap statistics"},
 		{Name: "memory", Description: "Memory management and allocation metrics"},
 		{Name: "scheduler", Description: "Go scheduler and goroutine metrics"},
 		{Name: "cpu_classes", Description: "CPU time breakdown by runtime activities"},
 		{Name: "sync", Description: "Synchronization and locking metrics"},
 	}
+	children = append(children, MetricChild{Name: "last_day", Description: "Last 24h runtime statistics"})
+	return children
 }
 
 func (node *RuntimeMetricsNavigator) GetLeafData() map[string]string {
@@ -130,6 +133,8 @@ func (node *RuntimeMetricsNavigator) GetChild(name string) (MetricNode, error) {
 		return NewCPUClassesMetricsNode(node.runtime, node, fmt.Sprintf("%s/cpu_classes", node.path)), nil
 	case "sync":
 		return NewSyncMetricsNode(node.runtime, node, fmt.Sprintf("%s/sync", node.path)), nil
+	case "last_day":
+		return NewRuntimeLastDayNode(node.runtime.LastDay, node, fmt.Sprintf("%s/last_day", node.path)), nil
 	default:
 		return nil, fmt.Errorf("child not found: %s", name)
 	}
@@ -541,4 +546,64 @@ func (node *SyncMetricsNode) ShouldPauseRefresh() bool {
 
 func (node *SyncMetricsNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("sync metrics node has no children")
+}
+
+// RuntimeLastDayNode shows last 24h runtime statistics
+type RuntimeLastDayNode struct {
+	segmented *madmin.SegmentedRuntimeMetrics
+	parent    MetricNode
+	path      string
+}
+
+func NewRuntimeLastDayNode(segmented *madmin.SegmentedRuntimeMetrics, parent MetricNode, path string) *RuntimeLastDayNode {
+	return &RuntimeLastDayNode{segmented: segmented, parent: parent, path: path}
+}
+
+func (node *RuntimeLastDayNode) GetOpts() madmin.MetricsOptions    { return getNodeOpts(node) }
+func (node *RuntimeLastDayNode) GetPath() string                   { return node.path }
+func (node *RuntimeLastDayNode) GetParent() MetricNode             { return node.parent }
+func (node *RuntimeLastDayNode) GetMetricType() madmin.MetricType  { return madmin.MetricsRuntime }
+func (node *RuntimeLastDayNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
+func (node *RuntimeLastDayNode) ShouldPauseRefresh() bool          { return true }
+func (node *RuntimeLastDayNode) GetChildren() []MetricChild        { return nil }
+
+func (node *RuntimeLastDayNode) GetChild(_ string) (MetricNode, error) {
+	return nil, fmt.Errorf("no children")
+}
+
+func (node *RuntimeLastDayNode) GetLeafData() map[string]string {
+	if node.segmented == nil || len(node.segmented.Segments) == 0 {
+		return nil
+	}
+	data := make(map[string]string)
+	idx := 0
+	for i := len(node.segmented.Segments) - 1; i >= 0; i-- {
+		seg := node.segmented.Segments[i]
+		if seg.N == 0 {
+			continue
+		}
+		idx++
+		startTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
+		endTime := startTime.Add(time.Duration(node.segmented.Interval) * time.Second)
+		name := fmt.Sprintf("%02d: %s->%s", idx, startTime.Local().Format("15:04"), endTime.Local().Format("15:04"))
+
+		var parts []string
+		if v, ok := seg.UintMetrics["/sched/goroutines:goroutines"]; ok {
+			parts = append(parts, fmt.Sprintf("Goroutines: %d", v/uint64(seg.N)))
+		}
+		if v, ok := seg.UintMetrics["/gc/heap/allocs:bytes"]; ok {
+			parts = append(parts, fmt.Sprintf("HeapAlloc: %s", formatRuntimeBytes(v/uint64(seg.N))))
+		}
+		if v, ok := seg.UintMetrics["/memory/classes/heap/objects:bytes"]; ok {
+			parts = append(parts, fmt.Sprintf("HeapInuse: %s", formatRuntimeBytes(v/uint64(seg.N))))
+		}
+		if v, ok := seg.UintMetrics["/gc/cycles/total:gc-cycles"]; ok {
+			parts = append(parts, fmt.Sprintf("GC: %d", v/uint64(seg.N)))
+		}
+		if len(parts) == 0 {
+			parts = append(parts, fmt.Sprintf("%d metrics", len(seg.UintMetrics)+len(seg.FloatMetrics)))
+		}
+		data[name] = strings.Join(parts, ", ")
+	}
+	return data
 }

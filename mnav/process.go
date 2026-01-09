@@ -45,7 +45,7 @@ func (node *ProcessMetricsNode) ShouldPauseRefresh() bool {
 }
 
 func (node *ProcessMetricsNode) GetChildren() []MetricChild {
-	return []MetricChild{
+	children := []MetricChild{
 		{Name: "cpu", Description: "Process CPU usage and timing statistics"},
 		{Name: "memory", Description: "Process memory usage information"},
 		{Name: "io", Description: "Process I/O statistics"},
@@ -53,6 +53,8 @@ func (node *ProcessMetricsNode) GetChildren() []MetricChild {
 		{Name: "page_faults", Description: "Process page fault statistics"},
 		{Name: "mem_maps", Description: "Process memory mapping details"},
 	}
+	children = append(children, MetricChild{Name: "last_day", Description: "Last 24h process statistics"})
+	return children
 }
 
 func (node *ProcessMetricsNode) GetLeafData() map[string]string {
@@ -138,6 +140,8 @@ func (node *ProcessMetricsNode) GetChild(name string) (MetricNode, error) {
 		return NewProcessPageFaultsNode(&node.process.PageFaults, node, node.path+"/"+name), nil
 	case "mem_maps":
 		return NewProcessMemoryMapsNode(&node.process.MemMaps, node, node.path+"/"+name), nil
+	case "last_day":
+		return NewProcessLastDayNode(node.process.LastDay, node, node.path+"/last_day"), nil
 	default:
 		return nil, fmt.Errorf("unknown process metric section: %s", name)
 	}
@@ -633,4 +637,50 @@ func formatDuration(d time.Duration) string {
 	days := int(d.Hours() / 24)
 	hours := d.Hours() - float64(days*24)
 	return fmt.Sprintf("%d days, %.1f hours", days, hours)
+}
+
+// ProcessLastDayNode shows last 24h process statistics
+type ProcessLastDayNode struct {
+	segmented *madmin.SegmentedProcessMetrics
+	parent    MetricNode
+	path      string
+}
+
+func NewProcessLastDayNode(segmented *madmin.SegmentedProcessMetrics, parent MetricNode, path string) *ProcessLastDayNode {
+	return &ProcessLastDayNode{segmented: segmented, parent: parent, path: path}
+}
+
+func (node *ProcessLastDayNode) GetOpts() madmin.MetricsOptions    { return getNodeOpts(node) }
+func (node *ProcessLastDayNode) GetPath() string                   { return node.path }
+func (node *ProcessLastDayNode) GetParent() MetricNode             { return node.parent }
+func (node *ProcessLastDayNode) GetMetricType() madmin.MetricType  { return madmin.MetricsProcess }
+func (node *ProcessLastDayNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
+func (node *ProcessLastDayNode) ShouldPauseRefresh() bool          { return true }
+func (node *ProcessLastDayNode) GetChildren() []MetricChild        { return nil }
+
+func (node *ProcessLastDayNode) GetChild(_ string) (MetricNode, error) {
+	return nil, fmt.Errorf("no children")
+}
+
+func (node *ProcessLastDayNode) GetLeafData() map[string]string {
+	if node.segmented == nil || len(node.segmented.Segments) == 0 {
+		return nil
+	}
+	data := make(map[string]string)
+	idx := 0
+	for i := len(node.segmented.Segments) - 1; i >= 0; i-- {
+		seg := node.segmented.Segments[i]
+		if seg.N == 0 {
+			continue
+		}
+		idx++
+		startTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
+		endTime := startTime.Add(time.Duration(node.segmented.Interval) * time.Second)
+		name := fmt.Sprintf("%02d: %s->%s", idx, startTime.Local().Format("15:04"), endTime.Local().Format("15:04"))
+
+		avgCPU := seg.CPUPercent / float64(seg.N)
+		avgThreads := seg.NumThreads / int64(seg.N)
+		data[name] = fmt.Sprintf("CPU: %.1f%%, Threads: %d", avgCPU, avgThreads)
+	}
+	return data
 }

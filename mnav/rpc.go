@@ -841,14 +841,14 @@ func (node *RPCByDestinationNode) GetLeafData() map[string]string {
 	if totalDisconnected > 0 {
 		data["Total Disconnected"] = fmt.Sprintf("%d", totalDisconnected)
 	}
-	data["Total Outgoing Messages"] = humanize.Comma(totalOutgoing)
-	data["Total Incoming Messages"] = humanize.Comma(totalIncoming)
 
+	data["Total Outgoing"] = humanize.Comma(totalOutgoing) + " Messages"
+	data["Total Incoming"] = humanize.Comma(totalIncoming) + " Messages"
 	if totalOutBytes > 0 {
-		data["Total Outgoing Bytes"] = humanize.Bytes(uint64(totalOutBytes))
+		data["Total Outgoing"] += ". " + humanize.Bytes(uint64(totalOutBytes))
 	}
 	if totalInBytes > 0 {
-		data["Total Incoming Bytes"] = humanize.Bytes(uint64(totalInBytes))
+		data["Total Incoming"] = ". " + humanize.Bytes(uint64(totalInBytes))
 	}
 
 	return data

@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"sort"
 	"strconv"
+	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/minio/madmin-go/v4"
@@ -53,13 +54,17 @@ func (node *ScannerMetricsNode) GetChildren() []MetricChild {
 		return []MetricChild{}
 	}
 
-	return []MetricChild{
+	children := []MetricChild{
 		{Name: "lifetime_ops", Description: "Accumulated operations since server start"},
 		{Name: "lifetime_ilm", Description: "Accumulated ILM operations since server start"},
 		{Name: "last_minute", Description: "Last minute operation statistics"},
-		{Name: "active_paths", Description: "Currently active scan paths"},
-		{Name: "excessive_paths", Description: "Paths marked as having excessive entries"},
+		{Name: "last_day", Description: "Last 24h scanner statistics"},
 	}
+	children = append(children,
+		MetricChild{Name: "active_paths", Description: "Currently active scan paths"},
+		MetricChild{Name: "excessive_paths", Description: "Paths marked as having excessive entries"},
+	)
+	return children
 }
 
 func (node *ScannerMetricsNode) GetLeafData() map[string]string {
@@ -189,6 +194,8 @@ func (node *ScannerMetricsNode) GetChild(name string) (MetricNode, error) {
 		return NewScannerLifetimeILMNode(node.scanner.LifeTimeILM, node, fmt.Sprintf("%s/lifetime_ilm", node.path)), nil
 	case "last_minute":
 		return NewScannerLastMinuteNode(&node.scanner.LastMinute, node, fmt.Sprintf("%s/last_minute", node.path)), nil
+	case "last_day":
+		return NewScannerLastDayNode(node.scanner.LastDay, node, fmt.Sprintf("%s/last_day", node.path)), nil
 	case "active_paths":
 		return NewScannerPathsNode(node.scanner.ActivePaths, "active", node, fmt.Sprintf("%s/active_paths", node.path)), nil
 	case "excessive_paths":
@@ -368,8 +375,10 @@ func (node *ScannerLastMinuteNode) GetLeafData() map[string]string {
 		for _, actionType := range actionTypes {
 			action := node.lastMinute.Actions[actionType]
 			if action.Count > 0 {
-				avgTime := float64(action.AccTime) / float64(action.Count)
-				data[actionType] = fmt.Sprintf("%d operations, %.2f ms avg", action.Count, avgTime/1e6)
+				avgMs := float64(action.AccTime) / float64(action.Count) / 1e6
+				minMs := float64(action.MinTime) / 1e6
+				maxMs := float64(action.MaxTime) / 1e6
+				data[actionType] = fmt.Sprintf("%d ops, %.2f/%.2f/%.2fms (min/avg/max)", action.Count, minMs, avgMs, maxMs)
 				totalCount += action.Count
 				totalTime += action.AccTime
 			} else {
@@ -379,8 +388,8 @@ func (node *ScannerLastMinuteNode) GetLeafData() map[string]string {
 
 		// Add total if multiple action types
 		if len(actionTypes) > 1 && totalCount > 0 {
-			avgTime := float64(totalTime) / float64(totalCount)
-			data["Total Actions"] = fmt.Sprintf("%d operations, %.2f ms avg", totalCount, avgTime/1e6)
+			avgMs := float64(totalTime) / float64(totalCount) / 1e6
+			data["00:Total Actions"] = fmt.Sprintf("%d ops, %.2fms avg", totalCount, avgMs)
 		}
 	} else {
 		data["Actions"] = "No scanner actions in the last minute"
@@ -594,4 +603,250 @@ func (node *ScannerOpCountNode) ShouldPauseRefresh() bool {
 
 func (node *ScannerOpCountNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("operation count is a leaf node")
+}
+
+// ScannerLastDayNode handles navigation for scanner last day statistics
+type ScannerLastDayNode struct {
+	lastDay map[string]madmin.SegmentedActions
+	parent  MetricNode
+	path    string
+}
+
+func (node *ScannerLastDayNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
+func NewScannerLastDayNode(lastDay map[string]madmin.SegmentedActions, parent MetricNode, path string) *ScannerLastDayNode {
+	return &ScannerLastDayNode{lastDay: lastDay, parent: parent, path: path}
+}
+
+func (node *ScannerLastDayNode) GetChildren() []MetricChild {
+	children := []MetricChild{{Name: "Total", Description: "Aggregated totals across all time segments"}}
+
+	if len(node.lastDay) == 0 {
+		return children
+	}
+
+	refSeg := getLongestSegmented(node.lastDay)
+	if refSeg == nil || len(refSeg.Segments) == 0 {
+		return children
+	}
+
+	for i := len(refSeg.Segments) - 1; i >= 0; i-- {
+		segmentTime := refSeg.FirstTime.Add(time.Duration(i*refSeg.Interval) * time.Second)
+		endTime := segmentTime.Add(time.Duration(refSeg.Interval) * time.Second)
+
+		var totalOps uint64
+		activeTypes := 0
+		for _, seg := range node.lastDay {
+			if i < len(seg.Segments) && seg.Segments[i].Count > 0 {
+				totalOps += seg.Segments[i].Count
+				activeTypes++
+			}
+		}
+		if totalOps == 0 {
+			continue
+		}
+
+		day := "Today"
+		if segmentTime.Local().Day() != time.Now().Day() {
+			day = "Yesterday"
+		}
+
+		opsPerSec := float64(totalOps) / float64(refSeg.Interval)
+		name := segmentTime.UTC().Format("15:04Z")
+		children = append(children, MetricChild{
+			Name:        name,
+			Description: fmt.Sprintf("%s, ending %s, %d action types, %s ops/s", day, endTime.Local().Format("15:04"), activeTypes, formatOpsPerSec(opsPerSec)),
+		})
+	}
+	return children
+}
+
+func (node *ScannerLastDayNode) GetLeafData() map[string]string {
+	if len(node.lastDay) == 0 {
+		return map[string]string{"Status": "No last day statistics available"}
+	}
+
+	refSeg := getLongestSegmented(node.lastDay)
+	var totalSpanSecs int
+	if refSeg != nil {
+		totalSpanSecs = len(refSeg.Segments) * refSeg.Interval
+	}
+
+	data := map[string]string{}
+	var totalOps uint64
+	var totalTime float64
+
+	for actionType, segmented := range node.lastDay {
+		var opOps uint64
+		var opTime float64
+		for _, seg := range segmented.Segments {
+			opOps += seg.Count
+			opTime += float64(seg.AccTime)
+		}
+		if opOps > 0 {
+			avgMs := opTime / float64(opOps) / 1e6
+			if totalSpanSecs > 0 {
+				opsPerSec := float64(opOps) / float64(totalSpanSecs)
+				data[actionType] = fmt.Sprintf("%s ops, %s ops/s, %.2fms avg", humanize.Comma(int64(opOps)), formatOpsPerSec(opsPerSec), avgMs)
+			} else {
+				data[actionType] = fmt.Sprintf("%s ops, %.2fms avg", humanize.Comma(int64(opOps)), avgMs)
+			}
+		}
+		totalOps += opOps
+		totalTime += opTime
+	}
+
+	if totalOps > 0 {
+		data["01:Total Operations"] = humanize.Comma(int64(totalOps))
+		data["02:Avg Time"] = fmt.Sprintf("%.2fms", totalTime/float64(totalOps)/1e6)
+	}
+
+	return data
+}
+
+func (node *ScannerLastDayNode) GetMetricType() madmin.MetricType   { return madmin.MetricsScanner }
+func (node *ScannerLastDayNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
+func (node *ScannerLastDayNode) GetParent() MetricNode              { return node.parent }
+func (node *ScannerLastDayNode) GetPath() string                    { return node.path }
+func (node *ScannerLastDayNode) ShouldPauseRefresh() bool           { return true }
+
+func (node *ScannerLastDayNode) GetChild(name string) (MetricNode, error) {
+	if name == "Total" {
+		return NewScannerLastDayTotalNode(node.lastDay, node, fmt.Sprintf("%s/Total", node.path)), nil
+	}
+
+	refSeg := getLongestSegmented(node.lastDay)
+	if refSeg == nil {
+		return nil, fmt.Errorf("segment not found: %s", name)
+	}
+	for i := range refSeg.Segments {
+		segmentTime := refSeg.FirstTime.Add(time.Duration(i*refSeg.Interval) * time.Second)
+		if segmentTime.UTC().Format("15:04Z") == name {
+			return NewScannerLastDaySegmentNode(node.lastDay, i, segmentTime, node, fmt.Sprintf("%s/%s", node.path, name)), nil
+		}
+	}
+	return nil, fmt.Errorf("segment not found: %s", name)
+}
+
+// ScannerLastDayTotalNode shows aggregated totals
+type ScannerLastDayTotalNode struct {
+	lastDay map[string]madmin.SegmentedActions
+	parent  MetricNode
+	path    string
+}
+
+func (node *ScannerLastDayTotalNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
+func NewScannerLastDayTotalNode(lastDay map[string]madmin.SegmentedActions, parent MetricNode, path string) *ScannerLastDayTotalNode {
+	return &ScannerLastDayTotalNode{lastDay: lastDay, parent: parent, path: path}
+}
+
+func (node *ScannerLastDayTotalNode) GetChildren() []MetricChild { return []MetricChild{} }
+
+func (node *ScannerLastDayTotalNode) GetLeafData() map[string]string {
+	data := map[string]string{}
+	var grandTotalOps uint64
+
+	for actionType, segmented := range node.lastDay {
+		var opOps uint64
+		var opTime float64
+		for _, seg := range segmented.Segments {
+			opOps += seg.Count
+			opTime += float64(seg.AccTime)
+		}
+		if opOps > 0 {
+			avgMs := opTime / float64(opOps) / 1e6
+			data[actionType] = fmt.Sprintf("%s ops, %.2fms avg", humanize.Comma(int64(opOps)), avgMs)
+		}
+		grandTotalOps += opOps
+	}
+
+	if grandTotalOps > 0 {
+		data["00:Total"] = fmt.Sprintf("%s operations in last 24h", humanize.Comma(int64(grandTotalOps)))
+	}
+
+	return data
+}
+
+func (node *ScannerLastDayTotalNode) GetMetricType() madmin.MetricType   { return madmin.MetricsScanner }
+func (node *ScannerLastDayTotalNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
+func (node *ScannerLastDayTotalNode) GetParent() MetricNode              { return node.parent }
+func (node *ScannerLastDayTotalNode) GetPath() string                    { return node.path }
+func (node *ScannerLastDayTotalNode) ShouldPauseRefresh() bool           { return true }
+
+func (node *ScannerLastDayTotalNode) GetChild(_ string) (MetricNode, error) {
+	return nil, fmt.Errorf("total node has no children")
+}
+
+// ScannerLastDaySegmentNode shows data for a single time segment
+type ScannerLastDaySegmentNode struct {
+	lastDay     map[string]madmin.SegmentedActions
+	segmentIdx  int
+	segmentTime time.Time
+	parent      MetricNode
+	path        string
+}
+
+func (node *ScannerLastDaySegmentNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
+func NewScannerLastDaySegmentNode(lastDay map[string]madmin.SegmentedActions, segmentIdx int, segmentTime time.Time, parent MetricNode, path string) *ScannerLastDaySegmentNode {
+	return &ScannerLastDaySegmentNode{lastDay: lastDay, segmentIdx: segmentIdx, segmentTime: segmentTime, parent: parent, path: path}
+}
+
+func (node *ScannerLastDaySegmentNode) GetChildren() []MetricChild { return []MetricChild{} }
+
+func (node *ScannerLastDaySegmentNode) GetLeafData() map[string]string {
+	data := map[string]string{
+		"00:Local Time": node.segmentTime.Local().Format("2006-01-02 15:04:05"),
+	}
+
+	refSeg := getLongestSegmented(node.lastDay)
+	var interval int
+	if refSeg != nil {
+		interval = refSeg.Interval
+	}
+
+	var totalOps uint64
+	var totalTime float64
+
+	for actionType, segmented := range node.lastDay {
+		if node.segmentIdx >= len(segmented.Segments) {
+			continue
+		}
+		seg := segmented.Segments[node.segmentIdx]
+		if seg.Count > 0 {
+			avgMs := float64(seg.AccTime) / float64(seg.Count) / 1e6
+			minMs := float64(seg.MinTime) / 1e6
+			maxMs := float64(seg.MaxTime) / 1e6
+			data[actionType] = fmt.Sprintf("%s ops, %.2f/%.2f/%.2fms (min/avg/max)", humanize.Comma(int64(seg.Count)), minMs, avgMs, maxMs)
+			totalOps += seg.Count
+			totalTime += float64(seg.AccTime)
+		}
+	}
+
+	if totalOps > 0 {
+		data["01:Total Ops"] = humanize.Comma(int64(totalOps))
+		if interval > 0 {
+			data["02:Ops/s"] = formatOpsPerSec(float64(totalOps) / float64(interval))
+		}
+		data["03:Avg Op Time"] = fmt.Sprintf("%.2fms", totalTime/float64(totalOps)/1e6)
+	}
+
+	return data
+}
+
+func (node *ScannerLastDaySegmentNode) GetMetricType() madmin.MetricType   { return madmin.MetricsScanner }
+func (node *ScannerLastDaySegmentNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
+func (node *ScannerLastDaySegmentNode) GetParent() MetricNode              { return node.parent }
+func (node *ScannerLastDaySegmentNode) GetPath() string                    { return node.path }
+func (node *ScannerLastDaySegmentNode) ShouldPauseRefresh() bool           { return true }
+
+func (node *ScannerLastDaySegmentNode) GetChild(_ string) (MetricNode, error) {
+	return nil, fmt.Errorf("segment node has no children")
 }

@@ -515,6 +515,7 @@ func (s *ScannerMetrics) Merge(other *ScannerMetrics) {
 	for k, v := range other.LastDay {
 		total := s.LastDay[k]
 		total.Add(&v)
+		s.LastDay[k] = total
 	}
 
 	// ILM
@@ -931,6 +932,18 @@ func (o *OSMetrics) Merge(other *OSMetrics) {
 			o.Sensors[key] = existing
 		}
 	}
+
+	// Merge LastDay statistics
+	if len(other.LastDay) > 0 {
+		if o.LastDay == nil {
+			o.LastDay = make(map[string]SegmentedActions, len(other.LastDay))
+		}
+		for k, v := range other.LastDay {
+			total := o.LastDay[k]
+			total.Add(&v)
+			o.LastDay[k] = total
+		}
+	}
 }
 
 // BatchJobMetrics contains metrics for batch operations
@@ -1166,6 +1179,8 @@ type MemMetrics struct {
 	Nodes int `json:"nodes"` // Note: Will be zero for older servers.
 
 	Info MemInfo `json:"memInfo"`
+
+	LastDay *SegmentedMemMetrics `json:"lastDay,omitempty"`
 }
 
 // Merge other into 'm'.
@@ -1179,6 +1194,12 @@ func (m *MemMetrics) Merge(other *MemMetrics) {
 		m.CollectedAt = other.CollectedAt
 	}
 	m.Info.Merge(&other.Info)
+	if other.LastDay != nil {
+		if m.LastDay == nil {
+			m.LastDay = new(SegmentedMemMetrics)
+		}
+		m.LastDay.Add(other.LastDay)
+	}
 }
 
 // MemInfo contains system's RAM and swap information.
@@ -1220,6 +1241,30 @@ func (m *MemInfo) Merge(other *MemInfo) {
 	m.SwapSpaceFree += other.SwapSpaceFree
 	m.Limit += other.Limit
 }
+
+// MemSegment contains compact memory metrics for time-series segmentation.
+type MemSegment struct {
+	Used      uint64 `json:"used,omitempty"`
+	Free      uint64 `json:"free,omitempty"`
+	Available uint64 `json:"available,omitempty"`
+	Limit     uint64 `json:"limit,omitempty"`
+	N         int    `json:"n"`
+}
+
+// Add other to m for Segmenter interface.
+func (m *MemSegment) Add(other *MemSegment) {
+	if other == nil {
+		return
+	}
+	m.Used += other.Used
+	m.Free += other.Free
+	m.Available += other.Available
+	m.Limit += other.Limit
+	m.N += other.N
+}
+
+// SegmentedMemMetrics are time-segmented memory metrics.
+type SegmentedMemMetrics = Segmented[MemSegment, *MemSegment]
 
 //msgp:replace cpu.TimesStat with:cpuTimesStat
 //msgp:replace load.AvgStat with:loadAvgStat
@@ -1570,6 +1615,8 @@ type RuntimeMetrics struct {
 
 	// N tracks the number of merged entries.
 	N int `json:"n"`
+
+	LastDay *SegmentedRuntimeMetrics `json:"lastDay,omitempty"`
 }
 
 // Merge other into 'm'.
@@ -1607,7 +1654,43 @@ func (m *RuntimeMetrics) Merge(other *RuntimeMetrics) {
 		}
 	}
 	m.N += other.N
+	if other.LastDay != nil {
+		if m.LastDay == nil {
+			m.LastDay = new(SegmentedRuntimeMetrics)
+		}
+		m.LastDay.Add(other.LastDay)
+	}
 }
+
+// RuntimeSegment contains compact runtime metrics for time-series segmentation.
+type RuntimeSegment struct {
+	UintMetrics  map[string]uint64  `json:"uintMetrics,omitempty"`
+	FloatMetrics map[string]float64 `json:"floatMetrics,omitempty"`
+	N            int                `json:"n"`
+}
+
+// Add other to r for Segmenter interface.
+func (r *RuntimeSegment) Add(other *RuntimeSegment) {
+	if other == nil {
+		return
+	}
+	if r.UintMetrics == nil && len(other.UintMetrics) > 0 {
+		r.UintMetrics = make(map[string]uint64, len(other.UintMetrics))
+	}
+	if r.FloatMetrics == nil && len(other.FloatMetrics) > 0 {
+		r.FloatMetrics = make(map[string]float64, len(other.FloatMetrics))
+	}
+	for k, v := range other.UintMetrics {
+		r.UintMetrics[k] += v
+	}
+	for k, v := range other.FloatMetrics {
+		r.FloatMetrics[k] += v
+	}
+	r.N += other.N
+}
+
+// SegmentedRuntimeMetrics are time-segmented runtime metrics.
+type SegmentedRuntimeMetrics = Segmented[RuntimeSegment, *RuntimeSegment]
 
 // APIStats contains accumulated statistics for the API on a number of nodes.
 type APIStats struct {
@@ -2157,6 +2240,8 @@ type ProcessMetrics struct {
 
 	// Aggregated memory maps (platform-specific)
 	MemMaps ProcessMemoryMaps `json:"mem_maps,omitempty"`
+
+	LastDay *SegmentedProcessMetrics `json:"lastDay,omitempty"`
 }
 
 // ProcessMemoryInfo represents aggregated memory information
@@ -2306,4 +2391,42 @@ func (m *ProcessMetrics) Merge(other *ProcessMetrics) {
 	m.MemMaps.TotalAnonymous += other.MemMaps.TotalAnonymous
 	m.MemMaps.TotalSwap += other.MemMaps.TotalSwap
 	m.MemMaps.Count += other.MemMaps.Count
+	if other.LastDay != nil {
+		if m.LastDay == nil {
+			m.LastDay = new(SegmentedProcessMetrics)
+		}
+		m.LastDay.Add(other.LastDay)
+	}
 }
+
+// ProcessSegment contains compact process metrics for time-series segmentation.
+type ProcessSegment struct {
+	CPUPercent     float64 `json:"cpu_percent,omitempty"`
+	NumConnections int     `json:"num_connections,omitempty"`
+	NumFDs         int64   `json:"num_fds,omitempty"`
+	NumThreads     int64   `json:"num_threads,omitempty"`
+	ReadCount      uint64  `json:"read_count,omitempty"`
+	WriteCount     uint64  `json:"write_count,omitempty"`
+	ReadBytes      uint64  `json:"read_bytes,omitempty"`
+	WriteBytes     uint64  `json:"write_bytes,omitempty"`
+	N              int     `json:"n"`
+}
+
+// Add other to p for Segmenter interface.
+func (p *ProcessSegment) Add(other *ProcessSegment) {
+	if other == nil {
+		return
+	}
+	p.CPUPercent += other.CPUPercent
+	p.NumConnections += other.NumConnections
+	p.NumFDs += other.NumFDs
+	p.NumThreads += other.NumThreads
+	p.ReadCount += other.ReadCount
+	p.WriteCount += other.WriteCount
+	p.ReadBytes += other.ReadBytes
+	p.WriteBytes += other.WriteBytes
+	p.N += other.N
+}
+
+// SegmentedProcessMetrics are time-segmented process metrics.
+type SegmentedProcessMetrics = Segmented[ProcessSegment, *ProcessSegment]
