@@ -57,14 +57,15 @@ func (node *RuntimeMetricsNavigator) GetChildren() []MetricChild {
 	if node.runtime == nil {
 		return []MetricChild{}
 	}
-	children := []MetricChild{
-		{Name: "gc", Description: "Garbage collection metrics and heap statistics"},
-		{Name: "memory", Description: "Memory management and allocation metrics"},
-		{Name: "scheduler", Description: "Go scheduler and goroutine metrics"},
-		{Name: "cpu_classes", Description: "CPU time breakdown by runtime activities"},
-		{Name: "sync", Description: "Synchronization and locking metrics"},
-	}
-	children = append(children, MetricChild{Name: "last_day", Description: "Last 24h runtime statistics"})
+	children := make([]MetricChild, 0, 6)
+	children = append(children,
+		MetricChild{Name: "gc", Description: "Garbage collection metrics and heap statistics"},
+		MetricChild{Name: "memory", Description: "Memory management and allocation metrics"},
+		MetricChild{Name: "scheduler", Description: "Go scheduler and goroutine metrics"},
+		MetricChild{Name: "cpu_classes", Description: "CPU time breakdown by runtime activities"},
+		MetricChild{Name: "sync", Description: "Synchronization and locking metrics"},
+		MetricChild{Name: "last_day", Description: "Last 24h runtime statistics"},
+	)
 	return children
 }
 

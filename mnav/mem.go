@@ -60,13 +60,14 @@ func (node *MemMetricsNavigator) GetChildren() []MetricChild {
 	if node.mem == nil {
 		return []MetricChild{}
 	}
-	children := []MetricChild{
-		{Name: "usage", Description: "Core memory usage statistics and utilization"},
-		{Name: "system", Description: "System memory details (cache, buffers, shared)"},
-		{Name: "swap", Description: "Swap space information and utilization"},
-		{Name: "limits", Description: "Memory limits and cgroup configuration"},
-	}
-	children = append(children, MetricChild{Name: "last_day", Description: "Last 24h memory statistics"})
+	children := make([]MetricChild, 0, 5)
+	children = append(children,
+		MetricChild{Name: "usage", Description: "Core memory usage statistics and utilization"},
+		MetricChild{Name: "system", Description: "System memory details (cache, buffers, shared)"},
+		MetricChild{Name: "swap", Description: "Swap space information and utilization"},
+		MetricChild{Name: "limits", Description: "Memory limits and cgroup configuration"},
+		MetricChild{Name: "last_day", Description: "Last 24h memory statistics"},
+	)
 	return children
 }
 

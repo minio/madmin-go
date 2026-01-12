@@ -54,13 +54,12 @@ func (node *ScannerMetricsNode) GetChildren() []MetricChild {
 		return []MetricChild{}
 	}
 
-	children := []MetricChild{
-		{Name: "lifetime_ops", Description: "Accumulated operations since server start"},
-		{Name: "lifetime_ilm", Description: "Accumulated ILM operations since server start"},
-		{Name: "last_minute", Description: "Last minute operation statistics"},
-		{Name: "last_day", Description: "Last 24h scanner statistics"},
-	}
+	children := make([]MetricChild, 0, 6)
 	children = append(children,
+		MetricChild{Name: "lifetime_ops", Description: "Accumulated operations since server start"},
+		MetricChild{Name: "lifetime_ilm", Description: "Accumulated ILM operations since server start"},
+		MetricChild{Name: "last_minute", Description: "Last minute operation statistics"},
+		MetricChild{Name: "last_day", Description: "Last 24h scanner statistics"},
 		MetricChild{Name: "active_paths", Description: "Currently active scan paths"},
 		MetricChild{Name: "excessive_paths", Description: "Paths marked as having excessive entries"},
 	)
@@ -366,7 +365,7 @@ func (node *ScannerLastMinuteNode) GetLeafData() map[string]string {
 	// Add action statistics directly
 	if len(node.lastMinute.Actions) > 0 {
 		var totalCount, totalTime uint64
-		var actionTypes []string
+		actionTypes := make([]string, 0, len(node.lastMinute.Actions))
 		for actionType := range node.lastMinute.Actions {
 			actionTypes = append(actionTypes, actionType)
 		}

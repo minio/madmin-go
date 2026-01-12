@@ -649,8 +649,7 @@ func (node *RPCConnectionsNode) GetChildren() []MetricChild {
 	if node.rpc == nil {
 		return []MetricChild{}
 	}
-	var children []MetricChild
-
+	children := make([]MetricChild, 0, 1)
 	// Connection summary
 	children = append(children, MetricChild{
 		Name:        "summary",

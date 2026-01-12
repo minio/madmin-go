@@ -45,15 +45,16 @@ func (node *ProcessMetricsNode) ShouldPauseRefresh() bool {
 }
 
 func (node *ProcessMetricsNode) GetChildren() []MetricChild {
-	children := []MetricChild{
-		{Name: "cpu", Description: "Process CPU usage and timing statistics"},
-		{Name: "memory", Description: "Process memory usage information"},
-		{Name: "io", Description: "Process I/O statistics"},
-		{Name: "context_switches", Description: "Process context switch statistics"},
-		{Name: "page_faults", Description: "Process page fault statistics"},
-		{Name: "mem_maps", Description: "Process memory mapping details"},
-	}
-	children = append(children, MetricChild{Name: "last_day", Description: "Last 24h process statistics"})
+	children := make([]MetricChild, 0, 7)
+	children = append(children,
+		MetricChild{Name: "cpu", Description: "Process CPU usage and timing statistics"},
+		MetricChild{Name: "memory", Description: "Process memory usage information"},
+		MetricChild{Name: "io", Description: "Process I/O statistics"},
+		MetricChild{Name: "context_switches", Description: "Process context switch statistics"},
+		MetricChild{Name: "page_faults", Description: "Process page fault statistics"},
+		MetricChild{Name: "mem_maps", Description: "Process memory mapping details"},
+		MetricChild{Name: "last_day", Description: "Last 24h process statistics"},
+	)
 	return children
 }
 
