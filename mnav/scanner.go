@@ -772,11 +772,13 @@ func (node *ScannerLastDayTotalNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *ScannerLastDayTotalNode) GetMetricType() madmin.MetricType   { return madmin.MetricsScanner }
-func (node *ScannerLastDayTotalNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
-func (node *ScannerLastDayTotalNode) GetParent() MetricNode              { return node.parent }
-func (node *ScannerLastDayTotalNode) GetPath() string                    { return node.path }
-func (node *ScannerLastDayTotalNode) ShouldPauseRefresh() bool           { return true }
+func (node *ScannerLastDayTotalNode) GetMetricType() madmin.MetricType { return madmin.MetricsScanner }
+func (node *ScannerLastDayTotalNode) GetMetricFlags() madmin.MetricFlags {
+	return madmin.MetricsDayStats
+}
+func (node *ScannerLastDayTotalNode) GetParent() MetricNode    { return node.parent }
+func (node *ScannerLastDayTotalNode) GetPath() string          { return node.path }
+func (node *ScannerLastDayTotalNode) ShouldPauseRefresh() bool { return true }
 
 func (node *ScannerLastDayTotalNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("total node has no children")
@@ -841,11 +843,16 @@ func (node *ScannerLastDaySegmentNode) GetLeafData() map[string]string {
 	return data
 }
 
-func (node *ScannerLastDaySegmentNode) GetMetricType() madmin.MetricType   { return madmin.MetricsScanner }
-func (node *ScannerLastDaySegmentNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
-func (node *ScannerLastDaySegmentNode) GetParent() MetricNode              { return node.parent }
-func (node *ScannerLastDaySegmentNode) GetPath() string                    { return node.path }
-func (node *ScannerLastDaySegmentNode) ShouldPauseRefresh() bool           { return true }
+func (node *ScannerLastDaySegmentNode) GetMetricType() madmin.MetricType {
+	return madmin.MetricsScanner
+}
+
+func (node *ScannerLastDaySegmentNode) GetMetricFlags() madmin.MetricFlags {
+	return madmin.MetricsDayStats
+}
+func (node *ScannerLastDaySegmentNode) GetParent() MetricNode    { return node.parent }
+func (node *ScannerLastDaySegmentNode) GetPath() string          { return node.path }
+func (node *ScannerLastDaySegmentNode) ShouldPauseRefresh() bool { return true }
 
 func (node *ScannerLastDaySegmentNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("segment node has no children")

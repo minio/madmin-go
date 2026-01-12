@@ -639,7 +639,7 @@ func formatDuration(d time.Duration) string {
 	return fmt.Sprintf("%d days, %.1f hours", days, hours)
 }
 
-// ProcessLastDayNode shows last 24h process statistics
+// ProcessLastDayNode shows last 24h process statistics with time segment navigation
 type ProcessLastDayNode struct {
 	segmented *madmin.SegmentedProcessMetrics
 	parent    MetricNode
@@ -650,37 +650,270 @@ func NewProcessLastDayNode(segmented *madmin.SegmentedProcessMetrics, parent Met
 	return &ProcessLastDayNode{segmented: segmented, parent: parent, path: path}
 }
 
-func (node *ProcessLastDayNode) GetOpts() madmin.MetricsOptions    { return getNodeOpts(node) }
-func (node *ProcessLastDayNode) GetPath() string                   { return node.path }
-func (node *ProcessLastDayNode) GetParent() MetricNode             { return node.parent }
-func (node *ProcessLastDayNode) GetMetricType() madmin.MetricType  { return madmin.MetricsProcess }
+func (node *ProcessLastDayNode) GetOpts() madmin.MetricsOptions     { return getNodeOpts(node) }
+func (node *ProcessLastDayNode) GetPath() string                    { return node.path }
+func (node *ProcessLastDayNode) GetParent() MetricNode              { return node.parent }
+func (node *ProcessLastDayNode) GetMetricType() madmin.MetricType   { return madmin.MetricsProcess }
 func (node *ProcessLastDayNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
-func (node *ProcessLastDayNode) ShouldPauseRefresh() bool          { return true }
-func (node *ProcessLastDayNode) GetChildren() []MetricChild        { return nil }
+func (node *ProcessLastDayNode) ShouldPauseRefresh() bool           { return true }
+func (node *ProcessLastDayNode) GetLeafData() map[string]string     { return nil }
 
-func (node *ProcessLastDayNode) GetChild(_ string) (MetricNode, error) {
-	return nil, fmt.Errorf("no children")
-}
-
-func (node *ProcessLastDayNode) GetLeafData() map[string]string {
+func (node *ProcessLastDayNode) GetChildren() []MetricChild {
 	if node.segmented == nil || len(node.segmented.Segments) == 0 {
 		return nil
 	}
-	data := make(map[string]string)
-	idx := 0
+
+	var children []MetricChild
+	children = append(children, MetricChild{
+		Name:        "Total",
+		Description: "Aggregated process statistics across all time segments",
+	})
+
 	for i := len(node.segmented.Segments) - 1; i >= 0; i-- {
 		seg := node.segmented.Segments[i]
 		if seg.N == 0 {
 			continue
 		}
-		idx++
-		startTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
-		endTime := startTime.Add(time.Duration(node.segmented.Interval) * time.Second)
-		name := fmt.Sprintf("%02d: %s->%s", idx, startTime.Local().Format("15:04"), endTime.Local().Format("15:04"))
+
+		segmentTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
+		endTime := segmentTime.Add(time.Duration(node.segmented.Interval) * time.Second)
+		segmentName := endTime.UTC().Format("15:04Z")
 
 		avgCPU := seg.CPUPercent / float64(seg.N)
-		avgThreads := seg.NumThreads / int64(seg.N)
-		data[name] = fmt.Sprintf("CPU: %.1f%%, Threads: %d", avgCPU, avgThreads)
+		avgRSS := seg.RSS / uint64(seg.N)
+		throughput := seg.ReadBytes + seg.WriteBytes
+
+		day := "Today "
+		if segmentTime.Local().Day() != time.Now().Day() {
+			day = "Yesterday "
+		}
+
+		children = append(children, MetricChild{
+			Name: segmentName,
+			Description: fmt.Sprintf("%s%s -> %s: CPU %.1f%%, RSS %s, I/O %s",
+				day,
+				segmentTime.Local().Format("15:04"),
+				endTime.Local().Format("15:04"),
+				avgCPU,
+				humanize.Bytes(avgRSS),
+				humanize.Bytes(throughput)),
+		})
 	}
+	return children
+}
+
+func (node *ProcessLastDayNode) GetChild(name string) (MetricNode, error) {
+	if node.segmented == nil {
+		return nil, fmt.Errorf("no segmented data")
+	}
+
+	if name == "Total" {
+		return &ProcessSegmentTotalNode{
+			segmented: node.segmented,
+			parent:    node,
+			path:      node.path + "/Total",
+		}, nil
+	}
+
+	for i := len(node.segmented.Segments) - 1; i >= 0; i-- {
+		segmentTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
+		endTime := segmentTime.Add(time.Duration(node.segmented.Interval) * time.Second)
+		if endTime.UTC().Format("15:04Z") == name {
+			return &ProcessTimeSegmentNode{
+				segment:     node.segmented.Segments[i],
+				segmentTime: segmentTime,
+				interval:    node.segmented.Interval,
+				parent:      node,
+				path:        node.path + "/" + name,
+			}, nil
+		}
+	}
+
+	return nil, fmt.Errorf("time segment not found: %s", name)
+}
+
+// ProcessSegmentTotalNode shows aggregated process statistics across all time segments
+type ProcessSegmentTotalNode struct {
+	segmented *madmin.SegmentedProcessMetrics
+	parent    MetricNode
+	path      string
+}
+
+func (node *ProcessSegmentTotalNode) GetOpts() madmin.MetricsOptions     { return getNodeOpts(node) }
+func (node *ProcessSegmentTotalNode) GetPath() string                    { return node.path }
+func (node *ProcessSegmentTotalNode) GetParent() MetricNode              { return node.parent }
+func (node *ProcessSegmentTotalNode) GetMetricType() madmin.MetricType   { return madmin.MetricsProcess }
+func (node *ProcessSegmentTotalNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *ProcessSegmentTotalNode) ShouldPauseRefresh() bool           { return false }
+func (node *ProcessSegmentTotalNode) GetChildren() []MetricChild         { return nil }
+
+func (node *ProcessSegmentTotalNode) GetChild(_ string) (MetricNode, error) {
+	return nil, fmt.Errorf("total is a leaf node")
+}
+
+func (node *ProcessSegmentTotalNode) GetLeafData() map[string]string {
+	if node.segmented == nil || len(node.segmented.Segments) == 0 {
+		return nil
+	}
+
+	total := node.segmented.Total()
+	if total.N == 0 {
+		return map[string]string{"Status": "No data collected"}
+	}
+
+	data := make(map[string]string)
+	n := float64(total.N)
+
+	// Time range
+	firstTime := node.segmented.FirstTime
+	lastSegmentTime := node.segmented.FirstTime.Add(time.Duration((len(node.segmented.Segments)-1)*node.segmented.Interval) * time.Second)
+	endTime := lastSegmentTime.Add(time.Duration(node.segmented.Interval) * time.Second)
+	data["00:Time Range"] = fmt.Sprintf("%s -> %s", firstTime.Local().Format("15:04"), endTime.Local().Format("15:04"))
+
+	// CPU
+	wallTime := float64(len(node.segmented.Segments) * node.segmented.Interval)
+	data["01:CPU Usage"] = fmt.Sprintf("%.2f%% average", total.CPUPercent/n)
+	if total.CPUUser > 0 {
+		data["01a:CPU User"] = fmt.Sprintf("%.1fs (%.1f%% wall)", total.CPUUser, (total.CPUUser/wallTime)*100)
+	}
+	if total.CPUSystem > 0 {
+		data["01b:CPU System"] = fmt.Sprintf("%.1fs (%.1f%% wall)", total.CPUSystem, (total.CPUSystem/wallTime)*100)
+	}
+	if total.CPUIowait > 0 {
+		data["01c:CPU IOwait"] = fmt.Sprintf("%.1fs (%.1f%% wall)", total.CPUIowait, (total.CPUIowait/wallTime)*100)
+	}
+	if total.CPUSteal > 0 {
+		data["01d:CPU Steal"] = fmt.Sprintf("%.1fs (%.1f%% wall)", total.CPUSteal, (total.CPUSteal/wallTime)*100)
+	}
+
+	// Memory
+	data["02:RSS"] = humanize.Bytes(total.RSS/uint64(total.N)) + " average"
+	data["03:VMS"] = humanize.Bytes(total.VMS/uint64(total.N)) + " average"
+
+	// Threads/FDs/Connections
+	data["04:Threads"] = humanize.Comma(total.NumThreads/int64(total.N)) + " average"
+	data["05:FDs"] = humanize.Comma(total.NumFDs/int64(total.N)) + " average"
+	data["06:Connections"] = humanize.Comma(int64(total.NumConnections/total.N)) + " average"
+
+	// I/O totals
+	data["07:Read Ops"] = humanize.Comma(int64(total.ReadCount))
+	data["08:Write Ops"] = humanize.Comma(int64(total.WriteCount))
+	data["09:Bytes Read"] = humanize.Bytes(total.ReadBytes)
+	data["10:Bytes Written"] = humanize.Bytes(total.WriteBytes)
+
+	// Context switches
+	data["11:Voln Ctx Sw"] = humanize.Comma(total.CtxSwitchesVoluntary)
+	data["12:Involn Ctx Sw"] = humanize.Comma(total.CtxSwitchesInvoluntary)
+
+	// Page faults
+	data["13:Minor Faults"] = humanize.Comma(int64(total.MinorFaults))
+	data["14:Major Faults"] = humanize.Comma(int64(total.MajorFaults))
+
+	// CPU time breakdown (show as percentages of total CPU time)
+	totalCPUTime := total.CPUUser + total.CPUSystem + total.CPUIdle + total.CPUNice +
+		total.CPUIowait + total.CPUIrq + total.CPUSoftirq + total.CPUSteal +
+		total.CPUGuest + total.CPUGuestNice
+	if totalCPUTime > 0 {
+		data["15:CPU User"] = fmt.Sprintf("%.1f%% of cpu usage", (total.CPUUser/totalCPUTime)*100)
+		data["16:CPU System"] = fmt.Sprintf("%.1f%% of cpu usage", (total.CPUSystem/totalCPUTime)*100)
+		if total.CPUIowait > 0 {
+			data["17:CPU IOwait"] = fmt.Sprintf("%.1f%% of cpu usage", (total.CPUIowait/totalCPUTime)*100)
+		}
+		if total.CPUSteal > 0 {
+			data["18:CPU Steal"] = fmt.Sprintf("%.1f%% of cpu usage", (total.CPUSteal/totalCPUTime)*100)
+		}
+	}
+
+	return data
+}
+
+// ProcessTimeSegmentNode shows process statistics for a specific time segment
+type ProcessTimeSegmentNode struct {
+	segment     madmin.ProcessSegment
+	segmentTime time.Time
+	interval    int
+	parent      MetricNode
+	path        string
+}
+
+func (node *ProcessTimeSegmentNode) GetOpts() madmin.MetricsOptions     { return getNodeOpts(node) }
+func (node *ProcessTimeSegmentNode) GetPath() string                    { return node.path }
+func (node *ProcessTimeSegmentNode) GetParent() MetricNode              { return node.parent }
+func (node *ProcessTimeSegmentNode) GetMetricType() madmin.MetricType   { return madmin.MetricsProcess }
+func (node *ProcessTimeSegmentNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *ProcessTimeSegmentNode) ShouldPauseRefresh() bool           { return false }
+func (node *ProcessTimeSegmentNode) GetChildren() []MetricChild         { return nil }
+
+func (node *ProcessTimeSegmentNode) GetChild(_ string) (MetricNode, error) {
+	return nil, fmt.Errorf("time segment is a leaf node")
+}
+
+func (node *ProcessTimeSegmentNode) GetLeafData() map[string]string {
+	seg := node.segment
+	if seg.N == 0 {
+		return map[string]string{"Status": "No data for this segment"}
+	}
+
+	data := make(map[string]string)
+	n := float64(seg.N)
+
+	// Time range
+	endTime := node.segmentTime.Add(time.Duration(node.interval) * time.Second)
+	data["00:Time Range"] = fmt.Sprintf("%s -> %s", node.segmentTime.Local().Format("15:04"), endTime.Local().Format("15:04"))
+
+	// CPU
+	wallTime := float64(node.interval)
+	data["01:CPU Usage"] = fmt.Sprintf("%.2f%% average", seg.CPUPercent/n)
+	if seg.CPUUser > 0 {
+		data["01a:CPU User"] = fmt.Sprintf("%.1fs (%.1f%% wall)", seg.CPUUser, (seg.CPUUser/wallTime)*100)
+	}
+	if seg.CPUSystem > 0 {
+		data["01b:CPU System"] = fmt.Sprintf("%.1fs (%.1f%% wall)", seg.CPUSystem, (seg.CPUSystem/wallTime)*100)
+	}
+	if seg.CPUIowait > 0 {
+		data["01c:CPU IOwait"] = fmt.Sprintf("%.1fs (%.1f%% wall)", seg.CPUIowait, (seg.CPUIowait/wallTime)*100)
+	}
+	if seg.CPUSteal > 0 {
+		data["01d:CPU Steal"] = fmt.Sprintf("%.1fs (%.1f%% wall)", seg.CPUSteal, (seg.CPUSteal/wallTime)*100)
+	}
+
+	// Memory
+	data["02:RSS"] = humanize.Bytes(seg.RSS/uint64(seg.N)) + " average"
+	data["03:VMS"] = humanize.Bytes(seg.VMS/uint64(seg.N)) + " average"
+
+	// Threads/FDs/Connections
+	data["04:Threads"] = humanize.Comma(seg.NumThreads/int64(seg.N)) + " average"
+	data["05:FDs"] = humanize.Comma(seg.NumFDs/int64(seg.N)) + " average"
+	data["06:Connections"] = humanize.Comma(int64(seg.NumConnections/seg.N)) + " average"
+
+	// I/O
+	data["07:Read Ops"] = humanize.Comma(int64(seg.ReadCount))
+	data["08:Write Ops"] = humanize.Comma(int64(seg.WriteCount))
+	data["09:Bytes Read"] = humanize.Bytes(seg.ReadBytes)
+	data["10:Bytes Written"] = humanize.Bytes(seg.WriteBytes)
+
+	// Context switches
+	data["11:Voln Ctx Sw"] = humanize.Comma(seg.CtxSwitchesVoluntary)
+	data["12:Involn Ctx Sw"] = humanize.Comma(seg.CtxSwitchesInvoluntary)
+
+	// Page faults
+	data["13:Minor Faults"] = humanize.Comma(int64(seg.MinorFaults))
+	data["14:Major Faults"] = humanize.Comma(int64(seg.MajorFaults))
+
+	// CPU time breakdown
+	totalCPUTime := seg.CPUUser + seg.CPUSystem + seg.CPUIdle + seg.CPUNice +
+		seg.CPUIowait + seg.CPUIrq + seg.CPUSoftirq + seg.CPUSteal +
+		seg.CPUGuest + seg.CPUGuestNice
+	if totalCPUTime > 0 {
+		data["15:CPU User"] = fmt.Sprintf("%.1f%% of cpu usage", (seg.CPUUser/totalCPUTime)*100)
+		data["16:CPU System"] = fmt.Sprintf("%.1f%% of cpu usage", (seg.CPUSystem/totalCPUTime)*100)
+		if seg.CPUIowait > 0 {
+			data["17:CPU IOwait"] = fmt.Sprintf("%.1f%% of cpu usage", (seg.CPUIowait/totalCPUTime)*100)
+		}
+		if seg.CPUSteal > 0 {
+			data["18:CPU Steal"] = fmt.Sprintf("%.1f%% of cpu usage", (seg.CPUSteal/totalCPUTime)*100)
+		}
+	}
+
 	return data
 }

@@ -576,13 +576,13 @@ func NewMemLastDayNode(segmented *madmin.SegmentedMemMetrics, parent MetricNode,
 	return &MemLastDayNode{segmented: segmented, parent: parent, path: path}
 }
 
-func (node *MemLastDayNode) GetOpts() madmin.MetricsOptions    { return getNodeOpts(node) }
-func (node *MemLastDayNode) GetPath() string                   { return node.path }
-func (node *MemLastDayNode) GetParent() MetricNode             { return node.parent }
-func (node *MemLastDayNode) GetMetricType() madmin.MetricType  { return madmin.MetricsMem }
+func (node *MemLastDayNode) GetOpts() madmin.MetricsOptions     { return getNodeOpts(node) }
+func (node *MemLastDayNode) GetPath() string                    { return node.path }
+func (node *MemLastDayNode) GetParent() MetricNode              { return node.parent }
+func (node *MemLastDayNode) GetMetricType() madmin.MetricType   { return madmin.MetricsMem }
 func (node *MemLastDayNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
-func (node *MemLastDayNode) ShouldPauseRefresh() bool          { return true }
-func (node *MemLastDayNode) GetChildren() []MetricChild        { return nil }
+func (node *MemLastDayNode) ShouldPauseRefresh() bool           { return true }
+func (node *MemLastDayNode) GetChildren() []MetricChild         { return nil }
 
 func (node *MemLastDayNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children")

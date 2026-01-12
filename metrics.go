@@ -2409,7 +2409,29 @@ type ProcessSegment struct {
 	WriteCount     uint64  `json:"write_count,omitempty"`
 	ReadBytes      uint64  `json:"read_bytes,omitempty"`
 	WriteBytes     uint64  `json:"write_bytes,omitempty"`
-	N              int     `json:"n"`
+
+	RSS uint64 `json:"rss,omitempty"`
+	VMS uint64 `json:"vms,omitempty"`
+
+	CtxSwitchesVoluntary   int64 `json:"ctx_switches_voluntary,omitempty"`
+	CtxSwitchesInvoluntary int64 `json:"ctx_switches_involuntary,omitempty"`
+
+	MinorFaults uint64 `json:"minor_faults,omitempty"`
+	MajorFaults uint64 `json:"major_faults,omitempty"`
+
+	// CPU time in seconds
+	CPUUser      float64 `json:"cpu_user,omitempty"`
+	CPUSystem    float64 `json:"cpu_system,omitempty"`
+	CPUIdle      float64 `json:"cpu_idle,omitempty"`
+	CPUNice      float64 `json:"cpu_nice,omitempty"`
+	CPUIowait    float64 `json:"cpu_iowait,omitempty"`
+	CPUIrq       float64 `json:"cpu_irq,omitempty"`
+	CPUSoftirq   float64 `json:"cpu_softirq,omitempty"`
+	CPUSteal     float64 `json:"cpu_steal,omitempty"`
+	CPUGuest     float64 `json:"cpu_guest,omitempty"`
+	CPUGuestNice float64 `json:"cpu_guest_nice,omitempty"`
+
+	N int `json:"n"`
 }
 
 // Add other to p for Segmenter interface.
@@ -2425,6 +2447,22 @@ func (p *ProcessSegment) Add(other *ProcessSegment) {
 	p.WriteCount += other.WriteCount
 	p.ReadBytes += other.ReadBytes
 	p.WriteBytes += other.WriteBytes
+	p.RSS += other.RSS
+	p.VMS += other.VMS
+	p.CtxSwitchesVoluntary += other.CtxSwitchesVoluntary
+	p.CtxSwitchesInvoluntary += other.CtxSwitchesInvoluntary
+	p.MinorFaults += other.MinorFaults
+	p.MajorFaults += other.MajorFaults
+	p.CPUUser += other.CPUUser
+	p.CPUSystem += other.CPUSystem
+	p.CPUIdle += other.CPUIdle
+	p.CPUNice += other.CPUNice
+	p.CPUIowait += other.CPUIowait
+	p.CPUIrq += other.CPUIrq
+	p.CPUSoftirq += other.CPUSoftirq
+	p.CPUSteal += other.CPUSteal
+	p.CPUGuest += other.CPUGuest
+	p.CPUGuestNice += other.CPUGuestNice
 	p.N += other.N
 }
 

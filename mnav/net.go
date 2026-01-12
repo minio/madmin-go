@@ -384,13 +384,13 @@ func NewNetLastDayNode(segmented *madmin.SegmentedInterfaceStats, parent MetricN
 	return &NetLastDayNode{segmented: segmented, parent: parent, path: path}
 }
 
-func (node *NetLastDayNode) GetOpts() madmin.MetricsOptions    { return getNodeOpts(node) }
-func (node *NetLastDayNode) GetPath() string                   { return node.path }
-func (node *NetLastDayNode) GetParent() MetricNode             { return node.parent }
-func (node *NetLastDayNode) GetMetricType() madmin.MetricType  { return madmin.MetricNet }
+func (node *NetLastDayNode) GetOpts() madmin.MetricsOptions     { return getNodeOpts(node) }
+func (node *NetLastDayNode) GetPath() string                    { return node.path }
+func (node *NetLastDayNode) GetParent() MetricNode              { return node.parent }
+func (node *NetLastDayNode) GetMetricType() madmin.MetricType   { return madmin.MetricNet }
 func (node *NetLastDayNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
-func (node *NetLastDayNode) ShouldPauseRefresh() bool          { return true }
-func (node *NetLastDayNode) GetChildren() []MetricChild        { return nil }
+func (node *NetLastDayNode) ShouldPauseRefresh() bool           { return true }
+func (node *NetLastDayNode) GetChildren() []MetricChild         { return nil }
 
 func (node *NetLastDayNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children")

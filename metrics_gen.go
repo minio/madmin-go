@@ -17742,7 +17742,7 @@ func (z *ProcessSegment) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 8 bits */
+	var zb0001Mask uint32 /* 24 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -17808,6 +17808,118 @@ func (z *ProcessSegment) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 			zb0001Mask |= 0x80
+		case "rss":
+			z.RSS, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "RSS")
+				return
+			}
+			zb0001Mask |= 0x100
+		case "vms":
+			z.VMS, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "VMS")
+				return
+			}
+			zb0001Mask |= 0x200
+		case "ctx_switches_voluntary":
+			z.CtxSwitchesVoluntary, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "CtxSwitchesVoluntary")
+				return
+			}
+			zb0001Mask |= 0x400
+		case "ctx_switches_involuntary":
+			z.CtxSwitchesInvoluntary, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "CtxSwitchesInvoluntary")
+				return
+			}
+			zb0001Mask |= 0x800
+		case "minor_faults":
+			z.MinorFaults, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "MinorFaults")
+				return
+			}
+			zb0001Mask |= 0x1000
+		case "major_faults":
+			z.MajorFaults, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "MajorFaults")
+				return
+			}
+			zb0001Mask |= 0x2000
+		case "cpu_user":
+			z.CPUUser, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "CPUUser")
+				return
+			}
+			zb0001Mask |= 0x4000
+		case "cpu_system":
+			z.CPUSystem, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "CPUSystem")
+				return
+			}
+			zb0001Mask |= 0x8000
+		case "cpu_idle":
+			z.CPUIdle, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "CPUIdle")
+				return
+			}
+			zb0001Mask |= 0x10000
+		case "cpu_nice":
+			z.CPUNice, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "CPUNice")
+				return
+			}
+			zb0001Mask |= 0x20000
+		case "cpu_iowait":
+			z.CPUIowait, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "CPUIowait")
+				return
+			}
+			zb0001Mask |= 0x40000
+		case "cpu_irq":
+			z.CPUIrq, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "CPUIrq")
+				return
+			}
+			zb0001Mask |= 0x80000
+		case "cpu_softirq":
+			z.CPUSoftirq, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "CPUSoftirq")
+				return
+			}
+			zb0001Mask |= 0x100000
+		case "cpu_steal":
+			z.CPUSteal, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "CPUSteal")
+				return
+			}
+			zb0001Mask |= 0x200000
+		case "cpu_guest":
+			z.CPUGuest, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "CPUGuest")
+				return
+			}
+			zb0001Mask |= 0x400000
+		case "cpu_guest_nice":
+			z.CPUGuestNice, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "CPUGuestNice")
+				return
+			}
+			zb0001Mask |= 0x800000
 		case "n":
 			z.N, err = dc.ReadInt()
 			if err != nil {
@@ -17823,7 +17935,7 @@ func (z *ProcessSegment) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xff {
+	if zb0001Mask != 0xffffff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.CPUPercent = 0
 		}
@@ -17848,6 +17960,54 @@ func (z *ProcessSegment) DecodeMsg(dc *msgp.Reader) (err error) {
 		if (zb0001Mask & 0x80) == 0 {
 			z.WriteBytes = 0
 		}
+		if (zb0001Mask & 0x100) == 0 {
+			z.RSS = 0
+		}
+		if (zb0001Mask & 0x200) == 0 {
+			z.VMS = 0
+		}
+		if (zb0001Mask & 0x400) == 0 {
+			z.CtxSwitchesVoluntary = 0
+		}
+		if (zb0001Mask & 0x800) == 0 {
+			z.CtxSwitchesInvoluntary = 0
+		}
+		if (zb0001Mask & 0x1000) == 0 {
+			z.MinorFaults = 0
+		}
+		if (zb0001Mask & 0x2000) == 0 {
+			z.MajorFaults = 0
+		}
+		if (zb0001Mask & 0x4000) == 0 {
+			z.CPUUser = 0
+		}
+		if (zb0001Mask & 0x8000) == 0 {
+			z.CPUSystem = 0
+		}
+		if (zb0001Mask & 0x10000) == 0 {
+			z.CPUIdle = 0
+		}
+		if (zb0001Mask & 0x20000) == 0 {
+			z.CPUNice = 0
+		}
+		if (zb0001Mask & 0x40000) == 0 {
+			z.CPUIowait = 0
+		}
+		if (zb0001Mask & 0x80000) == 0 {
+			z.CPUIrq = 0
+		}
+		if (zb0001Mask & 0x100000) == 0 {
+			z.CPUSoftirq = 0
+		}
+		if (zb0001Mask & 0x200000) == 0 {
+			z.CPUSteal = 0
+		}
+		if (zb0001Mask & 0x400000) == 0 {
+			z.CPUGuest = 0
+		}
+		if (zb0001Mask & 0x800000) == 0 {
+			z.CPUGuestNice = 0
+		}
 	}
 	return
 }
@@ -17855,8 +18015,8 @@ func (z *ProcessSegment) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *ProcessSegment) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(9)
-	var zb0001Mask uint16 /* 9 bits */
+	zb0001Len := uint32(25)
+	var zb0001Mask uint32 /* 25 bits */
 	_ = zb0001Mask
 	if z.CPUPercent == 0 {
 		zb0001Len--
@@ -17890,8 +18050,72 @@ func (z *ProcessSegment) EncodeMsg(en *msgp.Writer) (err error) {
 		zb0001Len--
 		zb0001Mask |= 0x80
 	}
+	if z.RSS == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x100
+	}
+	if z.VMS == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x200
+	}
+	if z.CtxSwitchesVoluntary == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x400
+	}
+	if z.CtxSwitchesInvoluntary == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x800
+	}
+	if z.MinorFaults == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x1000
+	}
+	if z.MajorFaults == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2000
+	}
+	if z.CPUUser == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4000
+	}
+	if z.CPUSystem == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8000
+	}
+	if z.CPUIdle == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x10000
+	}
+	if z.CPUNice == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x20000
+	}
+	if z.CPUIowait == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x40000
+	}
+	if z.CPUIrq == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x80000
+	}
+	if z.CPUSoftirq == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x100000
+	}
+	if z.CPUSteal == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x200000
+	}
+	if z.CPUGuest == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x400000
+	}
+	if z.CPUGuestNice == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x800000
+	}
 	// variable map header, size zb0001Len
-	err = en.Append(0x80 | uint8(zb0001Len))
+	err = en.WriteMapHeader(zb0001Len)
 	if err != nil {
 		return
 	}
@@ -17994,6 +18218,198 @@ func (z *ProcessSegment) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
+			// write "rss"
+			err = en.Append(0xa3, 0x72, 0x73, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.RSS)
+			if err != nil {
+				err = msgp.WrapError(err, "RSS")
+				return
+			}
+		}
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
+			// write "vms"
+			err = en.Append(0xa3, 0x76, 0x6d, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.VMS)
+			if err != nil {
+				err = msgp.WrapError(err, "VMS")
+				return
+			}
+		}
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
+			// write "ctx_switches_voluntary"
+			err = en.Append(0xb6, 0x63, 0x74, 0x78, 0x5f, 0x73, 0x77, 0x69, 0x74, 0x63, 0x68, 0x65, 0x73, 0x5f, 0x76, 0x6f, 0x6c, 0x75, 0x6e, 0x74, 0x61, 0x72, 0x79)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.CtxSwitchesVoluntary)
+			if err != nil {
+				err = msgp.WrapError(err, "CtxSwitchesVoluntary")
+				return
+			}
+		}
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
+			// write "ctx_switches_involuntary"
+			err = en.Append(0xb8, 0x63, 0x74, 0x78, 0x5f, 0x73, 0x77, 0x69, 0x74, 0x63, 0x68, 0x65, 0x73, 0x5f, 0x69, 0x6e, 0x76, 0x6f, 0x6c, 0x75, 0x6e, 0x74, 0x61, 0x72, 0x79)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.CtxSwitchesInvoluntary)
+			if err != nil {
+				err = msgp.WrapError(err, "CtxSwitchesInvoluntary")
+				return
+			}
+		}
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
+			// write "minor_faults"
+			err = en.Append(0xac, 0x6d, 0x69, 0x6e, 0x6f, 0x72, 0x5f, 0x66, 0x61, 0x75, 0x6c, 0x74, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.MinorFaults)
+			if err != nil {
+				err = msgp.WrapError(err, "MinorFaults")
+				return
+			}
+		}
+		if (zb0001Mask & 0x2000) == 0 { // if not omitted
+			// write "major_faults"
+			err = en.Append(0xac, 0x6d, 0x61, 0x6a, 0x6f, 0x72, 0x5f, 0x66, 0x61, 0x75, 0x6c, 0x74, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.MajorFaults)
+			if err != nil {
+				err = msgp.WrapError(err, "MajorFaults")
+				return
+			}
+		}
+		if (zb0001Mask & 0x4000) == 0 { // if not omitted
+			// write "cpu_user"
+			err = en.Append(0xa8, 0x63, 0x70, 0x75, 0x5f, 0x75, 0x73, 0x65, 0x72)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.CPUUser)
+			if err != nil {
+				err = msgp.WrapError(err, "CPUUser")
+				return
+			}
+		}
+		if (zb0001Mask & 0x8000) == 0 { // if not omitted
+			// write "cpu_system"
+			err = en.Append(0xaa, 0x63, 0x70, 0x75, 0x5f, 0x73, 0x79, 0x73, 0x74, 0x65, 0x6d)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.CPUSystem)
+			if err != nil {
+				err = msgp.WrapError(err, "CPUSystem")
+				return
+			}
+		}
+		if (zb0001Mask & 0x10000) == 0 { // if not omitted
+			// write "cpu_idle"
+			err = en.Append(0xa8, 0x63, 0x70, 0x75, 0x5f, 0x69, 0x64, 0x6c, 0x65)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.CPUIdle)
+			if err != nil {
+				err = msgp.WrapError(err, "CPUIdle")
+				return
+			}
+		}
+		if (zb0001Mask & 0x20000) == 0 { // if not omitted
+			// write "cpu_nice"
+			err = en.Append(0xa8, 0x63, 0x70, 0x75, 0x5f, 0x6e, 0x69, 0x63, 0x65)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.CPUNice)
+			if err != nil {
+				err = msgp.WrapError(err, "CPUNice")
+				return
+			}
+		}
+		if (zb0001Mask & 0x40000) == 0 { // if not omitted
+			// write "cpu_iowait"
+			err = en.Append(0xaa, 0x63, 0x70, 0x75, 0x5f, 0x69, 0x6f, 0x77, 0x61, 0x69, 0x74)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.CPUIowait)
+			if err != nil {
+				err = msgp.WrapError(err, "CPUIowait")
+				return
+			}
+		}
+		if (zb0001Mask & 0x80000) == 0 { // if not omitted
+			// write "cpu_irq"
+			err = en.Append(0xa7, 0x63, 0x70, 0x75, 0x5f, 0x69, 0x72, 0x71)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.CPUIrq)
+			if err != nil {
+				err = msgp.WrapError(err, "CPUIrq")
+				return
+			}
+		}
+		if (zb0001Mask & 0x100000) == 0 { // if not omitted
+			// write "cpu_softirq"
+			err = en.Append(0xab, 0x63, 0x70, 0x75, 0x5f, 0x73, 0x6f, 0x66, 0x74, 0x69, 0x72, 0x71)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.CPUSoftirq)
+			if err != nil {
+				err = msgp.WrapError(err, "CPUSoftirq")
+				return
+			}
+		}
+		if (zb0001Mask & 0x200000) == 0 { // if not omitted
+			// write "cpu_steal"
+			err = en.Append(0xa9, 0x63, 0x70, 0x75, 0x5f, 0x73, 0x74, 0x65, 0x61, 0x6c)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.CPUSteal)
+			if err != nil {
+				err = msgp.WrapError(err, "CPUSteal")
+				return
+			}
+		}
+		if (zb0001Mask & 0x400000) == 0 { // if not omitted
+			// write "cpu_guest"
+			err = en.Append(0xa9, 0x63, 0x70, 0x75, 0x5f, 0x67, 0x75, 0x65, 0x73, 0x74)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.CPUGuest)
+			if err != nil {
+				err = msgp.WrapError(err, "CPUGuest")
+				return
+			}
+		}
+		if (zb0001Mask & 0x800000) == 0 { // if not omitted
+			// write "cpu_guest_nice"
+			err = en.Append(0xae, 0x63, 0x70, 0x75, 0x5f, 0x67, 0x75, 0x65, 0x73, 0x74, 0x5f, 0x6e, 0x69, 0x63, 0x65)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.CPUGuestNice)
+			if err != nil {
+				err = msgp.WrapError(err, "CPUGuestNice")
+				return
+			}
+		}
 		// write "n"
 		err = en.Append(0xa1, 0x6e)
 		if err != nil {
@@ -18012,8 +18428,8 @@ func (z *ProcessSegment) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *ProcessSegment) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(9)
-	var zb0001Mask uint16 /* 9 bits */
+	zb0001Len := uint32(25)
+	var zb0001Mask uint32 /* 25 bits */
 	_ = zb0001Mask
 	if z.CPUPercent == 0 {
 		zb0001Len--
@@ -18047,8 +18463,72 @@ func (z *ProcessSegment) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x80
 	}
+	if z.RSS == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x100
+	}
+	if z.VMS == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x200
+	}
+	if z.CtxSwitchesVoluntary == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x400
+	}
+	if z.CtxSwitchesInvoluntary == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x800
+	}
+	if z.MinorFaults == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x1000
+	}
+	if z.MajorFaults == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2000
+	}
+	if z.CPUUser == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4000
+	}
+	if z.CPUSystem == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8000
+	}
+	if z.CPUIdle == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x10000
+	}
+	if z.CPUNice == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x20000
+	}
+	if z.CPUIowait == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x40000
+	}
+	if z.CPUIrq == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x80000
+	}
+	if z.CPUSoftirq == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x100000
+	}
+	if z.CPUSteal == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x200000
+	}
+	if z.CPUGuest == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x400000
+	}
+	if z.CPUGuestNice == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x800000
+	}
 	// variable map header, size zb0001Len
-	o = append(o, 0x80|uint8(zb0001Len))
+	o = msgp.AppendMapHeader(o, zb0001Len)
 
 	// skip if no fields are to be emitted
 	if zb0001Len != 0 {
@@ -18092,6 +18572,86 @@ func (z *ProcessSegment) MarshalMsg(b []byte) (o []byte, err error) {
 			o = append(o, 0xab, 0x77, 0x72, 0x69, 0x74, 0x65, 0x5f, 0x62, 0x79, 0x74, 0x65, 0x73)
 			o = msgp.AppendUint64(o, z.WriteBytes)
 		}
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
+			// string "rss"
+			o = append(o, 0xa3, 0x72, 0x73, 0x73)
+			o = msgp.AppendUint64(o, z.RSS)
+		}
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
+			// string "vms"
+			o = append(o, 0xa3, 0x76, 0x6d, 0x73)
+			o = msgp.AppendUint64(o, z.VMS)
+		}
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
+			// string "ctx_switches_voluntary"
+			o = append(o, 0xb6, 0x63, 0x74, 0x78, 0x5f, 0x73, 0x77, 0x69, 0x74, 0x63, 0x68, 0x65, 0x73, 0x5f, 0x76, 0x6f, 0x6c, 0x75, 0x6e, 0x74, 0x61, 0x72, 0x79)
+			o = msgp.AppendInt64(o, z.CtxSwitchesVoluntary)
+		}
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
+			// string "ctx_switches_involuntary"
+			o = append(o, 0xb8, 0x63, 0x74, 0x78, 0x5f, 0x73, 0x77, 0x69, 0x74, 0x63, 0x68, 0x65, 0x73, 0x5f, 0x69, 0x6e, 0x76, 0x6f, 0x6c, 0x75, 0x6e, 0x74, 0x61, 0x72, 0x79)
+			o = msgp.AppendInt64(o, z.CtxSwitchesInvoluntary)
+		}
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
+			// string "minor_faults"
+			o = append(o, 0xac, 0x6d, 0x69, 0x6e, 0x6f, 0x72, 0x5f, 0x66, 0x61, 0x75, 0x6c, 0x74, 0x73)
+			o = msgp.AppendUint64(o, z.MinorFaults)
+		}
+		if (zb0001Mask & 0x2000) == 0 { // if not omitted
+			// string "major_faults"
+			o = append(o, 0xac, 0x6d, 0x61, 0x6a, 0x6f, 0x72, 0x5f, 0x66, 0x61, 0x75, 0x6c, 0x74, 0x73)
+			o = msgp.AppendUint64(o, z.MajorFaults)
+		}
+		if (zb0001Mask & 0x4000) == 0 { // if not omitted
+			// string "cpu_user"
+			o = append(o, 0xa8, 0x63, 0x70, 0x75, 0x5f, 0x75, 0x73, 0x65, 0x72)
+			o = msgp.AppendFloat64(o, z.CPUUser)
+		}
+		if (zb0001Mask & 0x8000) == 0 { // if not omitted
+			// string "cpu_system"
+			o = append(o, 0xaa, 0x63, 0x70, 0x75, 0x5f, 0x73, 0x79, 0x73, 0x74, 0x65, 0x6d)
+			o = msgp.AppendFloat64(o, z.CPUSystem)
+		}
+		if (zb0001Mask & 0x10000) == 0 { // if not omitted
+			// string "cpu_idle"
+			o = append(o, 0xa8, 0x63, 0x70, 0x75, 0x5f, 0x69, 0x64, 0x6c, 0x65)
+			o = msgp.AppendFloat64(o, z.CPUIdle)
+		}
+		if (zb0001Mask & 0x20000) == 0 { // if not omitted
+			// string "cpu_nice"
+			o = append(o, 0xa8, 0x63, 0x70, 0x75, 0x5f, 0x6e, 0x69, 0x63, 0x65)
+			o = msgp.AppendFloat64(o, z.CPUNice)
+		}
+		if (zb0001Mask & 0x40000) == 0 { // if not omitted
+			// string "cpu_iowait"
+			o = append(o, 0xaa, 0x63, 0x70, 0x75, 0x5f, 0x69, 0x6f, 0x77, 0x61, 0x69, 0x74)
+			o = msgp.AppendFloat64(o, z.CPUIowait)
+		}
+		if (zb0001Mask & 0x80000) == 0 { // if not omitted
+			// string "cpu_irq"
+			o = append(o, 0xa7, 0x63, 0x70, 0x75, 0x5f, 0x69, 0x72, 0x71)
+			o = msgp.AppendFloat64(o, z.CPUIrq)
+		}
+		if (zb0001Mask & 0x100000) == 0 { // if not omitted
+			// string "cpu_softirq"
+			o = append(o, 0xab, 0x63, 0x70, 0x75, 0x5f, 0x73, 0x6f, 0x66, 0x74, 0x69, 0x72, 0x71)
+			o = msgp.AppendFloat64(o, z.CPUSoftirq)
+		}
+		if (zb0001Mask & 0x200000) == 0 { // if not omitted
+			// string "cpu_steal"
+			o = append(o, 0xa9, 0x63, 0x70, 0x75, 0x5f, 0x73, 0x74, 0x65, 0x61, 0x6c)
+			o = msgp.AppendFloat64(o, z.CPUSteal)
+		}
+		if (zb0001Mask & 0x400000) == 0 { // if not omitted
+			// string "cpu_guest"
+			o = append(o, 0xa9, 0x63, 0x70, 0x75, 0x5f, 0x67, 0x75, 0x65, 0x73, 0x74)
+			o = msgp.AppendFloat64(o, z.CPUGuest)
+		}
+		if (zb0001Mask & 0x800000) == 0 { // if not omitted
+			// string "cpu_guest_nice"
+			o = append(o, 0xae, 0x63, 0x70, 0x75, 0x5f, 0x67, 0x75, 0x65, 0x73, 0x74, 0x5f, 0x6e, 0x69, 0x63, 0x65)
+			o = msgp.AppendFloat64(o, z.CPUGuestNice)
+		}
 		// string "n"
 		o = append(o, 0xa1, 0x6e)
 		o = msgp.AppendInt(o, z.N)
@@ -18109,7 +18669,7 @@ func (z *ProcessSegment) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 8 bits */
+	var zb0001Mask uint32 /* 24 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -18175,6 +18735,118 @@ func (z *ProcessSegment) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 			zb0001Mask |= 0x80
+		case "rss":
+			z.RSS, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "RSS")
+				return
+			}
+			zb0001Mask |= 0x100
+		case "vms":
+			z.VMS, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "VMS")
+				return
+			}
+			zb0001Mask |= 0x200
+		case "ctx_switches_voluntary":
+			z.CtxSwitchesVoluntary, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "CtxSwitchesVoluntary")
+				return
+			}
+			zb0001Mask |= 0x400
+		case "ctx_switches_involuntary":
+			z.CtxSwitchesInvoluntary, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "CtxSwitchesInvoluntary")
+				return
+			}
+			zb0001Mask |= 0x800
+		case "minor_faults":
+			z.MinorFaults, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "MinorFaults")
+				return
+			}
+			zb0001Mask |= 0x1000
+		case "major_faults":
+			z.MajorFaults, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "MajorFaults")
+				return
+			}
+			zb0001Mask |= 0x2000
+		case "cpu_user":
+			z.CPUUser, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "CPUUser")
+				return
+			}
+			zb0001Mask |= 0x4000
+		case "cpu_system":
+			z.CPUSystem, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "CPUSystem")
+				return
+			}
+			zb0001Mask |= 0x8000
+		case "cpu_idle":
+			z.CPUIdle, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "CPUIdle")
+				return
+			}
+			zb0001Mask |= 0x10000
+		case "cpu_nice":
+			z.CPUNice, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "CPUNice")
+				return
+			}
+			zb0001Mask |= 0x20000
+		case "cpu_iowait":
+			z.CPUIowait, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "CPUIowait")
+				return
+			}
+			zb0001Mask |= 0x40000
+		case "cpu_irq":
+			z.CPUIrq, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "CPUIrq")
+				return
+			}
+			zb0001Mask |= 0x80000
+		case "cpu_softirq":
+			z.CPUSoftirq, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "CPUSoftirq")
+				return
+			}
+			zb0001Mask |= 0x100000
+		case "cpu_steal":
+			z.CPUSteal, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "CPUSteal")
+				return
+			}
+			zb0001Mask |= 0x200000
+		case "cpu_guest":
+			z.CPUGuest, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "CPUGuest")
+				return
+			}
+			zb0001Mask |= 0x400000
+		case "cpu_guest_nice":
+			z.CPUGuestNice, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "CPUGuestNice")
+				return
+			}
+			zb0001Mask |= 0x800000
 		case "n":
 			z.N, bts, err = msgp.ReadIntBytes(bts)
 			if err != nil {
@@ -18190,7 +18862,7 @@ func (z *ProcessSegment) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xff {
+	if zb0001Mask != 0xffffff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.CPUPercent = 0
 		}
@@ -18215,6 +18887,54 @@ func (z *ProcessSegment) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		if (zb0001Mask & 0x80) == 0 {
 			z.WriteBytes = 0
 		}
+		if (zb0001Mask & 0x100) == 0 {
+			z.RSS = 0
+		}
+		if (zb0001Mask & 0x200) == 0 {
+			z.VMS = 0
+		}
+		if (zb0001Mask & 0x400) == 0 {
+			z.CtxSwitchesVoluntary = 0
+		}
+		if (zb0001Mask & 0x800) == 0 {
+			z.CtxSwitchesInvoluntary = 0
+		}
+		if (zb0001Mask & 0x1000) == 0 {
+			z.MinorFaults = 0
+		}
+		if (zb0001Mask & 0x2000) == 0 {
+			z.MajorFaults = 0
+		}
+		if (zb0001Mask & 0x4000) == 0 {
+			z.CPUUser = 0
+		}
+		if (zb0001Mask & 0x8000) == 0 {
+			z.CPUSystem = 0
+		}
+		if (zb0001Mask & 0x10000) == 0 {
+			z.CPUIdle = 0
+		}
+		if (zb0001Mask & 0x20000) == 0 {
+			z.CPUNice = 0
+		}
+		if (zb0001Mask & 0x40000) == 0 {
+			z.CPUIowait = 0
+		}
+		if (zb0001Mask & 0x80000) == 0 {
+			z.CPUIrq = 0
+		}
+		if (zb0001Mask & 0x100000) == 0 {
+			z.CPUSoftirq = 0
+		}
+		if (zb0001Mask & 0x200000) == 0 {
+			z.CPUSteal = 0
+		}
+		if (zb0001Mask & 0x400000) == 0 {
+			z.CPUGuest = 0
+		}
+		if (zb0001Mask & 0x800000) == 0 {
+			z.CPUGuestNice = 0
+		}
 	}
 	o = bts
 	return
@@ -18222,7 +18942,7 @@ func (z *ProcessSegment) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *ProcessSegment) Msgsize() (s int) {
-	s = 1 + 12 + msgp.Float64Size + 16 + msgp.IntSize + 8 + msgp.Int64Size + 12 + msgp.Int64Size + 11 + msgp.Uint64Size + 12 + msgp.Uint64Size + 11 + msgp.Uint64Size + 12 + msgp.Uint64Size + 2 + msgp.IntSize
+	s = 3 + 12 + msgp.Float64Size + 16 + msgp.IntSize + 8 + msgp.Int64Size + 12 + msgp.Int64Size + 11 + msgp.Uint64Size + 12 + msgp.Uint64Size + 11 + msgp.Uint64Size + 12 + msgp.Uint64Size + 4 + msgp.Uint64Size + 4 + msgp.Uint64Size + 23 + msgp.Int64Size + 25 + msgp.Int64Size + 13 + msgp.Uint64Size + 13 + msgp.Uint64Size + 9 + msgp.Float64Size + 11 + msgp.Float64Size + 9 + msgp.Float64Size + 9 + msgp.Float64Size + 11 + msgp.Float64Size + 8 + msgp.Float64Size + 12 + msgp.Float64Size + 10 + msgp.Float64Size + 10 + msgp.Float64Size + 15 + msgp.Float64Size + 2 + msgp.IntSize
 	return
 }
 
