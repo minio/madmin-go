@@ -779,11 +779,29 @@ func (node *ProcessSegmentTotalNode) GetLeafData() map[string]string {
 	if total.CPUSystem > 0 {
 		data["01b:CPU System"] = fmt.Sprintf("%.1fs (%.1f%% wall)", total.CPUSystem, (total.CPUSystem/wallTime)*100)
 	}
+	if total.CPUIdle > 0 {
+		data["01c:CPU Idle"] = fmt.Sprintf("%.1fs (%.1f%% wall)", total.CPUIdle, (total.CPUIdle/wallTime)*100)
+	}
+	if total.CPUNice > 0 {
+		data["01d:CPU Nice"] = fmt.Sprintf("%.1fs (%.1f%% wall)", total.CPUNice, (total.CPUNice/wallTime)*100)
+	}
 	if total.CPUIowait > 0 {
-		data["01c:CPU IOwait"] = fmt.Sprintf("%.1fs (%.1f%% wall)", total.CPUIowait, (total.CPUIowait/wallTime)*100)
+		data["01e:CPU IOwait"] = fmt.Sprintf("%.1fs (%.1f%% wall)", total.CPUIowait, (total.CPUIowait/wallTime)*100)
+	}
+	if total.CPUIrq > 0 {
+		data["01f:CPU IRQ"] = fmt.Sprintf("%.1fs (%.1f%% wall)", total.CPUIrq, (total.CPUIrq/wallTime)*100)
+	}
+	if total.CPUSoftirq > 0 {
+		data["01g:CPU SoftIRQ"] = fmt.Sprintf("%.1fs (%.1f%% wall)", total.CPUSoftirq, (total.CPUSoftirq/wallTime)*100)
 	}
 	if total.CPUSteal > 0 {
-		data["01d:CPU Steal"] = fmt.Sprintf("%.1fs (%.1f%% wall)", total.CPUSteal, (total.CPUSteal/wallTime)*100)
+		data["01h:CPU Steal"] = fmt.Sprintf("%.1fs (%.1f%% wall)", total.CPUSteal, (total.CPUSteal/wallTime)*100)
+	}
+	if total.CPUGuest > 0 {
+		data["01i:CPU Guest"] = fmt.Sprintf("%.1fs (%.1f%% wall)", total.CPUGuest, (total.CPUGuest/wallTime)*100)
+	}
+	if total.CPUGuestNice > 0 {
+		data["01j:CPU GuestNice"] = fmt.Sprintf("%.1fs (%.1f%% wall)", total.CPUGuestNice, (total.CPUGuestNice/wallTime)*100)
 	}
 
 	// Memory
@@ -814,13 +832,31 @@ func (node *ProcessSegmentTotalNode) GetLeafData() map[string]string {
 		total.CPUIowait + total.CPUIrq + total.CPUSoftirq + total.CPUSteal +
 		total.CPUGuest + total.CPUGuestNice
 	if totalCPUTime > 0 {
-		data["15:CPU User"] = fmt.Sprintf("%.1f%% of cpu usage", (total.CPUUser/totalCPUTime)*100)
-		data["16:CPU System"] = fmt.Sprintf("%.1f%% of cpu usage", (total.CPUSystem/totalCPUTime)*100)
+		data["15a:CPU User %"] = fmt.Sprintf("%.1f%% of cpu", (total.CPUUser/totalCPUTime)*100)
+		data["15b:CPU System %"] = fmt.Sprintf("%.1f%% of cpu", (total.CPUSystem/totalCPUTime)*100)
+		if total.CPUIdle > 0 {
+			data["15c:CPU Idle %"] = fmt.Sprintf("%.1f%% of cpu", (total.CPUIdle/totalCPUTime)*100)
+		}
+		if total.CPUNice > 0 {
+			data["15d:CPU Nice %"] = fmt.Sprintf("%.1f%% of cpu", (total.CPUNice/totalCPUTime)*100)
+		}
 		if total.CPUIowait > 0 {
-			data["17:CPU IOwait"] = fmt.Sprintf("%.1f%% of cpu usage", (total.CPUIowait/totalCPUTime)*100)
+			data["15e:CPU IOwait %"] = fmt.Sprintf("%.1f%% of cpu", (total.CPUIowait/totalCPUTime)*100)
+		}
+		if total.CPUIrq > 0 {
+			data["15f:CPU IRQ %"] = fmt.Sprintf("%.1f%% of cpu", (total.CPUIrq/totalCPUTime)*100)
+		}
+		if total.CPUSoftirq > 0 {
+			data["15g:CPU SoftIRQ %"] = fmt.Sprintf("%.1f%% of cpu", (total.CPUSoftirq/totalCPUTime)*100)
 		}
 		if total.CPUSteal > 0 {
-			data["18:CPU Steal"] = fmt.Sprintf("%.1f%% of cpu usage", (total.CPUSteal/totalCPUTime)*100)
+			data["15h:CPU Steal %"] = fmt.Sprintf("%.1f%% of cpu", (total.CPUSteal/totalCPUTime)*100)
+		}
+		if total.CPUGuest > 0 {
+			data["15i:CPU Guest %"] = fmt.Sprintf("%.1f%% of cpu", (total.CPUGuest/totalCPUTime)*100)
+		}
+		if total.CPUGuestNice > 0 {
+			data["15j:CPU GuestNice %"] = fmt.Sprintf("%.1f%% of cpu", (total.CPUGuestNice/totalCPUTime)*100)
 		}
 	}
 
@@ -870,11 +906,29 @@ func (node *ProcessTimeSegmentNode) GetLeafData() map[string]string {
 	if seg.CPUSystem > 0 {
 		data["01b:CPU System"] = fmt.Sprintf("%.1fs (%.1f%% wall)", seg.CPUSystem, (seg.CPUSystem/wallTime)*100)
 	}
+	if seg.CPUIdle > 0 {
+		data["01c:CPU Idle"] = fmt.Sprintf("%.1fs (%.1f%% wall)", seg.CPUIdle, (seg.CPUIdle/wallTime)*100)
+	}
+	if seg.CPUNice > 0 {
+		data["01d:CPU Nice"] = fmt.Sprintf("%.1fs (%.1f%% wall)", seg.CPUNice, (seg.CPUNice/wallTime)*100)
+	}
 	if seg.CPUIowait > 0 {
-		data["01c:CPU IOwait"] = fmt.Sprintf("%.1fs (%.1f%% wall)", seg.CPUIowait, (seg.CPUIowait/wallTime)*100)
+		data["01e:CPU IOwait"] = fmt.Sprintf("%.1fs (%.1f%% wall)", seg.CPUIowait, (seg.CPUIowait/wallTime)*100)
+	}
+	if seg.CPUIrq > 0 {
+		data["01f:CPU IRQ"] = fmt.Sprintf("%.1fs (%.1f%% wall)", seg.CPUIrq, (seg.CPUIrq/wallTime)*100)
+	}
+	if seg.CPUSoftirq > 0 {
+		data["01g:CPU SoftIRQ"] = fmt.Sprintf("%.1fs (%.1f%% wall)", seg.CPUSoftirq, (seg.CPUSoftirq/wallTime)*100)
 	}
 	if seg.CPUSteal > 0 {
-		data["01d:CPU Steal"] = fmt.Sprintf("%.1fs (%.1f%% wall)", seg.CPUSteal, (seg.CPUSteal/wallTime)*100)
+		data["01h:CPU Steal"] = fmt.Sprintf("%.1fs (%.1f%% wall)", seg.CPUSteal, (seg.CPUSteal/wallTime)*100)
+	}
+	if seg.CPUGuest > 0 {
+		data["01i:CPU Guest"] = fmt.Sprintf("%.1fs (%.1f%% wall)", seg.CPUGuest, (seg.CPUGuest/wallTime)*100)
+	}
+	if seg.CPUGuestNice > 0 {
+		data["01j:CPU GuestNice"] = fmt.Sprintf("%.1fs (%.1f%% wall)", seg.CPUGuestNice, (seg.CPUGuestNice/wallTime)*100)
 	}
 
 	// Memory
@@ -905,13 +959,31 @@ func (node *ProcessTimeSegmentNode) GetLeafData() map[string]string {
 		seg.CPUIowait + seg.CPUIrq + seg.CPUSoftirq + seg.CPUSteal +
 		seg.CPUGuest + seg.CPUGuestNice
 	if totalCPUTime > 0 {
-		data["15:CPU User"] = fmt.Sprintf("%.1f%% of cpu usage", (seg.CPUUser/totalCPUTime)*100)
-		data["16:CPU System"] = fmt.Sprintf("%.1f%% of cpu usage", (seg.CPUSystem/totalCPUTime)*100)
+		data["15a:CPU User %"] = fmt.Sprintf("%.1f%% of cpu", (seg.CPUUser/totalCPUTime)*100)
+		data["15b:CPU System %"] = fmt.Sprintf("%.1f%% of cpu", (seg.CPUSystem/totalCPUTime)*100)
+		if seg.CPUIdle > 0 {
+			data["15c:CPU Idle %"] = fmt.Sprintf("%.1f%% of cpu", (seg.CPUIdle/totalCPUTime)*100)
+		}
+		if seg.CPUNice > 0 {
+			data["15d:CPU Nice %"] = fmt.Sprintf("%.1f%% of cpu", (seg.CPUNice/totalCPUTime)*100)
+		}
 		if seg.CPUIowait > 0 {
-			data["17:CPU IOwait"] = fmt.Sprintf("%.1f%% of cpu usage", (seg.CPUIowait/totalCPUTime)*100)
+			data["15e:CPU IOwait %"] = fmt.Sprintf("%.1f%% of cpu", (seg.CPUIowait/totalCPUTime)*100)
+		}
+		if seg.CPUIrq > 0 {
+			data["15f:CPU IRQ %"] = fmt.Sprintf("%.1f%% of cpu", (seg.CPUIrq/totalCPUTime)*100)
+		}
+		if seg.CPUSoftirq > 0 {
+			data["15g:CPU SoftIRQ %"] = fmt.Sprintf("%.1f%% of cpu", (seg.CPUSoftirq/totalCPUTime)*100)
 		}
 		if seg.CPUSteal > 0 {
-			data["18:CPU Steal"] = fmt.Sprintf("%.1f%% of cpu usage", (seg.CPUSteal/totalCPUTime)*100)
+			data["15h:CPU Steal %"] = fmt.Sprintf("%.1f%% of cpu", (seg.CPUSteal/totalCPUTime)*100)
+		}
+		if seg.CPUGuest > 0 {
+			data["15i:CPU Guest %"] = fmt.Sprintf("%.1f%% of cpu", (seg.CPUGuest/totalCPUTime)*100)
+		}
+		if seg.CPUGuestNice > 0 {
+			data["15j:CPU GuestNice %"] = fmt.Sprintf("%.1f%% of cpu", (seg.CPUGuestNice/totalCPUTime)*100)
 		}
 	}
 
