@@ -399,8 +399,7 @@ func (node *ReplicationTargetNode) ShouldPauseRefresh() bool {
 }
 
 func (node *ReplicationTargetNode) GetChildren() []MetricChild {
-	var children []MetricChild
-
+	children := make([]MetricChild, 0, 3)
 	children = append(children, MetricChild{
 		Name:        "last_hour",
 		Description: fmt.Sprintf("Last hour statistics for target %s", node.targetName),

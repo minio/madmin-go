@@ -407,8 +407,8 @@ func (node *MapNode) ShouldPauseUpdates() bool {
 func (node *MapNode) GetChildren() []MetricChild {
 	switch data := node.data.(type) {
 	case map[string]madmin.Metrics:
-		var children []MetricChild
-		var keys []string
+		children := make([]MetricChild, 0, len(data))
+		keys := make([]string, 0, len(data))
 		// Extract and sort keys
 		for k := range data {
 			keys = append(keys, k)
