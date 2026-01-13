@@ -649,13 +649,14 @@ func (node *RPCConnectionsNode) GetChildren() []MetricChild {
 	if node.rpc == nil {
 		return []MetricChild{}
 	}
-	var children []MetricChild
 
 	// Connection summary
-	children = append(children, MetricChild{
-		Name:        "summary",
-		Description: fmt.Sprintf("Connection health overview (Connected: %d, Disconnected: %d)", node.rpc.Connected, node.rpc.Disconnected),
-	})
+	children := []MetricChild{
+		{
+			Name:        "summary",
+			Description: fmt.Sprintf("Connection health overview (Connected: %d, Disconnected: %d)", node.rpc.Connected, node.rpc.Disconnected),
+		},
+	}
 
 	return children
 }

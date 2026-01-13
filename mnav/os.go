@@ -332,7 +332,7 @@ func (node *OSSensorsNode) GetLeafData() map[string]string {
 		displayKey := titleCaser.String(strings.ReplaceAll(sensorKey, "_", " "))
 
 		// Enhanced single-line format with comprehensive sensor stats
-		var statsParts []string
+		statsParts := make([]string, 0, 2)
 
 		// Calculate average temperature
 		avgTemp := float64(0)

@@ -407,13 +407,16 @@ func (node *MapNode) ShouldPauseUpdates() bool {
 func (node *MapNode) GetChildren() []MetricChild {
 	switch data := node.data.(type) {
 	case map[string]madmin.Metrics:
-		var children []MetricChild
-		var keys []string
+		if len(data) == 0 {
+			return nil
+		}
+		keys := make([]string, 0, len(data))
 		// Extract and sort keys
 		for k := range data {
 			keys = append(keys, k)
 		}
 		sort.Strings(keys)
+		children := make([]MetricChild, 0, len(keys))
 		// Create children in sorted order
 		for _, k := range keys {
 			childName := k
@@ -431,13 +434,16 @@ func (node *MapNode) GetChildren() []MetricChild {
 		}
 		return children
 	case map[string]madmin.DiskMetric:
-		var children []MetricChild
-		var keys []string
+		if len(data) == 0 {
+			return nil
+		}
+		keys := make([]string, 0, len(data))
 		// Extract and sort keys
 		for k := range data {
 			keys = append(keys, k)
 		}
 		sort.Strings(keys)
+		children := make([]MetricChild, 0, len(keys))
 		// Create children in sorted order
 		for _, k := range keys {
 			childName := k
@@ -456,14 +462,17 @@ func (node *MapNode) GetChildren() []MetricChild {
 		}
 		return children
 	case map[int]map[int]madmin.DiskMetric:
-		var children []MetricChild
-		var keys []int
+		if len(data) == 0 {
+			return nil
+		}
+		keys := make([]int, 0, len(data))
 		// Extract and sort keys
 		for k := range data {
 			keys = append(keys, k)
 		}
 		sort.Ints(keys)
 		// Create children in sorted order
+		children := make([]MetricChild, 0, len(keys))
 		for _, k := range keys {
 			children = append(children, MetricChild{Name: fmt.Sprintf("%d", k), Description: fmt.Sprintf("Disk set %d", k)})
 		}

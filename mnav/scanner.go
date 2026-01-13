@@ -359,7 +359,7 @@ func (node *ScannerLastMinuteNode) GetLeafData() map[string]string {
 	// Add action statistics directly
 	if len(node.lastMinute.Actions) > 0 {
 		var totalCount, totalTime uint64
-		var actionTypes []string
+		actionTypes := make([]string, 0, len(node.lastMinute.Actions))
 		for actionType := range node.lastMinute.Actions {
 			actionTypes = append(actionTypes, actionType)
 		}
