@@ -20,6 +20,7 @@ package mnav
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/minio/madmin-go/v4"
@@ -59,12 +60,15 @@ func (node *MemMetricsNavigator) GetChildren() []MetricChild {
 	if node.mem == nil {
 		return []MetricChild{}
 	}
-	return []MetricChild{
-		{Name: "usage", Description: "Core memory usage statistics and utilization"},
-		{Name: "system", Description: "System memory details (cache, buffers, shared)"},
-		{Name: "swap", Description: "Swap space information and utilization"},
-		{Name: "limits", Description: "Memory limits and cgroup configuration"},
-	}
+	children := make([]MetricChild, 0, 5)
+	children = append(children,
+		MetricChild{Name: "usage", Description: "Core memory usage statistics and utilization"},
+		MetricChild{Name: "system", Description: "System memory details (cache, buffers, shared)"},
+		MetricChild{Name: "swap", Description: "Swap space information and utilization"},
+		MetricChild{Name: "limits", Description: "Memory limits and cgroup configuration"},
+		MetricChild{Name: "last_day", Description: "Last 24h memory statistics"},
+	)
+	return children
 }
 
 func (node *MemMetricsNavigator) GetLeafData() map[string]string {
@@ -153,6 +157,8 @@ func (node *MemMetricsNavigator) GetChild(name string) (MetricNode, error) {
 		return NewMemSwapNode(node.mem, node, fmt.Sprintf("%s/swap", node.path)), nil
 	case "limits":
 		return NewMemLimitsNode(node.mem, node, fmt.Sprintf("%s/limits", node.path)), nil
+	case "last_day":
+		return NewMemLastDayNode(node.mem.LastDay, node, fmt.Sprintf("%s/last_day", node.path)), nil
 	default:
 		return nil, fmt.Errorf("child not found: %s", name)
 	}
@@ -558,4 +564,55 @@ func (node *MemLimitsNode) ShouldPauseRefresh() bool {
 
 func (node *MemLimitsNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("memory limits node has no children")
+}
+
+// MemLastDayNode shows last 24h memory statistics
+type MemLastDayNode struct {
+	segmented *madmin.SegmentedMemMetrics
+	parent    MetricNode
+	path      string
+}
+
+func NewMemLastDayNode(segmented *madmin.SegmentedMemMetrics, parent MetricNode, path string) *MemLastDayNode {
+	return &MemLastDayNode{segmented: segmented, parent: parent, path: path}
+}
+
+func (node *MemLastDayNode) GetOpts() madmin.MetricsOptions     { return getNodeOpts(node) }
+func (node *MemLastDayNode) GetPath() string                    { return node.path }
+func (node *MemLastDayNode) GetParent() MetricNode              { return node.parent }
+func (node *MemLastDayNode) GetMetricType() madmin.MetricType   { return madmin.MetricsMem }
+func (node *MemLastDayNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
+func (node *MemLastDayNode) ShouldPauseRefresh() bool           { return true }
+func (node *MemLastDayNode) GetChildren() []MetricChild         { return nil }
+
+func (node *MemLastDayNode) GetChild(_ string) (MetricNode, error) {
+	return nil, fmt.Errorf("no children")
+}
+
+func (node *MemLastDayNode) GetLeafData() map[string]string {
+	if node.segmented == nil || len(node.segmented.Segments) == 0 {
+		return nil
+	}
+	data := make(map[string]string)
+	idx := 0
+	for i := len(node.segmented.Segments) - 1; i >= 0; i-- {
+		seg := node.segmented.Segments[i]
+		if seg.N == 0 {
+			continue
+		}
+		idx++
+		startTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
+		endTime := startTime.Add(time.Duration(node.segmented.Interval) * time.Second)
+		name := fmt.Sprintf("%02d: %s->%s", idx, startTime.Local().Format("15:04"), endTime.Local().Format("15:04"))
+
+		avgUsed := seg.Used / uint64(seg.N)
+		avgFree := seg.Free / uint64(seg.N)
+		total := avgUsed + avgFree
+		pct := float64(0)
+		if total > 0 {
+			pct = float64(avgUsed) / float64(total) * 100
+		}
+		data[name] = fmt.Sprintf("Used: %s (%.1f%%), Free: %s", formatMemoryBytes(avgUsed), pct, formatMemoryBytes(avgFree))
+	}
+	return data
 }
