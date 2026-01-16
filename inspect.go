@@ -27,12 +27,14 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 )
 
 // InspectOptions provides options to Inspect.
 type InspectOptions struct {
 	Volume, File string
 	PublicKey    []byte // PublicKey to use for inspected data.
+	PoolIdx      *int   // Pool to fetch. nil = fetch from all.
 }
 
 // Inspect makes an admin call to download a raw files from disk.
@@ -45,6 +47,9 @@ func (adm *AdminClient) Inspect(ctx context.Context, d InspectOptions) (key []by
 	form.Set("file", d.File)
 	if d.PublicKey != nil {
 		form.Set("public-key", base64.StdEncoding.EncodeToString(d.PublicKey))
+	}
+	if d.PoolIdx != nil {
+		form.Set("pool", strconv.Itoa(*d.PoolIdx))
 	}
 
 	method := ""
