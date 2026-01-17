@@ -88,6 +88,10 @@ const (
 	LogAPIKafkaSubSys   = "log_api_kafka"
 	LogErrorKafkaSubSys = "log_error_kafka"
 	LogAuditKafkaSubSys = "log_audit_kafka"
+
+	AlertInternalSubSys = "alert_internal"
+	AlertWebhookSubSys  = "alert_webhook"
+	AlertKafkaSubSys    = "alert_kafka"
 )
 
 // SubSystems - list of all subsystems in MinIO
@@ -186,6 +190,9 @@ var EOSSubSystems = set.CreateStringSet(
 	LogAPIKafkaSubSys,
 	LogErrorKafkaSubSys,
 	LogAuditKafkaSubSys,
+	AlertInternalSubSys,
+	AlertWebhookSubSys,
+	AlertKafkaSubSys,
 )
 
 // Standard config keys and values.
