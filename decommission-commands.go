@@ -33,9 +33,14 @@ type PoolDecommissionInfo struct {
 	StartSize   int64     `json:"startSize"`
 	TotalSize   int64     `json:"totalSize"`
 	CurrentSize int64     `json:"currentSize"`
-	Complete    bool      `json:"complete"`
-	Failed      bool      `json:"failed"`
-	Canceled    bool      `json:"canceled"`
+
+	StartInodes   int64 `json:"startInodes"`
+	TotalInodes   int64 `json:"totalInodes"`
+	CurrentInodes int64 `json:"currentInodes"`
+
+	Complete bool `json:"complete"`
+	Failed   bool `json:"failed"`
+	Canceled bool `json:"canceled"`
 
 	ObjectsDecommissioned     int64 `json:"objectsDecommissioned"`
 	ObjectsDecommissionFailed int64 `json:"objectsDecommissionedFailed"`
