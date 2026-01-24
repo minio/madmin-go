@@ -332,6 +332,41 @@ func (adm *AdminClient) SetUserStatus(ctx context.Context, accessKey string, sta
 	return nil
 }
 
+// ChangeOwnPassword - changes the password for the currently authenticated user.
+// This bypasses IAM policy checks entirely, allowing users to change their own
+// password even with explicit deny on admin:CreateUser.
+func (adm *AdminClient) ChangeOwnPassword(ctx context.Context, newSecretKey string) error {
+	data, err := json.Marshal(AddOrUpdateUserReq{
+		SecretKey: newSecretKey,
+	})
+	if err != nil {
+		return err
+	}
+
+	encData, err := EncryptData(adm.getSecretKey(), data)
+	if err != nil {
+		return err
+	}
+
+	reqData := requestData{
+		relPath: adminAPIPrefix + "/change-own-password",
+		content: encData,
+	}
+
+	// Execute POST on /minio/admin/v3/change-own-password
+	resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+
+	return nil
+}
+
 // AddServiceAccountReq is the request options of the add service account admin call
 type AddServiceAccountReq struct {
 	Policy     json.RawMessage `json:"policy,omitempty"` // Parsed value from iam/policy.Parse()
