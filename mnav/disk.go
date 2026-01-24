@@ -58,23 +58,23 @@ func (node *DiskMetricsNavigator) GetChildren() []MetricChild {
 	var children []MetricChild
 
 	// Always available basic operations
-	children = append(children, MetricChild{Name: "ops_last_minute", Description: "Last minute disk operations by type"})
-	children = append(children, MetricChild{Name: "ops_last_day", Description: "Last day segmented disk operations"})
-	children = append(children, MetricChild{Name: "ops_lifetime", Description: "Lifetime disk operations by type"})
+	children = append(children, MetricChild{Name: "ops_last_minute", Description: "Last minute drive operations by type"})
+	children = append(children, MetricChild{Name: "ops_last_day", Description: "Last day segmented drive operations"})
+	children = append(children, MetricChild{Name: "ops_lifetime", Description: "Lifetime drive operations by type"})
 
 	// IO statistics - always available as they use the whole disk object
 	children = append(children, MetricChild{Name: "io_last_minute", Description: "Last minute IO statistics (real-time)"})
 	children = append(children, MetricChild{Name: "io_last_day", Description: "Daily IO statistics (historical)"})
 
 	// Space information - always available as it's a direct field
-	children = append(children, MetricChild{Name: "space", Description: "Disk space information"})
+	children = append(children, MetricChild{Name: "space", Description: "Drive space information"})
 
 	// Optional features - only add if data exists
 	if node.disk.HealingInfo != nil {
-		children = append(children, MetricChild{Name: "healing", Description: "Disk healing information"})
+		children = append(children, MetricChild{Name: "healing", Description: "Drive healing information"})
 	}
 	if node.disk.Cache != nil {
-		children = append(children, MetricChild{Name: "cache", Description: "Disk cache statistics"})
+		children = append(children, MetricChild{Name: "cache", Description: "Drive cache statistics"})
 	}
 
 	return children
@@ -82,7 +82,7 @@ func (node *DiskMetricsNavigator) GetChildren() []MetricChild {
 
 func (node *DiskMetricsNavigator) GetLeafData() map[string]string {
 	if node.disk == nil {
-		return map[string]string{"Error": "disk metrics not available"}
+		return map[string]string{"Error": "drive metrics not available"}
 	}
 
 	data := map[string]string{}
@@ -120,7 +120,7 @@ func (node *DiskMetricsNavigator) GetLeafData() map[string]string {
 		locationParts = append(locationParts, fmt.Sprintf("Set %d", *node.disk.SetIdx))
 	}
 	if node.disk.DiskIdx != nil {
-		locationParts = append(locationParts, fmt.Sprintf("Disk %d", *node.disk.DiskIdx))
+		locationParts = append(locationParts, fmt.Sprintf("Drive %d", *node.disk.DiskIdx))
 	}
 	if len(locationParts) > 0 {
 		data["Location"] = strings.Join(locationParts, ", ")
@@ -247,7 +247,7 @@ func (node *DiskMetricsNavigator) ShouldPauseRefresh() bool {
 
 func (node *DiskMetricsNavigator) GetChild(name string) (MetricNode, error) {
 	if node.disk == nil {
-		return nil, fmt.Errorf("no disk data available")
+		return nil, fmt.Errorf("no drive data available")
 	}
 
 	switch name {
@@ -299,7 +299,7 @@ func (node *DiskSpaceNode) GetLeafData() map[string]string {
 	data := map[string]string{}
 
 	// Space Overview
-	data["Disks"] = fmt.Sprintf("%d drives", node.space.N)
+	data["Drives"] = fmt.Sprintf("%d drives", node.space.N)
 	totalCapacity := node.space.Used.Total + node.space.Free.Total
 	if totalCapacity > 0 {
 		usagePercent := float64(node.space.Used.Total) / float64(totalCapacity) * 100
@@ -323,13 +323,13 @@ func (node *DiskSpaceNode) GetLeafData() map[string]string {
 
 	// Space Distribution
 	if node.space.Used.Total > 0 {
-		data["Used space"] = fmt.Sprintf("%s (min: %s, max: %s per disk)",
+		data["Used space"] = fmt.Sprintf("%s (min: %s, max: %s per drive)",
 			humanize.Bytes(node.space.Used.Total),
 			humanize.Bytes(node.space.Used.Min),
 			humanize.Bytes(node.space.Used.Max))
 	}
 	if node.space.Free.Total > 0 {
-		data["Free space"] = fmt.Sprintf("%s (min: %s, max: %s per disk)",
+		data["Free space"] = fmt.Sprintf("%s (min: %s, max: %s per drive)",
 			humanize.Bytes(node.space.Free.Total),
 			humanize.Bytes(node.space.Free.Min),
 			humanize.Bytes(node.space.Free.Max))
@@ -337,13 +337,13 @@ func (node *DiskSpaceNode) GetLeafData() map[string]string {
 
 	// Inode Usage
 	if node.space.UsedInodes.Total > 0 {
-		data["Used inodes"] = fmt.Sprintf("%s total (min: %s, max: %s per disk)",
+		data["Used inodes"] = fmt.Sprintf("%s total (min: %s, max: %s per drive)",
 			humanize.Comma(int64(node.space.UsedInodes.Total)),
 			humanize.Comma(int64(node.space.UsedInodes.Min)),
 			humanize.Comma(int64(node.space.UsedInodes.Max)))
 	}
 	if node.space.FreeInodes.Total > 0 {
-		data["Free inodes"] = fmt.Sprintf("%s total (min: %s, max: %s per disk)",
+		data["Free inodes"] = fmt.Sprintf("%s total (min: %s, max: %s per drive)",
 			humanize.Comma(int64(node.space.FreeInodes.Total)),
 			humanize.Comma(int64(node.space.FreeInodes.Min)),
 			humanize.Comma(int64(node.space.FreeInodes.Max)))
@@ -362,7 +362,7 @@ func (node *DiskSpaceNode) ShouldPauseRefresh() bool {
 }
 
 func (node *DiskSpaceNode) GetChild(_ string) (MetricNode, error) {
-	return nil, fmt.Errorf("disk space is a leaf node - no children available")
+	return nil, fmt.Errorf("drive space is a leaf node - no children available")
 }
 
 // DiskLifetimeOpsNode handles navigation for lifetime disk operations
@@ -461,7 +461,7 @@ func (node *DiskLifetimeOpsNode) GetChild(name string) (MetricNode, error) {
 	if action, exists := node.ops[name]; exists {
 		return NewDiskActionNode(name, &action, node, fmt.Sprintf("%s/%s", node.path, name)), nil
 	}
-	return nil, fmt.Errorf("disk operation not found: %s", name)
+	return nil, fmt.Errorf("drive operation not found: %s", name)
 }
 
 // DiskLastMinuteNode handles navigation for last minute disk operations
@@ -561,7 +561,7 @@ func (node *DiskLastMinuteNode) GetChild(name string) (MetricNode, error) {
 	if action, exists := node.ops[name]; exists {
 		return NewDiskActionNode(name, &action, node, fmt.Sprintf("%s/%s", node.path, name)), nil
 	}
-	return nil, fmt.Errorf("disk operation not found: %s", name)
+	return nil, fmt.Errorf("drive operation not found: %s", name)
 }
 
 // DiskLastDayNode handles navigation for segmented last day operations
@@ -746,7 +746,7 @@ func (node *DiskIOStatsNode) GetChildren() []MetricChild {
 
 func (node *DiskIOStatsNode) GetLeafData() map[string]string {
 	if node.disk == nil {
-		return map[string]string{"Error": "disk metrics not available"}
+		return map[string]string{"Error": "drive metrics not available"}
 	}
 
 	data := map[string]string{}
@@ -786,7 +786,7 @@ func (node *DiskIOStatsNode) GetChild(name string) (MetricNode, error) {
 	case "daily":
 		return NewDiskIODailyStatsNode(node.disk, node, fmt.Sprintf("%s/daily", node.path)), nil
 	default:
-		return nil, fmt.Errorf("disk io component not found: %s", name)
+		return nil, fmt.Errorf("drive io component not found: %s", name)
 	}
 }
 
@@ -809,7 +809,7 @@ func (node *DiskIOMinuteStatsNode) GetChildren() []MetricChild { return []Metric
 
 func (node *DiskIOMinuteStatsNode) GetLeafData() map[string]string {
 	if node.disk == nil {
-		return map[string]string{"Error": "disk metrics not available"}
+		return map[string]string{"Error": "drive metrics not available"}
 	}
 
 	data := map[string]string{}
@@ -935,7 +935,7 @@ func (node *DiskIODailyStatsNode) GetChildren() []MetricChild {
 
 func (node *DiskIODailyStatsNode) GetLeafData() map[string]string {
 	if node.disk == nil {
-		return map[string]string{"Error": "disk metrics not available"}
+		return map[string]string{"Error": "drive metrics not available"}
 	}
 
 	data := map[string]string{}
@@ -1023,7 +1023,7 @@ func (node *DiskIODailyStatsNode) ShouldPauseRefresh() bool {
 
 func (node *DiskIODailyStatsNode) GetChild(name string) (MetricNode, error) {
 	if node.disk == nil {
-		return nil, fmt.Errorf("no disk metrics available")
+		return nil, fmt.Errorf("no drive metrics available")
 	}
 
 	dailyStats := &node.disk.IOStatsDay
@@ -1132,7 +1132,7 @@ func (node *DiskHealingNode) ShouldPauseRefresh() bool {
 }
 
 func (node *DiskHealingNode) GetChild(_ string) (MetricNode, error) {
-	return nil, fmt.Errorf("disk healing is a leaf node")
+	return nil, fmt.Errorf("drive healing is a leaf node")
 }
 
 // DiskLastDayOperationNode handles navigation for a specific operation type within segmented last day operations
@@ -1636,7 +1636,7 @@ func (node *DiskCacheNode) ShouldPauseRefresh() bool {
 }
 
 func (node *DiskCacheNode) GetChild(_ string) (MetricNode, error) {
-	return nil, fmt.Errorf("disk cache is a leaf node")
+	return nil, fmt.Errorf("drive cache is a leaf node")
 }
 
 // DiskSummaryNode provides aggregated disk statistics
@@ -1658,13 +1658,13 @@ func (node *DiskSummaryNode) GetChildren() []MetricChild { return []MetricChild{
 
 func (node *DiskSummaryNode) GetLeafData() map[string]string {
 	if node.disk == nil {
-		return map[string]string{"Error": "disk metrics not available"}
+		return map[string]string{"Error": "drive metrics not available"}
 	}
 
 	data := map[string]string{}
 
 	// Executive Summary Header
-	data["Disk Summary"] = fmt.Sprintf("Collected at %s",
+	data["Drive Summary"] = fmt.Sprintf("Collected at %s",
 		node.disk.CollectedAt.Format("2006-01-02 15:04:05"))
 
 	// Cluster Health Overview
@@ -1814,7 +1814,7 @@ func (node *DiskSummaryNode) ShouldPauseRefresh() bool {
 }
 
 func (node *DiskSummaryNode) GetChild(_ string) (MetricNode, error) {
-	return nil, fmt.Errorf("disk summary is a leaf node")
+	return nil, fmt.Errorf("drive summary is a leaf node")
 }
 
 // DiskActionNode represents a leaf node with disk action details
@@ -1867,7 +1867,7 @@ func (node *DiskActionNode) ShouldPauseRefresh() bool {
 }
 
 func (node *DiskActionNode) GetChild(_ string) (MetricNode, error) {
-	return nil, fmt.Errorf("disk action is a leaf node")
+	return nil, fmt.Errorf("drive action is a leaf node")
 }
 
 // formatIOStats formats IO statistics for a specific operation type (Read/Write/Discard/Flush)

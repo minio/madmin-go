@@ -157,7 +157,7 @@ func (node *RealtimeMetricsNode) ShouldPauseUpdates() bool {
 func (node *RealtimeMetricsNode) GetChildren() []MetricChild {
 	return []MetricChild{
 		{Name: "api", Description: "API operation metrics"},
-		{Name: "disk", Description: "Disk usage and performance metrics"},
+		{Name: "drive", Description: "Drive usage and performance metrics"},
 		{Name: "rpc", Description: "RPC call statistics"},
 		{Name: "net", Description: "Network interface metrics"},
 		{Name: "os", Description: "Operating system metrics"},
@@ -170,8 +170,8 @@ func (node *RealtimeMetricsNode) GetChildren() []MetricChild {
 		{Name: "batch_jobs", Description: "Batch job execution metrics"},
 		{Name: "site_resync", Description: "Site replication resync metrics"},
 		{Name: "by_host", Description: "Metrics broken down by individual host"},
-		{Name: "by_disk", Description: "Metrics broken down by individual disk"},
-		{Name: "by_disk_set", Description: "Metrics broken down by disk set"},
+		{Name: "by_drive", Description: "Metrics broken down by individual drive"},
+		{Name: "by_drive_set", Description: "Metrics broken down by drive set"},
 	}
 }
 
@@ -220,8 +220,8 @@ func (node *RealtimeMetricsNode) GetChild(name string) (MetricNode, error) {
 	// Individual metric types - route directly from root
 	case "scanner":
 		return NewScannerMetricsNode(node.metrics.Aggregated.Scanner, node, "scanner"), nil
-	case "disk":
-		return NewDiskMetricsNavigator(node.metrics.Aggregated.Disk, node, "disk", madmin.MetricsOptions{}), nil
+	case "drive":
+		return NewDiskMetricsNavigator(node.metrics.Aggregated.Disk, node, "drive", madmin.MetricsOptions{}), nil
 	case "os":
 		return NewOSMetricsNavigator(node.metrics.Aggregated.OS, node, "os"), nil
 	case "batch_jobs":
@@ -264,30 +264,30 @@ func (node *RealtimeMetricsNode) GetChild(name string) (MetricNode, error) {
 			return nil
 		}
 		return mapNode, nil
-	case "by_disk":
+	case "by_drive":
 		mapNode := &MapNode{
 			data:        node.metrics.ByDisk,
 			metricType:  madmin.MetricsDisk,
 			metricFlags: madmin.MetricsByDisk,
 			parent:      node,
-			path:        "by_disk",
+			path:        "by_drive",
 		}
 		mapNode.nodeFactory = func(key string, value interface{}) MetricNode {
 			if diskMetric, ok := value.(madmin.DiskMetric); ok {
 				// URL-encode the disk name to handle slashes and special characters
 				encodedKey := url.PathEscape(key)
-				return NewDiskMetricsNavigator(&diskMetric, mapNode, fmt.Sprintf("by_disk/%s", encodedKey), madmin.MetricsOptions{Flags: madmin.MetricsByDisk, Disks: []string{key}})
+				return NewDiskMetricsNavigator(&diskMetric, mapNode, fmt.Sprintf("by_drive/%s", encodedKey), madmin.MetricsOptions{Flags: madmin.MetricsByDisk, Disks: []string{key}})
 			}
 			return nil
 		}
 		return mapNode, nil
-	case "by_disk_set":
+	case "by_drive_set":
 		return &DiskSetMapNode{
 			data:        node.metrics.ByDiskSet,
 			metricType:  madmin.MetricsDisk,
 			metricFlags: madmin.MetricsByDiskSet,
 			parent:      node,
-			path:        "by_disk_set",
+			path:        "by_drive_set",
 		}, nil
 	default:
 		return nil, fmt.Errorf("child not found: %s", name)
@@ -313,7 +313,7 @@ func (node *MetricsNode) ShouldPauseUpdates() bool {
 func (node *MetricsNode) GetChildren() []MetricChild {
 	return []MetricChild{
 		{Name: "api", Description: "API operation metrics"},
-		{Name: "disk", Description: "Disk usage and performance metrics"},
+		{Name: "drive", Description: "Drive usage and performance metrics"},
 		{Name: "rpc", Description: "RPC call statistics"},
 		{Name: "net", Description: "Network interface metrics"},
 		{Name: "os", Description: "Operating system metrics"},
@@ -356,8 +356,8 @@ func (node *MetricsNode) GetChild(name string) (MetricNode, error) {
 	switch name {
 	case "scanner":
 		return NewScannerMetricsNode(node.metrics.Scanner, node, fmt.Sprintf("%s/scanner", node.path)), nil
-	case "disk":
-		return NewDiskMetricsNavigator(node.metrics.Disk, node, fmt.Sprintf("%s/disk", node.path), madmin.MetricsOptions{}), nil
+	case "drive":
+		return NewDiskMetricsNavigator(node.metrics.Disk, node, fmt.Sprintf("%s/drive", node.path), madmin.MetricsOptions{}), nil
 	case "os":
 		return NewOSMetricsNavigator(node.metrics.OS, node, fmt.Sprintf("%s/os", node.path)), nil
 	case "batch_jobs":
@@ -418,8 +418,8 @@ func (node *MapNode) GetChildren() []MetricChild {
 		for _, k := range keys {
 			childName := k
 			displayName := k
-			// For by_disk nodes, URL-encode the name to handle slashes and special characters
-			if strings.Contains(node.path, "by_disk") {
+			// For by_drive nodes, URL-encode the name to handle slashes and special characters
+			if strings.Contains(node.path, "by_drive") {
 				childName = url.PathEscape(k)
 				// Keep original name for display
 			}
@@ -442,8 +442,8 @@ func (node *MapNode) GetChildren() []MetricChild {
 		for _, k := range keys {
 			childName := k
 			displayName := k
-			// For by_disk nodes, URL-encode the name to handle slashes and special characters
-			if strings.Contains(node.path, "by_disk") {
+			// For by_drive nodes, URL-encode the name to handle slashes and special characters
+			if strings.Contains(node.path, "by_drive") {
 				childName = url.PathEscape(k)
 				// Keep original name for display
 			}
@@ -465,7 +465,7 @@ func (node *MapNode) GetChildren() []MetricChild {
 		sort.Ints(keys)
 		// Create children in sorted order
 		for _, k := range keys {
-			children = append(children, MetricChild{Name: fmt.Sprintf("%d", k), Description: fmt.Sprintf("Disk set %d", k)})
+			children = append(children, MetricChild{Name: fmt.Sprintf("%d", k), Description: fmt.Sprintf("Drive set %d", k)})
 		}
 		return children
 	default:
@@ -501,9 +501,9 @@ func (node *MapNode) GetParent() MetricNode {
 func (node *MapNode) GetChild(name string) (MetricNode, error) {
 	switch data := node.data.(type) {
 	case map[string]madmin.Metrics:
-		// For by_disk nodes, URL-decode the name to get the original disk name
+		// For by_drive nodes, URL-decode the name to get the original disk name
 		decodedName := name
-		if strings.Contains(node.path, "by_disk") {
+		if strings.Contains(node.path, "by_drive") {
 			if decoded, err := url.PathUnescape(name); err == nil {
 				decodedName = decoded
 			}
@@ -513,9 +513,9 @@ func (node *MapNode) GetChild(name string) (MetricNode, error) {
 			return node.nodeFactory(decodedName, value), nil
 		}
 	case map[string]madmin.DiskMetric:
-		// For by_disk nodes, URL-decode the name to get the original disk name
+		// For by_drive nodes, URL-decode the name to get the original disk name
 		decodedName := name
-		if strings.Contains(node.path, "by_disk") {
+		if strings.Contains(node.path, "by_drive") {
 			if decoded, err := url.PathUnescape(name); err == nil {
 				decodedName = decoded
 			}
@@ -526,7 +526,7 @@ func (node *MapNode) GetChild(name string) (MetricNode, error) {
 		}
 	case map[int]map[int]madmin.DiskMetric:
 		// This is handled by DiskSetMapNode
-		return nil, fmt.Errorf("use DiskSetMapNode for nested disk set maps")
+		return nil, fmt.Errorf("use DiskSetMapNode for nested drive set maps")
 	}
 	return nil, fmt.Errorf("key not found: %s", name)
 }
@@ -563,7 +563,7 @@ func (node *DiskSetMapNode) GetChildren() []MetricChild {
 			poolCurrentIOs += diskSet.IOStatsMinute.CurrentIOs
 		}
 
-		description := fmt.Sprintf("Pool %d with %d sets, %d disks (%d healthy), %d current IOs",
+		description := fmt.Sprintf("Pool %d with %d sets, %d drives (%d healthy), %d current IOs",
 			poolID, poolSets, poolDisks, poolHealthyDisks, poolCurrentIOs)
 
 		children = append(children, MetricChild{
@@ -659,7 +659,7 @@ func (node *DiskSetMapNode) GetLeafData() map[string]string {
 	}
 
 	// Summary statistics
-	data["00:Cluster Summary"] = fmt.Sprintf("%d pools, %d sets, %d total disks",
+	data["00:Cluster Summary"] = fmt.Sprintf("%d pools, %d sets, %d total drives",
 		len(node.data), totalSets, totalDisks)
 
 	if totalDisks > 0 {
@@ -676,7 +676,7 @@ func (node *DiskSetMapNode) GetLeafData() map[string]string {
 			healthStatus = "Critical"
 		}
 
-		data["01:Disk Health"] = fmt.Sprintf("%s - %d of %d disks healthy (%.1f%%)",
+		data["01:Drive Health"] = fmt.Sprintf("%s - %d of %d drives healthy (%.1f%%)",
 			healthStatus, totalHealthyDisks, totalDisks, healthPercent)
 
 		if totalOfflineDisks > 0 || totalHangingDisks > 0 || totalHealingDisks > 0 {
@@ -781,7 +781,7 @@ func (node *DiskSetPoolNavigator) GetChildren() []MetricChild {
 	for setID, diskSet := range node.poolSets {
 		healthyDisks := diskSet.NDisks - diskSet.Offline - diskSet.Hanging - diskSet.Healing
 		currentIOs := diskSet.IOStatsMinute.CurrentIOs
-		description := fmt.Sprintf("Set %d with %d disks (%d healthy), %d current IOs",
+		description := fmt.Sprintf("Set %d with %d drives (%d healthy), %d current IOs",
 			setID, diskSet.NDisks, healthyDisks, currentIOs)
 
 		children = append(children, MetricChild{
@@ -850,12 +850,12 @@ func (node *DiskSetPoolNavigator) GetLeafData() map[string]string {
 	}
 
 	// Pool summary
-	data["00:Pool Summary"] = fmt.Sprintf("Pool %d: %d sets, %d total disks",
+	data["00:Pool Summary"] = fmt.Sprintf("Pool %d: %d sets, %d total drives",
 		node.poolID, totalSets, totalDisks)
 
 	if totalDisks > 0 {
 		healthPercent := float64(totalHealthyDisks) / float64(totalDisks) * 100.0
-		data["01:Pool Health"] = fmt.Sprintf("%d of %d disks healthy (%.1f%%)",
+		data["01:Pool Health"] = fmt.Sprintf("%d of %d drives healthy (%.1f%%)",
 			totalHealthyDisks, totalDisks, healthPercent)
 
 		if totalOfflineDisks > 0 || totalHangingDisks > 0 || totalHealingDisks > 0 {
