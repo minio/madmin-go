@@ -349,11 +349,11 @@ func (adm *AdminClient) ChangeMyPassword(ctx context.Context, newSecretKey strin
 	}
 
 	reqData := requestData{
-		relPath: adminAPIPrefix + "/change-own-password",
+		relPath: adminAPIPrefix + "/change-my-password",
 		content: encData,
 	}
 
-	// Execute POST on /minio/admin/v3/change-own-password
+	// Execute POST on /minio/admin/v3/change-my-password
 	resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
 	defer closeResponse(resp)
 	if err != nil {
