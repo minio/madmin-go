@@ -332,10 +332,10 @@ func (adm *AdminClient) SetUserStatus(ctx context.Context, accessKey string, sta
 	return nil
 }
 
-// ChangeOwnPassword - changes the password for the currently authenticated user.
+// ChangeMyPassword - changes the password for the currently authenticated user.
 // This bypasses IAM policy checks entirely, allowing users to change their own
 // password even with explicit deny on admin:CreateUser.
-func (adm *AdminClient) ChangeOwnPassword(ctx context.Context, newSecretKey string) error {
+func (adm *AdminClient) ChangeMyPassword(ctx context.Context, newSecretKey string) error {
 	data, err := json.Marshal(AddOrUpdateUserReq{
 		SecretKey: newSecretKey,
 	})
