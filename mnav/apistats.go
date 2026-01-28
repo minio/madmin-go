@@ -165,42 +165,100 @@ func generateAPIStatsDisplay(stats madmin.APIStats, endpointsCount int, showTopE
 
 	// === BASIC METRICS ===
 	entries = append(entries, struct{ key, value string }{"Total Requests", humanize.Comma(stats.Requests)})
-	if endpointsCount > 0 {
-		entries = append(entries, struct{ key, value string }{"Active Endpoints", fmt.Sprintf("%d endpoints", endpointsCount)})
-	}
-	entries = append(entries, struct{ key, value string }{"Responding Nodes", fmt.Sprintf("%d nodes", stats.Nodes)})
 
 	// Calculate RPS if we have wall time
 	if stats.WallTimeSecs > 0 {
 		rps := float64(stats.Requests) / stats.WallTimeSecs
-		entries = append(entries, struct{ key, value string }{"Avg RPS", fmt.Sprintf("%.1f req/sec", rps)})
+		entries = append(entries, struct{ key, value string }{"Request Rate", fmt.Sprintf("%.1f req/sec", rps)})
 	}
 
 	// === TIMING METRICS ===
-	avgLatency := (stats.RequestTimeSecs / float64(stats.Requests)) * 1000
-	entries = append(entries, struct{ key, value string }{"Avg Latency", fmt.Sprintf("%.1f ms", avgLatency)})
+	if stats.Requests > 0 {
+		avgLatency := (stats.RequestTimeSecs / float64(stats.Requests)) * 1000
+		if stats.RequestTimeSecsMax > 0 {
+			entries = append(entries, struct{ key, value string }{
+				"Req Time",
+				fmt.Sprintf("Average: %.1fms (%.1f - %.1fms)", avgLatency,
+					stats.RequestTimeSecsMin*1000, stats.RequestTimeSecsMax*1000),
+			})
+		} else {
+			entries = append(entries, struct{ key, value string }{
+				"Req Time",
+				fmt.Sprintf("Average: %.1fms", avgLatency),
+			})
+		}
+	}
 
 	if stats.RespTTFBSecs > 0 {
 		avgTTFB := (stats.RespTTFBSecs / float64(stats.Requests)) * 1000
-		entries = append(entries, struct{ key, value string }{"Avg TTFB", fmt.Sprintf("%.1f ms", avgTTFB)})
+		if stats.RespTTFBSecsMax > 0 {
+			entries = append(entries, struct{ key, value string }{
+				"TTFB",
+				fmt.Sprintf("Average: %.1fms (%.1f - %.1fms)", avgTTFB,
+					stats.RespTTFBSecsMin*1000, stats.RespTTFBSecsMax*1000),
+			})
+		} else {
+			entries = append(entries, struct{ key, value string }{
+				"TTFB",
+				fmt.Sprintf("Average: %.1fms", avgTTFB),
+			})
+		}
 	}
 
-	// === TIMING RANGES ===
-	if stats.RequestTimeSecsMax > 0 {
-		entries = append(entries, struct{ key, value string }{"Latency Range", fmt.Sprintf("%.1f - %.1f ms",
-			stats.RequestTimeSecsMin*1000, stats.RequestTimeSecsMax*1000)})
+	if stats.ReqReadSecs > 0 {
+		avgReqRead := (stats.ReqReadSecs / float64(stats.Requests)) * 1000
+		if stats.ReqReadSecsMax > 0 {
+			entries = append(entries, struct{ key, value string }{
+				"Req Read",
+				fmt.Sprintf("Average: %.1fms (%.1f - %.1fms)", avgReqRead,
+					stats.ReqReadSecsMin*1000, stats.ReqReadSecsMax*1000),
+			})
+		} else {
+			entries = append(entries, struct{ key, value string }{
+				"Req Read",
+				fmt.Sprintf("Average: %.1fms", avgReqRead),
+			})
+		}
 	}
-	if stats.RespTTFBSecsMax > 0 {
-		entries = append(entries, struct{ key, value string }{"TTFB Range", fmt.Sprintf("%.1f - %.1f ms",
-			stats.RespTTFBSecsMin*1000, stats.RespTTFBSecsMax*1000)})
+
+	if stats.RespSecs > 0 {
+		avgRespWrite := (stats.RespSecs / float64(stats.Requests)) * 1000
+		if stats.RespSecsMax > 0 {
+			entries = append(entries, struct{ key, value string }{
+				"Resp Write",
+				fmt.Sprintf("Average: %.1fms (%.1f - %.1fms)", avgRespWrite,
+					stats.RespSecsMin*1000, stats.RespSecsMax*1000),
+			})
+		} else {
+			entries = append(entries, struct{ key, value string }{
+				"Resp Write",
+				fmt.Sprintf("Average: %.1fms", avgRespWrite),
+			})
+		}
 	}
-	if stats.ReqReadSecsMax > 0 {
-		entries = append(entries, struct{ key, value string }{"Req Read Range", fmt.Sprintf("%.1f - %.1f ms",
-			stats.ReqReadSecsMin*1000, stats.ReqReadSecsMax*1000)})
+
+	if stats.ReadBlockedSecs > 0 && stats.Requests > 0 {
+		avgReadBlocked := (stats.ReadBlockedSecs / float64(stats.Requests)) * 1000
+		pct := ""
+		if stats.ReqReadSecs > 0 {
+			pct = fmt.Sprintf(" (%.1f%%)", (stats.ReadBlockedSecs/stats.ReqReadSecs)*100)
+		}
+		entries = append(entries, struct{ key, value string }{
+			"Read Blocked",
+			fmt.Sprintf("Average: %.1fms%s", avgReadBlocked, pct),
+		})
 	}
-	if stats.RespSecsMax > 0 {
-		entries = append(entries, struct{ key, value string }{"Resp Wr Range", fmt.Sprintf("%.1f - %.1f ms",
-			stats.RespSecsMin*1000, stats.RespSecsMax*1000)})
+
+	if stats.WriteBlockedSecs > 0 && stats.Requests > 0 {
+		avgWriteBlocked := (stats.WriteBlockedSecs / float64(stats.Requests)) * 1000
+		pct := ""
+		if stats.RespSecs > 0 {
+			pct = fmt.Sprintf(" (%.1f%%)", (stats.WriteBlockedSecs/stats.RespSecs)*100)
+		}
+		entries = append(entries, struct{ key, value string }{
+			"Write Blocked",
+			fmt.Sprintf("Average: %.1fms%s", avgWriteBlocked, pct),
+		})
 	}
 
 	// === THROUGHPUT ===
@@ -269,17 +327,10 @@ func generateAPIStatsDisplay(stats madmin.APIStats, endpointsCount int, showTopE
 		}
 	}
 
-	// === BLOCKING ANALYSIS ===
-	if stats.Requests > 0 && (stats.ReadBlockedSecs > 0 || stats.WriteBlockedSecs > 0) {
-		if stats.ReadBlockedSecs > 0 {
-			avgReadBlocked := (stats.ReadBlockedSecs / float64(stats.Requests)) * 1000
-			entries = append(entries, struct{ key, value string }{"Avg Read Blocking", fmt.Sprintf("%.1f ms/req", avgReadBlocked)})
-		}
-		if stats.WriteBlockedSecs > 0 {
-			avgWriteBlocked := (stats.WriteBlockedSecs / float64(stats.Requests)) * 1000
-			entries = append(entries, struct{ key, value string }{"Avg Write Blocking", fmt.Sprintf("%.1f ms/req", avgWriteBlocked)})
-		}
+	if endpointsCount > 0 {
+		entries = append(entries, struct{ key, value string }{"Active Endpoints", fmt.Sprintf("%d endpoints", endpointsCount)})
 	}
+	entries = append(entries, struct{ key, value string }{"Responding Nodes", fmt.Sprintf("%d nodes", stats.Nodes)})
 
 	// === TOP ENDPOINTS (only for last_minute) ===
 	if showTopEndpoints && endpoints != nil {
@@ -410,10 +461,10 @@ func (node *APILastDayNode) GetChildren() []MetricChild {
 			totalRequests += segment.Requests
 			totalTimeSecs += segment.RequestTimeSecs
 		}
-		avg := ""
-		if totalRequests > 0 {
-			avg = fmt.Sprintf(" %.1fms avg.", (totalTimeSecs/float64(totalRequests))*1000)
+		if totalRequests == 0 {
+			continue
 		}
+		avg := fmt.Sprintf(" %.1fms avg.", (totalTimeSecs/float64(totalRequests))*1000)
 		children = append(children, MetricChild{
 			Name:        apiName,
 			Description: fmt.Sprintf("Time segmented - %d total requests.%s", totalRequests, avg),
@@ -891,40 +942,99 @@ func (node *APIEndpointNode) GetLeafData() map[string]string {
 	entries = append(entries, struct{ key, value string }{"Endpoint", node.endpoint})
 	entries = append(entries, struct{ key, value string }{"Total Requests", humanize.Comma(node.stats.Requests)})
 
-	// === BASIC METRICS ===
-	entries = append(entries, struct{ key, value string }{"Responding Nodes", fmt.Sprintf("%d nodes", node.stats.Nodes)})
-
 	// Calculate RPS if we have wall time
 	if node.stats.WallTimeSecs > 0 {
 		rps := float64(node.stats.Requests) / node.stats.WallTimeSecs
-		entries = append(entries, struct{ key, value string }{"Avg RPS", fmt.Sprintf("%.1f req/sec", rps)})
+		entries = append(entries, struct{ key, value string }{"Request Rate", fmt.Sprintf("%.1f req/sec", rps)})
 	}
 
 	// === TIMING METRICS ===
-	avgLatency := (node.stats.RequestTimeSecs / float64(node.stats.Requests)) * 1000
-	entries = append(entries, struct{ key, value string }{"Avg Latency", fmt.Sprintf("%.1f ms", avgLatency)})
+	if node.stats.Requests > 0 {
+		avgLatency := (node.stats.RequestTimeSecs / float64(node.stats.Requests)) * 1000
+		if node.stats.RequestTimeSecsMax > 0 {
+			entries = append(entries, struct{ key, value string }{
+				"Req Time",
+				fmt.Sprintf("Average: %.1fms (%.1f - %.1fms)", avgLatency,
+					node.stats.RequestTimeSecsMin*1000, node.stats.RequestTimeSecsMax*1000),
+			})
+		} else {
+			entries = append(entries, struct{ key, value string }{
+				"Req Time",
+				fmt.Sprintf("Average: %.1fms", avgLatency),
+			})
+		}
+	}
 
 	if node.stats.RespTTFBSecs > 0 {
 		avgTTFB := (node.stats.RespTTFBSecs / float64(node.stats.Requests)) * 1000
-		entries = append(entries, struct{ key, value string }{"Avg TTFB", fmt.Sprintf("%.1f ms", avgTTFB)})
+		if node.stats.RespTTFBSecsMax > 0 {
+			entries = append(entries, struct{ key, value string }{
+				"TTFB",
+				fmt.Sprintf("Average: %.1fms (%.1f - %.1fms)", avgTTFB,
+					node.stats.RespTTFBSecsMin*1000, node.stats.RespTTFBSecsMax*1000),
+			})
+		} else {
+			entries = append(entries, struct{ key, value string }{
+				"TTFB",
+				fmt.Sprintf("Average: %.1fms", avgTTFB),
+			})
+		}
 	}
 
-	// === TIMING RANGES (all 4 like main page) ===
-	if node.stats.RequestTimeSecsMax > 0 {
-		entries = append(entries, struct{ key, value string }{"Latency Range", fmt.Sprintf("%.1f - %.1f ms",
-			node.stats.RequestTimeSecsMin*1000, node.stats.RequestTimeSecsMax*1000)})
+	if node.stats.ReqReadSecs > 0 {
+		avgReqRead := (node.stats.ReqReadSecs / float64(node.stats.Requests)) * 1000
+		if node.stats.ReqReadSecsMax > 0 {
+			entries = append(entries, struct{ key, value string }{
+				"Req Read",
+				fmt.Sprintf("Average: %.1fms (%.1f - %.1fms)", avgReqRead,
+					node.stats.ReqReadSecsMin*1000, node.stats.ReqReadSecsMax*1000),
+			})
+		} else {
+			entries = append(entries, struct{ key, value string }{
+				"Req Read",
+				fmt.Sprintf("Average: %.1fms", avgReqRead),
+			})
+		}
 	}
-	if node.stats.RespTTFBSecsMax > 0 {
-		entries = append(entries, struct{ key, value string }{"TTFB Range", fmt.Sprintf("%.1f - %.1f ms",
-			node.stats.RespTTFBSecsMin*1000, node.stats.RespTTFBSecsMax*1000)})
+
+	if node.stats.RespSecs > 0 {
+		avgRespWrite := (node.stats.RespSecs / float64(node.stats.Requests)) * 1000
+		if node.stats.RespSecsMax > 0 {
+			entries = append(entries, struct{ key, value string }{
+				"Resp Write",
+				fmt.Sprintf("Average: %.1fms (%.1f - %.1fms)", avgRespWrite,
+					node.stats.RespSecsMin*1000, node.stats.RespSecsMax*1000),
+			})
+		} else {
+			entries = append(entries, struct{ key, value string }{
+				"Resp Write",
+				fmt.Sprintf("Average: %.1fms", avgRespWrite),
+			})
+		}
 	}
-	if node.stats.ReqReadSecsMax > 0 {
-		entries = append(entries, struct{ key, value string }{"Req Read Range", fmt.Sprintf("%.1f - %.1f ms",
-			node.stats.ReqReadSecsMin*1000, node.stats.ReqReadSecsMax*1000)})
+
+	if node.stats.ReadBlockedSecs > 0 && node.stats.Requests > 0 {
+		avgReadBlocked := (node.stats.ReadBlockedSecs / float64(node.stats.Requests)) * 1000
+		pct := ""
+		if node.stats.ReqReadSecs > 0 {
+			pct = fmt.Sprintf(" (%.1f%%)", (node.stats.ReadBlockedSecs/node.stats.ReqReadSecs)*100)
+		}
+		entries = append(entries, struct{ key, value string }{
+			"Read Blocked",
+			fmt.Sprintf("Average: %.1fms%s", avgReadBlocked, pct),
+		})
 	}
-	if node.stats.RespSecsMax > 0 {
-		entries = append(entries, struct{ key, value string }{"Resp Wr Range", fmt.Sprintf("%.1f - %.1f ms",
-			node.stats.RespSecsMin*1000, node.stats.RespSecsMax*1000)})
+
+	if node.stats.WriteBlockedSecs > 0 && node.stats.Requests > 0 {
+		avgWriteBlocked := (node.stats.WriteBlockedSecs / float64(node.stats.Requests)) * 1000
+		pct := ""
+		if node.stats.RespSecs > 0 {
+			pct = fmt.Sprintf(" (%.1f%%)", (node.stats.WriteBlockedSecs/node.stats.RespSecs)*100)
+		}
+		entries = append(entries, struct{ key, value string }{
+			"Write Blocked",
+			fmt.Sprintf("Average: %.1fms%s", avgWriteBlocked, pct),
+		})
 	}
 
 	// === THROUGHPUT ===
@@ -994,17 +1104,8 @@ func (node *APIEndpointNode) GetLeafData() map[string]string {
 		}
 	}
 
-	// === BLOCKING ANALYSIS ===
-	if node.stats.Requests > 0 && (node.stats.ReadBlockedSecs > 0 || node.stats.WriteBlockedSecs > 0) {
-		if node.stats.ReadBlockedSecs > 0 {
-			avgReadBlocked := (node.stats.ReadBlockedSecs / float64(node.stats.Requests)) * 1000
-			entries = append(entries, struct{ key, value string }{"Avg Read Blocking", fmt.Sprintf("%.1f ms/req", avgReadBlocked)})
-		}
-		if node.stats.WriteBlockedSecs > 0 {
-			avgWriteBlocked := (node.stats.WriteBlockedSecs / float64(node.stats.Requests)) * 1000
-			entries = append(entries, struct{ key, value string }{"Avg Write Blocking", fmt.Sprintf("%.1f ms/req", avgWriteBlocked)})
-		}
-	}
+	// === BASIC METRICS ===
+	entries = append(entries, struct{ key, value string }{"Responding Nodes", fmt.Sprintf("%d nodes", node.stats.Nodes)})
 
 	// Convert ordered entries to map with numbered prefixes to preserve order
 	data := make(map[string]string)
@@ -1111,10 +1212,6 @@ func (node *APIMetricsNode) generateAPIOverviewDashboard() map[string]string {
 	// Use ordered slice to maintain consistent display order
 	var entries []struct{ key, value string }
 
-	// === SYSTEM INFO ===
-	entries = append(entries, struct{ key, value string }{"Active Nodes", fmt.Sprintf("%d nodes responding", node.api.Nodes)})
-	entries = append(entries, struct{ key, value string }{"Collection Time", node.api.CollectedAt.Format("15:04:05")})
-
 	// === QUEUE STATUS ===
 	entries = append(entries, struct{ key, value string }{"Active Requests", humanize.Comma(node.api.ActiveRequests)})
 	entries = append(entries, struct{ key, value string }{"Queued Requests", humanize.Comma(node.api.QueuedRequests)})
@@ -1123,38 +1220,97 @@ func (node *APIMetricsNode) generateAPIOverviewDashboard() map[string]string {
 
 	// === REQUEST METRICS ===
 	if lastMinute.Requests > 0 {
-		entries = append(entries, struct{ key, value string }{"Request Rate", fmt.Sprintf("%s req/min", humanize.Comma(lastMinute.Requests))})
-		rps := float64(lastMinute.Requests) / 60.0
-		entries = append(entries, struct{ key, value string }{"Avg RPS", fmt.Sprintf("%.1f req/sec", rps)})
+		entries = append(entries, struct{ key, value string }{"Request Rate", fmt.Sprintf("%s req/min (%.1f req/sec)", humanize.Comma(lastMinute.Requests), float64(lastMinute.Requests)/60.0)})
 
+		// === TIMING METRICS ===
 		avgLatency := (lastMinute.RequestTimeSecs / float64(lastMinute.Requests)) * 1000
-		entries = append(entries, struct{ key, value string }{"Avg Latency", fmt.Sprintf("%.1f ms", avgLatency)})
+		if lastMinute.RequestTimeSecsMax > 0 {
+			entries = append(entries, struct{ key, value string }{
+				"Req Time",
+				fmt.Sprintf("Average: %.1fms (%.1f - %.1fms)", avgLatency,
+					lastMinute.RequestTimeSecsMin*1000, lastMinute.RequestTimeSecsMax*1000),
+			})
+		} else {
+			entries = append(entries, struct{ key, value string }{
+				"Req Time",
+				fmt.Sprintf("Average: %.1fms", avgLatency),
+			})
+		}
 
 		if lastMinute.RespTTFBSecs > 0 {
 			avgTTFB := (lastMinute.RespTTFBSecs / float64(lastMinute.Requests)) * 1000
-			entries = append(entries, struct{ key, value string }{"Avg TTFB", fmt.Sprintf("%.1f ms", avgTTFB)})
+			if lastMinute.RespTTFBSecsMax > 0 {
+				entries = append(entries, struct{ key, value string }{
+					"TTFB",
+					fmt.Sprintf("Average: %.1fms (%.1f - %.1fms)", avgTTFB,
+						lastMinute.RespTTFBSecsMin*1000, lastMinute.RespTTFBSecsMax*1000),
+				})
+			} else {
+				entries = append(entries, struct{ key, value string }{
+					"TTFB",
+					fmt.Sprintf("Average: %.1fms", avgTTFB),
+				})
+			}
+		}
+
+		if lastMinute.ReqReadSecs > 0 {
+			avgReqRead := (lastMinute.ReqReadSecs / float64(lastMinute.Requests)) * 1000
+			if lastMinute.ReqReadSecsMax > 0 {
+				entries = append(entries, struct{ key, value string }{
+					"Req Read",
+					fmt.Sprintf("Average: %.1fms (%.1f - %.1fms)", avgReqRead,
+						lastMinute.ReqReadSecsMin*1000, lastMinute.ReqReadSecsMax*1000),
+				})
+			} else {
+				entries = append(entries, struct{ key, value string }{
+					"Req Read",
+					fmt.Sprintf("Average: %.1fms", avgReqRead),
+				})
+			}
+		}
+
+		if lastMinute.RespSecs > 0 {
+			avgRespWrite := (lastMinute.RespSecs / float64(lastMinute.Requests)) * 1000
+			if lastMinute.RespSecsMax > 0 {
+				entries = append(entries, struct{ key, value string }{
+					"Resp Write",
+					fmt.Sprintf("Average: %.1fms (%.1f - %.1fms)", avgRespWrite,
+						lastMinute.RespSecsMin*1000, lastMinute.RespSecsMax*1000),
+				})
+			} else {
+				entries = append(entries, struct{ key, value string }{
+					"Resp Write",
+					fmt.Sprintf("Average: %.1fms", avgRespWrite),
+				})
+			}
+		}
+
+		if lastMinute.ReadBlockedSecs > 0 {
+			avgReadBlocked := (lastMinute.ReadBlockedSecs / float64(lastMinute.Requests)) * 1000
+			pct := ""
+			if lastMinute.ReqReadSecs > 0 {
+				pct = fmt.Sprintf(" (%.1f%%)", (lastMinute.ReadBlockedSecs/lastMinute.ReqReadSecs)*100)
+			}
+			entries = append(entries, struct{ key, value string }{
+				"Read Blocked",
+				fmt.Sprintf("Average: %.1fms%s", avgReadBlocked, pct),
+			})
+		}
+
+		if lastMinute.WriteBlockedSecs > 0 {
+			avgWriteBlocked := (lastMinute.WriteBlockedSecs / float64(lastMinute.Requests)) * 1000
+			pct := ""
+			if lastMinute.RespSecs > 0 {
+				pct = fmt.Sprintf(" (%.1f%%)", (lastMinute.WriteBlockedSecs/lastMinute.RespSecs)*100)
+			}
+			entries = append(entries, struct{ key, value string }{
+				"Write Blocked",
+				fmt.Sprintf("Average: %.1fms%s", avgWriteBlocked, pct),
+			})
 		}
 	} else {
 		entries = append(entries, struct{ key, value string }{"Request Rate", "No requests"})
 		entries = append(entries, struct{ key, value string }{"Avg RPS", "0.0 req/sec"})
-	}
-
-	// === TIMING RANGES ===
-	if lastMinute.RequestTimeSecsMax > 0 {
-		entries = append(entries, struct{ key, value string }{"Latency Range", fmt.Sprintf("%.1f - %.1f ms",
-			lastMinute.RequestTimeSecsMin*1000, lastMinute.RequestTimeSecsMax*1000)})
-	}
-	if lastMinute.RespTTFBSecsMax > 0 {
-		entries = append(entries, struct{ key, value string }{"TTFB Range", fmt.Sprintf("%.1f - %.1f ms",
-			lastMinute.RespTTFBSecsMin*1000, lastMinute.RespTTFBSecsMax*1000)})
-	}
-	if lastMinute.ReqReadSecsMax > 0 {
-		entries = append(entries, struct{ key, value string }{"Req Read Range", fmt.Sprintf("%.1f - %.1f ms",
-			lastMinute.ReqReadSecsMin*1000, lastMinute.ReqReadSecsMax*1000)})
-	}
-	if lastMinute.RespSecsMax > 0 {
-		entries = append(entries, struct{ key, value string }{"Resp Wr Range", fmt.Sprintf("%.1f - %.1f ms",
-			lastMinute.RespSecsMin*1000, lastMinute.RespSecsMax*1000)})
 	}
 
 	// === THROUGHPUT ===
@@ -1217,17 +1373,9 @@ func (node *APIMetricsNode) generateAPIOverviewDashboard() map[string]string {
 		}
 	}
 
-	// === BLOCKING ANALYSIS ===
-	if lastMinute.Requests > 0 && (lastMinute.ReadBlockedSecs > 0 || lastMinute.WriteBlockedSecs > 0) {
-		if lastMinute.ReadBlockedSecs > 0 {
-			avgReadBlocked := (lastMinute.ReadBlockedSecs / float64(lastMinute.Requests)) * 1000
-			entries = append(entries, struct{ key, value string }{"Avg Read Blocking", fmt.Sprintf("%.1f ms/req", avgReadBlocked)})
-		}
-		if lastMinute.WriteBlockedSecs > 0 {
-			avgWriteBlocked := (lastMinute.WriteBlockedSecs / float64(lastMinute.Requests)) * 1000
-			entries = append(entries, struct{ key, value string }{"Avg Write Blocking", fmt.Sprintf("%.1f ms/req", avgWriteBlocked)})
-		}
-	}
+	// === SYSTEM INFO ===
+	entries = append(entries, struct{ key, value string }{"Active Nodes", fmt.Sprintf("%d nodes responding", node.api.Nodes)})
+	entries = append(entries, struct{ key, value string }{"Collection Time", node.api.CollectedAt.Format("15:04:05")})
 
 	// Convert ordered entries to map with numbered prefixes to preserve order
 	data := make(map[string]string)
