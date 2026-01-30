@@ -53,43 +53,43 @@ const (
 
 // API represents the api event
 type API struct {
-	Version   string            `json:"version"`
-	Time      time.Time         `json:"time"`
-	Node      string            `json:"node,omitempty"`
-	Origin    Origin            `json:"origin,omitempty"`
-	Type      APIType           `json:"type,omitempty"`
-	Name      string            `json:"name,omitempty"`
-	Bucket    string            `json:"bucket,omitempty"`
-	Object    string            `json:"object,omitempty"`
-	VersionID string            `json:"versionId,omitempty"`
-	Tags      map[string]string `json:"tags,omitempty"`
-	CallInfo  *CallInfo         `json:"callInfo,omitempty"`
+	Version   string            `json:"version" parquet:"version"`
+	Time      time.Time         `json:"time" parquet:"time,timestamp(microsecond)"`
+	Node      string            `json:"node,omitempty" parquet:"node,optional"`
+	Origin    Origin            `json:"origin,omitempty" parquet:"origin,optional"`
+	Type      APIType           `json:"type,omitempty" parquet:"type,optional"`
+	Name      string            `json:"name,omitempty" parquet:"name,optional"`
+	Bucket    string            `json:"bucket,omitempty" parquet:"bucket,optional"`
+	Object    string            `json:"object,omitempty" parquet:"object,optional"`
+	VersionID string            `json:"versionId,omitempty" parquet:"versionId,optional"`
+	Tags      map[string]string `json:"tags,omitempty" parquet:"tags,optional"`
+	CallInfo  *CallInfo         `json:"callInfo,omitempty" parquet:"callInfo,optional"`
 }
 
 // CallInfo represents the info for the external call
 type CallInfo struct {
-	HTTPStatusCode    int                    `json:"httpStatusCode,omitempty"`
-	InputBytes        int64                  `json:"rx,omitempty"`
-	OutputBytes       int64                  `json:"tx,omitempty"`
-	HeaderBytes       int64                  `json:"txHeaders,omitempty"`
-	TimeToFirstByte   string                 `json:"timeToFirstByte,omitempty"`
-	RequestReadTime   string                 `json:"requestReadTime,omitempty"`
-	ResponseWriteTime string                 `json:"responseWriteTime,omitempty"`
-	RequestTime       string                 `json:"requestTime,omitempty"`
-	TimeToResponse    string                 `json:"timeToResponse,omitempty"`
-	ReadBlocked       string                 `json:"readBlocked,omitempty"`
-	WriteBlocked      string                 `json:"writeBlocked,omitempty"`
-	SourceHost        string                 `json:"sourceHost,omitempty"`
-	RequestID         string                 `json:"requestID,omitempty"`
-	UserAgent         string                 `json:"userAgent,omitempty"`
-	ReqPath           string                 `json:"requestPath,omitempty"`
-	ReqHost           string                 `json:"requestHost,omitempty"`
-	ReqClaims         map[string]interface{} `json:"requestClaims,omitempty"`
-	ReqQuery          map[string]string      `json:"requestQuery,omitempty"`
-	ReqHeader         map[string]string      `json:"requestHeader,omitempty"`
-	RespHeader        map[string]string      `json:"responseHeader,omitempty"`
-	AccessKey         string                 `json:"accessKey,omitempty"`
-	ParentUser        string                 `json:"parentUser,omitempty"`
+	HTTPStatusCode    int               `json:"httpStatusCode,omitempty" parquet:"httpStatusCode,optional"`
+	InputBytes        int64             `json:"rx,omitempty" parquet:"inputBytes,optional"`
+	OutputBytes       int64             `json:"tx,omitempty" parquet:"outputBytes,optional"`
+	HeaderBytes       int64             `json:"txHeaders,omitempty" parquet:"headerBytes,optional"`
+	TimeToFirstByte   string            `json:"timeToFirstByte,omitempty" parquet:"timeToFirstByte,optional"`
+	RequestReadTime   string            `json:"requestReadTime,omitempty" parquet:"requestReadTime,optional"`
+	ResponseWriteTime string            `json:"responseWriteTime,omitempty" parquet:"responseWriteTime,optional"`
+	RequestTime       string            `json:"requestTime,omitempty" parquet:"requestTime,optional"`
+	TimeToResponse    string            `json:"timeToResponse,omitempty" parquet:"timeToResponse,optional"`
+	ReadBlocked       string            `json:"readBlocked,omitempty" parquet:"readBlocked,optional"`
+	WriteBlocked      string            `json:"writeBlocked,omitempty" parquet:"writeBlocked,optional"`
+	SourceHost        string            `json:"sourceHost,omitempty" parquet:"sourceHost,optional"`
+	RequestID         string            `json:"requestID,omitempty" parquet:"requestId,optional"`
+	UserAgent         string            `json:"userAgent,omitempty" parquet:"userAgent,optional"`
+	ReqPath           string            `json:"requestPath,omitempty" parquet:"reqPath,optional"`
+	ReqHost           string            `json:"requestHost,omitempty" parquet:"reqHost,optional"`
+	ReqClaims         map[string]string `json:"requestClaims,omitempty" parquet:"reqClaims,optional"`
+	ReqQuery          map[string]string `json:"requestQuery,omitempty" parquet:"reqQuery,optional"`
+	ReqHeader         map[string]string `json:"requestHeader,omitempty" parquet:"reqHeader,optional"`
+	RespHeader        map[string]string `json:"responseHeader,omitempty" parquet:"respHeader,optional"`
+	AccessKey         string            `json:"accessKey,omitempty" parquet:"accessKey,optional"`
+	ParentUser        string            `json:"parentUser,omitempty" parquet:"parentUser,optional"`
 }
 
 // String provides a canonical representation for API
@@ -132,7 +132,7 @@ func (c CallInfo) String() string {
 		toString("userAgent", c.UserAgent),
 		toString("requestPath", c.ReqPath),
 		toString("requestHost", c.ReqHost),
-		toInterfaceMap("requestClaims", c.ReqClaims),
+		toMap("requestClaims", c.ReqClaims),
 		toMap("requestQuery", c.ReqQuery),
 		toMap("requestHeader", c.ReqHeader),
 		toMap("responseHeader", c.RespHeader),
