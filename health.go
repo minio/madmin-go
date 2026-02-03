@@ -1293,6 +1293,7 @@ type ServerInfo struct {
 	MinioEnvVars   map[string]string `json:"minio_env_vars,omitempty"`
 	Edition        string            `json:"edition"`
 	License        *LicenseInfo      `json:"license,omitempty"`
+	APIVersion     *APIVersion       `json:"api_version,omitempty"`
 }
 
 // MinioInfo contains MinIO server and object storage information.
