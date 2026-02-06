@@ -1249,15 +1249,44 @@ type SysInfo struct {
 	KubernetesInfo KubernetesInfo `json:"kubernetes"`
 }
 
+// DeploymentInfo contains diagnostic information about the AIStor deployment
+// managed by the operator.
+type DeploymentInfo struct {
+	Operator    OperatorInfo    `json:"operator"`
+	ObjectStore ObjectStoreInfo `json:"objectStore"`
+	KES         *KESInfo        `json:"kes,omitempty"`
+}
+
+// OperatorInfo contains information about the AIStor operator.
+type OperatorInfo struct {
+	Version   string `json:"version"`
+	Image     string `json:"image,omitempty"`
+	HelmChart string `json:"helmChart,omitempty"`
+}
+
+// ObjectStoreInfo contains information about the ObjectStore deployment.
+type ObjectStoreInfo struct {
+	Image        string `json:"image"`
+	SidecarImage string `json:"sidecarImage"`
+	HelmChart    string `json:"helmChart,omitempty"`
+}
+
+// KESInfo contains information about the KES deployment.
+type KESInfo struct {
+	Image        string `json:"image,omitempty"`
+	SidecarImage string `json:"sidecarImage,omitempty"`
+}
+
 // KubernetesInfo - Information about the kubernetes platform
 type KubernetesInfo struct {
-	Major      string    `json:"major,omitempty"`
-	Minor      string    `json:"minor,omitempty"`
-	GitVersion string    `json:"gitVersion,omitempty"`
-	GitCommit  string    `json:"gitCommit,omitempty"`
-	BuildDate  time.Time `json:"buildDate,omitempty"`
-	Platform   string    `json:"platform,omitempty"`
-	Error      string    `json:"error,omitempty"`
+	Major      string          `json:"major,omitempty"`
+	Minor      string          `json:"minor,omitempty"`
+	GitVersion string          `json:"gitVersion,omitempty"`
+	GitCommit  string          `json:"gitCommit,omitempty"`
+	BuildDate  time.Time       `json:"buildDate,omitempty"`
+	Platform   string          `json:"platform,omitempty"`
+	Deployment *DeploymentInfo `json:"deployment,omitempty"`
+	Error      string          `json:"error,omitempty"`
 }
 
 // SpeedTestResults - Includes perf test results of the MinIO cluster
