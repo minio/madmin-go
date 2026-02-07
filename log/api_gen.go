@@ -888,7 +888,7 @@ func (z *CallInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 			if z.ReqClaims == nil {
-				z.ReqClaims = make(map[string]interface{}, zb0002)
+				z.ReqClaims = make(map[string]string, zb0002)
 			} else if len(z.ReqClaims) > 0 {
 				clear(z.ReqClaims)
 			}
@@ -900,8 +900,8 @@ func (z *CallInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 					err = msgp.WrapError(err, "ReqClaims")
 					return
 				}
-				var za0002 interface{}
-				za0002, err = dc.ReadIntf()
+				var za0002 string
+				za0002, err = dc.ReadString()
 				if err != nil {
 					err = msgp.WrapError(err, "ReqClaims", za0001)
 					return
@@ -1401,7 +1401,7 @@ func (z *CallInfo) EncodeMsg(en *msgp.Writer) (err error) {
 					err = msgp.WrapError(err, "ReqClaims")
 					return
 				}
-				err = en.WriteIntf(za0002)
+				err = en.WriteString(za0002)
 				if err != nil {
 					err = msgp.WrapError(err, "ReqClaims", za0001)
 					return
@@ -1694,11 +1694,7 @@ func (z *CallInfo) MarshalMsg(b []byte) (o []byte, err error) {
 			o = msgp.AppendMapHeader(o, uint32(len(z.ReqClaims)))
 			for za0001, za0002 := range z.ReqClaims {
 				o = msgp.AppendString(o, za0001)
-				o, err = msgp.AppendIntf(o, za0002)
-				if err != nil {
-					err = msgp.WrapError(err, "ReqClaims", za0001)
-					return
-				}
+				o = msgp.AppendString(o, za0002)
 			}
 		}
 		if (zb0001Mask & 0x20000) == 0 { // if not omitted
@@ -1882,12 +1878,12 @@ func (z *CallInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 			if z.ReqClaims == nil {
-				z.ReqClaims = make(map[string]interface{}, zb0002)
+				z.ReqClaims = make(map[string]string, zb0002)
 			} else if len(z.ReqClaims) > 0 {
 				clear(z.ReqClaims)
 			}
 			for zb0002 > 0 {
-				var za0002 interface{}
+				var za0002 string
 				zb0002--
 				var za0001 string
 				za0001, bts, err = msgp.ReadStringBytes(bts)
@@ -1895,7 +1891,7 @@ func (z *CallInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					err = msgp.WrapError(err, "ReqClaims")
 					return
 				}
-				za0002, bts, err = msgp.ReadIntfBytes(bts)
+				za0002, bts, err = msgp.ReadStringBytes(bts)
 				if err != nil {
 					err = msgp.WrapError(err, "ReqClaims", za0001)
 					return
@@ -2091,7 +2087,7 @@ func (z *CallInfo) Msgsize() (s int) {
 	if z.ReqClaims != nil {
 		for za0001, za0002 := range z.ReqClaims {
 			_ = za0002
-			s += msgp.StringPrefixSize + len(za0001) + msgp.GuessSize(za0002)
+			s += msgp.StringPrefixSize + len(za0001) + msgp.StringPrefixSize + len(za0002)
 		}
 	}
 	s += 13 + msgp.MapHeaderSize
