@@ -19,7 +19,7 @@
 
 package madmin
 
-import "encoding/json"
+//go:generate msgp -d clearomitted -d "timezone utc" -file $GOFILE
 
 // Table maintenance type constants
 const (
@@ -27,10 +27,13 @@ const (
 	MaintenanceTypeIcebergCompaction         = "icebergCompaction"
 )
 
+// MaintenanceStatus represents the status of a table maintenance configuration.
+type MaintenanceStatus string
+
 // Table maintenance status constants
 const (
-	MaintenanceStatusEnabled  = "enabled"
-	MaintenanceStatusDisabled = "disabled"
+	MaintenanceStatusEnabled  MaintenanceStatus = "enabled"
+	MaintenanceStatusDisabled MaintenanceStatus = "disabled"
 )
 
 // IcebergSnapshotManagementSettings contains settings for Iceberg snapshot management.
@@ -48,9 +51,7 @@ type IcebergSnapshotManagementSettings struct {
 // Only one of the fields should be set at a time based on the maintenance type.
 type TableMaintenanceSettings struct {
 	IcebergSnapshotManagement *IcebergSnapshotManagementSettings `json:"icebergSnapshotManagement,omitempty"`
-	// IcebergCompaction is a placeholder for future compaction settings.
-	// Currently not implemented but reserved for API compatibility.
-	IcebergCompaction *json.RawMessage `json:"icebergCompaction,omitempty"`
+	// IcebergCompaction will be added in a future release.
 }
 
 // TableMaintenanceConfigurationValue represents a maintenance configuration with status.
@@ -58,7 +59,7 @@ type TableMaintenanceConfigurationValue struct {
 	// Settings contains the type-specific maintenance settings.
 	Settings *TableMaintenanceSettings `json:"settings,omitempty"`
 	// Status indicates whether this maintenance type is enabled or disabled.
-	Status string `json:"status"`
+	Status MaintenanceStatus `json:"status"`
 }
 
 // PutTableMaintenanceConfigurationRequest is the request body for PutTableMaintenanceConfiguration.
