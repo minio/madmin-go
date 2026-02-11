@@ -129,6 +129,21 @@ type KMSMetrics struct {
 	StackAlloc  int64 `json:"kes_system_mem_stack_used"`
 }
 
+// EnableKMS enables the internal builtin KMS on a MinIO cluster.
+// It returns an error if the builtin KMS is already enabled.
+func (adm *AdminClient) EnableKMS(ctx context.Context) error {
+	// POST /minio/kms/v1/enable
+	resp, err := adm.doKMSRequest(ctx, "/enable", http.MethodPost, nil, map[string]string{})
+	if err != nil {
+		return err
+	}
+	defer closeResponse(resp)
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+	return nil
+}
+
 type KMSAPI struct {
 	Method  string
 	Path    string
@@ -231,6 +246,25 @@ func (adm *AdminClient) CreateKey(ctx context.Context, keyID string) error {
 	return nil
 }
 
+// RotateKey creates a new version of the master key with the given key ID\
+// at a MinIO cluster.
+func (adm *AdminClient) RotateKey(ctx context.Context, keyID string) error {
+	// POST /minio/kms/v1/key/rotate?key-id=<keyID>
+	queries := map[string]string{}
+	if keyID != "" {
+		queries["key-id"] = keyID
+	}
+	resp, err := adm.doKMSRequest(ctx, "/key/rotate", http.MethodPost, nil, queries)
+	if err != nil {
+		return err
+	}
+	defer closeResponse(resp)
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+	return nil
+}
+
 // DeleteKey tries to delete a key with the given keyID
 // at the KMS connected to a MinIO server.
 func (adm *AdminClient) DeleteKey(ctx context.Context, keyID string) error {
@@ -306,6 +340,7 @@ func (adm *AdminClient) GetKeyStatus(ctx context.Context, keyID string) (*KMSKey
 // the master key ID but no error.
 type KMSKeyStatus struct {
 	KeyID         string `json:"key-id"`
+	KeyVersion    string `json:"version,omitempty"`
 	EncryptionErr string `json:"encryption-error,omitempty"` // An empty error == success
 	DecryptionErr string `json:"decryption-error,omitempty"` // An empty error == success
 }
