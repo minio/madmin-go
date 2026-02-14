@@ -383,6 +383,7 @@ type Partition struct {
 	SpaceFree    uint64 `json:"space_free,omitempty"`
 	InodeTotal   uint64 `json:"inode_total,omitempty"`
 	InodeFree    uint64 `json:"inode_free,omitempty"`
+	FstabSource  string `json:"fstab_source,omitempty"` // source from /etc/fstab (UUID=, LABEL=, or device path)
 }
 
 // NetSettings - rx/tx settings of an interface
@@ -476,6 +477,41 @@ func getDriveHwInfo(partDevice string) (info driveHwInfo, err error) {
 	return info, err
 }
 
+// parseFstab reads /etc/fstab and returns a map of mountpoint to source device specification.
+// The source can be a device path (/dev/sdb1), UUID (UUID=xxx), or LABEL (LABEL=xxx).
+func parseFstab() map[string]string {
+	result := make(map[string]string)
+
+	file, err := os.Open("/etc/fstab")
+	if err != nil {
+		return result
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+
+		// Skip empty lines and comments
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		// fstab format: <source> <mountpoint> <type> <options> <dump> <pass>
+		// Fields are separated by whitespace (spaces or tabs)
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+
+		source := fields[0]
+		mountpoint := fields[1]
+		result[mountpoint] = source
+	}
+
+	return result
+}
+
 // GetPartitions returns all disk partitions information of a node running linux only operating system.
 func GetPartitions(ctx context.Context, addr string) Partitions {
 	if runtime.GOOS != "linux" {
@@ -498,6 +534,9 @@ func GetPartitions(ctx context.Context, addr string) Partitions {
 	}
 
 	partitions := []Partition{}
+
+	// Parse /etc/fstab once to look up mount sources
+	fstabEntries := parseFstab()
 
 	for i := range parts {
 		usage, err := disk.UsageWithContext(ctx, parts[i].Mountpoint)
@@ -528,6 +567,7 @@ func GetPartitions(ctx context.Context, addr string) Partitions {
 				Revision:     di.Revision,
 				Major:        di.Major,
 				Minor:        di.Minor,
+				FstabSource:  fstabEntries[parts[i].Mountpoint],
 			})
 		}
 	}
