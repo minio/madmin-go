@@ -37,20 +37,6 @@ func stringifyMap(m map[string]string) string {
 	return strings.Join(pairs, ",")
 }
 
-// stringifyInterfaceMap sorts and joins a map[string]interface{} as "k1=v1,k2=v2".
-// (Uses fmt.Sprint to stringify values.)
-func stringifyInterfaceMap(m map[string]interface{}) string {
-	if len(m) == 0 {
-		return ""
-	}
-	pairs := make([]string, 0, len(m))
-	for k, v := range m {
-		pairs = append(pairs, fmt.Sprintf("%v=%v", k, v))
-	}
-	slices.Sort(pairs)
-	return strings.Join(pairs, ",")
-}
-
 func toString(key, value string) string {
 	if value == "" {
 		return ""
@@ -84,13 +70,6 @@ func toMap(key string, m map[string]string) string {
 		return ""
 	}
 	return fmt.Sprintf("%s={%s}", key, stringifyMap(m))
-}
-
-func toInterfaceMap(key string, m map[string]interface{}) string {
-	if len(m) == 0 {
-		return ""
-	}
-	return fmt.Sprintf("%s={%s}", key, stringifyInterfaceMap(m))
 }
 
 // filterAndSort removes empty entries and sorts.
