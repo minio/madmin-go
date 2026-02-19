@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 )
 
@@ -38,9 +39,27 @@ type DeltaSharingTable struct {
 	Location string `json:"location,omitempty"`
 
 	// For Iceberg tables (UniForm)
-	Warehouse string `json:"warehouse,omitempty"`
-	Namespace string `json:"namespace,omitempty"`
-	Table     string `json:"table,omitempty"`
+	Warehouse string         `json:"warehouse,omitempty"`
+	Namespace DeltaSharingNS `json:"namespace,omitempty"`
+	Table     string         `json:"table,omitempty"`
+}
+
+// DeltaSharingNS handles namespace as both string and array JSON formats.
+type DeltaSharingNS string
+
+func (ns *DeltaSharingNS) UnmarshalJSON(data []byte) error {
+	var str string
+	if err := json.Unmarshal(data, &str); err == nil {
+		*ns = DeltaSharingNS(str)
+		return nil
+	}
+
+	var arr []string
+	if err := json.Unmarshal(data, &arr); err != nil {
+		return fmt.Errorf("namespace must be a string or array of strings: %w", err)
+	}
+	*ns = DeltaSharingNS(strings.Join(arr, "."))
+	return nil
 }
 
 // DeltaSharingSchema represents a schema containing tables
@@ -350,7 +369,7 @@ func NewUniformTable(name, warehouse, namespace, table string) DeltaSharingTable
 		Name:       name,
 		SourceType: "uniform",
 		Warehouse:  warehouse,
-		Namespace:  namespace,
+		Namespace:  DeltaSharingNS(namespace),
 		Table:      table,
 	}
 }

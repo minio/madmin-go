@@ -278,7 +278,7 @@ func TestHelperFunctions(t *testing.T) {
 	if uniformTable.Warehouse != "warehouse1" {
 		t.Errorf("Expected warehouse 'warehouse1', got %s", uniformTable.Warehouse)
 	}
-	if uniformTable.Namespace != "retail" {
+	if string(uniformTable.Namespace) != "retail" {
 		t.Errorf("Expected namespace 'retail', got %s", uniformTable.Namespace)
 	}
 	if uniformTable.Table != "inventory_table" {
@@ -408,5 +408,41 @@ func TestProfileMarshaling(t *testing.T) {
 
 	if !reflect.DeepEqual(v2Profile, decodedV2) {
 		t.Error("v2 profile marshaling/unmarshaling mismatch")
+	}
+}
+
+func TestDeltaSharingNSUnmarshal(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    string
+		expected DeltaSharingNS
+	}{
+		{
+			name:     "string format",
+			input:    `{"name":"t1","sourceType":"uniform","warehouse":"wh","namespace":"tpch","table":"orders"}`,
+			expected: "tpch",
+		},
+		{
+			name:     "array format single element",
+			input:    `{"name":"t1","sourceType":"uniform","warehouse":"wh","namespace":["tpch"],"table":"orders"}`,
+			expected: "tpch",
+		},
+		{
+			name:     "array format multi-level",
+			input:    `{"name":"t1","sourceType":"uniform","warehouse":"wh","namespace":["a","b","c"],"table":"orders"}`,
+			expected: "a.b.c",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var table DeltaSharingTable
+			if err := json.Unmarshal([]byte(tt.input), &table); err != nil {
+				t.Fatalf("Unmarshal failed: %v", err)
+			}
+			if table.Namespace != tt.expected {
+				t.Errorf("got namespace %q, want %q", table.Namespace, tt.expected)
+			}
+		})
 	}
 }

@@ -286,9 +286,9 @@ func (b *kvBuilder) add(key, value string) {
 		b.sb.WriteString(" ")
 	}
 	if strings.Contains(value, " ") {
-		b.sb.WriteString(fmt.Sprintf("%s=%q", key, value))
+		fmt.Fprintf(&b.sb, "%s=%q", key, value)
 	} else {
-		b.sb.WriteString(fmt.Sprintf("%s=%s", key, value))
+		fmt.Fprintf(&b.sb, "%s=%s", key, value)
 	}
 }
 
