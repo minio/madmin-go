@@ -154,6 +154,8 @@ const BatchJobKeyRotateTemplate = `keyrotate:
         - key: "content-type"
           value: "image/*" # match objects with 'content-type', with all values starting with 'image/'
       kmskey: "key-id" # match objects with KMS key-id (applicable only for sse-kms)
+      plaintextOnly: true # only encrypt unencrypted objects (skip SSE-S3, SSE-KMS, SSE-C encrypted objects)
+      forceEncryptLocked: false # encrypt objects under retention (object lock)
     notify:
       endpoint: "https://notify.endpoint" # notification endpoint to receive job status events
       token: "Bearer xxxxx" # optional authentication token for the notification endpoint
