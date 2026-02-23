@@ -25,6 +25,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
 	"runtime/metrics"
@@ -752,6 +753,47 @@ func (d *DiskMetric) Merge(other *DiskMetric) {
 	}
 	if d.NDisks == 0 {
 		*d = *other
+		// Deep copy reference types to avoid shared state mutated by
+		// subsequent Merge calls.
+		if other.State != nil {
+			d.State = make(map[string]int, len(other.State))
+			maps.Copy(d.State, other.State)
+		}
+		if other.LifetimeOps != nil {
+			d.LifetimeOps = make(map[string]DiskAction, len(other.LifetimeOps))
+			maps.Copy(d.LifetimeOps, other.LifetimeOps)
+		}
+		if other.LastMinute != nil {
+			d.LastMinute = make(map[string]DiskAction, len(other.LastMinute))
+			maps.Copy(d.LastMinute, other.LastMinute)
+		}
+		if other.LastDaySegmented != nil {
+			d.LastDaySegmented = make(map[string]SegmentedDiskActions, len(other.LastDaySegmented))
+			for k, v := range other.LastDaySegmented {
+				v.Segments = append([]DiskAction{}, v.Segments...)
+				d.LastDaySegmented[k] = v
+			}
+		}
+		if other.Cache != nil {
+			c := *other.Cache
+			d.Cache = &c
+		}
+		if other.SMART != nil {
+			s := *other.SMART
+			if other.SMART.Status != nil {
+				s.Status = make(map[string]int, len(other.SMART.Status))
+				maps.Copy(s.Status, other.SMART.Status)
+			}
+			if other.SMART.NVMe != nil {
+				nvme := *other.SMART.NVMe
+				s.NVMe = &nvme
+			}
+			if other.SMART.SATA != nil {
+				sata := *other.SMART.SATA
+				s.SATA = &sata
+			}
+			d.SMART = &s
+		}
 		return
 	}
 	if d.CollectedAt.Before(other.CollectedAt) {
