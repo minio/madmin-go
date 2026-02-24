@@ -1367,23 +1367,24 @@ type ServerInfo struct {
 
 // MinioInfo contains MinIO server and object storage information.
 type MinioInfo struct {
-	Mode         string           `json:"mode,omitempty"`
-	Domain       []string         `json:"domain,omitempty"`
-	Region       string           `json:"region,omitempty"`
-	SQSARN       []string         `json:"sqsARN,omitempty"`
-	DeploymentID string           `json:"deploymentID,omitempty"`
-	Buckets      Buckets          `json:"buckets,omitempty"`
-	BucketQuota  *BucketQuotaDiag `json:"bucket_quota,omitempty"`
-	Objects      Objects          `json:"objects,omitempty"`
-	Usage        Usage            `json:"usage,omitempty"`
-	Services     Services         `json:"services,omitempty"`
-	Backend      interface{}      `json:"backend,omitempty"`
-	Servers      []ServerInfo     `json:"servers,omitempty"`
-	TLS          *TLSInfo         `json:"tls"`
-	IsKubernetes *bool            `json:"is_kubernetes"`
-	IsDocker     *bool            `json:"is_docker"`
-	Metrics      *RealtimeMetrics `json:"metrics,omitempty"`
-	TierConfigs  []TierConfig     `json:"tier_configs,omitempty"`
+	Mode         string                         `json:"mode,omitempty"`
+	Domain       []string                       `json:"domain,omitempty"`
+	Region       string                         `json:"region,omitempty"`
+	SQSARN       []string                       `json:"sqsARN,omitempty"`
+	DeploymentID string                         `json:"deploymentID,omitempty"`
+	Buckets      Buckets                        `json:"buckets,omitempty"`
+	BucketQuota  *BucketQuotaDiag               `json:"bucket_quota,omitempty"`
+	Objects      Objects                        `json:"objects,omitempty"`
+	Usage        Usage                          `json:"usage,omitempty"`
+	Services     Services                       `json:"services,omitempty"`
+	Backend      interface{}                    `json:"backend,omitempty"`
+	Servers      []ServerInfo                   `json:"servers,omitempty"`
+	TLS          *TLSInfo                       `json:"tls"`
+	IsKubernetes *bool                          `json:"is_kubernetes"`
+	IsDocker     *bool                          `json:"is_docker"`
+	Metrics      *RealtimeMetrics               `json:"metrics,omitempty"`
+	TierConfigs  []TierConfig                   `json:"tier_configs,omitempty"`
+	Pools        map[int]map[int]ErasureSetInfo `json:"pools,omitempty"`
 }
 
 type TLSInfo struct {
