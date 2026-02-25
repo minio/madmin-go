@@ -47,11 +47,17 @@ type IcebergSnapshotManagementSettings struct {
 	MinSnapshotsToKeep *int `json:"minSnapshotsToKeep,omitempty"`
 }
 
+// IcebergCompactionSettings contains settings for Iceberg table compaction.
+type IcebergCompactionSettings struct {
+	// TargetFileSizeMB is the target file size in MB for compacted files.
+	TargetFileSizeMB *int `json:"targetFileSizeMB,omitempty"`
+}
+
 // TableMaintenanceSettings is a union type containing maintenance settings.
 // Only one of the fields should be set at a time based on the maintenance type.
 type TableMaintenanceSettings struct {
 	IcebergSnapshotManagement *IcebergSnapshotManagementSettings `json:"icebergSnapshotManagement,omitempty"`
-	// IcebergCompaction will be added in a future release.
+	IcebergCompaction         *IcebergCompactionSettings         `json:"icebergCompaction,omitempty"`
 }
 
 // TableMaintenanceConfigurationValue represents a maintenance configuration with status.
