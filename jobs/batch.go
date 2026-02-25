@@ -154,13 +154,15 @@ type BatchJobKeyRotateFlags struct {
 
 // BatchKeyRotateFilter holds all the filters currently supported for batch replication
 type BatchKeyRotateFilter struct {
-	NewerThan     time.Duration `yaml:"newerThan,omitempty" json:"newerThan"`
-	OlderThan     time.Duration `yaml:"olderThan,omitempty" json:"olderThan"`
-	CreatedAfter  time.Time     `yaml:"createdAfter,omitempty" json:"createdAfter"`
-	CreatedBefore time.Time     `yaml:"createdBefore,omitempty" json:"createdBefore"`
-	Tags          []BatchJobKV  `yaml:"tags,omitempty" json:"tags"`
-	Metadata      []BatchJobKV  `yaml:"metadata,omitempty" json:"metadata"`
-	KMSKeyID      string        `yaml:"kmskeyid" json:"kmskey"`
+	NewerThan          time.Duration `yaml:"newerThan,omitempty" json:"newerThan"`
+	OlderThan          time.Duration `yaml:"olderThan,omitempty" json:"olderThan"`
+	CreatedAfter       time.Time     `yaml:"createdAfter,omitempty" json:"createdAfter"`
+	CreatedBefore      time.Time     `yaml:"createdBefore,omitempty" json:"createdBefore"`
+	Tags               []BatchJobKV  `yaml:"tags,omitempty" json:"tags"`
+	Metadata           []BatchJobKV  `yaml:"metadata,omitempty" json:"metadata"`
+	KMSKeyID           string        `yaml:"kmskeyid" json:"kmskey"`
+	PlaintextOnly      bool          `yaml:"plaintextOnly,omitempty" json:"plaintextOnly"`
+	ForceEncryptLocked bool          `yaml:"forceEncryptLocked,omitempty" json:"forceEncryptLocked"`
 }
 
 // BatchJobKeyRotateEncryption defines key rotation encryption options passed
