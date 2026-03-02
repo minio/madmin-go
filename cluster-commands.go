@@ -1213,10 +1213,11 @@ type SRStateEditReq struct {
 
 // SRStateInfo - site replication state information
 type SRStateInfo struct {
-	Name       string              `json:"name"`
-	Peers      map[string]PeerInfo `json:"peers"`
-	UpdatedAt  time.Time           `json:"updatedAt"`
-	APIVersion string              `json:"apiVersion,omitempty"`
+	Name          string              `json:"name"`
+	Peers         map[string]PeerInfo `json:"peers"`
+	UpdatedAt     time.Time           `json:"updatedAt"`
+	NameUpdatedAt time.Time           `json:"nameUpdatedAt"`
+	APIVersion    string              `json:"apiVersion,omitempty"`
 }
 
 const (
