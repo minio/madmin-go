@@ -82,9 +82,7 @@ func (adm *AdminClient) HelpConfigKV(ctx context.Context, subSys, key string, en
 	}
 
 	help := Help{}
-	d := json.NewDecoder(resp.Body)
-	d.DisallowUnknownFields()
-	if err = d.Decode(&help); err != nil {
+	if err = json.NewDecoder(resp.Body).Decode(&help); err != nil {
 		return help, err
 	}
 
