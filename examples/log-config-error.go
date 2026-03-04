@@ -58,16 +58,15 @@ func main() {
 	cfg.Internal.FlushInterval.Value = "30s"
 
 	// Add a webhook target for error logs
-	cfg.Webhook = append(cfg.Webhook, madmin.ErrorWebhookConfig{
-		WebhookConfig: madmin.WebhookConfig{
-			Name:          madmin.LogField{Value: "error-webhook"},
-			Enable:        madmin.LogField{Value: "on"},
-			Endpoint:      madmin.LogField{Value: "http://localhost:8080/error-logs"},
-			QueueSize:     madmin.LogField{Value: "5000"},
-			TLSSkipVerify: madmin.LogField{Value: "off"},
-		},
-		FlushCount:    madmin.LogField{Value: "50"},
-		FlushInterval: madmin.LogField{Value: "30s"},
+	cfg.External.Webhook = append(cfg.External.Webhook, madmin.WebhookConfig{
+		Name:          madmin.LogField{Value: "error-webhook"},
+		Enable:        madmin.LogField{Value: "on"},
+		Endpoint:      madmin.LogField{Value: "http://localhost:8080/error-logs"},
+		BatchSize:     madmin.LogField{Value: "50"},
+		MaxRetry:      madmin.LogField{Value: "3"},
+		RetryInterval: madmin.LogField{Value: "10s"},
+		TLSSkipVerify: madmin.LogField{Value: "off"},
+		Encoding:      madmin.LogField{Value: "json"},
 	})
 
 	// Set the updated configuration
