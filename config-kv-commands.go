@@ -89,26 +89,7 @@ func (adm *AdminClient) SetConfigKV(ctx context.Context, kv string) (restart boo
 
 // GetConfigKV - returns the key, value of the requested key, incoming data is encrypted.
 func (adm *AdminClient) GetConfigKV(ctx context.Context, key string) ([]byte, error) {
-	v := url.Values{}
-	v.Set("key", key)
-
-	// Execute GET on /minio/admin/v4/get-config-kv?key={key} to get value of key.
-	resp, err := adm.executeMethod(ctx,
-		http.MethodGet,
-		requestData{
-			relPath:     adminAPIPrefix + "/get-config-kv",
-			queryValues: v,
-		})
-	defer closeResponse(resp)
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, httpRespToErrorResponse(resp)
-	}
-
-	return DecryptData(adm.getSecretKey(), resp.Body)
+	return adm.GetConfigKVWithOptions(ctx, key, KVOptions{})
 }
 
 // KVOptions takes specific inputs for KV functions
@@ -135,8 +116,6 @@ func (adm *AdminClient) GetConfigKVWithOptions(ctx context.Context, key string, 
 	if err != nil {
 		return nil, err
 	}
-
-	defer closeResponse(resp)
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, httpRespToErrorResponse(resp)
