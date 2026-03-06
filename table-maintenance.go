@@ -56,10 +56,8 @@ type TableMaintenanceSettings struct {
 
 // TableMaintenanceConfigurationValue represents a maintenance configuration with status.
 type TableMaintenanceConfigurationValue struct {
-	// Settings contains the type-specific maintenance settings.
 	Settings *TableMaintenanceSettings `json:"settings,omitempty"`
-	// Status indicates whether this maintenance type is enabled or disabled.
-	Status MaintenanceStatus `json:"status"`
+	Status   MaintenanceStatus         `json:"status"`
 }
 
 // PutTableMaintenanceConfigurationRequest is the request body for PutTableMaintenanceConfiguration.
@@ -69,8 +67,29 @@ type PutTableMaintenanceConfigurationRequest struct {
 
 // GetTableMaintenanceConfigurationResponse is the response for GetTableMaintenanceConfiguration.
 type GetTableMaintenanceConfigurationResponse struct {
-	// Configuration maps maintenance type names to their configuration values.
 	Configuration map[string]TableMaintenanceConfigurationValue `json:"configuration"`
-	// TableARN is the ARN of the table.
-	TableARN string `json:"tableARN"`
+	TableARN      string                                        `json:"tableARN"`
+}
+
+// MaintenanceJobStatus represents the outcome of a maintenance job's last run.
+type MaintenanceJobStatus string
+
+const (
+	MaintenanceJobStatusSuccessful MaintenanceJobStatus = "Successful"
+	MaintenanceJobStatusFailed     MaintenanceJobStatus = "Failed"
+	MaintenanceJobStatusDisabled   MaintenanceJobStatus = "Disabled"
+	MaintenanceJobStatusNotYetRun  MaintenanceJobStatus = "Not_Yet_Run"
+)
+
+// TableMaintenanceJobTypeStatus is the per-type status entry in GetTableMaintenanceJobStatusResponse.
+type TableMaintenanceJobTypeStatus struct {
+	Status           MaintenanceJobStatus `json:"status"`
+	LastRunTimestamp *string              `json:"lastRunTimestamp,omitempty"`
+	FailureMessage   string               `json:"failureMessage,omitempty"`
+}
+
+// GetTableMaintenanceJobStatusResponse is the response for GetTableMaintenanceJobStatus.
+type GetTableMaintenanceJobStatusResponse struct {
+	TableARN string                                   `json:"tableARN"`
+	Status   map[string]TableMaintenanceJobTypeStatus `json:"status"`
 }
