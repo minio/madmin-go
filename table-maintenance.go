@@ -57,7 +57,7 @@ type TableMaintenanceSettings struct {
 // TableMaintenanceConfigurationValue represents a maintenance configuration with status.
 type TableMaintenanceConfigurationValue struct {
 	Settings *TableMaintenanceSettings `json:"settings,omitempty"`
-	Status MaintenanceStatus `json:"status"`
+	Status   MaintenanceStatus         `json:"status"`
 }
 
 // PutTableMaintenanceConfigurationRequest is the request body for PutTableMaintenanceConfiguration.
@@ -68,7 +68,7 @@ type PutTableMaintenanceConfigurationRequest struct {
 // GetTableMaintenanceConfigurationResponse is the response for GetTableMaintenanceConfiguration.
 type GetTableMaintenanceConfigurationResponse struct {
 	Configuration map[string]TableMaintenanceConfigurationValue `json:"configuration"`
-	TableARN string `json:"tableARN"`
+	TableARN      string                                        `json:"tableARN"`
 }
 
 // MaintenanceJobStatus represents the outcome of a maintenance job's last run.
