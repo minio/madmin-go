@@ -206,6 +206,204 @@ func (z *GetTableMaintenanceConfigurationResponse) Msgsize() (s int) {
 }
 
 // DecodeMsg implements msgp.Decodable
+func (z *GetTableMaintenanceJobStatusResponse) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "TableARN":
+			z.TableARN, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "TableARN")
+				return
+			}
+		case "Status":
+			var zb0002 uint32
+			zb0002, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "Status")
+				return
+			}
+			if z.Status == nil {
+				z.Status = make(map[string]TableMaintenanceJobTypeStatus, zb0002)
+			} else if len(z.Status) > 0 {
+				clear(z.Status)
+			}
+			for zb0002 > 0 {
+				zb0002--
+				var za0001 string
+				za0001, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "Status")
+					return
+				}
+				var za0002 TableMaintenanceJobTypeStatus
+				err = za0002.DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "Status", za0001)
+					return
+				}
+				z.Status[za0001] = za0002
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *GetTableMaintenanceJobStatusResponse) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 2
+	// write "TableARN"
+	err = en.Append(0x82, 0xa8, 0x54, 0x61, 0x62, 0x6c, 0x65, 0x41, 0x52, 0x4e)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.TableARN)
+	if err != nil {
+		err = msgp.WrapError(err, "TableARN")
+		return
+	}
+	// write "Status"
+	err = en.Append(0xa6, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteMapHeader(uint32(len(z.Status)))
+	if err != nil {
+		err = msgp.WrapError(err, "Status")
+		return
+	}
+	for za0001, za0002 := range z.Status {
+		err = en.WriteString(za0001)
+		if err != nil {
+			err = msgp.WrapError(err, "Status")
+			return
+		}
+		err = za0002.EncodeMsg(en)
+		if err != nil {
+			err = msgp.WrapError(err, "Status", za0001)
+			return
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *GetTableMaintenanceJobStatusResponse) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 2
+	// string "TableARN"
+	o = append(o, 0x82, 0xa8, 0x54, 0x61, 0x62, 0x6c, 0x65, 0x41, 0x52, 0x4e)
+	o = msgp.AppendString(o, z.TableARN)
+	// string "Status"
+	o = append(o, 0xa6, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73)
+	o = msgp.AppendMapHeader(o, uint32(len(z.Status)))
+	for za0001, za0002 := range z.Status {
+		o = msgp.AppendString(o, za0001)
+		o, err = za0002.MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "Status", za0001)
+			return
+		}
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *GetTableMaintenanceJobStatusResponse) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "TableARN":
+			z.TableARN, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "TableARN")
+				return
+			}
+		case "Status":
+			var zb0002 uint32
+			zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Status")
+				return
+			}
+			if z.Status == nil {
+				z.Status = make(map[string]TableMaintenanceJobTypeStatus, zb0002)
+			} else if len(z.Status) > 0 {
+				clear(z.Status)
+			}
+			for zb0002 > 0 {
+				var za0002 TableMaintenanceJobTypeStatus
+				zb0002--
+				var za0001 string
+				za0001, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Status")
+					return
+				}
+				bts, err = za0002.UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Status", za0001)
+					return
+				}
+				z.Status[za0001] = za0002
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *GetTableMaintenanceJobStatusResponse) Msgsize() (s int) {
+	s = 1 + 9 + msgp.StringPrefixSize + len(z.TableARN) + 7 + msgp.MapHeaderSize
+	if z.Status != nil {
+		for za0001, za0002 := range z.Status {
+			_ = za0002
+			s += msgp.StringPrefixSize + len(za0001) + za0002.Msgsize()
+		}
+	}
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *IcebergSnapshotManagementSettings) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
@@ -409,6 +607,58 @@ func (z *IcebergSnapshotManagementSettings) Msgsize() (s int) {
 	} else {
 		s += msgp.IntSize
 	}
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *MaintenanceJobStatus) DecodeMsg(dc *msgp.Reader) (err error) {
+	{
+		var zb0001 string
+		zb0001, err = dc.ReadString()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		(*z) = MaintenanceJobStatus(zb0001)
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z MaintenanceJobStatus) EncodeMsg(en *msgp.Writer) (err error) {
+	err = en.WriteString(string(z))
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z MaintenanceJobStatus) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	o = msgp.AppendString(o, string(z))
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *MaintenanceJobStatus) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	{
+		var zb0001 string
+		zb0001, bts, err = msgp.ReadStringBytes(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		(*z) = MaintenanceJobStatus(zb0001)
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z MaintenanceJobStatus) Msgsize() (s int) {
+	s = msgp.StringPrefixSize + len(string(z))
 	return
 }
 
@@ -1064,6 +1314,207 @@ func (z *TableMaintenanceConfigurationValue) Msgsize() (s int) {
 		}
 	}
 	s += 7 + msgp.StringPrefixSize + len(string(z.Status))
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *TableMaintenanceJobTypeStatus) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "Status":
+			{
+				var zb0002 string
+				zb0002, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "Status")
+					return
+				}
+				z.Status = MaintenanceJobStatus(zb0002)
+			}
+		case "LastRunTimestamp":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "LastRunTimestamp")
+					return
+				}
+				z.LastRunTimestamp = nil
+			} else {
+				if z.LastRunTimestamp == nil {
+					z.LastRunTimestamp = new(string)
+				}
+				*z.LastRunTimestamp, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "LastRunTimestamp")
+					return
+				}
+			}
+		case "FailureMessage":
+			z.FailureMessage, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "FailureMessage")
+				return
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *TableMaintenanceJobTypeStatus) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 3
+	// write "Status"
+	err = en.Append(0x83, 0xa6, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(string(z.Status))
+	if err != nil {
+		err = msgp.WrapError(err, "Status")
+		return
+	}
+	// write "LastRunTimestamp"
+	err = en.Append(0xb0, 0x4c, 0x61, 0x73, 0x74, 0x52, 0x75, 0x6e, 0x54, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70)
+	if err != nil {
+		return
+	}
+	if z.LastRunTimestamp == nil {
+		err = en.WriteNil()
+		if err != nil {
+			return
+		}
+	} else {
+		err = en.WriteString(*z.LastRunTimestamp)
+		if err != nil {
+			err = msgp.WrapError(err, "LastRunTimestamp")
+			return
+		}
+	}
+	// write "FailureMessage"
+	err = en.Append(0xae, 0x46, 0x61, 0x69, 0x6c, 0x75, 0x72, 0x65, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.FailureMessage)
+	if err != nil {
+		err = msgp.WrapError(err, "FailureMessage")
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *TableMaintenanceJobTypeStatus) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 3
+	// string "Status"
+	o = append(o, 0x83, 0xa6, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73)
+	o = msgp.AppendString(o, string(z.Status))
+	// string "LastRunTimestamp"
+	o = append(o, 0xb0, 0x4c, 0x61, 0x73, 0x74, 0x52, 0x75, 0x6e, 0x54, 0x69, 0x6d, 0x65, 0x73, 0x74, 0x61, 0x6d, 0x70)
+	if z.LastRunTimestamp == nil {
+		o = msgp.AppendNil(o)
+	} else {
+		o = msgp.AppendString(o, *z.LastRunTimestamp)
+	}
+	// string "FailureMessage"
+	o = append(o, 0xae, 0x46, 0x61, 0x69, 0x6c, 0x75, 0x72, 0x65, 0x4d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65)
+	o = msgp.AppendString(o, z.FailureMessage)
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *TableMaintenanceJobTypeStatus) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "Status":
+			{
+				var zb0002 string
+				zb0002, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Status")
+					return
+				}
+				z.Status = MaintenanceJobStatus(zb0002)
+			}
+		case "LastRunTimestamp":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.LastRunTimestamp = nil
+			} else {
+				if z.LastRunTimestamp == nil {
+					z.LastRunTimestamp = new(string)
+				}
+				*z.LastRunTimestamp, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "LastRunTimestamp")
+					return
+				}
+			}
+		case "FailureMessage":
+			z.FailureMessage, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "FailureMessage")
+				return
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *TableMaintenanceJobTypeStatus) Msgsize() (s int) {
+	s = 1 + 7 + msgp.StringPrefixSize + len(string(z.Status)) + 17
+	if z.LastRunTimestamp == nil {
+		s += msgp.NilSize
+	} else {
+		s += msgp.StringPrefixSize + len(*z.LastRunTimestamp)
+	}
+	s += 15 + msgp.StringPrefixSize + len(z.FailureMessage)
 	return
 }
 
