@@ -2037,7 +2037,7 @@ type ReplicationMetrics struct {
 	Targets map[string]ReplicationTargetStats `json:"targets"`
 
 	// Received tracks aggregate inbound replication stats across all sources.
-	Received ReplicationReceivedStats `json:"received"`
+	Received ReplicationReceivedStats `json:"received,omitempty"`
 }
 
 func (m *ReplicationMetrics) Merge(other *ReplicationMetrics) {

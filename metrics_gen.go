@@ -22226,7 +22226,7 @@ func (z *ReplicationMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 2 bits */
+	var zb0001Mask uint8 /* 3 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -22296,6 +22296,7 @@ func (z *ReplicationMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Received")
 				return
 			}
+			zb0001Mask |= 0x4
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -22305,12 +22306,15 @@ func (z *ReplicationMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3 {
+	if zb0001Mask != 0x7 {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Active = 0
 		}
 		if (zb0001Mask & 0x2) == 0 {
 			z.Queued = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.Received = ReplicationReceivedStats{}
 		}
 	}
 	return
@@ -22486,7 +22490,7 @@ func (z *ReplicationMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 2 bits */
+	var zb0001Mask uint8 /* 3 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -22556,6 +22560,7 @@ func (z *ReplicationMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "Received")
 				return
 			}
+			zb0001Mask |= 0x4
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -22565,12 +22570,15 @@ func (z *ReplicationMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3 {
+	if zb0001Mask != 0x7 {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Active = 0
 		}
 		if (zb0001Mask & 0x2) == 0 {
 			z.Queued = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.Received = ReplicationReceivedStats{}
 		}
 	}
 	o = bts
