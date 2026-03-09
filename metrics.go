@@ -2250,7 +2250,7 @@ func (r *ReplicationReceivedStats) Add(other *ReplicationReceivedStats) {
 
 // Empty returns true if all windows have zero counts.
 func (r *ReplicationReceivedStats) Empty() bool {
-	return r.LastMinute.Count == 0 && r.LastHour.Count == 0 && r.LastDay.Count == 0 && r.SinceStart.Count == 0
+	return r == nil || (r.LastMinute.Count == 0 && r.LastHour.Count == 0 && r.LastDay.Count == 0 && r.SinceStart.Count == 0)
 }
 
 // ProcessMetrics contains aggregated minio process metrics
