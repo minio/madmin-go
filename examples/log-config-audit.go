@@ -54,31 +54,30 @@ func main() {
 	// Modify internal recorder settings (audit only has enable)
 	cfg.Internal.Enable.Value = "on"
 
-	// Add a webhook target for audit logs (no batching for audit)
-	cfg.Webhook = append(cfg.Webhook, madmin.AuditWebhookConfig{
-		WebhookConfig: madmin.WebhookConfig{
-			Name:          madmin.LogField{Value: "audit-webhook"},
-			Enable:        madmin.LogField{Value: "on"},
-			Endpoint:      madmin.LogField{Value: "http://localhost:8080/audit-logs"},
-			QueueSize:     madmin.LogField{Value: "10000"},
-			TLSSkipVerify: madmin.LogField{Value: "off"},
-		},
+	// Add a webhook target for audit logs
+	cfg.External.Webhook = append(cfg.External.Webhook, madmin.WebhookConfig{
+		Name:          madmin.LogField{Value: "audit-webhook"},
+		Enable:        madmin.LogField{Value: "on"},
+		Endpoint:      madmin.LogField{Value: "http://localhost:8080/audit-logs"},
+		BatchSize:     madmin.LogField{Value: "100"},
+		MaxRetry:      madmin.LogField{Value: "3"},
+		RetryInterval: madmin.LogField{Value: "10s"},
+		TLSSkipVerify: madmin.LogField{Value: "off"},
+		Encoding:      madmin.LogField{Value: "json"},
 	})
 
 	// Add a Kafka target for audit logs
-	cfg.Kafka = append(cfg.Kafka, madmin.AuditKafkaConfig{
-		KafkaConfig: madmin.KafkaConfig{
-			Name:    madmin.LogField{Value: "audit-kafka"},
-			Enable:  madmin.LogField{Value: "on"},
-			Brokers: madmin.LogField{Value: "localhost:9092"},
-			Topic:   madmin.LogField{Value: "minio-audit"},
-			TLS: madmin.KafkaTLSConfig{
-				Enable:     madmin.LogField{Value: "off"},
-				SkipVerify: madmin.LogField{Value: "off"},
-			},
-			SASL: madmin.KafkaSASLConfig{
-				Enable: madmin.LogField{Value: "off"},
-			},
+	cfg.External.Kafka = append(cfg.External.Kafka, madmin.KafkaConfig{
+		Name:    madmin.LogField{Value: "audit-kafka"},
+		Enable:  madmin.LogField{Value: "on"},
+		Brokers: madmin.LogField{Value: "localhost:9092"},
+		Topic:   madmin.LogField{Value: "minio-audit"},
+		TLS: madmin.KafkaTLSConfig{
+			Enable:     madmin.LogField{Value: "off"},
+			SkipVerify: madmin.LogField{Value: "off"},
+		},
+		SASL: madmin.KafkaSASLConfig{
+			Enable: madmin.LogField{Value: "off"},
 		},
 	})
 
