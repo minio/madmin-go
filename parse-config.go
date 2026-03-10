@@ -30,32 +30,33 @@ import (
 
 // Top level configuration key constants.
 const (
-	CredentialsSubSys    = "credentials"
-	PolicyOPASubSys      = "policy_opa"
-	PolicyPluginSubSys   = "policy_plugin"
-	IdentityOpenIDSubSys = "identity_openid"
-	IdentityLDAPSubSys   = "identity_ldap"
-	IdentityTLSSubSys    = "identity_tls"
-	IdentityPluginSubSys = "identity_plugin"
-	CacheSubSys          = "cache"
-	SiteSubSys           = "site"
-	RegionSubSys         = "region"
-	EtcdSubSys           = "etcd"
-	StorageClassSubSys   = "storage_class"
-	APISubSys            = "api"
-	CompressionSubSys    = "compression"
-	LoggerWebhookSubSys  = "logger_webhook"
-	AuditWebhookSubSys   = "audit_webhook"
-	AuditKafkaSubSys     = "audit_kafka"
-	HealSubSys           = "heal"
-	ScannerSubSys        = "scanner"
-	CrawlerSubSys        = "crawler"
-	SubnetSubSys         = "subnet"
-	CallhomeSubSys       = "callhome"
-	BatchSubSys          = "batch"
-	DriveSubSys          = "drive"
-	ILMSubsys            = "ilm"
-	ReplicationSubSys    = "replication"
+	CredentialsSubSys        = "credentials"
+	PolicyOPASubSys          = "policy_opa"
+	PolicyPluginSubSys       = "policy_plugin"
+	IdentityOpenIDSubSys     = "identity_openid"
+	IdentityLDAPSubSys       = "identity_ldap"
+	IdentityTLSSubSys        = "identity_tls"
+	IdentityPluginSubSys     = "identity_plugin"
+	IdentityKubernetesSubSys = "identity_kubernetes"
+	CacheSubSys              = "cache"
+	SiteSubSys               = "site"
+	RegionSubSys             = "region"
+	EtcdSubSys               = "etcd"
+	StorageClassSubSys       = "storage_class"
+	APISubSys                = "api"
+	CompressionSubSys        = "compression"
+	LoggerWebhookSubSys      = "logger_webhook"
+	AuditWebhookSubSys       = "audit_webhook"
+	AuditKafkaSubSys         = "audit_kafka"
+	HealSubSys               = "heal"
+	ScannerSubSys            = "scanner"
+	CrawlerSubSys            = "crawler"
+	SubnetSubSys             = "subnet"
+	CallhomeSubSys           = "callhome"
+	BatchSubSys              = "batch"
+	DriveSubSys              = "drive"
+	ILMSubsys                = "ilm"
+	ReplicationSubSys        = "replication"
 
 	NotifyKafkaSubSys    = "notify_kafka"
 	NotifyMQTTSubSys     = "notify_mqtt"
@@ -88,6 +89,10 @@ const (
 	LogAPIKafkaSubSys   = "log_api_kafka"
 	LogErrorKafkaSubSys = "log_error_kafka"
 	LogAuditKafkaSubSys = "log_audit_kafka"
+
+	LogAPIQueueSubSys   = "log_api_queue"
+	LogErrorQueueSubSys = "log_error_queue"
+	LogAuditQueueSubSys = "log_audit_queue"
 )
 
 // SubSystems - list of all subsystems in MinIO
@@ -141,6 +146,7 @@ var EOSSubSystems = set.CreateStringSet(
 	IdentityLDAPSubSys,
 	IdentityTLSSubSys,
 	IdentityPluginSubSys,
+	IdentityKubernetesSubSys,
 	CacheSubSys,
 	SiteSubSys,
 	RegionSubSys,
@@ -186,6 +192,9 @@ var EOSSubSystems = set.CreateStringSet(
 	LogAPIKafkaSubSys,
 	LogErrorKafkaSubSys,
 	LogAuditKafkaSubSys,
+	LogAPIQueueSubSys,
+	LogErrorQueueSubSys,
+	LogAuditQueueSubSys,
 )
 
 // Standard config keys and values.

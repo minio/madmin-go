@@ -39,10 +39,13 @@ const (
 	logKeyClientCert       = "client_cert"
 	logKeyClientKey        = "client_key"
 	logKeyProxy            = "proxy"
-	logKeyQueueDir         = "queue_dir"
-	logKeyQueueSize        = "queue_size"
+	logKeyBatchSize        = "batch_size"
+	logKeyMaxRetry         = "max_retry"
+	logKeyRetryInterval    = "retry_interval"
+	logKeyBatchPayloadSize = "batch_payload_size"
 	logKeyHTTPTimeout      = "http_timeout"
 	logKeyTLSSkipVerify    = "tls_skip_verify"
+	logKeyEncoding         = "encoding"
 	logKeyBrokers          = "brokers"
 	logKeyTopic            = "topic"
 	logKeyVersion          = "version"
@@ -67,6 +70,11 @@ const (
 	logKeyIcebergTable          = "iceberg_table"
 	logKeyIcebergCommitInterval = "iceberg_commit_interval"
 	logKeyIcebergWriteInterval  = "iceberg_write_interval"
+
+	// Queue config keys
+	logKeyDir          = "dir"
+	logKeyDirMaxSize   = "dir_max_size"
+	logKeyFlushTimeout = "flush_timeout"
 )
 
 // LogField represents a configuration field with its value and description
@@ -167,36 +175,20 @@ type InternalAuditRecorder struct {
 
 // WebhookConfig represents base configuration for a Webhook target
 type WebhookConfig struct {
-	Name          LogField `json:"name" yaml:"name"`
-	Enable        LogField `json:"enable" yaml:"enable"`
-	Endpoint      LogField `json:"endpoint" yaml:"endpoint"`
-	AuthToken     LogField `json:"authToken" yaml:"authToken"`
-	ClientCert    LogField `json:"clientCert" yaml:"clientCert"`
-	ClientKey     LogField `json:"clientKey" yaml:"clientKey"`
-	Proxy         LogField `json:"proxy" yaml:"proxy"`
-	QueueDir      LogField `json:"queueDir" yaml:"queueDir"`
-	QueueSize     LogField `json:"queueSize" yaml:"queueSize"`
-	HTTPTimeout   LogField `json:"httpTimeout" yaml:"httpTimeout"`
-	TLSSkipVerify LogField `json:"tlsSkipVerify" yaml:"tlsSkipVerify"`
-}
-
-// APIWebhookConfig represents webhook config for API logs (with batching)
-type APIWebhookConfig struct {
-	WebhookConfig `json:",inline" yaml:",inline"`
-	FlushCount    LogField `json:"flushCount" yaml:"flushCount"`
-	FlushInterval LogField `json:"flushInterval" yaml:"flushInterval"`
-}
-
-// ErrorWebhookConfig represents webhook config for Error logs (with batching)
-type ErrorWebhookConfig struct {
-	WebhookConfig `json:",inline" yaml:",inline"`
-	FlushCount    LogField `json:"flushCount" yaml:"flushCount"`
-	FlushInterval LogField `json:"flushInterval" yaml:"flushInterval"`
-}
-
-// AuditWebhookConfig represents webhook config for Audit logs (no batching)
-type AuditWebhookConfig struct {
-	WebhookConfig `json:",inline" yaml:",inline"`
+	Name             LogField `json:"name" yaml:"name"`
+	Enable           LogField `json:"enable" yaml:"enable"`
+	Endpoint         LogField `json:"endpoint" yaml:"endpoint"`
+	AuthToken        LogField `json:"authToken" yaml:"authToken"`
+	ClientCert       LogField `json:"clientCert" yaml:"clientCert"`
+	ClientKey        LogField `json:"clientKey" yaml:"clientKey"`
+	Proxy            LogField `json:"proxy" yaml:"proxy"`
+	BatchSize        LogField `json:"batchSize" yaml:"batchSize"`
+	MaxRetry         LogField `json:"maxRetry" yaml:"maxRetry"`
+	RetryInterval    LogField `json:"retryInterval" yaml:"retryInterval"`
+	BatchPayloadSize LogField `json:"batchPayloadSize" yaml:"batchPayloadSize"`
+	HTTPTimeout      LogField `json:"httpTimeout" yaml:"httpTimeout"`
+	TLSSkipVerify    LogField `json:"tlsSkipVerify" yaml:"tlsSkipVerify"`
+	Encoding         LogField `json:"encoding" yaml:"encoding"`
 }
 
 // KafkaTLSConfig represents TLS configuration for Kafka
@@ -222,58 +214,50 @@ type KafkaSASLConfig struct {
 
 // KafkaConfig represents base configuration for a Kafka target
 type KafkaConfig struct {
-	Name      LogField        `json:"name" yaml:"name"`
-	Enable    LogField        `json:"enable" yaml:"enable"`
-	Brokers   LogField        `json:"brokers" yaml:"brokers"`
-	Topic     LogField        `json:"topic" yaml:"topic"`
-	Version   LogField        `json:"version" yaml:"version"`
-	TLS       KafkaTLSConfig  `json:"tls" yaml:"tls"`
-	SASL      KafkaSASLConfig `json:"sasl" yaml:"sasl"`
-	QueueDir  LogField        `json:"queueDir" yaml:"queueDir"`
-	QueueSize LogField        `json:"queueSize" yaml:"queueSize"`
+	Name          LogField        `json:"name" yaml:"name"`
+	Enable        LogField        `json:"enable" yaml:"enable"`
+	Brokers       LogField        `json:"brokers" yaml:"brokers"`
+	Topic         LogField        `json:"topic" yaml:"topic"`
+	Version       LogField        `json:"version" yaml:"version"`
+	TLS           KafkaTLSConfig  `json:"tls" yaml:"tls"`
+	SASL          KafkaSASLConfig `json:"sasl" yaml:"sasl"`
+	MaxRetry      LogField        `json:"maxRetry" yaml:"maxRetry"`
+	RetryInterval LogField        `json:"retryInterval" yaml:"retryInterval"`
 }
 
-// APIKafkaConfig represents kafka config for API logs (with batching)
-type APIKafkaConfig struct {
-	KafkaConfig   `json:",inline" yaml:",inline"`
-	FlushCount    LogField `json:"flushCount" yaml:"flushCount"`
-	FlushInterval LogField `json:"flushInterval" yaml:"flushInterval"`
+// QueueConfig represents the global queue configuration for a log type
+type QueueConfig struct {
+	Dir          LogField `json:"dir" yaml:"dir"`
+	DirMaxSize   LogField `json:"dirMaxSize" yaml:"dirMaxSize"`
+	FlushTimeout LogField `json:"flushTimeout" yaml:"flushTimeout"`
 }
 
-// ErrorKafkaConfig represents kafka config for Error logs (with batching)
-type ErrorKafkaConfig struct {
-	KafkaConfig   `json:",inline" yaml:",inline"`
-	FlushCount    LogField `json:"flushCount" yaml:"flushCount"`
-	FlushInterval LogField `json:"flushInterval" yaml:"flushInterval"`
-}
-
-// AuditKafkaConfig represents kafka config for Audit logs (no batching)
-type AuditKafkaConfig struct {
-	KafkaConfig `json:",inline" yaml:",inline"`
+// ExternalConfig represents external target settings for a log type
+type ExternalConfig struct {
+	Queue   QueueConfig     `json:"queue" yaml:"queue"`
+	Webhook []WebhookConfig `json:"webhook" yaml:"webhook"`
+	Kafka   []KafkaConfig   `json:"kafka" yaml:"kafka"`
 }
 
 // LogRecorderAPIConfig represents configuration for API log type
 type LogRecorderAPIConfig struct {
 	EnvOverrides []EnvOverride       `json:"envOverrides,omitempty" yaml:"-"`
 	Internal     InternalAPIRecorder `json:"internal" yaml:"internal"`
-	Webhook      []APIWebhookConfig  `json:"webhook" yaml:"webhook"`
-	Kafka        []APIKafkaConfig    `json:"kafka" yaml:"kafka"`
+	External     ExternalConfig      `json:"external" yaml:"external"`
 }
 
 // LogRecorderErrorConfig represents configuration for Error log type
 type LogRecorderErrorConfig struct {
 	EnvOverrides []EnvOverride         `json:"envOverrides,omitempty" yaml:"-"`
 	Internal     InternalErrorRecorder `json:"internal" yaml:"internal"`
-	Webhook      []ErrorWebhookConfig  `json:"webhook" yaml:"webhook"`
-	Kafka        []ErrorKafkaConfig    `json:"kafka" yaml:"kafka"`
+	External     ExternalConfig        `json:"external" yaml:"external"`
 }
 
 // LogRecorderAuditConfig represents configuration for Audit log type
 type LogRecorderAuditConfig struct {
 	EnvOverrides []EnvOverride         `json:"envOverrides,omitempty" yaml:"-"`
 	Internal     InternalAuditRecorder `json:"internal" yaml:"internal"`
-	Webhook      []AuditWebhookConfig  `json:"webhook" yaml:"webhook"`
-	Kafka        []AuditKafkaConfig    `json:"kafka" yaml:"kafka"`
+	External     ExternalConfig        `json:"external" yaml:"external"`
 }
 
 // kvBuilder helps build KV strings efficiently
@@ -338,20 +322,32 @@ func parseInternalAuditRecorder(sc SubsysConfig, help Help) InternalAuditRecorde
 	}
 }
 
+// parseQueueConfig parses SubsysConfig into QueueConfig with descriptions from Help
+func parseQueueConfig(sc SubsysConfig, help Help) QueueConfig {
+	return QueueConfig{
+		Dir:          getLogField(sc, help, logKeyDir),
+		DirMaxSize:   getLogField(sc, help, logKeyDirMaxSize),
+		FlushTimeout: getLogField(sc, help, logKeyFlushTimeout),
+	}
+}
+
 // parseWebhookConfig parses SubsysConfig into WebhookConfig with descriptions from Help
 func parseWebhookConfig(sc SubsysConfig, help Help) WebhookConfig {
 	cfg := WebhookConfig{
-		Name:          getLogField(sc, help, logKeyName),
-		Enable:        getLogField(sc, help, logKeyEnable),
-		Endpoint:      getLogField(sc, help, logKeyEndpoint),
-		AuthToken:     getLogField(sc, help, logKeyAuthToken),
-		ClientCert:    getLogField(sc, help, logKeyClientCert),
-		ClientKey:     getLogField(sc, help, logKeyClientKey),
-		Proxy:         getLogField(sc, help, logKeyProxy),
-		QueueDir:      getLogField(sc, help, logKeyQueueDir),
-		QueueSize:     getLogField(sc, help, logKeyQueueSize),
-		HTTPTimeout:   getLogField(sc, help, logKeyHTTPTimeout),
-		TLSSkipVerify: getLogField(sc, help, logKeyTLSSkipVerify),
+		Name:             getLogField(sc, help, logKeyName),
+		Enable:           getLogField(sc, help, logKeyEnable),
+		Endpoint:         getLogField(sc, help, logKeyEndpoint),
+		AuthToken:        getLogField(sc, help, logKeyAuthToken),
+		ClientCert:       getLogField(sc, help, logKeyClientCert),
+		ClientKey:        getLogField(sc, help, logKeyClientKey),
+		Proxy:            getLogField(sc, help, logKeyProxy),
+		BatchSize:        getLogField(sc, help, logKeyBatchSize),
+		MaxRetry:         getLogField(sc, help, logKeyMaxRetry),
+		RetryInterval:    getLogField(sc, help, logKeyRetryInterval),
+		BatchPayloadSize: getLogField(sc, help, logKeyBatchPayloadSize),
+		HTTPTimeout:      getLogField(sc, help, logKeyHTTPTimeout),
+		TLSSkipVerify:    getLogField(sc, help, logKeyTLSSkipVerify),
+		Encoding:         getLogField(sc, help, logKeyEncoding),
 	}
 	// Name comes from sc.Target, not from Lookup; use Default if empty
 	cfg.Name.Value = sc.Target
@@ -361,39 +357,16 @@ func parseWebhookConfig(sc SubsysConfig, help Help) WebhookConfig {
 	return cfg
 }
 
-// parseAPIWebhookConfig parses SubsysConfig into APIWebhookConfig with descriptions from Help
-func parseAPIWebhookConfig(sc SubsysConfig, help Help) APIWebhookConfig {
-	return APIWebhookConfig{
-		WebhookConfig: parseWebhookConfig(sc, help),
-		FlushCount:    getLogField(sc, help, logKeyFlushCount),
-		FlushInterval: getLogField(sc, help, logKeyFlushInterval),
-	}
-}
-
-// parseErrorWebhookConfig parses SubsysConfig into ErrorWebhookConfig with descriptions from Help
-func parseErrorWebhookConfig(sc SubsysConfig, help Help) ErrorWebhookConfig {
-	return ErrorWebhookConfig{
-		WebhookConfig: parseWebhookConfig(sc, help),
-		FlushCount:    getLogField(sc, help, logKeyFlushCount),
-		FlushInterval: getLogField(sc, help, logKeyFlushInterval),
-	}
-}
-
-// parseAuditWebhookConfig parses SubsysConfig into AuditWebhookConfig with descriptions from Help
-func parseAuditWebhookConfig(sc SubsysConfig, help Help) AuditWebhookConfig {
-	return AuditWebhookConfig{WebhookConfig: parseWebhookConfig(sc, help)}
-}
-
 // parseKafkaConfig parses SubsysConfig into KafkaConfig with descriptions from Help
 func parseKafkaConfig(sc SubsysConfig, help Help) KafkaConfig {
 	cfg := KafkaConfig{
-		Name:      getLogField(sc, help, logKeyName),
-		Enable:    getLogField(sc, help, logKeyEnable),
-		Brokers:   getLogField(sc, help, logKeyBrokers),
-		Topic:     getLogField(sc, help, logKeyTopic),
-		Version:   getLogField(sc, help, logKeyVersion),
-		QueueDir:  getLogField(sc, help, logKeyQueueDir),
-		QueueSize: getLogField(sc, help, logKeyQueueSize),
+		Name:          getLogField(sc, help, logKeyName),
+		Enable:        getLogField(sc, help, logKeyEnable),
+		Brokers:       getLogField(sc, help, logKeyBrokers),
+		Topic:         getLogField(sc, help, logKeyTopic),
+		Version:       getLogField(sc, help, logKeyVersion),
+		MaxRetry:      getLogField(sc, help, logKeyMaxRetry),
+		RetryInterval: getLogField(sc, help, logKeyRetryInterval),
 		TLS: KafkaTLSConfig{
 			Enable:        getLogField(sc, help, logKeyTLS),
 			SkipVerify:    getLogField(sc, help, logKeyTLSSkipVerify),
@@ -418,29 +391,6 @@ func parseKafkaConfig(sc SubsysConfig, help Help) KafkaConfig {
 		cfg.Name.Value = Default
 	}
 	return cfg
-}
-
-// parseAPIKafkaConfig parses SubsysConfig into APIKafkaConfig with descriptions from Help
-func parseAPIKafkaConfig(sc SubsysConfig, help Help) APIKafkaConfig {
-	return APIKafkaConfig{
-		KafkaConfig:   parseKafkaConfig(sc, help),
-		FlushCount:    getLogField(sc, help, logKeyFlushCount),
-		FlushInterval: getLogField(sc, help, logKeyFlushInterval),
-	}
-}
-
-// parseErrorKafkaConfig parses SubsysConfig into ErrorKafkaConfig with descriptions from Help
-func parseErrorKafkaConfig(sc SubsysConfig, help Help) ErrorKafkaConfig {
-	return ErrorKafkaConfig{
-		KafkaConfig:   parseKafkaConfig(sc, help),
-		FlushCount:    getLogField(sc, help, logKeyFlushCount),
-		FlushInterval: getLogField(sc, help, logKeyFlushInterval),
-	}
-}
-
-// parseAuditKafkaConfig parses SubsysConfig into AuditKafkaConfig with descriptions from Help
-func parseAuditKafkaConfig(sc SubsysConfig, help Help) AuditKafkaConfig {
-	return AuditKafkaConfig{KafkaConfig: parseKafkaConfig(sc, help)}
 }
 
 // fetchAndParseConfig fetches config for a subsystem and parses it
@@ -472,6 +422,22 @@ func (adm *AdminClient) GetAPILogConfig(ctx context.Context) (LogRecorderAPIConf
 		cfg.EnvOverrides = append(cfg.EnvOverrides, internalConfigs[0].GetEnvOverrides()...)
 	}
 
+	// Fetch help for queue config
+	queueHelp, err := adm.HelpConfigKV(ctx, LogAPIQueueSubSys, "", false)
+	if err != nil {
+		return cfg, fmt.Errorf("failed to get help for %s: %w", LogAPIQueueSubSys, err)
+	}
+
+	// Fetch queue config
+	queueConfigs, err := adm.fetchAndParseConfig(ctx, LogAPIQueueSubSys)
+	if err != nil {
+		return cfg, fmt.Errorf("failed to get %s config: %w", LogAPIQueueSubSys, err)
+	}
+	if len(queueConfigs) > 0 {
+		cfg.External.Queue = parseQueueConfig(queueConfigs[0], queueHelp)
+		cfg.EnvOverrides = append(cfg.EnvOverrides, queueConfigs[0].GetEnvOverrides()...)
+	}
+
 	// Fetch help for webhook config
 	webhookHelp, err := adm.HelpConfigKV(ctx, LogAPIWebhookSubSys, "", false)
 	if err != nil {
@@ -484,7 +450,7 @@ func (adm *AdminClient) GetAPILogConfig(ctx context.Context) (LogRecorderAPIConf
 		return cfg, fmt.Errorf("failed to get %s config: %w", LogAPIWebhookSubSys, err)
 	}
 	for _, sc := range webhookConfigs {
-		cfg.Webhook = append(cfg.Webhook, parseAPIWebhookConfig(sc, webhookHelp))
+		cfg.External.Webhook = append(cfg.External.Webhook, parseWebhookConfig(sc, webhookHelp))
 		cfg.EnvOverrides = append(cfg.EnvOverrides, sc.GetEnvOverrides()...)
 	}
 
@@ -500,7 +466,7 @@ func (adm *AdminClient) GetAPILogConfig(ctx context.Context) (LogRecorderAPIConf
 		return cfg, fmt.Errorf("failed to get %s config: %w", LogAPIKafkaSubSys, err)
 	}
 	for _, sc := range kafkaConfigs {
-		cfg.Kafka = append(cfg.Kafka, parseAPIKafkaConfig(sc, kafkaHelp))
+		cfg.External.Kafka = append(cfg.External.Kafka, parseKafkaConfig(sc, kafkaHelp))
 		cfg.EnvOverrides = append(cfg.EnvOverrides, sc.GetEnvOverrides()...)
 	}
 
@@ -527,6 +493,22 @@ func (adm *AdminClient) GetErrorLogConfig(ctx context.Context) (LogRecorderError
 		cfg.EnvOverrides = append(cfg.EnvOverrides, internalConfigs[0].GetEnvOverrides()...)
 	}
 
+	// Fetch help for queue config
+	queueHelp, err := adm.HelpConfigKV(ctx, LogErrorQueueSubSys, "", false)
+	if err != nil {
+		return cfg, fmt.Errorf("failed to get help for %s: %w", LogErrorQueueSubSys, err)
+	}
+
+	// Fetch queue config
+	queueConfigs, err := adm.fetchAndParseConfig(ctx, LogErrorQueueSubSys)
+	if err != nil {
+		return cfg, fmt.Errorf("failed to get %s config: %w", LogErrorQueueSubSys, err)
+	}
+	if len(queueConfigs) > 0 {
+		cfg.External.Queue = parseQueueConfig(queueConfigs[0], queueHelp)
+		cfg.EnvOverrides = append(cfg.EnvOverrides, queueConfigs[0].GetEnvOverrides()...)
+	}
+
 	// Fetch help for webhook config
 	webhookHelp, err := adm.HelpConfigKV(ctx, LogErrorWebhookSubSys, "", false)
 	if err != nil {
@@ -539,7 +521,7 @@ func (adm *AdminClient) GetErrorLogConfig(ctx context.Context) (LogRecorderError
 		return cfg, fmt.Errorf("failed to get %s config: %w", LogErrorWebhookSubSys, err)
 	}
 	for _, sc := range webhookConfigs {
-		cfg.Webhook = append(cfg.Webhook, parseErrorWebhookConfig(sc, webhookHelp))
+		cfg.External.Webhook = append(cfg.External.Webhook, parseWebhookConfig(sc, webhookHelp))
 		cfg.EnvOverrides = append(cfg.EnvOverrides, sc.GetEnvOverrides()...)
 	}
 
@@ -555,7 +537,7 @@ func (adm *AdminClient) GetErrorLogConfig(ctx context.Context) (LogRecorderError
 		return cfg, fmt.Errorf("failed to get %s config: %w", LogErrorKafkaSubSys, err)
 	}
 	for _, sc := range kafkaConfigs {
-		cfg.Kafka = append(cfg.Kafka, parseErrorKafkaConfig(sc, kafkaHelp))
+		cfg.External.Kafka = append(cfg.External.Kafka, parseKafkaConfig(sc, kafkaHelp))
 		cfg.EnvOverrides = append(cfg.EnvOverrides, sc.GetEnvOverrides()...)
 	}
 
@@ -582,6 +564,22 @@ func (adm *AdminClient) GetAuditLogConfig(ctx context.Context) (LogRecorderAudit
 		cfg.EnvOverrides = append(cfg.EnvOverrides, internalConfigs[0].GetEnvOverrides()...)
 	}
 
+	// Fetch help for queue config
+	queueHelp, err := adm.HelpConfigKV(ctx, LogAuditQueueSubSys, "", false)
+	if err != nil {
+		return cfg, fmt.Errorf("failed to get help for %s: %w", LogAuditQueueSubSys, err)
+	}
+
+	// Fetch queue config
+	queueConfigs, err := adm.fetchAndParseConfig(ctx, LogAuditQueueSubSys)
+	if err != nil {
+		return cfg, fmt.Errorf("failed to get %s config: %w", LogAuditQueueSubSys, err)
+	}
+	if len(queueConfigs) > 0 {
+		cfg.External.Queue = parseQueueConfig(queueConfigs[0], queueHelp)
+		cfg.EnvOverrides = append(cfg.EnvOverrides, queueConfigs[0].GetEnvOverrides()...)
+	}
+
 	// Fetch help for webhook config
 	webhookHelp, err := adm.HelpConfigKV(ctx, LogAuditWebhookSubSys, "", false)
 	if err != nil {
@@ -594,7 +592,7 @@ func (adm *AdminClient) GetAuditLogConfig(ctx context.Context) (LogRecorderAudit
 		return cfg, fmt.Errorf("failed to get %s config: %w", LogAuditWebhookSubSys, err)
 	}
 	for _, sc := range webhookConfigs {
-		cfg.Webhook = append(cfg.Webhook, parseAuditWebhookConfig(sc, webhookHelp))
+		cfg.External.Webhook = append(cfg.External.Webhook, parseWebhookConfig(sc, webhookHelp))
 		cfg.EnvOverrides = append(cfg.EnvOverrides, sc.GetEnvOverrides()...)
 	}
 
@@ -610,7 +608,7 @@ func (adm *AdminClient) GetAuditLogConfig(ctx context.Context) (LogRecorderAudit
 		return cfg, fmt.Errorf("failed to get %s config: %w", LogAuditKafkaSubSys, err)
 	}
 	for _, sc := range kafkaConfigs {
-		cfg.Kafka = append(cfg.Kafka, parseAuditKafkaConfig(sc, kafkaHelp))
+		cfg.External.Kafka = append(cfg.External.Kafka, parseKafkaConfig(sc, kafkaHelp))
 		cfg.EnvOverrides = append(cfg.EnvOverrides, sc.GetEnvOverrides()...)
 	}
 
@@ -655,6 +653,15 @@ func buildInternalAuditKV(cfg InternalAuditRecorder) string {
 	return LogAuditInternalSubSys + " " + kv.String()
 }
 
+// buildQueueKV builds the KV string for queue config
+func buildQueueKV(cfg QueueConfig, subSys string) string {
+	var kv kvBuilder
+	kv.add(logKeyDir, cfg.Dir.Value)
+	kv.add(logKeyDirMaxSize, cfg.DirMaxSize.Value)
+	kv.add(logKeyFlushTimeout, cfg.FlushTimeout.Value)
+	return subSys + " " + kv.String()
+}
+
 // buildWebhookKV builds the KV string for webhook config (base fields)
 func buildWebhookKV(cfg WebhookConfig, subSys string) string {
 	var kv kvBuilder
@@ -664,67 +671,19 @@ func buildWebhookKV(cfg WebhookConfig, subSys string) string {
 	kv.add(logKeyClientCert, cfg.ClientCert.Value)
 	kv.add(logKeyClientKey, cfg.ClientKey.Value)
 	kv.add(logKeyProxy, cfg.Proxy.Value)
-	kv.add(logKeyQueueDir, cfg.QueueDir.Value)
-	kv.add(logKeyQueueSize, cfg.QueueSize.Value)
+	kv.add(logKeyBatchSize, cfg.BatchSize.Value)
+	kv.add(logKeyMaxRetry, cfg.MaxRetry.Value)
+	kv.add(logKeyRetryInterval, cfg.RetryInterval.Value)
+	kv.add(logKeyBatchPayloadSize, cfg.BatchPayloadSize.Value)
 	kv.add(logKeyHTTPTimeout, cfg.HTTPTimeout.Value)
 	kv.add(logKeyTLSSkipVerify, cfg.TLSSkipVerify.Value)
+	kv.add(logKeyEncoding, cfg.Encoding.Value)
 
 	target := subSys
 	if cfg.Name.Value != "" && cfg.Name.Value != Default {
 		target = subSys + SubSystemSeparator + cfg.Name.Value
 	}
 	return target + " " + kv.String()
-}
-
-// buildAPIWebhookKV builds the KV string for API webhook config
-func buildAPIWebhookKV(cfg APIWebhookConfig) string {
-	var kv kvBuilder
-	kv.add(logKeyEnable, cfg.Enable.Value)
-	kv.add(logKeyEndpoint, cfg.Endpoint.Value)
-	kv.add(logKeyAuthToken, cfg.AuthToken.Value)
-	kv.add(logKeyClientCert, cfg.ClientCert.Value)
-	kv.add(logKeyClientKey, cfg.ClientKey.Value)
-	kv.add(logKeyProxy, cfg.Proxy.Value)
-	kv.add(logKeyQueueDir, cfg.QueueDir.Value)
-	kv.add(logKeyQueueSize, cfg.QueueSize.Value)
-	kv.add(logKeyHTTPTimeout, cfg.HTTPTimeout.Value)
-	kv.add(logKeyTLSSkipVerify, cfg.TLSSkipVerify.Value)
-	kv.add(logKeyFlushCount, cfg.FlushCount.Value)
-	kv.add(logKeyFlushInterval, cfg.FlushInterval.Value)
-
-	target := LogAPIWebhookSubSys
-	if cfg.Name.Value != "" && cfg.Name.Value != Default {
-		target = LogAPIWebhookSubSys + SubSystemSeparator + cfg.Name.Value
-	}
-	return target + " " + kv.String()
-}
-
-// buildErrorWebhookKV builds the KV string for Error webhook config
-func buildErrorWebhookKV(cfg ErrorWebhookConfig) string {
-	var kv kvBuilder
-	kv.add(logKeyEnable, cfg.Enable.Value)
-	kv.add(logKeyEndpoint, cfg.Endpoint.Value)
-	kv.add(logKeyAuthToken, cfg.AuthToken.Value)
-	kv.add(logKeyClientCert, cfg.ClientCert.Value)
-	kv.add(logKeyClientKey, cfg.ClientKey.Value)
-	kv.add(logKeyProxy, cfg.Proxy.Value)
-	kv.add(logKeyQueueDir, cfg.QueueDir.Value)
-	kv.add(logKeyQueueSize, cfg.QueueSize.Value)
-	kv.add(logKeyHTTPTimeout, cfg.HTTPTimeout.Value)
-	kv.add(logKeyTLSSkipVerify, cfg.TLSSkipVerify.Value)
-	kv.add(logKeyFlushCount, cfg.FlushCount.Value)
-	kv.add(logKeyFlushInterval, cfg.FlushInterval.Value)
-
-	target := LogErrorWebhookSubSys
-	if cfg.Name.Value != "" && cfg.Name.Value != Default {
-		target = LogErrorWebhookSubSys + SubSystemSeparator + cfg.Name.Value
-	}
-	return target + " " + kv.String()
-}
-
-// buildAuditWebhookKV builds the KV string for Audit webhook config
-func buildAuditWebhookKV(cfg AuditWebhookConfig) string {
-	return buildWebhookKV(cfg.WebhookConfig, LogAuditWebhookSubSys)
 }
 
 // buildKafkaKV builds the KV string for kafka config (base fields)
@@ -747,83 +706,14 @@ func buildKafkaKV(cfg KafkaConfig, subSys string) string {
 	kv.add(logKeySASLKrbKeytab, cfg.SASL.KrbKeytab.Value)
 	kv.add(logKeySASLKrbConfig, cfg.SASL.KrbConfigPath.Value)
 	kv.add(logKeySASLKrbPrincipal, cfg.SASL.KrbPrincipal.Value)
-	kv.add(logKeyQueueDir, cfg.QueueDir.Value)
-	kv.add(logKeyQueueSize, cfg.QueueSize.Value)
+	kv.add(logKeyMaxRetry, cfg.MaxRetry.Value)
+	kv.add(logKeyRetryInterval, cfg.RetryInterval.Value)
 
 	target := subSys
 	if cfg.Name.Value != "" && cfg.Name.Value != Default {
 		target = subSys + SubSystemSeparator + cfg.Name.Value
 	}
 	return target + " " + kv.String()
-}
-
-// buildAPIKafkaKV builds the KV string for API kafka config
-func buildAPIKafkaKV(cfg APIKafkaConfig) string {
-	var kv kvBuilder
-	kv.add(logKeyEnable, cfg.Enable.Value)
-	kv.add(logKeyBrokers, cfg.Brokers.Value)
-	kv.add(logKeyTopic, cfg.Topic.Value)
-	kv.add(logKeyVersion, cfg.Version.Value)
-	kv.add(logKeyTLS, cfg.TLS.Enable.Value)
-	kv.add(logKeyTLSSkipVerify, cfg.TLS.SkipVerify.Value)
-	kv.add(logKeyTLSClientAuth, cfg.TLS.ClientAuth.Value)
-	kv.add(logKeyClientTLSCert, cfg.TLS.ClientTLSCert.Value)
-	kv.add(logKeyClientTLSKey, cfg.TLS.ClientTLSKey.Value)
-	kv.add(logKeySASL, cfg.SASL.Enable.Value)
-	kv.add(logKeySASLUsername, cfg.SASL.Username.Value)
-	kv.add(logKeySASLPassword, cfg.SASL.Password.Value)
-	kv.add(logKeySASLMechanism, cfg.SASL.Mechanism.Value)
-	kv.add(logKeySASLKrbRealm, cfg.SASL.KrbRealm.Value)
-	kv.add(logKeySASLKrbKeytab, cfg.SASL.KrbKeytab.Value)
-	kv.add(logKeySASLKrbConfig, cfg.SASL.KrbConfigPath.Value)
-	kv.add(logKeySASLKrbPrincipal, cfg.SASL.KrbPrincipal.Value)
-	kv.add(logKeyQueueDir, cfg.QueueDir.Value)
-	kv.add(logKeyQueueSize, cfg.QueueSize.Value)
-	kv.add(logKeyFlushCount, cfg.FlushCount.Value)
-	kv.add(logKeyFlushInterval, cfg.FlushInterval.Value)
-
-	target := LogAPIKafkaSubSys
-	if cfg.Name.Value != "" && cfg.Name.Value != Default {
-		target = LogAPIKafkaSubSys + SubSystemSeparator + cfg.Name.Value
-	}
-	return target + " " + kv.String()
-}
-
-// buildErrorKafkaKV builds the KV string for Error kafka config
-func buildErrorKafkaKV(cfg ErrorKafkaConfig) string {
-	var kv kvBuilder
-	kv.add(logKeyEnable, cfg.Enable.Value)
-	kv.add(logKeyBrokers, cfg.Brokers.Value)
-	kv.add(logKeyTopic, cfg.Topic.Value)
-	kv.add(logKeyVersion, cfg.Version.Value)
-	kv.add(logKeyTLS, cfg.TLS.Enable.Value)
-	kv.add(logKeyTLSSkipVerify, cfg.TLS.SkipVerify.Value)
-	kv.add(logKeyTLSClientAuth, cfg.TLS.ClientAuth.Value)
-	kv.add(logKeyClientTLSCert, cfg.TLS.ClientTLSCert.Value)
-	kv.add(logKeyClientTLSKey, cfg.TLS.ClientTLSKey.Value)
-	kv.add(logKeySASL, cfg.SASL.Enable.Value)
-	kv.add(logKeySASLUsername, cfg.SASL.Username.Value)
-	kv.add(logKeySASLPassword, cfg.SASL.Password.Value)
-	kv.add(logKeySASLMechanism, cfg.SASL.Mechanism.Value)
-	kv.add(logKeySASLKrbRealm, cfg.SASL.KrbRealm.Value)
-	kv.add(logKeySASLKrbKeytab, cfg.SASL.KrbKeytab.Value)
-	kv.add(logKeySASLKrbConfig, cfg.SASL.KrbConfigPath.Value)
-	kv.add(logKeySASLKrbPrincipal, cfg.SASL.KrbPrincipal.Value)
-	kv.add(logKeyQueueDir, cfg.QueueDir.Value)
-	kv.add(logKeyQueueSize, cfg.QueueSize.Value)
-	kv.add(logKeyFlushCount, cfg.FlushCount.Value)
-	kv.add(logKeyFlushInterval, cfg.FlushInterval.Value)
-
-	target := LogErrorKafkaSubSys
-	if cfg.Name.Value != "" && cfg.Name.Value != Default {
-		target = LogErrorKafkaSubSys + SubSystemSeparator + cfg.Name.Value
-	}
-	return target + " " + kv.String()
-}
-
-// buildAuditKafkaKV builds the KV string for Audit kafka config
-func buildAuditKafkaKV(cfg AuditKafkaConfig) string {
-	return buildKafkaKV(cfg.KafkaConfig, LogAuditKafkaSubSys)
 }
 
 // getCurrentTargets fetches current targets from server for a subsystem
@@ -866,11 +756,11 @@ func (adm *AdminClient) deleteRemovedTargets(ctx context.Context, subSys string,
 func (adm *AdminClient) SetAPILogConfig(ctx context.Context, cfg LogRecorderAPIConfig) error {
 	// Assign names to unnamed targets using index and check for duplicates
 	webhookNames := make(map[string]bool)
-	for i := range cfg.Webhook {
-		name := cfg.Webhook[i].Name.Value
+	for i := range cfg.External.Webhook {
+		name := cfg.External.Webhook[i].Name.Value
 		if name == "" {
 			name = fmt.Sprintf("target-%d", i+1)
-			cfg.Webhook[i].Name.Value = name
+			cfg.External.Webhook[i].Name.Value = name
 		}
 		if webhookNames[name] {
 			return fmt.Errorf("duplicate webhook target name: %s", name)
@@ -879,11 +769,11 @@ func (adm *AdminClient) SetAPILogConfig(ctx context.Context, cfg LogRecorderAPIC
 	}
 
 	kafkaNames := make(map[string]bool)
-	for i := range cfg.Kafka {
-		name := cfg.Kafka[i].Name.Value
+	for i := range cfg.External.Kafka {
+		name := cfg.External.Kafka[i].Name.Value
 		if name == "" {
 			name = fmt.Sprintf("target-%d", i+1)
-			cfg.Kafka[i].Name.Value = name
+			cfg.External.Kafka[i].Name.Value = name
 		}
 		if kafkaNames[name] {
 			return fmt.Errorf("duplicate kafka target name: %s", name)
@@ -906,16 +796,21 @@ func (adm *AdminClient) SetAPILogConfig(ctx context.Context, cfg LogRecorderAPIC
 		return fmt.Errorf("failed to set %s config: %w", LogAPIInternalSubSys, err)
 	}
 
+	// Set queue config
+	if _, err := adm.SetConfigKV(ctx, buildQueueKV(cfg.External.Queue, LogAPIQueueSubSys)); err != nil {
+		return fmt.Errorf("failed to set %s config: %w", LogAPIQueueSubSys, err)
+	}
+
 	// Set webhook configs
-	for _, w := range cfg.Webhook {
-		if _, err := adm.SetConfigKV(ctx, buildAPIWebhookKV(w)); err != nil {
+	for _, w := range cfg.External.Webhook {
+		if _, err := adm.SetConfigKV(ctx, buildWebhookKV(w, LogAPIWebhookSubSys)); err != nil {
 			return fmt.Errorf("failed to set webhook config for %s: %w", w.Name.Value, err)
 		}
 	}
 
 	// Set kafka configs
-	for _, k := range cfg.Kafka {
-		if _, err := adm.SetConfigKV(ctx, buildAPIKafkaKV(k)); err != nil {
+	for _, k := range cfg.External.Kafka {
+		if _, err := adm.SetConfigKV(ctx, buildKafkaKV(k, LogAPIKafkaSubSys)); err != nil {
 			return fmt.Errorf("failed to set kafka config for %s: %w", k.Name.Value, err)
 		}
 	}
@@ -927,11 +822,11 @@ func (adm *AdminClient) SetAPILogConfig(ctx context.Context, cfg LogRecorderAPIC
 func (adm *AdminClient) SetErrorLogConfig(ctx context.Context, cfg LogRecorderErrorConfig) error {
 	// Assign names to unnamed targets using index and check for duplicates
 	webhookNames := make(map[string]bool)
-	for i := range cfg.Webhook {
-		name := cfg.Webhook[i].Name.Value
+	for i := range cfg.External.Webhook {
+		name := cfg.External.Webhook[i].Name.Value
 		if name == "" {
 			name = fmt.Sprintf("target-%d", i+1)
-			cfg.Webhook[i].Name.Value = name
+			cfg.External.Webhook[i].Name.Value = name
 		}
 		if webhookNames[name] {
 			return fmt.Errorf("duplicate webhook target name: %s", name)
@@ -940,11 +835,11 @@ func (adm *AdminClient) SetErrorLogConfig(ctx context.Context, cfg LogRecorderEr
 	}
 
 	kafkaNames := make(map[string]bool)
-	for i := range cfg.Kafka {
-		name := cfg.Kafka[i].Name.Value
+	for i := range cfg.External.Kafka {
+		name := cfg.External.Kafka[i].Name.Value
 		if name == "" {
 			name = fmt.Sprintf("target-%d", i+1)
-			cfg.Kafka[i].Name.Value = name
+			cfg.External.Kafka[i].Name.Value = name
 		}
 		if kafkaNames[name] {
 			return fmt.Errorf("duplicate kafka target name: %s", name)
@@ -967,16 +862,21 @@ func (adm *AdminClient) SetErrorLogConfig(ctx context.Context, cfg LogRecorderEr
 		return fmt.Errorf("failed to set %s config: %w", LogErrorInternalSubSys, err)
 	}
 
+	// Set queue config
+	if _, err := adm.SetConfigKV(ctx, buildQueueKV(cfg.External.Queue, LogErrorQueueSubSys)); err != nil {
+		return fmt.Errorf("failed to set %s config: %w", LogErrorQueueSubSys, err)
+	}
+
 	// Set webhook configs
-	for _, w := range cfg.Webhook {
-		if _, err := adm.SetConfigKV(ctx, buildErrorWebhookKV(w)); err != nil {
+	for _, w := range cfg.External.Webhook {
+		if _, err := adm.SetConfigKV(ctx, buildWebhookKV(w, LogErrorWebhookSubSys)); err != nil {
 			return fmt.Errorf("failed to set webhook config for %s: %w", w.Name.Value, err)
 		}
 	}
 
 	// Set kafka configs
-	for _, k := range cfg.Kafka {
-		if _, err := adm.SetConfigKV(ctx, buildErrorKafkaKV(k)); err != nil {
+	for _, k := range cfg.External.Kafka {
+		if _, err := adm.SetConfigKV(ctx, buildKafkaKV(k, LogErrorKafkaSubSys)); err != nil {
 			return fmt.Errorf("failed to set kafka config for %s: %w", k.Name.Value, err)
 		}
 	}
@@ -988,11 +888,11 @@ func (adm *AdminClient) SetErrorLogConfig(ctx context.Context, cfg LogRecorderEr
 func (adm *AdminClient) SetAuditLogConfig(ctx context.Context, cfg LogRecorderAuditConfig) error {
 	// Assign names to unnamed targets using index and check for duplicates
 	webhookNames := make(map[string]bool)
-	for i := range cfg.Webhook {
-		name := cfg.Webhook[i].Name.Value
+	for i := range cfg.External.Webhook {
+		name := cfg.External.Webhook[i].Name.Value
 		if name == "" {
 			name = fmt.Sprintf("target-%d", i+1)
-			cfg.Webhook[i].Name.Value = name
+			cfg.External.Webhook[i].Name.Value = name
 		}
 		if webhookNames[name] {
 			return fmt.Errorf("duplicate webhook target name: %s", name)
@@ -1001,11 +901,11 @@ func (adm *AdminClient) SetAuditLogConfig(ctx context.Context, cfg LogRecorderAu
 	}
 
 	kafkaNames := make(map[string]bool)
-	for i := range cfg.Kafka {
-		name := cfg.Kafka[i].Name.Value
+	for i := range cfg.External.Kafka {
+		name := cfg.External.Kafka[i].Name.Value
 		if name == "" {
 			name = fmt.Sprintf("target-%d", i+1)
-			cfg.Kafka[i].Name.Value = name
+			cfg.External.Kafka[i].Name.Value = name
 		}
 		if kafkaNames[name] {
 			return fmt.Errorf("duplicate kafka target name: %s", name)
@@ -1028,16 +928,21 @@ func (adm *AdminClient) SetAuditLogConfig(ctx context.Context, cfg LogRecorderAu
 		return fmt.Errorf("failed to set %s config: %w", LogAuditInternalSubSys, err)
 	}
 
+	// Set queue config
+	if _, err := adm.SetConfigKV(ctx, buildQueueKV(cfg.External.Queue, LogAuditQueueSubSys)); err != nil {
+		return fmt.Errorf("failed to set %s config: %w", LogAuditQueueSubSys, err)
+	}
+
 	// Set webhook configs
-	for _, w := range cfg.Webhook {
-		if _, err := adm.SetConfigKV(ctx, buildAuditWebhookKV(w)); err != nil {
+	for _, w := range cfg.External.Webhook {
+		if _, err := adm.SetConfigKV(ctx, buildWebhookKV(w, LogAuditWebhookSubSys)); err != nil {
 			return fmt.Errorf("failed to set webhook config for %s: %w", w.Name.Value, err)
 		}
 	}
 
 	// Set kafka configs
-	for _, k := range cfg.Kafka {
-		if _, err := adm.SetConfigKV(ctx, buildAuditKafkaKV(k)); err != nil {
+	for _, k := range cfg.External.Kafka {
+		if _, err := adm.SetConfigKV(ctx, buildKafkaKV(k, LogAuditKafkaSubSys)); err != nil {
 			return fmt.Errorf("failed to set kafka config for %s: %w", k.Name.Value, err)
 		}
 	}
@@ -1065,6 +970,12 @@ func (adm *AdminClient) ResetAPILogConfig(ctx context.Context) error {
 			return fmt.Errorf("failed to reset %s: %w", LogAPIInternalSubSys, err)
 		}
 	}
+	// Reset queue config
+	if _, err := adm.DelConfigKV(ctx, LogAPIQueueSubSys); err != nil {
+		if !errors.Is(err, ErrConfigNotFound) {
+			return fmt.Errorf("failed to reset %s: %w", LogAPIQueueSubSys, err)
+		}
+	}
 	return nil
 }
 
@@ -1085,6 +996,12 @@ func (adm *AdminClient) ResetErrorLogConfig(ctx context.Context) error {
 			return fmt.Errorf("failed to reset %s: %w", LogErrorInternalSubSys, err)
 		}
 	}
+	// Reset queue config
+	if _, err := adm.DelConfigKV(ctx, LogErrorQueueSubSys); err != nil {
+		if !errors.Is(err, ErrConfigNotFound) {
+			return fmt.Errorf("failed to reset %s: %w", LogErrorQueueSubSys, err)
+		}
+	}
 	return nil
 }
 
@@ -1103,6 +1020,12 @@ func (adm *AdminClient) ResetAuditLogConfig(ctx context.Context) error {
 	if _, err := adm.DelConfigKV(ctx, LogAuditInternalSubSys); err != nil {
 		if !errors.Is(err, ErrConfigNotFound) {
 			return fmt.Errorf("failed to reset %s: %w", LogAuditInternalSubSys, err)
+		}
+	}
+	// Reset queue config
+	if _, err := adm.DelConfigKV(ctx, LogAuditQueueSubSys); err != nil {
+		if !errors.Is(err, ErrConfigNotFound) {
+			return fmt.Errorf("failed to reset %s: %w", LogAuditQueueSubSys, err)
 		}
 	}
 	return nil
@@ -1169,6 +1092,63 @@ func writeEnvOverrides(sb *strings.Builder, envs []EnvOverride) {
 	sb.WriteString("# ---\n")
 }
 
+// writeExternalYAML writes the external config section as YAML
+func writeExternalYAML(sb *strings.Builder, ext ExternalConfig) {
+	sb.WriteString("external:\n")
+	sb.WriteString("  queue:\n")
+	writeLogField(sb, "    ", "dir", ext.Queue.Dir)
+	writeLogField(sb, "    ", "dirMaxSize", ext.Queue.DirMaxSize)
+	writeLogField(sb, "    ", "flushTimeout", ext.Queue.FlushTimeout)
+
+	if len(ext.Webhook) > 0 {
+		sb.WriteString("  webhook:\n")
+		for _, w := range ext.Webhook {
+			writeLogFieldArrayFirst(sb, "    ", "name", w.Name)
+			writeLogField(sb, "      ", "enable", w.Enable)
+			writeLogField(sb, "      ", "endpoint", w.Endpoint)
+			writeLogField(sb, "      ", "authToken", w.AuthToken)
+			writeLogField(sb, "      ", "clientCert", w.ClientCert)
+			writeLogField(sb, "      ", "clientKey", w.ClientKey)
+			writeLogField(sb, "      ", "proxy", w.Proxy)
+			writeLogField(sb, "      ", "batchSize", w.BatchSize)
+			writeLogField(sb, "      ", "maxRetry", w.MaxRetry)
+			writeLogField(sb, "      ", "retryInterval", w.RetryInterval)
+			writeLogField(sb, "      ", "batchPayloadSize", w.BatchPayloadSize)
+			writeLogField(sb, "      ", "httpTimeout", w.HTTPTimeout)
+			writeLogField(sb, "      ", "tlsSkipVerify", w.TLSSkipVerify)
+			writeLogField(sb, "      ", "encoding", w.Encoding)
+		}
+	}
+
+	if len(ext.Kafka) > 0 {
+		sb.WriteString("  kafka:\n")
+		for _, k := range ext.Kafka {
+			writeLogFieldArrayFirst(sb, "    ", "name", k.Name)
+			writeLogField(sb, "      ", "enable", k.Enable)
+			writeLogField(sb, "      ", "brokers", k.Brokers)
+			writeLogField(sb, "      ", "topic", k.Topic)
+			writeLogField(sb, "      ", "version", k.Version)
+			sb.WriteString("      tls:\n")
+			writeLogField(sb, "        ", "enable", k.TLS.Enable)
+			writeLogField(sb, "        ", "skipVerify", k.TLS.SkipVerify)
+			writeLogField(sb, "        ", "clientAuth", k.TLS.ClientAuth)
+			writeLogField(sb, "        ", "clientTLSCert", k.TLS.ClientTLSCert)
+			writeLogField(sb, "        ", "clientTLSKey", k.TLS.ClientTLSKey)
+			sb.WriteString("      sasl:\n")
+			writeLogField(sb, "        ", "enable", k.SASL.Enable)
+			writeLogField(sb, "        ", "username", k.SASL.Username)
+			writeLogField(sb, "        ", "password", k.SASL.Password)
+			writeLogField(sb, "        ", "mechanism", k.SASL.Mechanism)
+			writeLogField(sb, "        ", "krbRealm", k.SASL.KrbRealm)
+			writeLogField(sb, "        ", "krbKeytab", k.SASL.KrbKeytab)
+			writeLogField(sb, "        ", "krbConfigPath", k.SASL.KrbConfigPath)
+			writeLogField(sb, "        ", "krbPrincipal", k.SASL.KrbPrincipal)
+			writeLogField(sb, "      ", "maxRetry", k.MaxRetry)
+			writeLogField(sb, "      ", "retryInterval", k.RetryInterval)
+		}
+	}
+}
+
 // YAML returns the configuration as YAML with field descriptions as comments
 func (c LogRecorderAPIConfig) YAML() string {
 	var sb strings.Builder
@@ -1188,54 +1168,7 @@ func (c LogRecorderAPIConfig) YAML() string {
 	writeLogField(&sb, "    ", "commitInterval", c.Internal.Iceberg.CommitInterval)
 	writeLogField(&sb, "    ", "writeInterval", c.Internal.Iceberg.WriteInterval)
 
-	if len(c.Webhook) > 0 {
-		sb.WriteString("webhook:\n")
-		for _, w := range c.Webhook {
-			writeLogFieldArrayFirst(&sb, "  ", "name", w.Name)
-			writeLogField(&sb, "    ", "enable", w.Enable)
-			writeLogField(&sb, "    ", "endpoint", w.Endpoint)
-			writeLogField(&sb, "    ", "authToken", w.AuthToken)
-			writeLogField(&sb, "    ", "clientCert", w.ClientCert)
-			writeLogField(&sb, "    ", "clientKey", w.ClientKey)
-			writeLogField(&sb, "    ", "proxy", w.Proxy)
-			writeLogField(&sb, "    ", "queueDir", w.QueueDir)
-			writeLogField(&sb, "    ", "queueSize", w.QueueSize)
-			writeLogField(&sb, "    ", "httpTimeout", w.HTTPTimeout)
-			writeLogField(&sb, "    ", "tlsSkipVerify", w.TLSSkipVerify)
-			writeLogField(&sb, "    ", "flushCount", w.FlushCount)
-			writeLogField(&sb, "    ", "flushInterval", w.FlushInterval)
-		}
-	}
-
-	if len(c.Kafka) > 0 {
-		sb.WriteString("kafka:\n")
-		for _, k := range c.Kafka {
-			writeLogFieldArrayFirst(&sb, "  ", "name", k.Name)
-			writeLogField(&sb, "    ", "enable", k.Enable)
-			writeLogField(&sb, "    ", "brokers", k.Brokers)
-			writeLogField(&sb, "    ", "topic", k.Topic)
-			writeLogField(&sb, "    ", "version", k.Version)
-			sb.WriteString("    tls:\n")
-			writeLogField(&sb, "      ", "enable", k.TLS.Enable)
-			writeLogField(&sb, "      ", "skipVerify", k.TLS.SkipVerify)
-			writeLogField(&sb, "      ", "clientAuth", k.TLS.ClientAuth)
-			writeLogField(&sb, "      ", "clientTLSCert", k.TLS.ClientTLSCert)
-			writeLogField(&sb, "      ", "clientTLSKey", k.TLS.ClientTLSKey)
-			sb.WriteString("    sasl:\n")
-			writeLogField(&sb, "      ", "enable", k.SASL.Enable)
-			writeLogField(&sb, "      ", "username", k.SASL.Username)
-			writeLogField(&sb, "      ", "password", k.SASL.Password)
-			writeLogField(&sb, "      ", "mechanism", k.SASL.Mechanism)
-			writeLogField(&sb, "      ", "krbRealm", k.SASL.KrbRealm)
-			writeLogField(&sb, "      ", "krbKeytab", k.SASL.KrbKeytab)
-			writeLogField(&sb, "      ", "krbConfigPath", k.SASL.KrbConfigPath)
-			writeLogField(&sb, "      ", "krbPrincipal", k.SASL.KrbPrincipal)
-			writeLogField(&sb, "    ", "queueDir", k.QueueDir)
-			writeLogField(&sb, "    ", "queueSize", k.QueueSize)
-			writeLogField(&sb, "    ", "flushCount", k.FlushCount)
-			writeLogField(&sb, "    ", "flushInterval", k.FlushInterval)
-		}
-	}
+	writeExternalYAML(&sb, c.External)
 
 	return sb.String()
 }
@@ -1252,54 +1185,7 @@ func (c LogRecorderErrorConfig) YAML() string {
 	writeLogField(&sb, "  ", "flushCount", c.Internal.FlushCount)
 	writeLogField(&sb, "  ", "flushInterval", c.Internal.FlushInterval)
 
-	if len(c.Webhook) > 0 {
-		sb.WriteString("webhook:\n")
-		for _, w := range c.Webhook {
-			writeLogFieldArrayFirst(&sb, "  ", "name", w.Name)
-			writeLogField(&sb, "    ", "enable", w.Enable)
-			writeLogField(&sb, "    ", "endpoint", w.Endpoint)
-			writeLogField(&sb, "    ", "authToken", w.AuthToken)
-			writeLogField(&sb, "    ", "clientCert", w.ClientCert)
-			writeLogField(&sb, "    ", "clientKey", w.ClientKey)
-			writeLogField(&sb, "    ", "proxy", w.Proxy)
-			writeLogField(&sb, "    ", "queueDir", w.QueueDir)
-			writeLogField(&sb, "    ", "queueSize", w.QueueSize)
-			writeLogField(&sb, "    ", "httpTimeout", w.HTTPTimeout)
-			writeLogField(&sb, "    ", "tlsSkipVerify", w.TLSSkipVerify)
-			writeLogField(&sb, "    ", "flushCount", w.FlushCount)
-			writeLogField(&sb, "    ", "flushInterval", w.FlushInterval)
-		}
-	}
-
-	if len(c.Kafka) > 0 {
-		sb.WriteString("kafka:\n")
-		for _, k := range c.Kafka {
-			writeLogFieldArrayFirst(&sb, "  ", "name", k.Name)
-			writeLogField(&sb, "    ", "enable", k.Enable)
-			writeLogField(&sb, "    ", "brokers", k.Brokers)
-			writeLogField(&sb, "    ", "topic", k.Topic)
-			writeLogField(&sb, "    ", "version", k.Version)
-			sb.WriteString("    tls:\n")
-			writeLogField(&sb, "      ", "enable", k.TLS.Enable)
-			writeLogField(&sb, "      ", "skipVerify", k.TLS.SkipVerify)
-			writeLogField(&sb, "      ", "clientAuth", k.TLS.ClientAuth)
-			writeLogField(&sb, "      ", "clientTLSCert", k.TLS.ClientTLSCert)
-			writeLogField(&sb, "      ", "clientTLSKey", k.TLS.ClientTLSKey)
-			sb.WriteString("    sasl:\n")
-			writeLogField(&sb, "      ", "enable", k.SASL.Enable)
-			writeLogField(&sb, "      ", "username", k.SASL.Username)
-			writeLogField(&sb, "      ", "password", k.SASL.Password)
-			writeLogField(&sb, "      ", "mechanism", k.SASL.Mechanism)
-			writeLogField(&sb, "      ", "krbRealm", k.SASL.KrbRealm)
-			writeLogField(&sb, "      ", "krbKeytab", k.SASL.KrbKeytab)
-			writeLogField(&sb, "      ", "krbConfigPath", k.SASL.KrbConfigPath)
-			writeLogField(&sb, "      ", "krbPrincipal", k.SASL.KrbPrincipal)
-			writeLogField(&sb, "    ", "queueDir", k.QueueDir)
-			writeLogField(&sb, "    ", "queueSize", k.QueueSize)
-			writeLogField(&sb, "    ", "flushCount", k.FlushCount)
-			writeLogField(&sb, "    ", "flushInterval", k.FlushInterval)
-		}
-	}
+	writeExternalYAML(&sb, c.External)
 
 	return sb.String()
 }
@@ -1313,50 +1199,7 @@ func (c LogRecorderAuditConfig) YAML() string {
 	sb.WriteString("internal:\n")
 	writeLogField(&sb, "  ", "enable", c.Internal.Enable)
 
-	if len(c.Webhook) > 0 {
-		sb.WriteString("webhook:\n")
-		for _, w := range c.Webhook {
-			writeLogFieldArrayFirst(&sb, "  ", "name", w.Name)
-			writeLogField(&sb, "    ", "enable", w.Enable)
-			writeLogField(&sb, "    ", "endpoint", w.Endpoint)
-			writeLogField(&sb, "    ", "authToken", w.AuthToken)
-			writeLogField(&sb, "    ", "clientCert", w.ClientCert)
-			writeLogField(&sb, "    ", "clientKey", w.ClientKey)
-			writeLogField(&sb, "    ", "proxy", w.Proxy)
-			writeLogField(&sb, "    ", "queueDir", w.QueueDir)
-			writeLogField(&sb, "    ", "queueSize", w.QueueSize)
-			writeLogField(&sb, "    ", "httpTimeout", w.HTTPTimeout)
-			writeLogField(&sb, "    ", "tlsSkipVerify", w.TLSSkipVerify)
-		}
-	}
-
-	if len(c.Kafka) > 0 {
-		sb.WriteString("kafka:\n")
-		for _, k := range c.Kafka {
-			writeLogFieldArrayFirst(&sb, "  ", "name", k.Name)
-			writeLogField(&sb, "    ", "enable", k.Enable)
-			writeLogField(&sb, "    ", "brokers", k.Brokers)
-			writeLogField(&sb, "    ", "topic", k.Topic)
-			writeLogField(&sb, "    ", "version", k.Version)
-			sb.WriteString("    tls:\n")
-			writeLogField(&sb, "      ", "enable", k.TLS.Enable)
-			writeLogField(&sb, "      ", "skipVerify", k.TLS.SkipVerify)
-			writeLogField(&sb, "      ", "clientAuth", k.TLS.ClientAuth)
-			writeLogField(&sb, "      ", "clientTLSCert", k.TLS.ClientTLSCert)
-			writeLogField(&sb, "      ", "clientTLSKey", k.TLS.ClientTLSKey)
-			sb.WriteString("    sasl:\n")
-			writeLogField(&sb, "      ", "enable", k.SASL.Enable)
-			writeLogField(&sb, "      ", "username", k.SASL.Username)
-			writeLogField(&sb, "      ", "password", k.SASL.Password)
-			writeLogField(&sb, "      ", "mechanism", k.SASL.Mechanism)
-			writeLogField(&sb, "      ", "krbRealm", k.SASL.KrbRealm)
-			writeLogField(&sb, "      ", "krbKeytab", k.SASL.KrbKeytab)
-			writeLogField(&sb, "      ", "krbConfigPath", k.SASL.KrbConfigPath)
-			writeLogField(&sb, "      ", "krbPrincipal", k.SASL.KrbPrincipal)
-			writeLogField(&sb, "    ", "queueDir", k.QueueDir)
-			writeLogField(&sb, "    ", "queueSize", k.QueueSize)
-		}
-	}
+	writeExternalYAML(&sb, c.External)
 
 	return sb.String()
 }
