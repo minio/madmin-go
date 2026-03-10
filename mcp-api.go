@@ -40,10 +40,15 @@ const (
 	MCPPermDelete
 	// MCPPermAdmin grants administrative access to MCP resources.
 	MCPPermAdmin
+	// MCPPermTables grants access to table APIs.
+	MCPPermTables
+
+	// mcpPermLast should always be the last.
+	mcpPermLast
 )
 
 // MCPPermAll includes all permissions.
-const MCPPermAll = MCPPermRead | MCPPermWrite | MCPPermDelete | MCPPermAdmin
+const MCPPermAll  = mcpPermLast - 1
 
 // Has returns true if p includes all bits in perm.
 func (p MCPPermission) Has(perm MCPPermission) bool {
@@ -65,6 +70,9 @@ func (p MCPPermission) String() string {
 	if p&MCPPermAdmin != 0 {
 		parts = append(parts, "admin")
 	}
+	if p&MCPPermAdmin != 0 {
+		parts = append(parts, "tables")
+	}
 	return strings.Join(parts, ",")
 }
 
@@ -81,6 +89,10 @@ func ParseMCPPermissions(s string) MCPPermission {
 			p |= MCPPermDelete
 		case "a", "admin":
 			p |= MCPPermAdmin
+		case "t", "tables":
+			p |= MCPPermTables
+		case "all":
+			p |= MCPPermAll
 		}
 	}
 	return p
