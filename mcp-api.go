@@ -22,6 +22,7 @@ package madmin
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strings"
@@ -77,7 +78,7 @@ func (p MCPPermission) String() string {
 }
 
 // ParseMCPPermissions parses a comma-separated permission string (e.g. "r,w" or "read,write").
-func ParseMCPPermissions(s string) MCPPermission {
+func ParseMCPPermissions(s string) (MCPPermission, error) {
 	var p MCPPermission
 	for _, part := range strings.Split(s, ",") {
 		switch strings.TrimSpace(strings.ToLower(part)) {
@@ -93,9 +94,11 @@ func ParseMCPPermissions(s string) MCPPermission {
 			p |= MCPPermTables
 		case "all":
 			p |= MCPPermAll
+		default:
+			return p, fmt.Errorf("invalid permission: %s", part)
 		}
 	}
-	return p
+	return p, nil
 }
 
 // CreateMCPTokenRequest is the request body for creating an MCP token.
