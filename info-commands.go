@@ -165,8 +165,10 @@ type BucketUsageInfo struct {
 	VersionsCount           uint64            `json:"versionsCount"`
 	ObjectsCount            uint64            `json:"objectsCount"`
 	DeleteMarkersCount      uint64            `json:"deleteMarkersCount"`
-	ObjectSizesHistogram    map[string]uint64 `json:"objectsSizesHistogram"`
-	ObjectVersionsHistogram map[string]uint64 `json:"objectsVersionsHistogram"`
+	ObjectSizesHistogram      map[string]uint64 `json:"objectsSizesHistogram"`
+	ObjectVersionsHistogram   map[string]uint64 `json:"objectsVersionsHistogram"`
+	ObjectAgesHistogram       map[string]uint64 `json:"objectsAgesHistogram"`
+	ObjectAccessAgesHistogram map[string]uint64 `json:"objectsAccessAgesHistogram"`
 }
 
 // DataUsageInfo represents data usage stats of the underlying Object API
