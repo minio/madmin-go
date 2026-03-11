@@ -2195,6 +2195,62 @@ func (z *BucketUsageInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.ObjectVersionsHistogram[za0003] = za0004
 			}
+		case "objectsAgesHistogram":
+			var zb0004 uint32
+			zb0004, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "ObjectAgesHistogram")
+				return
+			}
+			if z.ObjectAgesHistogram == nil {
+				z.ObjectAgesHistogram = make(map[string]uint64, zb0004)
+			} else if len(z.ObjectAgesHistogram) > 0 {
+				clear(z.ObjectAgesHistogram)
+			}
+			for zb0004 > 0 {
+				zb0004--
+				var za0005 string
+				za0005, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "ObjectAgesHistogram")
+					return
+				}
+				var za0006 uint64
+				za0006, err = dc.ReadUint64()
+				if err != nil {
+					err = msgp.WrapError(err, "ObjectAgesHistogram", za0005)
+					return
+				}
+				z.ObjectAgesHistogram[za0005] = za0006
+			}
+		case "objectsAccessAgesHistogram":
+			var zb0005 uint32
+			zb0005, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "ObjectAccessAgesHistogram")
+				return
+			}
+			if z.ObjectAccessAgesHistogram == nil {
+				z.ObjectAccessAgesHistogram = make(map[string]uint64, zb0005)
+			} else if len(z.ObjectAccessAgesHistogram) > 0 {
+				clear(z.ObjectAccessAgesHistogram)
+			}
+			for zb0005 > 0 {
+				zb0005--
+				var za0007 string
+				za0007, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "ObjectAccessAgesHistogram")
+					return
+				}
+				var za0008 uint64
+				za0008, err = dc.ReadUint64()
+				if err != nil {
+					err = msgp.WrapError(err, "ObjectAccessAgesHistogram", za0007)
+					return
+				}
+				z.ObjectAccessAgesHistogram[za0007] = za0008
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -2208,9 +2264,9 @@ func (z *BucketUsageInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *BucketUsageInfo) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 12
+	// map header, size 14
 	// write "size"
-	err = en.Append(0x8c, 0xa4, 0x73, 0x69, 0x7a, 0x65)
+	err = en.Append(0x8e, 0xa4, 0x73, 0x69, 0x7a, 0x65)
 	if err != nil {
 		return
 	}
@@ -2353,15 +2409,59 @@ func (z *BucketUsageInfo) EncodeMsg(en *msgp.Writer) (err error) {
 			return
 		}
 	}
+	// write "objectsAgesHistogram"
+	err = en.Append(0xb4, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x41, 0x67, 0x65, 0x73, 0x48, 0x69, 0x73, 0x74, 0x6f, 0x67, 0x72, 0x61, 0x6d)
+	if err != nil {
+		return
+	}
+	err = en.WriteMapHeader(uint32(len(z.ObjectAgesHistogram)))
+	if err != nil {
+		err = msgp.WrapError(err, "ObjectAgesHistogram")
+		return
+	}
+	for za0005, za0006 := range z.ObjectAgesHistogram {
+		err = en.WriteString(za0005)
+		if err != nil {
+			err = msgp.WrapError(err, "ObjectAgesHistogram")
+			return
+		}
+		err = en.WriteUint64(za0006)
+		if err != nil {
+			err = msgp.WrapError(err, "ObjectAgesHistogram", za0005)
+			return
+		}
+	}
+	// write "objectsAccessAgesHistogram"
+	err = en.Append(0xba, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x41, 0x63, 0x63, 0x65, 0x73, 0x73, 0x41, 0x67, 0x65, 0x73, 0x48, 0x69, 0x73, 0x74, 0x6f, 0x67, 0x72, 0x61, 0x6d)
+	if err != nil {
+		return
+	}
+	err = en.WriteMapHeader(uint32(len(z.ObjectAccessAgesHistogram)))
+	if err != nil {
+		err = msgp.WrapError(err, "ObjectAccessAgesHistogram")
+		return
+	}
+	for za0007, za0008 := range z.ObjectAccessAgesHistogram {
+		err = en.WriteString(za0007)
+		if err != nil {
+			err = msgp.WrapError(err, "ObjectAccessAgesHistogram")
+			return
+		}
+		err = en.WriteUint64(za0008)
+		if err != nil {
+			err = msgp.WrapError(err, "ObjectAccessAgesHistogram", za0007)
+			return
+		}
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z *BucketUsageInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 12
+	// map header, size 14
 	// string "size"
-	o = append(o, 0x8c, 0xa4, 0x73, 0x69, 0x7a, 0x65)
+	o = append(o, 0x8e, 0xa4, 0x73, 0x69, 0x7a, 0x65)
 	o = msgp.AppendUint64(o, z.Size)
 	// string "objectsPendingReplicationTotalSize"
 	o = append(o, 0xd9, 0x22, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x50, 0x65, 0x6e, 0x64, 0x69, 0x6e, 0x67, 0x52, 0x65, 0x70, 0x6c, 0x69, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x54, 0x6f, 0x74, 0x61, 0x6c, 0x53, 0x69, 0x7a, 0x65)
@@ -2403,6 +2503,20 @@ func (z *BucketUsageInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	for za0003, za0004 := range z.ObjectVersionsHistogram {
 		o = msgp.AppendString(o, za0003)
 		o = msgp.AppendUint64(o, za0004)
+	}
+	// string "objectsAgesHistogram"
+	o = append(o, 0xb4, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x41, 0x67, 0x65, 0x73, 0x48, 0x69, 0x73, 0x74, 0x6f, 0x67, 0x72, 0x61, 0x6d)
+	o = msgp.AppendMapHeader(o, uint32(len(z.ObjectAgesHistogram)))
+	for za0005, za0006 := range z.ObjectAgesHistogram {
+		o = msgp.AppendString(o, za0005)
+		o = msgp.AppendUint64(o, za0006)
+	}
+	// string "objectsAccessAgesHistogram"
+	o = append(o, 0xba, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x41, 0x63, 0x63, 0x65, 0x73, 0x73, 0x41, 0x67, 0x65, 0x73, 0x48, 0x69, 0x73, 0x74, 0x6f, 0x67, 0x72, 0x61, 0x6d)
+	o = msgp.AppendMapHeader(o, uint32(len(z.ObjectAccessAgesHistogram)))
+	for za0007, za0008 := range z.ObjectAccessAgesHistogram {
+		o = msgp.AppendString(o, za0007)
+		o = msgp.AppendUint64(o, za0008)
 	}
 	return
 }
@@ -2541,6 +2655,62 @@ func (z *BucketUsageInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.ObjectVersionsHistogram[za0003] = za0004
 			}
+		case "objectsAgesHistogram":
+			var zb0004 uint32
+			zb0004, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ObjectAgesHistogram")
+				return
+			}
+			if z.ObjectAgesHistogram == nil {
+				z.ObjectAgesHistogram = make(map[string]uint64, zb0004)
+			} else if len(z.ObjectAgesHistogram) > 0 {
+				clear(z.ObjectAgesHistogram)
+			}
+			for zb0004 > 0 {
+				var za0006 uint64
+				zb0004--
+				var za0005 string
+				za0005, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "ObjectAgesHistogram")
+					return
+				}
+				za0006, bts, err = msgp.ReadUint64Bytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "ObjectAgesHistogram", za0005)
+					return
+				}
+				z.ObjectAgesHistogram[za0005] = za0006
+			}
+		case "objectsAccessAgesHistogram":
+			var zb0005 uint32
+			zb0005, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ObjectAccessAgesHistogram")
+				return
+			}
+			if z.ObjectAccessAgesHistogram == nil {
+				z.ObjectAccessAgesHistogram = make(map[string]uint64, zb0005)
+			} else if len(z.ObjectAccessAgesHistogram) > 0 {
+				clear(z.ObjectAccessAgesHistogram)
+			}
+			for zb0005 > 0 {
+				var za0008 uint64
+				zb0005--
+				var za0007 string
+				za0007, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "ObjectAccessAgesHistogram")
+					return
+				}
+				za0008, bts, err = msgp.ReadUint64Bytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "ObjectAccessAgesHistogram", za0007)
+					return
+				}
+				z.ObjectAccessAgesHistogram[za0007] = za0008
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -2567,6 +2737,20 @@ func (z *BucketUsageInfo) Msgsize() (s int) {
 		for za0003, za0004 := range z.ObjectVersionsHistogram {
 			_ = za0004
 			s += msgp.StringPrefixSize + len(za0003) + msgp.Uint64Size
+		}
+	}
+	s += 21 + msgp.MapHeaderSize
+	if z.ObjectAgesHistogram != nil {
+		for za0005, za0006 := range z.ObjectAgesHistogram {
+			_ = za0006
+			s += msgp.StringPrefixSize + len(za0005) + msgp.Uint64Size
+		}
+	}
+	s += 27 + msgp.MapHeaderSize
+	if z.ObjectAccessAgesHistogram != nil {
+		for za0007, za0008 := range z.ObjectAccessAgesHistogram {
+			_ = za0008
+			s += msgp.StringPrefixSize + len(za0007) + msgp.Uint64Size
 		}
 	}
 	return
