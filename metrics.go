@@ -2035,6 +2035,9 @@ type ReplicationMetrics struct {
 	Queued int64 `json:"queued,omitempty"`
 
 	Targets map[string]ReplicationTargetStats `json:"targets"`
+
+	// Received tracks aggregate inbound replication stats across all sources.
+	Received ReplicationReceivedStats `json:"received,omitempty"`
 }
 
 func (m *ReplicationMetrics) Merge(other *ReplicationMetrics) {
@@ -2047,6 +2050,7 @@ func (m *ReplicationMetrics) Merge(other *ReplicationMetrics) {
 	m.Nodes += other.Nodes
 	m.Active += other.Active
 	m.Queued += other.Queued
+	m.Received.Add(&other.Received)
 
 	if len(other.Targets) == 0 {
 		return
@@ -2075,6 +2079,9 @@ type ReplicationTargetStats struct {
 	// Nodes responded to the request.
 	Nodes int `json:"nodes"`
 
+	// Last minute operation statistics per target.
+	LastMinute ReplicationStats `json:"last_minute,omitempty"`
+
 	// Last hour operation statistics per target.
 	LastHour ReplicationStats `json:"last_hour,omitempty"`
 
@@ -2091,6 +2098,7 @@ func (r *ReplicationTargetStats) Merge(other *ReplicationTargetStats) {
 		return
 	}
 	r.Nodes += other.Nodes
+	r.LastMinute.Add(&other.LastMinute)
 	r.LastHour.Add(&other.LastHour)
 	if r.LastDay == nil && other.LastDay != nil {
 		var dst SegmentedReplicationStats
@@ -2203,6 +2211,46 @@ func (a *ReplicationStats) Add(other *ReplicationStats) {
 	a.ProxyGetOK += other.ProxyGetOK
 	a.ProxyGetTagOK += other.ProxyGetTagOK
 	a.ProxyHeadOK += other.ProxyHeadOK
+}
+
+// ReceivedStat tracks inbound replication counts and bytes.
+type ReceivedStat struct {
+	Count int64 `json:"count"`
+	Bytes int64 `json:"bytes"`
+}
+
+// Add other into r.
+func (r *ReceivedStat) Add(other *ReceivedStat) {
+	if other == nil {
+		return
+	}
+	r.Count += other.Count
+	r.Bytes += other.Bytes
+}
+
+// ReplicationReceivedStats tracks aggregate inbound replication
+// across time windows.
+type ReplicationReceivedStats struct {
+	LastMinute ReceivedStat `json:"lastMinute"`
+	LastHour   ReceivedStat `json:"lastHour"`
+	LastDay    ReceivedStat `json:"lastDay"`
+	SinceStart ReceivedStat `json:"sinceStart"`
+}
+
+// Add other into r.
+func (r *ReplicationReceivedStats) Add(other *ReplicationReceivedStats) {
+	if other == nil {
+		return
+	}
+	r.LastMinute.Add(&other.LastMinute)
+	r.LastHour.Add(&other.LastHour)
+	r.LastDay.Add(&other.LastDay)
+	r.SinceStart.Add(&other.SinceStart)
+}
+
+// Empty returns true if all windows have zero counts.
+func (r *ReplicationReceivedStats) Empty() bool {
+	return r == nil || (r.LastMinute.Count == 0 && r.LastHour.Count == 0 && r.LastDay.Count == 0 && r.SinceStart.Count == 0)
 }
 
 // ProcessMetrics contains aggregated minio process metrics
