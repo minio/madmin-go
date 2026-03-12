@@ -71,7 +71,7 @@ func (p MCPPermission) String() string {
 	if p&MCPPermAdmin != 0 {
 		parts = append(parts, "admin")
 	}
-	if p&MCPPermAdmin != 0 {
+	if p&MCPPermTables != 0 {
 		parts = append(parts, "tables")
 	}
 	return strings.Join(parts, ",")
