@@ -49,7 +49,7 @@ const (
 )
 
 // MCPPermAll includes all permissions.
-const MCPPermAll  = mcpPermLast - 1
+const MCPPermAll = mcpPermLast - 1
 
 // Has returns true if p includes all bits in perm.
 func (p MCPPermission) Has(perm MCPPermission) bool {
