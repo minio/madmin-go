@@ -46,7 +46,7 @@ type NotificationTargetsInfo struct {
 // including their online/offline status and which buckets are subscribed to each.
 func (adm *AdminClient) ListNotificationTargets(ctx context.Context) (NotificationTargetsInfo, error) {
 	resp, err := adm.executeMethod(ctx, http.MethodGet, requestData{
-		relPath: adminAPIPrefix + "/notification-targets",
+		relPath: adminAPIPrefix + "/list-notification-targets",
 	})
 	defer closeResponse(resp)
 	if err != nil {
