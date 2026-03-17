@@ -25,9 +25,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
 	"runtime/metrics"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -752,6 +754,33 @@ func (d *DiskMetric) Merge(other *DiskMetric) {
 	}
 	if d.NDisks == 0 {
 		*d = *other
+		d.State = maps.Clone(other.State)
+		d.LifetimeOps = maps.Clone(other.LifetimeOps)
+		d.LastMinute = maps.Clone(other.LastMinute)
+		if other.LastDaySegmented != nil {
+			d.LastDaySegmented = make(map[string]SegmentedDiskActions, len(other.LastDaySegmented))
+			for k, v := range other.LastDaySegmented {
+				v.Segments = slices.Clone(v.Segments)
+				d.LastDaySegmented[k] = v
+			}
+		}
+		if other.Cache != nil {
+			c := *other.Cache
+			d.Cache = &c
+		}
+		if other.SMART != nil {
+			s := *other.SMART
+			s.Status = maps.Clone(other.SMART.Status)
+			if other.SMART.NVMe != nil {
+				nvme := *other.SMART.NVMe
+				s.NVMe = &nvme
+			}
+			if other.SMART.SATA != nil {
+				sata := *other.SMART.SATA
+				s.SATA = &sata
+			}
+			d.SMART = &s
+		}
 		return
 	}
 	if d.CollectedAt.Before(other.CollectedAt) {
