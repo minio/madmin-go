@@ -170,6 +170,10 @@ type BucketUsageInfo struct {
 	ObjectVersionsHistogram   map[string]uint64 `json:"objectsVersionsHistogram"`
 	ObjectAgesHistogram       map[string]uint64 `json:"objectsAgesHistogram"`
 	ObjectAccessAgesHistogram map[string]uint64 `json:"objectsAccessAgesHistogram"`
+
+	LockRetentionVersions        uint64 `json:"lockRetentionVersions"`
+	LockExpiredRetentionVersions uint64 `json:"lockExpiredRetentionVersions"`
+	LockLegalHoldVersions        uint64 `json:"lockLegalHoldVersions"`
 }
 
 // DataUsageInfo represents data usage stats of the underlying Object API
@@ -213,6 +217,11 @@ type DataUsageInfo struct {
 
 	// TierStats holds per-tier stats like bytes tiered, etc.
 	TierStats map[string]TierStats `json:"tierStats"`
+
+	// Object lock stats across all buckets
+	LockRetentionVersions        uint64 `json:"lockRetentionVersions"`
+	LockExpiredRetentionVersions uint64 `json:"lockExpiredRetentionVersions"`
+	LockLegalHoldVersions        uint64 `json:"lockLegalHoldVersions"`
 
 	// Server capacity related data
 	TotalCapacity     uint64 `json:"capacity"`
