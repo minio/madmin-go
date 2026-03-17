@@ -78,6 +78,8 @@ const (
 	TraceTables
 	// TracePurgeOnDelete will trace purge-on-delete operations
 	TracePurgeOnDelete
+	// TraceTablesScan will trace catalog scanner operations which are for replica catalog rebuilding.
+	TraceTablesScan
 	// Add more here...
 
 	// TraceAll contains all valid trace modes.
