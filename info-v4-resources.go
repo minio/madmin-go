@@ -1,20 +1,15 @@
+// MinIO, Inc. CONFIDENTIAL
 //
-// Copyright (c) 2015-2025 MinIO, Inc.
+// [2014] - [2026] MinIO, Inc. All Rights Reserved.
 //
-// This file is part of MinIO Object Storage stack
-//
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program. If not, see <http://www.gnu.org/licenses/>.
+// NOTICE:  All information contained herein is, and remains the property
+// of MinIO, Inc and its suppliers, if any.  The intellectual and technical
+// concepts contained herein are proprietary to MinIO, Inc and its suppliers
+// and may be covered by U.S. and Foreign Patents, patents in process, and are
+// protected by trade secret or copyright law. Dissemination of this information
+// or reproduction of this material is strictly forbidden unless prior written
+// permission is obtained from MinIO, Inc.
+
 //
 
 package madmin
@@ -235,6 +230,7 @@ type DriveResource struct {
 	InodesFree     uint64      `json:"inodesFree" msg:"if"`
 	InodesUsed     uint64      `json:"inodesUsed" msg:"iu"`
 	UUID           string      `json:"uuid" msg:"uid"`
+	FSType         string      `json:"fsType,omitempty" msg:"fst,omitempty"`
 	Metrics        *DiskMetric `json:"metrics,omitempty" msg:"m,omitempty"`
 }
 
@@ -254,6 +250,12 @@ type SMARTInfo struct {
 	MaxFailureRisk  float64 `json:"maxFailureRisk" msg:"mfr,omitempty"`   // Max estimated annual failure rate (0.0-1.0+)
 	MaxPowerOnHours float64 `json:"maxPowerOnHours" msg:"mpoh,omitempty"` // Max single drive power on hours
 	MaxPowerCycles  uint64  `json:"maxPowerCycles" msg:"mpc,omitempty"`   // Max single drive power cycles
+
+	// Device identification (only populated when N == 1)
+	DeviceType   string `json:"deviceType,omitempty" msg:"dt,omitempty"`
+	ModelNumber  string `json:"modelNumber,omitempty" msg:"mn,omitempty"`
+	SerialNumber string `json:"serialNumber,omitempty" msg:"sn,omitempty"`
+	FirmwareRev  string `json:"firmwareRev,omitempty" msg:"fwr,omitempty"`
 
 	NVMe *SMARTNVMe `json:"nvme,omitempty" msg:"nvme,omitempty"`
 	SATA *SMARTSATA `json:"sata,omitempty" msg:"sata,omitempty"`
@@ -838,6 +840,7 @@ type DrivesResourceOpts struct {
 	Metrics      bool // Include per-drive metrics in the response
 	LastMinute   bool // Include rolling 1 minute drive metrics. Requires Metrics.
 	LastDay      bool // Include segmented 1 day drive metrics. Requires Metrics.
+	LastHour     bool // Include segmented 1 hour drive metrics. Requires Metrics.
 	SMART        bool // Include S.M.A.R.T. health data in the response (Linux only)
 }
 
@@ -872,6 +875,9 @@ func (adm *AdminClient) DrivesQuery(ctx context.Context, options *DrivesResource
 		}
 		if options.LastDay {
 			values.Set("24h", "true")
+		}
+		if options.LastHour {
+			values.Set("1h", "true")
 		}
 		if options.SMART {
 			values.Set("smart", "true")

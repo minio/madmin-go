@@ -1,19 +1,14 @@
-// Copyright (c) 2015-2025 MinIO, Inc.
+// MinIO, Inc. CONFIDENTIAL
 //
-// This file is part of MinIO Object Storage stack
+// [2014] - [2026] MinIO, Inc. All Rights Reserved.
 //
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU Affero General Public License as
-// published by the Free Software Foundation, either version 3 of the
-// License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU Affero General Public License for more details.
-//
-// You should have received a copy of the GNU Affero General Public License
-// along with this program. If not, see <http://www.gnu.org/licenses/>.
+// NOTICE:  All information contained herein is, and remains the property
+// of MinIO, Inc and its suppliers, if any.  The intellectual and technical
+// concepts contained herein are proprietary to MinIO, Inc and its suppliers
+// and may be covered by U.S. and Foreign Patents, patents in process, and are
+// protected by trade secret or copyright law. Dissemination of this information
+// or reproduction of this material is strictly forbidden unless prior written
+// permission is obtained from MinIO, Inc.
 
 package mnav
 
@@ -891,7 +886,7 @@ func NewDiskIODailyStatsNode(disk *madmin.DiskMetric, parent MetricNode, path st
 }
 
 func (node *DiskIODailyStatsNode) GetChildren() []MetricChild {
-	if node.disk == nil || len(node.disk.IOStatsDay.Segments) == 0 {
+	if node.disk == nil || len(node.disk.IODay.Segments) == 0 {
 		return []MetricChild{}
 	}
 
@@ -903,7 +898,7 @@ func (node *DiskIODailyStatsNode) GetChildren() []MetricChild {
 		Description: "Total IO statistics across all time segments",
 	})
 
-	dailyStats := &node.disk.IOStatsDay
+	dailyStats := &node.disk.IODay
 
 	// Add time segments, most recent first (filter out empty segments)
 	for i := len(dailyStats.Segments) - 1; i >= 0; i-- {
@@ -947,7 +942,7 @@ func (node *DiskIODailyStatsNode) GetLeafData() map[string]string {
 	data := map[string]string{}
 
 	// Process daily segmented IO stats
-	dailyStats := &node.disk.IOStatsDay
+	dailyStats := &node.disk.IODay
 	if len(dailyStats.Segments) > 0 {
 		// Aggregate all daily segments into totals
 		var totalReadIOs, totalWriteIOs, totalDiscardIOs, totalFlushIOs uint64
@@ -1032,7 +1027,7 @@ func (node *DiskIODailyStatsNode) GetChild(name string) (MetricNode, error) {
 		return nil, fmt.Errorf("no drive metrics available")
 	}
 
-	dailyStats := &node.disk.IOStatsDay
+	dailyStats := &node.disk.IODay
 
 	// Handle "Total" entry
 	if name == "Total" {
@@ -1467,7 +1462,7 @@ func (node *DiskIOTimeSegmentNode) GetLeafData() map[string]string {
 
 // DiskIOTotalNode shows aggregated IO statistics across all time segments
 type DiskIOTotalNode struct {
-	dailyStats madmin.SegmentedDiskIO
+	dailyStats madmin.DiskIOWindow
 	parent     MetricNode
 	path       string
 }
