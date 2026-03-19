@@ -434,11 +434,11 @@ func (node *APILastDayNode) ShouldPauseRefresh() bool {
 }
 
 func (node *APILastDayNode) GetChildren() []MetricChild {
-	if node.api.LastDayAPI == nil || len(node.api.LastDayAPI.ByAPI) == 0 {
+	if node.api.LastDay == nil || len(node.api.LastDay.ByAPI) == 0 {
 		return []MetricChild{}
 	}
 
-	children := make([]MetricChild, 0, len(node.api.LastDayAPI.ByAPI)+1)
+	children := make([]MetricChild, 0, len(node.api.LastDay.ByAPI)+1)
 
 	// Add "All" entry first - shows aggregated time segments
 	children = append(children, MetricChild{
@@ -447,14 +447,14 @@ func (node *APILastDayNode) GetChildren() []MetricChild {
 	})
 
 	// Add individual API endpoints, sorted alphabetically
-	apiNames := make([]string, 0, len(node.api.LastDayAPI.ByAPI))
-	for apiName := range node.api.LastDayAPI.ByAPI {
+	apiNames := make([]string, 0, len(node.api.LastDay.ByAPI))
+	for apiName := range node.api.LastDay.ByAPI {
 		apiNames = append(apiNames, apiName)
 	}
 	sort.Strings(apiNames)
 
 	for _, apiName := range apiNames {
-		segmented := node.api.LastDayAPI.ByAPI[apiName]
+		segmented := node.api.LastDay.ByAPI[apiName]
 		totalRequests := int64(0)
 		totalTimeSecs := float64(0)
 		for _, segment := range segmented.Segments {
@@ -481,8 +481,8 @@ func (node *APILastDayNode) GetLeafData() map[string]string {
 
 	total := node.api.LastDayTotal()
 	byAPILen := 0
-	if node.api.LastDayAPI != nil {
-		byAPILen = len(node.api.LastDayAPI.ByAPI)
+	if node.api.LastDay != nil {
+		byAPILen = len(node.api.LastDay.ByAPI)
 	}
 	return generateAPIStatsDisplay(total, byAPILen, false, nil)
 }
@@ -503,8 +503,8 @@ func (node *APILastDayNode) GetChild(name string) (MetricNode, error) {
 	}
 
 	// Handle individual API endpoints
-	if node.api.LastDayAPI != nil {
-		if segmented, exists := node.api.LastDayAPI.ByAPI[name]; exists {
+	if node.api.LastDay != nil {
+		if segmented, exists := node.api.LastDay.ByAPI[name]; exists {
 			return &APILastDayEndpointNode{
 				api:       node.api,
 				apiName:   name,
@@ -623,8 +623,8 @@ func (node *APILastDayAllNode) GetLeafData() map[string]string {
 
 	total := node.api.LastDayTotal()
 	byAPILen := 0
-	if node.api.LastDayAPI != nil {
-		byAPILen = len(node.api.LastDayAPI.ByAPI)
+	if node.api.LastDay != nil {
+		byAPILen = len(node.api.LastDay.ByAPI)
 	}
 	return generateAPIStatsDisplay(total, byAPILen, false, nil)
 }
@@ -816,8 +816,8 @@ func (node *APILastDayTotalNode) GetLeafData() map[string]string {
 
 	total := node.api.LastDayTotal()
 	byAPILen := 0
-	if node.api.LastDayAPI != nil {
-		byAPILen = len(node.api.LastDayAPI.ByAPI)
+	if node.api.LastDay != nil {
+		byAPILen = len(node.api.LastDay.ByAPI)
 	}
 	return generateAPIStatsDisplay(total, byAPILen, false, nil)
 }

@@ -122,21 +122,21 @@ func (z *APIMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 			}
 			zb0001Mask |= 0x10
-		case "lastDayApi":
+		case "lastDay":
 			if dc.IsNil() {
 				err = dc.ReadNil()
 				if err != nil {
-					err = msgp.WrapError(err, "LastDayAPI")
+					err = msgp.WrapError(err, "LastDay")
 					return
 				}
-				z.LastDayAPI = nil
+				z.LastDay = nil
 			} else {
-				if z.LastDayAPI == nil {
-					z.LastDayAPI = new(LastWindowAPIData)
+				if z.LastDay == nil {
+					z.LastDay = new(LastWindowAPIData)
 				}
-				err = z.LastDayAPI.DecodeMsg(dc)
+				err = z.LastDay.DecodeMsg(dc)
 				if err != nil {
-					err = msgp.WrapError(err, "LastDayAPI")
+					err = msgp.WrapError(err, "LastDay")
 					return
 				}
 			}
@@ -173,7 +173,7 @@ func (z *APIMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 			z.LastHourAPI = nil
 		}
 		if (zb0001Mask & 0x20) == 0 {
-			z.LastDayAPI = nil
+			z.LastDay = nil
 		}
 	}
 	return
@@ -205,7 +205,7 @@ func (z *APIMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 		zb0001Len--
 		zb0001Mask |= 0x40
 	}
-	if z.LastDayAPI == nil {
+	if z.LastDay == nil {
 		zb0001Len--
 		zb0001Mask |= 0x80
 	}
@@ -324,20 +324,20 @@ func (z *APIMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 			}
 		}
 		if (zb0001Mask & 0x80) == 0 { // if not omitted
-			// write "lastDayApi"
-			err = en.Append(0xaa, 0x6c, 0x61, 0x73, 0x74, 0x44, 0x61, 0x79, 0x41, 0x70, 0x69)
+			// write "lastDay"
+			err = en.Append(0xa7, 0x6c, 0x61, 0x73, 0x74, 0x44, 0x61, 0x79)
 			if err != nil {
 				return
 			}
-			if z.LastDayAPI == nil {
+			if z.LastDay == nil {
 				err = en.WriteNil()
 				if err != nil {
 					return
 				}
 			} else {
-				err = z.LastDayAPI.EncodeMsg(en)
+				err = z.LastDay.EncodeMsg(en)
 				if err != nil {
-					err = msgp.WrapError(err, "LastDayAPI")
+					err = msgp.WrapError(err, "LastDay")
 					return
 				}
 			}
@@ -383,7 +383,7 @@ func (z *APIMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x40
 	}
-	if z.LastDayAPI == nil {
+	if z.LastDay == nil {
 		zb0001Len--
 		zb0001Mask |= 0x80
 	}
@@ -448,14 +448,14 @@ func (z *APIMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 			}
 		}
 		if (zb0001Mask & 0x80) == 0 { // if not omitted
-			// string "lastDayApi"
-			o = append(o, 0xaa, 0x6c, 0x61, 0x73, 0x74, 0x44, 0x61, 0x79, 0x41, 0x70, 0x69)
-			if z.LastDayAPI == nil {
+			// string "lastDay"
+			o = append(o, 0xa7, 0x6c, 0x61, 0x73, 0x74, 0x44, 0x61, 0x79)
+			if z.LastDay == nil {
 				o = msgp.AppendNil(o)
 			} else {
-				o, err = z.LastDayAPI.MarshalMsg(o)
+				o, err = z.LastDay.MarshalMsg(o)
 				if err != nil {
-					err = msgp.WrapError(err, "LastDayAPI")
+					err = msgp.WrapError(err, "LastDay")
 					return
 				}
 			}
@@ -582,20 +582,20 @@ func (z *APIMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 			}
 			zb0001Mask |= 0x10
-		case "lastDayApi":
+		case "lastDay":
 			if msgp.IsNil(bts) {
 				bts, err = msgp.ReadNilBytes(bts)
 				if err != nil {
 					return
 				}
-				z.LastDayAPI = nil
+				z.LastDay = nil
 			} else {
-				if z.LastDayAPI == nil {
-					z.LastDayAPI = new(LastWindowAPIData)
+				if z.LastDay == nil {
+					z.LastDay = new(LastWindowAPIData)
 				}
-				bts, err = z.LastDayAPI.UnmarshalMsg(bts)
+				bts, err = z.LastDay.UnmarshalMsg(bts)
 				if err != nil {
-					err = msgp.WrapError(err, "LastDayAPI")
+					err = msgp.WrapError(err, "LastDay")
 					return
 				}
 			}
@@ -632,7 +632,7 @@ func (z *APIMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.LastHourAPI = nil
 		}
 		if (zb0001Mask & 0x20) == 0 {
-			z.LastDayAPI = nil
+			z.LastDay = nil
 		}
 	}
 	o = bts
@@ -660,11 +660,11 @@ func (z *APIMetrics) Msgsize() (s int) {
 	} else {
 		s += z.LastHourAPI.Msgsize()
 	}
-	s += 11
-	if z.LastDayAPI == nil {
+	s += 8
+	if z.LastDay == nil {
 		s += msgp.NilSize
 	} else {
-		s += z.LastDayAPI.Msgsize()
+		s += z.LastDay.Msgsize()
 	}
 	s += 12 + z.SinceStart.Msgsize()
 	return

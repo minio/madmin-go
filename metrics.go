@@ -2163,7 +2163,7 @@ type APIMetrics struct {
 	LastHourAPI *LastWindowAPIData `json:"lastHourApi,omitempty"`
 
 	// Last day operation statistics by API, segmented (15-min intervals).
-	LastDayAPI *LastWindowAPIData `json:"lastDayApi,omitempty"`
+	LastDay *LastWindowAPIData `json:"lastDay,omitempty"`
 
 	// SinceStart contains operation statistics since server(s) started.
 	SinceStart APIStats `json:"since_start"`
@@ -2200,11 +2200,11 @@ func (a *APIMetrics) Merge(b *APIMetrics) {
 		}
 		a.LastHourAPI.Merge(b.LastHourAPI)
 	}
-	if b.LastDayAPI != nil {
-		if a.LastDayAPI == nil {
-			a.LastDayAPI = &LastWindowAPIData{}
+	if b.LastDay != nil {
+		if a.LastDay == nil {
+			a.LastDay = &LastWindowAPIData{}
 		}
-		a.LastDayAPI.Merge(b.LastDayAPI)
+		a.LastDay.Merge(b.LastDay)
 	}
 	a.SinceStart.Merge(b.SinceStart)
 }
@@ -2224,8 +2224,8 @@ func (a APIMetrics) LastMinuteTotal() APIStats {
 // There will be no node-count for values.
 func (a APIMetrics) LastDayTotalSegmented() SegmentedAPIMetrics {
 	var res SegmentedAPIMetrics
-	if a.LastDayAPI != nil {
-		for _, stats := range a.LastDayAPI.ByAPI {
+	if a.LastDay != nil {
+		for _, stats := range a.LastDay.ByAPI {
 			res.Add(&stats)
 		}
 	}
@@ -2239,8 +2239,8 @@ func (a APIMetrics) LastDayTotalSegmented() SegmentedAPIMetrics {
 // LastDayTotal returns the accumulated APIStats for the last day.
 func (a APIMetrics) LastDayTotal() APIStats {
 	var res APIStats
-	if a.LastDayAPI != nil {
-		for _, stats := range a.LastDayAPI.ByAPI {
+	if a.LastDay != nil {
+		for _, stats := range a.LastDay.ByAPI {
 			for _, s := range stats.Segments {
 				res.Merge(s)
 			}
