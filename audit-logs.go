@@ -70,13 +70,18 @@ func (adm AdminClient) GetAuditLogs(ctx context.Context, opts AuditLogOpts) iter
 				if errors.Is(err, io.EOF) {
 					break
 				}
+				if !yield(log.Audit{}, err) {
+					return
+				}
 				continue
 			}
 			select {
 			case <-ctx.Done():
 				return
 			default:
-				yield(info, nil)
+				if !yield(info, nil) {
+					return
+				}
 			}
 		}
 	}
