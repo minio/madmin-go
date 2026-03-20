@@ -129,8 +129,17 @@ func (node *DiskMetricsNavigator) GetLeafData() map[string]string {
 	if len(locationParts) > 0 {
 		data["Location"] = strings.Join(locationParts, ", ")
 	}
-	if node.disk.FSType != "" {
-		data["Filesystem"] = node.disk.FSType
+	if len(node.disk.FSType) == 1 {
+		for k := range node.disk.FSType {
+			data["Filesystem"] = k
+		}
+	} else if len(node.disk.FSType) > 1 {
+		parts := make([]string, 0, len(node.disk.FSType))
+		for k, v := range node.disk.FSType {
+			parts = append(parts, fmt.Sprintf("%s (%d)", k, v))
+		}
+		sort.Strings(parts)
+		data["Filesystem"] = strings.Join(parts, ", ")
 	}
 
 	// Storage Space Summary

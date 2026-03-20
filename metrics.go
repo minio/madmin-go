@@ -703,8 +703,8 @@ type DiskMetric struct {
 	// SMART health data for the disk.
 	SMART *SMARTInfo `json:"smart,omitempty"`
 
-	// Filesystem type (e.g. "xfs", "ext4").
-	FSType string `json:"fsType,omitempty"`
+	// Filesystem type (e.g. "xfs", "ext4" and count).
+	FSType map[string]int `json:"fsType,omitempty"`
 }
 
 type DriveHealInfo struct {
@@ -763,6 +763,7 @@ func (d *DiskMetric) Merge(other *DiskMetric) {
 	if d.NDisks == 0 {
 		*d = *other
 		d.State = maps.Clone(other.State)
+		d.FSType = maps.Clone(other.FSType)
 		d.LifetimeOps = maps.Clone(other.LifetimeOps)
 		d.LastMinute = maps.Clone(other.LastMinute)
 		if other.LastDaySegmented != nil {
@@ -824,6 +825,14 @@ func (d *DiskMetric) Merge(other *DiskMetric) {
 		}
 		for k, v := range other.State {
 			d.State[k] = d.State[k] + v
+		}
+	}
+	if len(other.FSType) > 0 {
+		if d.FSType == nil {
+			d.FSType = make(map[string]int, len(other.FSType))
+		}
+		for k, v := range other.FSType {
+			d.FSType[k] += v
 		}
 	}
 	d.NDisks += other.NDisks

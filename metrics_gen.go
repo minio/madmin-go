@@ -7622,10 +7622,32 @@ func (z *DiskMetric) DecodeMsg(dc *msgp.Reader) (err error) {
 			}
 			zb0001Mask |= 0x4000
 		case "fsType":
-			z.FSType, err = dc.ReadString()
+			var zb0007 uint32
+			zb0007, err = dc.ReadMapHeader()
 			if err != nil {
 				err = msgp.WrapError(err, "FSType")
 				return
+			}
+			if z.FSType == nil {
+				z.FSType = make(map[string]int, zb0007)
+			} else if len(z.FSType) > 0 {
+				clear(z.FSType)
+			}
+			for zb0007 > 0 {
+				zb0007--
+				var za0011 string
+				za0011, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "FSType")
+					return
+				}
+				var za0012 int
+				za0012, err = dc.ReadInt()
+				if err != nil {
+					err = msgp.WrapError(err, "FSType", za0011)
+					return
+				}
+				z.FSType[za0011] = za0012
 			}
 			zb0001Mask |= 0x8000
 		default:
@@ -7684,7 +7706,7 @@ func (z *DiskMetric) DecodeMsg(dc *msgp.Reader) (err error) {
 			z.SMART = nil
 		}
 		if (zb0001Mask & 0x8000) == 0 {
-			z.FSType = ""
+			z.FSType = nil
 		}
 	}
 	return
@@ -7756,7 +7778,7 @@ func (z *DiskMetric) EncodeMsg(en *msgp.Writer) (err error) {
 		zb0001Len--
 		zb0001Mask |= 0x100000
 	}
-	if z.FSType == "" {
+	if z.FSType == nil {
 		zb0001Len--
 		zb0001Mask |= 0x200000
 	}
@@ -8123,10 +8145,22 @@ func (z *DiskMetric) EncodeMsg(en *msgp.Writer) (err error) {
 			if err != nil {
 				return
 			}
-			err = en.WriteString(z.FSType)
+			err = en.WriteMapHeader(uint32(len(z.FSType)))
 			if err != nil {
 				err = msgp.WrapError(err, "FSType")
 				return
+			}
+			for za0011, za0012 := range z.FSType {
+				err = en.WriteString(za0011)
+				if err != nil {
+					err = msgp.WrapError(err, "FSType")
+					return
+				}
+				err = en.WriteInt(za0012)
+				if err != nil {
+					err = msgp.WrapError(err, "FSType", za0011)
+					return
+				}
 			}
 		}
 	}
@@ -8200,7 +8234,7 @@ func (z *DiskMetric) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x100000
 	}
-	if z.FSType == "" {
+	if z.FSType == nil {
 		zb0001Len--
 		zb0001Mask |= 0x200000
 	}
@@ -8401,7 +8435,11 @@ func (z *DiskMetric) MarshalMsg(b []byte) (o []byte, err error) {
 		if (zb0001Mask & 0x200000) == 0 { // if not omitted
 			// string "fsType"
 			o = append(o, 0xa6, 0x66, 0x73, 0x54, 0x79, 0x70, 0x65)
-			o = msgp.AppendString(o, z.FSType)
+			o = msgp.AppendMapHeader(o, uint32(len(z.FSType)))
+			for za0011, za0012 := range z.FSType {
+				o = msgp.AppendString(o, za0011)
+				o = msgp.AppendInt(o, za0012)
+			}
 		}
 	}
 	return
@@ -8756,10 +8794,32 @@ func (z *DiskMetric) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			}
 			zb0001Mask |= 0x4000
 		case "fsType":
-			z.FSType, bts, err = msgp.ReadStringBytes(bts)
+			var zb0007 uint32
+			zb0007, bts, err = msgp.ReadMapHeaderBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "FSType")
 				return
+			}
+			if z.FSType == nil {
+				z.FSType = make(map[string]int, zb0007)
+			} else if len(z.FSType) > 0 {
+				clear(z.FSType)
+			}
+			for zb0007 > 0 {
+				var za0012 int
+				zb0007--
+				var za0011 string
+				za0011, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "FSType")
+					return
+				}
+				za0012, bts, err = msgp.ReadIntBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "FSType", za0011)
+					return
+				}
+				z.FSType[za0011] = za0012
 			}
 			zb0001Mask |= 0x8000
 		default:
@@ -8818,7 +8878,7 @@ func (z *DiskMetric) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.SMART = nil
 		}
 		if (zb0001Mask & 0x8000) == 0 {
-			z.FSType = ""
+			z.FSType = nil
 		}
 	}
 	o = bts
@@ -8904,7 +8964,13 @@ func (z *DiskMetric) Msgsize() (s int) {
 	} else {
 		s += z.SMART.Msgsize()
 	}
-	s += 7 + msgp.StringPrefixSize + len(z.FSType)
+	s += 7 + msgp.MapHeaderSize
+	if z.FSType != nil {
+		for za0011, za0012 := range z.FSType {
+			_ = za0012
+			s += msgp.StringPrefixSize + len(za0011) + msgp.IntSize
+		}
+	}
 	return
 }
 
