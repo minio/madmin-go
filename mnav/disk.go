@@ -1,14 +1,19 @@
-// MinIO, Inc. CONFIDENTIAL
+// Copyright (c) 2015-2026 MinIO, Inc.
 //
-// [2014] - [2026] MinIO, Inc. All Rights Reserved.
+// This file is part of MinIO Object Storage stack
 //
-// NOTICE:  All information contained herein is, and remains the property
-// of MinIO, Inc and its suppliers, if any.  The intellectual and technical
-// concepts contained herein are proprietary to MinIO, Inc and its suppliers
-// and may be covered by U.S. and Foreign Patents, patents in process, and are
-// protected by trade secret or copyright law. Dissemination of this information
-// or reproduction of this material is strictly forbidden unless prior written
-// permission is obtained from MinIO, Inc.
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package mnav
 
@@ -123,6 +128,9 @@ func (node *DiskMetricsNavigator) GetLeafData() map[string]string {
 	}
 	if len(locationParts) > 0 {
 		data["Location"] = strings.Join(locationParts, ", ")
+	}
+	if node.disk.FSType != "" {
+		data["Filesystem"] = node.disk.FSType
 	}
 
 	// Storage Space Summary
@@ -886,7 +894,7 @@ func NewDiskIODailyStatsNode(disk *madmin.DiskMetric, parent MetricNode, path st
 }
 
 func (node *DiskIODailyStatsNode) GetChildren() []MetricChild {
-	if node.disk == nil || len(node.disk.IODay.Segments) == 0 {
+	if node.disk == nil || len(node.disk.IOStatsDay.Segments) == 0 {
 		return []MetricChild{}
 	}
 
@@ -898,7 +906,7 @@ func (node *DiskIODailyStatsNode) GetChildren() []MetricChild {
 		Description: "Total IO statistics across all time segments",
 	})
 
-	dailyStats := &node.disk.IODay
+	dailyStats := &node.disk.IOStatsDay
 
 	// Add time segments, most recent first (filter out empty segments)
 	for i := len(dailyStats.Segments) - 1; i >= 0; i-- {
@@ -942,7 +950,7 @@ func (node *DiskIODailyStatsNode) GetLeafData() map[string]string {
 	data := map[string]string{}
 
 	// Process daily segmented IO stats
-	dailyStats := &node.disk.IODay
+	dailyStats := &node.disk.IOStatsDay
 	if len(dailyStats.Segments) > 0 {
 		// Aggregate all daily segments into totals
 		var totalReadIOs, totalWriteIOs, totalDiscardIOs, totalFlushIOs uint64
@@ -1027,7 +1035,7 @@ func (node *DiskIODailyStatsNode) GetChild(name string) (MetricNode, error) {
 		return nil, fmt.Errorf("no drive metrics available")
 	}
 
-	dailyStats := &node.disk.IODay
+	dailyStats := &node.disk.IOStatsDay
 
 	// Handle "Total" entry
 	if name == "Total" {
@@ -1462,7 +1470,7 @@ func (node *DiskIOTimeSegmentNode) GetLeafData() map[string]string {
 
 // DiskIOTotalNode shows aggregated IO statistics across all time segments
 type DiskIOTotalNode struct {
-	dailyStats madmin.DiskIOWindow
+	dailyStats madmin.SegmentedDiskIO
 	parent     MetricNode
 	path       string
 }
@@ -1663,6 +1671,19 @@ func (node *DiskSMARTNode) GetLeafData() map[string]string {
 	}
 
 	data := map[string]string{}
+
+	if node.smart.DeviceType != "" {
+		data["Device Type"] = node.smart.DeviceType
+	}
+	if node.smart.ModelNumber != "" {
+		data["Model"] = node.smart.ModelNumber
+	}
+	if node.smart.SerialNumber != "" {
+		data["Serial Number"] = node.smart.SerialNumber
+	}
+	if node.smart.FirmwareRev != "" {
+		data["Firmware"] = node.smart.FirmwareRev
+	}
 
 	// Health Status Overview
 	if node.smart.N > 0 {
