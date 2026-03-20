@@ -1,5 +1,4 @@
-//
-// Copyright (c) 2015-2024 MinIO, Inc.
+// Copyright (c) 2015-2026 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -14,8 +13,7 @@
 // GNU Affero General Public License for more details.
 //
 // You should have received a copy of the GNU Affero General Public License
-// along with this program. If not, see <http://www.gnu.org/licenses/>.
-//
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package madmin
 
@@ -105,12 +103,13 @@ func (m MetricType) String() string {
 type MetricFlags uint64
 
 const (
-	MetricsDayStats     MetricFlags = 1 << (iota) // Include daily statistics
+	MetricsDayStats     MetricFlags = 1 << (iota) // Include daily statistics (24h, 15-min segments)
 	MetricsByHost                                 // Aggregate metrics by host/node.
 	MetricsByDisk                                 // Aggregate metrics by disk.
 	MetricsLegacyDiskIO                           // Add legacy disk IO metrics.
 	MetricsByDiskSet                              // Aggregate metrics by disk pool+set index.
 	MetricsSMART                                  // Include S.M.A.R.T. disk health data.
+	MetricsHourStats                              // Include last-hour statistics (1h, 1-min segments)
 )
 
 // Contains returns whether m contains all of x.
@@ -685,6 +684,9 @@ type DiskMetric struct {
 	// LastDaySegmented contains the segmented metrics for the last day.
 	LastDaySegmented map[string]SegmentedDiskActions `json:"last_day,omitempty"`
 
+	// LastHourSegmented contains the segmented metrics for the last hour.
+	LastHourSegmented map[string]SegmentedDiskActions `json:"last_hour,omitempty"`
+
 	// IO stats.
 	// Deprecated: use io_min, io_day instead.
 	IOStats *DiskIOStatsLegacy `json:"iostats,omitempty"`
@@ -692,11 +694,17 @@ type DiskMetric struct {
 	// Rolling window last minute IO stats.
 	IOStatsMinute DiskIOStats `json:"io_min"`
 
-	// Rolling window daily IO stats.
+	// Rolling window daily IO stats (15-minute segments).
 	IOStatsDay SegmentedDiskIO `json:"io_day"`
+
+	// Rolling window hourly IO stats (1-minute segments).
+	IOStatsHour SegmentedDiskIO `json:"io_hour"`
 
 	// SMART health data for the disk.
 	SMART *SMARTInfo `json:"smart,omitempty"`
+
+	// Filesystem type (e.g. "xfs", "ext4" and count).
+	FSType map[string]int `json:"fsType,omitempty"`
 }
 
 type DriveHealInfo struct {
@@ -755,6 +763,7 @@ func (d *DiskMetric) Merge(other *DiskMetric) {
 	if d.NDisks == 0 {
 		*d = *other
 		d.State = maps.Clone(other.State)
+		d.FSType = maps.Clone(other.FSType)
 		d.LifetimeOps = maps.Clone(other.LifetimeOps)
 		d.LastMinute = maps.Clone(other.LastMinute)
 		if other.LastDaySegmented != nil {
@@ -780,6 +789,13 @@ func (d *DiskMetric) Merge(other *DiskMetric) {
 				s.SATA = &sata
 			}
 			d.SMART = &s
+		}
+		if other.LastHourSegmented != nil {
+			d.LastHourSegmented = make(map[string]SegmentedDiskActions, len(other.LastHourSegmented))
+			for k, v := range other.LastHourSegmented {
+				v.Segments = slices.Clone(v.Segments)
+				d.LastHourSegmented[k] = v
+			}
 		}
 		return
 	}
@@ -809,6 +825,14 @@ func (d *DiskMetric) Merge(other *DiskMetric) {
 		}
 		for k, v := range other.State {
 			d.State[k] = d.State[k] + v
+		}
+	}
+	if len(other.FSType) > 0 {
+		if d.FSType == nil {
+			d.FSType = make(map[string]int, len(other.FSType))
+		}
+		for k, v := range other.FSType {
+			d.FSType[k] += v
 		}
 	}
 	d.NDisks += other.NDisks
@@ -849,6 +873,16 @@ func (d *DiskMetric) Merge(other *DiskMetric) {
 		t.Add(&v)
 		d.LastDaySegmented[k] = t
 	}
+
+	if len(other.LastHourSegmented) > 0 && d.LastHourSegmented == nil {
+		d.LastHourSegmented = make(map[string]SegmentedDiskActions, len(other.LastHourSegmented))
+	}
+	for k, v := range other.LastHourSegmented {
+		t := d.LastHourSegmented[k]
+		t.Add(&v)
+		d.LastHourSegmented[k] = t
+	}
+
 	if other.IOStats != nil {
 		if d.IOStats == nil {
 			d.IOStats = new(DiskIOStatsLegacy)
@@ -860,6 +894,7 @@ func (d *DiskMetric) Merge(other *DiskMetric) {
 	}
 	d.IOStatsMinute.Add(&other.IOStatsMinute)
 	d.IOStatsDay.Add(&other.IOStatsDay)
+	d.IOStatsHour.Add(&other.IOStatsHour)
 	// Merge SMART data
 	if other.SMART != nil {
 		if d.SMART == nil {
@@ -1140,6 +1175,9 @@ type NetMetrics struct {
 	// Last day delta statistics.
 	LastDay *SegmentedInterfaceStats `json:"last_day,omitempty"`
 
+	// Last hour delta statistics (1-min segments).
+	LastHour *SegmentedInterfaceStats `json:"last_hour,omitempty"`
+
 	// Deprecated: Does not merge.
 	InterfaceName string `json:"interfaceName"`
 
@@ -1168,6 +1206,10 @@ func (n *NetMetrics) Merge(other *NetMetrics) {
 		n.LastDay = new(SegmentedInterfaceStats)
 	}
 	n.LastDay.Add(other.LastDay)
+	if other.LastHour != nil && n.LastHour == nil {
+		n.LastHour = new(SegmentedInterfaceStats)
+	}
+	n.LastHour.Add(other.LastHour)
 	n.NetStats = procfs.NetDevLine(procfsNetDevLine(n.NetStats).add(procfsNetDevLine(other.NetStats)))
 }
 
@@ -1210,6 +1252,9 @@ type MemMetrics struct {
 	Info MemInfo `json:"memInfo"`
 
 	LastDay *SegmentedMemMetrics `json:"lastDay,omitempty"`
+
+	// Last hour statistics (1-min segments).
+	LastHour *SegmentedMemMetrics `json:"lastHour,omitempty"`
 }
 
 // Merge other into 'm'.
@@ -1228,6 +1273,12 @@ func (m *MemMetrics) Merge(other *MemMetrics) {
 			m.LastDay = new(SegmentedMemMetrics)
 		}
 		m.LastDay.Add(other.LastDay)
+	}
+	if other.LastHour != nil {
+		if m.LastHour == nil {
+			m.LastHour = new(SegmentedMemMetrics)
+		}
+		m.LastHour.Add(other.LastHour)
 	}
 }
 
@@ -1295,6 +1346,42 @@ func (m *MemSegment) Add(other *MemSegment) {
 // SegmentedMemMetrics are time-segmented memory metrics.
 type SegmentedMemMetrics = Segmented[MemSegment, *MemSegment]
 
+// CPUSegment stores CPU time breakdown for a single time segment.
+type CPUSegment struct {
+	User      float64 `json:"user,omitempty"`
+	System    float64 `json:"system,omitempty"`
+	Idle      float64 `json:"idle,omitempty"`
+	Nice      float64 `json:"nice,omitempty"`
+	Iowait    float64 `json:"iowait,omitempty"`
+	Irq       float64 `json:"irq,omitempty"`
+	Softirq   float64 `json:"softirq,omitempty"`
+	Steal     float64 `json:"steal,omitempty"`
+	Guest     float64 `json:"guest,omitempty"`
+	GuestNice float64 `json:"guestNice,omitempty"`
+	N         int     `json:"n"`
+}
+
+// Add other to c for Segmenter interface.
+func (c *CPUSegment) Add(other *CPUSegment) {
+	if other == nil {
+		return
+	}
+	c.User += other.User
+	c.System += other.System
+	c.Idle += other.Idle
+	c.Nice += other.Nice
+	c.Iowait += other.Iowait
+	c.Irq += other.Irq
+	c.Softirq += other.Softirq
+	c.Steal += other.Steal
+	c.Guest += other.Guest
+	c.GuestNice += other.GuestNice
+	c.N += other.N
+}
+
+// SegmentedCPUMetrics are time-segmented CPU metrics.
+type SegmentedCPUMetrics = Segmented[CPUSegment, *CPUSegment]
+
 //msgp:replace cpu.TimesStat with:cpuTimesStat
 //msgp:replace load.AvgStat with:loadAvgStat
 
@@ -1309,6 +1396,11 @@ type CPUMetrics struct {
 	LoadStat      load.AvgStat  `json:"loadStat2"`
 	LoadStatCount int           `json:"loadCount,omitempty"`
 	CPUCount      int           `json:"cpuCount,omitempty"`
+
+	LastDay *SegmentedCPUMetrics `json:"lastDay,omitempty"`
+
+	// Last hour statistics (1-min segments).
+	LastHour *SegmentedCPUMetrics `json:"lastHour,omitempty"`
 
 	// Aggregated CPU information
 	CPUByModel     map[string]int `json:"cpu_by_model,omitempty"`     // ModelName -> count of CPUs
@@ -1398,6 +1490,19 @@ func (m *CPUMetrics) Merge(other *CPUMetrics) {
 	}
 
 	m.FreqStatsCount += other.FreqStatsCount
+
+	if other.LastDay != nil {
+		if m.LastDay == nil {
+			m.LastDay = new(SegmentedCPUMetrics)
+		}
+		m.LastDay.Add(other.LastDay)
+	}
+	if other.LastHour != nil {
+		if m.LastHour == nil {
+			m.LastHour = new(SegmentedCPUMetrics)
+		}
+		m.LastHour.Add(other.LastHour)
+	}
 }
 
 // RPCMetrics contains metrics for RPC operations.
@@ -1646,6 +1751,9 @@ type RuntimeMetrics struct {
 	N int `json:"n"`
 
 	LastDay *SegmentedRuntimeMetrics `json:"lastDay,omitempty"`
+
+	// Last hour statistics (1-min segments).
+	LastHour *SegmentedRuntimeMetrics `json:"lastHour,omitempty"`
 }
 
 // Merge other into 'm'.
@@ -1688,6 +1796,12 @@ func (m *RuntimeMetrics) Merge(other *RuntimeMetrics) {
 			m.LastDay = new(SegmentedRuntimeMetrics)
 		}
 		m.LastDay.Add(other.LastDay)
+	}
+	if other.LastHour != nil {
+		if m.LastHour == nil {
+			m.LastHour = new(SegmentedRuntimeMetrics)
+		}
+		m.LastHour.Add(other.LastHour)
 	}
 }
 
@@ -1850,7 +1964,10 @@ type APIMetrics struct {
 	// Last minute operation statistics by API.
 	LastMinuteAPI map[string]APIStats `json:"lastMinuteApi,omitempty"`
 
-	// Last day operation statistics by API, segmented.
+	// Last hour operation statistics by API, segmented (1-min intervals).
+	LastHourAPI map[string]SegmentedAPIMetrics `json:"lastHourApi,omitempty"`
+
+	// Last day operation statistics by API, segmented (15-min intervals).
 	LastDayAPI map[string]SegmentedAPIMetrics `json:"lastDayApi,omitempty"`
 
 	// SinceStart contains operation statistics since server(s) started.
@@ -1876,13 +1993,28 @@ func (a *APIMetrics) Merge(b *APIMetrics) {
 		existing.Merge(v)
 		a.LastMinuteAPI[k] = existing
 	}
+	for k, v := range b.LastHourAPI {
+		if a.LastHourAPI == nil {
+			a.LastHourAPI = make(map[string]SegmentedAPIMetrics, len(b.LastHourAPI))
+		}
+		existing, ok := a.LastHourAPI[k]
+		if !ok {
+			vCopy := v
+			if len(v.Segments) > 0 {
+				vCopy.Segments = append([]APIStats{}, v.Segments...)
+			}
+			a.LastHourAPI[k] = vCopy
+			continue
+		}
+		existing.Add(&v)
+		a.LastHourAPI[k] = existing
+	}
 	for k, v := range b.LastDayAPI {
 		if a.LastDayAPI == nil {
 			a.LastDayAPI = make(map[string]SegmentedAPIMetrics, len(b.LastDayAPI))
 		}
 		existing, ok := a.LastDayAPI[k]
 		if !ok {
-			// Deep copy to avoid sharing slice references
 			vCopy := v
 			if len(v.Segments) > 0 {
 				vCopy.Segments = append([]APIStats{}, v.Segments...)
@@ -2319,6 +2451,9 @@ type ProcessMetrics struct {
 	MemMaps ProcessMemoryMaps `json:"mem_maps,omitempty"`
 
 	LastDay *SegmentedProcessMetrics `json:"lastDay,omitempty"`
+
+	// Last hour statistics (1-min segments).
+	LastHour *SegmentedProcessMetrics `json:"lastHour,omitempty"`
 }
 
 // ProcessMemoryInfo represents aggregated memory information
@@ -2473,6 +2608,12 @@ func (m *ProcessMetrics) Merge(other *ProcessMetrics) {
 			m.LastDay = new(SegmentedProcessMetrics)
 		}
 		m.LastDay.Add(other.LastDay)
+	}
+	if other.LastHour != nil {
+		if m.LastHour == nil {
+			m.LastHour = new(SegmentedProcessMetrics)
+		}
+		m.LastHour.Add(other.LastHour)
 	}
 }
 
