@@ -842,6 +842,12 @@ func (z *HealOpts) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "NoLock")
 				return
 			}
+		case "crossPool":
+			z.CrossPool, err = dc.ReadBool()
+			if err != nil {
+				err = msgp.WrapError(err, "CrossPool")
+				return
+			}
 		case "pool":
 			if dc.IsNil() {
 				err = dc.ReadNil()
@@ -903,16 +909,16 @@ func (z *HealOpts) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *HealOpts) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(9)
-	var zb0001Mask uint16 /* 9 bits */
+	zb0001Len := uint32(10)
+	var zb0001Mask uint16 /* 10 bits */
 	_ = zb0001Mask
 	if z.Pool == nil {
 		zb0001Len--
-		zb0001Mask |= 0x80
+		zb0001Mask |= 0x100
 	}
 	if z.Set == nil {
 		zb0001Len--
-		zb0001Mask |= 0x100
+		zb0001Mask |= 0x200
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -992,7 +998,17 @@ func (z *HealOpts) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "NoLock")
 			return
 		}
-		if (zb0001Mask & 0x80) == 0 { // if not omitted
+		// write "crossPool"
+		err = en.Append(0xa9, 0x63, 0x72, 0x6f, 0x73, 0x73, 0x50, 0x6f, 0x6f, 0x6c)
+		if err != nil {
+			return
+		}
+		err = en.WriteBool(z.CrossPool)
+		if err != nil {
+			err = msgp.WrapError(err, "CrossPool")
+			return
+		}
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
 			// write "pool"
 			err = en.Append(0xa4, 0x70, 0x6f, 0x6f, 0x6c)
 			if err != nil {
@@ -1011,7 +1027,7 @@ func (z *HealOpts) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x100) == 0 { // if not omitted
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
 			// write "set"
 			err = en.Append(0xa3, 0x73, 0x65, 0x74)
 			if err != nil {
@@ -1038,16 +1054,16 @@ func (z *HealOpts) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *HealOpts) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(9)
-	var zb0001Mask uint16 /* 9 bits */
+	zb0001Len := uint32(10)
+	var zb0001Mask uint16 /* 10 bits */
 	_ = zb0001Mask
 	if z.Pool == nil {
 		zb0001Len--
-		zb0001Mask |= 0x80
+		zb0001Mask |= 0x100
 	}
 	if z.Set == nil {
 		zb0001Len--
-		zb0001Mask |= 0x100
+		zb0001Mask |= 0x200
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -1075,7 +1091,10 @@ func (z *HealOpts) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "nolock"
 		o = append(o, 0xa6, 0x6e, 0x6f, 0x6c, 0x6f, 0x63, 0x6b)
 		o = msgp.AppendBool(o, z.NoLock)
-		if (zb0001Mask & 0x80) == 0 { // if not omitted
+		// string "crossPool"
+		o = append(o, 0xa9, 0x63, 0x72, 0x6f, 0x73, 0x73, 0x50, 0x6f, 0x6f, 0x6c)
+		o = msgp.AppendBool(o, z.CrossPool)
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
 			// string "pool"
 			o = append(o, 0xa4, 0x70, 0x6f, 0x6f, 0x6c)
 			if z.Pool == nil {
@@ -1084,7 +1103,7 @@ func (z *HealOpts) MarshalMsg(b []byte) (o []byte, err error) {
 				o = msgp.AppendInt(o, *z.Pool)
 			}
 		}
-		if (zb0001Mask & 0x100) == 0 { // if not omitted
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
 			// string "set"
 			o = append(o, 0xa3, 0x73, 0x65, 0x74)
 			if z.Set == nil {
@@ -1163,6 +1182,12 @@ func (z *HealOpts) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "NoLock")
 				return
 			}
+		case "crossPool":
+			z.CrossPool, bts, err = msgp.ReadBoolBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "CrossPool")
+				return
+			}
 		case "pool":
 			if msgp.IsNil(bts) {
 				bts, err = msgp.ReadNilBytes(bts)
@@ -1222,7 +1247,7 @@ func (z *HealOpts) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *HealOpts) Msgsize() (s int) {
-	s = 1 + 10 + msgp.BoolSize + 7 + msgp.BoolSize + 7 + msgp.BoolSize + 9 + msgp.BoolSize + 9 + msgp.IntSize + 13 + msgp.BoolSize + 7 + msgp.BoolSize + 5
+	s = 1 + 10 + msgp.BoolSize + 7 + msgp.BoolSize + 7 + msgp.BoolSize + 9 + msgp.BoolSize + 9 + msgp.IntSize + 13 + msgp.BoolSize + 7 + msgp.BoolSize + 10 + msgp.BoolSize + 5
 	if z.Pool == nil {
 		s += msgp.NilSize
 	} else {

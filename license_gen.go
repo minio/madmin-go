@@ -42,6 +42,12 @@ func (z *LicenseInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Plan")
 				return
 			}
+		case "StorageCap":
+			z.StorageCap, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "StorageCap")
+				return
+			}
 		case "IssuedAt":
 			z.IssuedAt, err = dc.ReadTimeUTC()
 			if err != nil {
@@ -79,9 +85,9 @@ func (z *LicenseInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *LicenseInfo) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 7
+	// map header, size 8
 	// write "ID"
-	err = en.Append(0x87, 0xa2, 0x49, 0x44)
+	err = en.Append(0x88, 0xa2, 0x49, 0x44)
 	if err != nil {
 		return
 	}
@@ -108,6 +114,16 @@ func (z *LicenseInfo) EncodeMsg(en *msgp.Writer) (err error) {
 	err = en.WriteString(z.Plan)
 	if err != nil {
 		err = msgp.WrapError(err, "Plan")
+		return
+	}
+	// write "StorageCap"
+	err = en.Append(0xaa, 0x53, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x43, 0x61, 0x70)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint64(z.StorageCap)
+	if err != nil {
+		err = msgp.WrapError(err, "StorageCap")
 		return
 	}
 	// write "IssuedAt"
@@ -156,9 +172,9 @@ func (z *LicenseInfo) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *LicenseInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 7
+	// map header, size 8
 	// string "ID"
-	o = append(o, 0x87, 0xa2, 0x49, 0x44)
+	o = append(o, 0x88, 0xa2, 0x49, 0x44)
 	o = msgp.AppendString(o, z.ID)
 	// string "Organization"
 	o = append(o, 0xac, 0x4f, 0x72, 0x67, 0x61, 0x6e, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e)
@@ -166,6 +182,9 @@ func (z *LicenseInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "Plan"
 	o = append(o, 0xa4, 0x50, 0x6c, 0x61, 0x6e)
 	o = msgp.AppendString(o, z.Plan)
+	// string "StorageCap"
+	o = append(o, 0xaa, 0x53, 0x74, 0x6f, 0x72, 0x61, 0x67, 0x65, 0x43, 0x61, 0x70)
+	o = msgp.AppendUint64(o, z.StorageCap)
 	// string "IssuedAt"
 	o = append(o, 0xa8, 0x49, 0x73, 0x73, 0x75, 0x65, 0x64, 0x41, 0x74)
 	o = msgp.AppendTime(o, z.IssuedAt)
@@ -217,6 +236,12 @@ func (z *LicenseInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "Plan")
 				return
 			}
+		case "StorageCap":
+			z.StorageCap, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "StorageCap")
+				return
+			}
 		case "IssuedAt":
 			z.IssuedAt, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
@@ -255,6 +280,6 @@ func (z *LicenseInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *LicenseInfo) Msgsize() (s int) {
-	s = 1 + 3 + msgp.StringPrefixSize + len(z.ID) + 13 + msgp.StringPrefixSize + len(z.Organization) + 5 + msgp.StringPrefixSize + len(z.Plan) + 9 + msgp.TimeSize + 10 + msgp.TimeSize + 6 + msgp.BoolSize + 7 + msgp.StringPrefixSize + len(z.APIKey)
+	s = 1 + 3 + msgp.StringPrefixSize + len(z.ID) + 13 + msgp.StringPrefixSize + len(z.Organization) + 5 + msgp.StringPrefixSize + len(z.Plan) + 11 + msgp.Uint64Size + 9 + msgp.TimeSize + 10 + msgp.TimeSize + 6 + msgp.BoolSize + 7 + msgp.StringPrefixSize + len(z.APIKey)
 	return
 }

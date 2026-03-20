@@ -44,6 +44,7 @@ const (
 	ProfilerThreads    ProfilerType = "threads"    // represents ThreadCreate profiler type
 	ProfilerGoroutines ProfilerType = "goroutines" // represents Goroutine dumps.
 	ProfilerRuntime    ProfilerType = "runtime"    // Include runtime metrics
+	ProfilerMetrics    ProfilerType = "metrics"    // Include full start/stop metrics per node.
 )
 
 // StartProfilingResult holds the result of starting

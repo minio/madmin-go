@@ -87,7 +87,6 @@ func (adm AdminClient) ServiceTelemetryStream(ctx context.Context, opts ServiceT
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		closeResponse(resp)
 		return nil, httpRespToErrorResponse(resp)
 	}
 

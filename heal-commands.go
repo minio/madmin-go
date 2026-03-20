@@ -59,6 +59,7 @@ type HealOpts struct {
 	ScanMode     HealScanMode `json:"scanMode"`
 	UpdateParity bool         `json:"updateParity"` // Update the parity of the existing object with a new one
 	NoLock       bool         `json:"nolock"`
+	CrossPool    bool         `json:"crossPool"` // Check and fix crosspool objects.
 
 	// Pool to heal. nil indicates "all pools" (and sets).
 	Pool *int `json:"pool,omitempty"`
@@ -237,6 +238,17 @@ func (hri *HealResultItem) GetOnlineCounts() (b, a int) {
 		}
 	}
 	return b, a
+}
+
+// Healed - returns whether the item has been healed.
+// An item is considered healed when the number of online drives
+// after heal is greater than before heal.
+func (hri *HealResultItem) Healed() bool {
+	if hri == nil {
+		return false
+	}
+	before, after := hri.GetOnlineCounts()
+	return after > before
 }
 
 // Heal - API endpoint to start heal and to fetch status

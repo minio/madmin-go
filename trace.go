@@ -173,11 +173,22 @@ type TraceHTTPStats struct {
 
 // TraceCallStats records request stats
 type TraceCallStats struct {
-	InputBytes      int           `json:"inputbytes"`
-	OutputBytes     int           `json:"outputbytes"`
+	InputBytes  int `json:"inputbytes,omitempty"`
+	OutputBytes int `json:"outputbytes,omitempty"`
+
+	// Time from resp read ends until first byte is sent.
+	// If the request had no payload this will be from request received to first response byte.
+	// If no response bytes were sent this will be time until response was done.
 	TimeToFirstByte time.Duration `json:"timetofirstbyte"`
-	ReadBlocked     time.Duration `json:"readBlocked"`
-	WriteBlocked    time.Duration `json:"writeBlocked"`
+
+	// Wall time of request and response read/write phase.
+	// Will be 0 if no bytes were read/written.
+	ReqReadTime   time.Duration `json:"reqReadTime,omitempty"`
+	RespWriteTime time.Duration `json:"respWriteTime,omitempty"`
+
+	// Time of request time blocked by upstream reads/writes
+	ReadBlocked  time.Duration `json:"readBlocked,omitempty"`
+	WriteBlocked time.Duration `json:"writeBlocked,omitempty"`
 }
 
 // TraceRequestInfo represents trace of http request

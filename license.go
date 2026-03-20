@@ -33,7 +33,8 @@ import (
 type LicenseInfo struct {
 	ID           string    `json:"ID"`           // The license ID
 	Organization string    `json:"Organization"` // Name of the organization using the license
-	Plan         string    `json:"Plan"`         // License plan. E.g. "ENTERPRISE-PLUS"
+	Plan         string    `json:"Plan"`         // License plan. E.g. "ENTERPRISE"
+	StorageCap   uint64    `json:"StorageCap"`   // Storage capacity in TiB covered by the license
 	IssuedAt     time.Time `json:"IssuedAt"`     // Point in time when the license was issued
 	ExpiresAt    time.Time `json:"ExpiresAt"`    // Point in time when the license expires
 	Trial        bool      `json:"Trial"`        // Whether the license is on trial

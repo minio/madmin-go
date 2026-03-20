@@ -27,6 +27,7 @@ import (
 
 	"github.com/dustin/go-humanize"
 	"github.com/prometheus/common/expfmt"
+	"github.com/prometheus/common/model"
 	"github.com/prometheus/prom2json"
 )
 
@@ -82,7 +83,7 @@ func ParsePrometheusResults(reader io.Reader) (results []*prom2json.Family, err 
 	// We could do further content-type checks here, but the
 	// fallback for now will anyway be the text format
 	// version 0.0.4, so just go for it and see if it works.
-	var parser expfmt.TextParser
+	parser := expfmt.NewTextParser(model.UTF8Validation)
 	metricFamilies, err := parser.TextToMetricFamilies(reader)
 	if err != nil {
 		return nil, fmt.Errorf("reading text format failed: %v", err)

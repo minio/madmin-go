@@ -2195,6 +2195,80 @@ func (z *BucketUsageInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.ObjectVersionsHistogram[za0003] = za0004
 			}
+		case "objectsAgesHistogram":
+			var zb0004 uint32
+			zb0004, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "ObjectAgesHistogram")
+				return
+			}
+			if z.ObjectAgesHistogram == nil {
+				z.ObjectAgesHistogram = make(map[string]uint64, zb0004)
+			} else if len(z.ObjectAgesHistogram) > 0 {
+				clear(z.ObjectAgesHistogram)
+			}
+			for zb0004 > 0 {
+				zb0004--
+				var za0005 string
+				za0005, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "ObjectAgesHistogram")
+					return
+				}
+				var za0006 uint64
+				za0006, err = dc.ReadUint64()
+				if err != nil {
+					err = msgp.WrapError(err, "ObjectAgesHistogram", za0005)
+					return
+				}
+				z.ObjectAgesHistogram[za0005] = za0006
+			}
+		case "objectsAccessAgesHistogram":
+			var zb0005 uint32
+			zb0005, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "ObjectAccessAgesHistogram")
+				return
+			}
+			if z.ObjectAccessAgesHistogram == nil {
+				z.ObjectAccessAgesHistogram = make(map[string]uint64, zb0005)
+			} else if len(z.ObjectAccessAgesHistogram) > 0 {
+				clear(z.ObjectAccessAgesHistogram)
+			}
+			for zb0005 > 0 {
+				zb0005--
+				var za0007 string
+				za0007, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "ObjectAccessAgesHistogram")
+					return
+				}
+				var za0008 uint64
+				za0008, err = dc.ReadUint64()
+				if err != nil {
+					err = msgp.WrapError(err, "ObjectAccessAgesHistogram", za0007)
+					return
+				}
+				z.ObjectAccessAgesHistogram[za0007] = za0008
+			}
+		case "lockRetentionVersions":
+			z.LockRetentionVersions, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "LockRetentionVersions")
+				return
+			}
+		case "lockExpiredRetentionVersions":
+			z.LockExpiredRetentionVersions, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "LockExpiredRetentionVersions")
+				return
+			}
+		case "lockLegalHoldVersions":
+			z.LockLegalHoldVersions, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "LockLegalHoldVersions")
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -2208,9 +2282,9 @@ func (z *BucketUsageInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *BucketUsageInfo) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 12
+	// map header, size 17
 	// write "size"
-	err = en.Append(0x8c, 0xa4, 0x73, 0x69, 0x7a, 0x65)
+	err = en.Append(0xde, 0x0, 0x11, 0xa4, 0x73, 0x69, 0x7a, 0x65)
 	if err != nil {
 		return
 	}
@@ -2353,15 +2427,89 @@ func (z *BucketUsageInfo) EncodeMsg(en *msgp.Writer) (err error) {
 			return
 		}
 	}
+	// write "objectsAgesHistogram"
+	err = en.Append(0xb4, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x41, 0x67, 0x65, 0x73, 0x48, 0x69, 0x73, 0x74, 0x6f, 0x67, 0x72, 0x61, 0x6d)
+	if err != nil {
+		return
+	}
+	err = en.WriteMapHeader(uint32(len(z.ObjectAgesHistogram)))
+	if err != nil {
+		err = msgp.WrapError(err, "ObjectAgesHistogram")
+		return
+	}
+	for za0005, za0006 := range z.ObjectAgesHistogram {
+		err = en.WriteString(za0005)
+		if err != nil {
+			err = msgp.WrapError(err, "ObjectAgesHistogram")
+			return
+		}
+		err = en.WriteUint64(za0006)
+		if err != nil {
+			err = msgp.WrapError(err, "ObjectAgesHistogram", za0005)
+			return
+		}
+	}
+	// write "objectsAccessAgesHistogram"
+	err = en.Append(0xba, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x41, 0x63, 0x63, 0x65, 0x73, 0x73, 0x41, 0x67, 0x65, 0x73, 0x48, 0x69, 0x73, 0x74, 0x6f, 0x67, 0x72, 0x61, 0x6d)
+	if err != nil {
+		return
+	}
+	err = en.WriteMapHeader(uint32(len(z.ObjectAccessAgesHistogram)))
+	if err != nil {
+		err = msgp.WrapError(err, "ObjectAccessAgesHistogram")
+		return
+	}
+	for za0007, za0008 := range z.ObjectAccessAgesHistogram {
+		err = en.WriteString(za0007)
+		if err != nil {
+			err = msgp.WrapError(err, "ObjectAccessAgesHistogram")
+			return
+		}
+		err = en.WriteUint64(za0008)
+		if err != nil {
+			err = msgp.WrapError(err, "ObjectAccessAgesHistogram", za0007)
+			return
+		}
+	}
+	// write "lockRetentionVersions"
+	err = en.Append(0xb5, 0x6c, 0x6f, 0x63, 0x6b, 0x52, 0x65, 0x74, 0x65, 0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint64(z.LockRetentionVersions)
+	if err != nil {
+		err = msgp.WrapError(err, "LockRetentionVersions")
+		return
+	}
+	// write "lockExpiredRetentionVersions"
+	err = en.Append(0xbc, 0x6c, 0x6f, 0x63, 0x6b, 0x45, 0x78, 0x70, 0x69, 0x72, 0x65, 0x64, 0x52, 0x65, 0x74, 0x65, 0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint64(z.LockExpiredRetentionVersions)
+	if err != nil {
+		err = msgp.WrapError(err, "LockExpiredRetentionVersions")
+		return
+	}
+	// write "lockLegalHoldVersions"
+	err = en.Append(0xb5, 0x6c, 0x6f, 0x63, 0x6b, 0x4c, 0x65, 0x67, 0x61, 0x6c, 0x48, 0x6f, 0x6c, 0x64, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint64(z.LockLegalHoldVersions)
+	if err != nil {
+		err = msgp.WrapError(err, "LockLegalHoldVersions")
+		return
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z *BucketUsageInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 12
+	// map header, size 17
 	// string "size"
-	o = append(o, 0x8c, 0xa4, 0x73, 0x69, 0x7a, 0x65)
+	o = append(o, 0xde, 0x0, 0x11, 0xa4, 0x73, 0x69, 0x7a, 0x65)
 	o = msgp.AppendUint64(o, z.Size)
 	// string "objectsPendingReplicationTotalSize"
 	o = append(o, 0xd9, 0x22, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x50, 0x65, 0x6e, 0x64, 0x69, 0x6e, 0x67, 0x52, 0x65, 0x70, 0x6c, 0x69, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x54, 0x6f, 0x74, 0x61, 0x6c, 0x53, 0x69, 0x7a, 0x65)
@@ -2404,6 +2552,29 @@ func (z *BucketUsageInfo) MarshalMsg(b []byte) (o []byte, err error) {
 		o = msgp.AppendString(o, za0003)
 		o = msgp.AppendUint64(o, za0004)
 	}
+	// string "objectsAgesHistogram"
+	o = append(o, 0xb4, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x41, 0x67, 0x65, 0x73, 0x48, 0x69, 0x73, 0x74, 0x6f, 0x67, 0x72, 0x61, 0x6d)
+	o = msgp.AppendMapHeader(o, uint32(len(z.ObjectAgesHistogram)))
+	for za0005, za0006 := range z.ObjectAgesHistogram {
+		o = msgp.AppendString(o, za0005)
+		o = msgp.AppendUint64(o, za0006)
+	}
+	// string "objectsAccessAgesHistogram"
+	o = append(o, 0xba, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x41, 0x63, 0x63, 0x65, 0x73, 0x73, 0x41, 0x67, 0x65, 0x73, 0x48, 0x69, 0x73, 0x74, 0x6f, 0x67, 0x72, 0x61, 0x6d)
+	o = msgp.AppendMapHeader(o, uint32(len(z.ObjectAccessAgesHistogram)))
+	for za0007, za0008 := range z.ObjectAccessAgesHistogram {
+		o = msgp.AppendString(o, za0007)
+		o = msgp.AppendUint64(o, za0008)
+	}
+	// string "lockRetentionVersions"
+	o = append(o, 0xb5, 0x6c, 0x6f, 0x63, 0x6b, 0x52, 0x65, 0x74, 0x65, 0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
+	o = msgp.AppendUint64(o, z.LockRetentionVersions)
+	// string "lockExpiredRetentionVersions"
+	o = append(o, 0xbc, 0x6c, 0x6f, 0x63, 0x6b, 0x45, 0x78, 0x70, 0x69, 0x72, 0x65, 0x64, 0x52, 0x65, 0x74, 0x65, 0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
+	o = msgp.AppendUint64(o, z.LockExpiredRetentionVersions)
+	// string "lockLegalHoldVersions"
+	o = append(o, 0xb5, 0x6c, 0x6f, 0x63, 0x6b, 0x4c, 0x65, 0x67, 0x61, 0x6c, 0x48, 0x6f, 0x6c, 0x64, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
+	o = msgp.AppendUint64(o, z.LockLegalHoldVersions)
 	return
 }
 
@@ -2541,6 +2712,80 @@ func (z *BucketUsageInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.ObjectVersionsHistogram[za0003] = za0004
 			}
+		case "objectsAgesHistogram":
+			var zb0004 uint32
+			zb0004, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ObjectAgesHistogram")
+				return
+			}
+			if z.ObjectAgesHistogram == nil {
+				z.ObjectAgesHistogram = make(map[string]uint64, zb0004)
+			} else if len(z.ObjectAgesHistogram) > 0 {
+				clear(z.ObjectAgesHistogram)
+			}
+			for zb0004 > 0 {
+				var za0006 uint64
+				zb0004--
+				var za0005 string
+				za0005, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "ObjectAgesHistogram")
+					return
+				}
+				za0006, bts, err = msgp.ReadUint64Bytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "ObjectAgesHistogram", za0005)
+					return
+				}
+				z.ObjectAgesHistogram[za0005] = za0006
+			}
+		case "objectsAccessAgesHistogram":
+			var zb0005 uint32
+			zb0005, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ObjectAccessAgesHistogram")
+				return
+			}
+			if z.ObjectAccessAgesHistogram == nil {
+				z.ObjectAccessAgesHistogram = make(map[string]uint64, zb0005)
+			} else if len(z.ObjectAccessAgesHistogram) > 0 {
+				clear(z.ObjectAccessAgesHistogram)
+			}
+			for zb0005 > 0 {
+				var za0008 uint64
+				zb0005--
+				var za0007 string
+				za0007, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "ObjectAccessAgesHistogram")
+					return
+				}
+				za0008, bts, err = msgp.ReadUint64Bytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "ObjectAccessAgesHistogram", za0007)
+					return
+				}
+				z.ObjectAccessAgesHistogram[za0007] = za0008
+			}
+		case "lockRetentionVersions":
+			z.LockRetentionVersions, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "LockRetentionVersions")
+				return
+			}
+		case "lockExpiredRetentionVersions":
+			z.LockExpiredRetentionVersions, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "LockExpiredRetentionVersions")
+				return
+			}
+		case "lockLegalHoldVersions":
+			z.LockLegalHoldVersions, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "LockLegalHoldVersions")
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -2555,7 +2800,7 @@ func (z *BucketUsageInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *BucketUsageInfo) Msgsize() (s int) {
-	s = 1 + 5 + msgp.Uint64Size + 36 + msgp.Uint64Size + 35 + msgp.Uint64Size + 27 + msgp.Uint64Size + 23 + msgp.Uint64Size + 31 + msgp.Uint64Size + 30 + msgp.Uint64Size + 14 + msgp.Uint64Size + 13 + msgp.Uint64Size + 19 + msgp.Uint64Size + 22 + msgp.MapHeaderSize
+	s = 3 + 5 + msgp.Uint64Size + 36 + msgp.Uint64Size + 35 + msgp.Uint64Size + 27 + msgp.Uint64Size + 23 + msgp.Uint64Size + 31 + msgp.Uint64Size + 30 + msgp.Uint64Size + 14 + msgp.Uint64Size + 13 + msgp.Uint64Size + 19 + msgp.Uint64Size + 22 + msgp.MapHeaderSize
 	if z.ObjectSizesHistogram != nil {
 		for za0001, za0002 := range z.ObjectSizesHistogram {
 			_ = za0002
@@ -2569,6 +2814,21 @@ func (z *BucketUsageInfo) Msgsize() (s int) {
 			s += msgp.StringPrefixSize + len(za0003) + msgp.Uint64Size
 		}
 	}
+	s += 21 + msgp.MapHeaderSize
+	if z.ObjectAgesHistogram != nil {
+		for za0005, za0006 := range z.ObjectAgesHistogram {
+			_ = za0006
+			s += msgp.StringPrefixSize + len(za0005) + msgp.Uint64Size
+		}
+	}
+	s += 27 + msgp.MapHeaderSize
+	if z.ObjectAccessAgesHistogram != nil {
+		for za0007, za0008 := range z.ObjectAccessAgesHistogram {
+			_ = za0008
+			s += msgp.StringPrefixSize + len(za0007) + msgp.Uint64Size
+		}
+	}
+	s += 22 + msgp.Uint64Size + 29 + msgp.Uint64Size + 22 + msgp.Uint64Size
 	return
 }
 
@@ -4009,6 +4269,24 @@ func (z *DataUsageInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.TierStats[za0003] = za0004
 			}
+		case "lockRetentionVersions":
+			z.LockRetentionVersions, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "LockRetentionVersions")
+				return
+			}
+		case "lockExpiredRetentionVersions":
+			z.LockExpiredRetentionVersions, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "LockExpiredRetentionVersions")
+				return
+			}
+		case "lockLegalHoldVersions":
+			z.LockLegalHoldVersions, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "LockLegalHoldVersions")
+				return
+			}
 		case "capacity":
 			z.TotalCapacity, err = dc.ReadUint64()
 			if err != nil {
@@ -4040,9 +4318,9 @@ func (z *DataUsageInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *DataUsageInfo) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 15
+	// map header, size 18
 	// write "lastUpdate"
-	err = en.Append(0x8f, 0xaa, 0x6c, 0x61, 0x73, 0x74, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65)
+	err = en.Append(0xde, 0x0, 0x12, 0xaa, 0x6c, 0x61, 0x73, 0x74, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65)
 	if err != nil {
 		return
 	}
@@ -4211,6 +4489,36 @@ func (z *DataUsageInfo) EncodeMsg(en *msgp.Writer) (err error) {
 			return
 		}
 	}
+	// write "lockRetentionVersions"
+	err = en.Append(0xb5, 0x6c, 0x6f, 0x63, 0x6b, 0x52, 0x65, 0x74, 0x65, 0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint64(z.LockRetentionVersions)
+	if err != nil {
+		err = msgp.WrapError(err, "LockRetentionVersions")
+		return
+	}
+	// write "lockExpiredRetentionVersions"
+	err = en.Append(0xbc, 0x6c, 0x6f, 0x63, 0x6b, 0x45, 0x78, 0x70, 0x69, 0x72, 0x65, 0x64, 0x52, 0x65, 0x74, 0x65, 0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint64(z.LockExpiredRetentionVersions)
+	if err != nil {
+		err = msgp.WrapError(err, "LockExpiredRetentionVersions")
+		return
+	}
+	// write "lockLegalHoldVersions"
+	err = en.Append(0xb5, 0x6c, 0x6f, 0x63, 0x6b, 0x4c, 0x65, 0x67, 0x61, 0x6c, 0x48, 0x6f, 0x6c, 0x64, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteUint64(z.LockLegalHoldVersions)
+	if err != nil {
+		err = msgp.WrapError(err, "LockLegalHoldVersions")
+		return
+	}
 	// write "capacity"
 	err = en.Append(0xa8, 0x63, 0x61, 0x70, 0x61, 0x63, 0x69, 0x74, 0x79)
 	if err != nil {
@@ -4247,9 +4555,9 @@ func (z *DataUsageInfo) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *DataUsageInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 15
+	// map header, size 18
 	// string "lastUpdate"
-	o = append(o, 0x8f, 0xaa, 0x6c, 0x61, 0x73, 0x74, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65)
+	o = append(o, 0xde, 0x0, 0x12, 0xaa, 0x6c, 0x61, 0x73, 0x74, 0x55, 0x70, 0x64, 0x61, 0x74, 0x65)
 	o = msgp.AppendTime(o, z.LastUpdate)
 	// string "objectsCount"
 	o = append(o, 0xac, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x43, 0x6f, 0x75, 0x6e, 0x74)
@@ -4305,6 +4613,15 @@ func (z *DataUsageInfo) MarshalMsg(b []byte) (o []byte, err error) {
 		o = append(o, 0xaa, 0x6e, 0x75, 0x6d, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73)
 		o = msgp.AppendInt(o, za0004.NumObjects)
 	}
+	// string "lockRetentionVersions"
+	o = append(o, 0xb5, 0x6c, 0x6f, 0x63, 0x6b, 0x52, 0x65, 0x74, 0x65, 0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
+	o = msgp.AppendUint64(o, z.LockRetentionVersions)
+	// string "lockExpiredRetentionVersions"
+	o = append(o, 0xbc, 0x6c, 0x6f, 0x63, 0x6b, 0x45, 0x78, 0x70, 0x69, 0x72, 0x65, 0x64, 0x52, 0x65, 0x74, 0x65, 0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
+	o = msgp.AppendUint64(o, z.LockExpiredRetentionVersions)
+	// string "lockLegalHoldVersions"
+	o = append(o, 0xb5, 0x6c, 0x6f, 0x63, 0x6b, 0x4c, 0x65, 0x67, 0x61, 0x6c, 0x48, 0x6f, 0x6c, 0x64, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
+	o = msgp.AppendUint64(o, z.LockLegalHoldVersions)
 	// string "capacity"
 	o = append(o, 0xa8, 0x63, 0x61, 0x70, 0x61, 0x63, 0x69, 0x74, 0x79)
 	o = msgp.AppendUint64(o, z.TotalCapacity)
@@ -4486,6 +4803,24 @@ func (z *DataUsageInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.TierStats[za0003] = za0004
 			}
+		case "lockRetentionVersions":
+			z.LockRetentionVersions, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "LockRetentionVersions")
+				return
+			}
+		case "lockExpiredRetentionVersions":
+			z.LockExpiredRetentionVersions, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "LockExpiredRetentionVersions")
+				return
+			}
+		case "lockLegalHoldVersions":
+			z.LockLegalHoldVersions, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "LockLegalHoldVersions")
+				return
+			}
 		case "capacity":
 			z.TotalCapacity, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
@@ -4518,7 +4853,7 @@ func (z *DataUsageInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *DataUsageInfo) Msgsize() (s int) {
-	s = 1 + 11 + msgp.TimeSize + 13 + msgp.Uint64Size + 17 + msgp.Uint64Size + 36 + msgp.Uint64Size + 35 + msgp.Uint64Size + 27 + msgp.Uint64Size + 24 + msgp.Uint64Size + 31 + msgp.Uint64Size + 30 + msgp.Uint64Size + 13 + msgp.Uint64Size + 17 + msgp.MapHeaderSize
+	s = 3 + 11 + msgp.TimeSize + 13 + msgp.Uint64Size + 17 + msgp.Uint64Size + 36 + msgp.Uint64Size + 35 + msgp.Uint64Size + 27 + msgp.Uint64Size + 24 + msgp.Uint64Size + 31 + msgp.Uint64Size + 30 + msgp.Uint64Size + 13 + msgp.Uint64Size + 17 + msgp.MapHeaderSize
 	if z.BucketsUsage != nil {
 		for za0001, za0002 := range z.BucketsUsage {
 			_ = za0002
@@ -4532,7 +4867,7 @@ func (z *DataUsageInfo) Msgsize() (s int) {
 			s += msgp.StringPrefixSize + len(za0003) + 1 + 10 + msgp.Uint64Size + 12 + msgp.IntSize + 11 + msgp.IntSize
 		}
 	}
-	s += 9 + msgp.Uint64Size + 13 + msgp.Uint64Size + 13 + msgp.Uint64Size
+	s += 22 + msgp.Uint64Size + 29 + msgp.Uint64Size + 22 + msgp.Uint64Size + 9 + msgp.Uint64Size + 13 + msgp.Uint64Size + 13 + msgp.Uint64Size
 	return
 }
 
@@ -4876,62 +5211,10 @@ func (z *Disk) DecodeMsg(dc *msgp.Reader) (err error) {
 				if z.Metrics == nil {
 					z.Metrics = new(DiskStatus)
 				}
-				var zb0002 uint32
-				zb0002, err = dc.ReadMapHeader()
+				err = z.Metrics.DecodeMsg(dc)
 				if err != nil {
 					err = msgp.WrapError(err, "Metrics")
 					return
-				}
-				var zb0002Mask uint8 /* 3 bits */
-				_ = zb0002Mask
-				for zb0002 > 0 {
-					zb0002--
-					field, err = dc.ReadMapKeyPtr()
-					if err != nil {
-						err = msgp.WrapError(err, "Metrics")
-						return
-					}
-					switch msgp.UnsafeString(field) {
-					case "totalWaiting":
-						z.Metrics.TotalWaiting, err = dc.ReadUint32()
-						if err != nil {
-							err = msgp.WrapError(err, "Metrics", "TotalWaiting")
-							return
-						}
-						zb0002Mask |= 0x1
-					case "totalErrorsAvailability":
-						z.Metrics.TotalErrorsAvailability, err = dc.ReadUint64()
-						if err != nil {
-							err = msgp.WrapError(err, "Metrics", "TotalErrorsAvailability")
-							return
-						}
-						zb0002Mask |= 0x2
-					case "totalErrorsTimeout":
-						z.Metrics.TotalErrorsTimeout, err = dc.ReadUint64()
-						if err != nil {
-							err = msgp.WrapError(err, "Metrics", "TotalErrorsTimeout")
-							return
-						}
-						zb0002Mask |= 0x4
-					default:
-						err = dc.Skip()
-						if err != nil {
-							err = msgp.WrapError(err, "Metrics")
-							return
-						}
-					}
-				}
-				// Clear omitted fields.
-				if zb0002Mask != 0x7 {
-					if (zb0002Mask & 0x1) == 0 {
-						z.Metrics.TotalWaiting = 0
-					}
-					if (zb0002Mask & 0x2) == 0 {
-						z.Metrics.TotalErrorsAvailability = 0
-					}
-					if (zb0002Mask & 0x4) == 0 {
-						z.Metrics.TotalErrorsTimeout = 0
-					}
 				}
 			}
 			zb0001Mask |= 0x20000
@@ -5455,66 +5738,10 @@ func (z *Disk) EncodeMsg(en *msgp.Writer) (err error) {
 					return
 				}
 			} else {
-				// check for omitted fields
-				zb0002Len := uint32(3)
-				var zb0002Mask uint8 /* 3 bits */
-				_ = zb0002Mask
-				if z.Metrics.TotalWaiting == 0 {
-					zb0002Len--
-					zb0002Mask |= 0x1
-				}
-				if z.Metrics.TotalErrorsAvailability == 0 {
-					zb0002Len--
-					zb0002Mask |= 0x2
-				}
-				if z.Metrics.TotalErrorsTimeout == 0 {
-					zb0002Len--
-					zb0002Mask |= 0x4
-				}
-				// variable map header, size zb0002Len
-				err = en.Append(0x80 | uint8(zb0002Len))
+				err = z.Metrics.EncodeMsg(en)
 				if err != nil {
+					err = msgp.WrapError(err, "Metrics")
 					return
-				}
-
-				// skip if no fields are to be emitted
-				if zb0002Len != 0 {
-					if (zb0002Mask & 0x1) == 0 { // if not omitted
-						// write "totalWaiting"
-						err = en.Append(0xac, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x57, 0x61, 0x69, 0x74, 0x69, 0x6e, 0x67)
-						if err != nil {
-							return
-						}
-						err = en.WriteUint32(z.Metrics.TotalWaiting)
-						if err != nil {
-							err = msgp.WrapError(err, "Metrics", "TotalWaiting")
-							return
-						}
-					}
-					if (zb0002Mask & 0x2) == 0 { // if not omitted
-						// write "totalErrorsAvailability"
-						err = en.Append(0xb7, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x73, 0x41, 0x76, 0x61, 0x69, 0x6c, 0x61, 0x62, 0x69, 0x6c, 0x69, 0x74, 0x79)
-						if err != nil {
-							return
-						}
-						err = en.WriteUint64(z.Metrics.TotalErrorsAvailability)
-						if err != nil {
-							err = msgp.WrapError(err, "Metrics", "TotalErrorsAvailability")
-							return
-						}
-					}
-					if (zb0002Mask & 0x4) == 0 { // if not omitted
-						// write "totalErrorsTimeout"
-						err = en.Append(0xb2, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x73, 0x54, 0x69, 0x6d, 0x65, 0x6f, 0x75, 0x74)
-						if err != nil {
-							return
-						}
-						err = en.WriteUint64(z.Metrics.TotalErrorsTimeout)
-						if err != nil {
-							err = msgp.WrapError(err, "Metrics", "TotalErrorsTimeout")
-							return
-						}
-					}
 				}
 			}
 		}
@@ -5844,42 +6071,10 @@ func (z *Disk) MarshalMsg(b []byte) (o []byte, err error) {
 			if z.Metrics == nil {
 				o = msgp.AppendNil(o)
 			} else {
-				// check for omitted fields
-				zb0002Len := uint32(3)
-				var zb0002Mask uint8 /* 3 bits */
-				_ = zb0002Mask
-				if z.Metrics.TotalWaiting == 0 {
-					zb0002Len--
-					zb0002Mask |= 0x1
-				}
-				if z.Metrics.TotalErrorsAvailability == 0 {
-					zb0002Len--
-					zb0002Mask |= 0x2
-				}
-				if z.Metrics.TotalErrorsTimeout == 0 {
-					zb0002Len--
-					zb0002Mask |= 0x4
-				}
-				// variable map header, size zb0002Len
-				o = append(o, 0x80|uint8(zb0002Len))
-
-				// skip if no fields are to be emitted
-				if zb0002Len != 0 {
-					if (zb0002Mask & 0x1) == 0 { // if not omitted
-						// string "totalWaiting"
-						o = append(o, 0xac, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x57, 0x61, 0x69, 0x74, 0x69, 0x6e, 0x67)
-						o = msgp.AppendUint32(o, z.Metrics.TotalWaiting)
-					}
-					if (zb0002Mask & 0x2) == 0 { // if not omitted
-						// string "totalErrorsAvailability"
-						o = append(o, 0xb7, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x73, 0x41, 0x76, 0x61, 0x69, 0x6c, 0x61, 0x62, 0x69, 0x6c, 0x69, 0x74, 0x79)
-						o = msgp.AppendUint64(o, z.Metrics.TotalErrorsAvailability)
-					}
-					if (zb0002Mask & 0x4) == 0 { // if not omitted
-						// string "totalErrorsTimeout"
-						o = append(o, 0xb2, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x73, 0x54, 0x69, 0x6d, 0x65, 0x6f, 0x75, 0x74)
-						o = msgp.AppendUint64(o, z.Metrics.TotalErrorsTimeout)
-					}
+				o, err = z.Metrics.MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "Metrics")
+					return
 				}
 			}
 		}
@@ -6110,62 +6305,10 @@ func (z *Disk) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				if z.Metrics == nil {
 					z.Metrics = new(DiskStatus)
 				}
-				var zb0002 uint32
-				zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
+				bts, err = z.Metrics.UnmarshalMsg(bts)
 				if err != nil {
 					err = msgp.WrapError(err, "Metrics")
 					return
-				}
-				var zb0002Mask uint8 /* 3 bits */
-				_ = zb0002Mask
-				for zb0002 > 0 {
-					zb0002--
-					field, bts, err = msgp.ReadMapKeyZC(bts)
-					if err != nil {
-						err = msgp.WrapError(err, "Metrics")
-						return
-					}
-					switch msgp.UnsafeString(field) {
-					case "totalWaiting":
-						z.Metrics.TotalWaiting, bts, err = msgp.ReadUint32Bytes(bts)
-						if err != nil {
-							err = msgp.WrapError(err, "Metrics", "TotalWaiting")
-							return
-						}
-						zb0002Mask |= 0x1
-					case "totalErrorsAvailability":
-						z.Metrics.TotalErrorsAvailability, bts, err = msgp.ReadUint64Bytes(bts)
-						if err != nil {
-							err = msgp.WrapError(err, "Metrics", "TotalErrorsAvailability")
-							return
-						}
-						zb0002Mask |= 0x2
-					case "totalErrorsTimeout":
-						z.Metrics.TotalErrorsTimeout, bts, err = msgp.ReadUint64Bytes(bts)
-						if err != nil {
-							err = msgp.WrapError(err, "Metrics", "TotalErrorsTimeout")
-							return
-						}
-						zb0002Mask |= 0x4
-					default:
-						bts, err = msgp.Skip(bts)
-						if err != nil {
-							err = msgp.WrapError(err, "Metrics")
-							return
-						}
-					}
-				}
-				// Clear omitted fields.
-				if zb0002Mask != 0x7 {
-					if (zb0002Mask & 0x1) == 0 {
-						z.Metrics.TotalWaiting = 0
-					}
-					if (zb0002Mask & 0x2) == 0 {
-						z.Metrics.TotalErrorsAvailability = 0
-					}
-					if (zb0002Mask & 0x4) == 0 {
-						z.Metrics.TotalErrorsTimeout = 0
-					}
 				}
 			}
 			zb0001Mask |= 0x20000
@@ -6351,7 +6494,7 @@ func (z *Disk) Msgsize() (s int) {
 	if z.Metrics == nil {
 		s += msgp.NilSize
 	} else {
-		s += 1 + 13 + msgp.Uint32Size + 24 + msgp.Uint64Size + 19 + msgp.Uint64Size
+		s += z.Metrics.Msgsize()
 	}
 	s += 10
 	if z.HealInfo == nil {
@@ -6385,7 +6528,7 @@ func (z *DiskStatus) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 3 bits */
+	var zb0001Mask uint8 /* 5 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -6416,6 +6559,20 @@ func (z *DiskStatus) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 			zb0001Mask |= 0x4
+		case "totalCorruptionDetected":
+			z.TotalCorruptionDetected, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "TotalCorruptionDetected")
+				return
+			}
+			zb0001Mask |= 0x8
+		case "totalCorruptionHealed":
+			z.TotalCorruptionHealed, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "TotalCorruptionHealed")
+				return
+			}
+			zb0001Mask |= 0x10
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -6425,7 +6582,7 @@ func (z *DiskStatus) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x7 {
+	if zb0001Mask != 0x1f {
 		if (zb0001Mask & 0x1) == 0 {
 			z.TotalWaiting = 0
 		}
@@ -6435,15 +6592,21 @@ func (z *DiskStatus) DecodeMsg(dc *msgp.Reader) (err error) {
 		if (zb0001Mask & 0x4) == 0 {
 			z.TotalErrorsTimeout = 0
 		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.TotalCorruptionDetected = 0
+		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.TotalCorruptionHealed = 0
+		}
 	}
 	return
 }
 
 // EncodeMsg implements msgp.Encodable
-func (z DiskStatus) EncodeMsg(en *msgp.Writer) (err error) {
+func (z *DiskStatus) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(3)
-	var zb0001Mask uint8 /* 3 bits */
+	zb0001Len := uint32(5)
+	var zb0001Mask uint8 /* 5 bits */
 	_ = zb0001Mask
 	if z.TotalWaiting == 0 {
 		zb0001Len--
@@ -6456,6 +6619,14 @@ func (z DiskStatus) EncodeMsg(en *msgp.Writer) (err error) {
 	if z.TotalErrorsTimeout == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x4
+	}
+	if z.TotalCorruptionDetected == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.TotalCorruptionHealed == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x10
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -6501,16 +6672,40 @@ func (z DiskStatus) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// write "totalCorruptionDetected"
+			err = en.Append(0xb7, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x43, 0x6f, 0x72, 0x72, 0x75, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x44, 0x65, 0x74, 0x65, 0x63, 0x74, 0x65, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.TotalCorruptionDetected)
+			if err != nil {
+				err = msgp.WrapError(err, "TotalCorruptionDetected")
+				return
+			}
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// write "totalCorruptionHealed"
+			err = en.Append(0xb5, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x43, 0x6f, 0x72, 0x72, 0x75, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x48, 0x65, 0x61, 0x6c, 0x65, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.TotalCorruptionHealed)
+			if err != nil {
+				err = msgp.WrapError(err, "TotalCorruptionHealed")
+				return
+			}
+		}
 	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
-func (z DiskStatus) MarshalMsg(b []byte) (o []byte, err error) {
+func (z *DiskStatus) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(3)
-	var zb0001Mask uint8 /* 3 bits */
+	zb0001Len := uint32(5)
+	var zb0001Mask uint8 /* 5 bits */
 	_ = zb0001Mask
 	if z.TotalWaiting == 0 {
 		zb0001Len--
@@ -6523,6 +6718,14 @@ func (z DiskStatus) MarshalMsg(b []byte) (o []byte, err error) {
 	if z.TotalErrorsTimeout == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x4
+	}
+	if z.TotalCorruptionDetected == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.TotalCorruptionHealed == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x10
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -6544,6 +6747,16 @@ func (z DiskStatus) MarshalMsg(b []byte) (o []byte, err error) {
 			o = append(o, 0xb2, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x45, 0x72, 0x72, 0x6f, 0x72, 0x73, 0x54, 0x69, 0x6d, 0x65, 0x6f, 0x75, 0x74)
 			o = msgp.AppendUint64(o, z.TotalErrorsTimeout)
 		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// string "totalCorruptionDetected"
+			o = append(o, 0xb7, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x43, 0x6f, 0x72, 0x72, 0x75, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x44, 0x65, 0x74, 0x65, 0x63, 0x74, 0x65, 0x64)
+			o = msgp.AppendUint64(o, z.TotalCorruptionDetected)
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// string "totalCorruptionHealed"
+			o = append(o, 0xb5, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x43, 0x6f, 0x72, 0x72, 0x75, 0x70, 0x74, 0x69, 0x6f, 0x6e, 0x48, 0x65, 0x61, 0x6c, 0x65, 0x64)
+			o = msgp.AppendUint64(o, z.TotalCorruptionHealed)
+		}
 	}
 	return
 }
@@ -6558,7 +6771,7 @@ func (z *DiskStatus) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 3 bits */
+	var zb0001Mask uint8 /* 5 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -6589,6 +6802,20 @@ func (z *DiskStatus) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 			zb0001Mask |= 0x4
+		case "totalCorruptionDetected":
+			z.TotalCorruptionDetected, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "TotalCorruptionDetected")
+				return
+			}
+			zb0001Mask |= 0x8
+		case "totalCorruptionHealed":
+			z.TotalCorruptionHealed, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "TotalCorruptionHealed")
+				return
+			}
+			zb0001Mask |= 0x10
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -6598,7 +6825,7 @@ func (z *DiskStatus) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x7 {
+	if zb0001Mask != 0x1f {
 		if (zb0001Mask & 0x1) == 0 {
 			z.TotalWaiting = 0
 		}
@@ -6608,14 +6835,20 @@ func (z *DiskStatus) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		if (zb0001Mask & 0x4) == 0 {
 			z.TotalErrorsTimeout = 0
 		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.TotalCorruptionDetected = 0
+		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.TotalCorruptionHealed = 0
+		}
 	}
 	o = bts
 	return
 }
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
-func (z DiskStatus) Msgsize() (s int) {
-	s = 1 + 13 + msgp.Uint32Size + 24 + msgp.Uint64Size + 19 + msgp.Uint64Size
+func (z *DiskStatus) Msgsize() (s int) {
+	s = 1 + 13 + msgp.Uint32Size + 24 + msgp.Uint64Size + 19 + msgp.Uint64Size + 24 + msgp.Uint64Size + 22 + msgp.Uint64Size
 	return
 }
 

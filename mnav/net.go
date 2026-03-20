@@ -20,6 +20,7 @@ package mnav
 import (
 	"fmt"
 	"strconv"
+	"time"
 
 	"github.com/minio/madmin-go/v4"
 )
@@ -84,6 +85,8 @@ func (node *NetMetricsNavigator) GetChildren() []MetricChild {
 		Description: "Internode communication statistics",
 	})
 
+	children = append(children, MetricChild{Name: "last_day", Description: "Last 24h network statistics"})
+
 	return children
 }
 
@@ -130,6 +133,8 @@ func (node *NetMetricsNavigator) GetChild(name string) (MetricNode, error) {
 			parent:  node,
 			path:    node.path + "/internode",
 		}, nil
+	case "last_day":
+		return NewNetLastDayNode(node.net.LastDay, node, node.path+"/last_day"), nil
 	}
 	return nil, fmt.Errorf("child %q not found", name)
 }
@@ -366,4 +371,57 @@ func (node *NetInternodeNode) GetChild(_ string) (MetricNode, error) {
 
 func (node *NetInternodeNode) ShouldPauseRefresh() bool {
 	return false
+}
+
+// NetLastDayNode shows last 24h network statistics
+type NetLastDayNode struct {
+	segmented *madmin.SegmentedInterfaceStats
+	parent    MetricNode
+	path      string
+}
+
+func NewNetLastDayNode(segmented *madmin.SegmentedInterfaceStats, parent MetricNode, path string) *NetLastDayNode {
+	return &NetLastDayNode{segmented: segmented, parent: parent, path: path}
+}
+
+func (node *NetLastDayNode) GetOpts() madmin.MetricsOptions     { return getNodeOpts(node) }
+func (node *NetLastDayNode) GetPath() string                    { return node.path }
+func (node *NetLastDayNode) GetParent() MetricNode              { return node.parent }
+func (node *NetLastDayNode) GetMetricType() madmin.MetricType   { return madmin.MetricNet }
+func (node *NetLastDayNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
+func (node *NetLastDayNode) ShouldPauseRefresh() bool           { return true }
+func (node *NetLastDayNode) GetChildren() []MetricChild         { return nil }
+
+func (node *NetLastDayNode) GetChild(_ string) (MetricNode, error) {
+	return nil, fmt.Errorf("no children")
+}
+
+func (node *NetLastDayNode) GetLeafData() map[string]string {
+	if node.segmented == nil || len(node.segmented.Segments) == 0 {
+		return nil
+	}
+	data := make(map[string]string)
+	idx := 0
+	for i := len(node.segmented.Segments) - 1; i >= 0; i-- {
+		seg := node.segmented.Segments[i]
+		if seg.N == 0 {
+			continue
+		}
+		idx++
+		startTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
+		endTime := startTime.Add(time.Duration(node.segmented.Interval) * time.Second)
+		name := fmt.Sprintf("%02d: %s->%s", idx, startTime.Local().Format("15:04"), endTime.Local().Format("15:04"))
+
+		avgRx := seg.RxBytes / uint64(seg.N)
+		avgTx := seg.TxBytes / uint64(seg.N)
+		avgRxPkts := seg.RxPackets / uint64(seg.N)
+		avgTxPkts := seg.TxPackets / uint64(seg.N)
+		// Calculate Gbps (bytes per interval -> bits per second -> Gbps)
+		rxGbps := float64(avgRx) * 8 / float64(node.segmented.Interval) / 1e9
+		txGbps := float64(avgTx) * 8 / float64(node.segmented.Interval) / 1e9
+		data[name] = fmt.Sprintf("RX: %s (%.2f Gbps, %s pkts), TX: %s (%.2f Gbps, %s pkts)",
+			formatBytes(avgRx), rxGbps, formatNumber(avgRxPkts),
+			formatBytes(avgTx), txGbps, formatNumber(avgTxPkts))
+	}
+	return data
 }

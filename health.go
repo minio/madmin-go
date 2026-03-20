@@ -263,10 +263,8 @@ func GetCPUs(ctx context.Context, addr string) CPUs {
 	cpuMap := map[string]CPU{}
 	for _, info := range infos {
 		cpu, found := cpuMap[info.PhysicalID]
-		if found {
-			cpu.Cores++
-		} else {
-			cpuMap[info.PhysicalID] = CPU{
+		if !found {
+			cpu = CPU{
 				VendorID:           info.VendorID,
 				Family:             info.Family,
 				Model:              info.Model,
@@ -277,11 +275,12 @@ func GetCPUs(ctx context.Context, addr string) CPUs {
 				CacheSize:          info.CacheSize,
 				Flags:              info.Flags,
 				Microcode:          info.Microcode,
-				Cores:              1,
 				MultithreadCapable: mtCapable,
 				MultithreadEnabled: mtEnabled,
 			}
 		}
+		cpu.Cores += int(info.Cores)
+		cpuMap[info.PhysicalID] = cpu
 	}
 
 	cpus := []CPU{}
@@ -384,6 +383,7 @@ type Partition struct {
 	SpaceFree    uint64 `json:"space_free,omitempty"`
 	InodeTotal   uint64 `json:"inode_total,omitempty"`
 	InodeFree    uint64 `json:"inode_free,omitempty"`
+	FstabSource  string `json:"fstab_source,omitempty"` // source from /etc/fstab (UUID=, LABEL=, or device path)
 }
 
 // NetSettings - rx/tx settings of an interface
@@ -477,6 +477,41 @@ func getDriveHwInfo(partDevice string) (info driveHwInfo, err error) {
 	return info, err
 }
 
+// parseFstab reads /etc/fstab and returns a map of mountpoint to source device specification.
+// The source can be a device path (/dev/sdb1), UUID (UUID=xxx), or LABEL (LABEL=xxx).
+func parseFstab() map[string]string {
+	result := make(map[string]string)
+
+	file, err := os.Open("/etc/fstab")
+	if err != nil {
+		return result
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+
+		// Skip empty lines and comments
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		// fstab format: <source> <mountpoint> <type> <options> <dump> <pass>
+		// Fields are separated by whitespace (spaces or tabs)
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+
+		source := fields[0]
+		mountpoint := fields[1]
+		result[mountpoint] = source
+	}
+
+	return result
+}
+
 // GetPartitions returns all disk partitions information of a node running linux only operating system.
 func GetPartitions(ctx context.Context, addr string) Partitions {
 	if runtime.GOOS != "linux" {
@@ -499,6 +534,9 @@ func GetPartitions(ctx context.Context, addr string) Partitions {
 	}
 
 	partitions := []Partition{}
+
+	// Parse /etc/fstab once to look up mount sources
+	fstabEntries := parseFstab()
 
 	for i := range parts {
 		usage, err := disk.UsageWithContext(ctx, parts[i].Mountpoint)
@@ -529,6 +567,7 @@ func GetPartitions(ctx context.Context, addr string) Partitions {
 				Revision:     di.Revision,
 				Major:        di.Major,
 				Minor:        di.Minor,
+				FstabSource:  fstabEntries[parts[i].Mountpoint],
 			})
 		}
 	}
@@ -1250,15 +1289,44 @@ type SysInfo struct {
 	KubernetesInfo KubernetesInfo `json:"kubernetes"`
 }
 
+// DeploymentInfo contains diagnostic information about the AIStor deployment
+// managed by the operator.
+type DeploymentInfo struct {
+	Operator    OperatorInfo    `json:"operator"`
+	ObjectStore ObjectStoreInfo `json:"objectStore"`
+	KES         *KESInfo        `json:"kes,omitempty"`
+}
+
+// OperatorInfo contains information about the AIStor operator.
+type OperatorInfo struct {
+	Version   string `json:"version"`
+	Image     string `json:"image,omitempty"`
+	HelmChart string `json:"helmChart,omitempty"`
+}
+
+// ObjectStoreInfo contains information about the ObjectStore deployment.
+type ObjectStoreInfo struct {
+	Image        string `json:"image"`
+	SidecarImage string `json:"sidecarImage"`
+	HelmChart    string `json:"helmChart,omitempty"`
+}
+
+// KESInfo contains information about the KES deployment.
+type KESInfo struct {
+	Image        string `json:"image,omitempty"`
+	SidecarImage string `json:"sidecarImage,omitempty"`
+}
+
 // KubernetesInfo - Information about the kubernetes platform
 type KubernetesInfo struct {
-	Major      string    `json:"major,omitempty"`
-	Minor      string    `json:"minor,omitempty"`
-	GitVersion string    `json:"gitVersion,omitempty"`
-	GitCommit  string    `json:"gitCommit,omitempty"`
-	BuildDate  time.Time `json:"buildDate,omitempty"`
-	Platform   string    `json:"platform,omitempty"`
-	Error      string    `json:"error,omitempty"`
+	Major      string          `json:"major,omitempty"`
+	Minor      string          `json:"minor,omitempty"`
+	GitVersion string          `json:"gitVersion,omitempty"`
+	GitCommit  string          `json:"gitCommit,omitempty"`
+	BuildDate  time.Time       `json:"buildDate,omitempty"`
+	Platform   string          `json:"platform,omitempty"`
+	Deployment *DeploymentInfo `json:"deployment,omitempty"`
+	Error      string          `json:"error,omitempty"`
 }
 
 // SpeedTestResults - Includes perf test results of the MinIO cluster
@@ -1294,27 +1362,29 @@ type ServerInfo struct {
 	MinioEnvVars   map[string]string `json:"minio_env_vars,omitempty"`
 	Edition        string            `json:"edition"`
 	License        *LicenseInfo      `json:"license,omitempty"`
+	APIVersion     *APIVersion       `json:"api_version,omitempty"`
 }
 
 // MinioInfo contains MinIO server and object storage information.
 type MinioInfo struct {
-	Mode         string           `json:"mode,omitempty"`
-	Domain       []string         `json:"domain,omitempty"`
-	Region       string           `json:"region,omitempty"`
-	SQSARN       []string         `json:"sqsARN,omitempty"`
-	DeploymentID string           `json:"deploymentID,omitempty"`
-	Buckets      Buckets          `json:"buckets,omitempty"`
-	BucketQuota  *BucketQuotaDiag `json:"bucket_quota,omitempty"`
-	Objects      Objects          `json:"objects,omitempty"`
-	Usage        Usage            `json:"usage,omitempty"`
-	Services     Services         `json:"services,omitempty"`
-	Backend      interface{}      `json:"backend,omitempty"`
-	Servers      []ServerInfo     `json:"servers,omitempty"`
-	TLS          *TLSInfo         `json:"tls"`
-	IsKubernetes *bool            `json:"is_kubernetes"`
-	IsDocker     *bool            `json:"is_docker"`
-	Metrics      *RealtimeMetrics `json:"metrics,omitempty"`
-	TierConfigs  []TierConfig     `json:"tier_configs,omitempty"`
+	Mode         string                         `json:"mode,omitempty"`
+	Domain       []string                       `json:"domain,omitempty"`
+	Region       string                         `json:"region,omitempty"`
+	SQSARN       []string                       `json:"sqsARN,omitempty"`
+	DeploymentID string                         `json:"deploymentID,omitempty"`
+	Buckets      Buckets                        `json:"buckets,omitempty"`
+	BucketQuota  *BucketQuotaDiag               `json:"bucket_quota,omitempty"`
+	Objects      Objects                        `json:"objects,omitempty"`
+	Usage        Usage                          `json:"usage,omitempty"`
+	Services     Services                       `json:"services,omitempty"`
+	Backend      interface{}                    `json:"backend,omitempty"`
+	Servers      []ServerInfo                   `json:"servers,omitempty"`
+	TLS          *TLSInfo                       `json:"tls"`
+	IsKubernetes *bool                          `json:"is_kubernetes"`
+	IsDocker     *bool                          `json:"is_docker"`
+	Metrics      *RealtimeMetrics               `json:"metrics,omitempty"`
+	TierConfigs  []TierConfig                   `json:"tier_configs,omitempty"`
+	Pools        map[int]map[int]ErasureSetInfo `json:"pools,omitempty"`
 }
 
 type TLSInfo struct {
@@ -1491,7 +1561,6 @@ func (adm *AdminClient) ServerHealthInfo(ctx context.Context, types []HealthData
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		closeResponse(resp)
 		return nil, "", httpRespToErrorResponse(resp)
 	}
 

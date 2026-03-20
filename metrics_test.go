@@ -254,6 +254,77 @@ func TestDiskMetricMerge(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "merge SMART data",
+			base: &DiskMetric{
+				NDisks: 1,
+				SMART: &SMARTInfo{
+					N:            1,
+					Status:       map[string]int{"healthy": 1},
+					StatsN:       1,
+					Temperature:  40.0,
+					PowerOnHours: 1000,
+				},
+			},
+			other: &DiskMetric{
+				NDisks: 1,
+				SMART: &SMARTInfo{
+					N:            1,
+					Status:       map[string]int{"healthy": 1, "warning": 1},
+					StatsN:       1,
+					Temperature:  45.0,
+					PowerOnHours: 2000,
+				},
+			},
+			verify: func(t *testing.T, result *DiskMetric) {
+				if result.SMART == nil {
+					t.Error("SMART should not be nil after merge")
+					return
+				}
+				if result.SMART.N != 2 {
+					t.Errorf("SMART.N = %d, want 2", result.SMART.N)
+				}
+				if result.SMART.Status["healthy"] != 2 {
+					t.Errorf("SMART.Status[healthy] = %d, want 2", result.SMART.Status["healthy"])
+				}
+				if result.SMART.Status["warning"] != 1 {
+					t.Errorf("SMART.Status[warning] = %d, want 1", result.SMART.Status["warning"])
+				}
+				if result.SMART.Temperature != 85.0 {
+					t.Errorf("SMART.Temperature = %f, want 85.0", result.SMART.Temperature)
+				}
+				if result.SMART.PowerOnHours != 3000 {
+					t.Errorf("SMART.PowerOnHours = %f, want 3000", result.SMART.PowerOnHours)
+				}
+			},
+		},
+		{
+			name: "merge SMART data into empty base",
+			base: &DiskMetric{
+				NDisks: 1,
+			},
+			other: &DiskMetric{
+				NDisks: 1,
+				SMART: &SMARTInfo{
+					N:           1,
+					Status:      map[string]int{"healthy": 1},
+					StatsN:      1,
+					Temperature: 40.0,
+				},
+			},
+			verify: func(t *testing.T, result *DiskMetric) {
+				if result.SMART == nil {
+					t.Error("SMART should not be nil after merge")
+					return
+				}
+				if result.SMART.N != 1 {
+					t.Errorf("SMART.N = %d, want 1", result.SMART.N)
+				}
+				if result.SMART.Temperature != 40.0 {
+					t.Errorf("SMART.Temperature = %f, want 40.0", result.SMART.Temperature)
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -3064,6 +3135,471 @@ func TestNetMetricsMerge(t *testing.T) {
 					if docker0.TxBytes != 600 {
 						t.Errorf("Interfaces[docker0].TxBytes = %d, want 600", docker0.TxBytes)
 					}
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.base.Merge(tt.other)
+			tt.verify(t, tt.base)
+		})
+	}
+}
+
+// TestSMARTSATAMerge tests SMARTSATA.Merge functionality
+func TestSMARTSATAMerge(t *testing.T) {
+	tests := []struct {
+		name   string
+		base   *SMARTSATA
+		other  *SMARTSATA
+		verify func(t *testing.T, result *SMARTSATA)
+	}{
+		{
+			name:  "merge nil other",
+			base:  &SMARTSATA{N: 1, ReallocatedSectors: 10},
+			other: nil,
+			verify: func(t *testing.T, result *SMARTSATA) {
+				if result.N != 1 {
+					t.Errorf("N = %d, want 1", result.N)
+				}
+				if result.ReallocatedSectors != 10 {
+					t.Errorf("ReallocatedSectors = %d, want 10", result.ReallocatedSectors)
+				}
+			},
+		},
+		{
+			name:  "merge into empty base",
+			base:  &SMARTSATA{},
+			other: &SMARTSATA{N: 1, ReallocatedSectors: 5, PendingSectors: 2, MaxReallocatedSectors: 5},
+			verify: func(t *testing.T, result *SMARTSATA) {
+				if result.N != 1 {
+					t.Errorf("N = %d, want 1", result.N)
+				}
+				if result.ReallocatedSectors != 5 {
+					t.Errorf("ReallocatedSectors = %d, want 5", result.ReallocatedSectors)
+				}
+				if result.MaxReallocatedSectors != 5 {
+					t.Errorf("MaxReallocatedSectors = %d, want 5", result.MaxReallocatedSectors)
+				}
+			},
+		},
+		{
+			name: "merge counts and max values",
+			base: &SMARTSATA{
+				N:                    1,
+				ReallocatedSectors:   10,
+				PendingSectors:       5,
+				OfflineUncorrectable: 2,
+				// Max values are NOT preset - they are auto-populated from raw values since N==1
+			},
+			other: &SMARTSATA{
+				N:                    1,
+				ReallocatedSectors:   15,
+				PendingSectors:       3,
+				OfflineUncorrectable: 1,
+				// Max values are NOT preset - they are auto-populated from raw values since N==1
+			},
+			verify: func(t *testing.T, result *SMARTSATA) {
+				if result.N != 2 {
+					t.Errorf("N = %d, want 2", result.N)
+				}
+				if result.ReallocatedSectors != 25 {
+					t.Errorf("ReallocatedSectors = %d, want 25", result.ReallocatedSectors)
+				}
+				if result.PendingSectors != 8 {
+					t.Errorf("PendingSectors = %d, want 8", result.PendingSectors)
+				}
+				if result.OfflineUncorrectable != 3 {
+					t.Errorf("OfflineUncorrectable = %d, want 3", result.OfflineUncorrectable)
+				}
+				// Max values should be max of raw values from both single-drive entries
+				if result.MaxReallocatedSectors != 15 {
+					t.Errorf("MaxReallocatedSectors = %d, want 15", result.MaxReallocatedSectors)
+				}
+				if result.MaxPendingSectors != 5 {
+					t.Errorf("MaxPendingSectors = %d, want 5", result.MaxPendingSectors)
+				}
+				if result.MaxOfflineUncorrectable != 2 {
+					t.Errorf("MaxOfflineUncorrectable = %d, want 2", result.MaxOfflineUncorrectable)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.base.Merge(tt.other)
+			tt.verify(t, tt.base)
+		})
+	}
+}
+
+// TestSMARTNVMeMerge tests SMARTNVMe.Merge functionality
+func TestSMARTNVMeMerge(t *testing.T) {
+	tests := []struct {
+		name   string
+		base   *SMARTNVMe
+		other  *SMARTNVMe
+		verify func(t *testing.T, result *SMARTNVMe)
+	}{
+		{
+			name:  "merge nil other",
+			base:  &SMARTNVMe{N: 1, AvailableSpare: 90},
+			other: nil,
+			verify: func(t *testing.T, result *SMARTNVMe) {
+				if result.N != 1 {
+					t.Errorf("N = %d, want 1", result.N)
+				}
+				if result.AvailableSpare != 90 {
+					t.Errorf("AvailableSpare = %d, want 90", result.AvailableSpare)
+				}
+			},
+		},
+		{
+			name:  "merge into empty base",
+			base:  &SMARTNVMe{},
+			other: &SMARTNVMe{N: 1, AvailableSpare: 85, PercentageUsed: 15, MinAvailableSpare: 85},
+			verify: func(t *testing.T, result *SMARTNVMe) {
+				if result.N != 1 {
+					t.Errorf("N = %d, want 1", result.N)
+				}
+				if result.AvailableSpare != 85 {
+					t.Errorf("AvailableSpare = %d, want 85", result.AvailableSpare)
+				}
+				if result.MinAvailableSpare != 85 {
+					t.Errorf("MinAvailableSpare = %d, want 85", result.MinAvailableSpare)
+				}
+			},
+		},
+		{
+			name: "merge counts and min/max values",
+			base: &SMARTNVMe{
+				N:                      1,
+				CriticalWarningFlags:   0,
+				AvailableSpare:         90,
+				PercentageUsed:         10,
+				MediaErrors:            0,
+				DataUnitsRead:          1000,
+				DataUnitsWritten:       500,
+				HostReads:              2000,
+				HostWrites:             1000,
+				CtrlBusyTime:           100,
+				UnsafeShutdowns:        2,
+				WarningTempTime:        10,
+				CritCompTime:           5,
+				ThermalTransitionCount: 3,
+				ThermalManagementTime:  60,
+				// Min/Max values are NOT pre-set - they should be auto-populated from raw values since N==1
+			},
+			other: &SMARTNVMe{
+				N:                      1,
+				CriticalWarningFlags:   1,
+				AvailableSpare:         80,
+				PercentageUsed:         20,
+				MediaErrors:            5,
+				DataUnitsRead:          2000,
+				DataUnitsWritten:       1000,
+				HostReads:              3000,
+				HostWrites:             1500,
+				CtrlBusyTime:           150,
+				UnsafeShutdowns:        1,
+				WarningTempTime:        20,
+				CritCompTime:           10,
+				ThermalTransitionCount: 5,
+				ThermalManagementTime:  120,
+				// Min/Max values are NOT pre-set - they should be auto-populated from raw values since N==1
+			},
+			verify: func(t *testing.T, result *SMARTNVMe) {
+				if result.N != 2 {
+					t.Errorf("N = %d, want 2", result.N)
+				}
+				if result.CriticalWarningFlags != 1 {
+					t.Errorf("CriticalWarningFlags = %d, want 1", result.CriticalWarningFlags)
+				}
+				if result.AvailableSpare != 170 {
+					t.Errorf("AvailableSpare = %d, want 170", result.AvailableSpare)
+				}
+				if result.PercentageUsed != 30 {
+					t.Errorf("PercentageUsed = %d, want 30", result.PercentageUsed)
+				}
+				if result.MediaErrors != 5 {
+					t.Errorf("MediaErrors = %d, want 5", result.MediaErrors)
+				}
+				if result.DataUnitsRead != 3000 {
+					t.Errorf("DataUnitsRead = %f, want 3000", result.DataUnitsRead)
+				}
+				if result.DataUnitsWritten != 1500 {
+					t.Errorf("DataUnitsWritten = %f, want 1500", result.DataUnitsWritten)
+				}
+				if result.HostReads != 5000 {
+					t.Errorf("HostReads = %f, want 5000", result.HostReads)
+				}
+				if result.HostWrites != 2500 {
+					t.Errorf("HostWrites = %f, want 2500", result.HostWrites)
+				}
+				if result.CtrlBusyTime != 250 {
+					t.Errorf("CtrlBusyTime = %f, want 250", result.CtrlBusyTime)
+				}
+				if result.UnsafeShutdowns != 3 {
+					t.Errorf("UnsafeShutdowns = %d, want 3", result.UnsafeShutdowns)
+				}
+				if result.WarningTempTime != 30 {
+					t.Errorf("WarningTempTime = %f, want 30", result.WarningTempTime)
+				}
+				if result.CritCompTime != 15 {
+					t.Errorf("CritCompTime = %f, want 15", result.CritCompTime)
+				}
+				if result.ThermalTransitionCount != 8 {
+					t.Errorf("ThermalTransitionCount = %d, want 8", result.ThermalTransitionCount)
+				}
+				if result.ThermalManagementTime != 180 {
+					t.Errorf("ThermalManagementTime = %d, want 180", result.ThermalManagementTime)
+				}
+				if result.MinAvailableSpare != 80 {
+					t.Errorf("MinAvailableSpare = %d, want 80", result.MinAvailableSpare)
+				}
+				if result.MaxPercentageUsed != 20 {
+					t.Errorf("MaxPercentageUsed = %d, want 20", result.MaxPercentageUsed)
+				}
+				if result.MaxMediaErrors != 5 {
+					t.Errorf("MaxMediaErrors = %d, want 5", result.MaxMediaErrors)
+				}
+				if result.MaxDataUnitsRead != 2000 {
+					t.Errorf("MaxDataUnitsRead = %f, want 2000", result.MaxDataUnitsRead)
+				}
+				if result.MaxDataUnitsWritten != 1000 {
+					t.Errorf("MaxDataUnitsWritten = %f, want 1000", result.MaxDataUnitsWritten)
+				}
+				if result.MaxHostReads != 3000 {
+					t.Errorf("MaxHostReads = %f, want 3000", result.MaxHostReads)
+				}
+				if result.MaxHostWrites != 1500 {
+					t.Errorf("MaxHostWrites = %f, want 1500", result.MaxHostWrites)
+				}
+				if result.MaxCtrlBusyTime != 150 {
+					t.Errorf("MaxCtrlBusyTime = %f, want 150", result.MaxCtrlBusyTime)
+				}
+				if result.MaxUnsafeShutdowns != 2 {
+					t.Errorf("MaxUnsafeShutdowns = %d, want 2", result.MaxUnsafeShutdowns)
+				}
+				if result.MaxWarningTempTime != 20 {
+					t.Errorf("MaxWarningTempTime = %f, want 20", result.MaxWarningTempTime)
+				}
+				if result.MaxCritCompTime != 10 {
+					t.Errorf("MaxCritCompTime = %f, want 10", result.MaxCritCompTime)
+				}
+				if result.MaxThermalTransitionCount != 5 {
+					t.Errorf("MaxThermalTransitionCount = %d, want 5", result.MaxThermalTransitionCount)
+				}
+				if result.MaxThermalManagementTime != 120 {
+					t.Errorf("MaxThermalManagementTime = %d, want 120", result.MaxThermalManagementTime)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.base.Merge(tt.other)
+			tt.verify(t, tt.base)
+		})
+	}
+}
+
+// TestSMARTInfoMerge tests SMARTInfo.Merge functionality
+func TestSMARTInfoMerge(t *testing.T) {
+	tests := []struct {
+		name   string
+		base   *SMARTInfo
+		other  *SMARTInfo
+		verify func(t *testing.T, result *SMARTInfo)
+	}{
+		{
+			name:  "merge nil other",
+			base:  &SMARTInfo{N: 1, Temperature: 40.0},
+			other: nil,
+			verify: func(t *testing.T, result *SMARTInfo) {
+				if result.N != 1 {
+					t.Errorf("N = %d, want 1", result.N)
+				}
+				if result.Temperature != 40.0 {
+					t.Errorf("Temperature = %f, want 40.0", result.Temperature)
+				}
+			},
+		},
+		{
+			name:  "merge into empty base",
+			base:  &SMARTInfo{},
+			other: &SMARTInfo{N: 1, Temperature: 45.0, StatsN: 1, MaxTemperature: 45.0},
+			verify: func(t *testing.T, result *SMARTInfo) {
+				if result.N != 1 {
+					t.Errorf("N = %d, want 1", result.N)
+				}
+				if result.Temperature != 45.0 {
+					t.Errorf("Temperature = %f, want 45.0", result.Temperature)
+				}
+				if result.MaxTemperature != 45.0 {
+					t.Errorf("MaxTemperature = %f, want 45.0", result.MaxTemperature)
+				}
+			},
+		},
+		{
+			name: "merge Status map",
+			base: &SMARTInfo{
+				N:      1,
+				Status: map[string]int{"healthy": 2},
+			},
+			other: &SMARTInfo{
+				N:      1,
+				Status: map[string]int{"healthy": 1, "warning": 1},
+			},
+			verify: func(t *testing.T, result *SMARTInfo) {
+				if result.N != 2 {
+					t.Errorf("N = %d, want 2", result.N)
+				}
+				if result.Status["healthy"] != 3 {
+					t.Errorf("Status[healthy] = %d, want 3", result.Status["healthy"])
+				}
+				if result.Status["warning"] != 1 {
+					t.Errorf("Status[warning] = %d, want 1", result.Status["warning"])
+				}
+			},
+		},
+		{
+			name: "merge accumulated values and max tracking",
+			base: &SMARTInfo{
+				N:               1,
+				StatsN:          1,
+				Temperature:     40.0,
+				PowerOnHours:    1000,
+				PowerCycles:     100,
+				FailureRisk:     0.01,
+				MaxTemperature:  40.0,
+				MaxPowerOnHours: 1000,
+			},
+			other: &SMARTInfo{
+				N:               1,
+				StatsN:          1,
+				Temperature:     50.0,
+				PowerOnHours:    2000,
+				PowerCycles:     200,
+				FailureRisk:     0.02,
+				MaxTemperature:  55.0,
+				MaxPowerOnHours: 2000,
+			},
+			verify: func(t *testing.T, result *SMARTInfo) {
+				if result.N != 2 {
+					t.Errorf("N = %d, want 2", result.N)
+				}
+				if result.StatsN != 2 {
+					t.Errorf("StatsN = %d, want 2", result.StatsN)
+				}
+				if result.Temperature != 90.0 {
+					t.Errorf("Temperature = %f, want 90.0", result.Temperature)
+				}
+				if result.PowerOnHours != 3000 {
+					t.Errorf("PowerOnHours = %f, want 3000", result.PowerOnHours)
+				}
+				if result.PowerCycles != 300 {
+					t.Errorf("PowerCycles = %d, want 300", result.PowerCycles)
+				}
+				if result.FailureRisk != 0.03 {
+					t.Errorf("FailureRisk = %f, want 0.03", result.FailureRisk)
+				}
+				if result.MaxTemperature != 55.0 {
+					t.Errorf("MaxTemperature = %f, want 55.0", result.MaxTemperature)
+				}
+				if result.MaxPowerOnHours != 2000 {
+					t.Errorf("MaxPowerOnHours = %f, want 2000", result.MaxPowerOnHours)
+				}
+			},
+		},
+		{
+			name: "merge with NVMe data",
+			base: &SMARTInfo{
+				N: 1,
+				NVMe: &SMARTNVMe{
+					N:              1,
+					AvailableSpare: 90,
+				},
+			},
+			other: &SMARTInfo{
+				N: 1,
+				NVMe: &SMARTNVMe{
+					N:              1,
+					AvailableSpare: 85,
+				},
+			},
+			verify: func(t *testing.T, result *SMARTInfo) {
+				if result.N != 2 {
+					t.Errorf("N = %d, want 2", result.N)
+				}
+				if result.NVMe == nil {
+					t.Error("NVMe should not be nil")
+					return
+				}
+				if result.NVMe.N != 2 {
+					t.Errorf("NVMe.N = %d, want 2", result.NVMe.N)
+				}
+				if result.NVMe.AvailableSpare != 175 {
+					t.Errorf("NVMe.AvailableSpare = %d, want 175", result.NVMe.AvailableSpare)
+				}
+			},
+		},
+		{
+			name: "merge with SATA data",
+			base: &SMARTInfo{
+				N: 1,
+				SATA: &SMARTSATA{
+					N:                  1,
+					ReallocatedSectors: 5,
+				},
+			},
+			other: &SMARTInfo{
+				N: 1,
+				SATA: &SMARTSATA{
+					N:                  1,
+					ReallocatedSectors: 10,
+				},
+			},
+			verify: func(t *testing.T, result *SMARTInfo) {
+				if result.N != 2 {
+					t.Errorf("N = %d, want 2", result.N)
+				}
+				if result.SATA == nil {
+					t.Error("SATA should not be nil")
+					return
+				}
+				if result.SATA.N != 2 {
+					t.Errorf("SATA.N = %d, want 2", result.SATA.N)
+				}
+				if result.SATA.ReallocatedSectors != 15 {
+					t.Errorf("SATA.ReallocatedSectors = %d, want 15", result.SATA.ReallocatedSectors)
+				}
+			},
+		},
+		{
+			name: "merge NVMe into empty base",
+			base: &SMARTInfo{N: 1},
+			other: &SMARTInfo{
+				N: 1,
+				NVMe: &SMARTNVMe{
+					N:              1,
+					AvailableSpare: 90,
+				},
+			},
+			verify: func(t *testing.T, result *SMARTInfo) {
+				if result.NVMe == nil {
+					t.Error("NVMe should not be nil")
+					return
+				}
+				if result.NVMe.N != 1 {
+					t.Errorf("NVMe.N = %d, want 1", result.NVMe.N)
+				}
+				if result.NVMe.AvailableSpare != 90 {
+					t.Errorf("NVMe.AvailableSpare = %d, want 90", result.NVMe.AvailableSpare)
 				}
 			},
 		},

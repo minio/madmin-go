@@ -47,6 +47,7 @@ func (node *DiskMetricsNavigator) GetOpts() madmin.MetricsOptions {
 // NewDiskMetricsNavigator creates a new enhanced disk metrics navigator
 func NewDiskMetricsNavigator(disk *madmin.DiskMetric, parent MetricNode, path string, opts madmin.MetricsOptions) *DiskMetricsNavigator {
 	opts.Type |= madmin.MetricsDisk
+	opts.Flags |= madmin.MetricsSMART
 	return &DiskMetricsNavigator{disk: disk, parent: parent, path: path, opts: opts}
 }
 
@@ -58,23 +59,26 @@ func (node *DiskMetricsNavigator) GetChildren() []MetricChild {
 	var children []MetricChild
 
 	// Always available basic operations
-	children = append(children, MetricChild{Name: "ops_last_minute", Description: "Last minute disk operations by type"})
-	children = append(children, MetricChild{Name: "ops_last_day", Description: "Last day segmented disk operations"})
-	children = append(children, MetricChild{Name: "ops_lifetime", Description: "Lifetime disk operations by type"})
+	children = append(children, MetricChild{Name: "ops_last_minute", Description: "Last minute drive operations by type"})
+	children = append(children, MetricChild{Name: "ops_last_day", Description: "Last day segmented drive operations"})
+	children = append(children, MetricChild{Name: "ops_lifetime", Description: "Lifetime drive operations by type"})
 
 	// IO statistics - always available as they use the whole disk object
 	children = append(children, MetricChild{Name: "io_last_minute", Description: "Last minute IO statistics (real-time)"})
 	children = append(children, MetricChild{Name: "io_last_day", Description: "Daily IO statistics (historical)"})
 
 	// Space information - always available as it's a direct field
-	children = append(children, MetricChild{Name: "space", Description: "Disk space information"})
+	children = append(children, MetricChild{Name: "space", Description: "Drive space information"})
 
 	// Optional features - only add if data exists
 	if node.disk.HealingInfo != nil {
-		children = append(children, MetricChild{Name: "healing", Description: "Disk healing information"})
+		children = append(children, MetricChild{Name: "healing", Description: "Drive healing information"})
 	}
 	if node.disk.Cache != nil {
-		children = append(children, MetricChild{Name: "cache", Description: "Disk cache statistics"})
+		children = append(children, MetricChild{Name: "cache", Description: "Drive cache statistics"})
+	}
+	if node.disk.SMART != nil {
+		children = append(children, MetricChild{Name: "smart", Description: "S.M.A.R.T. health information"})
 	}
 
 	return children
@@ -82,7 +86,7 @@ func (node *DiskMetricsNavigator) GetChildren() []MetricChild {
 
 func (node *DiskMetricsNavigator) GetLeafData() map[string]string {
 	if node.disk == nil {
-		return map[string]string{"Error": "disk metrics not available"}
+		return map[string]string{"Error": "drive metrics not available"}
 	}
 
 	data := map[string]string{}
@@ -120,7 +124,7 @@ func (node *DiskMetricsNavigator) GetLeafData() map[string]string {
 		locationParts = append(locationParts, fmt.Sprintf("Set %d", *node.disk.SetIdx))
 	}
 	if node.disk.DiskIdx != nil {
-		locationParts = append(locationParts, fmt.Sprintf("Disk %d", *node.disk.DiskIdx))
+		locationParts = append(locationParts, fmt.Sprintf("Drive %d", *node.disk.DiskIdx))
 	}
 	if len(locationParts) > 0 {
 		data["Location"] = strings.Join(locationParts, ", ")
@@ -247,7 +251,7 @@ func (node *DiskMetricsNavigator) ShouldPauseRefresh() bool {
 
 func (node *DiskMetricsNavigator) GetChild(name string) (MetricNode, error) {
 	if node.disk == nil {
-		return nil, fmt.Errorf("no disk data available")
+		return nil, fmt.Errorf("no drive data available")
 	}
 
 	switch name {
@@ -267,6 +271,8 @@ func (node *DiskMetricsNavigator) GetChild(name string) (MetricNode, error) {
 		return NewDiskHealingNode(node.disk.HealingInfo, node, fmt.Sprintf("%s/healing", node.path)), nil
 	case "cache":
 		return NewDiskCacheNode(node.disk.Cache, node, fmt.Sprintf("%s/cache", node.path)), nil
+	case "smart":
+		return NewDiskSMARTNode(node.disk.SMART, node, fmt.Sprintf("%s/smart", node.path)), nil
 	default:
 		return nil, fmt.Errorf("child not found: %s", name)
 	}
@@ -299,7 +305,7 @@ func (node *DiskSpaceNode) GetLeafData() map[string]string {
 	data := map[string]string{}
 
 	// Space Overview
-	data["Disks"] = fmt.Sprintf("%d drives", node.space.N)
+	data["Drives"] = fmt.Sprintf("%d drives", node.space.N)
 	totalCapacity := node.space.Used.Total + node.space.Free.Total
 	if totalCapacity > 0 {
 		usagePercent := float64(node.space.Used.Total) / float64(totalCapacity) * 100
@@ -323,13 +329,13 @@ func (node *DiskSpaceNode) GetLeafData() map[string]string {
 
 	// Space Distribution
 	if node.space.Used.Total > 0 {
-		data["Used space"] = fmt.Sprintf("%s (min: %s, max: %s per disk)",
+		data["Used space"] = fmt.Sprintf("%s (min: %s, max: %s per drive)",
 			humanize.Bytes(node.space.Used.Total),
 			humanize.Bytes(node.space.Used.Min),
 			humanize.Bytes(node.space.Used.Max))
 	}
 	if node.space.Free.Total > 0 {
-		data["Free space"] = fmt.Sprintf("%s (min: %s, max: %s per disk)",
+		data["Free space"] = fmt.Sprintf("%s (min: %s, max: %s per drive)",
 			humanize.Bytes(node.space.Free.Total),
 			humanize.Bytes(node.space.Free.Min),
 			humanize.Bytes(node.space.Free.Max))
@@ -337,13 +343,13 @@ func (node *DiskSpaceNode) GetLeafData() map[string]string {
 
 	// Inode Usage
 	if node.space.UsedInodes.Total > 0 {
-		data["Used inodes"] = fmt.Sprintf("%s total (min: %s, max: %s per disk)",
+		data["Used inodes"] = fmt.Sprintf("%s total (min: %s, max: %s per drive)",
 			humanize.Comma(int64(node.space.UsedInodes.Total)),
 			humanize.Comma(int64(node.space.UsedInodes.Min)),
 			humanize.Comma(int64(node.space.UsedInodes.Max)))
 	}
 	if node.space.FreeInodes.Total > 0 {
-		data["Free inodes"] = fmt.Sprintf("%s total (min: %s, max: %s per disk)",
+		data["Free inodes"] = fmt.Sprintf("%s total (min: %s, max: %s per drive)",
 			humanize.Comma(int64(node.space.FreeInodes.Total)),
 			humanize.Comma(int64(node.space.FreeInodes.Min)),
 			humanize.Comma(int64(node.space.FreeInodes.Max)))
@@ -362,7 +368,7 @@ func (node *DiskSpaceNode) ShouldPauseRefresh() bool {
 }
 
 func (node *DiskSpaceNode) GetChild(_ string) (MetricNode, error) {
-	return nil, fmt.Errorf("disk space is a leaf node - no children available")
+	return nil, fmt.Errorf("drive space is a leaf node - no children available")
 }
 
 // DiskLifetimeOpsNode handles navigation for lifetime disk operations
@@ -461,7 +467,7 @@ func (node *DiskLifetimeOpsNode) GetChild(name string) (MetricNode, error) {
 	if action, exists := node.ops[name]; exists {
 		return NewDiskActionNode(name, &action, node, fmt.Sprintf("%s/%s", node.path, name)), nil
 	}
-	return nil, fmt.Errorf("disk operation not found: %s", name)
+	return nil, fmt.Errorf("drive operation not found: %s", name)
 }
 
 // DiskLastMinuteNode handles navigation for last minute disk operations
@@ -561,7 +567,7 @@ func (node *DiskLastMinuteNode) GetChild(name string) (MetricNode, error) {
 	if action, exists := node.ops[name]; exists {
 		return NewDiskActionNode(name, &action, node, fmt.Sprintf("%s/%s", node.path, name)), nil
 	}
-	return nil, fmt.Errorf("disk operation not found: %s", name)
+	return nil, fmt.Errorf("drive operation not found: %s", name)
 }
 
 // DiskLastDayNode handles navigation for segmented last day operations
@@ -746,7 +752,7 @@ func (node *DiskIOStatsNode) GetChildren() []MetricChild {
 
 func (node *DiskIOStatsNode) GetLeafData() map[string]string {
 	if node.disk == nil {
-		return map[string]string{"Error": "disk metrics not available"}
+		return map[string]string{"Error": "drive metrics not available"}
 	}
 
 	data := map[string]string{}
@@ -786,7 +792,7 @@ func (node *DiskIOStatsNode) GetChild(name string) (MetricNode, error) {
 	case "daily":
 		return NewDiskIODailyStatsNode(node.disk, node, fmt.Sprintf("%s/daily", node.path)), nil
 	default:
-		return nil, fmt.Errorf("disk io component not found: %s", name)
+		return nil, fmt.Errorf("drive io component not found: %s", name)
 	}
 }
 
@@ -809,7 +815,7 @@ func (node *DiskIOMinuteStatsNode) GetChildren() []MetricChild { return []Metric
 
 func (node *DiskIOMinuteStatsNode) GetLeafData() map[string]string {
 	if node.disk == nil {
-		return map[string]string{"Error": "disk metrics not available"}
+		return map[string]string{"Error": "drive metrics not available"}
 	}
 
 	data := map[string]string{}
@@ -935,7 +941,7 @@ func (node *DiskIODailyStatsNode) GetChildren() []MetricChild {
 
 func (node *DiskIODailyStatsNode) GetLeafData() map[string]string {
 	if node.disk == nil {
-		return map[string]string{"Error": "disk metrics not available"}
+		return map[string]string{"Error": "drive metrics not available"}
 	}
 
 	data := map[string]string{}
@@ -1023,7 +1029,7 @@ func (node *DiskIODailyStatsNode) ShouldPauseRefresh() bool {
 
 func (node *DiskIODailyStatsNode) GetChild(name string) (MetricNode, error) {
 	if node.disk == nil {
-		return nil, fmt.Errorf("no disk metrics available")
+		return nil, fmt.Errorf("no drive metrics available")
 	}
 
 	dailyStats := &node.disk.IOStatsDay
@@ -1132,7 +1138,7 @@ func (node *DiskHealingNode) ShouldPauseRefresh() bool {
 }
 
 func (node *DiskHealingNode) GetChild(_ string) (MetricNode, error) {
-	return nil, fmt.Errorf("disk healing is a leaf node")
+	return nil, fmt.Errorf("drive healing is a leaf node")
 }
 
 // DiskLastDayOperationNode handles navigation for a specific operation type within segmented last day operations
@@ -1636,7 +1642,349 @@ func (node *DiskCacheNode) ShouldPauseRefresh() bool {
 }
 
 func (node *DiskCacheNode) GetChild(_ string) (MetricNode, error) {
-	return nil, fmt.Errorf("disk cache is a leaf node")
+	return nil, fmt.Errorf("drive cache is a leaf node")
+}
+
+// DiskSMARTNode handles navigation for S.M.A.R.T. health information
+type DiskSMARTNode struct {
+	smart  *madmin.SMARTInfo
+	parent MetricNode
+	path   string
+}
+
+func (node *DiskSMARTNode) GetOpts() madmin.MetricsOptions {
+	return getNodeOpts(node)
+}
+
+func NewDiskSMARTNode(smart *madmin.SMARTInfo, parent MetricNode, path string) *DiskSMARTNode {
+	return &DiskSMARTNode{smart: smart, parent: parent, path: path}
+}
+
+func (node *DiskSMARTNode) GetChildren() []MetricChild { return []MetricChild{} }
+
+func (node *DiskSMARTNode) GetLeafData() map[string]string {
+	if node.smart == nil {
+		return map[string]string{"Status": "No S.M.A.R.T. data available"}
+	}
+
+	data := map[string]string{}
+
+	// Health Status Overview
+	if node.smart.N > 0 {
+		data["00:Drives"] = fmt.Sprintf("%d drives total", node.smart.N)
+	}
+
+	if len(node.smart.Status) > 0 {
+		// Create a slice of status entries for sorting
+		type statusEntry struct {
+			status string
+			count  int
+		}
+
+		entries := make([]statusEntry, 0, len(node.smart.Status))
+		for status, count := range node.smart.Status {
+			entries = append(entries, statusEntry{status: status, count: count})
+		}
+
+		// Sort by count (descending), then by status name (ascending)
+		sort.Slice(entries, func(i, j int) bool {
+			if entries[i].count != entries[j].count {
+				return entries[i].count > entries[j].count // Descending by count
+			}
+			return entries[i].status < entries[j].status // Ascending by name
+		})
+
+		// Build status details
+		statusDetails := make([]string, 0, len(entries))
+		for _, entry := range entries {
+			if entry.count > 0 {
+				statusDetails = append(statusDetails, fmt.Sprintf("%d %s", entry.count, entry.status))
+			}
+		}
+
+		if len(statusDetails) > 0 {
+			data["01:Health Status"] = strings.Join(statusDetails, ", ")
+		}
+	}
+
+	// Common SMART Metrics (if we have stats)
+	if node.smart.StatsN > 0 {
+		data["02:Stats Available"] = fmt.Sprintf("Detailed stats from %d drives", node.smart.StatsN)
+
+		// Temperature
+		if node.smart.Temperature > 0 {
+			avgTemp := node.smart.Temperature / float64(node.smart.StatsN)
+			tempStr := ""
+			if node.smart.StatsN == 1 {
+				// For single drive, just show the temperature without "average"
+				tempStr = fmt.Sprintf("%.1f°C", avgTemp)
+			} else {
+				// For multiple drives, show average and max if available
+				tempStr = fmt.Sprintf("%.1f°C average", avgTemp)
+				if node.smart.MaxTemperature > 0 {
+					tempStr += fmt.Sprintf(", %.1f°C max", node.smart.MaxTemperature)
+				}
+			}
+			data["Temperature"] = tempStr
+		}
+
+		// Power-on hours
+		if node.smart.PowerOnHours > 0 {
+			avgHours := node.smart.PowerOnHours / float64(node.smart.StatsN)
+			// Convert to more readable units
+			avgDays := avgHours / 24
+			hoursStr := ""
+
+			// Format based on single vs multiple drives
+			avgLabel := ""
+			if node.smart.StatsN > 1 {
+				avgLabel = " average"
+			}
+
+			if avgDays > 365 {
+				years := avgDays / 365
+				hoursStr = fmt.Sprintf("%.1f years%s", years, avgLabel)
+			} else if avgDays > 30 {
+				months := avgDays / 30
+				hoursStr = fmt.Sprintf("%.1f months%s", months, avgLabel)
+			} else if avgDays > 1 {
+				hoursStr = fmt.Sprintf("%.1f days%s", avgDays, avgLabel)
+			} else {
+				hoursStr = fmt.Sprintf("%.1f hours%s", avgHours, avgLabel)
+			}
+
+			// Show max for multiple drives if available
+			if node.smart.StatsN > 1 && node.smart.MaxPowerOnHours > 0 {
+				maxDays := node.smart.MaxPowerOnHours / 24
+				if maxDays > 365 {
+					years := maxDays / 365
+					hoursStr += fmt.Sprintf(", %.1f years max", years)
+				} else if maxDays > 30 {
+					months := maxDays / 30
+					hoursStr += fmt.Sprintf(", %.1f months max", months)
+				} else if maxDays > 1 {
+					hoursStr += fmt.Sprintf(", %.1f days max", maxDays)
+				} else {
+					hoursStr += fmt.Sprintf(", %.1f hours max", node.smart.MaxPowerOnHours)
+				}
+			}
+			data["Power-On Time"] = hoursStr
+		}
+
+		// Power cycles
+		if node.smart.PowerCycles > 0 {
+			avgCycles := float64(node.smart.PowerCycles) / float64(node.smart.StatsN)
+			cyclesStr := ""
+			if node.smart.StatsN == 1 {
+				cyclesStr = fmt.Sprintf("%.0f", avgCycles)
+			} else {
+				cyclesStr = fmt.Sprintf("%.0f average", avgCycles)
+				if node.smart.MaxPowerCycles > 0 {
+					cyclesStr += fmt.Sprintf(", %d max", node.smart.MaxPowerCycles)
+				}
+			}
+			data["Power Cycles"] = cyclesStr
+		}
+
+		// Failure risk
+		if node.smart.FailureRisk > 0 {
+			avgRisk := (node.smart.FailureRisk / float64(node.smart.StatsN)) * 100
+			riskStr := ""
+			if node.smart.StatsN == 1 {
+				riskStr = fmt.Sprintf("%.2f%% annual failure rate", avgRisk)
+			} else {
+				riskStr = fmt.Sprintf("%.2f%% average annual failure rate", avgRisk)
+				if node.smart.MaxFailureRisk > 0 {
+					riskStr += fmt.Sprintf(", %.2f%% max", node.smart.MaxFailureRisk*100)
+				}
+			}
+			data["Failure Risk"] = riskStr
+		}
+	}
+
+	// NVMe-specific information
+	if node.smart.NVMe != nil && node.smart.NVMe.N > 0 {
+		nvme := node.smart.NVMe
+		data["10:NVMe Drives"] = fmt.Sprintf("%d NVMe drives with detailed stats", nvme.N)
+
+		// Critical warnings
+		if nvme.CriticalWarningFlags > 0 {
+			warnings := []string{}
+			if nvme.CriticalWarningFlags&0x01 != 0 {
+				warnings = append(warnings, "spare below threshold")
+			}
+			if nvme.CriticalWarningFlags&0x02 != 0 {
+				warnings = append(warnings, "temperature threshold exceeded")
+			}
+			if nvme.CriticalWarningFlags&0x04 != 0 {
+				warnings = append(warnings, "reliability degraded")
+			}
+			if nvme.CriticalWarningFlags&0x08 != 0 {
+				warnings = append(warnings, "read-only mode")
+			}
+			if nvme.CriticalWarningFlags&0x10 != 0 {
+				warnings = append(warnings, "volatile memory backup failed")
+			}
+			if nvme.CriticalWarningFlags&0x20 != 0 {
+				warnings = append(warnings, "persistent memory read-only")
+			}
+			if len(warnings) > 0 {
+				data["11:NVMe Critical Warnings"] = strings.Join(warnings, ", ")
+			}
+		}
+
+		// Available spare
+		if nvme.AvailableSpare > 0 || nvme.MinAvailableSpare > 0 {
+			avgSpare := float64(nvme.AvailableSpare) / float64(nvme.N)
+			spareStr := fmt.Sprintf("%.0f%% average", avgSpare)
+			if nvme.N > 1 && nvme.MinAvailableSpare > 0 {
+				spareStr += fmt.Sprintf(", %d%% min", nvme.MinAvailableSpare)
+			}
+			data["12:NVMe Available Spare"] = spareStr
+		}
+
+		// Percentage used (endurance)
+		if nvme.PercentageUsed > 0 || nvme.MaxPercentageUsed > 0 {
+			avgUsed := float64(nvme.PercentageUsed) / float64(nvme.N)
+			usedStr := fmt.Sprintf("%.0f%% average endurance used", avgUsed)
+			if nvme.N > 1 && nvme.MaxPercentageUsed > 0 {
+				usedStr += fmt.Sprintf(", %d%% max", nvme.MaxPercentageUsed)
+			}
+			data["13:NVMe Endurance"] = usedStr
+		}
+
+		// Media errors
+		if nvme.MediaErrors > 0 || nvme.MaxMediaErrors > 0 {
+			avgErrors := float64(nvme.MediaErrors) / float64(nvme.N)
+			errStr := fmt.Sprintf("%.0f average", avgErrors)
+			if nvme.N > 1 && nvme.MaxMediaErrors > 0 {
+				errStr += fmt.Sprintf(", %d max", nvme.MaxMediaErrors)
+			}
+			data["14:NVMe Media Errors"] = errStr
+		}
+
+		// Data units read/written (convert from 1000s of 512-byte units to readable size)
+		if nvme.DataUnitsRead > 0 || nvme.DataUnitsWritten > 0 {
+			// Each unit is 512KB (1000 * 512 bytes)
+			avgReadBytes := (nvme.DataUnitsRead / float64(nvme.N)) * 1000 * 512
+			avgWriteBytes := (nvme.DataUnitsWritten / float64(nvme.N)) * 1000 * 512
+
+			dataStr := fmt.Sprintf("Read: %s, Written: %s average",
+				humanize.Bytes(uint64(avgReadBytes)),
+				humanize.Bytes(uint64(avgWriteBytes)))
+			data["15:NVMe Data Transfer"] = dataStr
+		}
+
+		// Host operations
+		if nvme.HostReads > 0 || nvme.HostWrites > 0 {
+			avgReads := nvme.HostReads / float64(nvme.N)
+			avgWrites := nvme.HostWrites / float64(nvme.N)
+			opsStr := fmt.Sprintf("Reads: %.0f, Writes: %.0f average", avgReads, avgWrites)
+			data["16:NVMe Host Operations"] = opsStr
+		}
+
+		// Controller busy time
+		if nvme.CtrlBusyTime > 0 {
+			avgBusyMinutes := nvme.CtrlBusyTime / float64(nvme.N)
+			busyStr := ""
+			if avgBusyMinutes > 60*24 {
+				busyDays := avgBusyMinutes / (60 * 24)
+				busyStr = fmt.Sprintf("%.1f days average", busyDays)
+			} else if avgBusyMinutes > 60 {
+				busyHours := avgBusyMinutes / 60
+				busyStr = fmt.Sprintf("%.1f hours average", busyHours)
+			} else {
+				busyStr = fmt.Sprintf("%.1f minutes average", avgBusyMinutes)
+			}
+			data["17:NVMe Controller Busy"] = busyStr
+		}
+
+		// Unsafe shutdowns
+		if nvme.UnsafeShutdowns > 0 {
+			avgShutdowns := float64(nvme.UnsafeShutdowns) / float64(nvme.N)
+			shutStr := fmt.Sprintf("%.0f average", avgShutdowns)
+			if nvme.N > 1 && nvme.MaxUnsafeShutdowns > 0 {
+				shutStr += fmt.Sprintf(", %d max", nvme.MaxUnsafeShutdowns)
+			}
+			data["18:NVMe Unsafe Shutdowns"] = shutStr
+		}
+
+		// Temperature time warnings
+		if nvme.WarningTempTime > 0 || nvme.CritCompTime > 0 {
+			tempTimeStr := ""
+			if nvme.WarningTempTime > 0 {
+				avgWarnMinutes := nvme.WarningTempTime / float64(nvme.N)
+				if avgWarnMinutes > 60 {
+					tempTimeStr = fmt.Sprintf("Warning: %.1f hours", avgWarnMinutes/60)
+				} else {
+					tempTimeStr = fmt.Sprintf("Warning: %.1f minutes", avgWarnMinutes)
+				}
+			}
+			if nvme.CritCompTime > 0 {
+				avgCritMinutes := nvme.CritCompTime / float64(nvme.N)
+				if tempTimeStr != "" {
+					tempTimeStr += ", "
+				}
+				if avgCritMinutes > 60 {
+					tempTimeStr += fmt.Sprintf("Critical: %.1f hours", avgCritMinutes/60)
+				} else {
+					tempTimeStr += fmt.Sprintf("Critical: %.1f minutes", avgCritMinutes)
+				}
+			}
+			data["19:NVMe Temperature Time"] = tempTimeStr
+		}
+	}
+
+	// SATA-specific information
+	if node.smart.SATA != nil && node.smart.SATA.N > 0 {
+		sata := node.smart.SATA
+		data["20:SATA Drives"] = fmt.Sprintf("%d SATA drives with detailed stats", sata.N)
+
+		// Reallocated sectors
+		if sata.ReallocatedSectors > 0 || sata.MaxReallocatedSectors > 0 {
+			avgReallocated := float64(sata.ReallocatedSectors) / float64(sata.N)
+			reallocStr := fmt.Sprintf("%.0f average", avgReallocated)
+			if sata.N > 1 && sata.MaxReallocatedSectors > 0 {
+				reallocStr += fmt.Sprintf(", %d max", sata.MaxReallocatedSectors)
+			}
+			data["21:SATA Reallocated Sectors"] = reallocStr
+		}
+
+		// Pending sectors
+		if sata.PendingSectors > 0 || sata.MaxPendingSectors > 0 {
+			avgPending := float64(sata.PendingSectors) / float64(sata.N)
+			pendingStr := fmt.Sprintf("%.0f average", avgPending)
+			if sata.N > 1 && sata.MaxPendingSectors > 0 {
+				pendingStr += fmt.Sprintf(", %d max", sata.MaxPendingSectors)
+			}
+			data["22:SATA Pending Sectors"] = pendingStr
+		}
+
+		// Offline uncorrectable
+		if sata.OfflineUncorrectable > 0 || sata.MaxOfflineUncorrectable > 0 {
+			avgUncorrectable := float64(sata.OfflineUncorrectable) / float64(sata.N)
+			uncorrectableStr := fmt.Sprintf("%.0f average", avgUncorrectable)
+			if sata.N > 1 && sata.MaxOfflineUncorrectable > 0 {
+				uncorrectableStr += fmt.Sprintf(", %d max", sata.MaxOfflineUncorrectable)
+			}
+			data["23:SATA Offline Uncorrectable"] = uncorrectableStr
+		}
+	}
+
+	return data
+}
+
+func (node *DiskSMARTNode) GetMetricType() madmin.MetricType   { return madmin.MetricsDisk }
+func (node *DiskSMARTNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsSMART }
+func (node *DiskSMARTNode) GetParent() MetricNode              { return node.parent }
+func (node *DiskSMARTNode) GetPath() string                    { return node.path }
+
+func (node *DiskSMARTNode) ShouldPauseRefresh() bool {
+	return false
+}
+
+func (node *DiskSMARTNode) GetChild(_ string) (MetricNode, error) {
+	return nil, fmt.Errorf("disk S.M.A.R.T. is a leaf node")
 }
 
 // DiskSummaryNode provides aggregated disk statistics
@@ -1658,13 +2006,13 @@ func (node *DiskSummaryNode) GetChildren() []MetricChild { return []MetricChild{
 
 func (node *DiskSummaryNode) GetLeafData() map[string]string {
 	if node.disk == nil {
-		return map[string]string{"Error": "disk metrics not available"}
+		return map[string]string{"Error": "drive metrics not available"}
 	}
 
 	data := map[string]string{}
 
 	// Executive Summary Header
-	data["Disk Summary"] = fmt.Sprintf("Collected at %s",
+	data["Drive Summary"] = fmt.Sprintf("Collected at %s",
 		node.disk.CollectedAt.Format("2006-01-02 15:04:05"))
 
 	// Cluster Health Overview
@@ -1814,7 +2162,7 @@ func (node *DiskSummaryNode) ShouldPauseRefresh() bool {
 }
 
 func (node *DiskSummaryNode) GetChild(_ string) (MetricNode, error) {
-	return nil, fmt.Errorf("disk summary is a leaf node")
+	return nil, fmt.Errorf("drive summary is a leaf node")
 }
 
 // DiskActionNode represents a leaf node with disk action details
@@ -1867,7 +2215,7 @@ func (node *DiskActionNode) ShouldPauseRefresh() bool {
 }
 
 func (node *DiskActionNode) GetChild(_ string) (MetricNode, error) {
-	return nil, fmt.Errorf("disk action is a leaf node")
+	return nil, fmt.Errorf("drive action is a leaf node")
 }
 
 // formatIOStats formats IO statistics for a specific operation type (Read/Write/Discard/Flush)

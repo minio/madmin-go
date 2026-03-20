@@ -153,6 +153,13 @@ type TimedAction struct {
 	Bytes   uint64 `json:"bytes,omitempty"`
 }
 
+// Add other to t.
+func (t *TimedAction) Add(t2 *TimedAction) {
+	if t2 != nil {
+		t.Merge(*t2)
+	}
+}
+
 // Avg returns the average time spent on the action.
 func (t TimedAction) Avg() time.Duration {
 	if t.Count == 0 {

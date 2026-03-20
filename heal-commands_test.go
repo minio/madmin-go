@@ -48,6 +48,9 @@ func TestHealDriveCounts(t *testing.T) {
 	if i > 2 {
 		t.Errorf("Expected '2', got %d before online disks", i)
 	}
+	if rs.Healed() {
+		t.Errorf("Expected 'false', got %v", rs.Healed())
+	}
 	if j > 2 {
 		t.Errorf("Expected '2', got %d after online disks", j)
 	}

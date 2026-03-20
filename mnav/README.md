@@ -152,16 +152,19 @@ The clients do not need to know the exact structure of the metrics, since the na
 ### 4. Key Features
 
 #### Data Display
+
 - **Sorted Leaf Data**: Metric data is automatically sorted and formatted for display
 - **Text Trimming**: Long keys and values are automatically trimmed to fit available screen width
 - **Humanized Formatting**: Numbers, bytes, and durations are displayed in human-readable format
 
 #### Dynamic Refresh Management
+
 - **Automatic Flag Detection**: When navigating to nodes requiring different metric types or flags, the system automatically triggers a refresh
 - **Smart Refresh Pausing**: Nodes with rarely-updating data (completed jobs, historical data) pause auto-refresh to reduce overhead
 - **Race-Free Navigation**: Synchronous refresh during navigation prevents race conditions
 
 #### Intelligent Refresh Control
+
 - **ShouldPauseRefresh()**: Nodes can indicate when they contain rarely-updating data:
   - Completed batch jobs pause refresh
   - Historical time-based data (RPC last day) pauses refresh
@@ -360,6 +363,7 @@ func GenerateBreadcrumbs(node MetricNode) []string {
 ## Best Practices
 
 ### 1. Error Handling
+
 ```go
 func (node *MyNode) GetChild(name string) (MetricNode, error) {
     if node.data == nil {
@@ -376,6 +380,7 @@ func (node *MyNode) GetChild(name string) (MetricNode, error) {
 ```
 
 ### 2. Data Formatting
+
 ```go
 func (node *MyNode) GetLeafData() map[string]string {
     data := map[string]string{}
@@ -392,6 +397,7 @@ func (node *MyNode) GetLeafData() map[string]string {
 ```
 
 ### 3. Efficient Navigation
+
 ```go
 func (node *MyNode) GetChildren() []MetricChild {
     if node.data == nil || len(node.data) == 0 {
