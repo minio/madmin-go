@@ -1,4 +1,4 @@
-// Copyright (c) 2015-2025 MinIO, Inc.
+// Copyright (c) 2015-2026 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -13,7 +13,7 @@
 // GNU Affero General Public License for more details.
 //
 // You should have received a copy of the GNU Affero General Public License
-// along with this program. If not, see <http://www.gnu.org/licenses/>.
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package mnav
 
@@ -128,6 +128,18 @@ func (node *DiskMetricsNavigator) GetLeafData() map[string]string {
 	}
 	if len(locationParts) > 0 {
 		data["Location"] = strings.Join(locationParts, ", ")
+	}
+	if len(node.disk.FSType) == 1 {
+		for k := range node.disk.FSType {
+			data["Filesystem"] = k
+		}
+	} else if len(node.disk.FSType) > 1 {
+		parts := make([]string, 0, len(node.disk.FSType))
+		for k, v := range node.disk.FSType {
+			parts = append(parts, fmt.Sprintf("%s (%d)", k, v))
+		}
+		sort.Strings(parts)
+		data["Filesystem"] = strings.Join(parts, ", ")
 	}
 
 	// Storage Space Summary
@@ -1668,6 +1680,19 @@ func (node *DiskSMARTNode) GetLeafData() map[string]string {
 	}
 
 	data := map[string]string{}
+
+	if node.smart.DeviceType != "" {
+		data["Device Type"] = node.smart.DeviceType
+	}
+	if node.smart.ModelNumber != "" {
+		data["Model"] = node.smart.ModelNumber
+	}
+	if node.smart.SerialNumber != "" {
+		data["Serial Number"] = node.smart.SerialNumber
+	}
+	if node.smart.FirmwareRev != "" {
+		data["Firmware"] = node.smart.FirmwareRev
+	}
 
 	// Health Status Overview
 	if node.smart.N > 0 {

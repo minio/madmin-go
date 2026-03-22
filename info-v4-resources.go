@@ -1,5 +1,4 @@
-//
-// Copyright (c) 2015-2025 MinIO, Inc.
+// Copyright (c) 2015-2026 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -14,8 +13,7 @@
 // GNU Affero General Public License for more details.
 //
 // You should have received a copy of the GNU Affero General Public License
-// along with this program. If not, see <http://www.gnu.org/licenses/>.
-//
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 package madmin
 
@@ -235,6 +233,7 @@ type DriveResource struct {
 	InodesFree     uint64      `json:"inodesFree" msg:"if"`
 	InodesUsed     uint64      `json:"inodesUsed" msg:"iu"`
 	UUID           string      `json:"uuid" msg:"uid"`
+	FSType         string      `json:"fsType,omitempty" msg:"fst,omitempty"`
 	Metrics        *DiskMetric `json:"metrics,omitempty" msg:"m,omitempty"`
 }
 
@@ -254,6 +253,12 @@ type SMARTInfo struct {
 	MaxFailureRisk  float64 `json:"maxFailureRisk" msg:"mfr,omitempty"`   // Max estimated annual failure rate (0.0-1.0+)
 	MaxPowerOnHours float64 `json:"maxPowerOnHours" msg:"mpoh,omitempty"` // Max single drive power on hours
 	MaxPowerCycles  uint64  `json:"maxPowerCycles" msg:"mpc,omitempty"`   // Max single drive power cycles
+
+	// Device identification (only populated when N == 1)
+	DeviceType   string `json:"deviceType,omitempty" msg:"dt,omitempty"`
+	ModelNumber  string `json:"modelNumber,omitempty" msg:"mn,omitempty"`
+	SerialNumber string `json:"serialNumber,omitempty" msg:"sn,omitempty"`
+	FirmwareRev  string `json:"firmwareRev,omitempty" msg:"fwr,omitempty"`
 
 	NVMe *SMARTNVMe `json:"nvme,omitempty" msg:"nvme,omitempty"`
 	SATA *SMARTSATA `json:"sata,omitempty" msg:"sata,omitempty"`
@@ -838,6 +843,7 @@ type DrivesResourceOpts struct {
 	Metrics      bool // Include per-drive metrics in the response
 	LastMinute   bool // Include rolling 1 minute drive metrics. Requires Metrics.
 	LastDay      bool // Include segmented 1 day drive metrics. Requires Metrics.
+	LastHour     bool // Include segmented 1 hour drive metrics. Requires Metrics.
 	SMART        bool // Include S.M.A.R.T. health data in the response (Linux only)
 }
 
@@ -872,6 +878,9 @@ func (adm *AdminClient) DrivesQuery(ctx context.Context, options *DrivesResource
 		}
 		if options.LastDay {
 			values.Set("24h", "true")
+		}
+		if options.LastHour {
+			values.Set("1h", "true")
 		}
 		if options.SMART {
 			values.Set("smart", "true")
