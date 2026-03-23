@@ -55,6 +55,8 @@ type BucketAccessInfo struct {
 	Name                    string            `json:"name"`
 	Size                    uint64            `json:"size"`
 	Objects                 uint64            `json:"objects"`
+	Versions                uint64            `json:"versions"`
+	DeleteMarkers           uint64            `json:"deleteMarkers"`
 	ObjectSizesHistogram    map[string]uint64 `json:"objectHistogram"`
 	ObjectVersionsHistogram map[string]uint64 `json:"objectsVersionsHistogram"`
 	Details                 *BucketDetails    `json:"details"`
