@@ -461,6 +461,22 @@ type ScannerMetrics struct {
 	// Excessive prefixes.
 	// Paths that have been marked as having excessive number of entries within the last 24 hours.
 	ExcessivePrefixes []string `json:"excessive,omitempty"`
+
+	// Number of queued ILM expiry tasks.
+	ILMExpiryPendingTasks int `json:"ilm_expiry_pending_tasks,omitempty"`
+	// expiry queue cleanup duration
+	ILMExpiryTasksCleanup TimedAction `json:"ilm_expiry_tasks_cleanup"`
+
+	// QueuedForExpiry holds the most recently queued expiry objects
+	QueuedForExpiry []ExpiryObject `json:"queued_for_expiry,omitempty"`
+}
+
+// ExpiryObject contains information about an object recently queued for ILM expiry.
+type ExpiryObject struct {
+	Bucket   string    `json:"bucket"`
+	Object   string    `json:"object"`
+	Versions int       `json:"versions"`
+	QueuedAt time.Time `json:"queued_at"`
 }
 
 // SegmentedActions are time segmented scanner activity.
@@ -553,6 +569,13 @@ func (s *ScannerMetrics) Merge(other *ScannerMetrics) {
 			s.ExcessivePrefixes = append(s.ExcessivePrefixes, prefix)
 		}
 		sort.Strings(s.ExcessivePrefixes)
+	}
+
+	s.ILMExpiryPendingTasks += other.ILMExpiryPendingTasks
+	s.ILMExpiryTasksCleanup.Merge(other.ILMExpiryTasksCleanup)
+	if len(other.QueuedForExpiry) > 0 {
+		s.QueuedForExpiry = append(s.QueuedForExpiry, other.QueuedForExpiry...)
+		slices.SortFunc(s.QueuedForExpiry, func(a, b ExpiryObject) int { return b.QueuedAt.Compare(a.QueuedAt) })
 	}
 }
 

@@ -9870,6 +9870,184 @@ func (z *ExpirationInfo) Msgsize() (s int) {
 }
 
 // DecodeMsg implements msgp.Decodable
+func (z *ExpiryObject) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "bucket":
+			z.Bucket, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "Bucket")
+				return
+			}
+		case "object":
+			z.Object, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "Object")
+				return
+			}
+		case "versions":
+			z.Versions, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "Versions")
+				return
+			}
+		case "queued_at":
+			z.QueuedAt, err = dc.ReadTimeUTC()
+			if err != nil {
+				err = msgp.WrapError(err, "QueuedAt")
+				return
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *ExpiryObject) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 4
+	// write "bucket"
+	err = en.Append(0x84, 0xa6, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.Bucket)
+	if err != nil {
+		err = msgp.WrapError(err, "Bucket")
+		return
+	}
+	// write "object"
+	err = en.Append(0xa6, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.Object)
+	if err != nil {
+		err = msgp.WrapError(err, "Object")
+		return
+	}
+	// write "versions"
+	err = en.Append(0xa8, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt(z.Versions)
+	if err != nil {
+		err = msgp.WrapError(err, "Versions")
+		return
+	}
+	// write "queued_at"
+	err = en.Append(0xa9, 0x71, 0x75, 0x65, 0x75, 0x65, 0x64, 0x5f, 0x61, 0x74)
+	if err != nil {
+		return
+	}
+	err = en.WriteTime(z.QueuedAt)
+	if err != nil {
+		err = msgp.WrapError(err, "QueuedAt")
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *ExpiryObject) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 4
+	// string "bucket"
+	o = append(o, 0x84, 0xa6, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74)
+	o = msgp.AppendString(o, z.Bucket)
+	// string "object"
+	o = append(o, 0xa6, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74)
+	o = msgp.AppendString(o, z.Object)
+	// string "versions"
+	o = append(o, 0xa8, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
+	o = msgp.AppendInt(o, z.Versions)
+	// string "queued_at"
+	o = append(o, 0xa9, 0x71, 0x75, 0x65, 0x75, 0x65, 0x64, 0x5f, 0x61, 0x74)
+	o = msgp.AppendTime(o, z.QueuedAt)
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *ExpiryObject) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "bucket":
+			z.Bucket, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Bucket")
+				return
+			}
+		case "object":
+			z.Object, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Object")
+				return
+			}
+		case "versions":
+			z.Versions, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Versions")
+				return
+			}
+		case "queued_at":
+			z.QueuedAt, bts, err = msgp.ReadTimeUTCBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "QueuedAt")
+				return
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *ExpiryObject) Msgsize() (s int) {
+	s = 1 + 7 + msgp.StringPrefixSize + len(z.Bucket) + 7 + msgp.StringPrefixSize + len(z.Object) + 9 + msgp.IntSize + 10 + msgp.TimeSize
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *InterfaceStats) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
@@ -27296,7 +27474,7 @@ func (z *ScannerMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 6 bits */
+	var zb0001Mask uint8 /* 8 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -27579,6 +27757,39 @@ func (z *ScannerMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 			}
 			zb0001Mask |= 0x20
+		case "ilm_expiry_pending_tasks":
+			z.ILMExpiryPendingTasks, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "ILMExpiryPendingTasks")
+				return
+			}
+			zb0001Mask |= 0x40
+		case "ilm_expiry_tasks_cleanup":
+			err = z.ILMExpiryTasksCleanup.DecodeMsg(dc)
+			if err != nil {
+				err = msgp.WrapError(err, "ILMExpiryTasksCleanup")
+				return
+			}
+		case "queued_for_expiry":
+			var zb0012 uint32
+			zb0012, err = dc.ReadArrayHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "QueuedForExpiry")
+				return
+			}
+			if cap(z.QueuedForExpiry) >= int(zb0012) {
+				z.QueuedForExpiry = (z.QueuedForExpiry)[:zb0012]
+			} else {
+				z.QueuedForExpiry = make([]ExpiryObject, zb0012)
+			}
+			for za0016 := range z.QueuedForExpiry {
+				err = z.QueuedForExpiry[za0016].DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "QueuedForExpiry", za0016)
+					return
+				}
+			}
+			zb0001Mask |= 0x80
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -27588,7 +27799,7 @@ func (z *ScannerMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3f {
+	if zb0001Mask != 0xff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.PerBucketStats = nil
 		}
@@ -27607,6 +27818,12 @@ func (z *ScannerMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		if (zb0001Mask & 0x20) == 0 {
 			z.ExcessivePrefixes = nil
 		}
+		if (zb0001Mask & 0x40) == 0 {
+			z.ILMExpiryPendingTasks = 0
+		}
+		if (zb0001Mask & 0x80) == 0 {
+			z.QueuedForExpiry = nil
+		}
 	}
 	return
 }
@@ -27614,8 +27831,8 @@ func (z *ScannerMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *ScannerMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(9)
-	var zb0001Mask uint16 /* 9 bits */
+	zb0001Len := uint32(12)
+	var zb0001Mask uint16 /* 12 bits */
 	_ = zb0001Mask
 	if z.PerBucketStats == nil {
 		zb0001Len--
@@ -27640,6 +27857,14 @@ func (z *ScannerMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 	if z.ExcessivePrefixes == nil {
 		zb0001Len--
 		zb0001Mask |= 0x100
+	}
+	if z.ILMExpiryPendingTasks == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x200
+	}
+	if z.QueuedForExpiry == nil {
+		zb0001Len--
+		zb0001Mask |= 0x800
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -27884,6 +28109,47 @@ func (z *ScannerMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
+			// write "ilm_expiry_pending_tasks"
+			err = en.Append(0xb8, 0x69, 0x6c, 0x6d, 0x5f, 0x65, 0x78, 0x70, 0x69, 0x72, 0x79, 0x5f, 0x70, 0x65, 0x6e, 0x64, 0x69, 0x6e, 0x67, 0x5f, 0x74, 0x61, 0x73, 0x6b, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt(z.ILMExpiryPendingTasks)
+			if err != nil {
+				err = msgp.WrapError(err, "ILMExpiryPendingTasks")
+				return
+			}
+		}
+		// write "ilm_expiry_tasks_cleanup"
+		err = en.Append(0xb8, 0x69, 0x6c, 0x6d, 0x5f, 0x65, 0x78, 0x70, 0x69, 0x72, 0x79, 0x5f, 0x74, 0x61, 0x73, 0x6b, 0x73, 0x5f, 0x63, 0x6c, 0x65, 0x61, 0x6e, 0x75, 0x70)
+		if err != nil {
+			return
+		}
+		err = z.ILMExpiryTasksCleanup.EncodeMsg(en)
+		if err != nil {
+			err = msgp.WrapError(err, "ILMExpiryTasksCleanup")
+			return
+		}
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
+			// write "queued_for_expiry"
+			err = en.Append(0xb1, 0x71, 0x75, 0x65, 0x75, 0x65, 0x64, 0x5f, 0x66, 0x6f, 0x72, 0x5f, 0x65, 0x78, 0x70, 0x69, 0x72, 0x79)
+			if err != nil {
+				return
+			}
+			err = en.WriteArrayHeader(uint32(len(z.QueuedForExpiry)))
+			if err != nil {
+				err = msgp.WrapError(err, "QueuedForExpiry")
+				return
+			}
+			for za0016 := range z.QueuedForExpiry {
+				err = z.QueuedForExpiry[za0016].EncodeMsg(en)
+				if err != nil {
+					err = msgp.WrapError(err, "QueuedForExpiry", za0016)
+					return
+				}
+			}
+		}
 	}
 	return
 }
@@ -27892,8 +28158,8 @@ func (z *ScannerMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *ScannerMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(9)
-	var zb0001Mask uint16 /* 9 bits */
+	zb0001Len := uint32(12)
+	var zb0001Mask uint16 /* 12 bits */
 	_ = zb0001Mask
 	if z.PerBucketStats == nil {
 		zb0001Len--
@@ -27918,6 +28184,14 @@ func (z *ScannerMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 	if z.ExcessivePrefixes == nil {
 		zb0001Len--
 		zb0001Mask |= 0x100
+	}
+	if z.ILMExpiryPendingTasks == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x200
+	}
+	if z.QueuedForExpiry == nil {
+		zb0001Len--
+		zb0001Mask |= 0x800
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -28039,6 +28313,30 @@ func (z *ScannerMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 				o = msgp.AppendString(o, z.ExcessivePrefixes[za0015])
 			}
 		}
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
+			// string "ilm_expiry_pending_tasks"
+			o = append(o, 0xb8, 0x69, 0x6c, 0x6d, 0x5f, 0x65, 0x78, 0x70, 0x69, 0x72, 0x79, 0x5f, 0x70, 0x65, 0x6e, 0x64, 0x69, 0x6e, 0x67, 0x5f, 0x74, 0x61, 0x73, 0x6b, 0x73)
+			o = msgp.AppendInt(o, z.ILMExpiryPendingTasks)
+		}
+		// string "ilm_expiry_tasks_cleanup"
+		o = append(o, 0xb8, 0x69, 0x6c, 0x6d, 0x5f, 0x65, 0x78, 0x70, 0x69, 0x72, 0x79, 0x5f, 0x74, 0x61, 0x73, 0x6b, 0x73, 0x5f, 0x63, 0x6c, 0x65, 0x61, 0x6e, 0x75, 0x70)
+		o, err = z.ILMExpiryTasksCleanup.MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "ILMExpiryTasksCleanup")
+			return
+		}
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
+			// string "queued_for_expiry"
+			o = append(o, 0xb1, 0x71, 0x75, 0x65, 0x75, 0x65, 0x64, 0x5f, 0x66, 0x6f, 0x72, 0x5f, 0x65, 0x78, 0x70, 0x69, 0x72, 0x79)
+			o = msgp.AppendArrayHeader(o, uint32(len(z.QueuedForExpiry)))
+			for za0016 := range z.QueuedForExpiry {
+				o, err = z.QueuedForExpiry[za0016].MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "QueuedForExpiry", za0016)
+					return
+				}
+			}
+		}
 	}
 	return
 }
@@ -28053,7 +28351,7 @@ func (z *ScannerMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 6 bits */
+	var zb0001Mask uint8 /* 8 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -28336,6 +28634,39 @@ func (z *ScannerMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 			}
 			zb0001Mask |= 0x20
+		case "ilm_expiry_pending_tasks":
+			z.ILMExpiryPendingTasks, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ILMExpiryPendingTasks")
+				return
+			}
+			zb0001Mask |= 0x40
+		case "ilm_expiry_tasks_cleanup":
+			bts, err = z.ILMExpiryTasksCleanup.UnmarshalMsg(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ILMExpiryTasksCleanup")
+				return
+			}
+		case "queued_for_expiry":
+			var zb0012 uint32
+			zb0012, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "QueuedForExpiry")
+				return
+			}
+			if cap(z.QueuedForExpiry) >= int(zb0012) {
+				z.QueuedForExpiry = (z.QueuedForExpiry)[:zb0012]
+			} else {
+				z.QueuedForExpiry = make([]ExpiryObject, zb0012)
+			}
+			for za0016 := range z.QueuedForExpiry {
+				bts, err = z.QueuedForExpiry[za0016].UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "QueuedForExpiry", za0016)
+					return
+				}
+			}
+			zb0001Mask |= 0x80
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -28345,7 +28676,7 @@ func (z *ScannerMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3f {
+	if zb0001Mask != 0xff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.PerBucketStats = nil
 		}
@@ -28363,6 +28694,12 @@ func (z *ScannerMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 		if (zb0001Mask & 0x20) == 0 {
 			z.ExcessivePrefixes = nil
+		}
+		if (zb0001Mask & 0x40) == 0 {
+			z.ILMExpiryPendingTasks = 0
+		}
+		if (zb0001Mask & 0x80) == 0 {
+			z.QueuedForExpiry = nil
 		}
 	}
 	o = bts
@@ -28423,6 +28760,10 @@ func (z *ScannerMetrics) Msgsize() (s int) {
 	s += 10 + msgp.ArrayHeaderSize
 	for za0015 := range z.ExcessivePrefixes {
 		s += msgp.StringPrefixSize + len(z.ExcessivePrefixes[za0015])
+	}
+	s += 25 + msgp.IntSize + 25 + z.ILMExpiryTasksCleanup.Msgsize() + 18 + msgp.ArrayHeaderSize
+	for za0016 := range z.QueuedForExpiry {
+		s += z.QueuedForExpiry[za0016].Msgsize()
 	}
 	return
 }
