@@ -47,6 +47,8 @@ type BucketDetails struct {
 	Replication         bool         `json:"replication"`
 	Tagging             *tags.Tags   `json:"tags"`
 	Quota               *BucketQuota `json:"quota"`
+	SSEType             string       `json:"sseType,omitempty"`  // "SSE-S3", "SSE-KMS", or ""
+	SSEKeyID            string       `json:"sseKeyID,omitempty"` // KMS key ID, only set for SSE-KMS
 }
 
 // BucketAccessInfo represents bucket usage of a bucket, and its relevant
