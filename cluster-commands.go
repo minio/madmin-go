@@ -1356,7 +1356,15 @@ type SRMetricsSummary struct {
 	Retries Counter `json:"retries"`
 	// represents the error count
 	Errors Counter `json:"errors"`
+	// Aggregate windowed replicated stats (outbound to all site peers)
+	Replicated ReplicationWindowedStats `json:"replicated"`
+	// Aggregate windowed received stats (inbound from all site peers)
+	Received ReplicationWindowedStats `json:"received"`
 }
+
+// ReplicationWindowedStats holds count and bytes across time windows for
+// replication data transfer (both inbound and outbound).
+type ReplicationWindowedStats = ReplicationReceivedStats
 
 // Counter denotes the counts
 type Counter struct {
