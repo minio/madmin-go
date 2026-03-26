@@ -171,7 +171,7 @@ type BucketUsageInfo struct {
 	ObjectAgesHistogram       map[string]uint64 `json:"objectsAgesHistogram"`
 	ObjectAccessAgesHistogram map[string]uint64 `json:"objectsAccessAgesHistogram"`
 
-	LockRetentionVersions        uint64 `json:"lockRetentionVersions"`
+	LockActiveRetentionVersions  uint64 `json:"lockActiveRetentionVersions"`
 	LockExpiredRetentionVersions uint64 `json:"lockExpiredRetentionVersions"`
 	LockLegalHoldVersions        uint64 `json:"lockLegalHoldVersions"`
 }
@@ -219,7 +219,7 @@ type DataUsageInfo struct {
 	TierStats map[string]TierStats `json:"tierStats"`
 
 	// Object lock stats across all buckets
-	LockRetentionVersions        uint64 `json:"lockRetentionVersions"`
+	LockActiveRetentionVersions  uint64 `json:"lockActiveRetentionVersions"`
 	LockExpiredRetentionVersions uint64 `json:"lockExpiredRetentionVersions"`
 	LockLegalHoldVersions        uint64 `json:"lockLegalHoldVersions"`
 
