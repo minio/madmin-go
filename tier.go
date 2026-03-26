@@ -236,15 +236,15 @@ func (adm *AdminClient) VerifyTier(ctx context.Context, tierName string) error {
 
 // TierInfo contains tier name, type and statistics
 type TierInfo struct {
-	Name       string
-	Type       string
-	Stats      TierStats
-	DailyStats DailyTierStats
+	Name       string         `json:"name"`
+	Type       string         `json:"type"`
+	Stats      TierStats      `json:"stats"`
+	DailyStats DailyTierStats `json:"dailyStats"`
 }
 
 type DailyTierStats struct {
-	Bins      [24]TierStats
-	UpdatedAt time.Time
+	Bins      [24]TierStats `json:"bins"`
+	UpdatedAt time.Time     `json:"updatedAt"`
 }
 
 // TierStats returns per-tier stats of all configured tiers (incl. internal

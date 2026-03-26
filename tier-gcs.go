@@ -27,12 +27,12 @@ import (
 
 // TierGCS represents the remote tier configuration for Google Cloud Storage
 type TierGCS struct {
-	Endpoint     string `json:",omitempty"` // custom endpoint is not supported for GCS
-	Creds        string `json:",omitempty"` // base64 encoding of credentials.json
-	Bucket       string `json:",omitempty"`
-	Prefix       string `json:",omitempty"`
-	Region       string `json:",omitempty"`
-	StorageClass string `json:",omitempty"`
+	Endpoint     string `json:"endpoint,omitempty"` // custom endpoint is not supported for GCS
+	Creds        string `json:"creds,omitempty"`    // base64 encoding of credentials.json
+	Bucket       string `json:"bucket,omitempty"`
+	Prefix       string `json:"prefix,omitempty"`
+	Region       string `json:"region,omitempty"`
+	StorageClass string `json:"storageClass,omitempty"`
 }
 
 // GCSOptions supports NewTierGCS to take variadic options

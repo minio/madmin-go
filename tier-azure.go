@@ -25,22 +25,22 @@ import "errors"
 
 // ServicePrincipalAuth holds fields for a successful SP authentication with Azure
 type ServicePrincipalAuth struct {
-	TenantID     string `json:",omitempty"`
-	ClientID     string `json:",omitempty"`
-	ClientSecret string `json:",omitempty"`
+	TenantID     string `json:"tenantID,omitempty"`
+	ClientID     string `json:"clientID,omitempty"`
+	ClientSecret string `json:"clientSecret,omitempty"`
 }
 
 // TierAzure represents the remote tier configuration for Azure Blob Storage.
 type TierAzure struct {
-	Endpoint     string `json:",omitempty"`
-	AccountName  string `json:",omitempty"`
-	AccountKey   string `json:",omitempty"`
-	Bucket       string `json:",omitempty"`
-	Prefix       string `json:",omitempty"`
-	Region       string `json:",omitempty"`
-	StorageClass string `json:",omitempty"`
+	Endpoint     string `json:"endpoint,omitempty"`
+	AccountName  string `json:"accountName,omitempty"`
+	AccountKey   string `json:"accountKey,omitempty"`
+	Bucket       string `json:"bucket,omitempty"`
+	Prefix       string `json:"prefix,omitempty"`
+	Region       string `json:"region,omitempty"`
+	StorageClass string `json:"storageClass,omitempty"`
 
-	SPAuth ServicePrincipalAuth `json:",omitempty"`
+	SPAuth ServicePrincipalAuth `json:"spAuth,omitempty"`
 }
 
 // IsSPEnabled returns true if all SP related fields are provided

@@ -105,13 +105,13 @@ func NewTierType(scType string) (TierType, error) {
 // supported. The specific backend is identified by the Type field. It has a
 // Version field to allow for backwards-compatible extension in the future.
 type TierConfig struct {
-	Version string
-	Type    TierType   `json:",omitempty"`
-	Name    string     `json:",omitempty"`
-	S3      *TierS3    `json:",omitempty"`
-	Azure   *TierAzure `json:",omitempty"`
-	GCS     *TierGCS   `json:",omitempty"`
-	MinIO   *TierMinIO `json:",omitempty"`
+	Version string     `json:"version,omitempty"`
+	Type    TierType   `json:"type,omitempty"`
+	Name    string     `json:"name,omitempty"`
+	S3      *TierS3    `json:"s3,omitempty"`
+	Azure   *TierAzure `json:"azure,omitempty"`
+	GCS     *TierGCS   `json:"gcs,omitempty"`
+	MinIO   *TierMinIO `json:"minio,omitempty"`
 }
 
 var (

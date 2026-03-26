@@ -23,12 +23,12 @@ package madmin
 
 // TierMinIO represents the remote tier configuration for MinIO object storage backend.
 type TierMinIO struct {
-	Endpoint  string `json:",omitempty"`
-	AccessKey string `json:",omitempty"`
-	SecretKey string `json:",omitempty"`
-	Bucket    string `json:",omitempty"`
-	Prefix    string `json:",omitempty"`
-	Region    string `json:",omitempty"`
+	Endpoint  string `json:"endpoint,omitempty"`
+	AccessKey string `json:"accessKey,omitempty"`
+	SecretKey string `json:"secretKey,omitempty"`
+	Bucket    string `json:"bucket,omitempty"`
+	Prefix    string `json:"prefix,omitempty"`
+	Region    string `json:"region,omitempty"`
 }
 
 // MinIOOptions supports NewTierMinIO to take variadic options

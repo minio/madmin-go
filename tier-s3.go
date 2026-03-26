@@ -23,18 +23,18 @@ package madmin
 
 // TierS3 represents the remote tier configuration for AWS S3 compatible backend.
 type TierS3 struct {
-	Endpoint                    string `json:",omitempty"`
-	AccessKey                   string `json:",omitempty"`
-	SecretKey                   string `json:",omitempty"`
-	Bucket                      string `json:",omitempty"`
-	Prefix                      string `json:",omitempty"`
-	Region                      string `json:",omitempty"`
-	StorageClass                string `json:",omitempty"`
-	AWSRole                     bool   `json:",omitempty"`
-	AWSRoleWebIdentityTokenFile string `json:",omitempty"`
-	AWSRoleARN                  string `json:",omitempty"`
-	AWSRoleSessionName          string `json:",omitempty"`
-	AWSRoleDurationSeconds      int    `json:",omitempty"`
+	Endpoint                    string `json:"endpoint,omitempty"`
+	AccessKey                   string `json:"accessKey,omitempty"`
+	SecretKey                   string `json:"secretKey,omitempty"`
+	Bucket                      string `json:"bucket,omitempty"`
+	Prefix                      string `json:"prefix,omitempty"`
+	Region                      string `json:"region,omitempty"`
+	StorageClass                string `json:"storageClass,omitempty"`
+	AWSRole                     bool   `json:"awsRole,omitempty"`
+	AWSRoleWebIdentityTokenFile string `json:"awsRoleWebIdentityTokenFile,omitempty"`
+	AWSRoleARN                  string `json:"awsRoleARN,omitempty"`
+	AWSRoleSessionName          string `json:"awsRoleSessionName,omitempty"`
+	AWSRoleDurationSeconds      int    `json:"awsRoleDurationSeconds,omitempty"`
 }
 
 // S3Options supports NewTierS3 to take variadic options
