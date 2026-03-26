@@ -2251,10 +2251,10 @@ func (z *BucketUsageInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.ObjectAccessAgesHistogram[za0007] = za0008
 			}
-		case "lockRetentionVersions":
-			z.LockRetentionVersions, err = dc.ReadUint64()
+		case "lockActiveRetentionVersions":
+			z.LockActiveRetentionVersions, err = dc.ReadUint64()
 			if err != nil {
-				err = msgp.WrapError(err, "LockRetentionVersions")
+				err = msgp.WrapError(err, "LockActiveRetentionVersions")
 				return
 			}
 		case "lockExpiredRetentionVersions":
@@ -2471,14 +2471,14 @@ func (z *BucketUsageInfo) EncodeMsg(en *msgp.Writer) (err error) {
 			return
 		}
 	}
-	// write "lockRetentionVersions"
-	err = en.Append(0xb5, 0x6c, 0x6f, 0x63, 0x6b, 0x52, 0x65, 0x74, 0x65, 0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
+	// write "lockActiveRetentionVersions"
+	err = en.Append(0xbb, 0x6c, 0x6f, 0x63, 0x6b, 0x41, 0x63, 0x74, 0x69, 0x76, 0x65, 0x52, 0x65, 0x74, 0x65, 0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
 	if err != nil {
 		return
 	}
-	err = en.WriteUint64(z.LockRetentionVersions)
+	err = en.WriteUint64(z.LockActiveRetentionVersions)
 	if err != nil {
-		err = msgp.WrapError(err, "LockRetentionVersions")
+		err = msgp.WrapError(err, "LockActiveRetentionVersions")
 		return
 	}
 	// write "lockExpiredRetentionVersions"
@@ -2566,9 +2566,9 @@ func (z *BucketUsageInfo) MarshalMsg(b []byte) (o []byte, err error) {
 		o = msgp.AppendString(o, za0007)
 		o = msgp.AppendUint64(o, za0008)
 	}
-	// string "lockRetentionVersions"
-	o = append(o, 0xb5, 0x6c, 0x6f, 0x63, 0x6b, 0x52, 0x65, 0x74, 0x65, 0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
-	o = msgp.AppendUint64(o, z.LockRetentionVersions)
+	// string "lockActiveRetentionVersions"
+	o = append(o, 0xbb, 0x6c, 0x6f, 0x63, 0x6b, 0x41, 0x63, 0x74, 0x69, 0x76, 0x65, 0x52, 0x65, 0x74, 0x65, 0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
+	o = msgp.AppendUint64(o, z.LockActiveRetentionVersions)
 	// string "lockExpiredRetentionVersions"
 	o = append(o, 0xbc, 0x6c, 0x6f, 0x63, 0x6b, 0x45, 0x78, 0x70, 0x69, 0x72, 0x65, 0x64, 0x52, 0x65, 0x74, 0x65, 0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
 	o = msgp.AppendUint64(o, z.LockExpiredRetentionVersions)
@@ -2768,10 +2768,10 @@ func (z *BucketUsageInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.ObjectAccessAgesHistogram[za0007] = za0008
 			}
-		case "lockRetentionVersions":
-			z.LockRetentionVersions, bts, err = msgp.ReadUint64Bytes(bts)
+		case "lockActiveRetentionVersions":
+			z.LockActiveRetentionVersions, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "LockRetentionVersions")
+				err = msgp.WrapError(err, "LockActiveRetentionVersions")
 				return
 			}
 		case "lockExpiredRetentionVersions":
@@ -2828,7 +2828,7 @@ func (z *BucketUsageInfo) Msgsize() (s int) {
 			s += msgp.StringPrefixSize + len(za0007) + msgp.Uint64Size
 		}
 	}
-	s += 22 + msgp.Uint64Size + 29 + msgp.Uint64Size + 22 + msgp.Uint64Size
+	s += 28 + msgp.Uint64Size + 29 + msgp.Uint64Size + 22 + msgp.Uint64Size
 	return
 }
 
@@ -4269,10 +4269,10 @@ func (z *DataUsageInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.TierStats[za0003] = za0004
 			}
-		case "lockRetentionVersions":
-			z.LockRetentionVersions, err = dc.ReadUint64()
+		case "lockActiveRetentionVersions":
+			z.LockActiveRetentionVersions, err = dc.ReadUint64()
 			if err != nil {
-				err = msgp.WrapError(err, "LockRetentionVersions")
+				err = msgp.WrapError(err, "LockActiveRetentionVersions")
 				return
 			}
 		case "lockExpiredRetentionVersions":
@@ -4489,14 +4489,14 @@ func (z *DataUsageInfo) EncodeMsg(en *msgp.Writer) (err error) {
 			return
 		}
 	}
-	// write "lockRetentionVersions"
-	err = en.Append(0xb5, 0x6c, 0x6f, 0x63, 0x6b, 0x52, 0x65, 0x74, 0x65, 0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
+	// write "lockActiveRetentionVersions"
+	err = en.Append(0xbb, 0x6c, 0x6f, 0x63, 0x6b, 0x41, 0x63, 0x74, 0x69, 0x76, 0x65, 0x52, 0x65, 0x74, 0x65, 0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
 	if err != nil {
 		return
 	}
-	err = en.WriteUint64(z.LockRetentionVersions)
+	err = en.WriteUint64(z.LockActiveRetentionVersions)
 	if err != nil {
-		err = msgp.WrapError(err, "LockRetentionVersions")
+		err = msgp.WrapError(err, "LockActiveRetentionVersions")
 		return
 	}
 	// write "lockExpiredRetentionVersions"
@@ -4613,9 +4613,9 @@ func (z *DataUsageInfo) MarshalMsg(b []byte) (o []byte, err error) {
 		o = append(o, 0xaa, 0x6e, 0x75, 0x6d, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73)
 		o = msgp.AppendInt(o, za0004.NumObjects)
 	}
-	// string "lockRetentionVersions"
-	o = append(o, 0xb5, 0x6c, 0x6f, 0x63, 0x6b, 0x52, 0x65, 0x74, 0x65, 0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
-	o = msgp.AppendUint64(o, z.LockRetentionVersions)
+	// string "lockActiveRetentionVersions"
+	o = append(o, 0xbb, 0x6c, 0x6f, 0x63, 0x6b, 0x41, 0x63, 0x74, 0x69, 0x76, 0x65, 0x52, 0x65, 0x74, 0x65, 0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
+	o = msgp.AppendUint64(o, z.LockActiveRetentionVersions)
 	// string "lockExpiredRetentionVersions"
 	o = append(o, 0xbc, 0x6c, 0x6f, 0x63, 0x6b, 0x45, 0x78, 0x70, 0x69, 0x72, 0x65, 0x64, 0x52, 0x65, 0x74, 0x65, 0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
 	o = msgp.AppendUint64(o, z.LockExpiredRetentionVersions)
@@ -4803,10 +4803,10 @@ func (z *DataUsageInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.TierStats[za0003] = za0004
 			}
-		case "lockRetentionVersions":
-			z.LockRetentionVersions, bts, err = msgp.ReadUint64Bytes(bts)
+		case "lockActiveRetentionVersions":
+			z.LockActiveRetentionVersions, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "LockRetentionVersions")
+				err = msgp.WrapError(err, "LockActiveRetentionVersions")
 				return
 			}
 		case "lockExpiredRetentionVersions":
@@ -4867,7 +4867,7 @@ func (z *DataUsageInfo) Msgsize() (s int) {
 			s += msgp.StringPrefixSize + len(za0003) + 1 + 10 + msgp.Uint64Size + 12 + msgp.IntSize + 11 + msgp.IntSize
 		}
 	}
-	s += 22 + msgp.Uint64Size + 29 + msgp.Uint64Size + 22 + msgp.Uint64Size + 9 + msgp.Uint64Size + 13 + msgp.Uint64Size + 13 + msgp.Uint64Size
+	s += 28 + msgp.Uint64Size + 29 + msgp.Uint64Size + 22 + msgp.Uint64Size + 9 + msgp.Uint64Size + 13 + msgp.Uint64Size + 13 + msgp.Uint64Size
 	return
 }
 
