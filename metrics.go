@@ -67,6 +67,7 @@ const (
 	MetricsHealing
 	MetricsBuckets
 	MetricsKMS
+	MetricsTables
 
 	// MetricsAll must be last.
 	// Enables all metrics.
@@ -105,6 +106,7 @@ func (m MetricType) String() string {
 	addIf(m.Contains(MetricsHealing), "Healing")
 	addIf(m.Contains(MetricsBuckets), "Buckets")
 	addIf(m.Contains(MetricsKMS), "KMS")
+	addIf(m.Contains(MetricsTables), "Tables")
 	return b.String()
 }
 
@@ -380,6 +382,7 @@ type Metrics struct {
 	Healing     *HealingMetrics     `json:"healing,omitempty"`
 	Buckets     *BucketAPIMetrics   `json:"buckets,omitempty"`
 	KMS         *KMSRtMetrics       `json:"kms,omitempty"`
+	Tables      *TableAPIMetrics    `json:"tables,omitempty"`
 }
 
 // Merge other into r.
@@ -456,6 +459,12 @@ func (r *Metrics) Merge(other *Metrics) {
 			r.KMS = &KMSRtMetrics{}
 		}
 		r.KMS.Merge(other.KMS)
+	}
+	if other.Tables != nil {
+		if r.Tables == nil {
+			r.Tables = &TableAPIMetrics{}
+		}
+		r.Tables.Merge(other.Tables)
 	}
 }
 
@@ -3331,6 +3340,98 @@ func (b *BucketAPIMetrics) Merge(other *BucketAPIMetrics) {
 		ab := b.Buckets[bucket]
 		ab.Merge(&ob)
 		b.Buckets[bucket] = ab
+	}
+}
+
+// TableIOStat holds read/write counts and byte totals for a
+// table over one time window.
+type TableIOStat struct {
+	Reads    int64 `json:"reads"    msg:"r"`
+	Writes   int64 `json:"writes"   msg:"w"`
+	BytesIn  int64 `json:"bytesIn"  msg:"bi"`
+	BytesOut int64 `json:"bytesOut" msg:"bo"`
+}
+
+// TableIOMetrics holds windowed traffic for a table across time windows.
+type TableIOMetrics struct {
+	// Warehouse is the warehouse this table belongs to.
+	Warehouse string `json:"warehouse,omitempty" msg:"wh,omitempty"`
+
+	// LastMinute is the aggregate over the last minute. Always present.
+	LastMinute *TableIOStat `json:"lastMinute,omitempty" msg:"m,omitempty"`
+
+	// LastHour is the aggregate over the last hour.
+	// Populated only when MetricsHourStats is requested.
+	LastHour *TableIOStat `json:"lastHour,omitempty" msg:"h,omitempty"`
+
+	// LastDay is the aggregate over the last 24 hours.
+	// Populated only when MetricsDayStats is requested.
+	LastDay *TableIOStat `json:"lastDay,omitempty" msg:"d,omitempty"`
+}
+
+// TableAPIMetrics holds traffic for all active tables aggregated across nodes.
+// Keyed by table UUID.
+type TableAPIMetrics struct {
+	// Tables maps table UUID to its consolidated windowed metrics.
+	Tables map[string]TableIOMetrics `json:"tables,omitempty" msg:"tables,omitempty"`
+}
+
+// Add sums other into t in place.
+func (t *TableIOStat) Add(other *TableIOStat) {
+	if other == nil {
+		return
+	}
+	t.Reads += other.Reads
+	t.Writes += other.Writes
+	t.BytesIn += other.BytesIn
+	t.BytesOut += other.BytesOut
+}
+
+// IsZero reports whether all counters are zero.
+func (t *TableIOStat) IsZero() bool {
+	return t.Reads == 0 && t.Writes == 0 && t.BytesIn == 0 && t.BytesOut == 0
+}
+
+// Merge sums other into m.
+func (m *TableIOMetrics) Merge(other *TableIOMetrics) {
+	if other == nil {
+		return
+	}
+	if m.Warehouse == "" {
+		m.Warehouse = other.Warehouse
+	}
+	if other.LastMinute != nil {
+		if m.LastMinute == nil {
+			m.LastMinute = &TableIOStat{}
+		}
+		m.LastMinute.Add(other.LastMinute)
+	}
+	if other.LastHour != nil {
+		if m.LastHour == nil {
+			m.LastHour = &TableIOStat{}
+		}
+		m.LastHour.Add(other.LastHour)
+	}
+	if other.LastDay != nil {
+		if m.LastDay == nil {
+			m.LastDay = &TableIOStat{}
+		}
+		m.LastDay.Add(other.LastDay)
+	}
+}
+
+// Merge folds other into t by merging each per-table entry.
+func (t *TableAPIMetrics) Merge(other *TableAPIMetrics) {
+	if other == nil {
+		return
+	}
+	for uuid, om := range other.Tables {
+		if t.Tables == nil {
+			t.Tables = make(map[string]TableIOMetrics, len(other.Tables))
+		}
+		am := t.Tables[uuid]
+		am.Merge(&om)
+		t.Tables[uuid] = am
 	}
 }
 
