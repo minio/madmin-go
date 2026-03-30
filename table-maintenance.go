@@ -93,3 +93,22 @@ type GetTableMaintenanceJobStatusResponse struct {
 	TableARN string                                   `json:"tableARN"`
 	Status   map[string]TableMaintenanceJobTypeStatus `json:"status"`
 }
+
+// WarehouseMaintenanceConfigurationValue represents a maintenance configuration with status
+// for a warehouse. It is structurally identical to TableMaintenanceConfigurationValue but
+// scoped to a warehouse rather than an individual table.
+type WarehouseMaintenanceConfigurationValue struct {
+	Settings *TableMaintenanceSettings `json:"settings,omitempty"`
+	Status   MaintenanceStatus         `json:"status"`
+}
+
+// PutWarehouseMaintenanceConfigurationRequest is the request body for PutWarehouseMaintenanceConfiguration.
+type PutWarehouseMaintenanceConfigurationRequest struct {
+	Value WarehouseMaintenanceConfigurationValue `json:"value"`
+}
+
+// GetWarehouseMaintenanceConfigurationResponse is the response for GetWarehouseMaintenanceConfiguration.
+type GetWarehouseMaintenanceConfigurationResponse struct {
+	Configuration map[string]WarehouseMaintenanceConfigurationValue `json:"configuration"`
+	WarehouseARN  string                                            `json:"warehouseARN"`
+}
