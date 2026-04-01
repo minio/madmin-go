@@ -25,9 +25,16 @@ import (
 	"iter"
 	"net/http"
 	"time"
+
+	"github.com/tinylib/msgp/msgp"
 )
 
+//msgp:tag json
+//go:generate msgp -d clearomitted -d "timezone utc" $GOFILE
+
 // AlertType represents the type of alert event
+//
+//msgp:shim AlertType as:string
 type AlertType string
 
 const (
@@ -65,7 +72,7 @@ type AlertLogOpts struct {
 	MaxPerNode int           `json:"maxPerNode,omitempty"`
 }
 
-// GetAlerts returns alerts stored in the system as a streaming JSON response
+// GetAlerts returns alerts stored in the system as a streaming msgpack response
 // via POST /admin/alerts. Use AlertLogOpts.Interval to control the server-side
 // check interval.
 func (adm AdminClient) GetAlerts(ctx context.Context, opts AlertLogOpts) iter.Seq2[*Alert, error] {
@@ -89,12 +96,15 @@ func (adm AdminClient) GetAlerts(ctx context.Context, opts AlertLogOpts) iter.Se
 			yield(nil, httpRespToErrorResponse(resp))
 			return
 		}
-		dec := json.NewDecoder(resp.Body)
+		dec := msgp.NewReader(resp.Body)
 		for {
 			var alert Alert
-			if err = dec.Decode(&alert); err != nil {
+			if err = alert.DecodeMsg(dec); err != nil {
 				if errors.Is(err, io.EOF) {
 					break
+				}
+				if !yield(nil, err) {
+					return
 				}
 				continue
 			}
