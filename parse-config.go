@@ -93,6 +93,10 @@ const (
 	LogAPIQueueSubSys   = "log_api_queue"
 	LogErrorQueueSubSys = "log_error_queue"
 	LogAuditQueueSubSys = "log_audit_queue"
+
+	AlertInternalSubSys = "alert_internal"
+	AlertWebhookSubSys  = "alert_webhook"
+	AlertKafkaSubSys    = "alert_kafka"
 )
 
 // SubSystems - list of all subsystems in MinIO
@@ -195,6 +199,9 @@ var EOSSubSystems = set.CreateStringSet(
 	LogAPIQueueSubSys,
 	LogErrorQueueSubSys,
 	LogAuditQueueSubSys,
+	AlertInternalSubSys,
+	AlertWebhookSubSys,
+	AlertKafkaSubSys,
 )
 
 // Standard config keys and values.
