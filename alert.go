@@ -55,6 +55,7 @@ const (
 // Alert represents a single alert event in the system.
 // It captures alert information with contextual metadata including deployment and cluster information.
 type Alert struct {
+	ID           string            `json:"id,omitempty"`
 	Type         AlertType         `json:"type"`
 	Timestamp    time.Time         `json:"timestamp"`
 	Title        string            `json:"title"`

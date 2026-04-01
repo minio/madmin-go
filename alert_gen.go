@@ -16,7 +16,7 @@ func (z *Alert) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 2 bits */
+	var zb0001Mask uint8 /* 3 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -26,6 +26,13 @@ func (z *Alert) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
+		case "id":
+			z.ID, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "ID")
+				return
+			}
+			zb0001Mask |= 0x1
 		case "type":
 			{
 				var zb0002 string
@@ -82,7 +89,7 @@ func (z *Alert) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.Details[za0001] = za0002
 			}
-			zb0001Mask |= 0x1
+			zb0001Mask |= 0x2
 		case "deploymentId":
 			z.DeploymentID, err = dc.ReadString()
 			if err != nil {
@@ -101,7 +108,7 @@ func (z *Alert) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "DedupKey")
 				return
 			}
-			zb0001Mask |= 0x2
+			zb0001Mask |= 0x4
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -111,11 +118,14 @@ func (z *Alert) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3 {
+	if zb0001Mask != 0x7 {
 		if (zb0001Mask & 0x1) == 0 {
-			z.Details = nil
+			z.ID = ""
 		}
 		if (zb0001Mask & 0x2) == 0 {
+			z.Details = nil
+		}
+		if (zb0001Mask & 0x4) == 0 {
 			z.DedupKey = ""
 		}
 	}
@@ -125,16 +135,20 @@ func (z *Alert) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *Alert) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(8)
-	var zb0001Mask uint8 /* 8 bits */
+	zb0001Len := uint32(9)
+	var zb0001Mask uint16 /* 9 bits */
 	_ = zb0001Mask
+	if z.ID == "" {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
 	if z.Details == nil {
 		zb0001Len--
-		zb0001Mask |= 0x10
+		zb0001Mask |= 0x20
 	}
 	if z.DedupKey == "" {
 		zb0001Len--
-		zb0001Mask |= 0x80
+		zb0001Mask |= 0x100
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -144,6 +158,18 @@ func (z *Alert) EncodeMsg(en *msgp.Writer) (err error) {
 
 	// skip if no fields are to be emitted
 	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// write "id"
+			err = en.Append(0xa2, 0x69, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.ID)
+			if err != nil {
+				err = msgp.WrapError(err, "ID")
+				return
+			}
+		}
 		// write "type"
 		err = en.Append(0xa4, 0x74, 0x79, 0x70, 0x65)
 		if err != nil {
@@ -184,7 +210,7 @@ func (z *Alert) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "Message")
 			return
 		}
-		if (zb0001Mask & 0x10) == 0 { // if not omitted
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
 			// write "details"
 			err = en.Append(0xa7, 0x64, 0x65, 0x74, 0x61, 0x69, 0x6c, 0x73)
 			if err != nil {
@@ -228,7 +254,7 @@ func (z *Alert) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "ClusterName")
 			return
 		}
-		if (zb0001Mask & 0x80) == 0 { // if not omitted
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
 			// write "dedupKey"
 			err = en.Append(0xa8, 0x64, 0x65, 0x64, 0x75, 0x70, 0x4b, 0x65, 0x79)
 			if err != nil {
@@ -248,22 +274,31 @@ func (z *Alert) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *Alert) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(8)
-	var zb0001Mask uint8 /* 8 bits */
+	zb0001Len := uint32(9)
+	var zb0001Mask uint16 /* 9 bits */
 	_ = zb0001Mask
+	if z.ID == "" {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
 	if z.Details == nil {
 		zb0001Len--
-		zb0001Mask |= 0x10
+		zb0001Mask |= 0x20
 	}
 	if z.DedupKey == "" {
 		zb0001Len--
-		zb0001Mask |= 0x80
+		zb0001Mask |= 0x100
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
 
 	// skip if no fields are to be emitted
 	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// string "id"
+			o = append(o, 0xa2, 0x69, 0x64)
+			o = msgp.AppendString(o, z.ID)
+		}
 		// string "type"
 		o = append(o, 0xa4, 0x74, 0x79, 0x70, 0x65)
 		o = msgp.AppendString(o, string(z.Type))
@@ -276,7 +311,7 @@ func (z *Alert) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "message"
 		o = append(o, 0xa7, 0x6d, 0x65, 0x73, 0x73, 0x61, 0x67, 0x65)
 		o = msgp.AppendString(o, z.Message)
-		if (zb0001Mask & 0x10) == 0 { // if not omitted
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
 			// string "details"
 			o = append(o, 0xa7, 0x64, 0x65, 0x74, 0x61, 0x69, 0x6c, 0x73)
 			o = msgp.AppendMapHeader(o, uint32(len(z.Details)))
@@ -291,7 +326,7 @@ func (z *Alert) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "clusterName"
 		o = append(o, 0xab, 0x63, 0x6c, 0x75, 0x73, 0x74, 0x65, 0x72, 0x4e, 0x61, 0x6d, 0x65)
 		o = msgp.AppendString(o, z.ClusterName)
-		if (zb0001Mask & 0x80) == 0 { // if not omitted
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
 			// string "dedupKey"
 			o = append(o, 0xa8, 0x64, 0x65, 0x64, 0x75, 0x70, 0x4b, 0x65, 0x79)
 			o = msgp.AppendString(o, z.DedupKey)
@@ -310,7 +345,7 @@ func (z *Alert) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 2 bits */
+	var zb0001Mask uint8 /* 3 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -320,6 +355,13 @@ func (z *Alert) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
+		case "id":
+			z.ID, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ID")
+				return
+			}
+			zb0001Mask |= 0x1
 		case "type":
 			{
 				var zb0002 string
@@ -376,7 +418,7 @@ func (z *Alert) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.Details[za0001] = za0002
 			}
-			zb0001Mask |= 0x1
+			zb0001Mask |= 0x2
 		case "deploymentId":
 			z.DeploymentID, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
@@ -395,7 +437,7 @@ func (z *Alert) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "DedupKey")
 				return
 			}
-			zb0001Mask |= 0x2
+			zb0001Mask |= 0x4
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -405,11 +447,14 @@ func (z *Alert) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3 {
+	if zb0001Mask != 0x7 {
 		if (zb0001Mask & 0x1) == 0 {
-			z.Details = nil
+			z.ID = ""
 		}
 		if (zb0001Mask & 0x2) == 0 {
+			z.Details = nil
+		}
+		if (zb0001Mask & 0x4) == 0 {
 			z.DedupKey = ""
 		}
 	}
@@ -419,7 +464,7 @@ func (z *Alert) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *Alert) Msgsize() (s int) {
-	s = 1 + 5 + msgp.StringPrefixSize + len(string(z.Type)) + 10 + msgp.TimeSize + 6 + msgp.StringPrefixSize + len(z.Title) + 8 + msgp.StringPrefixSize + len(z.Message) + 8 + msgp.MapHeaderSize
+	s = 1 + 3 + msgp.StringPrefixSize + len(z.ID) + 5 + msgp.StringPrefixSize + len(string(z.Type)) + 10 + msgp.TimeSize + 6 + msgp.StringPrefixSize + len(z.Title) + 8 + msgp.StringPrefixSize + len(z.Message) + 8 + msgp.MapHeaderSize
 	if z.Details != nil {
 		for za0001, za0002 := range z.Details {
 			_ = za0002
