@@ -235,6 +235,119 @@ func BenchmarkDecodeGetTableMaintenanceJobStatusResponse(b *testing.B) {
 	}
 }
 
+func TestMarshalUnmarshalGetWarehouseMaintenanceConfigurationResponse(t *testing.T) {
+	v := GetWarehouseMaintenanceConfigurationResponse{}
+	bts, err := v.MarshalMsg(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	left, err := v.UnmarshalMsg(bts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(left) > 0 {
+		t.Errorf("%d bytes left over after UnmarshalMsg(): %q", len(left), left)
+	}
+
+	left, err = msgp.Skip(bts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(left) > 0 {
+		t.Errorf("%d bytes left over after Skip(): %q", len(left), left)
+	}
+}
+
+func BenchmarkMarshalMsgGetWarehouseMaintenanceConfigurationResponse(b *testing.B) {
+	v := GetWarehouseMaintenanceConfigurationResponse{}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		v.MarshalMsg(nil)
+	}
+}
+
+func BenchmarkAppendMsgGetWarehouseMaintenanceConfigurationResponse(b *testing.B) {
+	v := GetWarehouseMaintenanceConfigurationResponse{}
+	bts := make([]byte, 0, v.Msgsize())
+	bts, _ = v.MarshalMsg(bts[0:0])
+	b.SetBytes(int64(len(bts)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		bts, _ = v.MarshalMsg(bts[0:0])
+	}
+}
+
+func BenchmarkUnmarshalGetWarehouseMaintenanceConfigurationResponse(b *testing.B) {
+	v := GetWarehouseMaintenanceConfigurationResponse{}
+	bts, _ := v.MarshalMsg(nil)
+	b.ReportAllocs()
+	b.SetBytes(int64(len(bts)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := v.UnmarshalMsg(bts)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func TestEncodeDecodeGetWarehouseMaintenanceConfigurationResponse(t *testing.T) {
+	v := GetWarehouseMaintenanceConfigurationResponse{}
+	var buf bytes.Buffer
+	msgp.Encode(&buf, &v)
+
+	m := v.Msgsize()
+	if buf.Len() > m {
+		t.Log("WARNING: TestEncodeDecodeGetWarehouseMaintenanceConfigurationResponse Msgsize() is inaccurate")
+	}
+
+	vn := GetWarehouseMaintenanceConfigurationResponse{}
+	err := msgp.Decode(&buf, &vn)
+	if err != nil {
+		t.Error(err)
+	}
+
+	buf.Reset()
+	msgp.Encode(&buf, &v)
+	err = msgp.NewReader(&buf).Skip()
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func BenchmarkEncodeGetWarehouseMaintenanceConfigurationResponse(b *testing.B) {
+	v := GetWarehouseMaintenanceConfigurationResponse{}
+	var buf bytes.Buffer
+	msgp.Encode(&buf, &v)
+	b.SetBytes(int64(buf.Len()))
+	en := msgp.NewWriter(msgp.Nowhere)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		v.EncodeMsg(en)
+	}
+	en.Flush()
+}
+
+func BenchmarkDecodeGetWarehouseMaintenanceConfigurationResponse(b *testing.B) {
+	v := GetWarehouseMaintenanceConfigurationResponse{}
+	var buf bytes.Buffer
+	msgp.Encode(&buf, &v)
+	b.SetBytes(int64(buf.Len()))
+	rd := msgp.NewEndlessReader(buf.Bytes(), b)
+	dc := msgp.NewReader(rd)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		err := v.DecodeMsg(dc)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
 func TestMarshalUnmarshalIcebergSnapshotManagementSettings(t *testing.T) {
 	v := IcebergSnapshotManagementSettings{}
 	bts, err := v.MarshalMsg(nil)
@@ -446,6 +559,119 @@ func BenchmarkEncodePutTableMaintenanceConfigurationRequest(b *testing.B) {
 
 func BenchmarkDecodePutTableMaintenanceConfigurationRequest(b *testing.B) {
 	v := PutTableMaintenanceConfigurationRequest{}
+	var buf bytes.Buffer
+	msgp.Encode(&buf, &v)
+	b.SetBytes(int64(buf.Len()))
+	rd := msgp.NewEndlessReader(buf.Bytes(), b)
+	dc := msgp.NewReader(rd)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		err := v.DecodeMsg(dc)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func TestMarshalUnmarshalPutWarehouseMaintenanceConfigurationRequest(t *testing.T) {
+	v := PutWarehouseMaintenanceConfigurationRequest{}
+	bts, err := v.MarshalMsg(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	left, err := v.UnmarshalMsg(bts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(left) > 0 {
+		t.Errorf("%d bytes left over after UnmarshalMsg(): %q", len(left), left)
+	}
+
+	left, err = msgp.Skip(bts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(left) > 0 {
+		t.Errorf("%d bytes left over after Skip(): %q", len(left), left)
+	}
+}
+
+func BenchmarkMarshalMsgPutWarehouseMaintenanceConfigurationRequest(b *testing.B) {
+	v := PutWarehouseMaintenanceConfigurationRequest{}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		v.MarshalMsg(nil)
+	}
+}
+
+func BenchmarkAppendMsgPutWarehouseMaintenanceConfigurationRequest(b *testing.B) {
+	v := PutWarehouseMaintenanceConfigurationRequest{}
+	bts := make([]byte, 0, v.Msgsize())
+	bts, _ = v.MarshalMsg(bts[0:0])
+	b.SetBytes(int64(len(bts)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		bts, _ = v.MarshalMsg(bts[0:0])
+	}
+}
+
+func BenchmarkUnmarshalPutWarehouseMaintenanceConfigurationRequest(b *testing.B) {
+	v := PutWarehouseMaintenanceConfigurationRequest{}
+	bts, _ := v.MarshalMsg(nil)
+	b.ReportAllocs()
+	b.SetBytes(int64(len(bts)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := v.UnmarshalMsg(bts)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func TestEncodeDecodePutWarehouseMaintenanceConfigurationRequest(t *testing.T) {
+	v := PutWarehouseMaintenanceConfigurationRequest{}
+	var buf bytes.Buffer
+	msgp.Encode(&buf, &v)
+
+	m := v.Msgsize()
+	if buf.Len() > m {
+		t.Log("WARNING: TestEncodeDecodePutWarehouseMaintenanceConfigurationRequest Msgsize() is inaccurate")
+	}
+
+	vn := PutWarehouseMaintenanceConfigurationRequest{}
+	err := msgp.Decode(&buf, &vn)
+	if err != nil {
+		t.Error(err)
+	}
+
+	buf.Reset()
+	msgp.Encode(&buf, &v)
+	err = msgp.NewReader(&buf).Skip()
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func BenchmarkEncodePutWarehouseMaintenanceConfigurationRequest(b *testing.B) {
+	v := PutWarehouseMaintenanceConfigurationRequest{}
+	var buf bytes.Buffer
+	msgp.Encode(&buf, &v)
+	b.SetBytes(int64(buf.Len()))
+	en := msgp.NewWriter(msgp.Nowhere)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		v.EncodeMsg(en)
+	}
+	en.Flush()
+}
+
+func BenchmarkDecodePutWarehouseMaintenanceConfigurationRequest(b *testing.B) {
+	v := PutWarehouseMaintenanceConfigurationRequest{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))
@@ -785,6 +1011,119 @@ func BenchmarkEncodeTableMaintenanceSettings(b *testing.B) {
 
 func BenchmarkDecodeTableMaintenanceSettings(b *testing.B) {
 	v := TableMaintenanceSettings{}
+	var buf bytes.Buffer
+	msgp.Encode(&buf, &v)
+	b.SetBytes(int64(buf.Len()))
+	rd := msgp.NewEndlessReader(buf.Bytes(), b)
+	dc := msgp.NewReader(rd)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		err := v.DecodeMsg(dc)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func TestMarshalUnmarshalWarehouseMaintenanceConfigurationValue(t *testing.T) {
+	v := WarehouseMaintenanceConfigurationValue{}
+	bts, err := v.MarshalMsg(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	left, err := v.UnmarshalMsg(bts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(left) > 0 {
+		t.Errorf("%d bytes left over after UnmarshalMsg(): %q", len(left), left)
+	}
+
+	left, err = msgp.Skip(bts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(left) > 0 {
+		t.Errorf("%d bytes left over after Skip(): %q", len(left), left)
+	}
+}
+
+func BenchmarkMarshalMsgWarehouseMaintenanceConfigurationValue(b *testing.B) {
+	v := WarehouseMaintenanceConfigurationValue{}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		v.MarshalMsg(nil)
+	}
+}
+
+func BenchmarkAppendMsgWarehouseMaintenanceConfigurationValue(b *testing.B) {
+	v := WarehouseMaintenanceConfigurationValue{}
+	bts := make([]byte, 0, v.Msgsize())
+	bts, _ = v.MarshalMsg(bts[0:0])
+	b.SetBytes(int64(len(bts)))
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		bts, _ = v.MarshalMsg(bts[0:0])
+	}
+}
+
+func BenchmarkUnmarshalWarehouseMaintenanceConfigurationValue(b *testing.B) {
+	v := WarehouseMaintenanceConfigurationValue{}
+	bts, _ := v.MarshalMsg(nil)
+	b.ReportAllocs()
+	b.SetBytes(int64(len(bts)))
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, err := v.UnmarshalMsg(bts)
+		if err != nil {
+			b.Fatal(err)
+		}
+	}
+}
+
+func TestEncodeDecodeWarehouseMaintenanceConfigurationValue(t *testing.T) {
+	v := WarehouseMaintenanceConfigurationValue{}
+	var buf bytes.Buffer
+	msgp.Encode(&buf, &v)
+
+	m := v.Msgsize()
+	if buf.Len() > m {
+		t.Log("WARNING: TestEncodeDecodeWarehouseMaintenanceConfigurationValue Msgsize() is inaccurate")
+	}
+
+	vn := WarehouseMaintenanceConfigurationValue{}
+	err := msgp.Decode(&buf, &vn)
+	if err != nil {
+		t.Error(err)
+	}
+
+	buf.Reset()
+	msgp.Encode(&buf, &v)
+	err = msgp.NewReader(&buf).Skip()
+	if err != nil {
+		t.Error(err)
+	}
+}
+
+func BenchmarkEncodeWarehouseMaintenanceConfigurationValue(b *testing.B) {
+	v := WarehouseMaintenanceConfigurationValue{}
+	var buf bytes.Buffer
+	msgp.Encode(&buf, &v)
+	b.SetBytes(int64(buf.Len()))
+	en := msgp.NewWriter(msgp.Nowhere)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		v.EncodeMsg(en)
+	}
+	en.Flush()
+}
+
+func BenchmarkDecodeWarehouseMaintenanceConfigurationValue(b *testing.B) {
+	v := WarehouseMaintenanceConfigurationValue{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))
