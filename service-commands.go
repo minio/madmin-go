@@ -171,6 +171,7 @@ type ServiceTraceOpts struct {
 	KMS               bool
 	Formatting        bool
 	PurgeOnDelete     bool
+	TablesScan        bool
 
 	OnlyErrors    bool
 	Threshold     time.Duration
@@ -200,6 +201,7 @@ func (t ServiceTraceOpts) TraceTypes() TraceType {
 	tt.SetIf(t.KMS, TraceKMS)
 	tt.SetIf(t.Formatting, TraceFormatting)
 	tt.SetIf(t.PurgeOnDelete, TracePurgeOnDelete)
+	tt.SetIf(t.TablesScan, TraceTablesScan)
 
 	return tt
 }
@@ -222,6 +224,7 @@ func (t ServiceTraceOpts) AddParams(u url.Values) {
 	u.Set("batch-expire", strconv.FormatBool(t.BatchAll || t.BatchExpire))
 	u.Set("rebalance", strconv.FormatBool(t.Rebalance))
 	u.Set("tables", strconv.FormatBool(t.Tables))
+	u.Set("tables-scan", strconv.FormatBool(t.TablesScan))
 	u.Set("replication-resync", strconv.FormatBool(t.ReplicationResync))
 	u.Set("bootstrap", strconv.FormatBool(t.Bootstrap))
 	u.Set("ftp", strconv.FormatBool(t.FTP))
@@ -243,6 +246,7 @@ func (t *ServiceTraceOpts) ParseParams(r *http.Request) (err error) {
 	t.BatchExpire = r.Form.Get("batch-expire") == "true"
 	t.Rebalance = r.Form.Get("rebalance") == "true"
 	t.Tables = r.Form.Get("tables") == "true"
+	t.TablesScan = r.Form.Get("tables-scan") == "true"
 	t.Storage = r.Form.Get("storage") == "true"
 	t.Internal = r.Form.Get("internal") == "true"
 	t.OnlyErrors = r.Form.Get("err") == "true"
