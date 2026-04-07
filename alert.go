@@ -50,6 +50,10 @@ const (
 	AlertTypeKMSUnavailable AlertType = "kms-unavailable"
 	// AlertTypeStorageCapacity represents storage capacity critical alerts
 	AlertTypeStorageCapacity AlertType = "storage-capacity"
+	// AlertTypeScannerExcessFolders represents alerts for prefixes with excessive sub-folders
+	AlertTypeScannerExcessFolders AlertType = "scanner-excess-folders"
+	// AlertTypeScannerExcessVersions represents alerts for objects with excessive versions
+	AlertTypeScannerExcessVersions AlertType = "scanner-excess-versions"
 )
 
 // Alert represents a single alert event in the system.
