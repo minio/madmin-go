@@ -41,6 +41,7 @@ type TableReplicationInfo struct {
 	VersionsBehind   int      `json:"versionsBehind"`
 	MissingFiles     int      `json:"missingFiles"`
 	MissingFileNames []string `json:"missingFileNames,omitempty"`
+	RetriedFiles     int      `json:"retriedFiles"`
 }
 
 // TablesReplicationStatus returns the per-table replication tracking state
