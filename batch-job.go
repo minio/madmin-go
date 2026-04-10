@@ -47,6 +47,7 @@ const (
 const (
 	BatchJobStatusCompleted  BatchJobStatusType = "completed"
 	BatchJobStatusFailed     BatchJobStatusType = "failed"
+	BatchJobStatusCanceled   BatchJobStatusType = "canceled"
 	BatchJobStatusInProgress BatchJobStatusType = "in-progress"
 	BatchJobStatusUnknown    BatchJobStatusType = "unknown"
 )
