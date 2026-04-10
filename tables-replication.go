@@ -94,3 +94,23 @@ func (adm *AdminClient) TablesStartReplicaFailover(ctx context.Context) error {
 
 	return nil
 }
+
+// TablesReplicationResetCatalog signals the replica site to backup and delete
+// its catalog so it can be rebuilt from scratch by the next scanner cycle.
+func (adm *AdminClient) TablesReplicationResetCatalog(ctx context.Context) error {
+	reqData := requestData{
+		relPath: adminAPIPrefix + "/tables/reset-catalog",
+	}
+
+	resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+
+	return nil
+}
