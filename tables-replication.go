@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"time"
 )
 
 // TablesReplicationStatus is the response for the tables replication status admin API.
@@ -34,14 +35,15 @@ type TablesReplicationStatus struct {
 
 // TableReplicationInfo is the per-table replication status.
 type TableReplicationInfo struct {
-	Name             string   `json:"name"`
-	Type             string   `json:"type"`
-	VerifiedVersion  int      `json:"verifiedVersion"`
-	LatestVersion    int      `json:"latestVersion"`
-	VersionsBehind   int      `json:"versionsBehind"`
-	MissingFiles     int      `json:"missingFiles"`
-	MissingFileNames []string `json:"missingFileNames,omitempty"`
-	RetriedFiles     int      `json:"retriedFiles"`
+	Name             string    `json:"name"`
+	Type             string    `json:"type"`
+	VerifiedVersion  int       `json:"verifiedVersion"`
+	LatestVersion    int       `json:"latestVersion"`
+	VersionsBehind   int       `json:"versionsBehind"`
+	MissingFiles     int       `json:"missingFiles"`
+	MissingFileNames []string  `json:"missingFileNames,omitempty"`
+	RetriedFiles     int       `json:"retriedFiles"`
+	DiscoveredAt     time.Time `json:"discoveredAt"`
 }
 
 // TablesReplicationStatus returns the per-table replication tracking state
