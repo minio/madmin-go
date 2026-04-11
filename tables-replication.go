@@ -24,6 +24,7 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"time"
 )
 
 // TablesReplicationStatus is the response for the tables replication status admin API.
@@ -34,13 +35,15 @@ type TablesReplicationStatus struct {
 
 // TableReplicationInfo is the per-table replication status.
 type TableReplicationInfo struct {
-	Name             string   `json:"name"`
-	Type             string   `json:"type"`
-	VerifiedVersion  int      `json:"verifiedVersion"`
-	LatestVersion    int      `json:"latestVersion"`
-	VersionsBehind   int      `json:"versionsBehind"`
-	MissingFiles     int      `json:"missingFiles"`
-	MissingFileNames []string `json:"missingFileNames,omitempty"`
+	Name             string    `json:"name"`
+	Type             string    `json:"type"`
+	VerifiedVersion  int       `json:"verifiedVersion"`
+	LatestVersion    int       `json:"latestVersion"`
+	VersionsBehind   int       `json:"versionsBehind"`
+	MissingFiles     int       `json:"missingFiles"`
+	MissingFileNames []string  `json:"missingFileNames,omitempty"`
+	RetriedFiles     int       `json:"retriedFiles"`
+	DiscoveredAt     time.Time `json:"discoveredAt"`
 }
 
 // TablesReplicationStatus returns the per-table replication tracking state
@@ -79,6 +82,26 @@ func (adm *AdminClient) TablesReplicationStatus(ctx context.Context) (TablesRepl
 func (adm *AdminClient) TablesStartReplicaFailover(ctx context.Context) error {
 	reqData := requestData{
 		relPath: adminAPIPrefix + "/tables/start-failover",
+	}
+
+	resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+
+	return nil
+}
+
+// TablesReplicationResetCatalog signals the replica site to backup and delete
+// its catalog so it can be rebuilt from scratch by the next scanner cycle.
+func (adm *AdminClient) TablesReplicationResetCatalog(ctx context.Context) error {
+	reqData := requestData{
+		relPath: adminAPIPrefix + "/tables/reset-catalog",
 	}
 
 	resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
