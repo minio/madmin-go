@@ -44,6 +44,11 @@ type CapacityForecast struct {
 	RSquared float64 `json:"rSquared"` // 0-1, goodness of fit
 	Variance float64 `json:"variance"` // variance of daily usedFraction deltas
 
+	// Concrete min/max daily changes in usedFraction between consecutive
+	// data points. DayMinDelta can be negative (space was freed).
+	DayMinDelta float64 `json:"dayMinDelta"`
+	DayMaxDelta float64 `json:"dayMaxDelta"`
+
 	// Short-window (14-day) regression for recency-weighted predictions.
 	RecentGrowthRatePerDay float64 `json:"recentGrowthRatePerDay"`
 	RecentDaysUntilFull    float64 `json:"recentDaysUntilFull"`
