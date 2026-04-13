@@ -35,6 +35,18 @@ type CapacityForecast struct {
 	DaysUntil100Pct    float64 `json:"daysUntil100Pct"`
 	GrowthRatePerDay   int64   `json:"growthRatePerDay"`
 	DataPointCount     int     `json:"dataPointCount"`
+
+	// Worst-case prediction based on the largest single-day growth
+	// observed between any two consecutive data points.
+	MinDaysUntilFull float64 `json:"minDaysUntilFull"`
+
+	// Confidence metrics for the linear regression.
+	RSquared float64 `json:"rSquared"` // 0-1, goodness of fit
+	Variance float64 `json:"variance"` // variance of daily usedFraction deltas
+
+	// Short-window (14-day) regression for recency-weighted predictions.
+	RecentGrowthRatePerDay float64 `json:"recentGrowthRatePerDay"`
+	RecentDaysUntilFull    float64 `json:"recentDaysUntilFull"`
 }
 
 // CapacityForecast returns a storage capacity forecast based on
