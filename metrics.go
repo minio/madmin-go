@@ -464,8 +464,9 @@ type ScannerMetrics struct {
 
 	// Number of queued ILM expiry tasks.
 	ILMExpiryPendingTasks int `json:"ilm_expiry_pending_tasks,omitempty"`
-	// expiry queue cleanup duration
-	ILMExpiryTasksCleanup TimedAction `json:"ilm_expiry_tasks_cleanup"`
+	// ILMExpiryTasksServiced tracks the last-minute latency and count of ILM expiry
+	// tasks that have been serviced, measured from queue time to completion.
+	ILMExpiryTasksServiced TimedAction `json:"ilm_expiry_tasks_cleanup"`
 
 	// QueuedForExpiry holds the most recently queued expiry objects
 	QueuedForExpiry []ExpiryObject `json:"queued_for_expiry,omitempty"`
@@ -572,7 +573,7 @@ func (s *ScannerMetrics) Merge(other *ScannerMetrics) {
 	}
 
 	s.ILMExpiryPendingTasks += other.ILMExpiryPendingTasks
-	s.ILMExpiryTasksCleanup.Merge(other.ILMExpiryTasksCleanup)
+	s.ILMExpiryTasksServiced.Merge(other.ILMExpiryTasksServiced)
 	if len(other.QueuedForExpiry) > 0 {
 		s.QueuedForExpiry = append(s.QueuedForExpiry, other.QueuedForExpiry...)
 		slices.SortFunc(s.QueuedForExpiry, func(a, b ExpiryObject) int { return b.QueuedAt.Compare(a.QueuedAt) })

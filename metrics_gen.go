@@ -27765,9 +27765,9 @@ func (z *ScannerMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 			}
 			zb0001Mask |= 0x40
 		case "ilm_expiry_tasks_cleanup":
-			err = z.ILMExpiryTasksCleanup.DecodeMsg(dc)
+			err = z.ILMExpiryTasksServiced.DecodeMsg(dc)
 			if err != nil {
-				err = msgp.WrapError(err, "ILMExpiryTasksCleanup")
+				err = msgp.WrapError(err, "ILMExpiryTasksServiced")
 				return
 			}
 		case "queued_for_expiry":
@@ -28126,9 +28126,9 @@ func (z *ScannerMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 		if err != nil {
 			return
 		}
-		err = z.ILMExpiryTasksCleanup.EncodeMsg(en)
+		err = z.ILMExpiryTasksServiced.EncodeMsg(en)
 		if err != nil {
-			err = msgp.WrapError(err, "ILMExpiryTasksCleanup")
+			err = msgp.WrapError(err, "ILMExpiryTasksServiced")
 			return
 		}
 		if (zb0001Mask & 0x800) == 0 { // if not omitted
@@ -28320,9 +28320,9 @@ func (z *ScannerMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 		}
 		// string "ilm_expiry_tasks_cleanup"
 		o = append(o, 0xb8, 0x69, 0x6c, 0x6d, 0x5f, 0x65, 0x78, 0x70, 0x69, 0x72, 0x79, 0x5f, 0x74, 0x61, 0x73, 0x6b, 0x73, 0x5f, 0x63, 0x6c, 0x65, 0x61, 0x6e, 0x75, 0x70)
-		o, err = z.ILMExpiryTasksCleanup.MarshalMsg(o)
+		o, err = z.ILMExpiryTasksServiced.MarshalMsg(o)
 		if err != nil {
-			err = msgp.WrapError(err, "ILMExpiryTasksCleanup")
+			err = msgp.WrapError(err, "ILMExpiryTasksServiced")
 			return
 		}
 		if (zb0001Mask & 0x800) == 0 { // if not omitted
@@ -28642,9 +28642,9 @@ func (z *ScannerMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			}
 			zb0001Mask |= 0x40
 		case "ilm_expiry_tasks_cleanup":
-			bts, err = z.ILMExpiryTasksCleanup.UnmarshalMsg(bts)
+			bts, err = z.ILMExpiryTasksServiced.UnmarshalMsg(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "ILMExpiryTasksCleanup")
+				err = msgp.WrapError(err, "ILMExpiryTasksServiced")
 				return
 			}
 		case "queued_for_expiry":
@@ -28761,7 +28761,7 @@ func (z *ScannerMetrics) Msgsize() (s int) {
 	for za0015 := range z.ExcessivePrefixes {
 		s += msgp.StringPrefixSize + len(z.ExcessivePrefixes[za0015])
 	}
-	s += 25 + msgp.IntSize + 25 + z.ILMExpiryTasksCleanup.Msgsize() + 18 + msgp.ArrayHeaderSize
+	s += 25 + msgp.IntSize + 25 + z.ILMExpiryTasksServiced.Msgsize() + 18 + msgp.ArrayHeaderSize
 	for za0016 := range z.QueuedForExpiry {
 		s += z.QueuedForExpiry[za0016].Msgsize()
 	}
