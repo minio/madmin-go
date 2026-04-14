@@ -489,6 +489,31 @@ type ExpiryObject struct {
 	QueuedAt time.Time `json:"queued_at"`
 }
 
+// Merge combines two already-sorted lists of expiry objects into a single sorted list
+// preserving order (newest first), the out is limited to max 25 objects.
+func Merge(a, b []ExpiryObject) []ExpiryObject {
+	const maxSize = 25
+	merged := make([]ExpiryObject, 0, min(maxSize, len(a)+len(b)))
+	i := 0
+	j := 0
+	for i < len(a) && j < len(b) && len(merged) < maxSize {
+		if a[i].QueuedAt.After(b[j].QueuedAt) {
+			merged = append(merged, a[i])
+			i++
+		} else {
+			merged = append(merged, b[j])
+			j++
+		}
+	}
+	for ; i < len(a) && len(merged) < maxSize; i++ {
+		merged = append(merged, a[i])
+	}
+	for ; j < len(b) && len(merged) < maxSize; j++ {
+		merged = append(merged, b[j])
+	}
+	return merged
+}
+
 // SegmentedActions are time segmented scanner activity.
 type SegmentedActions = Segmented[TimedAction, *TimedAction]
 
@@ -584,8 +609,7 @@ func (s *ScannerMetrics) Merge(other *ScannerMetrics) {
 	s.ILMExpiryPendingTasks += other.ILMExpiryPendingTasks
 	s.ILMExpiryTasksServiced.Merge(other.ILMExpiryTasksServiced)
 	if len(other.QueuedForExpiry) > 0 {
-		s.QueuedForExpiry = append(s.QueuedForExpiry, other.QueuedForExpiry...)
-		slices.SortFunc(s.QueuedForExpiry, func(a, b ExpiryObject) int { return b.QueuedAt.Compare(a.QueuedAt) })
+		s.QueuedForExpiry = Merge(s.QueuedForExpiry, other.QueuedForExpiry)
 	}
 }
 

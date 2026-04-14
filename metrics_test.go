@@ -33,6 +33,9 @@ import (
 func TestScannerMetricsMerge(t *testing.T) {
 	now := time.Now()
 	later := now.Add(time.Hour)
+	yesterday := now.AddDate(0, 0, -1)
+	lastMonth := now.AddDate(0, -1, 0)
+	lastYear := now.AddDate(-1, 0, 0)
 
 	tests := []struct {
 		name   string
@@ -104,6 +107,31 @@ func TestScannerMetricsMerge(t *testing.T) {
 				expected := []string{"prefix1", "prefix2", "prefix3"}
 				if !reflect.DeepEqual(result.ExcessivePrefixes, expected) {
 					t.Errorf("ExcessivePrefixes = %v, want %v", result.ExcessivePrefixes, expected)
+				}
+			},
+		},
+		{
+			name: "merge queued for expiry",
+			base: &ScannerMetrics{
+				QueuedForExpiry: append([]ExpiryObject{{QueuedAt: now}, {QueuedAt: yesterday}}, make([]ExpiryObject, 25)...),
+			},
+			other: &ScannerMetrics{
+				QueuedForExpiry: []ExpiryObject{{QueuedAt: lastMonth}, {QueuedAt: lastYear}},
+			},
+			verify: func(t *testing.T, result *ScannerMetrics) {
+				if len(result.QueuedForExpiry) != 25 {
+					t.Errorf("QueuedForExpiry length = %d, want 25", len(result.QueuedForExpiry))
+				}
+				// Check sorted order of first 5
+				expectedFirstFive := []ExpiryObject{
+					{QueuedAt: now},
+					{QueuedAt: yesterday},
+					{QueuedAt: lastMonth},
+					{QueuedAt: lastYear},
+					{QueuedAt: time.Time{}},
+				}
+				if !reflect.DeepEqual(result.QueuedForExpiry[:5], expectedFirstFive) {
+					t.Errorf("QueuedForExpiry[:5] = %v, want %v", result.QueuedForExpiry[:5], expectedFirstFive)
 				}
 			},
 		},
