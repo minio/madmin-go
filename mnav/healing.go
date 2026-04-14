@@ -43,8 +43,8 @@ func (node *HealingMetricsNode) GetChildren() []MetricChild {
 		return []MetricChild{}
 	}
 	return []MetricChild{
-		{Name: "last_minute", Description: "Rolling 60-second totals"},
-		{Name: "last_hour", Description: "Rolling 60-minute totals"},
+		{Name: "last_minute", Description: "Rolling 1 minute total"},
+		{Name: "last_hour", Description: "Rolling 1 hour total"},
 		{Name: "last_day", Description: "Last 24h in 15-minute segments"},
 		{Name: "since_start", Description: "Accumulated all-time totals"},
 		{Name: "buckets_minute", Description: "Per-bucket outcomes (last minute)"},
@@ -139,36 +139,38 @@ func (node *HealingCountsNode) GetLeafData() map[string]string {
 
 	data["00:Started"] = humanize.Comma(c.Started)
 	data["01:Completed"] = humanize.Comma(c.Completed)
-	data["02:Failed"] = humanize.Comma(c.Failed)
-	data["03:Bytes processed"] = humanize.Bytes(uint64(c.Bytes))
-	data["04:Bytes healed"] = humanize.Bytes(uint64(c.BytesCompleted))
+	data["02:Healed"] = humanize.Comma(c.Healed)
+	data["03:Failed"] = humanize.Comma(c.Failed)
+	data["04:Bytes processed"] = humanize.Bytes(uint64(c.Bytes))
+	data["05:Bytes completed"] = humanize.Bytes(uint64(c.BytesCompleted))
+	data["06:Bytes healed"] = humanize.Bytes(uint64(c.BytesHealed))
 
 	if c.Completed > 0 && c.AccTime > 0 {
 		avg := c.AccTime / float64(c.Completed)
-		data["05:Avg heal time"] = fmt.Sprintf("%.2fms", avg*1000)
-		data["06:Total heal time"] = fmt.Sprintf("%.1fs", c.AccTime)
+		data["07:Avg heal time"] = fmt.Sprintf("%.2fms", avg*1000)
+		data["08:Total heal time"] = fmt.Sprintf("%.1fs", c.AccTime)
 	}
 
 	if c.Dangling > 0 {
-		data["07:Dangling cleaned"] = humanize.Comma(c.Dangling)
+		data["09:Dangling cleaned"] = humanize.Comma(c.Dangling)
 	}
 	if c.WarmTierChecks > 0 {
-		data["08:Warm tier checks"] = humanize.Comma(c.WarmTierChecks)
+		data["10:Warm tier checks"] = humanize.Comma(c.WarmTierChecks)
 	}
 
 	if len(c.ByOrigin) > 0 {
 		for k, v := range c.ByOrigin {
-			data["10:Origin/"+k] = humanize.Comma(v)
+			data["20:Origin/"+k] = humanize.Comma(v)
 		}
 	}
 	if len(c.ByType) > 0 {
 		for k, v := range c.ByType {
-			data["11:Type/"+k] = humanize.Comma(v)
+			data["21:Type/"+k] = humanize.Comma(v)
 		}
 	}
 	if len(c.ByError) > 0 {
 		for k, v := range c.ByError {
-			data["12:Error/"+k] = humanize.Comma(v)
+			data["22:Error/"+k] = humanize.Comma(v)
 		}
 	}
 	return data
@@ -368,9 +370,10 @@ func (node *HealingBucketLeafNode) GetChild(_ string) (MetricNode, error) {
 
 // formatHealSummary returns a one-line summary of a HealingCounts.
 func formatHealSummary(c *madmin.HealingCounts) string {
-	s := fmt.Sprintf("%s started, %s ok, %s failed, %s",
+	s := fmt.Sprintf("%s started, %s ok, %s healed, %s failed, %s",
 		humanize.Comma(c.Started),
 		humanize.Comma(c.Completed),
+		humanize.Comma(c.Healed),
 		humanize.Comma(c.Failed),
 		humanize.Bytes(uint64(c.BytesCompleted)))
 	if c.Completed > 0 && c.AccTime > 0 {

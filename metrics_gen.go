@@ -10123,7 +10123,7 @@ func (z *HealingCounts) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint16 /* 11 bits */
+	var zb0001Mask uint16 /* 13 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -10154,41 +10154,55 @@ func (z *HealingCounts) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 			zb0001Mask |= 0x4
+		case "healed":
+			z.Healed, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "Healed")
+				return
+			}
+			zb0001Mask |= 0x8
+		case "bytes_healed":
+			z.BytesHealed, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "BytesHealed")
+				return
+			}
+			zb0001Mask |= 0x10
 		case "bytes":
 			z.Bytes, err = dc.ReadInt64()
 			if err != nil {
 				err = msgp.WrapError(err, "Bytes")
 				return
 			}
-			zb0001Mask |= 0x8
+			zb0001Mask |= 0x20
 		case "bytes_completed":
 			z.BytesCompleted, err = dc.ReadInt64()
 			if err != nil {
 				err = msgp.WrapError(err, "BytesCompleted")
 				return
 			}
-			zb0001Mask |= 0x10
+			zb0001Mask |= 0x40
 		case "acc_time_secs":
 			z.AccTime, err = dc.ReadFloat64()
 			if err != nil {
 				err = msgp.WrapError(err, "AccTime")
 				return
 			}
-			zb0001Mask |= 0x20
+			zb0001Mask |= 0x80
 		case "dangling":
 			z.Dangling, err = dc.ReadInt64()
 			if err != nil {
 				err = msgp.WrapError(err, "Dangling")
 				return
 			}
-			zb0001Mask |= 0x40
+			zb0001Mask |= 0x100
 		case "warm_tier_checks":
 			z.WarmTierChecks, err = dc.ReadInt64()
 			if err != nil {
 				err = msgp.WrapError(err, "WarmTierChecks")
 				return
 			}
-			zb0001Mask |= 0x80
+			zb0001Mask |= 0x200
 		case "by_origin":
 			var zb0002 uint32
 			zb0002, err = dc.ReadMapHeader()
@@ -10221,7 +10235,7 @@ func (z *HealingCounts) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.ByOrigin[za0001] = za0002
 			}
-			zb0001Mask |= 0x100
+			zb0001Mask |= 0x400
 		case "by_type":
 			var zb0004 uint32
 			zb0004, err = dc.ReadMapHeader()
@@ -10254,7 +10268,7 @@ func (z *HealingCounts) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.ByType[za0003] = za0004
 			}
-			zb0001Mask |= 0x200
+			zb0001Mask |= 0x800
 		case "by_error":
 			var zb0006 uint32
 			zb0006, err = dc.ReadMapHeader()
@@ -10287,7 +10301,7 @@ func (z *HealingCounts) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.ByError[za0005] = za0006
 			}
-			zb0001Mask |= 0x400
+			zb0001Mask |= 0x1000
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -10297,7 +10311,7 @@ func (z *HealingCounts) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x7ff {
+	if zb0001Mask != 0x1fff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Started = 0
 		}
@@ -10308,27 +10322,33 @@ func (z *HealingCounts) DecodeMsg(dc *msgp.Reader) (err error) {
 			z.Failed = 0
 		}
 		if (zb0001Mask & 0x8) == 0 {
-			z.Bytes = 0
+			z.Healed = 0
 		}
 		if (zb0001Mask & 0x10) == 0 {
-			z.BytesCompleted = 0
+			z.BytesHealed = 0
 		}
 		if (zb0001Mask & 0x20) == 0 {
-			z.AccTime = 0
+			z.Bytes = 0
 		}
 		if (zb0001Mask & 0x40) == 0 {
-			z.Dangling = 0
+			z.BytesCompleted = 0
 		}
 		if (zb0001Mask & 0x80) == 0 {
-			z.WarmTierChecks = 0
+			z.AccTime = 0
 		}
 		if (zb0001Mask & 0x100) == 0 {
-			z.ByOrigin = nil
+			z.Dangling = 0
 		}
 		if (zb0001Mask & 0x200) == 0 {
-			z.ByType = nil
+			z.WarmTierChecks = 0
 		}
 		if (zb0001Mask & 0x400) == 0 {
+			z.ByOrigin = nil
+		}
+		if (zb0001Mask & 0x800) == 0 {
+			z.ByType = nil
+		}
+		if (zb0001Mask & 0x1000) == 0 {
 			z.ByError = nil
 		}
 	}
@@ -10338,8 +10358,8 @@ func (z *HealingCounts) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *HealingCounts) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(11)
-	var zb0001Mask uint16 /* 11 bits */
+	zb0001Len := uint32(13)
+	var zb0001Mask uint16 /* 13 bits */
 	_ = zb0001Mask
 	if z.Started == 0 {
 		zb0001Len--
@@ -10353,37 +10373,45 @@ func (z *HealingCounts) EncodeMsg(en *msgp.Writer) (err error) {
 		zb0001Len--
 		zb0001Mask |= 0x4
 	}
-	if z.Bytes == 0 {
+	if z.Healed == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x8
 	}
-	if z.BytesCompleted == 0 {
+	if z.BytesHealed == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x10
 	}
-	if z.AccTime == 0 {
+	if z.Bytes == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x20
 	}
-	if z.Dangling == 0 {
+	if z.BytesCompleted == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x40
 	}
-	if z.WarmTierChecks == 0 {
+	if z.AccTime == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x80
 	}
-	if z.ByOrigin == nil {
+	if z.Dangling == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x100
 	}
-	if z.ByType == nil {
+	if z.WarmTierChecks == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x200
 	}
-	if z.ByError == nil {
+	if z.ByOrigin == nil {
 		zb0001Len--
 		zb0001Mask |= 0x400
+	}
+	if z.ByType == nil {
+		zb0001Len--
+		zb0001Mask |= 0x800
+	}
+	if z.ByError == nil {
+		zb0001Len--
+		zb0001Mask |= 0x1000
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -10430,6 +10458,30 @@ func (z *HealingCounts) EncodeMsg(en *msgp.Writer) (err error) {
 			}
 		}
 		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// write "healed"
+			err = en.Append(0xa6, 0x68, 0x65, 0x61, 0x6c, 0x65, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.Healed)
+			if err != nil {
+				err = msgp.WrapError(err, "Healed")
+				return
+			}
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// write "bytes_healed"
+			err = en.Append(0xac, 0x62, 0x79, 0x74, 0x65, 0x73, 0x5f, 0x68, 0x65, 0x61, 0x6c, 0x65, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.BytesHealed)
+			if err != nil {
+				err = msgp.WrapError(err, "BytesHealed")
+				return
+			}
+		}
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
 			// write "bytes"
 			err = en.Append(0xa5, 0x62, 0x79, 0x74, 0x65, 0x73)
 			if err != nil {
@@ -10441,7 +10493,7 @@ func (z *HealingCounts) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x10) == 0 { // if not omitted
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
 			// write "bytes_completed"
 			err = en.Append(0xaf, 0x62, 0x79, 0x74, 0x65, 0x73, 0x5f, 0x63, 0x6f, 0x6d, 0x70, 0x6c, 0x65, 0x74, 0x65, 0x64)
 			if err != nil {
@@ -10453,7 +10505,7 @@ func (z *HealingCounts) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x20) == 0 { // if not omitted
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
 			// write "acc_time_secs"
 			err = en.Append(0xad, 0x61, 0x63, 0x63, 0x5f, 0x74, 0x69, 0x6d, 0x65, 0x5f, 0x73, 0x65, 0x63, 0x73)
 			if err != nil {
@@ -10465,7 +10517,7 @@ func (z *HealingCounts) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x40) == 0 { // if not omitted
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
 			// write "dangling"
 			err = en.Append(0xa8, 0x64, 0x61, 0x6e, 0x67, 0x6c, 0x69, 0x6e, 0x67)
 			if err != nil {
@@ -10477,7 +10529,7 @@ func (z *HealingCounts) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x80) == 0 { // if not omitted
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
 			// write "warm_tier_checks"
 			err = en.Append(0xb0, 0x77, 0x61, 0x72, 0x6d, 0x5f, 0x74, 0x69, 0x65, 0x72, 0x5f, 0x63, 0x68, 0x65, 0x63, 0x6b, 0x73)
 			if err != nil {
@@ -10489,7 +10541,7 @@ func (z *HealingCounts) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x100) == 0 { // if not omitted
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
 			// write "by_origin"
 			err = en.Append(0xa9, 0x62, 0x79, 0x5f, 0x6f, 0x72, 0x69, 0x67, 0x69, 0x6e)
 			if err != nil {
@@ -10513,7 +10565,7 @@ func (z *HealingCounts) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x200) == 0 { // if not omitted
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
 			// write "by_type"
 			err = en.Append(0xa7, 0x62, 0x79, 0x5f, 0x74, 0x79, 0x70, 0x65)
 			if err != nil {
@@ -10537,7 +10589,7 @@ func (z *HealingCounts) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x400) == 0 { // if not omitted
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
 			// write "by_error"
 			err = en.Append(0xa8, 0x62, 0x79, 0x5f, 0x65, 0x72, 0x72, 0x6f, 0x72)
 			if err != nil {
@@ -10569,8 +10621,8 @@ func (z *HealingCounts) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *HealingCounts) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(11)
-	var zb0001Mask uint16 /* 11 bits */
+	zb0001Len := uint32(13)
+	var zb0001Mask uint16 /* 13 bits */
 	_ = zb0001Mask
 	if z.Started == 0 {
 		zb0001Len--
@@ -10584,37 +10636,45 @@ func (z *HealingCounts) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x4
 	}
-	if z.Bytes == 0 {
+	if z.Healed == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x8
 	}
-	if z.BytesCompleted == 0 {
+	if z.BytesHealed == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x10
 	}
-	if z.AccTime == 0 {
+	if z.Bytes == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x20
 	}
-	if z.Dangling == 0 {
+	if z.BytesCompleted == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x40
 	}
-	if z.WarmTierChecks == 0 {
+	if z.AccTime == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x80
 	}
-	if z.ByOrigin == nil {
+	if z.Dangling == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x100
 	}
-	if z.ByType == nil {
+	if z.WarmTierChecks == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x200
 	}
-	if z.ByError == nil {
+	if z.ByOrigin == nil {
 		zb0001Len--
 		zb0001Mask |= 0x400
+	}
+	if z.ByType == nil {
+		zb0001Len--
+		zb0001Mask |= 0x800
+	}
+	if z.ByError == nil {
+		zb0001Len--
+		zb0001Mask |= 0x1000
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -10637,31 +10697,41 @@ func (z *HealingCounts) MarshalMsg(b []byte) (o []byte, err error) {
 			o = msgp.AppendInt64(o, z.Failed)
 		}
 		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// string "healed"
+			o = append(o, 0xa6, 0x68, 0x65, 0x61, 0x6c, 0x65, 0x64)
+			o = msgp.AppendInt64(o, z.Healed)
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// string "bytes_healed"
+			o = append(o, 0xac, 0x62, 0x79, 0x74, 0x65, 0x73, 0x5f, 0x68, 0x65, 0x61, 0x6c, 0x65, 0x64)
+			o = msgp.AppendInt64(o, z.BytesHealed)
+		}
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
 			// string "bytes"
 			o = append(o, 0xa5, 0x62, 0x79, 0x74, 0x65, 0x73)
 			o = msgp.AppendInt64(o, z.Bytes)
 		}
-		if (zb0001Mask & 0x10) == 0 { // if not omitted
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
 			// string "bytes_completed"
 			o = append(o, 0xaf, 0x62, 0x79, 0x74, 0x65, 0x73, 0x5f, 0x63, 0x6f, 0x6d, 0x70, 0x6c, 0x65, 0x74, 0x65, 0x64)
 			o = msgp.AppendInt64(o, z.BytesCompleted)
 		}
-		if (zb0001Mask & 0x20) == 0 { // if not omitted
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
 			// string "acc_time_secs"
 			o = append(o, 0xad, 0x61, 0x63, 0x63, 0x5f, 0x74, 0x69, 0x6d, 0x65, 0x5f, 0x73, 0x65, 0x63, 0x73)
 			o = msgp.AppendFloat64(o, z.AccTime)
 		}
-		if (zb0001Mask & 0x40) == 0 { // if not omitted
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
 			// string "dangling"
 			o = append(o, 0xa8, 0x64, 0x61, 0x6e, 0x67, 0x6c, 0x69, 0x6e, 0x67)
 			o = msgp.AppendInt64(o, z.Dangling)
 		}
-		if (zb0001Mask & 0x80) == 0 { // if not omitted
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
 			// string "warm_tier_checks"
 			o = append(o, 0xb0, 0x77, 0x61, 0x72, 0x6d, 0x5f, 0x74, 0x69, 0x65, 0x72, 0x5f, 0x63, 0x68, 0x65, 0x63, 0x6b, 0x73)
 			o = msgp.AppendInt64(o, z.WarmTierChecks)
 		}
-		if (zb0001Mask & 0x100) == 0 { // if not omitted
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
 			// string "by_origin"
 			o = append(o, 0xa9, 0x62, 0x79, 0x5f, 0x6f, 0x72, 0x69, 0x67, 0x69, 0x6e)
 			o = msgp.AppendMapHeader(o, uint32(len(z.ByOrigin)))
@@ -10670,7 +10740,7 @@ func (z *HealingCounts) MarshalMsg(b []byte) (o []byte, err error) {
 				o = msgp.AppendInt64(o, za0002)
 			}
 		}
-		if (zb0001Mask & 0x200) == 0 { // if not omitted
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
 			// string "by_type"
 			o = append(o, 0xa7, 0x62, 0x79, 0x5f, 0x74, 0x79, 0x70, 0x65)
 			o = msgp.AppendMapHeader(o, uint32(len(z.ByType)))
@@ -10679,7 +10749,7 @@ func (z *HealingCounts) MarshalMsg(b []byte) (o []byte, err error) {
 				o = msgp.AppendInt64(o, za0004)
 			}
 		}
-		if (zb0001Mask & 0x400) == 0 { // if not omitted
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
 			// string "by_error"
 			o = append(o, 0xa8, 0x62, 0x79, 0x5f, 0x65, 0x72, 0x72, 0x6f, 0x72)
 			o = msgp.AppendMapHeader(o, uint32(len(z.ByError)))
@@ -10702,7 +10772,7 @@ func (z *HealingCounts) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint16 /* 11 bits */
+	var zb0001Mask uint16 /* 13 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -10733,41 +10803,55 @@ func (z *HealingCounts) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 			zb0001Mask |= 0x4
+		case "healed":
+			z.Healed, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Healed")
+				return
+			}
+			zb0001Mask |= 0x8
+		case "bytes_healed":
+			z.BytesHealed, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "BytesHealed")
+				return
+			}
+			zb0001Mask |= 0x10
 		case "bytes":
 			z.Bytes, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Bytes")
 				return
 			}
-			zb0001Mask |= 0x8
+			zb0001Mask |= 0x20
 		case "bytes_completed":
 			z.BytesCompleted, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "BytesCompleted")
 				return
 			}
-			zb0001Mask |= 0x10
+			zb0001Mask |= 0x40
 		case "acc_time_secs":
 			z.AccTime, bts, err = msgp.ReadFloat64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "AccTime")
 				return
 			}
-			zb0001Mask |= 0x20
+			zb0001Mask |= 0x80
 		case "dangling":
 			z.Dangling, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Dangling")
 				return
 			}
-			zb0001Mask |= 0x40
+			zb0001Mask |= 0x100
 		case "warm_tier_checks":
 			z.WarmTierChecks, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "WarmTierChecks")
 				return
 			}
-			zb0001Mask |= 0x80
+			zb0001Mask |= 0x200
 		case "by_origin":
 			var zb0002 uint32
 			zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
@@ -10800,7 +10884,7 @@ func (z *HealingCounts) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.ByOrigin[za0001] = za0002
 			}
-			zb0001Mask |= 0x100
+			zb0001Mask |= 0x400
 		case "by_type":
 			var zb0004 uint32
 			zb0004, bts, err = msgp.ReadMapHeaderBytes(bts)
@@ -10833,7 +10917,7 @@ func (z *HealingCounts) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.ByType[za0003] = za0004
 			}
-			zb0001Mask |= 0x200
+			zb0001Mask |= 0x800
 		case "by_error":
 			var zb0006 uint32
 			zb0006, bts, err = msgp.ReadMapHeaderBytes(bts)
@@ -10866,7 +10950,7 @@ func (z *HealingCounts) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.ByError[za0005] = za0006
 			}
-			zb0001Mask |= 0x400
+			zb0001Mask |= 0x1000
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -10876,7 +10960,7 @@ func (z *HealingCounts) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x7ff {
+	if zb0001Mask != 0x1fff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Started = 0
 		}
@@ -10887,27 +10971,33 @@ func (z *HealingCounts) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.Failed = 0
 		}
 		if (zb0001Mask & 0x8) == 0 {
-			z.Bytes = 0
+			z.Healed = 0
 		}
 		if (zb0001Mask & 0x10) == 0 {
-			z.BytesCompleted = 0
+			z.BytesHealed = 0
 		}
 		if (zb0001Mask & 0x20) == 0 {
-			z.AccTime = 0
+			z.Bytes = 0
 		}
 		if (zb0001Mask & 0x40) == 0 {
-			z.Dangling = 0
+			z.BytesCompleted = 0
 		}
 		if (zb0001Mask & 0x80) == 0 {
-			z.WarmTierChecks = 0
+			z.AccTime = 0
 		}
 		if (zb0001Mask & 0x100) == 0 {
-			z.ByOrigin = nil
+			z.Dangling = 0
 		}
 		if (zb0001Mask & 0x200) == 0 {
-			z.ByType = nil
+			z.WarmTierChecks = 0
 		}
 		if (zb0001Mask & 0x400) == 0 {
+			z.ByOrigin = nil
+		}
+		if (zb0001Mask & 0x800) == 0 {
+			z.ByType = nil
+		}
+		if (zb0001Mask & 0x1000) == 0 {
 			z.ByError = nil
 		}
 	}
@@ -10917,7 +11007,7 @@ func (z *HealingCounts) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *HealingCounts) Msgsize() (s int) {
-	s = 1 + 8 + msgp.Int64Size + 10 + msgp.Int64Size + 7 + msgp.Int64Size + 6 + msgp.Int64Size + 16 + msgp.Int64Size + 14 + msgp.Float64Size + 9 + msgp.Int64Size + 17 + msgp.Int64Size + 10 + msgp.MapHeaderSize
+	s = 1 + 8 + msgp.Int64Size + 10 + msgp.Int64Size + 7 + msgp.Int64Size + 7 + msgp.Int64Size + 13 + msgp.Int64Size + 6 + msgp.Int64Size + 16 + msgp.Int64Size + 14 + msgp.Float64Size + 9 + msgp.Int64Size + 17 + msgp.Int64Size + 10 + msgp.MapHeaderSize
 	if z.ByOrigin != nil {
 		for za0001, za0002 := range z.ByOrigin {
 			_ = za0002

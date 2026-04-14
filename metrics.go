@@ -2712,12 +2712,12 @@ const (
 type HealError = string
 
 const (
-	HealErrCorrupt     HealError = "corrupt"
-	HealErrMissing     HealError = "missing"
-	HealErrOffline     HealError = "offline"
-	HealErrTimeout     HealError = "timeout"
-	HealErrPermission  HealError = "permission"
-	HealErrChecksum    HealError = "checksum"
+	HealErrCorrupt         HealError = "corrupt"
+	HealErrMissing         HealError = "missing"
+	HealErrOffline         HealError = "offline"
+	HealErrTimeout         HealError = "timeout"
+	HealErrPermission      HealError = "permission"
+	HealErrChecksum        HealError = "checksum"
 	HealErrReadQuorum      HealError = "read-quorum"
 	HealErrWriteQuorum     HealError = "write-quorum"
 	HealErrWarmTierUnreach HealError = "warm-tier-unreachable"
@@ -2727,10 +2727,20 @@ const (
 // HealingCounts contains aggregate healing counters.
 // Also serves as the segment type for SegmentedHealingStats.
 type HealingCounts struct {
-	Started        int64 `json:"started,omitempty"`
-	Completed      int64 `json:"completed,omitempty"`
-	Failed         int64 `json:"failed,omitempty"`
-	Bytes          int64 `json:"bytes,omitempty"`
+	Started   int64 `json:"started,omitempty"`
+	Completed int64 `json:"completed,omitempty"`
+	Failed    int64 `json:"failed,omitempty"`
+
+	// Healed is the subset of Completed where drives were actually repaired.
+	Healed int64 `json:"healed,omitempty"`
+
+	// BytesHealed is the total size of objects where drives were actually repaired.
+	BytesHealed int64 `json:"bytes_healed,omitempty"`
+
+	// Bytes is the total size of all objects submitted for heal checks.
+	Bytes int64 `json:"bytes,omitempty"`
+
+	// BytesCompleted is the total size of objects that completed healing without error.
 	BytesCompleted int64 `json:"bytes_completed,omitempty"`
 
 	// AccTime is accumulated wall-clock time of completed heal operations in seconds.
@@ -2756,6 +2766,8 @@ func (h *HealingCounts) Add(other *HealingCounts) {
 	h.Started += other.Started
 	h.Completed += other.Completed
 	h.Failed += other.Failed
+	h.Healed += other.Healed
+	h.BytesHealed += other.BytesHealed
 	h.Bytes += other.Bytes
 	h.BytesCompleted += other.BytesCompleted
 	h.AccTime += other.AccTime
