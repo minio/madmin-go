@@ -26,19 +26,26 @@ import (
 
 // CapacityForecast contains storage capacity predictions based on
 // historical daily snapshots collected by the scanner.
+//
+// Days-until-threshold fields are pointers: nil means "unknown" (for example,
+// not enough history yet, or usage is not growing). A concrete value may be
+// negative when the threshold was already crossed in the past.
 type CapacityForecast struct {
 	CurrentUsedBytes   uint64  `json:"currentUsedBytes"`
 	CurrentTotalBytes  uint64  `json:"currentTotalBytes"`
 	CurrentUsedPercent float64 `json:"currentUsedPercent"`
-	DaysUntil80Pct     float64 `json:"daysUntil80Pct"`
-	DaysUntil90Pct     float64 `json:"daysUntil90Pct"`
-	DaysUntil100Pct    float64 `json:"daysUntil100Pct"`
-	GrowthRatePerDay   int64   `json:"growthRatePerDay"`
-	DataPointCount     int     `json:"dataPointCount"`
+
+	// Days until each usage threshold is reached. nil = unknown.
+	DaysUntil80Pct  *float64 `json:"daysUntil80Pct,omitempty"`
+	DaysUntil90Pct  *float64 `json:"daysUntil90Pct,omitempty"`
+	DaysUntil100Pct *float64 `json:"daysUntil100Pct,omitempty"`
+
+	GrowthRatePerDay int64 `json:"growthRatePerDay"`
+	DataPointCount   int   `json:"dataPointCount"`
 
 	// Worst-case prediction based on the largest single-day growth
-	// observed between any two consecutive data points.
-	MinDaysUntilFull float64 `json:"minDaysUntilFull"`
+	// observed between any two consecutive data points. nil = unknown.
+	MinDaysUntilFull *float64 `json:"minDaysUntilFull,omitempty"`
 
 	// Confidence metrics for the linear regression.
 	RSquared float64 `json:"rSquared"` // 0-1, goodness of fit
@@ -50,8 +57,8 @@ type CapacityForecast struct {
 	DayMaxDelta float64 `json:"dayMaxDelta"`
 
 	// Short-window (14-day) regression for recency-weighted predictions.
-	RecentGrowthRatePerDay float64 `json:"recentGrowthRatePerDay"`
-	RecentDaysUntilFull    float64 `json:"recentDaysUntilFull"`
+	RecentGrowthRatePerDay float64  `json:"recentGrowthRatePerDay"`
+	RecentDaysUntilFull    *float64 `json:"recentDaysUntilFull,omitempty"`
 }
 
 // CapacityForecast returns a storage capacity forecast based on
