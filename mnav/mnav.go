@@ -167,6 +167,7 @@ func (node *RealtimeMetricsNode) GetChildren() []MetricChild {
 		{Name: "process", Description: "Process-level system metrics"},
 		{Name: "replication", Description: "Replication metrics"},
 		{Name: "scanner", Description: "Scanner-related metrics"},
+		{Name: "healing", Description: "Healing operation metrics"},
 		{Name: "batch_jobs", Description: "Batch job execution metrics"},
 		{Name: "site_resync", Description: "Site replication resync metrics"},
 		{Name: "by_host", Description: "Metrics broken down by individual host"},
@@ -220,6 +221,8 @@ func (node *RealtimeMetricsNode) GetChild(name string) (MetricNode, error) {
 	// Individual metric types - route directly from root
 	case "scanner":
 		return NewScannerMetricsNode(node.metrics.Aggregated.Scanner, node, "scanner"), nil
+	case "healing":
+		return NewHealingMetricsNode(node.metrics.Aggregated.Healing, node, "healing"), nil
 	case "drive":
 		return NewDiskMetricsNavigator(node.metrics.Aggregated.Disk, node, "drive", madmin.MetricsOptions{}), nil
 	case "os":
@@ -323,6 +326,7 @@ func (node *MetricsNode) GetChildren() []MetricChild {
 		{Name: "process", Description: "Process-level system metrics"},
 		{Name: "replication", Description: "Replication metrics"},
 		{Name: "scanner", Description: "Scanner-related metrics"},
+		{Name: "healing", Description: "Healing operation metrics"},
 		{Name: "batch_jobs", Description: "Batch job execution metrics"},
 		{Name: "site_resync", Description: "Site replication resync metrics"},
 	}
@@ -356,6 +360,8 @@ func (node *MetricsNode) GetChild(name string) (MetricNode, error) {
 	switch name {
 	case "scanner":
 		return NewScannerMetricsNode(node.metrics.Scanner, node, fmt.Sprintf("%s/scanner", node.path)), nil
+	case "healing":
+		return NewHealingMetricsNode(node.metrics.Healing, node, fmt.Sprintf("%s/healing", node.path)), nil
 	case "drive":
 		return NewDiskMetricsNavigator(node.metrics.Disk, node, fmt.Sprintf("%s/drive", node.path), madmin.MetricsOptions{}), nil
 	case "os":

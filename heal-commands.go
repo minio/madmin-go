@@ -112,7 +112,7 @@ type HealTaskStatus struct {
 
 // HealItemType - specify the type of heal operation in a healing
 // result
-type HealItemType string
+type HealItemType = string
 
 // HealItemType constants
 const (
