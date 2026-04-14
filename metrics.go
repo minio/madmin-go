@@ -41,6 +41,8 @@ import (
 
 //go:generate msgp -unexported -d clearomitted -d "tag json" -d "timezone utc" -d "maps binkeys" -file $GOFILE
 
+//msgp:replace HealItemType with:string
+
 // MetricType is a bitfield representation of different metric types.
 type MetricType uint32
 
@@ -61,6 +63,7 @@ const (
 	MetricsAPI
 	MetricsReplication
 	MetricsProcess
+	MetricsHealing
 
 	// MetricsAll must be last.
 	// Enables all metrics.
@@ -96,6 +99,7 @@ func (m MetricType) String() string {
 	addIf(m.Contains(MetricsAPI), "API")
 	addIf(m.Contains(MetricsReplication), "Replication")
 	addIf(m.Contains(MetricsProcess), "Process")
+	addIf(m.Contains(MetricsHealing), "Healing")
 	return b.String()
 }
 
@@ -362,6 +366,7 @@ type Metrics struct {
 	API         *APIMetrics         `json:"api,omitempty"`
 	Replication *ReplicationMetrics `json:"replication,omitempty"`
 	Process     *ProcessMetrics     `json:"process,omitempty"`
+	Healing     *HealingMetrics     `json:"healing,omitempty"`
 }
 
 // Merge other into r.
@@ -425,6 +430,10 @@ func (r *Metrics) Merge(other *Metrics) {
 		r.Process = &ProcessMetrics{}
 	}
 	r.Process.Merge(other.Process)
+	if r.Healing == nil && other.Healing != nil {
+		r.Healing = &HealingMetrics{}
+	}
+	r.Healing.Merge(other.Healing)
 }
 
 // ScannerMetrics contains scanner information.
@@ -2686,3 +2695,183 @@ func (p *ProcessSegment) Add(other *ProcessSegment) {
 
 // SegmentedProcessMetrics are time-segmented process metrics.
 type SegmentedProcessMetrics = Segmented[ProcessSegment, *ProcessSegment]
+
+// HealOrigin identifies the subsystem that triggered a healing operation.
+type HealOrigin = string
+
+const (
+	HealOriginScanner     HealOrigin = "scanner"
+	HealOriginReadRepair  HealOrigin = "read-repair"
+	HealOriginDiskReplace HealOrigin = "disk-replace"
+	HealOriginDiskOffline HealOrigin = "disk-offline"
+	HealOriginManual      HealOrigin = "manual"
+	HealOriginCrossPool   HealOrigin = "cross-pool"
+)
+
+// HealError classifies healing failure reasons.
+type HealError = string
+
+const (
+	HealErrCorrupt         HealError = "corrupt"
+	HealErrMissing         HealError = "missing"
+	HealErrOffline         HealError = "offline"
+	HealErrTimeout         HealError = "timeout"
+	HealErrPermission      HealError = "permission"
+	HealErrChecksum        HealError = "checksum"
+	HealErrReadQuorum      HealError = "read-quorum"
+	HealErrWriteQuorum     HealError = "write-quorum"
+	HealErrWarmTierUnreach HealError = "warm-tier-unreachable"
+	HealErrWarmTierMissing HealError = "warm-tier-missing"
+)
+
+// HealingCounts contains aggregate healing counters.
+// Also serves as the segment type for SegmentedHealingStats.
+type HealingCounts struct {
+	Started   int64 `json:"started,omitempty"`
+	Completed int64 `json:"completed,omitempty"`
+	Failed    int64 `json:"failed,omitempty"`
+
+	// Healed is the subset of Completed where drives were actually repaired.
+	Healed int64 `json:"healed,omitempty"`
+
+	// BytesHealed is the total size of objects where drives were actually repaired.
+	BytesHealed int64 `json:"bytes_healed,omitempty"`
+
+	// Bytes is the total size of all objects submitted for heal checks.
+	Bytes int64 `json:"bytes,omitempty"`
+
+	// BytesCompleted is the total size of objects that completed healing without error.
+	BytesCompleted int64 `json:"bytes_completed,omitempty"`
+
+	// AccTime is accumulated wall-clock time of completed heal operations in seconds.
+	// Divide by Completed to get average duration.
+	AccTime float64 `json:"acc_time_secs,omitempty"`
+
+	// Dangling is the number of dangling objects detected and cleaned up.
+	Dangling int64 `json:"dangling,omitempty"`
+
+	// WarmTierChecks is the number of warm-tier validation checks performed.
+	WarmTierChecks int64 `json:"warm_tier_checks,omitempty"`
+
+	ByOrigin map[HealOrigin]int64   `json:"by_origin,omitempty"`
+	ByType   map[HealItemType]int64 `json:"by_type,omitempty"`
+	ByError  map[HealError]int64    `json:"by_error,omitempty"`
+}
+
+// Add other into h. Implements Segmenter[HealingCounts].
+func (h *HealingCounts) Add(other *HealingCounts) {
+	if other == nil {
+		return
+	}
+	h.Started += other.Started
+	h.Completed += other.Completed
+	h.Failed += other.Failed
+	h.Healed += other.Healed
+	h.BytesHealed += other.BytesHealed
+	h.Bytes += other.Bytes
+	h.BytesCompleted += other.BytesCompleted
+	h.AccTime += other.AccTime
+	h.Dangling += other.Dangling
+	h.WarmTierChecks += other.WarmTierChecks
+
+	if len(other.ByOrigin) > 0 {
+		if h.ByOrigin == nil {
+			h.ByOrigin = make(map[HealOrigin]int64, len(other.ByOrigin))
+		}
+		for k, v := range other.ByOrigin {
+			h.ByOrigin[k] += v
+		}
+	}
+	if len(other.ByType) > 0 {
+		if h.ByType == nil {
+			h.ByType = make(map[HealItemType]int64, len(other.ByType))
+		}
+		for k, v := range other.ByType {
+			h.ByType[k] += v
+		}
+	}
+	if len(other.ByError) > 0 {
+		if h.ByError == nil {
+			h.ByError = make(map[HealError]int64, len(other.ByError))
+		}
+		for k, v := range other.ByError {
+			h.ByError[k] += v
+		}
+	}
+}
+
+// SegmentedHealingStats are time-segmented healing metrics.
+type SegmentedHealingStats = Segmented[HealingCounts, *HealingCounts]
+
+// HealBucketStats tracks healing outcomes for a single bucket.
+type HealBucketStats struct {
+	Started   int64 `json:"started,omitempty"`
+	Completed int64 `json:"completed,omitempty"`
+	Failed    int64 `json:"failed,omitempty"`
+}
+
+// Add other into h.
+func (h *HealBucketStats) Add(other *HealBucketStats) {
+	if other == nil {
+		return
+	}
+	h.Started += other.Started
+	h.Completed += other.Completed
+	h.Failed += other.Failed
+}
+
+// HealingMetrics contains distributed healing metrics across all nodes.
+type HealingMetrics struct {
+	CollectedAt time.Time `json:"collected"`
+	Nodes       int       `json:"nodes"`
+
+	LastMinute HealingCounts          `json:"last_minute,omitempty"`
+	LastHour   HealingCounts          `json:"last_hour,omitempty"`
+	LastDay    *SegmentedHealingStats `json:"last_day,omitempty"`
+	SinceStart HealingCounts          `json:"since_start,omitempty"`
+
+	BucketsLastMinute map[string]HealBucketStats `json:"buckets_last_minute,omitempty"`
+	BucketsLastHour   map[string]HealBucketStats `json:"buckets_last_hour,omitempty"`
+}
+
+// Merge other into m.
+func (m *HealingMetrics) Merge(other *HealingMetrics) {
+	if m == nil || other == nil {
+		return
+	}
+	if m.CollectedAt.Before(other.CollectedAt) {
+		m.CollectedAt = other.CollectedAt
+	}
+	m.Nodes += other.Nodes
+	m.LastMinute.Add(&other.LastMinute)
+	m.LastHour.Add(&other.LastHour)
+	m.SinceStart.Add(&other.SinceStart)
+
+	if other.LastDay != nil {
+		if m.LastDay == nil {
+			m.LastDay = new(SegmentedHealingStats)
+		}
+		m.LastDay.Add(other.LastDay)
+	}
+
+	if len(other.BucketsLastMinute) > 0 {
+		if m.BucketsLastMinute == nil {
+			m.BucketsLastMinute = make(map[string]HealBucketStats, len(other.BucketsLastMinute))
+		}
+		for k, v := range other.BucketsLastMinute {
+			dst := m.BucketsLastMinute[k]
+			dst.Add(&v)
+			m.BucketsLastMinute[k] = dst
+		}
+	}
+	if len(other.BucketsLastHour) > 0 {
+		if m.BucketsLastHour == nil {
+			m.BucketsLastHour = make(map[string]HealBucketStats, len(other.BucketsLastHour))
+		}
+		for k, v := range other.BucketsLastHour {
+			dst := m.BucketsLastHour[k]
+			dst.Add(&v)
+			m.BucketsLastHour[k] = dst
+		}
+	}
+}
