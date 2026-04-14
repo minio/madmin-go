@@ -25,7 +25,7 @@ import (
 )
 
 // CapacityForecast contains storage capacity predictions based on
-// historical daily snapshots collected by the scanner.
+// historical daily snapshots processed through a Kalman filter.
 //
 // Days-until-threshold fields are pointers: nil means "unknown" (for example,
 // not enough history yet, or usage is not growing). A concrete value may be
@@ -47,8 +47,8 @@ type CapacityForecast struct {
 	// observed between any two consecutive data points. nil = unknown.
 	MinDaysUntilFull *float64 `json:"minDaysUntilFull,omitempty"`
 
-	// Confidence metrics for the linear regression.
-	RSquared float64 `json:"rSquared"` // 0-1, goodness of fit
+	// Confidence from Kalman filter covariance (0-1, higher = more confident).
+	RSquared float64 `json:"rSquared"`
 	Variance float64 `json:"variance"` // variance of daily usedFraction deltas
 
 	// Concrete min/max daily changes in usedFraction between consecutive
@@ -56,7 +56,7 @@ type CapacityForecast struct {
 	DayMinDelta float64 `json:"dayMinDelta"`
 	DayMaxDelta float64 `json:"dayMaxDelta"`
 
-	// Short-window (14-day) regression for recency-weighted predictions.
+	// Recency-weighted predictions from the Kalman filter.
 	RecentGrowthRatePerDay float64  `json:"recentGrowthRatePerDay"`
 	RecentDaysUntilFull    *float64 `json:"recentDaysUntilFull,omitempty"`
 }
