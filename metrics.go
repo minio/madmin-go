@@ -18,6 +18,7 @@
 package madmin
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -493,7 +494,17 @@ type ExpiryObject struct {
 // preserving order (newest first), the out is limited to max 25 objects.
 func Merge(a, b []ExpiryObject) []ExpiryObject {
 	a = append(a, b...)
-	slices.SortFunc(a, func(a, b ExpiryObject) int { return b.QueuedAt.Compare(a.QueuedAt) })
+	slices.SortFunc(a, func(a, b ExpiryObject) int {
+		res := b.QueuedAt.Compare(a.QueuedAt)
+		if res != 0 {
+			return res
+		}
+		res = cmp.Compare(a.Bucket, b.Bucket)
+		if res != 0 {
+			return res
+		}
+		return cmp.Compare(a.Object, b.Object)
+	})
 	return a[:min(len(a), 25)]
 }
 
