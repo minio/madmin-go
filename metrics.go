@@ -18,6 +18,7 @@
 package madmin
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -470,6 +471,41 @@ type ScannerMetrics struct {
 	// Excessive prefixes.
 	// Paths that have been marked as having excessive number of entries within the last 24 hours.
 	ExcessivePrefixes []string `json:"excessive,omitempty"`
+
+	// Number of queued ILM expiry tasks.
+	ILMExpiryPendingTasks int `json:"ilm_expiry_pending_tasks,omitempty"`
+	// ILMExpiryTasksServiced tracks the last-minute latency and count of ILM expiry
+	// tasks that have been serviced, measured from queue time to completion.
+	ILMExpiryTasksServiced TimedAction `json:"ilm_expiry_tasks_cleanup"`
+
+	// QueuedForExpiry holds the most recently queued expiry objects
+	QueuedForExpiry []ExpiryObject `json:"queued_for_expiry,omitempty"`
+}
+
+// ExpiryObject contains information about an object recently queued for ILM expiry.
+type ExpiryObject struct {
+	Bucket   string    `json:"bucket"`
+	Object   string    `json:"object"`
+	Versions int       `json:"versions"`
+	QueuedAt time.Time `json:"queued_at"`
+}
+
+// Merge combines two lists of expiry objects into a single sorted list
+// preserving order (newest first), the out is limited to max 25 objects.
+func Merge(a, b []ExpiryObject) []ExpiryObject {
+	a = append(a, b...)
+	slices.SortFunc(a, func(a, b ExpiryObject) int {
+		res := b.QueuedAt.Compare(a.QueuedAt)
+		if res != 0 {
+			return res
+		}
+		res = cmp.Compare(a.Bucket, b.Bucket)
+		if res != 0 {
+			return res
+		}
+		return cmp.Compare(a.Object, b.Object)
+	})
+	return a[:min(len(a), 25)]
 }
 
 // SegmentedActions are time segmented scanner activity.
@@ -562,6 +598,12 @@ func (s *ScannerMetrics) Merge(other *ScannerMetrics) {
 			s.ExcessivePrefixes = append(s.ExcessivePrefixes, prefix)
 		}
 		sort.Strings(s.ExcessivePrefixes)
+	}
+
+	s.ILMExpiryPendingTasks += other.ILMExpiryPendingTasks
+	s.ILMExpiryTasksServiced.Merge(other.ILMExpiryTasksServiced)
+	if len(other.QueuedForExpiry) > 0 {
+		s.QueuedForExpiry = Merge(s.QueuedForExpiry, other.QueuedForExpiry)
 	}
 }
 
