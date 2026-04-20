@@ -38,17 +38,25 @@ type AccountAccess struct {
 	Write bool `json:"write"`
 }
 
+// BucketRetentionConfig holds the default object lock retention rule for a bucket.
+type BucketRetentionConfig struct {
+	Mode  string `json:"mode"`
+	Days  uint64 `json:"days,omitempty"`
+	Years uint64 `json:"years,omitempty"`
+}
+
 // BucketDetails provides information about features currently
 // turned-on per bucket.
 type BucketDetails struct {
-	Versioning          bool         `json:"versioning"`
-	VersioningSuspended bool         `json:"versioningSuspended"`
-	Locking             bool         `json:"locking"`
-	Replication         bool         `json:"replication"`
-	Tagging             *tags.Tags   `json:"tags"`
-	Quota               *BucketQuota `json:"quota"`
-	SSEType             string       `json:"sseType,omitempty"`  // "SSE-S3", "SSE-KMS", or ""
-	SSEKeyID            string       `json:"sseKeyID,omitempty"` // KMS key ID, only set for SSE-KMS
+	Versioning          bool                   `json:"versioning"`
+	VersioningSuspended bool                   `json:"versioningSuspended"`
+	Locking             bool                   `json:"locking"`
+	Replication         bool                   `json:"replication"`
+	Tagging             *tags.Tags             `json:"tags"`
+	Quota               *BucketQuota           `json:"quota"`
+	SSEType             string                 `json:"sseType,omitempty"`
+	SSEKeyID            string                 `json:"sseKeyID,omitempty"`
+	RetentionConfig     *BucketRetentionConfig `json:"retentionConfig,omitempty"`
 }
 
 // BucketAccessInfo represents bucket usage of a bucket, and its relevant
