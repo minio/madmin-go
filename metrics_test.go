@@ -189,6 +189,83 @@ func TestScannerMetricsMerge(t *testing.T) {
 				}
 			},
 		},
+		{
+			name: "merge bucket lifetime ILM same bucket same action summed",
+			base: &ScannerMetrics{
+				BucketLifeTimeILM: map[string]map[string]uint64{
+					"bucket-a": {"DeleteAction": 100, "TransitionAction": 50},
+				},
+			},
+			other: &ScannerMetrics{
+				BucketLifeTimeILM: map[string]map[string]uint64{
+					"bucket-a": {"DeleteAction": 200, "TransitionAction": 25},
+				},
+			},
+			verify: func(t *testing.T, result *ScannerMetrics) {
+				expected := map[string]map[string]uint64{
+					"bucket-a": {"DeleteAction": 300, "TransitionAction": 75},
+				}
+				if !reflect.DeepEqual(result.BucketLifeTimeILM, expected) {
+					t.Errorf("BucketLifeTimeILM = %v, want %v", result.BucketLifeTimeILM, expected)
+				}
+			},
+		},
+		{
+			name: "merge bucket lifetime ILM different buckets both appear",
+			base: &ScannerMetrics{
+				BucketLifeTimeILM: map[string]map[string]uint64{
+					"bucket-a": {"DeleteAction": 10},
+				},
+			},
+			other: &ScannerMetrics{
+				BucketLifeTimeILM: map[string]map[string]uint64{
+					"bucket-b": {"TransitionAction": 20},
+				},
+			},
+			verify: func(t *testing.T, result *ScannerMetrics) {
+				if len(result.BucketLifeTimeILM) != 2 {
+					t.Fatalf("BucketLifeTimeILM len = %d, want 2", len(result.BucketLifeTimeILM))
+				}
+				if result.BucketLifeTimeILM["bucket-a"]["DeleteAction"] != 10 {
+					t.Errorf("bucket-a DeleteAction = %d, want 10", result.BucketLifeTimeILM["bucket-a"]["DeleteAction"])
+				}
+				if result.BucketLifeTimeILM["bucket-b"]["TransitionAction"] != 20 {
+					t.Errorf("bucket-b TransitionAction = %d, want 20", result.BucketLifeTimeILM["bucket-b"]["TransitionAction"])
+				}
+			},
+		},
+		{
+			name: "merge bucket lifetime ILM nil on one side does not panic",
+			base: &ScannerMetrics{
+				BucketLifeTimeILM: map[string]map[string]uint64{
+					"bucket-a": {"DeleteAction": 5},
+				},
+			},
+			other: &ScannerMetrics{
+				BucketLifeTimeILM: nil,
+			},
+			verify: func(t *testing.T, result *ScannerMetrics) {
+				if result.BucketLifeTimeILM["bucket-a"]["DeleteAction"] != 5 {
+					t.Errorf("bucket-a DeleteAction = %d, want 5", result.BucketLifeTimeILM["bucket-a"]["DeleteAction"])
+				}
+			},
+		},
+		{
+			name: "merge bucket lifetime ILM nil base populated by other",
+			base: &ScannerMetrics{
+				BucketLifeTimeILM: nil,
+			},
+			other: &ScannerMetrics{
+				BucketLifeTimeILM: map[string]map[string]uint64{
+					"bucket-c": {"DeleteVersionAction": 7},
+				},
+			},
+			verify: func(t *testing.T, result *ScannerMetrics) {
+				if result.BucketLifeTimeILM["bucket-c"]["DeleteVersionAction"] != 7 {
+					t.Errorf("bucket-c DeleteVersionAction = %d, want 7", result.BucketLifeTimeILM["bucket-c"]["DeleteVersionAction"])
+				}
+			},
+		},
 	}
 
 	for _, tt := range tests {

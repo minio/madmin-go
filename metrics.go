@@ -476,6 +476,11 @@ type ScannerMetrics struct {
 	// Number of accumulated ILM operations by type since server restart.
 	LifeTimeILM map[string]uint64 `json:"ilm_ops,omitempty"`
 
+	// Number of accumulated ILM operations by type since server start, per bucket.
+	// Keyed by bucket name, then by action name. Only populated when a specific
+	// bucket is requested; nil otherwise.
+	BucketLifeTimeILM map[string]map[string]uint64 `json:"bucket_ilm_ops,omitempty"`
+
 	// Last minute operation statistics.
 	LastMinute struct {
 		// Scanner actions.
@@ -602,6 +607,19 @@ func (s *ScannerMetrics) Merge(other *ScannerMetrics) {
 	for k, v := range other.LifeTimeILM {
 		total := s.LifeTimeILM[k] + v
 		s.LifeTimeILM[k] = total
+	}
+	for bucket, actions := range other.BucketLifeTimeILM {
+		if s.BucketLifeTimeILM == nil {
+			s.BucketLifeTimeILM = make(map[string]map[string]uint64)
+		}
+		dst := s.BucketLifeTimeILM[bucket]
+		if dst == nil {
+			dst = make(map[string]uint64, len(actions))
+		}
+		for action, n := range actions {
+			dst[action] += n
+		}
+		s.BucketLifeTimeILM[bucket] = dst
 	}
 	if s.LastMinute.ILM == nil && len(other.LastMinute.ILM) > 0 {
 		s.LastMinute.ILM = make(map[string]TimedAction, len(other.LastMinute.ILM))
