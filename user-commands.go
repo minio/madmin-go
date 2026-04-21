@@ -38,8 +38,8 @@ type AccountAccess struct {
 	Write bool `json:"write"`
 }
 
-// BucketRetentionConfig holds the default object lock retention rule for a bucket.
-type BucketRetentionConfig struct {
+// BucketRetention holds the default object lock retention rule for a bucket.
+type BucketRetention struct {
 	Mode  string `json:"mode"`
 	Days  uint64 `json:"days,omitempty"`
 	Years uint64 `json:"years,omitempty"`
@@ -48,15 +48,15 @@ type BucketRetentionConfig struct {
 // BucketDetails provides information about features currently
 // turned-on per bucket.
 type BucketDetails struct {
-	Versioning          bool                   `json:"versioning"`
-	VersioningSuspended bool                   `json:"versioningSuspended"`
-	Locking             bool                   `json:"locking"`
-	Replication         bool                   `json:"replication"`
-	Tagging             *tags.Tags             `json:"tags"`
-	Quota               *BucketQuota           `json:"quota"`
-	SSEType             string                 `json:"sseType,omitempty"`
-	SSEKeyID            string                 `json:"sseKeyID,omitempty"`
-	RetentionConfig     *BucketRetentionConfig `json:"retentionConfig,omitempty"`
+	Versioning          bool             `json:"versioning"`
+	VersioningSuspended bool             `json:"versioningSuspended"`
+	Locking             bool             `json:"locking"`
+	Replication         bool             `json:"replication"`
+	Tagging             *tags.Tags       `json:"tags"`
+	Quota               *BucketQuota     `json:"quota"`
+	SSEType             string           `json:"sseType,omitempty"`
+	SSEKeyID            string           `json:"sseKeyID,omitempty"`
+	Retention           *BucketRetention `json:"retention,omitempty"`
 }
 
 // BucketAccessInfo represents bucket usage of a bucket, and its relevant
