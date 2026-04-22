@@ -141,7 +141,7 @@ func DecryptDataStream(password string, data io.Reader) (io.Reader, error) {
 	// Parse the stream header
 	var hdr [32 + 1 + 8]byte
 	if _, err := io.ReadFull(data, hdr[:]); err != nil {
-		if errors.Is(err, io.EOF) {
+		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
 			// Incomplete header, return unexpected header
 			return nil, ErrUnexpectedHeader
 		}
