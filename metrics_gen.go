@@ -12325,7 +12325,7 @@ func (z *JobMetric) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 4 bits */
+	var zb0001Mask uint8 /* 5 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -12383,6 +12383,13 @@ func (z *JobMetric) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Status")
 				return
 			}
+		case "lastError":
+			z.LastError, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "LastError")
+				return
+			}
+			zb0001Mask |= 0x1
 		case "replicate":
 			if dc.IsNil() {
 				err = dc.ReadNil()
@@ -12401,7 +12408,7 @@ func (z *JobMetric) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x1
+			zb0001Mask |= 0x2
 		case "rotation":
 			if dc.IsNil() {
 				err = dc.ReadNil()
@@ -12420,7 +12427,7 @@ func (z *JobMetric) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x2
+			zb0001Mask |= 0x4
 		case "expired":
 			if dc.IsNil() {
 				err = dc.ReadNil()
@@ -12439,7 +12446,7 @@ func (z *JobMetric) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x4
+			zb0001Mask |= 0x8
 		case "catalog":
 			if dc.IsNil() {
 				err = dc.ReadNil()
@@ -12458,7 +12465,7 @@ func (z *JobMetric) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x8
+			zb0001Mask |= 0x10
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -12468,17 +12475,20 @@ func (z *JobMetric) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xf {
+	if zb0001Mask != 0x1f {
 		if (zb0001Mask & 0x1) == 0 {
-			z.Replicate = nil
+			z.LastError = ""
 		}
 		if (zb0001Mask & 0x2) == 0 {
-			z.KeyRotate = nil
+			z.Replicate = nil
 		}
 		if (zb0001Mask & 0x4) == 0 {
-			z.Expired = nil
+			z.KeyRotate = nil
 		}
 		if (zb0001Mask & 0x8) == 0 {
+			z.Expired = nil
+		}
+		if (zb0001Mask & 0x10) == 0 {
 			z.Catalog = nil
 		}
 	}
@@ -12488,24 +12498,28 @@ func (z *JobMetric) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *JobMetric) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(12)
-	var zb0001Mask uint16 /* 12 bits */
+	zb0001Len := uint32(13)
+	var zb0001Mask uint16 /* 13 bits */
 	_ = zb0001Mask
-	if z.Replicate == nil {
+	if z.LastError == "" {
 		zb0001Len--
 		zb0001Mask |= 0x100
 	}
-	if z.KeyRotate == nil {
+	if z.Replicate == nil {
 		zb0001Len--
 		zb0001Mask |= 0x200
 	}
-	if z.Expired == nil {
+	if z.KeyRotate == nil {
 		zb0001Len--
 		zb0001Mask |= 0x400
 	}
-	if z.Catalog == nil {
+	if z.Expired == nil {
 		zb0001Len--
 		zb0001Mask |= 0x800
+	}
+	if z.Catalog == nil {
+		zb0001Len--
+		zb0001Mask |= 0x1000
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -12596,6 +12610,18 @@ func (z *JobMetric) EncodeMsg(en *msgp.Writer) (err error) {
 			return
 		}
 		if (zb0001Mask & 0x100) == 0 { // if not omitted
+			// write "lastError"
+			err = en.Append(0xa9, 0x6c, 0x61, 0x73, 0x74, 0x45, 0x72, 0x72, 0x6f, 0x72)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.LastError)
+			if err != nil {
+				err = msgp.WrapError(err, "LastError")
+				return
+			}
+		}
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
 			// write "replicate"
 			err = en.Append(0xa9, 0x72, 0x65, 0x70, 0x6c, 0x69, 0x63, 0x61, 0x74, 0x65)
 			if err != nil {
@@ -12614,7 +12640,7 @@ func (z *JobMetric) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x200) == 0 { // if not omitted
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
 			// write "rotation"
 			err = en.Append(0xa8, 0x72, 0x6f, 0x74, 0x61, 0x74, 0x69, 0x6f, 0x6e)
 			if err != nil {
@@ -12633,7 +12659,7 @@ func (z *JobMetric) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x400) == 0 { // if not omitted
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
 			// write "expired"
 			err = en.Append(0xa7, 0x65, 0x78, 0x70, 0x69, 0x72, 0x65, 0x64)
 			if err != nil {
@@ -12652,7 +12678,7 @@ func (z *JobMetric) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x800) == 0 { // if not omitted
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
 			// write "catalog"
 			err = en.Append(0xa7, 0x63, 0x61, 0x74, 0x61, 0x6c, 0x6f, 0x67)
 			if err != nil {
@@ -12679,24 +12705,28 @@ func (z *JobMetric) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *JobMetric) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(12)
-	var zb0001Mask uint16 /* 12 bits */
+	zb0001Len := uint32(13)
+	var zb0001Mask uint16 /* 13 bits */
 	_ = zb0001Mask
-	if z.Replicate == nil {
+	if z.LastError == "" {
 		zb0001Len--
 		zb0001Mask |= 0x100
 	}
-	if z.KeyRotate == nil {
+	if z.Replicate == nil {
 		zb0001Len--
 		zb0001Mask |= 0x200
 	}
-	if z.Expired == nil {
+	if z.KeyRotate == nil {
 		zb0001Len--
 		zb0001Mask |= 0x400
 	}
-	if z.Catalog == nil {
+	if z.Expired == nil {
 		zb0001Len--
 		zb0001Mask |= 0x800
+	}
+	if z.Catalog == nil {
+		zb0001Len--
+		zb0001Mask |= 0x1000
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -12728,6 +12758,11 @@ func (z *JobMetric) MarshalMsg(b []byte) (o []byte, err error) {
 		o = append(o, 0xa6, 0x73, 0x74, 0x61, 0x74, 0x75, 0x73)
 		o = msgp.AppendString(o, z.Status)
 		if (zb0001Mask & 0x100) == 0 { // if not omitted
+			// string "lastError"
+			o = append(o, 0xa9, 0x6c, 0x61, 0x73, 0x74, 0x45, 0x72, 0x72, 0x6f, 0x72)
+			o = msgp.AppendString(o, z.LastError)
+		}
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
 			// string "replicate"
 			o = append(o, 0xa9, 0x72, 0x65, 0x70, 0x6c, 0x69, 0x63, 0x61, 0x74, 0x65)
 			if z.Replicate == nil {
@@ -12740,7 +12775,7 @@ func (z *JobMetric) MarshalMsg(b []byte) (o []byte, err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x200) == 0 { // if not omitted
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
 			// string "rotation"
 			o = append(o, 0xa8, 0x72, 0x6f, 0x74, 0x61, 0x74, 0x69, 0x6f, 0x6e)
 			if z.KeyRotate == nil {
@@ -12753,7 +12788,7 @@ func (z *JobMetric) MarshalMsg(b []byte) (o []byte, err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x400) == 0 { // if not omitted
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
 			// string "expired"
 			o = append(o, 0xa7, 0x65, 0x78, 0x70, 0x69, 0x72, 0x65, 0x64)
 			if z.Expired == nil {
@@ -12766,7 +12801,7 @@ func (z *JobMetric) MarshalMsg(b []byte) (o []byte, err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x800) == 0 { // if not omitted
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
 			// string "catalog"
 			o = append(o, 0xa7, 0x63, 0x61, 0x74, 0x61, 0x6c, 0x6f, 0x67)
 			if z.Catalog == nil {
@@ -12793,7 +12828,7 @@ func (z *JobMetric) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 4 bits */
+	var zb0001Mask uint8 /* 5 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -12851,6 +12886,13 @@ func (z *JobMetric) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "Status")
 				return
 			}
+		case "lastError":
+			z.LastError, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "LastError")
+				return
+			}
+			zb0001Mask |= 0x1
 		case "replicate":
 			if msgp.IsNil(bts) {
 				bts, err = msgp.ReadNilBytes(bts)
@@ -12868,7 +12910,7 @@ func (z *JobMetric) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x1
+			zb0001Mask |= 0x2
 		case "rotation":
 			if msgp.IsNil(bts) {
 				bts, err = msgp.ReadNilBytes(bts)
@@ -12886,7 +12928,7 @@ func (z *JobMetric) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x2
+			zb0001Mask |= 0x4
 		case "expired":
 			if msgp.IsNil(bts) {
 				bts, err = msgp.ReadNilBytes(bts)
@@ -12904,7 +12946,7 @@ func (z *JobMetric) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x4
+			zb0001Mask |= 0x8
 		case "catalog":
 			if msgp.IsNil(bts) {
 				bts, err = msgp.ReadNilBytes(bts)
@@ -12922,7 +12964,7 @@ func (z *JobMetric) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x8
+			zb0001Mask |= 0x10
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -12932,17 +12974,20 @@ func (z *JobMetric) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xf {
+	if zb0001Mask != 0x1f {
 		if (zb0001Mask & 0x1) == 0 {
-			z.Replicate = nil
+			z.LastError = ""
 		}
 		if (zb0001Mask & 0x2) == 0 {
-			z.KeyRotate = nil
+			z.Replicate = nil
 		}
 		if (zb0001Mask & 0x4) == 0 {
-			z.Expired = nil
+			z.KeyRotate = nil
 		}
 		if (zb0001Mask & 0x8) == 0 {
+			z.Expired = nil
+		}
+		if (zb0001Mask & 0x10) == 0 {
 			z.Catalog = nil
 		}
 	}
@@ -12952,7 +12997,7 @@ func (z *JobMetric) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *JobMetric) Msgsize() (s int) {
-	s = 1 + 6 + msgp.StringPrefixSize + len(z.JobID) + 8 + msgp.StringPrefixSize + len(z.JobType) + 10 + msgp.TimeSize + 11 + msgp.TimeSize + 14 + msgp.IntSize + 9 + msgp.BoolSize + 7 + msgp.BoolSize + 7 + msgp.StringPrefixSize + len(z.Status) + 10
+	s = 1 + 6 + msgp.StringPrefixSize + len(z.JobID) + 8 + msgp.StringPrefixSize + len(z.JobType) + 10 + msgp.TimeSize + 11 + msgp.TimeSize + 14 + msgp.IntSize + 9 + msgp.BoolSize + 7 + msgp.BoolSize + 7 + msgp.StringPrefixSize + len(z.Status) + 10 + msgp.StringPrefixSize + len(z.LastError) + 10
 	if z.Replicate == nil {
 		s += msgp.NilSize
 	} else {

@@ -1077,9 +1077,10 @@ type JobMetric struct {
 	LastUpdate    time.Time `json:"lastUpdate"`
 	RetryAttempts int       `json:"retryAttempts"`
 
-	Complete bool   `json:"complete"`
-	Failed   bool   `json:"failed"`
-	Status   string `json:"status"`
+	Complete  bool   `json:"complete"`
+	Failed    bool   `json:"failed"`
+	Status    string `json:"status"`
+	LastError string `json:"lastError,omitempty"`
 
 	// Specific job type data:
 	Replicate *ReplicateInfo   `json:"replicate,omitempty"`
