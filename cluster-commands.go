@@ -1356,10 +1356,18 @@ type SRMetricsSummary struct {
 	Retries Counter `json:"retries"`
 	// represents the error count
 	Errors Counter `json:"errors"`
-	// Aggregate windowed replicated stats (outbound to all site peers)
+	// Aggregate windowed replicated stats (outbound to all site peers).
+	//
+	// Deprecated: this cluster-level rollup is retained for backward
+	// compatibility during rolling upgrades. Prefer ReplicatedByDeployment
+	// for per-peer data; this field will be removed in a future release.
 	Replicated ReplicationWindowedStats `json:"replicated"`
-	// Aggregate windowed received stats (inbound from all site peers)
+	// Aggregate windowed received stats (inbound from all site peers).
 	Received ReplicationWindowedStats `json:"received"`
+	// Per-deployment windowed replicated stats, keyed by deployment ID.
+	ReplicatedByDeployment map[string]ReplicationWindowedStats `json:"replicatedByDeployment,omitempty"`
+	// Per-deployment windowed failed/error stats, keyed by deployment ID.
+	FailedByDeployment map[string]ReplicationWindowedStats `json:"failedByDeployment,omitempty"`
 }
 
 // ReplicationWindowedStats holds count and bytes across time windows for
