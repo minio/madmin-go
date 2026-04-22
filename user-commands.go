@@ -57,6 +57,7 @@ type BucketDetails struct {
 	SSEType             string           `json:"sseType,omitempty"`
 	SSEKeyID            string           `json:"sseKeyID,omitempty"`
 	Retention           *BucketRetention `json:"retention,omitempty"`
+	QoSRules            int              `json:"qosRules,omitempty"`
 }
 
 // BucketAccessInfo represents bucket usage of a bucket, and its relevant
