@@ -2466,6 +2466,12 @@ func (r *ReplicationReceivedStats) Empty() bool {
 	return r == nil || (r.LastMinute.Count == 0 && r.LastHour.Count == 0 && r.LastDay.Count == 0 && r.SinceStart.Count == 0)
 }
 
+// BucketReplWindowedStats holds per-ARN windowed event counts for a single
+// replication direction (failed, retried, or transferred). Bytes are
+// populated for transferred events only; failed/retry events record
+// Count only — Bytes will always be zero for those.
+type BucketReplWindowedStats = ReplicationReceivedStats
+
 // ProcessMetrics contains aggregated minio process metrics
 type ProcessMetrics struct {
 	CollectedAt time.Time `json:"collected_at,omitempty"`
