@@ -139,7 +139,6 @@ type InternalRecorder struct {
 	FlushInterval LogField `json:"flushInterval" yaml:"flushInterval"`
 }
 
-
 // InternalAPIRecorder represents internal recorder config for API logs
 type InternalAPIRecorder struct {
 	Enable LogField `json:"enable" yaml:"enable"`
@@ -271,7 +270,6 @@ func parseInternalRecorder(sc SubsysConfig, help Help) InternalRecorder {
 		FlushInterval: getLogField(sc, help, logKeyFlushInterval),
 	}
 }
-
 
 // parseInternalAPIRecorder parses SubsysConfig into InternalAPIRecorder with descriptions from Help
 func parseInternalAPIRecorder(sc SubsysConfig, help Help) InternalAPIRecorder {
