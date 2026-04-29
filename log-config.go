@@ -63,14 +63,6 @@ const (
 	logKeySASLKrbPrincipal = "sasl_krb_principal"
 	logKeyName             = "name"
 
-	// Iceberg config keys
-	logKeyIcebergEnable         = "iceberg_enable"
-	logKeyIcebergWarehouse      = "iceberg_warehouse"
-	logKeyIcebergNamespace      = "iceberg_namespace"
-	logKeyIcebergTable          = "iceberg_table"
-	logKeyIcebergCommitInterval = "iceberg_commit_interval"
-	logKeyIcebergWriteInterval  = "iceberg_write_interval"
-
 	// Queue config keys
 	logKeyDir          = "dir"
 	logKeyDirMaxSize   = "dir_max_size"
@@ -147,20 +139,9 @@ type InternalRecorder struct {
 	FlushInterval LogField `json:"flushInterval" yaml:"flushInterval"`
 }
 
-// IcebergConfig represents Iceberg export configuration for API logs
-type IcebergConfig struct {
-	Enable         LogField `json:"enable" yaml:"enable"`
-	Warehouse      LogField `json:"warehouse" yaml:"warehouse"`
-	Namespace      LogField `json:"namespace" yaml:"namespace"`
-	Table          LogField `json:"table" yaml:"table"`
-	CommitInterval LogField `json:"commitInterval" yaml:"commitInterval"`
-	WriteInterval  LogField `json:"writeInterval" yaml:"writeInterval"`
-}
-
 // InternalAPIRecorder represents internal recorder config for API logs
 type InternalAPIRecorder struct {
-	InternalRecorder `json:",inline" yaml:",inline"`
-	Iceberg          IcebergConfig `json:"iceberg" yaml:"iceberg"`
+	Enable LogField `json:"enable" yaml:"enable"`
 }
 
 // InternalErrorRecorder represents internal recorder config for Error logs
@@ -290,23 +271,10 @@ func parseInternalRecorder(sc SubsysConfig, help Help) InternalRecorder {
 	}
 }
 
-// parseIcebergConfig parses SubsysConfig into IcebergConfig with descriptions from Help
-func parseIcebergConfig(sc SubsysConfig, help Help) IcebergConfig {
-	return IcebergConfig{
-		Enable:         getLogField(sc, help, logKeyIcebergEnable),
-		Warehouse:      getLogField(sc, help, logKeyIcebergWarehouse),
-		Namespace:      getLogField(sc, help, logKeyIcebergNamespace),
-		Table:          getLogField(sc, help, logKeyIcebergTable),
-		CommitInterval: getLogField(sc, help, logKeyIcebergCommitInterval),
-		WriteInterval:  getLogField(sc, help, logKeyIcebergWriteInterval),
-	}
-}
-
 // parseInternalAPIRecorder parses SubsysConfig into InternalAPIRecorder with descriptions from Help
 func parseInternalAPIRecorder(sc SubsysConfig, help Help) InternalAPIRecorder {
 	return InternalAPIRecorder{
-		InternalRecorder: parseInternalRecorder(sc, help),
-		Iceberg:          parseIcebergConfig(sc, help),
+		Enable: getLogField(sc, help, logKeyEnable),
 	}
 }
 
@@ -629,15 +597,6 @@ func buildInternalRecorderKV(cfg InternalRecorder, subSys string) string {
 func buildInternalAPIKV(cfg InternalAPIRecorder) string {
 	var kv kvBuilder
 	kv.add(logKeyEnable, cfg.Enable.Value)
-	kv.add(logKeyDriveLimit, cfg.DriveLimit.Value)
-	kv.add(logKeyFlushCount, cfg.FlushCount.Value)
-	kv.add(logKeyFlushInterval, cfg.FlushInterval.Value)
-	kv.add(logKeyIcebergEnable, cfg.Iceberg.Enable.Value)
-	kv.add(logKeyIcebergWarehouse, cfg.Iceberg.Warehouse.Value)
-	kv.add(logKeyIcebergNamespace, cfg.Iceberg.Namespace.Value)
-	kv.add(logKeyIcebergTable, cfg.Iceberg.Table.Value)
-	kv.add(logKeyIcebergCommitInterval, cfg.Iceberg.CommitInterval.Value)
-	kv.add(logKeyIcebergWriteInterval, cfg.Iceberg.WriteInterval.Value)
 	return LogAPIInternalSubSys + " " + kv.String()
 }
 
@@ -1157,16 +1116,6 @@ func (c LogRecorderAPIConfig) YAML() string {
 
 	sb.WriteString("internal:\n")
 	writeLogField(&sb, "  ", "enable", c.Internal.Enable)
-	writeLogField(&sb, "  ", "driveLimit", c.Internal.DriveLimit)
-	writeLogField(&sb, "  ", "flushCount", c.Internal.FlushCount)
-	writeLogField(&sb, "  ", "flushInterval", c.Internal.FlushInterval)
-	sb.WriteString("  iceberg:\n")
-	writeLogField(&sb, "    ", "enable", c.Internal.Iceberg.Enable)
-	writeLogField(&sb, "    ", "warehouse", c.Internal.Iceberg.Warehouse)
-	writeLogField(&sb, "    ", "namespace", c.Internal.Iceberg.Namespace)
-	writeLogField(&sb, "    ", "table", c.Internal.Iceberg.Table)
-	writeLogField(&sb, "    ", "commitInterval", c.Internal.Iceberg.CommitInterval)
-	writeLogField(&sb, "    ", "writeInterval", c.Internal.Iceberg.WriteInterval)
 
 	writeExternalYAML(&sb, c.External)
 
