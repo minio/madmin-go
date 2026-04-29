@@ -1367,7 +1367,10 @@ type SRMetricsSummary struct {
 	// Per-deployment windowed replicated stats, keyed by deployment ID.
 	ReplicatedByDeployment map[string]ReplicationWindowedStats `json:"replicatedByDeployment,omitempty"`
 	// Per-deployment windowed failed/error stats, keyed by deployment ID.
-	FailedByDeployment map[string]ReplicationWindowedStats `json:"failedByDeployment,omitempty"`
+	FailedByDeployment    map[string]ReplicationWindowedStats            `json:"failedByDeployment,omitempty"`
+	ReceivedByBucket      map[string]ReplicationWindowedStats            `json:"receivedByBucket,omitempty"`
+	ReplicatedByBucketArn map[string]map[string]ReplicationWindowedStats `json:"replicatedByBucketArn,omitempty"`
+	FailedByBucketArn     map[string]map[string]ReplicationWindowedStats `json:"failedByBucketArn,omitempty"`
 }
 
 // ReplicationWindowedStats holds count and bytes across time windows for
