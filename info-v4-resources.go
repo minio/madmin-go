@@ -1024,7 +1024,7 @@ func resolveFieldPath(v reflect.Value, parts []string) reflect.Value {
 	current := v
 	for i, fieldName := range parts {
 		// Unwrap any pointers at this level
-		for current.Kind() == reflect.Ptr {
+		for current.Kind() == reflect.Pointer {
 			if current.IsNil() {
 				return reflect.Value{}
 			}
@@ -1102,7 +1102,7 @@ func dereferenceValue(v reflect.Value) (reflect.Value, bool) {
 	if !v.IsValid() {
 		return reflect.Value{}, true
 	}
-	if v.Kind() == reflect.Ptr {
+	if v.Kind() == reflect.Pointer {
 		if v.IsNil() {
 			return reflect.Value{}, true
 		}

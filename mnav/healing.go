@@ -516,13 +516,13 @@ func (node *HealSessionLeafNode) GetLeafData() map[string]string {
 
 	// Item counters
 	for typ, n := range s.ScannedItems {
-		data["20:Scanned/"+string(typ)] = humanize.Comma(n)
+		data["20:Scanned/"+typ] = humanize.Comma(n)
 	}
 	for typ, n := range s.HealedItems {
-		data["21:Healed/"+string(typ)] = humanize.Comma(n)
+		data["21:Healed/"+typ] = humanize.Comma(n)
 	}
 	for typ, n := range s.FailedItems {
-		data["22:Failed/"+string(typ)] = humanize.Comma(n)
+		data["22:Failed/"+typ] = humanize.Comma(n)
 	}
 	return data
 }
