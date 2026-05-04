@@ -2871,6 +2871,9 @@ func (h *HealBucketStats) Add(other *HealBucketStats) {
 
 // HealSession is a snapshot of a single manual heal session.
 type HealSession struct {
+	// ClientToken is the routable token (includes node-index suffix in distributed mode).
+	ClientToken string `json:"client_token"`
+
 	// Target scope
 	Bucket string `json:"bucket,omitempty"`
 	Prefix string `json:"prefix,omitempty"`
