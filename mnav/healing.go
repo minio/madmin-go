@@ -20,6 +20,7 @@ package mnav
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -49,6 +50,7 @@ func (node *HealingMetricsNode) GetChildren() []MetricChild {
 		{Name: "since_start", Description: "Accumulated all-time totals"},
 		{Name: "buckets_minute", Description: "Per-bucket outcomes (last minute)"},
 		{Name: "buckets_hour", Description: "Per-bucket outcomes (last hour)"},
+		{Name: "active_sessions", Description: "Manual heal sessions in progress"},
 	}
 }
 
@@ -61,6 +63,9 @@ func (node *HealingMetricsNode) GetLeafData() map[string]string {
 
 	data["00:Nodes reporting"] = fmt.Sprintf("%d", h.Nodes)
 	data["01:Last updated"] = h.CollectedAt.Format("15:04:05")
+	if len(h.ActiveSessions) > 0 {
+		data["02:Active sessions"] = fmt.Sprintf("%d", len(h.ActiveSessions))
+	}
 
 	// Last minute summary
 	lm := &h.LastMinute
@@ -111,6 +116,8 @@ func (node *HealingMetricsNode) GetChild(name string) (MetricNode, error) {
 		return NewHealingBucketsNode(node.healing.BucketsLastMinute, node, node.path+"/buckets_minute"), nil
 	case "buckets_hour":
 		return NewHealingBucketsNode(node.healing.BucketsLastHour, node, node.path+"/buckets_hour"), nil
+	case "active_sessions":
+		return NewHealSessionsNode(node.healing.ActiveSessions, node, node.path+"/active_sessions"), nil
 	default:
 		return nil, fmt.Errorf("child not found: %s", name)
 	}
@@ -366,6 +373,169 @@ func (node *HealingBucketLeafNode) GetOpts() madmin.MetricsOptions     { return 
 
 func (node *HealingBucketLeafNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("bucket stats is a leaf node")
+}
+
+// HealSessionsNode navigates active heal sessions.
+type HealSessionsNode struct {
+	sessions map[string]madmin.HealSession
+	parent   MetricNode
+	path     string
+}
+
+// NewHealSessionsNode creates a new HealSessionsNode.
+func NewHealSessionsNode(sessions map[string]madmin.HealSession, parent MetricNode, path string) *HealSessionsNode {
+	return &HealSessionsNode{sessions: sessions, parent: parent, path: path}
+}
+
+func (node *HealSessionsNode) GetChildren() []MetricChild {
+	if len(node.sessions) == 0 {
+		return []MetricChild{}
+	}
+	tokens := make([]string, 0, len(node.sessions))
+	for k := range node.sessions {
+		tokens = append(tokens, k)
+	}
+	sort.Strings(tokens)
+
+	children := make([]MetricChild, 0, len(tokens))
+	for _, token := range tokens {
+		s := node.sessions[token]
+		desc := s.Status
+		if s.Bucket != "" {
+			desc += " — " + s.Bucket
+			if s.Prefix != "" {
+				desc += "/" + s.Prefix
+			}
+		}
+		children = append(children, MetricChild{
+			Name:        token,
+			Description: desc,
+		})
+	}
+	return children
+}
+
+func (node *HealSessionsNode) GetLeafData() map[string]string {
+	if len(node.sessions) == 0 {
+		return map[string]string{"Status": "No active sessions"}
+	}
+	return map[string]string{"Sessions": fmt.Sprintf("%d", len(node.sessions))}
+}
+
+func (node *HealSessionsNode) GetMetricType() madmin.MetricType   { return madmin.MetricsHealing }
+func (node *HealSessionsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *HealSessionsNode) GetParent() MetricNode              { return node.parent }
+func (node *HealSessionsNode) GetPath() string                    { return node.path }
+func (node *HealSessionsNode) ShouldPauseRefresh() bool           { return false }
+func (node *HealSessionsNode) GetOpts() madmin.MetricsOptions     { return getNodeOpts(node) }
+
+func (node *HealSessionsNode) GetChild(name string) (MetricNode, error) {
+	s, ok := node.sessions[name]
+	if !ok {
+		return nil, fmt.Errorf("session not found: %s", name)
+	}
+	return &HealSessionLeafNode{
+		token: name, session: &s,
+		parent: node, path: node.path + "/" + name,
+	}, nil
+}
+
+// HealSessionLeafNode displays details for a single heal session.
+type HealSessionLeafNode struct {
+	token   string
+	session *madmin.HealSession
+	parent  MetricNode
+	path    string
+}
+
+func (node *HealSessionLeafNode) GetChildren() []MetricChild { return []MetricChild{} }
+
+func (node *HealSessionLeafNode) GetLeafData() map[string]string {
+	s := node.session
+	data := map[string]string{
+		"00:Token":  node.token,
+		"01:Status": s.Status,
+	}
+	if s.Bucket != "" {
+		scope := s.Bucket
+		if s.Prefix != "" {
+			scope += "/" + s.Prefix
+		}
+		data["02:Scope"] = scope
+	}
+	data["03:Started"] = s.StartTime.Format("2006-01-02 15:04:05")
+	if !s.EndTime.IsZero() {
+		data["04:Ended"] = s.EndTime.Format("2006-01-02 15:04:05")
+		data["05:Duration"] = s.EndTime.Sub(s.StartTime).Round(time.Second).String()
+	} else if !s.StartTime.IsZero() {
+		data["05:Duration"] = time.Since(s.StartTime).Round(time.Second).String() + " (running)"
+	}
+	if !s.LastActivity.IsZero() {
+		data["06:Last activity"] = s.LastActivity.Format("15:04:05")
+	}
+
+	// Settings
+	var flags []string
+	if s.Settings.Recursive {
+		flags = append(flags, "recursive")
+	}
+	if s.Settings.DryRun {
+		flags = append(flags, "dry-run")
+	}
+	if s.Settings.Remove {
+		flags = append(flags, "remove")
+	}
+	if s.Settings.Recreate {
+		flags = append(flags, "recreate")
+	}
+	if s.Settings.UpdateParity {
+		flags = append(flags, "update-parity")
+	}
+	if s.Settings.NoLock {
+		flags = append(flags, "no-lock")
+	}
+	if s.Settings.CrossPool {
+		flags = append(flags, "cross-pool")
+	}
+	if len(flags) > 0 {
+		data["10:Flags"] = strings.Join(flags, ", ")
+	}
+	switch s.Settings.ScanMode {
+	case madmin.HealDeepScan:
+		data["11:Scan mode"] = "deep"
+	case madmin.HealNormalScan:
+		data["11:Scan mode"] = "normal"
+	}
+	if s.Settings.Pool != nil {
+		v := fmt.Sprintf("%d", *s.Settings.Pool)
+		if s.Settings.Set != nil {
+			v += fmt.Sprintf(", set %d", *s.Settings.Set)
+		}
+		data["12:Pool"] = v
+	}
+
+	// Item counters
+	for typ, n := range s.ScannedItems {
+		data["20:Scanned/"+string(typ)] = humanize.Comma(n)
+	}
+	for typ, n := range s.HealedItems {
+		data["21:Healed/"+string(typ)] = humanize.Comma(n)
+	}
+	for typ, n := range s.FailedItems {
+		data["22:Failed/"+string(typ)] = humanize.Comma(n)
+	}
+	return data
+}
+
+func (node *HealSessionLeafNode) GetMetricType() madmin.MetricType   { return madmin.MetricsHealing }
+func (node *HealSessionLeafNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *HealSessionLeafNode) GetParent() MetricNode              { return node.parent }
+func (node *HealSessionLeafNode) GetPath() string                    { return node.path }
+func (node *HealSessionLeafNode) ShouldPauseRefresh() bool           { return false }
+func (node *HealSessionLeafNode) GetOpts() madmin.MetricsOptions     { return getNodeOpts(node) }
+
+func (node *HealSessionLeafNode) GetChild(_ string) (MetricNode, error) {
+	return nil, fmt.Errorf("heal session is a leaf node")
 }
 
 // formatHealSummary returns a one-line summary of a HealingCounts.
