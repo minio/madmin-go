@@ -455,7 +455,7 @@ func (node *HealSessionLeafNode) GetChildren() []MetricChild { return []MetricCh
 
 func (node *HealSessionLeafNode) GetLeafData() map[string]string {
 	s := node.session
-	status := s.Status
+	status := strings.ToUpper(s.Status[:1]) + s.Status[1:]
 	if len(s.ScannedItems) > 0 && !s.StartTime.IsZero() && !s.LastActivity.IsZero() {
 		if elapsed := s.LastActivity.Sub(s.StartTime).Minutes(); elapsed > 0 {
 			var total int64
@@ -533,9 +533,13 @@ func (node *HealSessionLeafNode) GetLeafData() map[string]string {
 	}
 	if len(s.HealedItems) > 0 {
 		data["21:Healed"] = formatItemCounts(s.HealedItems)
+	} else {
+		data["21:Healed"] = "None"
 	}
 	if len(s.FailedItems) > 0 {
 		data["22:Failed"] = formatItemCounts(s.FailedItems)
+	} else {
+		data["22:Failed"] = "None"
 	}
 	return data
 }
@@ -560,7 +564,8 @@ func formatItemCounts(items map[madmin.HealItemType]int64) string {
 	sort.Strings(keys)
 	parts := make([]string, 0, len(keys))
 	for _, k := range keys {
-		parts = append(parts, fmt.Sprintf("%s: %s", k, humanize.Comma(items[k])))
+		name := strings.ToUpper(k[:1]) + k[1:]
+		parts = append(parts, fmt.Sprintf("%s: %s", name, humanize.Comma(items[k])))
 	}
 	return strings.Join(parts, ", ")
 }
