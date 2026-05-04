@@ -50,7 +50,7 @@ func (node *HealingMetricsNode) GetChildren() []MetricChild {
 		{Name: "since_start", Description: "Accumulated all-time totals"},
 		{Name: "buckets_minute", Description: "Per-bucket outcomes (last minute)"},
 		{Name: "buckets_hour", Description: "Per-bucket outcomes (last hour)"},
-		{Name: "active_sessions", Description: "Manual heal sessions in progress"},
+		{Name: "active_sessions", Description: fmt.Sprintf("Manual heal sessions (%d recently active)", len(node.healing.ActiveSessions))},
 	}
 }
 
@@ -395,18 +395,21 @@ func (node *HealSessionsNode) GetChildren() []MetricChild {
 	for k := range node.sessions {
 		tokens = append(tokens, k)
 	}
-	sort.Strings(tokens)
+	sort.Slice(tokens, func(i, j int) bool {
+		return node.sessions[tokens[i]].StartTime.After(node.sessions[tokens[j]].StartTime)
+	})
 
 	children := make([]MetricChild, 0, len(tokens))
 	for _, token := range tokens {
 		s := node.sessions[token]
-		desc := s.Status
+		desc := s.StartTime.Format("2006-01-02 15:04:05")
 		if s.Bucket != "" {
-			desc += " — " + s.Bucket
+			desc += " " + s.Bucket
 			if s.Prefix != "" {
 				desc += "/" + s.Prefix
 			}
 		}
+		desc += " [" + s.Status + "]"
 		children = append(children, MetricChild{
 			Name:        token,
 			Description: desc,
@@ -452,9 +455,19 @@ func (node *HealSessionLeafNode) GetChildren() []MetricChild { return []MetricCh
 
 func (node *HealSessionLeafNode) GetLeafData() map[string]string {
 	s := node.session
+	status := s.Status
+	if len(s.ScannedItems) > 0 && !s.StartTime.IsZero() && !s.LastActivity.IsZero() {
+		if elapsed := s.LastActivity.Sub(s.StartTime).Minutes(); elapsed > 0 {
+			var total int64
+			for _, n := range s.ScannedItems {
+				total += n
+			}
+			status += fmt.Sprintf(" (%.1f items/min)", float64(total)/elapsed)
+		}
+	}
 	data := map[string]string{
-		"00:Token":  node.token,
-		"01:Status": s.Status,
+		"00:Status": status,
+		"01:Token":  node.token,
 	}
 	if s.Bucket != "" {
 		scope := s.Bucket
@@ -515,14 +528,14 @@ func (node *HealSessionLeafNode) GetLeafData() map[string]string {
 	}
 
 	// Item counters
-	for typ, n := range s.ScannedItems {
-		data["20:Scanned/"+typ] = humanize.Comma(n)
+	if len(s.ScannedItems) > 0 {
+		data["20:Scanned"] = formatItemCounts(s.ScannedItems)
 	}
-	for typ, n := range s.HealedItems {
-		data["21:Healed/"+typ] = humanize.Comma(n)
+	if len(s.HealedItems) > 0 {
+		data["21:Healed"] = formatItemCounts(s.HealedItems)
 	}
-	for typ, n := range s.FailedItems {
-		data["22:Failed/"+typ] = humanize.Comma(n)
+	if len(s.FailedItems) > 0 {
+		data["22:Failed"] = formatItemCounts(s.FailedItems)
 	}
 	return data
 }
@@ -536,6 +549,20 @@ func (node *HealSessionLeafNode) GetOpts() madmin.MetricsOptions     { return ge
 
 func (node *HealSessionLeafNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("heal session is a leaf node")
+}
+
+// formatItemCounts formats a map of item-type counts into a sorted single line.
+func formatItemCounts(items map[madmin.HealItemType]int64) string {
+	keys := make([]string, 0, len(items))
+	for k := range items {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	parts := make([]string, 0, len(keys))
+	for _, k := range keys {
+		parts = append(parts, fmt.Sprintf("%s: %s", k, humanize.Comma(items[k])))
+	}
+	return strings.Join(parts, ", ")
 }
 
 // formatHealSummary returns a one-line summary of a HealingCounts.
