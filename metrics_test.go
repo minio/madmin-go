@@ -3640,3 +3640,114 @@ func TestSMARTInfoMerge(t *testing.T) {
 		})
 	}
 }
+
+func TestHealingMetricsMergeActiveSessions(t *testing.T) {
+	now := time.Now()
+	sessionA := HealSession{
+		Bucket:    "bucket-a",
+		Status:    "running",
+		StartTime: now,
+	}
+	sessionB := HealSession{
+		Bucket:    "bucket-b",
+		Status:    "running",
+		StartTime: now,
+	}
+	sessionAUpdated := HealSession{
+		Bucket:    "bucket-a",
+		Status:    "done",
+		StartTime: now,
+		EndTime:   now.Add(time.Minute),
+	}
+
+	tests := []struct {
+		name   string
+		base   *HealingMetrics
+		other  *HealingMetrics
+		verify func(t *testing.T, result *HealingMetrics)
+	}{
+		{
+			name:  "nil other is no-op",
+			base:  &HealingMetrics{ActiveSessions: map[string]HealSession{"tok-a": sessionA}},
+			other: nil,
+			verify: func(t *testing.T, result *HealingMetrics) {
+				if len(result.ActiveSessions) != 1 {
+					t.Fatalf("ActiveSessions len = %d, want 1", len(result.ActiveSessions))
+				}
+			},
+		},
+		{
+			name: "other into nil base map",
+			base: &HealingMetrics{},
+			other: &HealingMetrics{
+				ActiveSessions: map[string]HealSession{"tok-a": sessionA},
+			},
+			verify: func(t *testing.T, result *HealingMetrics) {
+				if len(result.ActiveSessions) != 1 {
+					t.Fatalf("ActiveSessions len = %d, want 1", len(result.ActiveSessions))
+				}
+				if result.ActiveSessions["tok-a"].Bucket != "bucket-a" {
+					t.Errorf("tok-a Bucket = %q, want bucket-a", result.ActiveSessions["tok-a"].Bucket)
+				}
+			},
+		},
+		{
+			name: "union of disjoint sessions",
+			base: &HealingMetrics{
+				ActiveSessions: map[string]HealSession{"tok-a": sessionA},
+			},
+			other: &HealingMetrics{
+				ActiveSessions: map[string]HealSession{"tok-b": sessionB},
+			},
+			verify: func(t *testing.T, result *HealingMetrics) {
+				if len(result.ActiveSessions) != 2 {
+					t.Fatalf("ActiveSessions len = %d, want 2", len(result.ActiveSessions))
+				}
+				if _, ok := result.ActiveSessions["tok-a"]; !ok {
+					t.Error("tok-a missing after merge")
+				}
+				if _, ok := result.ActiveSessions["tok-b"]; !ok {
+					t.Error("tok-b missing after merge")
+				}
+			},
+		},
+		{
+			name: "duplicate token overwrites with other",
+			base: &HealingMetrics{
+				ActiveSessions: map[string]HealSession{"tok-a": sessionA},
+			},
+			other: &HealingMetrics{
+				ActiveSessions: map[string]HealSession{"tok-a": sessionAUpdated},
+			},
+			verify: func(t *testing.T, result *HealingMetrics) {
+				if len(result.ActiveSessions) != 1 {
+					t.Fatalf("ActiveSessions len = %d, want 1", len(result.ActiveSessions))
+				}
+				if result.ActiveSessions["tok-a"].Status != "done" {
+					t.Errorf("tok-a Status = %q, want done", result.ActiveSessions["tok-a"].Status)
+				}
+			},
+		},
+		{
+			name: "both empty maps",
+			base: &HealingMetrics{
+				ActiveSessions: map[string]HealSession{},
+			},
+			other: &HealingMetrics{
+				ActiveSessions: map[string]HealSession{},
+			},
+			verify: func(t *testing.T, result *HealingMetrics) {
+				if len(result.ActiveSessions) != 0 {
+					t.Errorf("ActiveSessions len = %d, want 0", len(result.ActiveSessions))
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.base.Merge(tt.other)
+			tt.verify(t, tt.base)
+		})
+	}
+}

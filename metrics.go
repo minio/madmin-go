@@ -2869,6 +2869,32 @@ func (h *HealBucketStats) Add(other *HealBucketStats) {
 	h.Failed += other.Failed
 }
 
+// HealSession is a snapshot of a single manual heal session.
+type HealSession struct {
+	// ClientToken is the routable token (includes node-index suffix in distributed mode).
+	ClientToken string `json:"client_token"`
+
+	// Target scope
+	Bucket string `json:"bucket,omitempty"`
+	Prefix string `json:"prefix,omitempty"`
+
+	// Lifecycle
+	Status    string    `json:"status"`
+	StartTime time.Time `json:"start_time"`
+	EndTime   time.Time `json:"end_time,omitempty"`
+
+	// Settings applied to this session.
+	Settings HealOpts `json:"settings"`
+
+	// Progress counters by item type.
+	ScannedItems map[HealItemType]int64 `json:"scanned_items,omitempty"`
+	HealedItems  map[HealItemType]int64 `json:"healed_items,omitempty"`
+	FailedItems  map[HealItemType]int64 `json:"failed_items,omitempty"`
+
+	// LastActivity is the time of the last scan/heal operation.
+	LastActivity time.Time `json:"last_activity,omitempty"`
+}
+
 // HealingMetrics contains distributed healing metrics across all nodes.
 type HealingMetrics struct {
 	CollectedAt time.Time `json:"collected"`
@@ -2881,6 +2907,9 @@ type HealingMetrics struct {
 
 	BucketsLastMinute map[string]HealBucketStats `json:"buckets_last_minute,omitempty"`
 	BucketsLastHour   map[string]HealBucketStats `json:"buckets_last_hour,omitempty"`
+
+	// ActiveSessions lists manual heal sessions on this node, keyed by clientToken.
+	ActiveSessions map[string]HealSession `json:"active_sessions,omitempty"`
 }
 
 // Merge other into m.
@@ -2922,5 +2951,12 @@ func (m *HealingMetrics) Merge(other *HealingMetrics) {
 			dst.Add(&v)
 			m.BucketsLastHour[k] = dst
 		}
+	}
+	if len(other.ActiveSessions) > 0 {
+		if m.ActiveSessions == nil {
+			m.ActiveSessions = make(map[string]HealSession, len(other.ActiveSessions))
+		}
+		// We do not merge entries as we would only expect the same session to be reported from one node.
+		maps.Copy(m.ActiveSessions, other.ActiveSessions)
 	}
 }
