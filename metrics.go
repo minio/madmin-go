@@ -846,6 +846,11 @@ type DiskMetric struct {
 	// Rolling window hourly IO stats (1-minute segments).
 	IOStatsHour SegmentedDiskIO `json:"io_hour"`
 
+	// IOStatsAvailable reports whether block-device IO statistics are
+	// available for this drive. False for network-attached storage and
+	// most k8s setups where the kernel sysfs stat file does not exist.
+	IOStatsAvailable bool `json:"io_stats_available,omitempty"`
+
 	// SMART health data for the disk.
 	SMART *SMARTInfo `json:"smart,omitempty"`
 
@@ -1041,6 +1046,7 @@ func (d *DiskMetric) Merge(other *DiskMetric) {
 	d.IOStatsMinute.Add(&other.IOStatsMinute)
 	d.IOStatsDay.Add(&other.IOStatsDay)
 	d.IOStatsHour.Add(&other.IOStatsHour)
+	d.IOStatsAvailable = d.IOStatsAvailable || other.IOStatsAvailable
 	// Merge SMART data
 	if other.SMART != nil {
 		if d.SMART == nil {
