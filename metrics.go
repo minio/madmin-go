@@ -38,6 +38,7 @@ import (
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/load"
 	"github.com/tinylib/msgp/msgp"
+	"github.com/tinylib/msgp/msgp/setof"
 )
 
 //go:generate msgp -unexported -d clearomitted -d "tag json" -d "timezone utc" -d "maps binkeys" -file $GOFILE
@@ -468,9 +469,19 @@ type ScannerMetrics struct {
 	// Currently active path(s) being scanned.
 	ActivePaths []string `json:"active,omitempty"`
 
-	// Excessive prefixes.
-	// Paths that have been marked as having excessive number of entries within the last 24 hours.
+	// ExcessivePrefixes lists prefixes marked as having excessive sub-entries
+	// within the last 24 hours.
+	// Capped at 100 entries per cross-node merge; see DiscardedExcessEntries.
 	ExcessivePrefixes []string `json:"excessive,omitempty"`
+
+	// ExcessiveVersionObjects lists objects that have exceeded the version
+	// count or cumulative size threshold within the last 24 hours.
+	// Capped at 100 entries per cross-node merge; see DiscardedExcessEntries.
+	ExcessiveVersionObjects []string `json:"excessive_versions,omitempty"`
+
+	// DiscardedExcessEntries counts entries dropped beyond the 100-entry cap
+	// during cross-node merge. This counter is not deduplicated.
+	DiscardedExcessEntries uint64 `json:"discarded_excess_entries,omitempty"`
 
 	// Number of queued ILM expiry tasks.
 	ILMExpiryPendingTasks int `json:"ilm_expiry_pending_tasks,omitempty"`
@@ -583,22 +594,39 @@ func (s *ScannerMetrics) Merge(other *ScannerMetrics) {
 	s.ActivePaths = append(s.ActivePaths, other.ActivePaths...)
 	sort.Strings(s.ActivePaths)
 
-	if len(other.ExcessivePrefixes) > 0 {
-		// Merge and remove duplicates
-		merged := make(map[string]struct{}, len(s.ExcessivePrefixes)+len(other.ExcessivePrefixes))
-		for _, prefix := range s.ExcessivePrefixes {
-			merged[prefix] = struct{}{}
+	// mergeExcessList deduplicates two excess-entry slices using setof.String
+	// and caps the merged result at maxExcessEntries. Returns the sorted
+	// merged slice and the count of unique entries dropped due to the cap.
+	const maxExcessEntries = 100
+	mergeExcessList := func(dst, src []string) ([]string, uint64) {
+		if len(dst)+len(src) == 0 {
+			return nil, 0
 		}
-		// Add other excessive prefixes
-		for _, prefix := range other.ExcessivePrefixes {
-			merged[prefix] = struct{}{}
+		seen := make(setof.String, len(dst)+len(src))
+		for _, s := range dst {
+			seen[s] = struct{}{}
 		}
-		s.ExcessivePrefixes = make([]string, 0, len(merged))
-		for prefix := range merged {
-			s.ExcessivePrefixes = append(s.ExcessivePrefixes, prefix)
+		for _, s := range src {
+			seen[s] = struct{}{}
 		}
-		sort.Strings(s.ExcessivePrefixes)
+		out := make([]string, 0, min(len(seen), maxExcessEntries))
+		var discarded uint64
+		for k := range seen {
+			if len(out) < maxExcessEntries {
+				out = append(out, k)
+			} else {
+				discarded++
+			}
+		}
+		sort.Strings(out)
+		return out, discarded
 	}
+
+	var disc uint64
+	s.ExcessivePrefixes, disc = mergeExcessList(s.ExcessivePrefixes, other.ExcessivePrefixes)
+	s.DiscardedExcessEntries += disc
+	s.ExcessiveVersionObjects, disc = mergeExcessList(s.ExcessiveVersionObjects, other.ExcessiveVersionObjects)
+	s.DiscardedExcessEntries += disc + other.DiscardedExcessEntries
 
 	s.ILMExpiryPendingTasks += other.ILMExpiryPendingTasks
 	s.ILMExpiryTasksServiced.Merge(other.ILMExpiryTasksServiced)
