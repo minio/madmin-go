@@ -19,6 +19,8 @@ package mnav
 
 import (
 	"fmt"
+	"maps"
+	"slices"
 	"sort"
 	"strconv"
 	"time"
@@ -198,7 +200,7 @@ func (node *ScannerMetricsNode) GetChild(name string) (MetricNode, error) {
 	case "active_paths":
 		return NewScannerPathsNode(node.scanner.ActivePaths, "active", node, fmt.Sprintf("%s/active_paths", node.path)), nil
 	case "excessive_paths":
-		return NewScannerPathsNode(node.scanner.ExcessivePrefixes, "excessive", node, fmt.Sprintf("%s/excessive_paths", node.path)), nil
+		return NewScannerPathsNode(slices.Sorted(maps.Keys(node.scanner.ExcessivePrefixes)), "excessive", node, fmt.Sprintf("%s/excessive_paths", node.path)), nil
 	default:
 		return nil, fmt.Errorf("child not found: %s", name)
 	}

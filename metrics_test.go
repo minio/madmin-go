@@ -28,6 +28,7 @@ import (
 	"github.com/prometheus/procfs"
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/load"
+	"github.com/tinylib/msgp/msgp/setof"
 )
 
 // TestScannerMetricsMerge tests ScannerMetrics.Merge functionality
@@ -94,18 +95,13 @@ func TestScannerMetricsMerge(t *testing.T) {
 		{
 			name: "merge excessive prefixes",
 			base: &ScannerMetrics{
-				ExcessivePrefixes: []string{"prefix1", "prefix2"},
+				ExcessivePrefixes: setof.String{"prefix1": {}, "prefix2": {}},
 			},
 			other: &ScannerMetrics{
-				ExcessivePrefixes: []string{"prefix2", "prefix3"},
+				ExcessivePrefixes: setof.String{"prefix2": {}, "prefix3": {}},
 			},
 			verify: func(t *testing.T, result *ScannerMetrics) {
-				// Should be deduplicated and sorted
-				if len(result.ExcessivePrefixes) != 3 {
-					t.Errorf("ExcessivePrefixes length = %d, want 3", len(result.ExcessivePrefixes))
-				}
-				// Check sorted order
-				expected := []string{"prefix1", "prefix2", "prefix3"}
+				expected := setof.String{"prefix1": {}, "prefix2": {}, "prefix3": {}}
 				if !reflect.DeepEqual(result.ExcessivePrefixes, expected) {
 					t.Errorf("ExcessivePrefixes = %v, want %v", result.ExcessivePrefixes, expected)
 				}
@@ -114,16 +110,13 @@ func TestScannerMetricsMerge(t *testing.T) {
 		{
 			name: "merge excessive version objects",
 			base: &ScannerMetrics{
-				ExcessiveVersionObjects: []string{"bucket1/obj1", "bucket1/obj2"},
+				ExcessiveVersionObjects: setof.String{"bucket1/obj1": {}, "bucket1/obj2": {}},
 			},
 			other: &ScannerMetrics{
-				ExcessiveVersionObjects: []string{"bucket1/obj2", "bucket2/obj1"},
+				ExcessiveVersionObjects: setof.String{"bucket1/obj2": {}, "bucket2/obj1": {}},
 			},
 			verify: func(t *testing.T, result *ScannerMetrics) {
-				expected := []string{"bucket1/obj1", "bucket1/obj2", "bucket2/obj1"}
-				if len(result.ExcessiveVersionObjects) != 3 {
-					t.Errorf("ExcessiveVersionObjects length = %d, want 3", len(result.ExcessiveVersionObjects))
-				}
+				expected := setof.String{"bucket1/obj1": {}, "bucket1/obj2": {}, "bucket2/obj1": {}}
 				if !reflect.DeepEqual(result.ExcessiveVersionObjects, expected) {
 					t.Errorf("ExcessiveVersionObjects = %v, want %v", result.ExcessiveVersionObjects, expected)
 				}
@@ -135,16 +128,16 @@ func TestScannerMetricsMerge(t *testing.T) {
 		{
 			name: "merge excess cap at 100 entries",
 			base: func() *ScannerMetrics {
-				paths := make([]string, 80)
-				for i := range paths {
-					paths[i] = fmt.Sprintf("prefix%03d", i)
+				paths := make(setof.String, 80)
+				for i := range 80 {
+					paths[fmt.Sprintf("prefix%03d", i)] = struct{}{}
 				}
 				return &ScannerMetrics{ExcessivePrefixes: paths}
 			}(),
 			other: func() *ScannerMetrics {
-				paths := make([]string, 60)
-				for i := range paths {
-					paths[i] = fmt.Sprintf("prefix%03d", i+50) // 50–109, overlap at 50–79
+				paths := make(setof.String, 60)
+				for i := range 60 {
+					paths[fmt.Sprintf("prefix%03d", i+50)] = struct{}{} // 50–109, overlap at 50–79
 				}
 				return &ScannerMetrics{ExcessivePrefixes: paths}
 			}(),

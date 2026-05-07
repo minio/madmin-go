@@ -472,12 +472,12 @@ type ScannerMetrics struct {
 	// ExcessivePrefixes lists prefixes marked as having excessive sub-entries
 	// within the last 24 hours.
 	// Capped at 100 entries per cross-node merge; see DiscardedExcessEntries.
-	ExcessivePrefixes []string `json:"excessive,omitempty"`
+	ExcessivePrefixes setof.String `json:"excessive,omitempty"`
 
 	// ExcessiveVersionObjects lists objects that have exceeded the version
 	// count or cumulative size threshold within the last 24 hours.
 	// Capped at 100 entries per cross-node merge; see DiscardedExcessEntries.
-	ExcessiveVersionObjects []string `json:"excessive_versions,omitempty"`
+	ExcessiveVersionObjects setof.String `json:"excessive_versions,omitempty"`
 
 	// DiscardedExcessEntries counts entries dropped beyond the 100-entry cap
 	// during cross-node merge. This counter is not deduplicated.
@@ -594,38 +594,39 @@ func (s *ScannerMetrics) Merge(other *ScannerMetrics) {
 	s.ActivePaths = append(s.ActivePaths, other.ActivePaths...)
 	sort.Strings(s.ActivePaths)
 
-	// mergeExcessList deduplicates two excess-entry slices using setof.String
-	// and caps the merged result at maxExcessEntries. Returns the sorted
-	// merged slice and the count of unique entries dropped due to the cap.
+	// mergeExcessSet unions two setof.String sets and caps the result at
+	// maxExcessEntries. Sorting and truncation are only performed when the
+	// combined size exceeds the cap, keeping the common path allocation-free.
 	const maxExcessEntries = 100
-	mergeExcessList := func(dst, src []string) ([]string, uint64) {
-		if len(dst)+len(src) == 0 {
-			return nil, 0
+	mergeExcessSet := func(dst, src setof.String) (setof.String, uint64) {
+		if len(src) == 0 {
+			return dst, 0
 		}
-		seen := make(setof.String, len(dst)+len(src))
-		for _, s := range dst {
-			seen[s] = struct{}{}
+		if dst == nil {
+			dst = make(setof.String, len(src))
 		}
-		for _, s := range src {
-			seen[s] = struct{}{}
+		for k := range src {
+			dst[k] = struct{}{}
 		}
-		out := make([]string, 0, min(len(seen), maxExcessEntries))
-		var discarded uint64
-		for k := range seen {
-			if len(out) < maxExcessEntries {
-				out = append(out, k)
-			} else {
-				discarded++
-			}
+		if len(dst) <= maxExcessEntries {
+			return dst, 0
 		}
-		sort.Strings(out)
-		return out, discarded
+		keys := make([]string, 0, len(dst))
+		for k := range dst {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		result := make(setof.String, maxExcessEntries)
+		for _, k := range keys[:maxExcessEntries] {
+			result[k] = struct{}{}
+		}
+		return result, uint64(len(keys) - maxExcessEntries)
 	}
 
 	var disc uint64
-	s.ExcessivePrefixes, disc = mergeExcessList(s.ExcessivePrefixes, other.ExcessivePrefixes)
+	s.ExcessivePrefixes, disc = mergeExcessSet(s.ExcessivePrefixes, other.ExcessivePrefixes)
 	s.DiscardedExcessEntries += disc
-	s.ExcessiveVersionObjects, disc = mergeExcessList(s.ExcessiveVersionObjects, other.ExcessiveVersionObjects)
+	s.ExcessiveVersionObjects, disc = mergeExcessSet(s.ExcessiveVersionObjects, other.ExcessiveVersionObjects)
 	s.DiscardedExcessEntries += disc + other.DiscardedExcessEntries
 
 	s.ILMExpiryPendingTasks += other.ILMExpiryPendingTasks

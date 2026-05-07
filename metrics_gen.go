@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/tinylib/msgp/msgp"
+	"github.com/tinylib/msgp/msgp/setof"
 )
 
 // DecodeMsg implements msgp.Decodable
@@ -30877,43 +30878,17 @@ func (z *ScannerMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 			}
 			zb0001Mask |= 0x10
 		case "excessive":
-			var zb0011 uint32
-			zb0011, err = dc.ReadArrayHeader()
+			err = z.ExcessivePrefixes.DecodeMsg(dc)
 			if err != nil {
 				err = msgp.WrapError(err, "ExcessivePrefixes")
 				return
 			}
-			if cap(z.ExcessivePrefixes) >= int(zb0011) {
-				z.ExcessivePrefixes = (z.ExcessivePrefixes)[:zb0011]
-			} else {
-				z.ExcessivePrefixes = make([]string, zb0011)
-			}
-			for za0015 := range z.ExcessivePrefixes {
-				z.ExcessivePrefixes[za0015], err = dc.ReadString()
-				if err != nil {
-					err = msgp.WrapError(err, "ExcessivePrefixes", za0015)
-					return
-				}
-			}
 			zb0001Mask |= 0x20
 		case "excessive_versions":
-			var zb0012 uint32
-			zb0012, err = dc.ReadArrayHeader()
+			err = z.ExcessiveVersionObjects.DecodeMsg(dc)
 			if err != nil {
 				err = msgp.WrapError(err, "ExcessiveVersionObjects")
 				return
-			}
-			if cap(z.ExcessiveVersionObjects) >= int(zb0012) {
-				z.ExcessiveVersionObjects = (z.ExcessiveVersionObjects)[:zb0012]
-			} else {
-				z.ExcessiveVersionObjects = make([]string, zb0012)
-			}
-			for za0016 := range z.ExcessiveVersionObjects {
-				z.ExcessiveVersionObjects[za0016], err = dc.ReadString()
-				if err != nil {
-					err = msgp.WrapError(err, "ExcessiveVersionObjects", za0016)
-					return
-				}
 			}
 			zb0001Mask |= 0x40
 		case "discarded_excess_entries":
@@ -30937,21 +30912,21 @@ func (z *ScannerMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 		case "queued_for_expiry":
-			var zb0013 uint32
-			zb0013, err = dc.ReadArrayHeader()
+			var zb0011 uint32
+			zb0011, err = dc.ReadArrayHeader()
 			if err != nil {
 				err = msgp.WrapError(err, "QueuedForExpiry")
 				return
 			}
-			if cap(z.QueuedForExpiry) >= int(zb0013) {
-				z.QueuedForExpiry = (z.QueuedForExpiry)[:zb0013]
+			if cap(z.QueuedForExpiry) >= int(zb0011) {
+				z.QueuedForExpiry = (z.QueuedForExpiry)[:zb0011]
 			} else {
-				z.QueuedForExpiry = make([]ExpiryObject, zb0013)
+				z.QueuedForExpiry = make([]ExpiryObject, zb0011)
 			}
-			for za0017 := range z.QueuedForExpiry {
-				err = z.QueuedForExpiry[za0017].DecodeMsg(dc)
+			for za0015 := range z.QueuedForExpiry {
+				err = z.QueuedForExpiry[za0015].DecodeMsg(dc)
 				if err != nil {
-					err = msgp.WrapError(err, "QueuedForExpiry", za0017)
+					err = msgp.WrapError(err, "QueuedForExpiry", za0015)
 					return
 				}
 			}
@@ -30982,10 +30957,10 @@ func (z *ScannerMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 			z.ActivePaths = nil
 		}
 		if (zb0001Mask & 0x20) == 0 {
-			z.ExcessivePrefixes = nil
+			z.ExcessivePrefixes = setof.String{}
 		}
 		if (zb0001Mask & 0x40) == 0 {
-			z.ExcessiveVersionObjects = nil
+			z.ExcessiveVersionObjects = setof.String{}
 		}
 		if (zb0001Mask & 0x80) == 0 {
 			z.DiscardedExcessEntries = 0
@@ -31025,14 +31000,6 @@ func (z *ScannerMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 	if z.ActivePaths == nil {
 		zb0001Len--
 		zb0001Mask |= 0x80
-	}
-	if z.ExcessivePrefixes == nil {
-		zb0001Len--
-		zb0001Mask |= 0x100
-	}
-	if z.ExcessiveVersionObjects == nil {
-		zb0001Len--
-		zb0001Mask |= 0x200
 	}
 	if z.DiscardedExcessEntries == 0 {
 		zb0001Len--
@@ -31270,43 +31237,25 @@ func (z *ScannerMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x100) == 0 { // if not omitted
-			// write "excessive"
-			err = en.Append(0xa9, 0x65, 0x78, 0x63, 0x65, 0x73, 0x73, 0x69, 0x76, 0x65)
-			if err != nil {
-				return
-			}
-			err = en.WriteArrayHeader(uint32(len(z.ExcessivePrefixes)))
-			if err != nil {
-				err = msgp.WrapError(err, "ExcessivePrefixes")
-				return
-			}
-			for za0015 := range z.ExcessivePrefixes {
-				err = en.WriteString(z.ExcessivePrefixes[za0015])
-				if err != nil {
-					err = msgp.WrapError(err, "ExcessivePrefixes", za0015)
-					return
-				}
-			}
+		// write "excessive"
+		err = en.Append(0xa9, 0x65, 0x78, 0x63, 0x65, 0x73, 0x73, 0x69, 0x76, 0x65)
+		if err != nil {
+			return
 		}
-		if (zb0001Mask & 0x200) == 0 { // if not omitted
-			// write "excessive_versions"
-			err = en.Append(0xb2, 0x65, 0x78, 0x63, 0x65, 0x73, 0x73, 0x69, 0x76, 0x65, 0x5f, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
-			if err != nil {
-				return
-			}
-			err = en.WriteArrayHeader(uint32(len(z.ExcessiveVersionObjects)))
-			if err != nil {
-				err = msgp.WrapError(err, "ExcessiveVersionObjects")
-				return
-			}
-			for za0016 := range z.ExcessiveVersionObjects {
-				err = en.WriteString(z.ExcessiveVersionObjects[za0016])
-				if err != nil {
-					err = msgp.WrapError(err, "ExcessiveVersionObjects", za0016)
-					return
-				}
-			}
+		err = z.ExcessivePrefixes.EncodeMsg(en)
+		if err != nil {
+			err = msgp.WrapError(err, "ExcessivePrefixes")
+			return
+		}
+		// write "excessive_versions"
+		err = en.Append(0xb2, 0x65, 0x78, 0x63, 0x65, 0x73, 0x73, 0x69, 0x76, 0x65, 0x5f, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
+		if err != nil {
+			return
+		}
+		err = z.ExcessiveVersionObjects.EncodeMsg(en)
+		if err != nil {
+			err = msgp.WrapError(err, "ExcessiveVersionObjects")
+			return
 		}
 		if (zb0001Mask & 0x400) == 0 { // if not omitted
 			// write "discarded_excess_entries"
@@ -31353,10 +31302,10 @@ func (z *ScannerMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 				err = msgp.WrapError(err, "QueuedForExpiry")
 				return
 			}
-			for za0017 := range z.QueuedForExpiry {
-				err = z.QueuedForExpiry[za0017].EncodeMsg(en)
+			for za0015 := range z.QueuedForExpiry {
+				err = z.QueuedForExpiry[za0015].EncodeMsg(en)
 				if err != nil {
-					err = msgp.WrapError(err, "QueuedForExpiry", za0017)
+					err = msgp.WrapError(err, "QueuedForExpiry", za0015)
 					return
 				}
 			}
@@ -31391,14 +31340,6 @@ func (z *ScannerMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 	if z.ActivePaths == nil {
 		zb0001Len--
 		zb0001Mask |= 0x80
-	}
-	if z.ExcessivePrefixes == nil {
-		zb0001Len--
-		zb0001Mask |= 0x100
-	}
-	if z.ExcessiveVersionObjects == nil {
-		zb0001Len--
-		zb0001Mask |= 0x200
 	}
 	if z.DiscardedExcessEntries == 0 {
 		zb0001Len--
@@ -31524,21 +31465,19 @@ func (z *ScannerMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 				o = msgp.AppendString(o, z.ActivePaths[za0014])
 			}
 		}
-		if (zb0001Mask & 0x100) == 0 { // if not omitted
-			// string "excessive"
-			o = append(o, 0xa9, 0x65, 0x78, 0x63, 0x65, 0x73, 0x73, 0x69, 0x76, 0x65)
-			o = msgp.AppendArrayHeader(o, uint32(len(z.ExcessivePrefixes)))
-			for za0015 := range z.ExcessivePrefixes {
-				o = msgp.AppendString(o, z.ExcessivePrefixes[za0015])
-			}
+		// string "excessive"
+		o = append(o, 0xa9, 0x65, 0x78, 0x63, 0x65, 0x73, 0x73, 0x69, 0x76, 0x65)
+		o, err = z.ExcessivePrefixes.MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "ExcessivePrefixes")
+			return
 		}
-		if (zb0001Mask & 0x200) == 0 { // if not omitted
-			// string "excessive_versions"
-			o = append(o, 0xb2, 0x65, 0x78, 0x63, 0x65, 0x73, 0x73, 0x69, 0x76, 0x65, 0x5f, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
-			o = msgp.AppendArrayHeader(o, uint32(len(z.ExcessiveVersionObjects)))
-			for za0016 := range z.ExcessiveVersionObjects {
-				o = msgp.AppendString(o, z.ExcessiveVersionObjects[za0016])
-			}
+		// string "excessive_versions"
+		o = append(o, 0xb2, 0x65, 0x78, 0x63, 0x65, 0x73, 0x73, 0x69, 0x76, 0x65, 0x5f, 0x76, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
+		o, err = z.ExcessiveVersionObjects.MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "ExcessiveVersionObjects")
+			return
 		}
 		if (zb0001Mask & 0x400) == 0 { // if not omitted
 			// string "discarded_excess_entries"
@@ -31561,10 +31500,10 @@ func (z *ScannerMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 			// string "queued_for_expiry"
 			o = append(o, 0xb1, 0x71, 0x75, 0x65, 0x75, 0x65, 0x64, 0x5f, 0x66, 0x6f, 0x72, 0x5f, 0x65, 0x78, 0x70, 0x69, 0x72, 0x79)
 			o = msgp.AppendArrayHeader(o, uint32(len(z.QueuedForExpiry)))
-			for za0017 := range z.QueuedForExpiry {
-				o, err = z.QueuedForExpiry[za0017].MarshalMsg(o)
+			for za0015 := range z.QueuedForExpiry {
+				o, err = z.QueuedForExpiry[za0015].MarshalMsg(o)
 				if err != nil {
-					err = msgp.WrapError(err, "QueuedForExpiry", za0017)
+					err = msgp.WrapError(err, "QueuedForExpiry", za0015)
 					return
 				}
 			}
@@ -31847,43 +31786,17 @@ func (z *ScannerMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			}
 			zb0001Mask |= 0x10
 		case "excessive":
-			var zb0011 uint32
-			zb0011, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			bts, err = z.ExcessivePrefixes.UnmarshalMsg(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ExcessivePrefixes")
 				return
 			}
-			if cap(z.ExcessivePrefixes) >= int(zb0011) {
-				z.ExcessivePrefixes = (z.ExcessivePrefixes)[:zb0011]
-			} else {
-				z.ExcessivePrefixes = make([]string, zb0011)
-			}
-			for za0015 := range z.ExcessivePrefixes {
-				z.ExcessivePrefixes[za0015], bts, err = msgp.ReadStringBytes(bts)
-				if err != nil {
-					err = msgp.WrapError(err, "ExcessivePrefixes", za0015)
-					return
-				}
-			}
 			zb0001Mask |= 0x20
 		case "excessive_versions":
-			var zb0012 uint32
-			zb0012, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			bts, err = z.ExcessiveVersionObjects.UnmarshalMsg(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ExcessiveVersionObjects")
 				return
-			}
-			if cap(z.ExcessiveVersionObjects) >= int(zb0012) {
-				z.ExcessiveVersionObjects = (z.ExcessiveVersionObjects)[:zb0012]
-			} else {
-				z.ExcessiveVersionObjects = make([]string, zb0012)
-			}
-			for za0016 := range z.ExcessiveVersionObjects {
-				z.ExcessiveVersionObjects[za0016], bts, err = msgp.ReadStringBytes(bts)
-				if err != nil {
-					err = msgp.WrapError(err, "ExcessiveVersionObjects", za0016)
-					return
-				}
 			}
 			zb0001Mask |= 0x40
 		case "discarded_excess_entries":
@@ -31907,21 +31820,21 @@ func (z *ScannerMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 		case "queued_for_expiry":
-			var zb0013 uint32
-			zb0013, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			var zb0011 uint32
+			zb0011, bts, err = msgp.ReadArrayHeaderBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "QueuedForExpiry")
 				return
 			}
-			if cap(z.QueuedForExpiry) >= int(zb0013) {
-				z.QueuedForExpiry = (z.QueuedForExpiry)[:zb0013]
+			if cap(z.QueuedForExpiry) >= int(zb0011) {
+				z.QueuedForExpiry = (z.QueuedForExpiry)[:zb0011]
 			} else {
-				z.QueuedForExpiry = make([]ExpiryObject, zb0013)
+				z.QueuedForExpiry = make([]ExpiryObject, zb0011)
 			}
-			for za0017 := range z.QueuedForExpiry {
-				bts, err = z.QueuedForExpiry[za0017].UnmarshalMsg(bts)
+			for za0015 := range z.QueuedForExpiry {
+				bts, err = z.QueuedForExpiry[za0015].UnmarshalMsg(bts)
 				if err != nil {
-					err = msgp.WrapError(err, "QueuedForExpiry", za0017)
+					err = msgp.WrapError(err, "QueuedForExpiry", za0015)
 					return
 				}
 			}
@@ -31952,10 +31865,10 @@ func (z *ScannerMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.ActivePaths = nil
 		}
 		if (zb0001Mask & 0x20) == 0 {
-			z.ExcessivePrefixes = nil
+			z.ExcessivePrefixes = setof.String{}
 		}
 		if (zb0001Mask & 0x40) == 0 {
-			z.ExcessiveVersionObjects = nil
+			z.ExcessiveVersionObjects = setof.String{}
 		}
 		if (zb0001Mask & 0x80) == 0 {
 			z.DiscardedExcessEntries = 0
@@ -32022,17 +31935,9 @@ func (z *ScannerMetrics) Msgsize() (s int) {
 	for za0014 := range z.ActivePaths {
 		s += msgp.StringPrefixSize + len(z.ActivePaths[za0014])
 	}
-	s += 10 + msgp.ArrayHeaderSize
-	for za0015 := range z.ExcessivePrefixes {
-		s += msgp.StringPrefixSize + len(z.ExcessivePrefixes[za0015])
-	}
-	s += 19 + msgp.ArrayHeaderSize
-	for za0016 := range z.ExcessiveVersionObjects {
-		s += msgp.StringPrefixSize + len(z.ExcessiveVersionObjects[za0016])
-	}
-	s += 25 + msgp.Uint64Size + 25 + msgp.IntSize + 25 + z.ILMExpiryTasksServiced.Msgsize() + 18 + msgp.ArrayHeaderSize
-	for za0017 := range z.QueuedForExpiry {
-		s += z.QueuedForExpiry[za0017].Msgsize()
+	s += 10 + z.ExcessivePrefixes.Msgsize() + 19 + z.ExcessiveVersionObjects.Msgsize() + 25 + msgp.Uint64Size + 25 + msgp.IntSize + 25 + z.ILMExpiryTasksServiced.Msgsize() + 18 + msgp.ArrayHeaderSize
+	for za0015 := range z.QueuedForExpiry {
+		s += z.QueuedForExpiry[za0015].Msgsize()
 	}
 	return
 }
