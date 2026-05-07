@@ -18,7 +18,7 @@ func (z *BucketScanInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 1 bits */
+	var zb0001Mask uint8 /* 2 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -90,6 +90,26 @@ func (z *BucketScanInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 			}
 			zb0001Mask |= 0x1
+		case "durations":
+			var zb0003 uint32
+			zb0003, err = dc.ReadArrayHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "Durations")
+				return
+			}
+			if cap(z.Durations) >= int(zb0003) {
+				z.Durations = (z.Durations)[:zb0003]
+			} else {
+				z.Durations = make([]time.Duration, zb0003)
+			}
+			for za0002 := range z.Durations {
+				z.Durations[za0002], err = dc.ReadDuration()
+				if err != nil {
+					err = msgp.WrapError(err, "Durations", za0002)
+					return
+				}
+			}
+			zb0001Mask |= 0x2
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -99,22 +119,30 @@ func (z *BucketScanInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if (zb0001Mask & 0x1) == 0 {
-		z.Completed = nil
+	if zb0001Mask != 0x3 {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Completed = nil
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.Durations = nil
+		}
 	}
-
 	return
 }
 
 // EncodeMsg implements msgp.Encodable
 func (z *BucketScanInfo) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(8)
-	var zb0001Mask uint8 /* 8 bits */
+	zb0001Len := uint32(9)
+	var zb0001Mask uint16 /* 9 bits */
 	_ = zb0001Mask
 	if z.Completed == nil {
 		zb0001Len--
 		zb0001Mask |= 0x80
+	}
+	if z.Durations == nil {
+		zb0001Len--
+		zb0001Mask |= 0x100
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -213,6 +241,25 @@ func (z *BucketScanInfo) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
+			// write "durations"
+			err = en.Append(0xa9, 0x64, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteArrayHeader(uint32(len(z.Durations)))
+			if err != nil {
+				err = msgp.WrapError(err, "Durations")
+				return
+			}
+			for za0002 := range z.Durations {
+				err = en.WriteDuration(z.Durations[za0002])
+				if err != nil {
+					err = msgp.WrapError(err, "Durations", za0002)
+					return
+				}
+			}
+		}
 	}
 	return
 }
@@ -221,12 +268,16 @@ func (z *BucketScanInfo) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *BucketScanInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(8)
-	var zb0001Mask uint8 /* 8 bits */
+	zb0001Len := uint32(9)
+	var zb0001Mask uint16 /* 9 bits */
 	_ = zb0001Mask
 	if z.Completed == nil {
 		zb0001Len--
 		zb0001Mask |= 0x80
+	}
+	if z.Durations == nil {
+		zb0001Len--
+		zb0001Mask |= 0x100
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -262,6 +313,14 @@ func (z *BucketScanInfo) MarshalMsg(b []byte) (o []byte, err error) {
 				o = msgp.AppendTime(o, z.Completed[za0001])
 			}
 		}
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
+			// string "durations"
+			o = append(o, 0xa9, 0x64, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x73)
+			o = msgp.AppendArrayHeader(o, uint32(len(z.Durations)))
+			for za0002 := range z.Durations {
+				o = msgp.AppendDuration(o, z.Durations[za0002])
+			}
+		}
 	}
 	return
 }
@@ -276,7 +335,7 @@ func (z *BucketScanInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 1 bits */
+	var zb0001Mask uint8 /* 2 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -348,6 +407,26 @@ func (z *BucketScanInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 			}
 			zb0001Mask |= 0x1
+		case "durations":
+			var zb0003 uint32
+			zb0003, bts, err = msgp.ReadArrayHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Durations")
+				return
+			}
+			if cap(z.Durations) >= int(zb0003) {
+				z.Durations = (z.Durations)[:zb0003]
+			} else {
+				z.Durations = make([]time.Duration, zb0003)
+			}
+			for za0002 := range z.Durations {
+				z.Durations[za0002], bts, err = msgp.ReadDurationBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Durations", za0002)
+					return
+				}
+			}
+			zb0001Mask |= 0x2
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -357,16 +436,20 @@ func (z *BucketScanInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if (zb0001Mask & 0x1) == 0 {
-		z.Completed = nil
+	if zb0001Mask != 0x3 {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Completed = nil
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.Durations = nil
+		}
 	}
-
 	o = bts
 	return
 }
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *BucketScanInfo) Msgsize() (s int) {
-	s = 1 + 5 + msgp.IntSize + 4 + msgp.IntSize + 6 + msgp.Uint64Size + 8 + msgp.BoolSize + 12 + msgp.TimeSize + 13 + msgp.TimeSize + 11 + msgp.StringPrefixSize + len(z.LastError) + 10 + msgp.ArrayHeaderSize + (len(z.Completed) * (msgp.TimeSize))
+	s = 1 + 5 + msgp.IntSize + 4 + msgp.IntSize + 6 + msgp.Uint64Size + 8 + msgp.BoolSize + 12 + msgp.TimeSize + 13 + msgp.TimeSize + 11 + msgp.StringPrefixSize + len(z.LastError) + 10 + msgp.ArrayHeaderSize + (len(z.Completed) * (msgp.TimeSize)) + 10 + msgp.ArrayHeaderSize + (len(z.Durations) * (msgp.DurationSize))
 	return
 }
