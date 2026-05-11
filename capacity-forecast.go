@@ -47,8 +47,6 @@ type CapacityForecast struct {
 	// observed between any two consecutive data points. nil = unknown.
 	MinDaysUntilFull *float64 `json:"minDaysUntilFull,omitempty"`
 
-	// Confidence from Kalman filter covariance (0-1, higher = more confident).
-	RSquared float64 `json:"rSquared"`
 	Variance float64 `json:"variance"` // variance of daily usedFraction deltas
 
 	// Concrete min/max daily changes in usedFraction between consecutive
