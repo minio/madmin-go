@@ -174,7 +174,10 @@ type PeerInfo struct {
 	DefaultBandwidth   BucketBandwidth `json:"defaultbandwidth"` // bandwidth limit per bucket in bytes/sec
 	ReplicateILMExpiry bool            `json:"replicate-ilm-expiry"`
 	ObjectNamingMode   string          `json:"objectNamingMode,omitempty"`
-	APIVersion         string          `json:"apiVersion,omitempty"`
+	// TablesReplicaEnabled is true when this peer has the catalog scanner
+	// enabled (i.e. is acting as a tables replica site).
+	TablesReplicaEnabled bool   `json:"tablesReplicaEnabled,omitempty"`
+	APIVersion           string `json:"apiVersion,omitempty"`
 }
 
 // BucketBandwidth has default bandwidth limit per bucket in bytes/sec
