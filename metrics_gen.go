@@ -3112,7 +3112,7 @@ func (z *CPUMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint32 /* 17 bits */
+	var zb0001Mask uint32 /* 24 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -3333,6 +3333,101 @@ func (z *CPUMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 			zb0001Mask |= 0x10000
+		case "power_nodes":
+			z.PowerNodes, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "PowerNodes")
+				return
+			}
+			zb0001Mask |= 0x20000
+		case "total_watts":
+			z.TotalWatts, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "TotalWatts")
+				return
+			}
+			zb0001Mask |= 0x40000
+		case "min_node_watts":
+			z.MinNodeWatts, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "MinNodeWatts")
+				return
+			}
+			zb0001Mask |= 0x80000
+		case "max_node_watts":
+			z.MaxNodeWatts, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "MaxNodeWatts")
+				return
+			}
+			zb0001Mask |= 0x100000
+		case "power_source_counts":
+			var zb0004 uint32
+			zb0004, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "PowerSourceCounts")
+				return
+			}
+			if z.PowerSourceCounts == nil {
+				z.PowerSourceCounts = make(map[string]int, zb0004)
+			} else if len(z.PowerSourceCounts) > 0 {
+				clear(z.PowerSourceCounts)
+			}
+			for zb0004 > 0 {
+				zb0004--
+				var za0005 string
+				za0005, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "PowerSourceCounts")
+					return
+				}
+				var za0006 int
+				za0006, err = dc.ReadInt()
+				if err != nil {
+					err = msgp.WrapError(err, "PowerSourceCounts", za0005)
+					return
+				}
+				z.PowerSourceCounts[za0005] = za0006
+			}
+			zb0001Mask |= 0x200000
+		case "powerLastDay":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "PowerLastDay")
+					return
+				}
+				z.PowerLastDay = nil
+			} else {
+				if z.PowerLastDay == nil {
+					z.PowerLastDay = new(SegmentedPowerMetrics)
+				}
+				err = (*Segmented[PowerSegment, *PowerSegment])(z.PowerLastDay).DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "PowerLastDay")
+					return
+				}
+			}
+			zb0001Mask |= 0x400000
+		case "powerLastHour":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "PowerLastHour")
+					return
+				}
+				z.PowerLastHour = nil
+			} else {
+				if z.PowerLastHour == nil {
+					z.PowerLastHour = new(SegmentedPowerMetrics)
+				}
+				err = (*Segmented[PowerSegment, *PowerSegment])(z.PowerLastHour).DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "PowerLastHour")
+					return
+				}
+			}
+			zb0001Mask |= 0x800000
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -3342,7 +3437,7 @@ func (z *CPUMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x1ffff {
+	if zb0001Mask != 0xffffff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.TimesCount = 0
 		}
@@ -3394,6 +3489,27 @@ func (z *CPUMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		if (zb0001Mask & 0x10000) == 0 {
 			z.MaxScalingFreq = 0
 		}
+		if (zb0001Mask & 0x20000) == 0 {
+			z.PowerNodes = 0
+		}
+		if (zb0001Mask & 0x40000) == 0 {
+			z.TotalWatts = 0
+		}
+		if (zb0001Mask & 0x80000) == 0 {
+			z.MinNodeWatts = 0
+		}
+		if (zb0001Mask & 0x100000) == 0 {
+			z.MaxNodeWatts = 0
+		}
+		if (zb0001Mask & 0x200000) == 0 {
+			z.PowerSourceCounts = nil
+		}
+		if (zb0001Mask & 0x400000) == 0 {
+			z.PowerLastDay = nil
+		}
+		if (zb0001Mask & 0x800000) == 0 {
+			z.PowerLastHour = nil
+		}
 	}
 	return
 }
@@ -3401,8 +3517,8 @@ func (z *CPUMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *CPUMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(21)
-	var zb0001Mask uint32 /* 21 bits */
+	zb0001Len := uint32(28)
+	var zb0001Mask uint32 /* 28 bits */
 	_ = zb0001Mask
 	if z.TimesCount == 0 {
 		zb0001Len--
@@ -3471,6 +3587,34 @@ func (z *CPUMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 	if z.MaxScalingFreq == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x100000
+	}
+	if z.PowerNodes == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x200000
+	}
+	if z.TotalWatts == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x400000
+	}
+	if z.MinNodeWatts == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x800000
+	}
+	if z.MaxNodeWatts == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x1000000
+	}
+	if z.PowerSourceCounts == nil {
+		zb0001Len--
+		zb0001Mask |= 0x2000000
+	}
+	if z.PowerLastDay == nil {
+		zb0001Len--
+		zb0001Mask |= 0x4000000
+	}
+	if z.PowerLastHour == nil {
+		zb0001Len--
+		zb0001Mask |= 0x8000000
 	}
 	// variable map header, size zb0001Len
 	err = en.WriteMapHeader(zb0001Len)
@@ -3762,6 +3906,116 @@ func (z *CPUMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
+		if (zb0001Mask & 0x200000) == 0 { // if not omitted
+			// write "power_nodes"
+			err = en.Append(0xab, 0x70, 0x6f, 0x77, 0x65, 0x72, 0x5f, 0x6e, 0x6f, 0x64, 0x65, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt(z.PowerNodes)
+			if err != nil {
+				err = msgp.WrapError(err, "PowerNodes")
+				return
+			}
+		}
+		if (zb0001Mask & 0x400000) == 0 { // if not omitted
+			// write "total_watts"
+			err = en.Append(0xab, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x77, 0x61, 0x74, 0x74, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.TotalWatts)
+			if err != nil {
+				err = msgp.WrapError(err, "TotalWatts")
+				return
+			}
+		}
+		if (zb0001Mask & 0x800000) == 0 { // if not omitted
+			// write "min_node_watts"
+			err = en.Append(0xae, 0x6d, 0x69, 0x6e, 0x5f, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x77, 0x61, 0x74, 0x74, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.MinNodeWatts)
+			if err != nil {
+				err = msgp.WrapError(err, "MinNodeWatts")
+				return
+			}
+		}
+		if (zb0001Mask & 0x1000000) == 0 { // if not omitted
+			// write "max_node_watts"
+			err = en.Append(0xae, 0x6d, 0x61, 0x78, 0x5f, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x77, 0x61, 0x74, 0x74, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.MaxNodeWatts)
+			if err != nil {
+				err = msgp.WrapError(err, "MaxNodeWatts")
+				return
+			}
+		}
+		if (zb0001Mask & 0x2000000) == 0 { // if not omitted
+			// write "power_source_counts"
+			err = en.Append(0xb3, 0x70, 0x6f, 0x77, 0x65, 0x72, 0x5f, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteMapHeader(uint32(len(z.PowerSourceCounts)))
+			if err != nil {
+				err = msgp.WrapError(err, "PowerSourceCounts")
+				return
+			}
+			for za0005, za0006 := range z.PowerSourceCounts {
+				err = en.WriteString(za0005)
+				if err != nil {
+					err = msgp.WrapError(err, "PowerSourceCounts")
+					return
+				}
+				err = en.WriteInt(za0006)
+				if err != nil {
+					err = msgp.WrapError(err, "PowerSourceCounts", za0005)
+					return
+				}
+			}
+		}
+		if (zb0001Mask & 0x4000000) == 0 { // if not omitted
+			// write "powerLastDay"
+			err = en.Append(0xac, 0x70, 0x6f, 0x77, 0x65, 0x72, 0x4c, 0x61, 0x73, 0x74, 0x44, 0x61, 0x79)
+			if err != nil {
+				return
+			}
+			if z.PowerLastDay == nil {
+				err = en.WriteNil()
+				if err != nil {
+					return
+				}
+			} else {
+				err = (*Segmented[PowerSegment, *PowerSegment])(z.PowerLastDay).EncodeMsg(en)
+				if err != nil {
+					err = msgp.WrapError(err, "PowerLastDay")
+					return
+				}
+			}
+		}
+		if (zb0001Mask & 0x8000000) == 0 { // if not omitted
+			// write "powerLastHour"
+			err = en.Append(0xad, 0x70, 0x6f, 0x77, 0x65, 0x72, 0x4c, 0x61, 0x73, 0x74, 0x48, 0x6f, 0x75, 0x72)
+			if err != nil {
+				return
+			}
+			if z.PowerLastHour == nil {
+				err = en.WriteNil()
+				if err != nil {
+					return
+				}
+			} else {
+				err = (*Segmented[PowerSegment, *PowerSegment])(z.PowerLastHour).EncodeMsg(en)
+				if err != nil {
+					err = msgp.WrapError(err, "PowerLastHour")
+					return
+				}
+			}
+		}
 	}
 	return
 }
@@ -3770,8 +4024,8 @@ func (z *CPUMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *CPUMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(21)
-	var zb0001Mask uint32 /* 21 bits */
+	zb0001Len := uint32(28)
+	var zb0001Mask uint32 /* 28 bits */
 	_ = zb0001Mask
 	if z.TimesCount == 0 {
 		zb0001Len--
@@ -3840,6 +4094,34 @@ func (z *CPUMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 	if z.MaxScalingFreq == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x100000
+	}
+	if z.PowerNodes == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x200000
+	}
+	if z.TotalWatts == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x400000
+	}
+	if z.MinNodeWatts == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x800000
+	}
+	if z.MaxNodeWatts == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x1000000
+	}
+	if z.PowerSourceCounts == nil {
+		zb0001Len--
+		zb0001Mask |= 0x2000000
+	}
+	if z.PowerLastDay == nil {
+		zb0001Len--
+		zb0001Mask |= 0x4000000
+	}
+	if z.PowerLastHour == nil {
+		zb0001Len--
+		zb0001Mask |= 0x8000000
 	}
 	// variable map header, size zb0001Len
 	o = msgp.AppendMapHeader(o, zb0001Len)
@@ -3975,6 +4257,61 @@ func (z *CPUMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 			o = append(o, 0xb0, 0x6d, 0x61, 0x78, 0x5f, 0x73, 0x63, 0x61, 0x6c, 0x69, 0x6e, 0x67, 0x5f, 0x66, 0x72, 0x65, 0x71)
 			o = msgp.AppendUint64(o, z.MaxScalingFreq)
 		}
+		if (zb0001Mask & 0x200000) == 0 { // if not omitted
+			// string "power_nodes"
+			o = append(o, 0xab, 0x70, 0x6f, 0x77, 0x65, 0x72, 0x5f, 0x6e, 0x6f, 0x64, 0x65, 0x73)
+			o = msgp.AppendInt(o, z.PowerNodes)
+		}
+		if (zb0001Mask & 0x400000) == 0 { // if not omitted
+			// string "total_watts"
+			o = append(o, 0xab, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x77, 0x61, 0x74, 0x74, 0x73)
+			o = msgp.AppendFloat64(o, z.TotalWatts)
+		}
+		if (zb0001Mask & 0x800000) == 0 { // if not omitted
+			// string "min_node_watts"
+			o = append(o, 0xae, 0x6d, 0x69, 0x6e, 0x5f, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x77, 0x61, 0x74, 0x74, 0x73)
+			o = msgp.AppendFloat64(o, z.MinNodeWatts)
+		}
+		if (zb0001Mask & 0x1000000) == 0 { // if not omitted
+			// string "max_node_watts"
+			o = append(o, 0xae, 0x6d, 0x61, 0x78, 0x5f, 0x6e, 0x6f, 0x64, 0x65, 0x5f, 0x77, 0x61, 0x74, 0x74, 0x73)
+			o = msgp.AppendFloat64(o, z.MaxNodeWatts)
+		}
+		if (zb0001Mask & 0x2000000) == 0 { // if not omitted
+			// string "power_source_counts"
+			o = append(o, 0xb3, 0x70, 0x6f, 0x77, 0x65, 0x72, 0x5f, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74, 0x73)
+			o = msgp.AppendMapHeader(o, uint32(len(z.PowerSourceCounts)))
+			for za0005, za0006 := range z.PowerSourceCounts {
+				o = msgp.AppendString(o, za0005)
+				o = msgp.AppendInt(o, za0006)
+			}
+		}
+		if (zb0001Mask & 0x4000000) == 0 { // if not omitted
+			// string "powerLastDay"
+			o = append(o, 0xac, 0x70, 0x6f, 0x77, 0x65, 0x72, 0x4c, 0x61, 0x73, 0x74, 0x44, 0x61, 0x79)
+			if z.PowerLastDay == nil {
+				o = msgp.AppendNil(o)
+			} else {
+				o, err = (*Segmented[PowerSegment, *PowerSegment])(z.PowerLastDay).MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "PowerLastDay")
+					return
+				}
+			}
+		}
+		if (zb0001Mask & 0x8000000) == 0 { // if not omitted
+			// string "powerLastHour"
+			o = append(o, 0xad, 0x70, 0x6f, 0x77, 0x65, 0x72, 0x4c, 0x61, 0x73, 0x74, 0x48, 0x6f, 0x75, 0x72)
+			if z.PowerLastHour == nil {
+				o = msgp.AppendNil(o)
+			} else {
+				o, err = (*Segmented[PowerSegment, *PowerSegment])(z.PowerLastHour).MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "PowerLastHour")
+					return
+				}
+			}
+		}
 	}
 	return
 }
@@ -3989,7 +4326,7 @@ func (z *CPUMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint32 /* 17 bits */
+	var zb0001Mask uint32 /* 24 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -4208,6 +4545,99 @@ func (z *CPUMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 			zb0001Mask |= 0x10000
+		case "power_nodes":
+			z.PowerNodes, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "PowerNodes")
+				return
+			}
+			zb0001Mask |= 0x20000
+		case "total_watts":
+			z.TotalWatts, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "TotalWatts")
+				return
+			}
+			zb0001Mask |= 0x40000
+		case "min_node_watts":
+			z.MinNodeWatts, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "MinNodeWatts")
+				return
+			}
+			zb0001Mask |= 0x80000
+		case "max_node_watts":
+			z.MaxNodeWatts, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "MaxNodeWatts")
+				return
+			}
+			zb0001Mask |= 0x100000
+		case "power_source_counts":
+			var zb0004 uint32
+			zb0004, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "PowerSourceCounts")
+				return
+			}
+			if z.PowerSourceCounts == nil {
+				z.PowerSourceCounts = make(map[string]int, zb0004)
+			} else if len(z.PowerSourceCounts) > 0 {
+				clear(z.PowerSourceCounts)
+			}
+			for zb0004 > 0 {
+				var za0006 int
+				zb0004--
+				var za0005 string
+				za0005, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "PowerSourceCounts")
+					return
+				}
+				za0006, bts, err = msgp.ReadIntBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "PowerSourceCounts", za0005)
+					return
+				}
+				z.PowerSourceCounts[za0005] = za0006
+			}
+			zb0001Mask |= 0x200000
+		case "powerLastDay":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.PowerLastDay = nil
+			} else {
+				if z.PowerLastDay == nil {
+					z.PowerLastDay = new(SegmentedPowerMetrics)
+				}
+				bts, err = (*Segmented[PowerSegment, *PowerSegment])(z.PowerLastDay).UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "PowerLastDay")
+					return
+				}
+			}
+			zb0001Mask |= 0x400000
+		case "powerLastHour":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.PowerLastHour = nil
+			} else {
+				if z.PowerLastHour == nil {
+					z.PowerLastHour = new(SegmentedPowerMetrics)
+				}
+				bts, err = (*Segmented[PowerSegment, *PowerSegment])(z.PowerLastHour).UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "PowerLastHour")
+					return
+				}
+			}
+			zb0001Mask |= 0x800000
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -4217,7 +4647,7 @@ func (z *CPUMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x1ffff {
+	if zb0001Mask != 0xffffff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.TimesCount = 0
 		}
@@ -4269,6 +4699,27 @@ func (z *CPUMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		if (zb0001Mask & 0x10000) == 0 {
 			z.MaxScalingFreq = 0
 		}
+		if (zb0001Mask & 0x20000) == 0 {
+			z.PowerNodes = 0
+		}
+		if (zb0001Mask & 0x40000) == 0 {
+			z.TotalWatts = 0
+		}
+		if (zb0001Mask & 0x80000) == 0 {
+			z.MinNodeWatts = 0
+		}
+		if (zb0001Mask & 0x100000) == 0 {
+			z.MaxNodeWatts = 0
+		}
+		if (zb0001Mask & 0x200000) == 0 {
+			z.PowerSourceCounts = nil
+		}
+		if (zb0001Mask & 0x400000) == 0 {
+			z.PowerLastDay = nil
+		}
+		if (zb0001Mask & 0x800000) == 0 {
+			z.PowerLastHour = nil
+		}
 	}
 	o = bts
 	return
@@ -4302,7 +4753,25 @@ func (z *CPUMetrics) Msgsize() (s int) {
 			s += msgp.StringPrefixSize + len(za0003) + msgp.IntSize
 		}
 	}
-	s += 19 + msgp.Uint64Size + 27 + msgp.Uint64Size + 9 + msgp.Uint64Size + 9 + msgp.Uint64Size + 17 + msgp.Uint64Size + 17 + msgp.Uint64Size
+	s += 19 + msgp.Uint64Size + 27 + msgp.Uint64Size + 9 + msgp.Uint64Size + 9 + msgp.Uint64Size + 17 + msgp.Uint64Size + 17 + msgp.Uint64Size + 12 + msgp.IntSize + 12 + msgp.Float64Size + 15 + msgp.Float64Size + 15 + msgp.Float64Size + 20 + msgp.MapHeaderSize
+	if z.PowerSourceCounts != nil {
+		for za0005, za0006 := range z.PowerSourceCounts {
+			_ = za0006
+			s += msgp.StringPrefixSize + len(za0005) + msgp.IntSize
+		}
+	}
+	s += 13
+	if z.PowerLastDay == nil {
+		s += msgp.NilSize
+	} else {
+		s += (*Segmented[PowerSegment, *PowerSegment])(z.PowerLastDay).Msgsize()
+	}
+	s += 14
+	if z.PowerLastHour == nil {
+		s += msgp.NilSize
+	} else {
+		s += (*Segmented[PowerSegment, *PowerSegment])(z.PowerLastHour).Msgsize()
+	}
 	return
 }
 
@@ -19728,6 +20197,275 @@ func (z *OSMetrics) Msgsize() (s int) {
 			s += msgp.StringPrefixSize + len(za0007) + za0008.Msgsize()
 		}
 	}
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *PowerSegment) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 3 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "sumWatts":
+			z.SumWatts, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "SumWatts")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "minWatts":
+			z.MinWatts, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "MinWatts")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "maxWatts":
+			z.MaxWatts, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "MaxWatts")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "n":
+			z.N, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "N")
+				return
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x7 {
+		if (zb0001Mask & 0x1) == 0 {
+			z.SumWatts = 0
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.MinWatts = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.MaxWatts = 0
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *PowerSegment) EncodeMsg(en *msgp.Writer) (err error) {
+	// check for omitted fields
+	zb0001Len := uint32(4)
+	var zb0001Mask uint8 /* 4 bits */
+	_ = zb0001Mask
+	if z.SumWatts == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.MinWatts == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.MaxWatts == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	// variable map header, size zb0001Len
+	err = en.Append(0x80 | uint8(zb0001Len))
+	if err != nil {
+		return
+	}
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// write "sumWatts"
+			err = en.Append(0xa8, 0x73, 0x75, 0x6d, 0x57, 0x61, 0x74, 0x74, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.SumWatts)
+			if err != nil {
+				err = msgp.WrapError(err, "SumWatts")
+				return
+			}
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// write "minWatts"
+			err = en.Append(0xa8, 0x6d, 0x69, 0x6e, 0x57, 0x61, 0x74, 0x74, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.MinWatts)
+			if err != nil {
+				err = msgp.WrapError(err, "MinWatts")
+				return
+			}
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// write "maxWatts"
+			err = en.Append(0xa8, 0x6d, 0x61, 0x78, 0x57, 0x61, 0x74, 0x74, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.MaxWatts)
+			if err != nil {
+				err = msgp.WrapError(err, "MaxWatts")
+				return
+			}
+		}
+		// write "n"
+		err = en.Append(0xa1, 0x6e)
+		if err != nil {
+			return
+		}
+		err = en.WriteInt(z.N)
+		if err != nil {
+			err = msgp.WrapError(err, "N")
+			return
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *PowerSegment) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// check for omitted fields
+	zb0001Len := uint32(4)
+	var zb0001Mask uint8 /* 4 bits */
+	_ = zb0001Mask
+	if z.SumWatts == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.MinWatts == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.MaxWatts == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	// variable map header, size zb0001Len
+	o = append(o, 0x80|uint8(zb0001Len))
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// string "sumWatts"
+			o = append(o, 0xa8, 0x73, 0x75, 0x6d, 0x57, 0x61, 0x74, 0x74, 0x73)
+			o = msgp.AppendFloat64(o, z.SumWatts)
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// string "minWatts"
+			o = append(o, 0xa8, 0x6d, 0x69, 0x6e, 0x57, 0x61, 0x74, 0x74, 0x73)
+			o = msgp.AppendFloat64(o, z.MinWatts)
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// string "maxWatts"
+			o = append(o, 0xa8, 0x6d, 0x61, 0x78, 0x57, 0x61, 0x74, 0x74, 0x73)
+			o = msgp.AppendFloat64(o, z.MaxWatts)
+		}
+		// string "n"
+		o = append(o, 0xa1, 0x6e)
+		o = msgp.AppendInt(o, z.N)
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *PowerSegment) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 3 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "sumWatts":
+			z.SumWatts, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "SumWatts")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "minWatts":
+			z.MinWatts, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "MinWatts")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "maxWatts":
+			z.MaxWatts, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "MaxWatts")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "n":
+			z.N, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "N")
+				return
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x7 {
+		if (zb0001Mask & 0x1) == 0 {
+			z.SumWatts = 0
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.MinWatts = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.MaxWatts = 0
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *PowerSegment) Msgsize() (s int) {
+	s = 1 + 9 + msgp.Float64Size + 9 + msgp.Float64Size + 9 + msgp.Float64Size + 2 + msgp.IntSize
 	return
 }
 

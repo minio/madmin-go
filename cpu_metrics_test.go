@@ -523,6 +523,197 @@ func TestAddCPUsNil(t *testing.T) {
 	// Should not panic
 }
 
+func TestPowerSegmentAdd(t *testing.T) {
+	tests := []struct {
+		name     string
+		base     PowerSegment
+		other    *PowerSegment
+		expected PowerSegment
+	}{
+		{
+			name:     "add nil",
+			base:     PowerSegment{SumWatts: 100, MinWatts: 90, MaxWatts: 110, N: 1},
+			other:    nil,
+			expected: PowerSegment{SumWatts: 100, MinWatts: 90, MaxWatts: 110, N: 1},
+		},
+		{
+			name:     "add zero N",
+			base:     PowerSegment{SumWatts: 100, MinWatts: 90, MaxWatts: 110, N: 1},
+			other:    &PowerSegment{SumWatts: 50, N: 0},
+			expected: PowerSegment{SumWatts: 100, MinWatts: 90, MaxWatts: 110, N: 1},
+		},
+		{
+			name:     "add into empty",
+			base:     PowerSegment{},
+			other:    &PowerSegment{SumWatts: 500, MinWatts: 480, MaxWatts: 520, N: 1},
+			expected: PowerSegment{SumWatts: 500, MinWatts: 480, MaxWatts: 520, N: 1},
+		},
+		{
+			name:     "merge two nodes",
+			base:     PowerSegment{SumWatts: 500, MinWatts: 480, MaxWatts: 520, N: 1},
+			other:    &PowerSegment{SumWatts: 300, MinWatts: 290, MaxWatts: 310, N: 1},
+			expected: PowerSegment{SumWatts: 800, MinWatts: 290, MaxWatts: 520, N: 2},
+		},
+		{
+			name:     "min takes lower",
+			base:     PowerSegment{SumWatts: 100, MinWatts: 50, MaxWatts: 200, N: 2},
+			other:    &PowerSegment{SumWatts: 80, MinWatts: 70, MaxWatts: 90, N: 1},
+			expected: PowerSegment{SumWatts: 180, MinWatts: 50, MaxWatts: 200, N: 3},
+		},
+		{
+			name:     "max takes higher",
+			base:     PowerSegment{SumWatts: 100, MinWatts: 50, MaxWatts: 200, N: 2},
+			other:    &PowerSegment{SumWatts: 80, MinWatts: 60, MaxWatts: 300, N: 1},
+			expected: PowerSegment{SumWatts: 180, MinWatts: 50, MaxWatts: 300, N: 3},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := tt.base
+			p.Add(tt.other)
+			if p != tt.expected {
+				t.Errorf("got %+v, want %+v", p, tt.expected)
+			}
+		})
+	}
+}
+
+func TestCPUMetricsMergePower(t *testing.T) {
+	tests := []struct {
+		name     string
+		m        CPUMetrics
+		other    CPUMetrics
+		expected CPUMetrics
+	}{
+		{
+			name: "merge into empty",
+			m:    CPUMetrics{},
+			other: CPUMetrics{
+				PowerNodes:        1,
+				TotalWatts:        500,
+				MinNodeWatts:      500,
+				MaxNodeWatts:      500,
+				PowerSourceCounts: map[string]int{"dcmi": 1},
+			},
+			expected: CPUMetrics{
+				PowerNodes:        1,
+				TotalWatts:        500,
+				MinNodeWatts:      500,
+				MaxNodeWatts:      500,
+				PowerSourceCounts: map[string]int{"dcmi": 1},
+			},
+		},
+		{
+			name: "merge two nodes",
+			m: CPUMetrics{
+				PowerNodes:        1,
+				TotalWatts:        500,
+				MinNodeWatts:      500,
+				MaxNodeWatts:      500,
+				PowerSourceCounts: map[string]int{"dcmi": 1},
+			},
+			other: CPUMetrics{
+				PowerNodes:        1,
+				TotalWatts:        300,
+				MinNodeWatts:      300,
+				MaxNodeWatts:      300,
+				PowerSourceCounts: map[string]int{"sdr": 1},
+			},
+			expected: CPUMetrics{
+				PowerNodes:        2,
+				TotalWatts:        800,
+				MinNodeWatts:      300,
+				MaxNodeWatts:      500,
+				PowerSourceCounts: map[string]int{"dcmi": 1, "sdr": 1},
+			},
+		},
+		{
+			name: "other has no power",
+			m: CPUMetrics{
+				PowerNodes:   1,
+				TotalWatts:   500,
+				MinNodeWatts: 500,
+				MaxNodeWatts: 500,
+			},
+			other: CPUMetrics{},
+			expected: CPUMetrics{
+				PowerNodes:   1,
+				TotalWatts:   500,
+				MinNodeWatts: 500,
+				MaxNodeWatts: 500,
+			},
+		},
+		{
+			name: "min/max across three nodes",
+			m: CPUMetrics{
+				PowerNodes:   2,
+				TotalWatts:   900,
+				MinNodeWatts: 400,
+				MaxNodeWatts: 500,
+			},
+			other: CPUMetrics{
+				PowerNodes:   1,
+				TotalWatts:   350,
+				MinNodeWatts: 350,
+				MaxNodeWatts: 350,
+			},
+			expected: CPUMetrics{
+				PowerNodes:   3,
+				TotalWatts:   1250,
+				MinNodeWatts: 350,
+				MaxNodeWatts: 500,
+			},
+		},
+		{
+			name: "min stays when other is higher",
+			m: CPUMetrics{
+				PowerNodes:   1,
+				TotalWatts:   200,
+				MinNodeWatts: 200,
+				MaxNodeWatts: 200,
+			},
+			other: CPUMetrics{
+				PowerNodes:   1,
+				TotalWatts:   600,
+				MinNodeWatts: 600,
+				MaxNodeWatts: 600,
+			},
+			expected: CPUMetrics{
+				PowerNodes:   2,
+				TotalWatts:   800,
+				MinNodeWatts: 200,
+				MaxNodeWatts: 600,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			m := tt.m
+			m.Merge(&tt.other)
+			if m.PowerNodes != tt.expected.PowerNodes {
+				t.Errorf("PowerNodes: got %d, want %d", m.PowerNodes, tt.expected.PowerNodes)
+			}
+			if m.TotalWatts != tt.expected.TotalWatts {
+				t.Errorf("TotalWatts: got %f, want %f", m.TotalWatts, tt.expected.TotalWatts)
+			}
+			if m.MinNodeWatts != tt.expected.MinNodeWatts {
+				t.Errorf("MinNodeWatts: got %f, want %f", m.MinNodeWatts, tt.expected.MinNodeWatts)
+			}
+			if m.MaxNodeWatts != tt.expected.MaxNodeWatts {
+				t.Errorf("MaxNodeWatts: got %f, want %f", m.MaxNodeWatts, tt.expected.MaxNodeWatts)
+			}
+			for src, count := range tt.expected.PowerSourceCounts {
+				if m.PowerSourceCounts[src] != count {
+					t.Errorf("PowerSourceCounts[%s]: got %d, want %d", src, m.PowerSourceCounts[src], count)
+				}
+			}
+			if len(m.PowerSourceCounts) != len(tt.expected.PowerSourceCounts) {
+				t.Errorf("PowerSourceCounts length: got %d, want %d", len(m.PowerSourceCounts), len(tt.expected.PowerSourceCounts))
+			}
+		})
+	}
+}
+
 // Helper function to create a pointer to uint64
 func uint64Ptr(v uint64) *uint64 {
 	return &v
