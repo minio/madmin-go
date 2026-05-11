@@ -481,9 +481,18 @@ type ScannerMetrics struct {
 	// Currently active path(s) being scanned.
 	ActivePaths []string `json:"active,omitempty"`
 
-	// Excessive prefixes.
-	// Paths that have been marked as having excessive number of entries within the last 24 hours.
+	// ExcessivePrefixes lists prefixes marked as having excessive sub-entries
+	// within the last 24 hours.
 	ExcessivePrefixes []string `json:"excessive,omitempty"`
+
+	// ExcessiveVersionObjects lists objects that have exceeded the version
+	// count or cumulative size threshold within the last 24 hours.
+	// Capped at 100 entries per cross-node merge; see DiscardedExcessEntries.
+	ExcessiveVersionObjects []string `json:"excessive_versions,omitempty"`
+
+	// DiscardedExcessEntries counts entries dropped beyond the 100-entry cap
+	// during cross-node merge. This counter is not deduplicated.
+	DiscardedExcessEntries uint64 `json:"discarded_excess_entries,omitempty"`
 
 	// Number of queued ILM expiry tasks.
 	ILMExpiryPendingTasks int `json:"ilm_expiry_pending_tasks,omitempty"`
@@ -597,12 +606,10 @@ func (s *ScannerMetrics) Merge(other *ScannerMetrics) {
 	sort.Strings(s.ActivePaths)
 
 	if len(other.ExcessivePrefixes) > 0 {
-		// Merge and remove duplicates
 		merged := make(map[string]struct{}, len(s.ExcessivePrefixes)+len(other.ExcessivePrefixes))
 		for _, prefix := range s.ExcessivePrefixes {
 			merged[prefix] = struct{}{}
 		}
-		// Add other excessive prefixes
 		for _, prefix := range other.ExcessivePrefixes {
 			merged[prefix] = struct{}{}
 		}
@@ -612,6 +619,28 @@ func (s *ScannerMetrics) Merge(other *ScannerMetrics) {
 		}
 		sort.Strings(s.ExcessivePrefixes)
 	}
+
+	if len(other.ExcessiveVersionObjects) > 0 {
+		const maxExcessEntries = 100
+		seen := make(map[string]struct{}, len(s.ExcessiveVersionObjects)+len(other.ExcessiveVersionObjects))
+		for _, v := range s.ExcessiveVersionObjects {
+			seen[v] = struct{}{}
+		}
+		for _, v := range other.ExcessiveVersionObjects {
+			seen[v] = struct{}{}
+		}
+		keys := make([]string, 0, len(seen))
+		for k := range seen {
+			keys = append(keys, k)
+		}
+		sort.Strings(keys)
+		if len(keys) > maxExcessEntries {
+			s.DiscardedExcessEntries += uint64(len(keys) - maxExcessEntries)
+			keys = keys[:maxExcessEntries]
+		}
+		s.ExcessiveVersionObjects = keys
+	}
+	s.DiscardedExcessEntries += other.DiscardedExcessEntries
 
 	s.ILMExpiryPendingTasks += other.ILMExpiryPendingTasks
 	s.ILMExpiryTasksServiced.Merge(other.ILMExpiryTasksServiced)

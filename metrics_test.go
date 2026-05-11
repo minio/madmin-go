@@ -20,6 +20,7 @@
 package madmin
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -99,14 +100,67 @@ func TestScannerMetricsMerge(t *testing.T) {
 				ExcessivePrefixes: []string{"prefix2", "prefix3"},
 			},
 			verify: func(t *testing.T, result *ScannerMetrics) {
-				// Should be deduplicated and sorted
-				if len(result.ExcessivePrefixes) != 3 {
-					t.Errorf("ExcessivePrefixes length = %d, want 3", len(result.ExcessivePrefixes))
-				}
-				// Check sorted order
 				expected := []string{"prefix1", "prefix2", "prefix3"}
 				if !reflect.DeepEqual(result.ExcessivePrefixes, expected) {
 					t.Errorf("ExcessivePrefixes = %v, want %v", result.ExcessivePrefixes, expected)
+				}
+			},
+		},
+		{
+			name: "merge excessive version objects",
+			base: &ScannerMetrics{
+				ExcessiveVersionObjects: []string{"bucket1/obj1", "bucket1/obj2"},
+			},
+			other: &ScannerMetrics{
+				ExcessiveVersionObjects: []string{"bucket1/obj2", "bucket2/obj1"},
+			},
+			verify: func(t *testing.T, result *ScannerMetrics) {
+				expected := []string{"bucket1/obj1", "bucket1/obj2", "bucket2/obj1"}
+				if !reflect.DeepEqual(result.ExcessiveVersionObjects, expected) {
+					t.Errorf("ExcessiveVersionObjects = %v, want %v", result.ExcessiveVersionObjects, expected)
+				}
+				if result.DiscardedExcessEntries != 0 {
+					t.Errorf("DiscardedExcessEntries = %d, want 0", result.DiscardedExcessEntries)
+				}
+			},
+		},
+		{
+			name: "merge excess version objects cap at 100 entries",
+			base: func() *ScannerMetrics {
+				paths := make([]string, 80)
+				for i := range 80 {
+					paths[i] = fmt.Sprintf("prefix%03d", i)
+				}
+				return &ScannerMetrics{ExcessiveVersionObjects: paths}
+			}(),
+			other: func() *ScannerMetrics {
+				paths := make([]string, 60)
+				for i := range 60 {
+					paths[i] = fmt.Sprintf("prefix%03d", i+50) // 50–109, overlap at 50–79
+				}
+				return &ScannerMetrics{ExcessiveVersionObjects: paths}
+			}(),
+			verify: func(t *testing.T, result *ScannerMetrics) {
+				// 0–109 unique = 110 total; cap is 100, so 10 discarded
+				if len(result.ExcessiveVersionObjects) != 100 {
+					t.Errorf("ExcessiveVersionObjects length = %d, want 100", len(result.ExcessiveVersionObjects))
+				}
+				if result.DiscardedExcessEntries != 10 {
+					t.Errorf("DiscardedExcessEntries = %d, want 10", result.DiscardedExcessEntries)
+				}
+			},
+		},
+		{
+			name: "discarded excess entries accumulate across merges",
+			base: &ScannerMetrics{
+				DiscardedExcessEntries: 5,
+			},
+			other: &ScannerMetrics{
+				DiscardedExcessEntries: 3,
+			},
+			verify: func(t *testing.T, result *ScannerMetrics) {
+				if result.DiscardedExcessEntries != 8 {
+					t.Errorf("DiscardedExcessEntries = %d, want 8", result.DiscardedExcessEntries)
 				}
 			},
 		},
