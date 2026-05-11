@@ -56,8 +56,8 @@ func (node *CPUMetricsNavigator) GetChildren() []MetricChild {
 		return nil
 	}
 	return []MetricChild{
-		{Name: "cpu_last_hour", Description: "Last hour CPU usage (1-min segments)"},
-		{Name: "cpu_last_day", Description: "Last 24h CPU usage (15-min segments)"},
+		{Name: "last_hour", Description: "Last hour CPU usage (1-min segments)"},
+		{Name: "last_day", Description: "Last 24h CPU usage (15-min segments)"},
 		{Name: "power_last_hour", Description: "Last hour power draw (1-min segments)"},
 		{Name: "power_last_day", Description: "Last 24h power draw (15-min segments)"},
 	}
@@ -330,8 +330,13 @@ func (node *CPUMetricsNavigator) GetLeafData() map[string]string {
 			avgWatts, node.cpu.MinNodeWatts, node.cpu.MaxNodeWatts))
 
 		if len(node.cpu.PowerSourceCounts) > 0 {
-			for src, count := range node.cpu.PowerSourceCounts {
-				addEntry(fmt.Sprintf("Source %s", src), fmt.Sprintf("%d nodes", count))
+			sources := make([]string, 0, len(node.cpu.PowerSourceCounts))
+			for src := range node.cpu.PowerSourceCounts {
+				sources = append(sources, src)
+			}
+			sort.Strings(sources)
+			for _, src := range sources {
+				addEntry(fmt.Sprintf("Source %s", src), fmt.Sprintf("%d nodes", node.cpu.PowerSourceCounts[src]))
 			}
 		}
 	}
@@ -464,18 +469,18 @@ func (node *CPUMetricsNavigator) GetChild(name string) (MetricNode, error) {
 		return nil, fmt.Errorf("no CPU data available")
 	}
 	switch name {
-	case "cpu_last_hour":
+	case "last_hour":
 		return &CPUSegmentedNode{
 			segmented: node.cpu.LastHour,
 			parent:    node,
-			path:      node.path + "/cpu_last_hour",
+			path:      node.path + "/last_hour",
 			flags:     madmin.MetricsHourStats,
 		}, nil
-	case "cpu_last_day":
+	case "last_day":
 		return &CPUSegmentedNode{
 			segmented: node.cpu.LastDay,
 			parent:    node,
-			path:      node.path + "/cpu_last_day",
+			path:      node.path + "/last_day",
 			flags:     madmin.MetricsDayStats,
 		}, nil
 	case "power_last_hour":
