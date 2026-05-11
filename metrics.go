@@ -147,6 +147,8 @@ func (m MetricFlags) String() string {
 	addIf(m.Contains(MetricsByDisk), "ByDisk")
 	addIf(m.Contains(MetricsLegacyDiskIO), "LegacyIO")
 	addIf(m.Contains(MetricsByDiskSet), "ByDiskSet")
+	addIf(m.Contains(MetricsSMART), "SMART")
+	addIf(m.Contains(MetricsHourStats), "HourStats")
 	return b.String()
 }
 
@@ -1445,6 +1447,32 @@ func (c *CPUSegment) Add(other *CPUSegment) {
 // SegmentedCPUMetrics are time-segmented CPU metrics.
 type SegmentedCPUMetrics = Segmented[CPUSegment, *CPUSegment]
 
+// PowerSegment stores power draw for a single time segment.
+// Each node normalizes to a single sample (N=1) before reporting,
+// so N equals the number of contributing nodes after merge.
+type PowerSegment struct {
+	SumWatts float64 `json:"sumWatts,omitempty"`
+	MinWatts float64 `json:"minWatts,omitempty"`
+	MaxWatts float64 `json:"maxWatts,omitempty"`
+	N        int     `json:"n"`
+}
+
+// Add other to p for Segmenter interface.
+func (p *PowerSegment) Add(other *PowerSegment) {
+	if other == nil || other.N == 0 {
+		return
+	}
+	p.SumWatts += other.SumWatts
+	if p.N == 0 || other.MinWatts < p.MinWatts {
+		p.MinWatts = other.MinWatts
+	}
+	p.MaxWatts = max(p.MaxWatts, other.MaxWatts)
+	p.N += other.N
+}
+
+// SegmentedPowerMetrics are time-segmented power draw metrics.
+type SegmentedPowerMetrics = Segmented[PowerSegment, *PowerSegment]
+
 //msgp:replace cpu.TimesStat with:cpuTimesStat
 //msgp:replace load.AvgStat with:loadAvgStat
 
@@ -1480,6 +1508,15 @@ type CPUMetrics struct {
 	MaxCPUInfoFreq          uint64         `json:"max_freq,omitempty"`                   // Maximum of CpuinfoMaximumFrequency
 	MinScalingFreq          uint64         `json:"min_scaling_freq,omitempty"`           // Minimum of ScalingMinimumFrequency
 	MaxScalingFreq          uint64         `json:"max_scaling_freq,omitempty"`           // Maximum of ScalingMaximumFrequency
+
+	// Power draw metrics (from IPMI/BMC, omitted when unavailable)
+	PowerNodes        int                    `json:"power_nodes,omitempty"`
+	TotalWatts        float64                `json:"total_watts,omitempty"`
+	MinNodeWatts      float64                `json:"min_node_watts,omitempty"`
+	MaxNodeWatts      float64                `json:"max_node_watts,omitempty"`
+	PowerSourceCounts map[string]int         `json:"power_source_counts,omitempty"`
+	PowerLastDay      *SegmentedPowerMetrics `json:"powerLastDay,omitempty"`
+	PowerLastHour     *SegmentedPowerMetrics `json:"powerLastHour,omitempty"`
 }
 
 // Merge other into 'm'.
@@ -1565,6 +1602,36 @@ func (m *CPUMetrics) Merge(other *CPUMetrics) {
 			m.LastHour = new(SegmentedCPUMetrics)
 		}
 		m.LastHour.Add(other.LastHour)
+	}
+
+	// Merge power draw metrics
+	if other.PowerNodes > 0 {
+		if m.PowerNodes == 0 || other.MinNodeWatts < m.MinNodeWatts {
+			m.MinNodeWatts = other.MinNodeWatts
+		}
+		m.MaxNodeWatts = max(m.MaxNodeWatts, other.MaxNodeWatts)
+		m.TotalWatts += other.TotalWatts
+		m.PowerNodes += other.PowerNodes
+		if len(other.PowerSourceCounts) > 0 {
+			if m.PowerSourceCounts == nil {
+				m.PowerSourceCounts = make(map[string]int)
+			}
+			for src, count := range other.PowerSourceCounts {
+				m.PowerSourceCounts[src] += count
+			}
+		}
+	}
+	if other.PowerLastDay != nil {
+		if m.PowerLastDay == nil {
+			m.PowerLastDay = new(SegmentedPowerMetrics)
+		}
+		m.PowerLastDay.Add(other.PowerLastDay)
+	}
+	if other.PowerLastHour != nil {
+		if m.PowerLastHour == nil {
+			m.PowerLastHour = new(SegmentedPowerMetrics)
+		}
+		m.PowerLastHour.Add(other.PowerLastHour)
 	}
 }
 
