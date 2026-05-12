@@ -62,10 +62,11 @@ type CapacityForecast struct {
 
 	Variance float64 `json:"variance"` // variance of daily usedFraction deltas
 
-	// Concrete min/max daily changes in usedFraction between consecutive
-	// data points. DayMinDelta can be negative (space was freed).
-	DayMinDelta float64 `json:"dayMinDelta"`
-	DayMaxDelta float64 `json:"dayMaxDelta"`
+	// Smallest and largest day-to-day changes in used bytes observed
+	// between consecutive snapshots. A negative value means space was
+	// freed between those two days.
+	DayMinDeltaBytes int64 `json:"dayMinDeltaBytes"`
+	DayMaxDeltaBytes int64 `json:"dayMaxDeltaBytes"`
 
 	// Recency-weighted predictions from the Kalman filter.
 	RecentGrowthRatePerDay float64  `json:"recentGrowthRatePerDay"`
