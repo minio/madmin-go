@@ -1481,36 +1481,38 @@ type HealthDataType string
 
 // HealthDataTypes
 const (
-	HealthDataTypeMinioInfo    HealthDataType = "minioinfo"
-	HealthDataTypeMinioConfig  HealthDataType = "minioconfig"
-	HealthDataTypeSysCPU       HealthDataType = "syscpu"
-	HealthDataTypeSysDriveHw   HealthDataType = "sysdrivehw"
-	HealthDataTypeSysOsInfo    HealthDataType = "sysosinfo"
-	HealthDataTypeSysMem       HealthDataType = "sysmem"
-	HealthDataTypeSysNet       HealthDataType = "sysnet"
-	HealthDataTypeSysProcess   HealthDataType = "sysprocess"
-	HealthDataTypeSysErrors    HealthDataType = "syserrors"
-	HealthDataTypeSysServices  HealthDataType = "sysservices"
-	HealthDataTypeSysConfig    HealthDataType = "sysconfig"
-	HealthDataTypeReplication  HealthDataType = "replication"
-	HealthDataTypeShardsHealth HealthDataType = "shardshealth"
+	HealthDataTypeMinioInfo      HealthDataType = "minioinfo"
+	HealthDataTypeMinioConfig    HealthDataType = "minioconfig"
+	HealthDataTypeSysCPU         HealthDataType = "syscpu"
+	HealthDataTypeSysDriveHw     HealthDataType = "sysdrivehw"
+	HealthDataTypeSysOsInfo      HealthDataType = "sysosinfo"
+	HealthDataTypeSysMem         HealthDataType = "sysmem"
+	HealthDataTypeSysNet         HealthDataType = "sysnet"
+	HealthDataTypeSysProcess     HealthDataType = "sysprocess"
+	HealthDataTypeSysErrors      HealthDataType = "syserrors"
+	HealthDataTypeSysServices    HealthDataType = "sysservices"
+	HealthDataTypeSysConfig      HealthDataType = "sysconfig"
+	HealthDataTypeSysProductInfo HealthDataType = "sysproductinfo"
+	HealthDataTypeReplication    HealthDataType = "replication"
+	HealthDataTypeShardsHealth   HealthDataType = "shardshealth"
 )
 
 // HealthDataTypesMap - Map of Health datatypes
 var HealthDataTypesMap = map[string]HealthDataType{
-	"minioinfo":    HealthDataTypeMinioInfo,
-	"minioconfig":  HealthDataTypeMinioConfig,
-	"syscpu":       HealthDataTypeSysCPU,
-	"sysdrivehw":   HealthDataTypeSysDriveHw,
-	"sysosinfo":    HealthDataTypeSysOsInfo,
-	"sysmem":       HealthDataTypeSysMem,
-	"sysnet":       HealthDataTypeSysNet,
-	"sysprocess":   HealthDataTypeSysProcess,
-	"syserrors":    HealthDataTypeSysErrors,
-	"sysservices":  HealthDataTypeSysServices,
-	"sysconfig":    HealthDataTypeSysConfig,
-	"replication":  HealthDataTypeReplication,
-	"shardshealth": HealthDataTypeShardsHealth,
+	"minioinfo":      HealthDataTypeMinioInfo,
+	"minioconfig":    HealthDataTypeMinioConfig,
+	"syscpu":         HealthDataTypeSysCPU,
+	"sysdrivehw":     HealthDataTypeSysDriveHw,
+	"sysosinfo":      HealthDataTypeSysOsInfo,
+	"sysmem":         HealthDataTypeSysMem,
+	"sysnet":         HealthDataTypeSysNet,
+	"sysprocess":     HealthDataTypeSysProcess,
+	"syserrors":      HealthDataTypeSysErrors,
+	"sysservices":    HealthDataTypeSysServices,
+	"sysconfig":      HealthDataTypeSysConfig,
+	"sysproductinfo": HealthDataTypeSysProductInfo,
+	"replication":    HealthDataTypeReplication,
+	"shardshealth":   HealthDataTypeShardsHealth,
 }
 
 // HealthDataTypesList - List of health datatypes
@@ -1526,6 +1528,7 @@ var HealthDataTypesList = []HealthDataType{
 	HealthDataTypeSysErrors,
 	HealthDataTypeSysServices,
 	HealthDataTypeSysConfig,
+	HealthDataTypeSysProductInfo,
 	HealthDataTypeReplication,
 	HealthDataTypeShardsHealth,
 }
