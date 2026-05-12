@@ -35,7 +35,11 @@ type CapacityForecast struct {
 	CurrentTotalBytes  uint64  `json:"currentTotalBytes"`
 	CurrentUsedPercent float64 `json:"currentUsedPercent"`
 
-	// Days until each usage threshold is reached. nil = unknown.
+	// Days until each usage threshold is reached. The projection comes from
+	// a Kalman filter that integrates up to 365 daily samples with greater
+	// weight on recent observations, so a fresh shift in usage dominates
+	// over older history. nil = unknown (slope is non-positive, or there
+	// is not enough history).
 	DaysUntil80Pct  *float64 `json:"daysUntil80Pct,omitempty"`
 	DaysUntil90Pct  *float64 `json:"daysUntil90Pct,omitempty"`
 	DaysUntil100Pct *float64 `json:"daysUntil100Pct,omitempty"`
