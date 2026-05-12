@@ -451,10 +451,12 @@ func (r *Metrics) Merge(other *Metrics) {
 		r.Buckets = &BucketAPIMetrics{}
 	}
 	r.Buckets.Merge(other.Buckets)
-	if r.KMS == nil && other.KMS != nil {
-		r.KMS = &KMSRtMetrics{}
+	if other.KMS != nil {
+		if r.KMS == nil {
+			r.KMS = &KMSRtMetrics{}
+		}
+		r.KMS.Merge(other.KMS)
 	}
-	r.KMS.Merge(other.KMS)
 }
 
 // ScannerMetrics contains scanner information.
