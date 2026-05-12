@@ -578,6 +578,23 @@ func (node *RuntimeLastDayNode) GetLeafData() map[string]string {
 	}
 	data := make(map[string]string)
 	idx := 0
+	var prevGCCycles uint64
+	// Forward pass to compute GC deltas per segment
+	gcDeltas := make([]uint64, len(node.segmented.Segments))
+	for i := range node.segmented.Segments {
+		seg := node.segmented.Segments[i]
+		if seg.N == 0 {
+			continue
+		}
+		if v, ok := seg.UintMetrics["/gc/cycles/total:gc-cycles"]; ok {
+			avg := v / uint64(seg.N)
+			if prevGCCycles > 0 && avg >= prevGCCycles {
+				gcDeltas[i] = avg - prevGCCycles
+			}
+			prevGCCycles = avg
+		}
+	}
+
 	for i := len(node.segmented.Segments) - 1; i >= 0; i-- {
 		seg := node.segmented.Segments[i]
 		if seg.N == 0 {
@@ -586,22 +603,27 @@ func (node *RuntimeLastDayNode) GetLeafData() map[string]string {
 		idx++
 		startTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
 		endTime := startTime.Add(time.Duration(node.segmented.Interval) * time.Second)
-		name := fmt.Sprintf("%02d: %s->%s", idx, startTime.Local().Format("15:04"), endTime.Local().Format("15:04"))
+		name := fmt.Sprintf("%02d: %s->%sZ", idx, startTime.UTC().Format("15:04"), endTime.UTC().Format("15:04"))
+		n := uint64(seg.N)
 
 		var parts []string
+		parts = append(parts, startTime.Local().Format("15:04"))
 		if v, ok := seg.UintMetrics["/sched/goroutines:goroutines"]; ok {
-			parts = append(parts, fmt.Sprintf("Goroutines: %d", v/uint64(seg.N)))
-		}
-		if v, ok := seg.UintMetrics["/gc/heap/allocs:bytes"]; ok {
-			parts = append(parts, fmt.Sprintf("HeapAlloc: %s", formatRuntimeBytes(v/uint64(seg.N))))
+			parts = append(parts, fmt.Sprintf("Goroutines: %d", v/n))
 		}
 		if v, ok := seg.UintMetrics["/memory/classes/heap/objects:bytes"]; ok {
-			parts = append(parts, fmt.Sprintf("HeapInuse: %s", formatRuntimeBytes(v/uint64(seg.N))))
+			parts = append(parts, fmt.Sprintf("HeapInuse: %s", formatRuntimeBytes(v/n)))
 		}
-		if v, ok := seg.UintMetrics["/gc/cycles/total:gc-cycles"]; ok {
-			parts = append(parts, fmt.Sprintf("GC: %d", v/uint64(seg.N)))
+		if gcDeltas[i] > 0 {
+			parts = append(parts, fmt.Sprintf("GC: +%d", gcDeltas[i]))
 		}
-		if len(parts) == 0 {
+		if v, ok := seg.FloatMetrics["/cpu/classes/gc/total:cpu-seconds"]; ok {
+			parts = append(parts, fmt.Sprintf("GC CPU: %.1fs", v/float64(n)))
+		}
+		if v, ok := seg.FloatMetrics["/sync/mutex/wait/total:seconds"]; ok && v > 0 {
+			parts = append(parts, fmt.Sprintf("Mutex wait: %.2fs", v/float64(n)))
+		}
+		if len(parts) == 1 {
 			parts = append(parts, fmt.Sprintf("%d metrics", len(seg.UintMetrics)+len(seg.FloatMetrics)))
 		}
 		data[name] = strings.Join(parts, ", ")
