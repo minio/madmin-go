@@ -40,8 +40,17 @@ type CapacityForecast struct {
 	DaysUntil90Pct  *float64 `json:"daysUntil90Pct,omitempty"`
 	DaysUntil100Pct *float64 `json:"daysUntil100Pct,omitempty"`
 
-	GrowthRatePerDay int64 `json:"growthRatePerDay"`
-	DataPointCount   int   `json:"dataPointCount"`
+	// GrowthBytesPerDay is the Kalman filter slope expressed in bytes per
+	// day, projected from the daily snapshots in the circular buffer.
+	// It is independent of DailySnapshotCount: the filter is recency
+	// weighted, not a delta between two endpoints.
+	GrowthBytesPerDay int64 `json:"growthBytesPerDay"`
+
+	// DailySnapshotCount is the number of valid daily snapshots currently
+	// held in the year-long circular buffer (range 0..365). The forecast
+	// fields above are only populated when this count reaches the
+	// minimum required for the filter to produce stable estimates.
+	DailySnapshotCount int `json:"dailySnapshotCount"`
 
 	// Worst-case prediction based on the largest single-day growth
 	// observed between any two consecutive data points. nil = unknown.
