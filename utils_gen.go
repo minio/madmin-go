@@ -431,6 +431,385 @@ func (z *DiskAction) Msgsize() (s int) {
 }
 
 // DecodeMsg implements msgp.Decodable
+func (z *KMSAction) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 6 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "n":
+			z.Count, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "Count")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "t":
+			z.AccTime, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "AccTime")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "min":
+			z.MinTime, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "MinTime")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "max":
+			z.MaxTime, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "MaxTime")
+				return
+			}
+			zb0001Mask |= 0x8
+		case "cf":
+			z.ConnFails, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "ConnFails")
+				return
+			}
+			zb0001Mask |= 0x10
+		case "re":
+			z.RemoteErrs, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "RemoteErrs")
+				return
+			}
+			zb0001Mask |= 0x20
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x3f {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Count = 0
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.AccTime = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.MinTime = 0
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.MaxTime = 0
+		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.ConnFails = 0
+		}
+		if (zb0001Mask & 0x20) == 0 {
+			z.RemoteErrs = 0
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *KMSAction) EncodeMsg(en *msgp.Writer) (err error) {
+	// check for omitted fields
+	zb0001Len := uint32(6)
+	var zb0001Mask uint8 /* 6 bits */
+	_ = zb0001Mask
+	if z.Count == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.AccTime == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.MinTime == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	if z.MaxTime == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.ConnFails == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	if z.RemoteErrs == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x20
+	}
+	// variable map header, size zb0001Len
+	err = en.Append(0x80 | uint8(zb0001Len))
+	if err != nil {
+		return
+	}
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// write "n"
+			err = en.Append(0xa1, 0x6e)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.Count)
+			if err != nil {
+				err = msgp.WrapError(err, "Count")
+				return
+			}
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// write "t"
+			err = en.Append(0xa1, 0x74)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.AccTime)
+			if err != nil {
+				err = msgp.WrapError(err, "AccTime")
+				return
+			}
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// write "min"
+			err = en.Append(0xa3, 0x6d, 0x69, 0x6e)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.MinTime)
+			if err != nil {
+				err = msgp.WrapError(err, "MinTime")
+				return
+			}
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// write "max"
+			err = en.Append(0xa3, 0x6d, 0x61, 0x78)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.MaxTime)
+			if err != nil {
+				err = msgp.WrapError(err, "MaxTime")
+				return
+			}
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// write "cf"
+			err = en.Append(0xa2, 0x63, 0x66)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.ConnFails)
+			if err != nil {
+				err = msgp.WrapError(err, "ConnFails")
+				return
+			}
+		}
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// write "re"
+			err = en.Append(0xa2, 0x72, 0x65)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.RemoteErrs)
+			if err != nil {
+				err = msgp.WrapError(err, "RemoteErrs")
+				return
+			}
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *KMSAction) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// check for omitted fields
+	zb0001Len := uint32(6)
+	var zb0001Mask uint8 /* 6 bits */
+	_ = zb0001Mask
+	if z.Count == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.AccTime == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.MinTime == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	if z.MaxTime == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.ConnFails == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	if z.RemoteErrs == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x20
+	}
+	// variable map header, size zb0001Len
+	o = append(o, 0x80|uint8(zb0001Len))
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// string "n"
+			o = append(o, 0xa1, 0x6e)
+			o = msgp.AppendUint64(o, z.Count)
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// string "t"
+			o = append(o, 0xa1, 0x74)
+			o = msgp.AppendFloat64(o, z.AccTime)
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// string "min"
+			o = append(o, 0xa3, 0x6d, 0x69, 0x6e)
+			o = msgp.AppendFloat64(o, z.MinTime)
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// string "max"
+			o = append(o, 0xa3, 0x6d, 0x61, 0x78)
+			o = msgp.AppendFloat64(o, z.MaxTime)
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// string "cf"
+			o = append(o, 0xa2, 0x63, 0x66)
+			o = msgp.AppendUint64(o, z.ConnFails)
+		}
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// string "re"
+			o = append(o, 0xa2, 0x72, 0x65)
+			o = msgp.AppendUint64(o, z.RemoteErrs)
+		}
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *KMSAction) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 6 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "n":
+			z.Count, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Count")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "t":
+			z.AccTime, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "AccTime")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "min":
+			z.MinTime, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "MinTime")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "max":
+			z.MaxTime, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "MaxTime")
+				return
+			}
+			zb0001Mask |= 0x8
+		case "cf":
+			z.ConnFails, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ConnFails")
+				return
+			}
+			zb0001Mask |= 0x10
+		case "re":
+			z.RemoteErrs, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "RemoteErrs")
+				return
+			}
+			zb0001Mask |= 0x20
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x3f {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Count = 0
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.AccTime = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.MinTime = 0
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.MaxTime = 0
+		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.ConnFails = 0
+		}
+		if (zb0001Mask & 0x20) == 0 {
+			z.RemoteErrs = 0
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *KMSAction) Msgsize() (s int) {
+	s = 1 + 2 + msgp.Uint64Size + 2 + msgp.Float64Size + 4 + msgp.Float64Size + 4 + msgp.Float64Size + 3 + msgp.Uint64Size + 3 + msgp.Uint64Size
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *TimedAction) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field

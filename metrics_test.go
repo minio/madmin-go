@@ -3805,3 +3805,237 @@ func TestHealingMetricsMergeActiveSessions(t *testing.T) {
 		})
 	}
 }
+
+func TestKMSActionAdd(t *testing.T) {
+	tests := []struct {
+		name   string
+		base   KMSAction
+		other  *KMSAction
+		verify func(t *testing.T, result KMSAction)
+	}{
+		{
+			name:  "nil other is no-op",
+			base:  KMSAction{Count: 5, AccTime: 1.0, MinTime: 0.1, MaxTime: 0.5},
+			other: nil,
+			verify: func(t *testing.T, r KMSAction) {
+				if r.Count != 5 {
+					t.Errorf("Count = %d, want 5", r.Count)
+				}
+			},
+		},
+		{
+			name:  "add to zero value",
+			base:  KMSAction{},
+			other: &KMSAction{Count: 3, AccTime: 0.9, MinTime: 0.2, MaxTime: 0.4, ConnFails: 1, RemoteErrs: 2},
+			verify: func(t *testing.T, r KMSAction) {
+				if r.Count != 3 {
+					t.Errorf("Count = %d, want 3", r.Count)
+				}
+				if r.MinTime != 0.2 {
+					t.Errorf("MinTime = %f, want 0.2", r.MinTime)
+				}
+				if r.ConnFails != 1 {
+					t.Errorf("ConnFails = %d, want 1", r.ConnFails)
+				}
+				if r.RemoteErrs != 2 {
+					t.Errorf("RemoteErrs = %d, want 2", r.RemoteErrs)
+				}
+			},
+		},
+		{
+			name:  "accumulate counts and errors",
+			base:  KMSAction{Count: 10, AccTime: 2.0, MinTime: 0.1, MaxTime: 0.5, ConnFails: 2, RemoteErrs: 1},
+			other: &KMSAction{Count: 5, AccTime: 1.5, MinTime: 0.05, MaxTime: 0.8, ConnFails: 1, RemoteErrs: 3},
+			verify: func(t *testing.T, r KMSAction) {
+				if r.Count != 15 {
+					t.Errorf("Count = %d, want 15", r.Count)
+				}
+				if r.AccTime != 3.5 {
+					t.Errorf("AccTime = %f, want 3.5", r.AccTime)
+				}
+				if r.MinTime != 0.05 {
+					t.Errorf("MinTime = %f, want 0.05", r.MinTime)
+				}
+				if r.MaxTime != 0.8 {
+					t.Errorf("MaxTime = %f, want 0.8", r.MaxTime)
+				}
+				if r.ConnFails != 3 {
+					t.Errorf("ConnFails = %d, want 3", r.ConnFails)
+				}
+				if r.RemoteErrs != 4 {
+					t.Errorf("RemoteErrs = %d, want 4", r.RemoteErrs)
+				}
+			},
+		},
+		{
+			name:  "min preserved when other is larger",
+			base:  KMSAction{Count: 1, MinTime: 0.01, MaxTime: 0.01},
+			other: &KMSAction{Count: 1, MinTime: 0.1, MaxTime: 0.1},
+			verify: func(t *testing.T, r KMSAction) {
+				if r.MinTime != 0.01 {
+					t.Errorf("MinTime = %f, want 0.01", r.MinTime)
+				}
+				if r.MaxTime != 0.1 {
+					t.Errorf("MaxTime = %f, want 0.1", r.MaxTime)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.base.Add(tt.other)
+			tt.verify(t, tt.base)
+		})
+	}
+}
+
+func TestKMSActionAvg(t *testing.T) {
+	a := KMSAction{Count: 4, AccTime: 2.0}
+	if got := a.Avg(); got != 500*time.Millisecond {
+		t.Errorf("Avg() = %v, want 500ms", got)
+	}
+	zero := KMSAction{}
+	if got := zero.Avg(); got != 0 {
+		t.Errorf("Avg() on zero = %v, want 0", got)
+	}
+}
+
+func TestKMSRtMetricsMerge(t *testing.T) {
+	now := time.Now()
+	later := now.Add(time.Hour)
+
+	tests := []struct {
+		name   string
+		base   *KMSRtMetrics
+		other  *KMSRtMetrics
+		verify func(t *testing.T, result *KMSRtMetrics)
+	}{
+		{
+			name:  "nil other is no-op",
+			base:  &KMSRtMetrics{Nodes: 1, NodesOnline: 1, OnlineSecs: 60},
+			other: nil,
+			verify: func(t *testing.T, r *KMSRtMetrics) {
+				if r.Nodes != 1 {
+					t.Errorf("Nodes = %d, want 1", r.Nodes)
+				}
+			},
+		},
+		{
+			name:  "accumulate nodes and active ops",
+			base:  &KMSRtMetrics{Nodes: 1, ActiveOps: 3},
+			other: &KMSRtMetrics{Nodes: 1, ActiveOps: 2},
+			verify: func(t *testing.T, r *KMSRtMetrics) {
+				if r.Nodes != 2 {
+					t.Errorf("Nodes = %d, want 2", r.Nodes)
+				}
+				if r.ActiveOps != 5 {
+					t.Errorf("ActiveOps = %d, want 5", r.ActiveOps)
+				}
+			},
+		},
+		{
+			name:  "nodes online accumulates",
+			base:  &KMSRtMetrics{Nodes: 1, NodesOnline: 0},
+			other: &KMSRtMetrics{Nodes: 1, NodesOnline: 1},
+			verify: func(t *testing.T, r *KMSRtMetrics) {
+				if r.NodesOnline != 1 {
+					t.Errorf("NodesOnline = %d, want 1", r.NodesOnline)
+				}
+				if r.Nodes != 2 {
+					t.Errorf("Nodes = %d, want 2", r.Nodes)
+				}
+			},
+		},
+		{
+			name:  "online secs takes max",
+			base:  &KMSRtMetrics{OnlineSecs: 30},
+			other: &KMSRtMetrics{OnlineSecs: 120},
+			verify: func(t *testing.T, r *KMSRtMetrics) {
+				if r.OnlineSecs != 120 {
+					t.Errorf("OnlineSecs = %f, want 120", r.OnlineSecs)
+				}
+			},
+		},
+		{
+			name:  "last success takes latest",
+			base:  &KMSRtMetrics{LastSuccess: &now},
+			other: &KMSRtMetrics{LastSuccess: &later},
+			verify: func(t *testing.T, r *KMSRtMetrics) {
+				if r.LastSuccess == nil || !r.LastSuccess.Equal(later) {
+					t.Errorf("LastSuccess = %v, want %v", r.LastSuccess, later)
+				}
+			},
+		},
+		{
+			name:  "last success nil other preserved",
+			base:  &KMSRtMetrics{LastSuccess: &now},
+			other: &KMSRtMetrics{},
+			verify: func(t *testing.T, r *KMSRtMetrics) {
+				if r.LastSuccess == nil || !r.LastSuccess.Equal(now) {
+					t.Errorf("LastSuccess should be preserved")
+				}
+			},
+		},
+		{
+			name:  "collected at takes latest",
+			base:  &KMSRtMetrics{CollectedAt: now},
+			other: &KMSRtMetrics{CollectedAt: later},
+			verify: func(t *testing.T, r *KMSRtMetrics) {
+				if !r.CollectedAt.Equal(later) {
+					t.Errorf("CollectedAt = %v, want %v", r.CollectedAt, later)
+				}
+			},
+		},
+		{
+			name: "merge last minute maps",
+			base: &KMSRtMetrics{
+				LastMinute: map[string]KMSAction{
+					"Decrypt": {Count: 10, AccTime: 1.0, MinTime: 0.05, MaxTime: 0.2},
+				},
+			},
+			other: &KMSRtMetrics{
+				LastMinute: map[string]KMSAction{
+					"Decrypt":     {Count: 5, AccTime: 0.5, MinTime: 0.03, MaxTime: 0.3},
+					"GenerateKey": {Count: 2, AccTime: 0.1, MinTime: 0.04, MaxTime: 0.06},
+				},
+			},
+			verify: func(t *testing.T, r *KMSRtMetrics) {
+				if len(r.LastMinute) != 2 {
+					t.Fatalf("LastMinute len = %d, want 2", len(r.LastMinute))
+				}
+				dec := r.LastMinute["Decrypt"]
+				if dec.Count != 15 {
+					t.Errorf("Decrypt.Count = %d, want 15", dec.Count)
+				}
+				if dec.MinTime != 0.03 {
+					t.Errorf("Decrypt.MinTime = %f, want 0.03", dec.MinTime)
+				}
+				if dec.MaxTime != 0.3 {
+					t.Errorf("Decrypt.MaxTime = %f, want 0.3", dec.MaxTime)
+				}
+				gen := r.LastMinute["GenerateKey"]
+				if gen.Count != 2 {
+					t.Errorf("GenerateKey.Count = %d, want 2", gen.Count)
+				}
+			},
+		},
+		{
+			name:  "merge into nil base maps",
+			base:  &KMSRtMetrics{},
+			other: &KMSRtMetrics{LastMinute: map[string]KMSAction{"MAC": {Count: 1}}},
+			verify: func(t *testing.T, r *KMSRtMetrics) {
+				if r.LastMinute == nil || r.LastMinute["MAC"].Count != 1 {
+					t.Error("LastMinute should be populated from other")
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.base.Merge(tt.other)
+			tt.verify(t, tt.base)
+		})
+	}
+}
