@@ -794,19 +794,19 @@ func getXFSErrorMaxRetries() XFSErrorConfigs {
 type ProductInfo struct {
 	NodeCommon
 
-	Family       string `json:"family"`
-	Name         string `json:"name"`
-	Vendor       string `json:"vendor"`
-	SerialNumber string `json:"serial_number"`
-	UUID         string `json:"uuid"`
-	SKU          string `json:"sku"`
-	Version      string `json:"version"`
+	Family       string `json:"family,omitempty"`
+	Name         string `json:"name,omitempty"`
+	Vendor       string `json:"vendor,omitempty"`
+	SerialNumber string `json:"serial_number,omitempty"`
+	UUID         string `json:"uuid,omitempty"`
+	SKU          string `json:"sku,omitempty"`
+	Version      string `json:"version,omitempty"`
 }
 
 func getDMIInfo(ask string) string {
 	value, err := os.ReadFile(path.Join(sysClassDMI, "id", ask))
 	if err != nil {
-		return "unknown"
+		return ""
 	}
 	return strings.TrimSpace(string(value))
 }
