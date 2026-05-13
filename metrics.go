@@ -66,6 +66,7 @@ const (
 	MetricsProcess
 	MetricsHealing
 	MetricsBuckets
+	MetricsKMS
 
 	// MetricsAll must be last.
 	// Enables all metrics.
@@ -103,6 +104,7 @@ func (m MetricType) String() string {
 	addIf(m.Contains(MetricsProcess), "Process")
 	addIf(m.Contains(MetricsHealing), "Healing")
 	addIf(m.Contains(MetricsBuckets), "Buckets")
+	addIf(m.Contains(MetricsKMS), "KMS")
 	return b.String()
 }
 
@@ -377,6 +379,7 @@ type Metrics struct {
 	Process     *ProcessMetrics     `json:"process,omitempty"`
 	Healing     *HealingMetrics     `json:"healing,omitempty"`
 	Buckets     *BucketAPIMetrics   `json:"buckets,omitempty"`
+	KMS         *KMSRtMetrics       `json:"kms,omitempty"`
 }
 
 // Merge other into r.
@@ -448,6 +451,12 @@ func (r *Metrics) Merge(other *Metrics) {
 		r.Buckets = &BucketAPIMetrics{}
 	}
 	r.Buckets.Merge(other.Buckets)
+	if other.KMS != nil {
+		if r.KMS == nil {
+			r.KMS = &KMSRtMetrics{}
+		}
+		r.KMS.Merge(other.KMS)
+	}
 }
 
 // ScannerMetrics contains scanner information.
@@ -3066,6 +3075,75 @@ func (m *HealingMetrics) Merge(other *HealingMetrics) {
 		// We do not merge entries as we would only expect the same session to be reported from one node.
 		maps.Copy(m.ActiveSessions, other.ActiveSessions)
 	}
+}
+
+// SegmentedKMSActions are time segmented KMS operation stats.
+type SegmentedKMSActions = Segmented[KMSAction, *KMSAction]
+
+// KMSRtMetrics contains metrics for KMS operations.
+type KMSRtMetrics struct {
+	CollectedAt time.Time `json:"collected"`
+	Nodes       int       `json:"nodes"`
+
+	NodesOnline int        `json:"nodes_online"`
+	OnlineSecs  float64    `json:"online_secs,omitempty"`
+	LastSuccess *time.Time `json:"last_success,omitempty"`
+	ActiveOps   int64      `json:"active_ops,omitempty"`
+
+	LastMinute map[string]KMSAction `json:"lastMinute,omitempty"`
+
+	LastHour map[string]SegmentedKMSActions `json:"lastHour,omitempty"`
+	LastDay  map[string]SegmentedKMSActions `json:"lastDay,omitempty"`
+}
+
+// Merge other into m.
+func (m *KMSRtMetrics) Merge(other *KMSRtMetrics) {
+	if m == nil || other == nil {
+		return
+	}
+	if m.CollectedAt.Before(other.CollectedAt) {
+		m.CollectedAt = other.CollectedAt
+	}
+	m.Nodes += other.Nodes
+	m.NodesOnline += other.NodesOnline
+	m.OnlineSecs = max(m.OnlineSecs, other.OnlineSecs)
+	if other.LastSuccess != nil {
+		if m.LastSuccess == nil || other.LastSuccess.After(*m.LastSuccess) {
+			m.LastSuccess = other.LastSuccess
+		}
+	}
+	m.ActiveOps += other.ActiveOps
+
+	mergeKMSMap := func(dst *map[string]KMSAction, src map[string]KMSAction) {
+		if len(src) == 0 {
+			return
+		}
+		if *dst == nil {
+			*dst = make(map[string]KMSAction, len(src))
+		}
+		for k, v := range src {
+			existing := (*dst)[k]
+			existing.Add(&v)
+			(*dst)[k] = existing
+		}
+	}
+	mergeKMSMap(&m.LastMinute, other.LastMinute)
+
+	mergeSegMap := func(dst *map[string]SegmentedKMSActions, src map[string]SegmentedKMSActions) {
+		if len(src) == 0 {
+			return
+		}
+		if *dst == nil {
+			*dst = make(map[string]SegmentedKMSActions, len(src))
+		}
+		for k, v := range src {
+			existing := (*dst)[k]
+			existing.Add(&v)
+			(*dst)[k] = existing
+		}
+	}
+	mergeSegMap(&m.LastHour, other.LastHour)
+	mergeSegMap(&m.LastDay, other.LastDay)
 }
 
 // BucketOpStat holds per-operation request counters and byte I/O for one
