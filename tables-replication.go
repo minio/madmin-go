@@ -24,17 +24,21 @@ import (
 	"encoding/json"
 	"io"
 	"net/http"
+	"net/url"
+	"strconv"
 	"time"
 )
 
-// TablesReplicationStatus is the response for the tables replication status admin API.
+// TablesReplicationStatus is one page of the tables replication status admin API.
 type TablesReplicationStatus struct {
-	Status string                          `json:"status"`
-	Tables map[string]TableReplicationInfo `json:"tables"`
+	Status                string                 `json:"status"`
+	Tables                []TableReplicationInfo `json:"tables"`
+	NextContinuationToken string                 `json:"nextContinuationToken,omitempty"`
 }
 
 // TableReplicationInfo is the per-table replication status.
 type TableReplicationInfo struct {
+	Key              string    `json:"key"`
 	Name             string    `json:"name"`
 	Type             string    `json:"type"`
 	VerifiedVersion  int       `json:"verifiedVersion"`
@@ -46,13 +50,28 @@ type TableReplicationInfo struct {
 	DiscoveredAt     time.Time `json:"discoveredAt"`
 }
 
-// TablesReplicationStatus returns the per-table replication tracking state
-// maintained by the catalog scanner leader.
-func (adm *AdminClient) TablesReplicationStatus(ctx context.Context) (TablesReplicationStatus, error) {
+// TablesReplicationStatusOpts configures pagination for TablesReplicationStatus.
+type TablesReplicationStatusOpts struct {
+	Limit             int
+	ContinuationToken string
+}
+
+// TablesReplicationStatus returns one page of the per-table replication
+// tracking state maintained by the catalog scanner leader.
+func (adm *AdminClient) TablesReplicationStatus(ctx context.Context, opts TablesReplicationStatusOpts) (TablesReplicationStatus, error) {
 	var status TablesReplicationStatus
 
+	values := make(url.Values)
+	if opts.Limit > 0 {
+		values.Set("limit", strconv.Itoa(opts.Limit))
+	}
+	if opts.ContinuationToken != "" {
+		values.Set("continuation-token", opts.ContinuationToken)
+	}
+
 	reqData := requestData{
-		relPath: adminAPIPrefix + "/tables/replication-status",
+		relPath:     adminAPIPrefix + "/tables/replication-status",
+		queryValues: values,
 	}
 
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
