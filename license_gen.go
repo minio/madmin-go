@@ -72,6 +72,24 @@ func (z *LicenseInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "APIKey")
 				return
 			}
+		case "Nodes":
+			z.Nodes, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "Nodes")
+				return
+			}
+		case "Product":
+			z.Product, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "Product")
+				return
+			}
+		case "Serial":
+			z.Serial, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "Serial")
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -85,9 +103,9 @@ func (z *LicenseInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *LicenseInfo) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 8
+	// map header, size 11
 	// write "ID"
-	err = en.Append(0x88, 0xa2, 0x49, 0x44)
+	err = en.Append(0x8b, 0xa2, 0x49, 0x44)
 	if err != nil {
 		return
 	}
@@ -166,15 +184,45 @@ func (z *LicenseInfo) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "APIKey")
 		return
 	}
+	// write "Nodes"
+	err = en.Append(0xa5, 0x4e, 0x6f, 0x64, 0x65, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt(z.Nodes)
+	if err != nil {
+		err = msgp.WrapError(err, "Nodes")
+		return
+	}
+	// write "Product"
+	err = en.Append(0xa7, 0x50, 0x72, 0x6f, 0x64, 0x75, 0x63, 0x74)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.Product)
+	if err != nil {
+		err = msgp.WrapError(err, "Product")
+		return
+	}
+	// write "Serial"
+	err = en.Append(0xa6, 0x53, 0x65, 0x72, 0x69, 0x61, 0x6c)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt(z.Serial)
+	if err != nil {
+		err = msgp.WrapError(err, "Serial")
+		return
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z *LicenseInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 8
+	// map header, size 11
 	// string "ID"
-	o = append(o, 0x88, 0xa2, 0x49, 0x44)
+	o = append(o, 0x8b, 0xa2, 0x49, 0x44)
 	o = msgp.AppendString(o, z.ID)
 	// string "Organization"
 	o = append(o, 0xac, 0x4f, 0x72, 0x67, 0x61, 0x6e, 0x69, 0x7a, 0x61, 0x74, 0x69, 0x6f, 0x6e)
@@ -197,6 +245,15 @@ func (z *LicenseInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "APIKey"
 	o = append(o, 0xa6, 0x41, 0x50, 0x49, 0x4b, 0x65, 0x79)
 	o = msgp.AppendString(o, z.APIKey)
+	// string "Nodes"
+	o = append(o, 0xa5, 0x4e, 0x6f, 0x64, 0x65, 0x73)
+	o = msgp.AppendInt(o, z.Nodes)
+	// string "Product"
+	o = append(o, 0xa7, 0x50, 0x72, 0x6f, 0x64, 0x75, 0x63, 0x74)
+	o = msgp.AppendString(o, z.Product)
+	// string "Serial"
+	o = append(o, 0xa6, 0x53, 0x65, 0x72, 0x69, 0x61, 0x6c)
+	o = msgp.AppendInt(o, z.Serial)
 	return
 }
 
@@ -266,6 +323,24 @@ func (z *LicenseInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "APIKey")
 				return
 			}
+		case "Nodes":
+			z.Nodes, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Nodes")
+				return
+			}
+		case "Product":
+			z.Product, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Product")
+				return
+			}
+		case "Serial":
+			z.Serial, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Serial")
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -280,6 +355,6 @@ func (z *LicenseInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *LicenseInfo) Msgsize() (s int) {
-	s = 1 + 3 + msgp.StringPrefixSize + len(z.ID) + 13 + msgp.StringPrefixSize + len(z.Organization) + 5 + msgp.StringPrefixSize + len(z.Plan) + 11 + msgp.Uint64Size + 9 + msgp.TimeSize + 10 + msgp.TimeSize + 6 + msgp.BoolSize + 7 + msgp.StringPrefixSize + len(z.APIKey)
+	s = 1 + 3 + msgp.StringPrefixSize + len(z.ID) + 13 + msgp.StringPrefixSize + len(z.Organization) + 5 + msgp.StringPrefixSize + len(z.Plan) + 11 + msgp.Uint64Size + 9 + msgp.TimeSize + 10 + msgp.TimeSize + 6 + msgp.BoolSize + 7 + msgp.StringPrefixSize + len(z.APIKey) + 6 + msgp.IntSize + 8 + msgp.StringPrefixSize + len(z.Product) + 7 + msgp.IntSize
 	return
 }
