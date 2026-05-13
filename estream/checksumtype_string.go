@@ -18,9 +18,8 @@ const _checksumType_name = "NoneXxhashUnknown"
 var _checksumType_index = [...]uint8{0, 4, 10, 17}
 
 func (i checksumType) String() string {
-	idx := int(i) - 0
-	if i < 0 || idx >= len(_checksumType_index)-1 {
+	if i >= checksumType(len(_checksumType_index)-1) {
 		return "checksumType(" + strconv.FormatInt(int64(i), 10) + ")"
 	}
-	return _checksumType_name[_checksumType_index[idx]:_checksumType_index[idx+1]]
+	return _checksumType_name[_checksumType_index[i]:_checksumType_index[i+1]]
 }
