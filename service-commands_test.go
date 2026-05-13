@@ -44,3 +44,30 @@ func TestServiceTraceOptsTables(t *testing.T) {
 		t.Fatalf("ParseParams() did not set Tables flag")
 	}
 }
+
+func TestServiceTraceOptsInventory(t *testing.T) {
+	opts := ServiceTraceOpts{Inventory: true}
+	if got := opts.TraceTypes(); !got.Contains(TraceInventory) {
+		t.Fatalf("TraceTypes() missing TraceInventory: got %v", got)
+	}
+
+	vals := make(url.Values)
+	opts.AddParams(vals)
+	if got := vals.Get("inventory"); got != "true" {
+		t.Fatalf("AddParams() inventory flag = %q, want true", got)
+	}
+
+	req := httptest.NewRequest("GET", "/minio/admin/v3/trace?inventory=true", nil)
+	if err := req.ParseForm(); err != nil {
+		t.Fatalf("ParseForm() returned error = %v", err)
+	}
+
+	var parsed ServiceTraceOpts
+	if err := parsed.ParseParams(req); err != nil {
+		t.Fatalf("ParseParams() returned error = %v", err)
+	}
+
+	if !parsed.Inventory {
+		t.Fatalf("ParseParams() did not set Inventory flag")
+	}
+}
