@@ -39,6 +39,9 @@ type LicenseInfo struct {
 	ExpiresAt    time.Time `json:"ExpiresAt"`    // Point in time when the license expires
 	Trial        bool      `json:"Trial"`        // Whether the license is on trial
 	APIKey       string    `json:"APIKey"`       // Subnet account API Key
+	Nodes        int       `json:"Nodes"`        // Node count limit (0 = unlimited; 1 = standalone)
+	Product      string    `json:"Product"`      // Product the license is scoped to (empty = any)
+	Serial       int       `json:"Serial"`       // OEM end-customer serial number
 }
 
 // GetLicenseInfo - returns the license info
