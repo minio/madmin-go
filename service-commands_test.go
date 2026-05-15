@@ -45,19 +45,19 @@ func TestServiceTraceOptsTables(t *testing.T) {
 	}
 }
 
-func TestServiceTraceOptsInventory(t *testing.T) {
-	opts := ServiceTraceOpts{Inventory: true}
-	if got := opts.TraceTypes(); !got.Contains(TraceInventory) {
-		t.Fatalf("TraceTypes() missing TraceInventory: got %v", got)
+func TestServiceTraceOptsSystemInventory(t *testing.T) {
+	opts := ServiceTraceOpts{SystemInventory: true}
+	if got := opts.TraceTypes(); !got.Contains(TraceSystemInventory) {
+		t.Fatalf("TraceTypes() missing TraceSystemInventory: got %v", got)
 	}
 
 	vals := make(url.Values)
 	opts.AddParams(vals)
-	if got := vals.Get("inventory"); got != "true" {
-		t.Fatalf("AddParams() inventory flag = %q, want true", got)
+	if got := vals.Get("systeminventory"); got != "true" {
+		t.Fatalf("AddParams() systeminventory flag = %q, want true", got)
 	}
 
-	req := httptest.NewRequest("GET", "/minio/admin/v3/trace?inventory=true", nil)
+	req := httptest.NewRequest("GET", "/minio/admin/v3/trace?systeminventory=true", nil)
 	if err := req.ParseForm(); err != nil {
 		t.Fatalf("ParseForm() returned error = %v", err)
 	}
@@ -67,7 +67,7 @@ func TestServiceTraceOptsInventory(t *testing.T) {
 		t.Fatalf("ParseParams() returned error = %v", err)
 	}
 
-	if !parsed.Inventory {
-		t.Fatalf("ParseParams() did not set Inventory flag")
+	if !parsed.SystemInventory {
+		t.Fatalf("ParseParams() did not set SystemInventory flag")
 	}
 }
