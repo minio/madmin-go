@@ -39,12 +39,12 @@ type APILogOpts struct {
 	Bucket       string        `json:"bucket,omitempty"`
 	BucketPrefix string        `json:"bucketPrefix,omitempty"`
 	Prefix       string        `json:"prefix,omitempty"`
-	StatusCode   int           `json:"statusCode,omitempty"`  // Deprecated: use StatusCodes
+	StatusCode   int           `json:"statusCode,omitempty"` // Deprecated: use StatusCodes
 	StatusCodes  []string      `json:"statusCodes,omitempty"`
 	Interval     time.Duration `json:"interval,omitempty"`
-	Origin       log.Origin    `json:"origin,omitempty"`  // Deprecated: use Origins
+	Origin       log.Origin    `json:"origin,omitempty"` // Deprecated: use Origins
 	Origins      []string      `json:"origins,omitempty"`
-	Type         log.APIType   `json:"type,omitempty"`  // Deprecated: use Types
+	Type         log.APIType   `json:"type,omitempty"` // Deprecated: use Types
 	Types        []string      `json:"types,omitempty"`
 	MaxPerNode   int           `json:"maxPerNode,omitempty"` // Deprecated
 	Limit        int           `json:"limit,omitempty"`
