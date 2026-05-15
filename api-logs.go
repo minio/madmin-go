@@ -34,16 +34,21 @@ import (
 
 // APILogOpts represents the options for the APILogOpts
 type APILogOpts struct {
-	Node       string        `json:"node,omitempty"`
-	API        string        `json:"api,omitempty"`
-	Bucket     string        `json:"bucket,omitempty"`
-	Prefix     string        `json:"prefix,omitempty"`
-	StatusCode int           `json:"statusCode,omitempty"`
-	Interval   time.Duration `json:"interval,omitempty"`
-	Origin     log.Origin    `json:"origin,omitempty"`
-	Type       log.APIType   `json:"type,omitempty"`
-	MaxPerNode int           `json:"maxPerNode,omitempty"` // Deprecated
-	Limit      int           `json:"limit,omitempty"`
+	Node         string        `json:"node,omitempty"`
+	API          string        `json:"api,omitempty"`
+	Bucket       string        `json:"bucket,omitempty"`
+	BucketPrefix string        `json:"bucketPrefix,omitempty"`
+	Prefix       string        `json:"prefix,omitempty"`
+	StatusCode   int           `json:"statusCode,omitempty"` // Deprecated: use StatusCodes/StatusRanges
+	StatusCodes  []int         `json:"statusCodes,omitempty"`
+	StatusRanges []string      `json:"statusRanges,omitempty"` // e.g. "2xx", "4xx", "5xx"
+	Interval     time.Duration `json:"interval,omitempty"`
+	Origin       log.Origin    `json:"origin,omitempty"` // Deprecated: use Origins
+	Origins      []log.Origin  `json:"origins,omitempty"`
+	Type         log.APIType   `json:"type,omitempty"` // Deprecated: use Types
+	Types        []log.APIType `json:"types,omitempty"`
+	MaxPerNode   int           `json:"maxPerNode,omitempty"` // Deprecated
+	Limit        int           `json:"limit,omitempty"`
 }
 
 // GetAPILogs fetches the persisted API logs from MinIO
