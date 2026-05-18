@@ -66,11 +66,16 @@ const (
 	AuditCategoryBatch          AuditCategory = "batch"
 )
 
-// AuditAction represents the type of action performed
+// AuditAction represents the type of action performed.
+//
+// Deprecated: no longer set by the audit recorder. Kept for
+// wire-format compatibility.
 //
 //msgp:shim AuditAction as:string
 type AuditAction string
 
+// Deprecated: no longer set by the audit recorder. Kept for
+// wire-format compatibility.
 const (
 	AuditActionCreate  AuditAction = "create"
 	AuditActionUpdate  AuditAction = "update"
@@ -90,6 +95,8 @@ const (
 
 // AuditDetails is a union type containing category-specific audit details.
 // Only one field should be populated based on the audit event category.
+//
+// Deprecated: use Audit.Metadata.
 type AuditDetails struct {
 	Config          *ConfigAuditDetails          `json:"config,omitempty"`
 	User            *UserAuditDetails            `json:"user,omitempty"`
@@ -119,7 +126,8 @@ type Audit struct {
 	Node       string                 `json:"node,omitempty"`
 	APIName    string                 `json:"apiName,omitempty"`
 	Category   AuditCategory          `json:"category,omitempty"`
-	Action     AuditAction            `json:"action,omitempty"`
+	Message    string                 `json:"message,omitempty"`
+	Metadata   map[string]any         `json:"metadata,omitempty"`
 	Bucket     string                 `json:"bucket,omitempty"`
 	Tags       map[string]string      `json:"tags,omitempty"`
 	RequestID  string                 `json:"requestID,omitempty"`
@@ -127,11 +135,17 @@ type Audit struct {
 	SourceHost string                 `json:"sourceHost,omitempty"`
 	AccessKey  string                 `json:"accessKey,omitempty"`
 	ParentUser string                 `json:"parentUser,omitempty"`
-	Details    *AuditDetails          `json:"details,omitempty"`
+
+	// Deprecated: use Audit.Message.
+	Action AuditAction `json:"action,omitempty"`
+	// Deprecated: use Audit.Metadata.
+	Details *AuditDetails `json:"details,omitempty"`
 }
 
 // ConfigAuditDetails captures config mutation details.
 // It tracks changes to server configuration settings including subsystem, target, key, and value changes.
+//
+// Deprecated: use Audit.Metadata.
 type ConfigAuditDetails struct {
 	SubSystem string `json:"subSystem,omitempty"`
 	Target    string `json:"target,omitempty"`
@@ -148,6 +162,8 @@ func (c *ConfigAuditDetails) Redact() {
 
 // UserAuditDetails captures user mutation details.
 // It tracks changes to user accounts including status, credentials, policies, and group memberships.
+//
+// Deprecated: use Audit.Metadata.
 type UserAuditDetails struct {
 	UserName  string   `json:"userName"`
 	UserType  string   `json:"userType,omitempty"`
@@ -168,6 +184,8 @@ func (u *UserAuditDetails) Redact() {
 
 // ServiceAccountAuditDetails captures service account details.
 // It tracks changes to service accounts including parent user, policies, expiration, and secret key updates.
+//
+// Deprecated: use Audit.Metadata.
 type ServiceAccountAuditDetails struct {
 	AccountName      string    `json:"accountName"`
 	ParentUser       string    `json:"parentUser,omitempty"`
@@ -185,6 +203,8 @@ func (s *ServiceAccountAuditDetails) Redact() {}
 
 // PolicyAuditDetails captures policy mutation details.
 // It tracks IAM policy changes including policy content, attachments, and detachments for users or groups.
+//
+// Deprecated: use Audit.Metadata.
 type PolicyAuditDetails struct {
 	PolicyName       string   `json:"policyName"`
 	OldPolicy        string   `json:"oldPolicy,omitempty"`
@@ -201,6 +221,8 @@ func (p *PolicyAuditDetails) Redact() {}
 
 // GroupAuditDetails captures group mutation details.
 // It tracks changes to IAM groups including member additions, removals, and status changes.
+//
+// Deprecated: use Audit.Metadata.
 type GroupAuditDetails struct {
 	GroupName      string   `json:"groupName"`
 	MembersAdded   []string `json:"membersAdded,omitempty"`
@@ -214,6 +236,8 @@ func (g *GroupAuditDetails) Redact() {}
 
 // BucketConfigAuditDetails captures bucket configuration changes.
 // It tracks modifications to bucket settings like lifecycle, replication, encryption, versioning, and tags.
+//
+// Deprecated: use Audit.Metadata.
 type BucketConfigAuditDetails struct {
 	BucketName   string   `json:"bucketName"`
 	ConfigType   string   `json:"configType,omitempty"`
@@ -229,6 +253,8 @@ func (b *BucketConfigAuditDetails) Redact() {}
 
 // ServiceAuditDetails captures service operation details.
 // It tracks MinIO service operations like restart, update, IAM import/export, and cluster management actions.
+//
+// Deprecated: use Audit.Metadata.
 type ServiceAuditDetails struct {
 	ServiceName string            `json:"serviceName,omitempty"`
 	Operation   string            `json:"operation,omitempty"`
@@ -242,6 +268,8 @@ func (s *ServiceAuditDetails) Redact() {}
 
 // IAMImportDetails captures IAM import operation counts.
 // It tracks the number of users, policies, groups, and service accounts added, removed, skipped, or failed during IAM imports.
+//
+// Deprecated: use Audit.Metadata.
 type IAMImportDetails struct {
 	UsersAdded      int `json:"usersAdded,omitempty"`
 	PoliciesAdded   int `json:"policiesAdded,omitempty"`
@@ -263,6 +291,8 @@ type IAMImportDetails struct {
 
 // KMSAuditDetails captures KMS operation details.
 // It tracks Key Management Service operations like key creation, deletion, and encryption/decryption activities.
+//
+// Deprecated: use Audit.Metadata.
 type KMSAuditDetails struct {
 	KeyID     string `json:"keyId,omitempty"`
 	Operation string `json:"operation,omitempty"`
@@ -273,6 +303,8 @@ func (k *KMSAuditDetails) Redact() {}
 
 // PoolAuditDetails captures pool operation details.
 // It tracks storage pool operations like expansion, decommission, and rebalancing across multiple endpoints.
+//
+// Deprecated: use Audit.Metadata.
 type PoolAuditDetails struct {
 	PoolIndex int      `json:"poolIndex,omitempty"`
 	Endpoints []string `json:"endpoints,omitempty"`
@@ -284,6 +316,8 @@ func (p *PoolAuditDetails) Redact() {}
 
 // SiteReplicationAuditDetails captures site replication details.
 // It tracks multi-site replication operations including site additions, removals, and replication status changes.
+//
+// Deprecated: use Audit.Metadata.
 type SiteReplicationAuditDetails struct {
 	SiteName  string   `json:"siteName,omitempty"`
 	Endpoint  string   `json:"endpoint,omitempty"`
@@ -296,6 +330,8 @@ func (s *SiteReplicationAuditDetails) Redact() {}
 
 // IDPAuditDetails captures identity provider configuration details.
 // It tracks changes to IDP configurations like LDAP, OpenID, or SAML settings including credentials and endpoints.
+//
+// Deprecated: use Audit.Metadata.
 type IDPAuditDetails struct {
 	IDPName   string `json:"idpName,omitempty"`
 	IDPType   string `json:"idpType,omitempty"`
@@ -312,6 +348,8 @@ func (i *IDPAuditDetails) Redact() {
 
 // RecorderAuditDetails captures log recorder configuration details.
 // It tracks changes to audit/error log recorder settings including enable status, limits, flush intervals, and batch sizes.
+//
+// Deprecated: use Audit.Metadata.
 type RecorderAuditDetails struct {
 	LogType          string `json:"logType,omitempty"`
 	OldEnabled       bool   `json:"oldEnabled,omitempty"`
@@ -329,6 +367,8 @@ func (r *RecorderAuditDetails) Redact() {}
 
 // HealAuditDetails captures heal operation details.
 // It tracks data healing operations that scan and repair inconsistent or missing objects in buckets.
+//
+// Deprecated: use Audit.Metadata.
 type HealAuditDetails struct {
 	Operation string `json:"operation,omitempty"`
 	Bucket    string `json:"bucket,omitempty"`
@@ -340,6 +380,8 @@ func (h *HealAuditDetails) Redact() {}
 
 // BatchAuditDetails captures batch job operation details.
 // It tracks batch operations like replication jobs, key rotation, and object expiration tasks.
+//
+// Deprecated: use Audit.Metadata.
 type BatchAuditDetails struct {
 	JobID   string `json:"jobID,omitempty"`
 	JobType string `json:"jobType,omitempty"`
@@ -351,6 +393,8 @@ func (b *BatchAuditDetails) Redact() {}
 
 // BucketQuotaAuditDetails captures bucket quota configuration changes.
 // It tracks changes to bucket storage quotas including size limits and quota type (hard/FIFO).
+//
+// Deprecated: use Audit.Metadata.
 type BucketQuotaAuditDetails struct {
 	BucketName string `json:"bucketName"`
 	QuotaSize  uint64 `json:"quotaSize,omitempty"`
@@ -362,6 +406,8 @@ func (q *BucketQuotaAuditDetails) Redact() {}
 
 // BucketQOSAuditDetails captures bucket QoS configuration changes.
 // It tracks Quality of Service settings for buckets including rate limits, burst sizes, and priority rules for API operations.
+//
+// Deprecated: use Audit.Metadata.
 type BucketQOSAuditDetails struct {
 	BucketName string          `json:"bucketName"`
 	Enabled    bool            `json:"enabled"`
@@ -370,6 +416,8 @@ type BucketQOSAuditDetails struct {
 
 // QOSRuleDetail captures details of a single QoS rule.
 // Each rule defines rate limiting for specific object prefixes or API operations with priority levels and burst capacities.
+//
+// Deprecated: use Audit.Metadata.
 type QOSRuleDetail struct {
 	ID           string `json:"id,omitempty"`
 	Label        string `json:"label,omitempty"`
@@ -386,6 +434,8 @@ func (q *BucketQOSAuditDetails) Redact() {}
 
 // BucketInventoryAuditDetails captures bucket inventory configuration changes.
 // It tracks bucket inventory report settings including destination bucket, schedule, and inventory configuration IDs.
+//
+// Deprecated: use Audit.Metadata.
 type BucketInventoryAuditDetails struct {
 	BucketName        string `json:"bucketName"`
 	InventoryID       string `json:"inventoryID,omitempty"`
@@ -398,6 +448,8 @@ func (i *BucketInventoryAuditDetails) Redact() {}
 
 // TierAuditDetails captures tier configuration changes.
 // It tracks remote tier configurations for lifecycle transitions including S3, Azure, GCS, and MinIO tiers.
+//
+// Deprecated: use Audit.Metadata.
 type TierAuditDetails struct {
 	TierName string `json:"tierName"`
 	TierType string `json:"tierType,omitempty"`
@@ -408,5 +460,5 @@ func (t *TierAuditDetails) Redact() {}
 
 // String returns a simple string representation for Audit (required by eos LogEntry interface)
 func (a Audit) String() string {
-	return fmt.Sprintf("audit: category=%s action=%s api=%s", a.Category, a.Action, a.APIName)
+	return fmt.Sprintf("audit: category=%s api=%s message=%s", a.Category, a.APIName, a.Message)
 }

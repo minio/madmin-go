@@ -24,6 +24,18 @@ import (
 	"time"
 )
 
+// MetadataKeyDiff is the canonical metadata key under which Diff entries
+// appear in audit log Metadata.
+const MetadataKeyDiff = "diff"
+
+// Diff carries the before/after state of a textual config payload for audit
+// log metadata. Consumers compose a +/- diff (or any other view) from the
+// Old/New fields on demand.
+type Diff struct {
+	Old string `json:"old,omitempty"`
+	New string `json:"new,omitempty"`
+}
+
 // stringifyMap sorts and joins a map[string]string as "k1=v1,k2=v2".
 func stringifyMap(m map[string]string) string {
 	if len(m) == 0 {

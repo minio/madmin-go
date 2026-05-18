@@ -80,6 +80,8 @@ const (
 	TracePurgeOnDelete
 	// TraceTablesScan will trace catalog scanner operations which are for replica catalog rebuilding.
 	TraceTablesScan
+	// TraceSystemInventory will trace per-bucket system inventory operations.
+	TraceSystemInventory
 	// Add more here...
 
 	// TraceAll contains all valid trace modes.

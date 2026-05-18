@@ -172,6 +172,7 @@ type ServiceTraceOpts struct {
 	Formatting        bool
 	PurgeOnDelete     bool
 	TablesScan        bool
+	SystemInventory   bool
 
 	OnlyErrors    bool
 	Threshold     time.Duration
@@ -202,6 +203,7 @@ func (t ServiceTraceOpts) TraceTypes() TraceType {
 	tt.SetIf(t.Formatting, TraceFormatting)
 	tt.SetIf(t.PurgeOnDelete, TracePurgeOnDelete)
 	tt.SetIf(t.TablesScan, TraceTablesScan)
+	tt.SetIf(t.SystemInventory, TraceSystemInventory)
 
 	return tt
 }
@@ -232,6 +234,7 @@ func (t ServiceTraceOpts) AddParams(u url.Values) {
 	u.Set("kms", strconv.FormatBool(t.KMS))
 	u.Set("formatting", strconv.FormatBool(t.Formatting))
 	u.Set("purgeondelete", strconv.FormatBool(t.PurgeOnDelete))
+	u.Set("systeminventory", strconv.FormatBool(t.SystemInventory))
 }
 
 // ParseParams will parse parameters and set them to t.
@@ -257,6 +260,7 @@ func (t *ServiceTraceOpts) ParseParams(r *http.Request) (err error) {
 	t.KMS = r.Form.Get("kms") == "true"
 	t.Formatting = r.Form.Get("formatting") == "true"
 	t.PurgeOnDelete = r.Form.Get("purgeondelete") == "true"
+	t.SystemInventory = r.Form.Get("systeminventory") == "true"
 
 	if th := r.Form.Get("threshold"); th != "" {
 		d, err := time.ParseDuration(th)
