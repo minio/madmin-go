@@ -27,6 +27,25 @@ import (
 	"github.com/minio/madmin-go/v4"
 )
 
+// shortARN trims "arn:minio:replication::338f8fdd-16da-41da-82fb-c36acd2fef8a:bucket"
+// to "c36acd2fef8a:bucket" by dropping everything through the last UUID dash.
+func shortARN(arn string) string {
+	idx := strings.Index(arn, "::")
+	if idx < 0 {
+		return arn
+	}
+	rest := arn[idx+2:]
+	colon := strings.Index(rest, ":")
+	if colon < 0 {
+		return arn
+	}
+	dash := strings.LastIndex(rest[:colon], "-")
+	if dash < 0 {
+		return arn
+	}
+	return rest[dash+1:]
+}
+
 // formatReplicationLatency formats latency values with appropriate units
 func formatReplicationLatency(latencySecs float64) string {
 	if latencySecs == 0 {
@@ -41,145 +60,139 @@ func formatReplicationLatency(latencySecs float64) string {
 	return fmt.Sprintf("%.2fs", latencySecs)
 }
 
-// formatReplicationThroughput calculates and formats throughput rates
-func formatReplicationThroughput(bytes int64, timeSecs float64, label string) string {
-	if timeSecs <= 0 || bytes <= 0 {
-		return fmt.Sprintf("%s: 0B/s", label)
+// prependEntry inserts a key before all existing numbered entries.
+// It shifts existing "nn:" keys up by 1 and inserts at "00:".
+func prependEntry(data map[string]string, key, value string) {
+	// Find max index
+	maxIdx := -1
+	for k := range data {
+		if len(k) > 2 && k[2] == ':' {
+			var idx int
+			if _, err := fmt.Sscanf(k[:2], "%d", &idx); err == nil && idx > maxIdx {
+				maxIdx = idx
+			}
+		}
 	}
-	bytesPerSec := float64(bytes) / timeSecs
-	return fmt.Sprintf("%s: %s/s", label, humanize.Bytes(uint64(bytesPerSec)))
+	// Shift all entries up by 1
+	for i := maxIdx; i >= 0; i-- {
+		old := fmt.Sprintf("%02d:", i)
+		for k, v := range data {
+			if strings.HasPrefix(k, old) {
+				newKey := fmt.Sprintf("%02d:%s", i+1, k[3:])
+				data[newKey] = v
+				delete(data, k)
+			}
+		}
+	}
+	data[fmt.Sprintf("00:%s", key)] = value
 }
 
 // generateReplicationStatsDisplay formats ReplicationStats for display
 func generateReplicationStatsDisplay(stats madmin.ReplicationStats, includeTimeInfo bool) map[string]string {
 	data := make(map[string]string)
 
-	if stats.Nodes == 0 {
+	if stats.Nodes == 0 && stats.Events == 0 {
 		data["Status"] = "No replication data available"
 		return data
 	}
 
+	idx := 0
+	add := func(key, value string) {
+		data[fmt.Sprintf("%02d:%s", idx, key)] = value
+		idx++
+	}
+
 	// Time information
 	if includeTimeInfo && stats.StartTime != nil && stats.EndTime != nil {
-		data["Time Range"] = fmt.Sprintf("%s → %s",
+		add("Time Range", fmt.Sprintf("%s → %s",
 			stats.StartTime.Local().Format("15:04:05"),
-			stats.EndTime.Local().Format("15:04:05"))
+			stats.EndTime.Local().Format("15:04:05")))
 		if stats.WallTimeSecs > 0 {
-			data["Duration"] = fmt.Sprintf("%.1f seconds", stats.WallTimeSecs)
+			add("Duration", fmt.Sprintf("%.1f seconds", stats.WallTimeSecs))
 		}
 	}
 
 	// Activity Summary
-	data["Nodes Reporting"] = humanize.Comma(int64(stats.Nodes))
-	if stats.Events > 0 {
-		data["Total Events"] = humanize.Comma(stats.Events)
-		data["Data Transferred"] = humanize.Bytes(uint64(stats.Bytes))
-
-		// Calculate rates
-		if stats.EventTimeSecs > 0 {
-			eventsPerSec := float64(stats.Events) / stats.EventTimeSecs
-			data["Event Rate"] = fmt.Sprintf("%.1f events/s", eventsPerSec)
-		}
-		if stats.WallTimeSecs > 0 {
-			data[formatReplicationThroughput(stats.Bytes, stats.WallTimeSecs, "Throughput")] = ""
-		}
+	if stats.Nodes > 0 {
+		add("Nodes Reporting", humanize.Comma(int64(stats.Nodes)))
+	}
+	add("Total Events", humanize.Comma(stats.Events))
+	add("Data Transferred", humanize.Bytes(uint64(stats.Bytes)))
+	if stats.EventTimeSecs > 0 {
+		add("Event Rate", fmt.Sprintf("%.1f events/s", float64(stats.Events)/stats.EventTimeSecs))
+	}
+	if stats.WallTimeSecs > 0 {
+		add("Throughput", fmt.Sprintf("%s/s", humanize.Bytes(uint64(float64(stats.Bytes)/stats.WallTimeSecs))))
 	}
 
 	// Latency metrics
 	if stats.Events > 0 && stats.LatencySecs > 0 {
-		avgLatency := stats.LatencySecs / float64(stats.Events)
-		data["Average Latency"] = formatReplicationLatency(avgLatency)
-		if stats.MaxLatencySecs > 0 {
-			data["Maximum Latency"] = formatReplicationLatency(stats.MaxLatencySecs)
-		}
+		add("Average Latency", formatReplicationLatency(stats.LatencySecs/float64(stats.Events)))
+	}
+	if stats.MaxLatencySecs > 0 {
+		add("Maximum Latency", formatReplicationLatency(stats.MaxLatencySecs))
 	}
 
 	// Operation breakdown
 	totalOps := stats.PutObject + stats.UpdateMeta + stats.DelObject + stats.DelTag
-	if totalOps > 0 {
-		data["PUT Operations"] = fmt.Sprintf("%s (%.1f%%)",
-			humanize.Comma(stats.PutObject),
-			float64(stats.PutObject)/float64(totalOps)*100)
-		if stats.UpdateMeta > 0 {
-			data["Update Metadata"] = fmt.Sprintf("%s (%.1f%%)",
-				humanize.Comma(stats.UpdateMeta),
-				float64(stats.UpdateMeta)/float64(totalOps)*100)
+	opPct := func(n int64) string {
+		if totalOps == 0 {
+			return humanize.Comma(n)
 		}
-		if stats.DelObject > 0 {
-			data["DELETE Operations"] = fmt.Sprintf("%s (%.1f%%)",
-				humanize.Comma(stats.DelObject),
-				float64(stats.DelObject)/float64(totalOps)*100)
-		}
-		if stats.DelTag > 0 {
-			data["DELETE Tag Operations"] = fmt.Sprintf("%s (%.1f%%)",
-				humanize.Comma(stats.DelTag),
-				float64(stats.DelTag)/float64(totalOps)*100)
-		}
+		return fmt.Sprintf("%s (%.1f%%)", humanize.Comma(n), float64(n)/float64(totalOps)*100)
 	}
+	add("PUT Operations", opPct(stats.PutObject))
+	add("Update Metadata", opPct(stats.UpdateMeta))
+	add("DELETE Operations", opPct(stats.DelObject))
+	add("DELETE Tag Operations", opPct(stats.DelTag))
 
 	// Error analysis
 	totalErrors := stats.PutErrors + stats.UpdateMetaErrors + stats.DelErrors + stats.DelTagErrors
+	if stats.Events > 0 {
+		add("Error Rate", fmt.Sprintf("%.2f%% (%s errors)",
+			float64(totalErrors)/float64(stats.Events)*100, humanize.Comma(totalErrors)))
+	}
 	if totalErrors > 0 {
-		errorRate := float64(totalErrors) / float64(stats.Events) * 100
-		data["Error Rate"] = fmt.Sprintf("%.2f%% (%s errors)", errorRate, humanize.Comma(totalErrors))
-
-		if stats.PutErrors > 0 {
-			data["PUT Errors"] = humanize.Comma(stats.PutErrors)
+		errPct := func(n int64) string {
+			return fmt.Sprintf("%s (%.1f%%)", humanize.Comma(n), float64(n)/float64(totalErrors)*100)
 		}
-		if stats.UpdateMetaErrors > 0 {
-			data["Metadata Errors"] = humanize.Comma(stats.UpdateMetaErrors)
-		}
-		if stats.DelErrors > 0 {
-			data["DELETE Errors"] = humanize.Comma(stats.DelErrors)
-		}
-		if stats.DelTagErrors > 0 {
-			data["DELETE Tag Errors"] = humanize.Comma(stats.DelTagErrors)
-		}
-	} else if stats.Events > 0 {
-		data["Error Rate"] = "0.00%"
+		add("PUT Errors", errPct(stats.PutErrors))
+		add("Metadata Errors", errPct(stats.UpdateMetaErrors))
+		add("DELETE Errors", errPct(stats.DelErrors))
+		add("DELETE Tag Errors", errPct(stats.DelTagErrors))
 	}
 
 	// Outcome analysis
 	totalOutcomes := stats.Synced + stats.AlreadyOK + stats.Rejected
-	if totalOutcomes > 0 {
-		data["Synced"] = fmt.Sprintf("%s (%.1f%%)",
-			humanize.Comma(stats.Synced),
-			float64(stats.Synced)/float64(totalOutcomes)*100)
-		if stats.AlreadyOK > 0 {
-			data["Already Synchronized"] = fmt.Sprintf("%s (%.1f%%)",
-				humanize.Comma(stats.AlreadyOK),
-				float64(stats.AlreadyOK)/float64(totalOutcomes)*100)
+	outPct := func(n int64) string {
+		if totalOutcomes == 0 {
+			return humanize.Comma(n)
 		}
-		if stats.Rejected > 0 {
-			data["Rejected"] = fmt.Sprintf("%s (%.1f%%)",
-				humanize.Comma(stats.Rejected),
-				float64(stats.Rejected)/float64(totalOutcomes)*100)
-		}
+		return fmt.Sprintf("%s (%.1f%%)", humanize.Comma(n), float64(n)/float64(totalOutcomes)*100)
 	}
+	add("Synced", outPct(stats.Synced))
+	add("Already Synchronized", outPct(stats.AlreadyOK))
+	add("Rejected", outPct(stats.Rejected))
 
 	// Proxy operations
 	totalProxy := stats.ProxyEvents + stats.ProxyHead + stats.ProxyGet + stats.ProxyGetTag
+	add("Proxy Operations", humanize.Comma(totalProxy))
 	if totalProxy > 0 {
-		data["Total Proxy Operations"] = humanize.Comma(totalProxy)
-		if stats.ProxyBytes > 0 {
-			data["Proxy Data Transfer"] = humanize.Bytes(uint64(stats.ProxyBytes))
-		}
-
-		// Proxy success rates
+		add("Proxy Data Transfer", humanize.Bytes(uint64(stats.ProxyBytes)))
 		if stats.ProxyHead > 0 {
-			successRate := float64(stats.ProxyHeadOK) / float64(stats.ProxyHead) * 100
-			data["HEAD Proxy Success"] = fmt.Sprintf("%.1f%% (%s/%s)",
-				successRate, humanize.Comma(stats.ProxyHeadOK), humanize.Comma(stats.ProxyHead))
+			add("HEAD Proxy Success", fmt.Sprintf("%.1f%% (%s/%s)",
+				float64(stats.ProxyHeadOK)/float64(stats.ProxyHead)*100,
+				humanize.Comma(stats.ProxyHeadOK), humanize.Comma(stats.ProxyHead)))
 		}
 		if stats.ProxyGet > 0 {
-			successRate := float64(stats.ProxyGetOK) / float64(stats.ProxyGet) * 100
-			data["GET Proxy Success"] = fmt.Sprintf("%.1f%% (%s/%s)",
-				successRate, humanize.Comma(stats.ProxyGetOK), humanize.Comma(stats.ProxyGet))
+			add("GET Proxy Success", fmt.Sprintf("%.1f%% (%s/%s)",
+				float64(stats.ProxyGetOK)/float64(stats.ProxyGet)*100,
+				humanize.Comma(stats.ProxyGetOK), humanize.Comma(stats.ProxyGet)))
 		}
 		if stats.ProxyGetTag > 0 {
-			successRate := float64(stats.ProxyGetTagOK) / float64(stats.ProxyGetTag) * 100
-			data["GET Tag Proxy Success"] = fmt.Sprintf("%.1f%% (%s/%s)",
-				successRate, humanize.Comma(stats.ProxyGetTagOK), humanize.Comma(stats.ProxyGetTag))
+			add("GET Tag Proxy Success", fmt.Sprintf("%.1f%% (%s/%s)",
+				float64(stats.ProxyGetTagOK)/float64(stats.ProxyGetTag)*100,
+				humanize.Comma(stats.ProxyGetTagOK), humanize.Comma(stats.ProxyGetTag)))
 		}
 	}
 
@@ -225,16 +238,26 @@ func (node *ReplicationMetricsNode) GetChildren() []MetricChild {
 
 	// Add individual targets
 	if len(node.replication.Targets) > 0 {
-		var targets []string
-		for targetName := range node.replication.Targets {
-			targets = append(targets, targetName)
+		type targetEntry struct {
+			name   string
+			events int64
 		}
-		sort.Strings(targets)
+		entries := make([]targetEntry, 0, len(node.replication.Targets))
+		for targetName, ts := range node.replication.Targets {
+			entries = append(entries, targetEntry{name: targetName, events: ts.LastHour.Events + ts.SinceStart.Events})
+		}
+		sort.Slice(entries, func(i, j int) bool {
+			if entries[i].events != entries[j].events {
+				return entries[i].events > entries[j].events
+			}
+			return entries[i].name < entries[j].name
+		})
 
-		for _, target := range targets {
+		for _, e := range entries {
+			ts := node.replication.Targets[e.name]
 			children = append(children, MetricChild{
-				Name:        target,
-				Description: fmt.Sprintf("Replication statistics for target %s", target),
+				Name:        shortARN(e.name),
+				Description: targetChildDesc(ts),
 			})
 		}
 	}
@@ -269,7 +292,7 @@ func (node *ReplicationMetricsNode) GetLeafData() map[string]string {
 		// Show target names
 		var targets []string
 		for targetName := range node.replication.Targets {
-			targets = append(targets, targetName)
+			targets = append(targets, shortARN(targetName))
 		}
 		sort.Strings(targets)
 
@@ -310,9 +333,11 @@ func (node *ReplicationMetricsNode) GetChild(name string) (MetricNode, error) {
 		return NewReplicationLastDayAggregatedNode(node.replication, node, node.path+"/"+name), nil
 	}
 
-	// Handle individual targets
-	if targetStats, exists := node.replication.Targets[name]; exists {
-		return NewReplicationTargetNode(name, &targetStats, node, node.path+"/"+name), nil
+	// Handle individual targets by short ARN
+	for fullARN, targetStats := range node.replication.Targets {
+		if shortARN(fullARN) == name {
+			return NewReplicationTargetNode(fullARN, &targetStats, node, node.path+"/"+name), nil
+		}
 	}
 
 	return nil, fmt.Errorf("replication target or section not found: %s", name)
@@ -357,13 +382,10 @@ func (node *ReplicationLastHourNode) GetLeafData() map[string]string {
 	allTargets := node.replication.AllTargets()
 
 	data := generateReplicationStatsDisplay(allTargets.LastHour, true)
-
-	// Add summary header
 	targetCount := len(node.replication.Targets)
 	if targetCount > 0 {
-		data["Aggregation Source"] = fmt.Sprintf("Combined statistics from %d replication targets", targetCount)
+		prependEntry(data, "Aggregation", fmt.Sprintf("Combined from %d targets", targetCount))
 	}
-
 	return data
 }
 
@@ -402,17 +424,17 @@ func (node *ReplicationTargetNode) GetChildren() []MetricChild {
 	children := make([]MetricChild, 0, 3)
 	children = append(children, MetricChild{
 		Name:        "last_hour",
-		Description: fmt.Sprintf("Last hour statistics for target %s", node.targetName),
+		Description: fmt.Sprintf("Last hour statistics for target %s", shortARN(node.targetName)),
 	})
 
 	children = append(children, MetricChild{
 		Name:        "last_day",
-		Description: fmt.Sprintf("Last day time-segmented statistics for target %s", node.targetName),
+		Description: fmt.Sprintf("Last day time-segmented statistics for target %s", shortARN(node.targetName)),
 	})
 
 	children = append(children, MetricChild{
 		Name:        "since_start",
-		Description: fmt.Sprintf("Cumulative statistics since startup for target %s", node.targetName),
+		Description: fmt.Sprintf("Cumulative statistics since startup for target %s", shortARN(node.targetName)),
 	})
 
 	return children
@@ -425,32 +447,15 @@ func (node *ReplicationTargetNode) GetLeafData() map[string]string {
 
 	data := make(map[string]string)
 
-	data["Target Name"] = node.targetName
+	data["Target Name"] = shortARN(node.targetName)
 	data["Nodes Reporting"] = humanize.Comma(int64(node.target.Nodes))
 
-	// Quick overview from last hour
-	if node.target.LastHour.Events > 0 {
-		data["Last Hour Events"] = humanize.Comma(node.target.LastHour.Events)
-		data["Last Hour Data"] = humanize.Bytes(uint64(node.target.LastHour.Bytes))
-		if node.target.LastHour.EventTimeSecs > 0 {
-			rate := float64(node.target.LastHour.Events) / node.target.LastHour.EventTimeSecs
-			data["Last Hour Rate"] = fmt.Sprintf("%.1f events/s", rate)
-		}
-
-		// Error rate
-		totalErrors := node.target.LastHour.PutErrors + node.target.LastHour.UpdateMetaErrors +
-			node.target.LastHour.DelErrors + node.target.LastHour.DelTagErrors
-		if totalErrors > 0 {
-			errorRate := float64(totalErrors) / float64(node.target.LastHour.Events) * 100
-			data["Last Hour Error Rate"] = fmt.Sprintf("%.2f%%", errorRate)
-		}
+	addStatsSummary(data, "Last Hour", node.target.LastHour)
+	if node.target.LastDay != nil && len(node.target.LastDay.Segments) > 0 {
+		day := node.target.LastDay.Total()
+		addStatsSummary(data, "Last Day", day)
 	}
-
-	// Since start summary
-	if node.target.SinceStart.Events > 0 {
-		data["Total Events"] = humanize.Comma(node.target.SinceStart.Events)
-		data["Total Data"] = humanize.Bytes(uint64(node.target.SinceStart.Bytes))
-	}
+	addStatsSummary(data, "Since Start", node.target.SinceStart)
 
 	return data
 }
@@ -509,8 +514,7 @@ func (node *ReplicationTargetLastHourNode) GetLeafData() map[string]string {
 	}
 
 	data := generateReplicationStatsDisplay(node.target.LastHour, true)
-	data["Target Name"] = node.targetName
-
+	prependEntry(data, "Target", shortARN(node.targetName))
 	return data
 }
 
@@ -555,8 +559,7 @@ func (node *ReplicationSinceStartNode) GetLeafData() map[string]string {
 	}
 
 	data := generateReplicationStatsDisplay(node.target.SinceStart, true)
-	data["Target Name"] = node.targetName
-
+	prependEntry(data, "Target", shortARN(node.targetName))
 	return data
 }
 
@@ -570,6 +573,64 @@ func (node *ReplicationSinceStartNode) GetMetricType() madmin.MetricType {
 func (node *ReplicationSinceStartNode) GetMetricFlags() madmin.MetricFlags { return 0 }
 func (node *ReplicationSinceStartNode) GetParent() MetricNode              { return node.parent }
 func (node *ReplicationSinceStartNode) GetPath() string                    { return node.path }
+
+// addStatsSummary adds a compact summary of ReplicationStats to data,
+// prefixed with the given label (e.g. "Last Hour", "Last Day").
+func addStatsSummary(data map[string]string, prefix string, s madmin.ReplicationStats) {
+	if s.Events == 0 {
+		return
+	}
+	data[prefix+" Events"] = humanize.Comma(s.Events)
+	data[prefix+" Data"] = humanize.Bytes(uint64(s.Bytes))
+	if s.EventTimeSecs > 0 {
+		data[prefix+" Rate"] = fmt.Sprintf("%.1f events/s", float64(s.Events)/s.EventTimeSecs)
+	}
+	if s.LatencySecs > 0 {
+		avg := s.LatencySecs / float64(s.Events)
+		data[prefix+" Avg Latency"] = formatReplicationLatency(avg)
+	}
+	totalErrors := s.PutErrors + s.UpdateMetaErrors + s.DelErrors + s.DelTagErrors
+	if totalErrors > 0 {
+		pct := float64(totalErrors) / float64(s.Events) * 100
+		data[prefix+" Errors"] = fmt.Sprintf("%.2f%% (%s)", pct, humanize.Comma(totalErrors))
+	}
+	synced := s.Synced + s.AlreadyOK
+	if synced > 0 {
+		data[prefix+" Synced"] = fmt.Sprintf("%s (%.1f%%)",
+			humanize.Comma(synced), float64(synced)/float64(s.Events)*100)
+	}
+}
+
+func targetChildDesc(ts madmin.ReplicationTargetStats) string {
+	s := ts.LastHour
+	label := "1h"
+	if s.Events == 0 {
+		// Fall back to since-start if last hour is empty.
+		s = ts.SinceStart
+		label = "total"
+	}
+	if s.Events == 0 {
+		return "No events"
+	}
+	totalErrs := s.PutErrors + s.UpdateMetaErrors + s.DelErrors + s.DelTagErrors
+	errPct := float64(totalErrs) / float64(s.Events) * 100
+	return fmt.Sprintf("%s: %s events, %s, %.1f%% errors",
+		label, humanize.Comma(s.Events), humanize.Bytes(uint64(s.Bytes)), errPct)
+}
+
+func replicationSegmentDesc(start, end time.Time, s madmin.ReplicationStats) string {
+	totalErrs := s.PutErrors + s.UpdateMetaErrors + s.DelErrors + s.DelTagErrors
+	errPct := float64(0)
+	if s.Events > 0 {
+		errPct = float64(totalErrs) / float64(s.Events) * 100
+	}
+	return fmt.Sprintf("%s → %s  %s events, %s, %.1f%% errors",
+		start.Local().Format("15:04"),
+		end.Local().Format("15:04"),
+		humanize.Comma(s.Events),
+		humanize.Bytes(uint64(s.Bytes)),
+		errPct)
+}
 
 // ReplicationLastDayNode handles time segmentation navigation for LastDay data
 type ReplicationLastDayNode struct {
@@ -601,7 +662,7 @@ func (node *ReplicationLastDayNode) GetChildren() []MetricChild {
 	// Add "Total" entry first for aggregated stats
 	children = append(children, MetricChild{
 		Name:        "Total",
-		Description: fmt.Sprintf("Last day total statistics for target %s", node.targetName),
+		Description: fmt.Sprintf("Last day total statistics for target %s", shortARN(node.targetName)),
 	})
 
 	// Add time segments, most recent first (filter out empty segments)
@@ -622,11 +683,8 @@ func (node *ReplicationLastDayNode) GetChildren() []MetricChild {
 
 		endTime := segmentTime.Add(time.Duration(node.segmented.Interval) * time.Second)
 		children = append(children, MetricChild{
-			Name: segmentName,
-			Description: fmt.Sprintf("%s → %s (%s events)",
-				segmentTime.Local().Format("15:04"),
-				endTime.Local().Format("15:04"),
-				humanize.Comma(events)),
+			Name:        segmentName,
+			Description: replicationSegmentDesc(segmentTime, endTime, node.segmented.Segments[i]),
 		})
 	}
 
@@ -643,7 +701,7 @@ func (node *ReplicationLastDayNode) GetLeafData() map[string]string {
 
 	data := make(map[string]string)
 
-	data["Target Name"] = node.targetName
+	data["Target Name"] = shortARN(node.targetName)
 	data["Segments Available"] = fmt.Sprintf("%d", len(node.segmented.Segments))
 	if node.segmented.Interval > 0 {
 		data["Segment Interval"] = fmt.Sprintf("%d minutes", node.segmented.Interval/60)
@@ -727,9 +785,7 @@ func (node *ReplicationLastDayTotalNode) GetChildren() []MetricChild {
 
 func (node *ReplicationLastDayTotalNode) GetLeafData() map[string]string {
 	data := generateReplicationStatsDisplay(node.total, true)
-	data["Target Name"] = node.targetName
-	data["Data Source"] = "Aggregated last day statistics"
-
+	prependEntry(data, "Target", shortARN(node.targetName))
 	return data
 }
 
@@ -771,13 +827,11 @@ func (node *ReplicationTimeSegmentNode) GetChildren() []MetricChild {
 
 func (node *ReplicationTimeSegmentNode) GetLeafData() map[string]string {
 	data := generateReplicationStatsDisplay(node.segment, false)
-
-	// Add time segment specific information
-	data["Target Name"] = node.targetName
 	endTime := node.segmentTime.Add(time.Duration(node.interval) * time.Second)
-	data["Time Range"] = fmt.Sprintf("%s → %s",
+	prependEntry(data, "Time Range", fmt.Sprintf("%s → %s",
 		node.segmentTime.Local().Format("15:04:05"),
-		endTime.Local().Format("15:04:05"))
+		endTime.Local().Format("15:04:05")))
+	prependEntry(data, "Target", shortARN(node.targetName))
 
 	return data
 }
@@ -811,65 +865,114 @@ func NewReplicationLastDayAggregatedNode(replication *madmin.ReplicationMetrics,
 	return &ReplicationLastDayAggregatedNode{replication: replication, parent: parent, path: path}
 }
 
+// aggregated merges LastDay segments across all targets.
+func (node *ReplicationLastDayAggregatedNode) aggregated() *madmin.SegmentedReplicationStats {
+	if node.replication == nil {
+		return nil
+	}
+	var merged madmin.SegmentedReplicationStats
+	var found bool
+	for _, t := range node.replication.Targets {
+		if t.LastDay != nil && len(t.LastDay.Segments) > 0 {
+			merged.Add(t.LastDay)
+			found = true
+		}
+	}
+	if !found {
+		return nil
+	}
+	return &merged
+}
+
 func (node *ReplicationLastDayAggregatedNode) ShouldPauseRefresh() bool {
 	return true
 }
 
 func (node *ReplicationLastDayAggregatedNode) GetChildren() []MetricChild {
-	return []MetricChild{}
+	seg := node.aggregated()
+	if seg == nil || len(seg.Segments) == 0 {
+		return []MetricChild{}
+	}
+
+	children := []MetricChild{{
+		Name:        "Total",
+		Description: "Aggregated total across all targets",
+	}}
+
+	for i := len(seg.Segments) - 1; i >= 0; i-- {
+		if seg.Segments[i].Events == 0 {
+			continue
+		}
+		segTime := seg.FirstTime.Add(time.Duration(i*seg.Interval) * time.Second)
+		endTime := segTime.Add(time.Duration(seg.Interval) * time.Second)
+		children = append(children, MetricChild{
+			Name:        segTime.UTC().Format("15:04Z"),
+			Description: replicationSegmentDesc(segTime, endTime, seg.Segments[i]),
+		})
+	}
+	return children
 }
 
 func (node *ReplicationLastDayAggregatedNode) GetLeafData() map[string]string {
-	if node.replication == nil {
+	seg := node.aggregated()
+	if seg == nil {
 		return map[string]string{
 			"Status": "No last day replication data available",
 			"Note":   "Last day aggregated data requires MetricsDayStats flag",
 		}
 	}
 
-	// Aggregate all targets' last day stats
-	var aggregated madmin.ReplicationStats
-	var targetCount int
-
-	for _, targetStats := range node.replication.Targets {
-		if targetStats.LastDay != nil && len(targetStats.LastDay.Segments) > 0 {
-			total := targetStats.LastDay.Total()
-			aggregated.Events += total.Events
-			aggregated.Bytes += total.Bytes
-			aggregated.EventTimeSecs += total.EventTimeSecs
-			aggregated.WallTimeSecs += total.WallTimeSecs
-			aggregated.LatencySecs += total.LatencySecs
-			aggregated.PutObject += total.PutObject
-			aggregated.UpdateMeta += total.UpdateMeta
-			aggregated.DelObject += total.DelObject
-			aggregated.DelTag += total.DelTag
-			aggregated.PutErrors += total.PutErrors
-			aggregated.UpdateMetaErrors += total.UpdateMetaErrors
-			aggregated.DelErrors += total.DelErrors
-			aggregated.DelTagErrors += total.DelTagErrors
-			if aggregated.MaxLatencySecs < total.MaxLatencySecs {
-				aggregated.MaxLatencySecs = total.MaxLatencySecs
-			}
+	data := make(map[string]string)
+	targetCount := 0
+	for _, t := range node.replication.Targets {
+		if t.LastDay != nil && len(t.LastDay.Segments) > 0 {
 			targetCount++
 		}
 	}
-
-	if targetCount == 0 {
-		return map[string]string{
-			"Status": "No last day replication data available",
-			"Note":   "Last day aggregated data requires MetricsDayStats flag",
-		}
-	}
-
-	aggregated.Nodes = targetCount
-	data := generateReplicationStatsDisplay(aggregated, true)
 	data["Aggregated Targets"] = fmt.Sprintf("%d targets with last day data", targetCount)
-
+	data["Segments Available"] = fmt.Sprintf("%d", len(seg.Segments))
+	if seg.Interval > 0 {
+		data["Segment Interval"] = fmt.Sprintf("%d minutes", seg.Interval/60)
+	}
+	if !seg.FirstTime.IsZero() {
+		lastTime := seg.FirstTime.Add(time.Duration(len(seg.Segments)*seg.Interval) * time.Second)
+		data["Time Range"] = fmt.Sprintf("%s → %s",
+			seg.FirstTime.Local().Format("15:04 MST"),
+			lastTime.Local().Format("15:04 MST"))
+	}
 	return data
 }
 
-func (node *ReplicationLastDayAggregatedNode) GetChild(_ string) (MetricNode, error) {
-	return nil, fmt.Errorf("no children available - all aggregated data shown in main display")
+func (node *ReplicationLastDayAggregatedNode) GetChild(name string) (MetricNode, error) {
+	seg := node.aggregated()
+	if seg == nil {
+		return nil, fmt.Errorf("no last day data available")
+	}
+
+	if name == "Total" {
+		total := seg.Total()
+		return &ReplicationLastDayTotalNode{
+			targetName: "all targets",
+			total:      total,
+			parent:     node,
+			path:       node.path + "/Total",
+		}, nil
+	}
+
+	for i := len(seg.Segments) - 1; i >= 0; i-- {
+		segTime := seg.FirstTime.Add(time.Duration(i*seg.Interval) * time.Second)
+		if segTime.UTC().Format("15:04Z") == name {
+			return &ReplicationTimeSegmentNode{
+				targetName:  "all targets",
+				segment:     seg.Segments[i],
+				segmentTime: segTime,
+				interval:    seg.Interval,
+				parent:      node,
+				path:        fmt.Sprintf("%s/%s", node.path, name),
+			}, nil
+		}
+	}
+	return nil, fmt.Errorf("time segment not found: %s", name)
 }
 
 func (node *ReplicationLastDayAggregatedNode) GetMetricType() madmin.MetricType {

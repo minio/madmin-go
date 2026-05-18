@@ -28,7 +28,57 @@ import (
 	"github.com/minio/madmin-go/v4"
 )
 
-// === ENHANCED API METRICS FORMATTING ===
+// formatAPISegmentDesc formats a description for an API endpoint across all segments.
+func formatAPISegmentDesc(stats madmin.APIStats, intervalSecs int, numSegments int) string {
+	totalSecs := float64(intervalSecs * numSegments)
+	rpm := float64(stats.Requests) / (totalSecs / 60)
+	parts := []string{fmt.Sprintf("%.1f req/min", rpm)}
+	if stats.Requests > 0 {
+		avgMs := (stats.RequestTimeSecs / float64(stats.Requests)) * 1000
+		parts = append(parts, fmt.Sprintf("%.1fms avg", avgMs))
+		if stats.RespTTFBSecs > 0 {
+			ttfbMs := (stats.RespTTFBSecs / float64(stats.Requests)) * 1000
+			parts = append(parts, fmt.Sprintf("%.1fms ttfb", ttfbMs))
+		}
+		if stats.Errors5xx > 0 {
+			pct := float64(stats.Errors5xx) / float64(stats.Requests) * 100
+			parts = append(parts, fmt.Sprintf("%.1f%% 5xx", pct))
+		}
+		if stats.Canceled > 0 {
+			tmoPct := float64(stats.Canceled) / float64(stats.Requests) * 100
+			parts = append(parts, fmt.Sprintf("%.1f%% timeout", tmoPct))
+		}
+	}
+	return strings.Join(parts, ", ")
+}
+
+// formatAPITimeSegmentDesc formats a description for a single time segment.
+func formatAPITimeSegmentDesc(seg madmin.APIStats, intervalSecs int, segmentTime, endTime time.Time) string {
+	day := ""
+	if !sameLocalDay(segmentTime, time.Now()) {
+		day = "Yesterday "
+	}
+	rpm := float64(seg.Requests) / (float64(intervalSecs) / 60)
+	parts := []string{fmt.Sprintf("%s%s -> %s", day, segmentTime.Local().Format("15:04"), endTime.Local().Format("15:04"))}
+	parts = append(parts, fmt.Sprintf("%.1f req/min", rpm))
+	if seg.Requests > 0 {
+		avgMs := (seg.RequestTimeSecs / float64(seg.Requests)) * 1000
+		parts = append(parts, fmt.Sprintf("%.1fms avg", avgMs))
+		if seg.RespTTFBSecs > 0 {
+			ttfbMs := (seg.RespTTFBSecs / float64(seg.Requests)) * 1000
+			parts = append(parts, fmt.Sprintf("%.1fms ttfb", ttfbMs))
+		}
+		if seg.Errors5xx > 0 {
+			pct := float64(seg.Errors5xx) / float64(seg.Requests) * 100
+			parts = append(parts, fmt.Sprintf("%.1f%% 5xx", pct))
+		}
+		if seg.Canceled > 0 {
+			tmoPct := float64(seg.Canceled) / float64(seg.Requests) * 100
+			parts = append(parts, fmt.Sprintf("%.1f%% timeout", tmoPct))
+		}
+	}
+	return strings.Join(parts, ", ")
+}
 
 type APIMetricsNode struct {
 	api    *madmin.APIMetrics
@@ -240,8 +290,8 @@ func generateAPIStatsDisplay(stats madmin.APIStats, endpointsCount int, showTopE
 	if stats.ReadBlockedSecs > 0 && stats.Requests > 0 {
 		avgReadBlocked := (stats.ReadBlockedSecs / float64(stats.Requests)) * 1000
 		pct := ""
-		if stats.ReqReadSecs > 0 {
-			pct = fmt.Sprintf(" (%.1f%%)", (stats.ReadBlockedSecs/stats.ReqReadSecs)*100)
+		if stats.RequestTimeSecs > 0 {
+			pct = fmt.Sprintf(" (%.1f%%)", (stats.ReadBlockedSecs/stats.RequestTimeSecs)*100)
 		}
 		entries = append(entries, struct{ key, value string }{
 			"Read Blocked",
@@ -252,8 +302,8 @@ func generateAPIStatsDisplay(stats madmin.APIStats, endpointsCount int, showTopE
 	if stats.WriteBlockedSecs > 0 && stats.Requests > 0 {
 		avgWriteBlocked := (stats.WriteBlockedSecs / float64(stats.Requests)) * 1000
 		pct := ""
-		if stats.RespSecs > 0 {
-			pct = fmt.Sprintf(" (%.1f%%)", (stats.WriteBlockedSecs/stats.RespSecs)*100)
+		if stats.RequestTimeSecs > 0 {
+			pct = fmt.Sprintf(" (%.1f%%)", (stats.WriteBlockedSecs/stats.RequestTimeSecs)*100)
 		}
 		entries = append(entries, struct{ key, value string }{
 			"Write Blocked",
@@ -273,27 +323,18 @@ func generateAPIStatsDisplay(stats madmin.APIStats, endpointsCount int, showTopE
 	}
 
 	// === ERROR ANALYSIS ===
-	totalErrors := stats.Errors4xx + stats.Errors5xx
 	if stats.Requests > 0 {
-		if stats.Requests > 0 {
-			errorRate := float64(totalErrors) / float64(stats.Requests) * 100
-			entries = append(entries, struct{ key, value string }{"Error Rate", fmt.Sprintf("%.2f%% (%d errors)", errorRate, totalErrors)})
+		if stats.Errors4xx > 0 {
+			pct := float64(stats.Errors4xx) / float64(stats.Requests) * 100
+			entries = append(entries, struct{ key, value string }{"4xx Responses", fmt.Sprintf("%d (%.2f%%)", stats.Errors4xx, pct)})
 		}
-		if totalErrors > 0 {
-			if stats.Errors4xx > 0 {
-				clientErrorRate := float64(stats.Errors4xx) / float64(stats.Requests) * 100
-				entries = append(entries, struct{ key, value string }{"↳ 4xx Client Errors", fmt.Sprintf("%d (%.2f%%)",
-					stats.Errors4xx, clientErrorRate)})
-			}
-			if stats.Errors5xx > 0 {
-				serverErrorRate := float64(stats.Errors5xx) / float64(stats.Requests) * 100
-				entries = append(entries, struct{ key, value string }{"↳ 5xx Server Errors", fmt.Sprintf("%d (%.2f%%)",
-					stats.Errors5xx, serverErrorRate)})
-			}
-			if stats.Canceled > 0 {
-				cancelRate := float64(stats.Canceled) / float64(stats.Requests) * 100
-				entries = append(entries, struct{ key, value string }{"↳ Canceled Requests", fmt.Sprintf("%d (%.2f%%)", stats.Canceled, cancelRate)})
-			}
+		if stats.Errors5xx > 0 {
+			pct := float64(stats.Errors5xx) / float64(stats.Requests) * 100
+			entries = append(entries, struct{ key, value string }{"5xx Errors", fmt.Sprintf("%d (%.2f%%)", stats.Errors5xx, pct)})
+		}
+		if stats.Canceled > 0 {
+			pct := float64(stats.Canceled) / float64(stats.Requests) * 100
+			entries = append(entries, struct{ key, value string }{"Canceled", fmt.Sprintf("%d (%.2f%%)", stats.Canceled, pct)})
 		}
 	}
 
@@ -455,19 +496,13 @@ func (node *APILastDayNode) GetChildren() []MetricChild {
 
 	for _, apiName := range apiNames {
 		segmented := node.api.LastDayAPI[apiName]
-		totalRequests := int64(0)
-		totalTimeSecs := float64(0)
-		for _, segment := range segmented.Segments {
-			totalRequests += segment.Requests
-			totalTimeSecs += segment.RequestTimeSecs
-		}
-		if totalRequests == 0 {
+		total := segmented.Total()
+		if total.Requests == 0 {
 			continue
 		}
-		avg := fmt.Sprintf(" %.1fms avg.", (totalTimeSecs/float64(totalRequests))*1000)
 		children = append(children, MetricChild{
 			Name:        apiName,
-			Description: fmt.Sprintf("Time segmented - %d total requests.%s", totalRequests, avg),
+			Description: formatAPISegmentDesc(total, segmented.Interval, len(segmented.Segments)),
 		})
 	}
 
@@ -543,36 +578,16 @@ func (node *APILastDayAllNode) GetChildren() []MetricChild {
 
 	// Add time segments, most recent first (filter out empty segments)
 	for i := len(segmented.Segments) - 1; i >= 0; i-- {
-		segmentTime := segmented.FirstTime.Add(time.Duration(i*segmented.Interval) * time.Second)
-		endTime := segmentTime.Add(time.Duration(segmented.Interval) * time.Second)
-		segmentName := segmentTime.UTC().Format("15:04Z")
-
-		// Get request count for this segment
-		requests := int64(0)
-		if i < len(segmented.Segments) {
-			requests = segmented.Segments[i].Requests
-		}
-
-		// Filter out time segments with no requests
-		if requests == 0 {
+		seg := segmented.Segments[i]
+		if seg.Requests == 0 {
 			continue
 		}
+		segmentTime := segmented.FirstTime.Add(time.Duration(i*segmented.Interval) * time.Second)
+		endTime := segmentTime.Add(time.Duration(segmented.Interval) * time.Second)
 
-		avg := ""
-		if requests > 0 {
-			avg = fmt.Sprintf(", %.1fms avg", (segmented.Segments[i].RequestTimeSecs/float64(requests))*1000)
-		}
-		day := "Today "
-		if segmentTime.Local().Day() != time.Now().Day() {
-			day = "Yesterday "
-		}
 		children = append(children, MetricChild{
-			Name: segmentName,
-			Description: fmt.Sprintf("API %s%s -> %s (%d requests%s)",
-				day,
-				segmentTime.Local().Format("15:04"),
-				endTime.Local().Format("15:04"),
-				requests, avg),
+			Name:        segmentTime.UTC().Format("15:04Z"),
+			Description: formatAPITimeSegmentDesc(seg, segmented.Interval, segmentTime, endTime),
 		})
 	}
 
@@ -652,36 +667,16 @@ func (node *APILastDayEndpointNode) GetChildren() []MetricChild {
 
 	// Add time segments, most recent first (filter out empty segments)
 	for i := len(node.segmented.Segments) - 1; i >= 0; i-- {
-		segmentTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
-		endTime := segmentTime.Add(time.Duration(node.segmented.Interval) * time.Second)
-		segmentName := segmentTime.UTC().Format("15:04Z")
-
-		// Get request count for this segment
-		requests := int64(0)
-		if i < len(node.segmented.Segments) {
-			requests = node.segmented.Segments[i].Requests
-		}
-
-		// Filter out time segments with no requests
-		if requests == 0 {
+		seg := node.segmented.Segments[i]
+		if seg.Requests == 0 {
 			continue
 		}
-		avg := ""
-		if requests > 0 {
-			avg = fmt.Sprintf(", %.1fms avg", (node.segmented.Segments[i].RequestTimeSecs/float64(requests))*1000)
-		}
-		day := "Today "
-		if segmentTime.Local().Day() != time.Now().Day() {
-			day = "Yesterday "
-		}
+		segmentTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
+		endTime := segmentTime.Add(time.Duration(node.segmented.Interval) * time.Second)
 
 		children = append(children, MetricChild{
-			Name: segmentName,
-			Description: fmt.Sprintf("%s%s -> %s (%d requests%s)",
-				day,
-				segmentTime.Local().Format("15:04"),
-				endTime.Local().Format("15:04"),
-				requests, avg),
+			Name:        segmentTime.UTC().Format("15:04Z"),
+			Description: formatAPITimeSegmentDesc(seg, node.segmented.Interval, segmentTime, endTime),
 		})
 	}
 
@@ -1016,8 +1011,8 @@ func (node *APIEndpointNode) GetLeafData() map[string]string {
 	if node.stats.ReadBlockedSecs > 0 && node.stats.Requests > 0 {
 		avgReadBlocked := (node.stats.ReadBlockedSecs / float64(node.stats.Requests)) * 1000
 		pct := ""
-		if node.stats.ReqReadSecs > 0 {
-			pct = fmt.Sprintf(" (%.1f%%)", (node.stats.ReadBlockedSecs/node.stats.ReqReadSecs)*100)
+		if node.stats.RequestTimeSecs > 0 {
+			pct = fmt.Sprintf(" (%.1f%%)", (node.stats.ReadBlockedSecs/node.stats.RequestTimeSecs)*100)
 		}
 		entries = append(entries, struct{ key, value string }{
 			"Read Blocked",
@@ -1028,8 +1023,8 @@ func (node *APIEndpointNode) GetLeafData() map[string]string {
 	if node.stats.WriteBlockedSecs > 0 && node.stats.Requests > 0 {
 		avgWriteBlocked := (node.stats.WriteBlockedSecs / float64(node.stats.Requests)) * 1000
 		pct := ""
-		if node.stats.RespSecs > 0 {
-			pct = fmt.Sprintf(" (%.1f%%)", (node.stats.WriteBlockedSecs/node.stats.RespSecs)*100)
+		if node.stats.RequestTimeSecs > 0 {
+			pct = fmt.Sprintf(" (%.1f%%)", (node.stats.WriteBlockedSecs/node.stats.RequestTimeSecs)*100)
 		}
 		entries = append(entries, struct{ key, value string }{
 			"Write Blocked",
@@ -1049,28 +1044,18 @@ func (node *APIEndpointNode) GetLeafData() map[string]string {
 	}
 
 	// === ERROR ANALYSIS ===
-	stats := node.stats
-	if stats.Requests > 0 {
-		totalErrors := stats.Errors5xx + stats.Errors5xx
-		if stats.Requests > 0 {
-			errorRate := float64(totalErrors) / float64(stats.Requests) * 100
-			entries = append(entries, struct{ key, value string }{"Error Rate", fmt.Sprintf("%.2f%% (%d errors)", errorRate, totalErrors)})
+	if node.stats.Requests > 0 {
+		if node.stats.Errors4xx > 0 {
+			pct := float64(node.stats.Errors4xx) / float64(node.stats.Requests) * 100
+			entries = append(entries, struct{ key, value string }{"4xx Responses", fmt.Sprintf("%d (%.2f%%)", node.stats.Errors4xx, pct)})
 		}
-		if totalErrors > 0 {
-			if stats.Errors4xx > 0 {
-				clientErrorRate := float64(stats.Errors4xx) / float64(stats.Requests) * 100
-				entries = append(entries, struct{ key, value string }{"↳ 4xx Client Errors", fmt.Sprintf("%d (%.2f%%)",
-					stats.Errors4xx, clientErrorRate)})
-			}
-			if stats.Errors5xx > 0 {
-				serverErrorRate := float64(stats.Errors5xx) / float64(stats.Requests) * 100
-				entries = append(entries, struct{ key, value string }{"↳ 5xx Server Errors", fmt.Sprintf("%d (%.2f%%)",
-					stats.Errors5xx, serverErrorRate)})
-			}
-			if stats.Canceled > 0 {
-				cancelRate := float64(stats.Canceled) / float64(stats.Requests) * 100
-				entries = append(entries, struct{ key, value string }{"↳ Canceled Requests", fmt.Sprintf("%d (%.2f%%)", stats.Canceled, cancelRate)})
-			}
+		if node.stats.Errors5xx > 0 {
+			pct := float64(node.stats.Errors5xx) / float64(node.stats.Requests) * 100
+			entries = append(entries, struct{ key, value string }{"5xx Errors", fmt.Sprintf("%d (%.2f%%)", node.stats.Errors5xx, pct)})
+		}
+		if node.stats.Canceled > 0 {
+			pct := float64(node.stats.Canceled) / float64(node.stats.Requests) * 100
+			entries = append(entries, struct{ key, value string }{"Canceled", fmt.Sprintf("%d (%.2f%%)", node.stats.Canceled, pct)})
 		}
 	}
 
@@ -1288,8 +1273,8 @@ func (node *APIMetricsNode) generateAPIOverviewDashboard() map[string]string {
 		if lastMinute.ReadBlockedSecs > 0 {
 			avgReadBlocked := (lastMinute.ReadBlockedSecs / float64(lastMinute.Requests)) * 1000
 			pct := ""
-			if lastMinute.ReqReadSecs > 0 {
-				pct = fmt.Sprintf(" (%.1f%%)", (lastMinute.ReadBlockedSecs/lastMinute.ReqReadSecs)*100)
+			if lastMinute.RequestTimeSecs > 0 {
+				pct = fmt.Sprintf(" (%.1f%%)", (lastMinute.ReadBlockedSecs/lastMinute.RequestTimeSecs)*100)
 			}
 			entries = append(entries, struct{ key, value string }{
 				"Read Blocked",
@@ -1300,8 +1285,8 @@ func (node *APIMetricsNode) generateAPIOverviewDashboard() map[string]string {
 		if lastMinute.WriteBlockedSecs > 0 {
 			avgWriteBlocked := (lastMinute.WriteBlockedSecs / float64(lastMinute.Requests)) * 1000
 			pct := ""
-			if lastMinute.RespSecs > 0 {
-				pct = fmt.Sprintf(" (%.1f%%)", (lastMinute.WriteBlockedSecs/lastMinute.RespSecs)*100)
+			if lastMinute.RequestTimeSecs > 0 {
+				pct = fmt.Sprintf(" (%.1f%%)", (lastMinute.WriteBlockedSecs/lastMinute.RequestTimeSecs)*100)
 			}
 			entries = append(entries, struct{ key, value string }{
 				"Write Blocked",
@@ -1322,30 +1307,19 @@ func (node *APIMetricsNode) generateAPIOverviewDashboard() map[string]string {
 	}
 
 	// === ERROR ANALYSIS ===
-	totalErrors := lastMinute.Errors4xx + lastMinute.Errors5xx
-	if totalErrors > 0 || lastMinute.Requests > 0 {
-		errorRate := float64(totalErrors) / float64(lastMinute.Requests) * 100
-		if lastMinute.Requests == 0 {
-			errorRate = 0
-		}
-		entries = append(entries, struct{ key, value string }{"Error Rate", fmt.Sprintf("%.2f%% (%d errors)", errorRate, totalErrors)})
-
+	if lastMinute.Requests > 0 {
 		if lastMinute.Errors4xx > 0 {
-			clientErrorRate := float64(lastMinute.Errors4xx) / float64(lastMinute.Requests) * 100
-			entries = append(entries, struct{ key, value string }{"↳ 4xx Client Errors", fmt.Sprintf("%d (%.2f%%)",
-				lastMinute.Errors4xx, clientErrorRate)})
+			pct := float64(lastMinute.Errors4xx) / float64(lastMinute.Requests) * 100
+			entries = append(entries, struct{ key, value string }{"4xx Responses", fmt.Sprintf("%d (%.2f%%)", lastMinute.Errors4xx, pct)})
 		}
 		if lastMinute.Errors5xx > 0 {
-			serverErrorRate := float64(lastMinute.Errors5xx) / float64(lastMinute.Requests) * 100
-			entries = append(entries, struct{ key, value string }{"↳ 5xx Server Errors", fmt.Sprintf("%d (%.2f%%)",
-				lastMinute.Errors5xx, serverErrorRate)})
+			pct := float64(lastMinute.Errors5xx) / float64(lastMinute.Requests) * 100
+			entries = append(entries, struct{ key, value string }{"5xx Errors", fmt.Sprintf("%d (%.2f%%)", lastMinute.Errors5xx, pct)})
 		}
 		if lastMinute.Canceled > 0 {
-			cancelRate := float64(lastMinute.Canceled) / float64(lastMinute.Requests) * 100
-			entries = append(entries, struct{ key, value string }{"↳ Canceled Requests", fmt.Sprintf("%d (%.2f%%)", lastMinute.Canceled, cancelRate)})
+			pct := float64(lastMinute.Canceled) / float64(lastMinute.Requests) * 100
+			entries = append(entries, struct{ key, value string }{"Canceled", fmt.Sprintf("%d (%.2f%%)", lastMinute.Canceled, pct)})
 		}
-	} else {
-		entries = append(entries, struct{ key, value string }{"Error Rate", "No errors detected"})
 	}
 
 	// === REJECTIONS ===
