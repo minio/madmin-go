@@ -34,12 +34,13 @@ import (
 
 // AuditLogOpts represents the options for the audit logs
 type AuditLogOpts struct {
-	Node       string            `json:"node,omitempty"`
-	API        string            `json:"api,omitempty"`
-	Bucket     string            `json:"bucket,omitempty"`
-	Interval   time.Duration     `json:"interval,omitempty"`
-	Category   log.AuditCategory `json:"category,omitempty"`
-	MaxPerNode int               `json:"maxPerNode,omitempty"`
+	Nodes      []string            `json:"nodes,omitempty"`   // entries ending with "*" are prefix matches, otherwise exact match
+	APIs       []string            `json:"apis,omitempty"`    // entries ending with "*" are prefix matches, otherwise exact match
+	Buckets    []string            `json:"buckets,omitempty"` // entries ending with "*" are prefix matches, otherwise exact match
+	Interval   time.Duration       `json:"interval,omitempty"`
+	Categories []log.AuditCategory `json:"categories,omitempty"`
+	MaxPerNode int                 `json:"maxPerNode,omitempty"` // Deprecated: use Limit
+	Limit      int                 `json:"limit,omitempty"`
 }
 
 // GetAuditLogs fetches the persisted audit logs from MinIO
