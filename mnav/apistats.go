@@ -55,7 +55,7 @@ func formatAPISegmentDesc(stats madmin.APIStats, intervalSecs int, numSegments i
 // formatAPITimeSegmentDesc formats a description for a single time segment.
 func formatAPITimeSegmentDesc(seg madmin.APIStats, intervalSecs int, segmentTime, endTime time.Time) string {
 	day := ""
-	if segmentTime.Local().Day() != time.Now().Day() {
+	if !sameLocalDay(segmentTime, time.Now()) {
 		day = "Yesterday "
 	}
 	rpm := float64(seg.Requests) / (float64(intervalSecs) / 60)

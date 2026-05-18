@@ -87,15 +87,6 @@ func prependEntry(data map[string]string, key, value string) {
 	data[fmt.Sprintf("00:%s", key)] = value
 }
 
-// formatReplicationThroughput calculates and formats throughput rates
-func formatReplicationThroughput(bytes int64, timeSecs float64, label string) string {
-	if timeSecs <= 0 || bytes <= 0 {
-		return fmt.Sprintf("%s: 0B/s", label)
-	}
-	bytesPerSec := float64(bytes) / timeSecs
-	return fmt.Sprintf("%s: %s/s", label, humanize.Bytes(uint64(bytesPerSec)))
-}
-
 // generateReplicationStatsDisplay formats ReplicationStats for display
 func generateReplicationStatsDisplay(stats madmin.ReplicationStats, includeTimeInfo bool) map[string]string {
 	data := make(map[string]string)

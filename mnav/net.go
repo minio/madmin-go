@@ -424,7 +424,7 @@ func (node *NetLastDayNode) GetLeafData() map[string]string {
 		}
 		var txDrop float64
 		if seg.TxPackets > 0 {
-			rxDrop = float64(seg.TxDropped) * 100 / float64(seg.TxPackets)
+			txDrop = float64(seg.TxDropped) * 100 / float64(seg.TxPackets)
 		}
 		// Calculate Gbps (bytes per interval -> bits per second -> Gbps)
 		rxGbps := float64(avgRx) * 8 / float64(node.segmented.Interval) / 1e9

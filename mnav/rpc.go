@@ -329,7 +329,7 @@ func (node *RPCLastDayAllNode) GetChildren() []MetricChild {
 
 		rps := float64(segment.TotalRequests) / float64(segment.Interval)
 		day := ""
-		if segmentTime.Local().Day() != time.Now().Day() {
+		if !sameLocalDay(segmentTime, time.Now()) {
 			day = "Yesterday "
 		}
 		desc := fmt.Sprintf("%s%s -> %s, %.1f req/s",
@@ -570,7 +570,7 @@ func (node *RPCLastDayHandlerNode) GetChildren() []MetricChild {
 
 		rps := float64(segment.Requests) / float64(node.segmented.Interval)
 		day := ""
-		if segmentTime.Local().Day() != time.Now().Day() {
+		if !sameLocalDay(segmentTime, time.Now()) {
 			day = "Yesterday "
 		}
 		desc := fmt.Sprintf("%s%s -> %s, %.1f req/s, %.1fms avg",

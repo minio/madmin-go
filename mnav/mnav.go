@@ -23,10 +23,17 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/minio/madmin-go/v4"
 )
+
+func sameLocalDay(t1, t2 time.Time) bool {
+	y1, m1, d1 := t1.Local().Date()
+	y2, m2, d2 := t2.Local().Date()
+	return y1 == y2 && m1 == m2 && d1 == d2
+}
 
 // MetricNavigator provides navigation functionality
 type MetricNavigator interface {

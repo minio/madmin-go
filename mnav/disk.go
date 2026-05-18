@@ -940,7 +940,7 @@ func (node *DiskIODailyStatsNode) GetChildren() []MetricChild {
 		}
 
 		day := "Today "
-		if segmentTime.Local().Day() != time.Now().Day() {
+		if !sameLocalDay(segmentTime, time.Now()) {
 			day = "Yesterday "
 		}
 
@@ -1228,7 +1228,7 @@ func (node *DiskLastDayAllNode) GetChildren() []MetricChild {
 			avg = fmt.Sprintf(", %.1fms avg", (totalTime/float64(totalOps))*1000)
 		}
 		day := "Today "
-		if segmentTime.Local().Day() != time.Now().Day() {
+		if !sameLocalDay(segmentTime, time.Now()) {
 			day = "Yesterday "
 		}
 		children = append(children, MetricChild{
@@ -1288,13 +1288,15 @@ type DiskLastDayAllLeafNode struct {
 	path   string
 }
 
-func (node *DiskLastDayAllLeafNode) GetOpts() madmin.MetricsOptions     { return getNodeOpts(node) }
-func (node *DiskLastDayAllLeafNode) GetMetricType() madmin.MetricType   { return madmin.MetricsDisk }
-func (node *DiskLastDayAllLeafNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
-func (node *DiskLastDayAllLeafNode) GetParent() MetricNode              { return node.parent }
-func (node *DiskLastDayAllLeafNode) GetPath() string                    { return node.path }
-func (node *DiskLastDayAllLeafNode) ShouldPauseRefresh() bool           { return true }
-func (node *DiskLastDayAllLeafNode) GetChildren() []MetricChild         { return nil }
+func (node *DiskLastDayAllLeafNode) GetOpts() madmin.MetricsOptions   { return getNodeOpts(node) }
+func (node *DiskLastDayAllLeafNode) GetMetricType() madmin.MetricType { return madmin.MetricsDisk }
+func (node *DiskLastDayAllLeafNode) GetMetricFlags() madmin.MetricFlags {
+	return madmin.MetricsDayStats
+}
+func (node *DiskLastDayAllLeafNode) GetParent() MetricNode      { return node.parent }
+func (node *DiskLastDayAllLeafNode) GetPath() string            { return node.path }
+func (node *DiskLastDayAllLeafNode) ShouldPauseRefresh() bool   { return true }
+func (node *DiskLastDayAllLeafNode) GetChildren() []MetricChild { return nil }
 
 func (node *DiskLastDayAllLeafNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("leaf node")
@@ -1381,7 +1383,7 @@ func (node *DiskLastDayOperationNode) GetChildren() []MetricChild {
 
 		// Determine day prefix
 		day := "Today "
-		if segmentTime.Local().Day() != time.Now().Day() {
+		if !sameLocalDay(segmentTime, time.Now()) {
 			day = "Yesterday "
 		}
 
@@ -1644,7 +1646,6 @@ func (node *DiskIOTimeSegmentNode) GetLeafData() map[string]string {
 	return data
 }
 
-// DiskIOTotalNode shows aggregated IO statistics across all time segments
 // DiskIOLastDayAllNode shows time-segmented IO totals with navigation into each segment.
 type DiskIOLastDayAllNode struct {
 	dailyStats *madmin.SegmentedDiskIO
@@ -1686,7 +1687,7 @@ func (node *DiskIOLastDayAllNode) GetChildren() []MetricChild {
 		writeIOPS := float64(seg.WriteIOs) / intervalSecs
 
 		day := "Today "
-		if segmentTime.Local().Day() != time.Now().Day() {
+		if !sameLocalDay(segmentTime, time.Now()) {
 			day = "Yesterday "
 		}
 
