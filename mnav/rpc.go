@@ -223,13 +223,18 @@ func (node *RPCLastDayNode) GetChildren() []MetricChild {
 			totalRequests += segment.Requests
 			totalTime += segment.RequestTimeSecs
 		}
-		avg := ""
-		if totalRequests > 0 {
-			avg = fmt.Sprintf(", %.1fms avg", (totalTime/float64(totalRequests))*1000)
+		totalSecs := float64(len(segmented.Segments) * segmented.Interval)
+		var desc string
+		if totalRequests > 0 && totalSecs > 0 {
+			rps := float64(totalRequests) / totalSecs
+			avg := (totalTime / float64(totalRequests)) * 1000
+			desc = fmt.Sprintf("%.1f req/s, %.1fms avg", rps, avg)
+		} else {
+			desc = "No requests"
 		}
 		children = append(children, MetricChild{
 			Name:        handlerName,
-			Description: fmt.Sprintf("Time segmented, %d total requests%s.", totalRequests, avg),
+			Description: desc,
 		})
 	}
 
@@ -322,22 +327,20 @@ func (node *RPCLastDayAllNode) GetChildren() []MetricChild {
 			continue
 		}
 
-		avg := ""
-		if segment.TotalRequests > 0 {
-			avg = fmt.Sprintf(", %.1fms avg", (segment.TotalTime/float64(segment.TotalRequests))*1000)
-		}
-		day := "Today "
-		if segmentTime.Local().Day() != time.Now().Day() {
+		rps := float64(segment.TotalRequests) / float64(segment.Interval)
+		day := ""
+		if !sameLocalDay(segmentTime, time.Now()) {
 			day = "Yesterday "
+		}
+		desc := fmt.Sprintf("%s%s -> %s, %.1f req/s",
+			day, segmentTime.Local().Format("15:04"), endTime.Local().Format("15:04"), rps)
+		if segment.TotalRequests > 0 && segment.TotalTime > 0 {
+			desc += fmt.Sprintf(", %.1fms avg", (segment.TotalTime/float64(segment.TotalRequests))*1000)
 		}
 
 		children = append(children, MetricChild{
-			Name: segmentName,
-			Description: fmt.Sprintf("RPC %s%s -> %s (%d requests%s)",
-				day,
-				segmentTime.Local().Format("15:04"),
-				endTime.Local().Format("15:04"),
-				segment.TotalRequests, avg),
+			Name:        segmentName,
+			Description: desc,
 		})
 	}
 
@@ -565,19 +568,18 @@ func (node *RPCLastDayHandlerNode) GetChildren() []MetricChild {
 		endTime := segmentTime.Add(time.Duration(node.segmented.Interval) * time.Second)
 		segmentName := segmentTime.UTC().Format("15:04Z")
 
-		avg := fmt.Sprintf(", %.1fms avg", (segment.RequestTimeSecs/float64(segment.Requests))*1000)
-		day := "Today "
-		if segmentTime.Local().Day() != time.Now().Day() {
+		rps := float64(segment.Requests) / float64(node.segmented.Interval)
+		day := ""
+		if !sameLocalDay(segmentTime, time.Now()) {
 			day = "Yesterday "
 		}
+		desc := fmt.Sprintf("%s%s -> %s, %.1f req/s, %.1fms avg",
+			day, segmentTime.Local().Format("15:04"), endTime.Local().Format("15:04"),
+			rps, (segment.RequestTimeSecs/float64(segment.Requests))*1000)
 
 		children = append(children, MetricChild{
-			Name: segmentName,
-			Description: fmt.Sprintf("%s%s -> %s (%d requests%s)",
-				day,
-				segmentTime.Local().Format("15:04"),
-				endTime.Local().Format("15:04"),
-				segment.Requests, avg),
+			Name:        segmentName,
+			Description: desc,
 		})
 	}
 

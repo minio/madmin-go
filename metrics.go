@@ -459,6 +459,34 @@ func (r *Metrics) Merge(other *Metrics) {
 	}
 }
 
+// BucketILMStats reports the cumulative ILM action counters for a single
+// bucket carried in a ScannerMetrics value.
+type BucketILMStats struct {
+	Bucket         string            `json:"bucket,omitempty" msg:"bucket,omitempty"`
+	ActionCounters map[string]uint64 `json:"action_counters,omitempty" msg:"action_counters,omitempty"`
+}
+
+// Merge adds other.ActionCounters into b.ActionCounters. b.Bucket is preserved
+// when set, otherwise adopted from other (even when other has no counters). A
+// nil other is a no-op.
+func (b *BucketILMStats) Merge(other *BucketILMStats) {
+	if other == nil {
+		return
+	}
+	if b.Bucket == "" {
+		b.Bucket = other.Bucket
+	}
+	if len(other.ActionCounters) == 0 {
+		return
+	}
+	if b.ActionCounters == nil {
+		b.ActionCounters = make(map[string]uint64, len(other.ActionCounters))
+	}
+	for action, n := range other.ActionCounters {
+		b.ActionCounters[action] += n
+	}
+}
+
 // ScannerMetrics contains scanner information.
 type ScannerMetrics struct {
 	// Time these metrics were collected
@@ -475,6 +503,11 @@ type ScannerMetrics struct {
 
 	// Number of accumulated ILM operations by type since server restart.
 	LifeTimeILM map[string]uint64 `json:"ilm_ops,omitempty"`
+
+	// BucketLifeTimeILM reports cumulative ILM action counters per bucket,
+	// keyed by bucket name. Populated only when a specific bucket is
+	// requested; nil otherwise.
+	BucketLifeTimeILM map[string]*BucketILMStats `json:"bucket_ilm_stats,omitempty"`
 
 	// Last minute operation statistics.
 	LastMinute struct {
@@ -602,6 +635,17 @@ func (s *ScannerMetrics) Merge(other *ScannerMetrics) {
 	for k, v := range other.LifeTimeILM {
 		total := s.LifeTimeILM[k] + v
 		s.LifeTimeILM[k] = total
+	}
+	for bucket, otherStats := range other.BucketLifeTimeILM {
+		if s.BucketLifeTimeILM == nil {
+			s.BucketLifeTimeILM = make(map[string]*BucketILMStats, len(other.BucketLifeTimeILM))
+		}
+		dst, ok := s.BucketLifeTimeILM[bucket]
+		if !ok {
+			dst = &BucketILMStats{Bucket: bucket}
+			s.BucketLifeTimeILM[bucket] = dst
+		}
+		dst.Merge(otherStats)
 	}
 	if s.LastMinute.ILM == nil && len(other.LastMinute.ILM) > 0 {
 		s.LastMinute.ILM = make(map[string]TimedAction, len(other.LastMinute.ILM))

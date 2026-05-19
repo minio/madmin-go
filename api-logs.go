@@ -34,16 +34,17 @@ import (
 
 // APILogOpts represents the options for the APILogOpts
 type APILogOpts struct {
-	Node       string        `json:"node,omitempty"`
-	API        string        `json:"api,omitempty"`
-	Bucket     string        `json:"bucket,omitempty"`
-	Prefix     string        `json:"prefix,omitempty"`
-	StatusCode int           `json:"statusCode,omitempty"`
-	Interval   time.Duration `json:"interval,omitempty"`
-	Origin     log.Origin    `json:"origin,omitempty"`
-	Type       log.APIType   `json:"type,omitempty"`
-	MaxPerNode int           `json:"maxPerNode,omitempty"` // Deprecated
-	Limit      int           `json:"limit,omitempty"`
+	Nodes        []string      `json:"nodes,omitempty"`   // entries ending with "*" are prefix matches, otherwise exact match
+	APIs         []string      `json:"apis,omitempty"`    // entries ending with "*" are prefix matches, otherwise exact match
+	Buckets      []string      `json:"buckets,omitempty"` // entries ending with "*" are prefix matches, otherwise exact match
+	Prefix       string        `json:"prefix,omitempty"`
+	StatusCodes  []int         `json:"statusCodes,omitempty"`
+	StatusRanges []string      `json:"statusRanges,omitempty"` // e.g. "2xx", "4xx", "5xx"
+	Interval     time.Duration `json:"interval,omitempty"`
+	Origins      []log.Origin  `json:"origins,omitempty"`
+	Types        []log.APIType `json:"types,omitempty"`
+	MaxPerNode   int           `json:"maxPerNode,omitempty"` // Deprecated
+	Limit        int           `json:"limit,omitempty"`
 }
 
 // GetAPILogs fetches the persisted API logs from MinIO
