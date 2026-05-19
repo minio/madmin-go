@@ -98,7 +98,7 @@ func TestCapacityForecastDecode(t *testing.T) {
 
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 				w.WriteHeader(http.StatusOK)
 				w.Write([]byte(tc.body))
 			}))
@@ -135,7 +135,7 @@ func TestCapacityForecastDecode(t *testing.T) {
 // TestCapacityForecastHTTPError verifies non-200 responses produce an error
 // rather than a zero-value struct.
 func TestCapacityForecastHTTPError(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 	}))
 	defer server.Close()
