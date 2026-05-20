@@ -6955,7 +6955,7 @@ func (z *DiskIOStats) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint32 /* 20 bits */
+	var zb0001Mask uint32 /* 21 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -6972,139 +6972,146 @@ func (z *DiskIOStats) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 			zb0001Mask |= 0x1
+		case "with_iostats":
+			z.WithIOStats, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "WithIOStats")
+				return
+			}
+			zb0001Mask |= 0x2
 		case "read_ios":
 			z.ReadIOs, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "ReadIOs")
 				return
 			}
-			zb0001Mask |= 0x2
+			zb0001Mask |= 0x4
 		case "read_merges":
 			z.ReadMerges, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "ReadMerges")
 				return
 			}
-			zb0001Mask |= 0x4
+			zb0001Mask |= 0x8
 		case "read_sectors":
 			z.ReadSectors, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "ReadSectors")
 				return
 			}
-			zb0001Mask |= 0x8
+			zb0001Mask |= 0x10
 		case "read_ticks":
 			z.ReadTicks, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "ReadTicks")
 				return
 			}
-			zb0001Mask |= 0x10
+			zb0001Mask |= 0x20
 		case "write_ios":
 			z.WriteIOs, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "WriteIOs")
 				return
 			}
-			zb0001Mask |= 0x20
+			zb0001Mask |= 0x40
 		case "write_merges":
 			z.WriteMerges, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "WriteMerges")
 				return
 			}
-			zb0001Mask |= 0x40
+			zb0001Mask |= 0x80
 		case "write_sectors":
 			z.WriteSectors, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "WriteSectors")
 				return
 			}
-			zb0001Mask |= 0x80
+			zb0001Mask |= 0x100
 		case "write_ticks":
 			z.WriteTicks, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "WriteTicks")
 				return
 			}
-			zb0001Mask |= 0x100
+			zb0001Mask |= 0x200
 		case "current_ios":
 			z.CurrentIOs, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "CurrentIOs")
 				return
 			}
-			zb0001Mask |= 0x200
+			zb0001Mask |= 0x400
 		case "total_ticks":
 			z.TotalTicks, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "TotalTicks")
 				return
 			}
-			zb0001Mask |= 0x400
+			zb0001Mask |= 0x800
 		case "req_ticks":
 			z.ReqTicks, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "ReqTicks")
 				return
 			}
-			zb0001Mask |= 0x800
+			zb0001Mask |= 0x1000
 		case "discard_ios":
 			z.DiscardIOs, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "DiscardIOs")
 				return
 			}
-			zb0001Mask |= 0x1000
+			zb0001Mask |= 0x2000
 		case "discard_merges":
 			z.DiscardMerges, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "DiscardMerges")
 				return
 			}
-			zb0001Mask |= 0x2000
+			zb0001Mask |= 0x4000
 		case "discard_sectors":
 			z.DiscardSectors, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "DiscardSectors")
 				return
 			}
-			zb0001Mask |= 0x4000
+			zb0001Mask |= 0x8000
 		case "discard_ticks":
 			z.DiscardTicks, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "DiscardTicks")
 				return
 			}
-			zb0001Mask |= 0x8000
+			zb0001Mask |= 0x10000
 		case "flush_ios":
 			z.FlushIOs, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "FlushIOs")
 				return
 			}
-			zb0001Mask |= 0x10000
+			zb0001Mask |= 0x20000
 		case "flush_ticks":
 			z.FlushTicks, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "FlushTicks")
 				return
 			}
-			zb0001Mask |= 0x20000
+			zb0001Mask |= 0x40000
 		case "bitrot_detected":
 			z.BitrotDetected, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "BitrotDetected")
 				return
 			}
-			zb0001Mask |= 0x40000
+			zb0001Mask |= 0x80000
 		case "bitrot_healed":
 			z.BitrotHealed, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "BitrotHealed")
 				return
 			}
-			zb0001Mask |= 0x80000
+			zb0001Mask |= 0x100000
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -7114,65 +7121,68 @@ func (z *DiskIOStats) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xfffff {
+	if zb0001Mask != 0x1fffff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.N = 0
 		}
 		if (zb0001Mask & 0x2) == 0 {
-			z.ReadIOs = 0
+			z.WithIOStats = 0
 		}
 		if (zb0001Mask & 0x4) == 0 {
-			z.ReadMerges = 0
+			z.ReadIOs = 0
 		}
 		if (zb0001Mask & 0x8) == 0 {
-			z.ReadSectors = 0
+			z.ReadMerges = 0
 		}
 		if (zb0001Mask & 0x10) == 0 {
-			z.ReadTicks = 0
+			z.ReadSectors = 0
 		}
 		if (zb0001Mask & 0x20) == 0 {
-			z.WriteIOs = 0
+			z.ReadTicks = 0
 		}
 		if (zb0001Mask & 0x40) == 0 {
-			z.WriteMerges = 0
+			z.WriteIOs = 0
 		}
 		if (zb0001Mask & 0x80) == 0 {
-			z.WriteSectors = 0
+			z.WriteMerges = 0
 		}
 		if (zb0001Mask & 0x100) == 0 {
-			z.WriteTicks = 0
+			z.WriteSectors = 0
 		}
 		if (zb0001Mask & 0x200) == 0 {
-			z.CurrentIOs = 0
+			z.WriteTicks = 0
 		}
 		if (zb0001Mask & 0x400) == 0 {
-			z.TotalTicks = 0
+			z.CurrentIOs = 0
 		}
 		if (zb0001Mask & 0x800) == 0 {
-			z.ReqTicks = 0
+			z.TotalTicks = 0
 		}
 		if (zb0001Mask & 0x1000) == 0 {
-			z.DiscardIOs = 0
+			z.ReqTicks = 0
 		}
 		if (zb0001Mask & 0x2000) == 0 {
-			z.DiscardMerges = 0
+			z.DiscardIOs = 0
 		}
 		if (zb0001Mask & 0x4000) == 0 {
-			z.DiscardSectors = 0
+			z.DiscardMerges = 0
 		}
 		if (zb0001Mask & 0x8000) == 0 {
-			z.DiscardTicks = 0
+			z.DiscardSectors = 0
 		}
 		if (zb0001Mask & 0x10000) == 0 {
-			z.FlushIOs = 0
+			z.DiscardTicks = 0
 		}
 		if (zb0001Mask & 0x20000) == 0 {
-			z.FlushTicks = 0
+			z.FlushIOs = 0
 		}
 		if (zb0001Mask & 0x40000) == 0 {
-			z.BitrotDetected = 0
+			z.FlushTicks = 0
 		}
 		if (zb0001Mask & 0x80000) == 0 {
+			z.BitrotDetected = 0
+		}
+		if (zb0001Mask & 0x100000) == 0 {
 			z.BitrotHealed = 0
 		}
 	}
@@ -7182,88 +7192,92 @@ func (z *DiskIOStats) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *DiskIOStats) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(20)
-	var zb0001Mask uint32 /* 20 bits */
+	zb0001Len := uint32(21)
+	var zb0001Mask uint32 /* 21 bits */
 	_ = zb0001Mask
 	if z.N == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x1
 	}
-	if z.ReadIOs == 0 {
+	if z.WithIOStats == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x2
 	}
-	if z.ReadMerges == 0 {
+	if z.ReadIOs == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x4
 	}
-	if z.ReadSectors == 0 {
+	if z.ReadMerges == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x8
 	}
-	if z.ReadTicks == 0 {
+	if z.ReadSectors == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x10
 	}
-	if z.WriteIOs == 0 {
+	if z.ReadTicks == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x20
 	}
-	if z.WriteMerges == 0 {
+	if z.WriteIOs == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x40
 	}
-	if z.WriteSectors == 0 {
+	if z.WriteMerges == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x80
 	}
-	if z.WriteTicks == 0 {
+	if z.WriteSectors == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x100
 	}
-	if z.CurrentIOs == 0 {
+	if z.WriteTicks == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x200
 	}
-	if z.TotalTicks == 0 {
+	if z.CurrentIOs == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x400
 	}
-	if z.ReqTicks == 0 {
+	if z.TotalTicks == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x800
 	}
-	if z.DiscardIOs == 0 {
+	if z.ReqTicks == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x1000
 	}
-	if z.DiscardMerges == 0 {
+	if z.DiscardIOs == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x2000
 	}
-	if z.DiscardSectors == 0 {
+	if z.DiscardMerges == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x4000
 	}
-	if z.DiscardTicks == 0 {
+	if z.DiscardSectors == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x8000
 	}
-	if z.FlushIOs == 0 {
+	if z.DiscardTicks == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x10000
 	}
-	if z.FlushTicks == 0 {
+	if z.FlushIOs == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x20000
 	}
-	if z.BitrotDetected == 0 {
+	if z.FlushTicks == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x40000
 	}
-	if z.BitrotHealed == 0 {
+	if z.BitrotDetected == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x80000
+	}
+	if z.BitrotHealed == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x100000
 	}
 	// variable map header, size zb0001Len
 	err = en.WriteMapHeader(zb0001Len)
@@ -7286,6 +7300,18 @@ func (z *DiskIOStats) EncodeMsg(en *msgp.Writer) (err error) {
 			}
 		}
 		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// write "with_iostats"
+			err = en.Append(0xac, 0x77, 0x69, 0x74, 0x68, 0x5f, 0x69, 0x6f, 0x73, 0x74, 0x61, 0x74, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt(z.WithIOStats)
+			if err != nil {
+				err = msgp.WrapError(err, "WithIOStats")
+				return
+			}
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
 			// write "read_ios"
 			err = en.Append(0xa8, 0x72, 0x65, 0x61, 0x64, 0x5f, 0x69, 0x6f, 0x73)
 			if err != nil {
@@ -7297,7 +7323,7 @@ func (z *DiskIOStats) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x4) == 0 { // if not omitted
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
 			// write "read_merges"
 			err = en.Append(0xab, 0x72, 0x65, 0x61, 0x64, 0x5f, 0x6d, 0x65, 0x72, 0x67, 0x65, 0x73)
 			if err != nil {
@@ -7309,7 +7335,7 @@ func (z *DiskIOStats) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x8) == 0 { // if not omitted
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
 			// write "read_sectors"
 			err = en.Append(0xac, 0x72, 0x65, 0x61, 0x64, 0x5f, 0x73, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x73)
 			if err != nil {
@@ -7321,7 +7347,7 @@ func (z *DiskIOStats) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x10) == 0 { // if not omitted
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
 			// write "read_ticks"
 			err = en.Append(0xaa, 0x72, 0x65, 0x61, 0x64, 0x5f, 0x74, 0x69, 0x63, 0x6b, 0x73)
 			if err != nil {
@@ -7333,7 +7359,7 @@ func (z *DiskIOStats) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x20) == 0 { // if not omitted
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
 			// write "write_ios"
 			err = en.Append(0xa9, 0x77, 0x72, 0x69, 0x74, 0x65, 0x5f, 0x69, 0x6f, 0x73)
 			if err != nil {
@@ -7345,7 +7371,7 @@ func (z *DiskIOStats) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x40) == 0 { // if not omitted
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
 			// write "write_merges"
 			err = en.Append(0xac, 0x77, 0x72, 0x69, 0x74, 0x65, 0x5f, 0x6d, 0x65, 0x72, 0x67, 0x65, 0x73)
 			if err != nil {
@@ -7357,7 +7383,7 @@ func (z *DiskIOStats) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x80) == 0 { // if not omitted
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
 			// write "write_sectors"
 			err = en.Append(0xad, 0x77, 0x72, 0x69, 0x74, 0x65, 0x5f, 0x73, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x73)
 			if err != nil {
@@ -7369,7 +7395,7 @@ func (z *DiskIOStats) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x100) == 0 { // if not omitted
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
 			// write "write_ticks"
 			err = en.Append(0xab, 0x77, 0x72, 0x69, 0x74, 0x65, 0x5f, 0x74, 0x69, 0x63, 0x6b, 0x73)
 			if err != nil {
@@ -7381,7 +7407,7 @@ func (z *DiskIOStats) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x200) == 0 { // if not omitted
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
 			// write "current_ios"
 			err = en.Append(0xab, 0x63, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74, 0x5f, 0x69, 0x6f, 0x73)
 			if err != nil {
@@ -7393,7 +7419,7 @@ func (z *DiskIOStats) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x400) == 0 { // if not omitted
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
 			// write "total_ticks"
 			err = en.Append(0xab, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x74, 0x69, 0x63, 0x6b, 0x73)
 			if err != nil {
@@ -7405,7 +7431,7 @@ func (z *DiskIOStats) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x800) == 0 { // if not omitted
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
 			// write "req_ticks"
 			err = en.Append(0xa9, 0x72, 0x65, 0x71, 0x5f, 0x74, 0x69, 0x63, 0x6b, 0x73)
 			if err != nil {
@@ -7417,7 +7443,7 @@ func (z *DiskIOStats) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x1000) == 0 { // if not omitted
+		if (zb0001Mask & 0x2000) == 0 { // if not omitted
 			// write "discard_ios"
 			err = en.Append(0xab, 0x64, 0x69, 0x73, 0x63, 0x61, 0x72, 0x64, 0x5f, 0x69, 0x6f, 0x73)
 			if err != nil {
@@ -7429,7 +7455,7 @@ func (z *DiskIOStats) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x2000) == 0 { // if not omitted
+		if (zb0001Mask & 0x4000) == 0 { // if not omitted
 			// write "discard_merges"
 			err = en.Append(0xae, 0x64, 0x69, 0x73, 0x63, 0x61, 0x72, 0x64, 0x5f, 0x6d, 0x65, 0x72, 0x67, 0x65, 0x73)
 			if err != nil {
@@ -7441,7 +7467,7 @@ func (z *DiskIOStats) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x4000) == 0 { // if not omitted
+		if (zb0001Mask & 0x8000) == 0 { // if not omitted
 			// write "discard_sectors"
 			err = en.Append(0xaf, 0x64, 0x69, 0x73, 0x63, 0x61, 0x72, 0x64, 0x5f, 0x73, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x73)
 			if err != nil {
@@ -7453,7 +7479,7 @@ func (z *DiskIOStats) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x8000) == 0 { // if not omitted
+		if (zb0001Mask & 0x10000) == 0 { // if not omitted
 			// write "discard_ticks"
 			err = en.Append(0xad, 0x64, 0x69, 0x73, 0x63, 0x61, 0x72, 0x64, 0x5f, 0x74, 0x69, 0x63, 0x6b, 0x73)
 			if err != nil {
@@ -7465,7 +7491,7 @@ func (z *DiskIOStats) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x10000) == 0 { // if not omitted
+		if (zb0001Mask & 0x20000) == 0 { // if not omitted
 			// write "flush_ios"
 			err = en.Append(0xa9, 0x66, 0x6c, 0x75, 0x73, 0x68, 0x5f, 0x69, 0x6f, 0x73)
 			if err != nil {
@@ -7477,7 +7503,7 @@ func (z *DiskIOStats) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x20000) == 0 { // if not omitted
+		if (zb0001Mask & 0x40000) == 0 { // if not omitted
 			// write "flush_ticks"
 			err = en.Append(0xab, 0x66, 0x6c, 0x75, 0x73, 0x68, 0x5f, 0x74, 0x69, 0x63, 0x6b, 0x73)
 			if err != nil {
@@ -7489,7 +7515,7 @@ func (z *DiskIOStats) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x40000) == 0 { // if not omitted
+		if (zb0001Mask & 0x80000) == 0 { // if not omitted
 			// write "bitrot_detected"
 			err = en.Append(0xaf, 0x62, 0x69, 0x74, 0x72, 0x6f, 0x74, 0x5f, 0x64, 0x65, 0x74, 0x65, 0x63, 0x74, 0x65, 0x64)
 			if err != nil {
@@ -7501,7 +7527,7 @@ func (z *DiskIOStats) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x80000) == 0 { // if not omitted
+		if (zb0001Mask & 0x100000) == 0 { // if not omitted
 			// write "bitrot_healed"
 			err = en.Append(0xad, 0x62, 0x69, 0x74, 0x72, 0x6f, 0x74, 0x5f, 0x68, 0x65, 0x61, 0x6c, 0x65, 0x64)
 			if err != nil {
@@ -7521,88 +7547,92 @@ func (z *DiskIOStats) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *DiskIOStats) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(20)
-	var zb0001Mask uint32 /* 20 bits */
+	zb0001Len := uint32(21)
+	var zb0001Mask uint32 /* 21 bits */
 	_ = zb0001Mask
 	if z.N == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x1
 	}
-	if z.ReadIOs == 0 {
+	if z.WithIOStats == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x2
 	}
-	if z.ReadMerges == 0 {
+	if z.ReadIOs == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x4
 	}
-	if z.ReadSectors == 0 {
+	if z.ReadMerges == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x8
 	}
-	if z.ReadTicks == 0 {
+	if z.ReadSectors == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x10
 	}
-	if z.WriteIOs == 0 {
+	if z.ReadTicks == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x20
 	}
-	if z.WriteMerges == 0 {
+	if z.WriteIOs == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x40
 	}
-	if z.WriteSectors == 0 {
+	if z.WriteMerges == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x80
 	}
-	if z.WriteTicks == 0 {
+	if z.WriteSectors == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x100
 	}
-	if z.CurrentIOs == 0 {
+	if z.WriteTicks == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x200
 	}
-	if z.TotalTicks == 0 {
+	if z.CurrentIOs == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x400
 	}
-	if z.ReqTicks == 0 {
+	if z.TotalTicks == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x800
 	}
-	if z.DiscardIOs == 0 {
+	if z.ReqTicks == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x1000
 	}
-	if z.DiscardMerges == 0 {
+	if z.DiscardIOs == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x2000
 	}
-	if z.DiscardSectors == 0 {
+	if z.DiscardMerges == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x4000
 	}
-	if z.DiscardTicks == 0 {
+	if z.DiscardSectors == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x8000
 	}
-	if z.FlushIOs == 0 {
+	if z.DiscardTicks == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x10000
 	}
-	if z.FlushTicks == 0 {
+	if z.FlushIOs == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x20000
 	}
-	if z.BitrotDetected == 0 {
+	if z.FlushTicks == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x40000
 	}
-	if z.BitrotHealed == 0 {
+	if z.BitrotDetected == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x80000
+	}
+	if z.BitrotHealed == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x100000
 	}
 	// variable map header, size zb0001Len
 	o = msgp.AppendMapHeader(o, zb0001Len)
@@ -7615,96 +7645,101 @@ func (z *DiskIOStats) MarshalMsg(b []byte) (o []byte, err error) {
 			o = msgp.AppendInt(o, z.N)
 		}
 		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// string "with_iostats"
+			o = append(o, 0xac, 0x77, 0x69, 0x74, 0x68, 0x5f, 0x69, 0x6f, 0x73, 0x74, 0x61, 0x74, 0x73)
+			o = msgp.AppendInt(o, z.WithIOStats)
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
 			// string "read_ios"
 			o = append(o, 0xa8, 0x72, 0x65, 0x61, 0x64, 0x5f, 0x69, 0x6f, 0x73)
 			o = msgp.AppendUint64(o, z.ReadIOs)
 		}
-		if (zb0001Mask & 0x4) == 0 { // if not omitted
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
 			// string "read_merges"
 			o = append(o, 0xab, 0x72, 0x65, 0x61, 0x64, 0x5f, 0x6d, 0x65, 0x72, 0x67, 0x65, 0x73)
 			o = msgp.AppendUint64(o, z.ReadMerges)
 		}
-		if (zb0001Mask & 0x8) == 0 { // if not omitted
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
 			// string "read_sectors"
 			o = append(o, 0xac, 0x72, 0x65, 0x61, 0x64, 0x5f, 0x73, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x73)
 			o = msgp.AppendUint64(o, z.ReadSectors)
 		}
-		if (zb0001Mask & 0x10) == 0 { // if not omitted
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
 			// string "read_ticks"
 			o = append(o, 0xaa, 0x72, 0x65, 0x61, 0x64, 0x5f, 0x74, 0x69, 0x63, 0x6b, 0x73)
 			o = msgp.AppendUint64(o, z.ReadTicks)
 		}
-		if (zb0001Mask & 0x20) == 0 { // if not omitted
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
 			// string "write_ios"
 			o = append(o, 0xa9, 0x77, 0x72, 0x69, 0x74, 0x65, 0x5f, 0x69, 0x6f, 0x73)
 			o = msgp.AppendUint64(o, z.WriteIOs)
 		}
-		if (zb0001Mask & 0x40) == 0 { // if not omitted
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
 			// string "write_merges"
 			o = append(o, 0xac, 0x77, 0x72, 0x69, 0x74, 0x65, 0x5f, 0x6d, 0x65, 0x72, 0x67, 0x65, 0x73)
 			o = msgp.AppendUint64(o, z.WriteMerges)
 		}
-		if (zb0001Mask & 0x80) == 0 { // if not omitted
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
 			// string "write_sectors"
 			o = append(o, 0xad, 0x77, 0x72, 0x69, 0x74, 0x65, 0x5f, 0x73, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x73)
 			o = msgp.AppendUint64(o, z.WriteSectors)
 		}
-		if (zb0001Mask & 0x100) == 0 { // if not omitted
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
 			// string "write_ticks"
 			o = append(o, 0xab, 0x77, 0x72, 0x69, 0x74, 0x65, 0x5f, 0x74, 0x69, 0x63, 0x6b, 0x73)
 			o = msgp.AppendUint64(o, z.WriteTicks)
 		}
-		if (zb0001Mask & 0x200) == 0 { // if not omitted
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
 			// string "current_ios"
 			o = append(o, 0xab, 0x63, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74, 0x5f, 0x69, 0x6f, 0x73)
 			o = msgp.AppendUint64(o, z.CurrentIOs)
 		}
-		if (zb0001Mask & 0x400) == 0 { // if not omitted
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
 			// string "total_ticks"
 			o = append(o, 0xab, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x74, 0x69, 0x63, 0x6b, 0x73)
 			o = msgp.AppendUint64(o, z.TotalTicks)
 		}
-		if (zb0001Mask & 0x800) == 0 { // if not omitted
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
 			// string "req_ticks"
 			o = append(o, 0xa9, 0x72, 0x65, 0x71, 0x5f, 0x74, 0x69, 0x63, 0x6b, 0x73)
 			o = msgp.AppendUint64(o, z.ReqTicks)
 		}
-		if (zb0001Mask & 0x1000) == 0 { // if not omitted
+		if (zb0001Mask & 0x2000) == 0 { // if not omitted
 			// string "discard_ios"
 			o = append(o, 0xab, 0x64, 0x69, 0x73, 0x63, 0x61, 0x72, 0x64, 0x5f, 0x69, 0x6f, 0x73)
 			o = msgp.AppendUint64(o, z.DiscardIOs)
 		}
-		if (zb0001Mask & 0x2000) == 0 { // if not omitted
+		if (zb0001Mask & 0x4000) == 0 { // if not omitted
 			// string "discard_merges"
 			o = append(o, 0xae, 0x64, 0x69, 0x73, 0x63, 0x61, 0x72, 0x64, 0x5f, 0x6d, 0x65, 0x72, 0x67, 0x65, 0x73)
 			o = msgp.AppendUint64(o, z.DiscardMerges)
 		}
-		if (zb0001Mask & 0x4000) == 0 { // if not omitted
+		if (zb0001Mask & 0x8000) == 0 { // if not omitted
 			// string "discard_sectors"
 			o = append(o, 0xaf, 0x64, 0x69, 0x73, 0x63, 0x61, 0x72, 0x64, 0x5f, 0x73, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x73)
 			o = msgp.AppendUint64(o, z.DiscardSectors)
 		}
-		if (zb0001Mask & 0x8000) == 0 { // if not omitted
+		if (zb0001Mask & 0x10000) == 0 { // if not omitted
 			// string "discard_ticks"
 			o = append(o, 0xad, 0x64, 0x69, 0x73, 0x63, 0x61, 0x72, 0x64, 0x5f, 0x74, 0x69, 0x63, 0x6b, 0x73)
 			o = msgp.AppendUint64(o, z.DiscardTicks)
 		}
-		if (zb0001Mask & 0x10000) == 0 { // if not omitted
+		if (zb0001Mask & 0x20000) == 0 { // if not omitted
 			// string "flush_ios"
 			o = append(o, 0xa9, 0x66, 0x6c, 0x75, 0x73, 0x68, 0x5f, 0x69, 0x6f, 0x73)
 			o = msgp.AppendUint64(o, z.FlushIOs)
 		}
-		if (zb0001Mask & 0x20000) == 0 { // if not omitted
+		if (zb0001Mask & 0x40000) == 0 { // if not omitted
 			// string "flush_ticks"
 			o = append(o, 0xab, 0x66, 0x6c, 0x75, 0x73, 0x68, 0x5f, 0x74, 0x69, 0x63, 0x6b, 0x73)
 			o = msgp.AppendUint64(o, z.FlushTicks)
 		}
-		if (zb0001Mask & 0x40000) == 0 { // if not omitted
+		if (zb0001Mask & 0x80000) == 0 { // if not omitted
 			// string "bitrot_detected"
 			o = append(o, 0xaf, 0x62, 0x69, 0x74, 0x72, 0x6f, 0x74, 0x5f, 0x64, 0x65, 0x74, 0x65, 0x63, 0x74, 0x65, 0x64)
 			o = msgp.AppendUint64(o, z.BitrotDetected)
 		}
-		if (zb0001Mask & 0x80000) == 0 { // if not omitted
+		if (zb0001Mask & 0x100000) == 0 { // if not omitted
 			// string "bitrot_healed"
 			o = append(o, 0xad, 0x62, 0x69, 0x74, 0x72, 0x6f, 0x74, 0x5f, 0x68, 0x65, 0x61, 0x6c, 0x65, 0x64)
 			o = msgp.AppendUint64(o, z.BitrotHealed)
@@ -7723,7 +7758,7 @@ func (z *DiskIOStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint32 /* 20 bits */
+	var zb0001Mask uint32 /* 21 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -7740,139 +7775,146 @@ func (z *DiskIOStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 			zb0001Mask |= 0x1
+		case "with_iostats":
+			z.WithIOStats, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "WithIOStats")
+				return
+			}
+			zb0001Mask |= 0x2
 		case "read_ios":
 			z.ReadIOs, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ReadIOs")
 				return
 			}
-			zb0001Mask |= 0x2
+			zb0001Mask |= 0x4
 		case "read_merges":
 			z.ReadMerges, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ReadMerges")
 				return
 			}
-			zb0001Mask |= 0x4
+			zb0001Mask |= 0x8
 		case "read_sectors":
 			z.ReadSectors, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ReadSectors")
 				return
 			}
-			zb0001Mask |= 0x8
+			zb0001Mask |= 0x10
 		case "read_ticks":
 			z.ReadTicks, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ReadTicks")
 				return
 			}
-			zb0001Mask |= 0x10
+			zb0001Mask |= 0x20
 		case "write_ios":
 			z.WriteIOs, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "WriteIOs")
 				return
 			}
-			zb0001Mask |= 0x20
+			zb0001Mask |= 0x40
 		case "write_merges":
 			z.WriteMerges, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "WriteMerges")
 				return
 			}
-			zb0001Mask |= 0x40
+			zb0001Mask |= 0x80
 		case "write_sectors":
 			z.WriteSectors, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "WriteSectors")
 				return
 			}
-			zb0001Mask |= 0x80
+			zb0001Mask |= 0x100
 		case "write_ticks":
 			z.WriteTicks, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "WriteTicks")
 				return
 			}
-			zb0001Mask |= 0x100
+			zb0001Mask |= 0x200
 		case "current_ios":
 			z.CurrentIOs, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "CurrentIOs")
 				return
 			}
-			zb0001Mask |= 0x200
+			zb0001Mask |= 0x400
 		case "total_ticks":
 			z.TotalTicks, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "TotalTicks")
 				return
 			}
-			zb0001Mask |= 0x400
+			zb0001Mask |= 0x800
 		case "req_ticks":
 			z.ReqTicks, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ReqTicks")
 				return
 			}
-			zb0001Mask |= 0x800
+			zb0001Mask |= 0x1000
 		case "discard_ios":
 			z.DiscardIOs, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "DiscardIOs")
 				return
 			}
-			zb0001Mask |= 0x1000
+			zb0001Mask |= 0x2000
 		case "discard_merges":
 			z.DiscardMerges, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "DiscardMerges")
 				return
 			}
-			zb0001Mask |= 0x2000
+			zb0001Mask |= 0x4000
 		case "discard_sectors":
 			z.DiscardSectors, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "DiscardSectors")
 				return
 			}
-			zb0001Mask |= 0x4000
+			zb0001Mask |= 0x8000
 		case "discard_ticks":
 			z.DiscardTicks, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "DiscardTicks")
 				return
 			}
-			zb0001Mask |= 0x8000
+			zb0001Mask |= 0x10000
 		case "flush_ios":
 			z.FlushIOs, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "FlushIOs")
 				return
 			}
-			zb0001Mask |= 0x10000
+			zb0001Mask |= 0x20000
 		case "flush_ticks":
 			z.FlushTicks, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "FlushTicks")
 				return
 			}
-			zb0001Mask |= 0x20000
+			zb0001Mask |= 0x40000
 		case "bitrot_detected":
 			z.BitrotDetected, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "BitrotDetected")
 				return
 			}
-			zb0001Mask |= 0x40000
+			zb0001Mask |= 0x80000
 		case "bitrot_healed":
 			z.BitrotHealed, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "BitrotHealed")
 				return
 			}
-			zb0001Mask |= 0x80000
+			zb0001Mask |= 0x100000
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -7882,65 +7924,68 @@ func (z *DiskIOStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xfffff {
+	if zb0001Mask != 0x1fffff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.N = 0
 		}
 		if (zb0001Mask & 0x2) == 0 {
-			z.ReadIOs = 0
+			z.WithIOStats = 0
 		}
 		if (zb0001Mask & 0x4) == 0 {
-			z.ReadMerges = 0
+			z.ReadIOs = 0
 		}
 		if (zb0001Mask & 0x8) == 0 {
-			z.ReadSectors = 0
+			z.ReadMerges = 0
 		}
 		if (zb0001Mask & 0x10) == 0 {
-			z.ReadTicks = 0
+			z.ReadSectors = 0
 		}
 		if (zb0001Mask & 0x20) == 0 {
-			z.WriteIOs = 0
+			z.ReadTicks = 0
 		}
 		if (zb0001Mask & 0x40) == 0 {
-			z.WriteMerges = 0
+			z.WriteIOs = 0
 		}
 		if (zb0001Mask & 0x80) == 0 {
-			z.WriteSectors = 0
+			z.WriteMerges = 0
 		}
 		if (zb0001Mask & 0x100) == 0 {
-			z.WriteTicks = 0
+			z.WriteSectors = 0
 		}
 		if (zb0001Mask & 0x200) == 0 {
-			z.CurrentIOs = 0
+			z.WriteTicks = 0
 		}
 		if (zb0001Mask & 0x400) == 0 {
-			z.TotalTicks = 0
+			z.CurrentIOs = 0
 		}
 		if (zb0001Mask & 0x800) == 0 {
-			z.ReqTicks = 0
+			z.TotalTicks = 0
 		}
 		if (zb0001Mask & 0x1000) == 0 {
-			z.DiscardIOs = 0
+			z.ReqTicks = 0
 		}
 		if (zb0001Mask & 0x2000) == 0 {
-			z.DiscardMerges = 0
+			z.DiscardIOs = 0
 		}
 		if (zb0001Mask & 0x4000) == 0 {
-			z.DiscardSectors = 0
+			z.DiscardMerges = 0
 		}
 		if (zb0001Mask & 0x8000) == 0 {
-			z.DiscardTicks = 0
+			z.DiscardSectors = 0
 		}
 		if (zb0001Mask & 0x10000) == 0 {
-			z.FlushIOs = 0
+			z.DiscardTicks = 0
 		}
 		if (zb0001Mask & 0x20000) == 0 {
-			z.FlushTicks = 0
+			z.FlushIOs = 0
 		}
 		if (zb0001Mask & 0x40000) == 0 {
-			z.BitrotDetected = 0
+			z.FlushTicks = 0
 		}
 		if (zb0001Mask & 0x80000) == 0 {
+			z.BitrotDetected = 0
+		}
+		if (zb0001Mask & 0x100000) == 0 {
 			z.BitrotHealed = 0
 		}
 	}
@@ -7950,7 +7995,7 @@ func (z *DiskIOStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *DiskIOStats) Msgsize() (s int) {
-	s = 3 + 2 + msgp.IntSize + 9 + msgp.Uint64Size + 12 + msgp.Uint64Size + 13 + msgp.Uint64Size + 11 + msgp.Uint64Size + 10 + msgp.Uint64Size + 13 + msgp.Uint64Size + 14 + msgp.Uint64Size + 12 + msgp.Uint64Size + 12 + msgp.Uint64Size + 12 + msgp.Uint64Size + 10 + msgp.Uint64Size + 12 + msgp.Uint64Size + 15 + msgp.Uint64Size + 16 + msgp.Uint64Size + 14 + msgp.Uint64Size + 10 + msgp.Uint64Size + 12 + msgp.Uint64Size + 16 + msgp.Uint64Size + 14 + msgp.Uint64Size
+	s = 3 + 2 + msgp.IntSize + 13 + msgp.IntSize + 9 + msgp.Uint64Size + 12 + msgp.Uint64Size + 13 + msgp.Uint64Size + 11 + msgp.Uint64Size + 10 + msgp.Uint64Size + 13 + msgp.Uint64Size + 14 + msgp.Uint64Size + 12 + msgp.Uint64Size + 12 + msgp.Uint64Size + 12 + msgp.Uint64Size + 10 + msgp.Uint64Size + 12 + msgp.Uint64Size + 15 + msgp.Uint64Size + 16 + msgp.Uint64Size + 14 + msgp.Uint64Size + 10 + msgp.Uint64Size + 12 + msgp.Uint64Size + 16 + msgp.Uint64Size + 14 + msgp.Uint64Size
 	return
 }
 
@@ -7964,7 +8009,7 @@ func (z *DiskIOStatsLegacy) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint32 /* 20 bits */
+	var zb0001Mask uint32 /* 21 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -7981,139 +8026,146 @@ func (z *DiskIOStatsLegacy) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 			zb0001Mask |= 0x1
+		case "with_iostats":
+			z.WithIOStats, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "WithIOStats")
+				return
+			}
+			zb0001Mask |= 0x2
 		case "read_ios":
 			z.ReadIOs, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "ReadIOs")
 				return
 			}
-			zb0001Mask |= 0x2
+			zb0001Mask |= 0x4
 		case "read_merges":
 			z.ReadMerges, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "ReadMerges")
 				return
 			}
-			zb0001Mask |= 0x4
+			zb0001Mask |= 0x8
 		case "read_sectors":
 			z.ReadSectors, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "ReadSectors")
 				return
 			}
-			zb0001Mask |= 0x8
+			zb0001Mask |= 0x10
 		case "read_ticks":
 			z.ReadTicks, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "ReadTicks")
 				return
 			}
-			zb0001Mask |= 0x10
+			zb0001Mask |= 0x20
 		case "write_ios":
 			z.WriteIOs, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "WriteIOs")
 				return
 			}
-			zb0001Mask |= 0x20
+			zb0001Mask |= 0x40
 		case "write_merges":
 			z.WriteMerges, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "WriteMerges")
 				return
 			}
-			zb0001Mask |= 0x40
+			zb0001Mask |= 0x80
 		case "wrte_sectors":
 			z.WriteSectors, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "WriteSectors")
 				return
 			}
-			zb0001Mask |= 0x80
+			zb0001Mask |= 0x100
 		case "write_ticks":
 			z.WriteTicks, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "WriteTicks")
 				return
 			}
-			zb0001Mask |= 0x100
+			zb0001Mask |= 0x200
 		case "current_ios":
 			z.CurrentIOs, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "CurrentIOs")
 				return
 			}
-			zb0001Mask |= 0x200
+			zb0001Mask |= 0x400
 		case "total_ticks":
 			z.TotalTicks, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "TotalTicks")
 				return
 			}
-			zb0001Mask |= 0x400
+			zb0001Mask |= 0x800
 		case "req_ticks":
 			z.ReqTicks, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "ReqTicks")
 				return
 			}
-			zb0001Mask |= 0x800
+			zb0001Mask |= 0x1000
 		case "discard_ios":
 			z.DiscardIOs, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "DiscardIOs")
 				return
 			}
-			zb0001Mask |= 0x1000
+			zb0001Mask |= 0x2000
 		case "discard_merges":
 			z.DiscardMerges, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "DiscardMerges")
 				return
 			}
-			zb0001Mask |= 0x2000
+			zb0001Mask |= 0x4000
 		case "discard_secotrs":
 			z.DiscardSectors, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "DiscardSectors")
 				return
 			}
-			zb0001Mask |= 0x4000
+			zb0001Mask |= 0x8000
 		case "discard_ticks":
 			z.DiscardTicks, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "DiscardTicks")
 				return
 			}
-			zb0001Mask |= 0x8000
+			zb0001Mask |= 0x10000
 		case "flush_ios":
 			z.FlushIOs, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "FlushIOs")
 				return
 			}
-			zb0001Mask |= 0x10000
+			zb0001Mask |= 0x20000
 		case "flush_ticks":
 			z.FlushTicks, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "FlushTicks")
 				return
 			}
-			zb0001Mask |= 0x20000
+			zb0001Mask |= 0x40000
 		case "bitrot_detected":
 			z.BitrotDetected, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "BitrotDetected")
 				return
 			}
-			zb0001Mask |= 0x40000
+			zb0001Mask |= 0x80000
 		case "bitrot_healed":
 			z.BitrotHealed, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "BitrotHealed")
 				return
 			}
-			zb0001Mask |= 0x80000
+			zb0001Mask |= 0x100000
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -8123,65 +8175,68 @@ func (z *DiskIOStatsLegacy) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xfffff {
+	if zb0001Mask != 0x1fffff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.N = 0
 		}
 		if (zb0001Mask & 0x2) == 0 {
-			z.ReadIOs = 0
+			z.WithIOStats = 0
 		}
 		if (zb0001Mask & 0x4) == 0 {
-			z.ReadMerges = 0
+			z.ReadIOs = 0
 		}
 		if (zb0001Mask & 0x8) == 0 {
-			z.ReadSectors = 0
+			z.ReadMerges = 0
 		}
 		if (zb0001Mask & 0x10) == 0 {
-			z.ReadTicks = 0
+			z.ReadSectors = 0
 		}
 		if (zb0001Mask & 0x20) == 0 {
-			z.WriteIOs = 0
+			z.ReadTicks = 0
 		}
 		if (zb0001Mask & 0x40) == 0 {
-			z.WriteMerges = 0
+			z.WriteIOs = 0
 		}
 		if (zb0001Mask & 0x80) == 0 {
-			z.WriteSectors = 0
+			z.WriteMerges = 0
 		}
 		if (zb0001Mask & 0x100) == 0 {
-			z.WriteTicks = 0
+			z.WriteSectors = 0
 		}
 		if (zb0001Mask & 0x200) == 0 {
-			z.CurrentIOs = 0
+			z.WriteTicks = 0
 		}
 		if (zb0001Mask & 0x400) == 0 {
-			z.TotalTicks = 0
+			z.CurrentIOs = 0
 		}
 		if (zb0001Mask & 0x800) == 0 {
-			z.ReqTicks = 0
+			z.TotalTicks = 0
 		}
 		if (zb0001Mask & 0x1000) == 0 {
-			z.DiscardIOs = 0
+			z.ReqTicks = 0
 		}
 		if (zb0001Mask & 0x2000) == 0 {
-			z.DiscardMerges = 0
+			z.DiscardIOs = 0
 		}
 		if (zb0001Mask & 0x4000) == 0 {
-			z.DiscardSectors = 0
+			z.DiscardMerges = 0
 		}
 		if (zb0001Mask & 0x8000) == 0 {
-			z.DiscardTicks = 0
+			z.DiscardSectors = 0
 		}
 		if (zb0001Mask & 0x10000) == 0 {
-			z.FlushIOs = 0
+			z.DiscardTicks = 0
 		}
 		if (zb0001Mask & 0x20000) == 0 {
-			z.FlushTicks = 0
+			z.FlushIOs = 0
 		}
 		if (zb0001Mask & 0x40000) == 0 {
-			z.BitrotDetected = 0
+			z.FlushTicks = 0
 		}
 		if (zb0001Mask & 0x80000) == 0 {
+			z.BitrotDetected = 0
+		}
+		if (zb0001Mask & 0x100000) == 0 {
 			z.BitrotHealed = 0
 		}
 	}
@@ -8191,88 +8246,92 @@ func (z *DiskIOStatsLegacy) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *DiskIOStatsLegacy) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(20)
-	var zb0001Mask uint32 /* 20 bits */
+	zb0001Len := uint32(21)
+	var zb0001Mask uint32 /* 21 bits */
 	_ = zb0001Mask
 	if z.N == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x1
 	}
-	if z.ReadIOs == 0 {
+	if z.WithIOStats == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x2
 	}
-	if z.ReadMerges == 0 {
+	if z.ReadIOs == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x4
 	}
-	if z.ReadSectors == 0 {
+	if z.ReadMerges == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x8
 	}
-	if z.ReadTicks == 0 {
+	if z.ReadSectors == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x10
 	}
-	if z.WriteIOs == 0 {
+	if z.ReadTicks == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x20
 	}
-	if z.WriteMerges == 0 {
+	if z.WriteIOs == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x40
 	}
-	if z.WriteSectors == 0 {
+	if z.WriteMerges == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x80
 	}
-	if z.WriteTicks == 0 {
+	if z.WriteSectors == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x100
 	}
-	if z.CurrentIOs == 0 {
+	if z.WriteTicks == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x200
 	}
-	if z.TotalTicks == 0 {
+	if z.CurrentIOs == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x400
 	}
-	if z.ReqTicks == 0 {
+	if z.TotalTicks == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x800
 	}
-	if z.DiscardIOs == 0 {
+	if z.ReqTicks == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x1000
 	}
-	if z.DiscardMerges == 0 {
+	if z.DiscardIOs == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x2000
 	}
-	if z.DiscardSectors == 0 {
+	if z.DiscardMerges == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x4000
 	}
-	if z.DiscardTicks == 0 {
+	if z.DiscardSectors == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x8000
 	}
-	if z.FlushIOs == 0 {
+	if z.DiscardTicks == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x10000
 	}
-	if z.FlushTicks == 0 {
+	if z.FlushIOs == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x20000
 	}
-	if z.BitrotDetected == 0 {
+	if z.FlushTicks == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x40000
 	}
-	if z.BitrotHealed == 0 {
+	if z.BitrotDetected == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x80000
+	}
+	if z.BitrotHealed == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x100000
 	}
 	// variable map header, size zb0001Len
 	err = en.WriteMapHeader(zb0001Len)
@@ -8295,6 +8354,18 @@ func (z *DiskIOStatsLegacy) EncodeMsg(en *msgp.Writer) (err error) {
 			}
 		}
 		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// write "with_iostats"
+			err = en.Append(0xac, 0x77, 0x69, 0x74, 0x68, 0x5f, 0x69, 0x6f, 0x73, 0x74, 0x61, 0x74, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt(z.WithIOStats)
+			if err != nil {
+				err = msgp.WrapError(err, "WithIOStats")
+				return
+			}
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
 			// write "read_ios"
 			err = en.Append(0xa8, 0x72, 0x65, 0x61, 0x64, 0x5f, 0x69, 0x6f, 0x73)
 			if err != nil {
@@ -8306,7 +8377,7 @@ func (z *DiskIOStatsLegacy) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x4) == 0 { // if not omitted
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
 			// write "read_merges"
 			err = en.Append(0xab, 0x72, 0x65, 0x61, 0x64, 0x5f, 0x6d, 0x65, 0x72, 0x67, 0x65, 0x73)
 			if err != nil {
@@ -8318,7 +8389,7 @@ func (z *DiskIOStatsLegacy) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x8) == 0 { // if not omitted
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
 			// write "read_sectors"
 			err = en.Append(0xac, 0x72, 0x65, 0x61, 0x64, 0x5f, 0x73, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x73)
 			if err != nil {
@@ -8330,7 +8401,7 @@ func (z *DiskIOStatsLegacy) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x10) == 0 { // if not omitted
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
 			// write "read_ticks"
 			err = en.Append(0xaa, 0x72, 0x65, 0x61, 0x64, 0x5f, 0x74, 0x69, 0x63, 0x6b, 0x73)
 			if err != nil {
@@ -8342,7 +8413,7 @@ func (z *DiskIOStatsLegacy) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x20) == 0 { // if not omitted
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
 			// write "write_ios"
 			err = en.Append(0xa9, 0x77, 0x72, 0x69, 0x74, 0x65, 0x5f, 0x69, 0x6f, 0x73)
 			if err != nil {
@@ -8354,7 +8425,7 @@ func (z *DiskIOStatsLegacy) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x40) == 0 { // if not omitted
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
 			// write "write_merges"
 			err = en.Append(0xac, 0x77, 0x72, 0x69, 0x74, 0x65, 0x5f, 0x6d, 0x65, 0x72, 0x67, 0x65, 0x73)
 			if err != nil {
@@ -8366,7 +8437,7 @@ func (z *DiskIOStatsLegacy) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x80) == 0 { // if not omitted
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
 			// write "wrte_sectors"
 			err = en.Append(0xac, 0x77, 0x72, 0x74, 0x65, 0x5f, 0x73, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x73)
 			if err != nil {
@@ -8378,7 +8449,7 @@ func (z *DiskIOStatsLegacy) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x100) == 0 { // if not omitted
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
 			// write "write_ticks"
 			err = en.Append(0xab, 0x77, 0x72, 0x69, 0x74, 0x65, 0x5f, 0x74, 0x69, 0x63, 0x6b, 0x73)
 			if err != nil {
@@ -8390,7 +8461,7 @@ func (z *DiskIOStatsLegacy) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x200) == 0 { // if not omitted
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
 			// write "current_ios"
 			err = en.Append(0xab, 0x63, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74, 0x5f, 0x69, 0x6f, 0x73)
 			if err != nil {
@@ -8402,7 +8473,7 @@ func (z *DiskIOStatsLegacy) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x400) == 0 { // if not omitted
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
 			// write "total_ticks"
 			err = en.Append(0xab, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x74, 0x69, 0x63, 0x6b, 0x73)
 			if err != nil {
@@ -8414,7 +8485,7 @@ func (z *DiskIOStatsLegacy) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x800) == 0 { // if not omitted
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
 			// write "req_ticks"
 			err = en.Append(0xa9, 0x72, 0x65, 0x71, 0x5f, 0x74, 0x69, 0x63, 0x6b, 0x73)
 			if err != nil {
@@ -8426,7 +8497,7 @@ func (z *DiskIOStatsLegacy) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x1000) == 0 { // if not omitted
+		if (zb0001Mask & 0x2000) == 0 { // if not omitted
 			// write "discard_ios"
 			err = en.Append(0xab, 0x64, 0x69, 0x73, 0x63, 0x61, 0x72, 0x64, 0x5f, 0x69, 0x6f, 0x73)
 			if err != nil {
@@ -8438,7 +8509,7 @@ func (z *DiskIOStatsLegacy) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x2000) == 0 { // if not omitted
+		if (zb0001Mask & 0x4000) == 0 { // if not omitted
 			// write "discard_merges"
 			err = en.Append(0xae, 0x64, 0x69, 0x73, 0x63, 0x61, 0x72, 0x64, 0x5f, 0x6d, 0x65, 0x72, 0x67, 0x65, 0x73)
 			if err != nil {
@@ -8450,7 +8521,7 @@ func (z *DiskIOStatsLegacy) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x4000) == 0 { // if not omitted
+		if (zb0001Mask & 0x8000) == 0 { // if not omitted
 			// write "discard_secotrs"
 			err = en.Append(0xaf, 0x64, 0x69, 0x73, 0x63, 0x61, 0x72, 0x64, 0x5f, 0x73, 0x65, 0x63, 0x6f, 0x74, 0x72, 0x73)
 			if err != nil {
@@ -8462,7 +8533,7 @@ func (z *DiskIOStatsLegacy) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x8000) == 0 { // if not omitted
+		if (zb0001Mask & 0x10000) == 0 { // if not omitted
 			// write "discard_ticks"
 			err = en.Append(0xad, 0x64, 0x69, 0x73, 0x63, 0x61, 0x72, 0x64, 0x5f, 0x74, 0x69, 0x63, 0x6b, 0x73)
 			if err != nil {
@@ -8474,7 +8545,7 @@ func (z *DiskIOStatsLegacy) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x10000) == 0 { // if not omitted
+		if (zb0001Mask & 0x20000) == 0 { // if not omitted
 			// write "flush_ios"
 			err = en.Append(0xa9, 0x66, 0x6c, 0x75, 0x73, 0x68, 0x5f, 0x69, 0x6f, 0x73)
 			if err != nil {
@@ -8486,7 +8557,7 @@ func (z *DiskIOStatsLegacy) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x20000) == 0 { // if not omitted
+		if (zb0001Mask & 0x40000) == 0 { // if not omitted
 			// write "flush_ticks"
 			err = en.Append(0xab, 0x66, 0x6c, 0x75, 0x73, 0x68, 0x5f, 0x74, 0x69, 0x63, 0x6b, 0x73)
 			if err != nil {
@@ -8498,7 +8569,7 @@ func (z *DiskIOStatsLegacy) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x40000) == 0 { // if not omitted
+		if (zb0001Mask & 0x80000) == 0 { // if not omitted
 			// write "bitrot_detected"
 			err = en.Append(0xaf, 0x62, 0x69, 0x74, 0x72, 0x6f, 0x74, 0x5f, 0x64, 0x65, 0x74, 0x65, 0x63, 0x74, 0x65, 0x64)
 			if err != nil {
@@ -8510,7 +8581,7 @@ func (z *DiskIOStatsLegacy) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x80000) == 0 { // if not omitted
+		if (zb0001Mask & 0x100000) == 0 { // if not omitted
 			// write "bitrot_healed"
 			err = en.Append(0xad, 0x62, 0x69, 0x74, 0x72, 0x6f, 0x74, 0x5f, 0x68, 0x65, 0x61, 0x6c, 0x65, 0x64)
 			if err != nil {
@@ -8530,88 +8601,92 @@ func (z *DiskIOStatsLegacy) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *DiskIOStatsLegacy) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(20)
-	var zb0001Mask uint32 /* 20 bits */
+	zb0001Len := uint32(21)
+	var zb0001Mask uint32 /* 21 bits */
 	_ = zb0001Mask
 	if z.N == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x1
 	}
-	if z.ReadIOs == 0 {
+	if z.WithIOStats == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x2
 	}
-	if z.ReadMerges == 0 {
+	if z.ReadIOs == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x4
 	}
-	if z.ReadSectors == 0 {
+	if z.ReadMerges == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x8
 	}
-	if z.ReadTicks == 0 {
+	if z.ReadSectors == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x10
 	}
-	if z.WriteIOs == 0 {
+	if z.ReadTicks == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x20
 	}
-	if z.WriteMerges == 0 {
+	if z.WriteIOs == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x40
 	}
-	if z.WriteSectors == 0 {
+	if z.WriteMerges == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x80
 	}
-	if z.WriteTicks == 0 {
+	if z.WriteSectors == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x100
 	}
-	if z.CurrentIOs == 0 {
+	if z.WriteTicks == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x200
 	}
-	if z.TotalTicks == 0 {
+	if z.CurrentIOs == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x400
 	}
-	if z.ReqTicks == 0 {
+	if z.TotalTicks == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x800
 	}
-	if z.DiscardIOs == 0 {
+	if z.ReqTicks == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x1000
 	}
-	if z.DiscardMerges == 0 {
+	if z.DiscardIOs == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x2000
 	}
-	if z.DiscardSectors == 0 {
+	if z.DiscardMerges == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x4000
 	}
-	if z.DiscardTicks == 0 {
+	if z.DiscardSectors == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x8000
 	}
-	if z.FlushIOs == 0 {
+	if z.DiscardTicks == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x10000
 	}
-	if z.FlushTicks == 0 {
+	if z.FlushIOs == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x20000
 	}
-	if z.BitrotDetected == 0 {
+	if z.FlushTicks == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x40000
 	}
-	if z.BitrotHealed == 0 {
+	if z.BitrotDetected == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x80000
+	}
+	if z.BitrotHealed == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x100000
 	}
 	// variable map header, size zb0001Len
 	o = msgp.AppendMapHeader(o, zb0001Len)
@@ -8624,96 +8699,101 @@ func (z *DiskIOStatsLegacy) MarshalMsg(b []byte) (o []byte, err error) {
 			o = msgp.AppendInt(o, z.N)
 		}
 		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// string "with_iostats"
+			o = append(o, 0xac, 0x77, 0x69, 0x74, 0x68, 0x5f, 0x69, 0x6f, 0x73, 0x74, 0x61, 0x74, 0x73)
+			o = msgp.AppendInt(o, z.WithIOStats)
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
 			// string "read_ios"
 			o = append(o, 0xa8, 0x72, 0x65, 0x61, 0x64, 0x5f, 0x69, 0x6f, 0x73)
 			o = msgp.AppendUint64(o, z.ReadIOs)
 		}
-		if (zb0001Mask & 0x4) == 0 { // if not omitted
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
 			// string "read_merges"
 			o = append(o, 0xab, 0x72, 0x65, 0x61, 0x64, 0x5f, 0x6d, 0x65, 0x72, 0x67, 0x65, 0x73)
 			o = msgp.AppendUint64(o, z.ReadMerges)
 		}
-		if (zb0001Mask & 0x8) == 0 { // if not omitted
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
 			// string "read_sectors"
 			o = append(o, 0xac, 0x72, 0x65, 0x61, 0x64, 0x5f, 0x73, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x73)
 			o = msgp.AppendUint64(o, z.ReadSectors)
 		}
-		if (zb0001Mask & 0x10) == 0 { // if not omitted
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
 			// string "read_ticks"
 			o = append(o, 0xaa, 0x72, 0x65, 0x61, 0x64, 0x5f, 0x74, 0x69, 0x63, 0x6b, 0x73)
 			o = msgp.AppendUint64(o, z.ReadTicks)
 		}
-		if (zb0001Mask & 0x20) == 0 { // if not omitted
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
 			// string "write_ios"
 			o = append(o, 0xa9, 0x77, 0x72, 0x69, 0x74, 0x65, 0x5f, 0x69, 0x6f, 0x73)
 			o = msgp.AppendUint64(o, z.WriteIOs)
 		}
-		if (zb0001Mask & 0x40) == 0 { // if not omitted
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
 			// string "write_merges"
 			o = append(o, 0xac, 0x77, 0x72, 0x69, 0x74, 0x65, 0x5f, 0x6d, 0x65, 0x72, 0x67, 0x65, 0x73)
 			o = msgp.AppendUint64(o, z.WriteMerges)
 		}
-		if (zb0001Mask & 0x80) == 0 { // if not omitted
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
 			// string "wrte_sectors"
 			o = append(o, 0xac, 0x77, 0x72, 0x74, 0x65, 0x5f, 0x73, 0x65, 0x63, 0x74, 0x6f, 0x72, 0x73)
 			o = msgp.AppendUint64(o, z.WriteSectors)
 		}
-		if (zb0001Mask & 0x100) == 0 { // if not omitted
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
 			// string "write_ticks"
 			o = append(o, 0xab, 0x77, 0x72, 0x69, 0x74, 0x65, 0x5f, 0x74, 0x69, 0x63, 0x6b, 0x73)
 			o = msgp.AppendUint64(o, z.WriteTicks)
 		}
-		if (zb0001Mask & 0x200) == 0 { // if not omitted
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
 			// string "current_ios"
 			o = append(o, 0xab, 0x63, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74, 0x5f, 0x69, 0x6f, 0x73)
 			o = msgp.AppendUint64(o, z.CurrentIOs)
 		}
-		if (zb0001Mask & 0x400) == 0 { // if not omitted
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
 			// string "total_ticks"
 			o = append(o, 0xab, 0x74, 0x6f, 0x74, 0x61, 0x6c, 0x5f, 0x74, 0x69, 0x63, 0x6b, 0x73)
 			o = msgp.AppendUint64(o, z.TotalTicks)
 		}
-		if (zb0001Mask & 0x800) == 0 { // if not omitted
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
 			// string "req_ticks"
 			o = append(o, 0xa9, 0x72, 0x65, 0x71, 0x5f, 0x74, 0x69, 0x63, 0x6b, 0x73)
 			o = msgp.AppendUint64(o, z.ReqTicks)
 		}
-		if (zb0001Mask & 0x1000) == 0 { // if not omitted
+		if (zb0001Mask & 0x2000) == 0 { // if not omitted
 			// string "discard_ios"
 			o = append(o, 0xab, 0x64, 0x69, 0x73, 0x63, 0x61, 0x72, 0x64, 0x5f, 0x69, 0x6f, 0x73)
 			o = msgp.AppendUint64(o, z.DiscardIOs)
 		}
-		if (zb0001Mask & 0x2000) == 0 { // if not omitted
+		if (zb0001Mask & 0x4000) == 0 { // if not omitted
 			// string "discard_merges"
 			o = append(o, 0xae, 0x64, 0x69, 0x73, 0x63, 0x61, 0x72, 0x64, 0x5f, 0x6d, 0x65, 0x72, 0x67, 0x65, 0x73)
 			o = msgp.AppendUint64(o, z.DiscardMerges)
 		}
-		if (zb0001Mask & 0x4000) == 0 { // if not omitted
+		if (zb0001Mask & 0x8000) == 0 { // if not omitted
 			// string "discard_secotrs"
 			o = append(o, 0xaf, 0x64, 0x69, 0x73, 0x63, 0x61, 0x72, 0x64, 0x5f, 0x73, 0x65, 0x63, 0x6f, 0x74, 0x72, 0x73)
 			o = msgp.AppendUint64(o, z.DiscardSectors)
 		}
-		if (zb0001Mask & 0x8000) == 0 { // if not omitted
+		if (zb0001Mask & 0x10000) == 0 { // if not omitted
 			// string "discard_ticks"
 			o = append(o, 0xad, 0x64, 0x69, 0x73, 0x63, 0x61, 0x72, 0x64, 0x5f, 0x74, 0x69, 0x63, 0x6b, 0x73)
 			o = msgp.AppendUint64(o, z.DiscardTicks)
 		}
-		if (zb0001Mask & 0x10000) == 0 { // if not omitted
+		if (zb0001Mask & 0x20000) == 0 { // if not omitted
 			// string "flush_ios"
 			o = append(o, 0xa9, 0x66, 0x6c, 0x75, 0x73, 0x68, 0x5f, 0x69, 0x6f, 0x73)
 			o = msgp.AppendUint64(o, z.FlushIOs)
 		}
-		if (zb0001Mask & 0x20000) == 0 { // if not omitted
+		if (zb0001Mask & 0x40000) == 0 { // if not omitted
 			// string "flush_ticks"
 			o = append(o, 0xab, 0x66, 0x6c, 0x75, 0x73, 0x68, 0x5f, 0x74, 0x69, 0x63, 0x6b, 0x73)
 			o = msgp.AppendUint64(o, z.FlushTicks)
 		}
-		if (zb0001Mask & 0x40000) == 0 { // if not omitted
+		if (zb0001Mask & 0x80000) == 0 { // if not omitted
 			// string "bitrot_detected"
 			o = append(o, 0xaf, 0x62, 0x69, 0x74, 0x72, 0x6f, 0x74, 0x5f, 0x64, 0x65, 0x74, 0x65, 0x63, 0x74, 0x65, 0x64)
 			o = msgp.AppendUint64(o, z.BitrotDetected)
 		}
-		if (zb0001Mask & 0x80000) == 0 { // if not omitted
+		if (zb0001Mask & 0x100000) == 0 { // if not omitted
 			// string "bitrot_healed"
 			o = append(o, 0xad, 0x62, 0x69, 0x74, 0x72, 0x6f, 0x74, 0x5f, 0x68, 0x65, 0x61, 0x6c, 0x65, 0x64)
 			o = msgp.AppendUint64(o, z.BitrotHealed)
@@ -8732,7 +8812,7 @@ func (z *DiskIOStatsLegacy) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint32 /* 20 bits */
+	var zb0001Mask uint32 /* 21 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -8749,139 +8829,146 @@ func (z *DiskIOStatsLegacy) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 			zb0001Mask |= 0x1
+		case "with_iostats":
+			z.WithIOStats, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "WithIOStats")
+				return
+			}
+			zb0001Mask |= 0x2
 		case "read_ios":
 			z.ReadIOs, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ReadIOs")
 				return
 			}
-			zb0001Mask |= 0x2
+			zb0001Mask |= 0x4
 		case "read_merges":
 			z.ReadMerges, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ReadMerges")
 				return
 			}
-			zb0001Mask |= 0x4
+			zb0001Mask |= 0x8
 		case "read_sectors":
 			z.ReadSectors, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ReadSectors")
 				return
 			}
-			zb0001Mask |= 0x8
+			zb0001Mask |= 0x10
 		case "read_ticks":
 			z.ReadTicks, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ReadTicks")
 				return
 			}
-			zb0001Mask |= 0x10
+			zb0001Mask |= 0x20
 		case "write_ios":
 			z.WriteIOs, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "WriteIOs")
 				return
 			}
-			zb0001Mask |= 0x20
+			zb0001Mask |= 0x40
 		case "write_merges":
 			z.WriteMerges, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "WriteMerges")
 				return
 			}
-			zb0001Mask |= 0x40
+			zb0001Mask |= 0x80
 		case "wrte_sectors":
 			z.WriteSectors, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "WriteSectors")
 				return
 			}
-			zb0001Mask |= 0x80
+			zb0001Mask |= 0x100
 		case "write_ticks":
 			z.WriteTicks, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "WriteTicks")
 				return
 			}
-			zb0001Mask |= 0x100
+			zb0001Mask |= 0x200
 		case "current_ios":
 			z.CurrentIOs, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "CurrentIOs")
 				return
 			}
-			zb0001Mask |= 0x200
+			zb0001Mask |= 0x400
 		case "total_ticks":
 			z.TotalTicks, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "TotalTicks")
 				return
 			}
-			zb0001Mask |= 0x400
+			zb0001Mask |= 0x800
 		case "req_ticks":
 			z.ReqTicks, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ReqTicks")
 				return
 			}
-			zb0001Mask |= 0x800
+			zb0001Mask |= 0x1000
 		case "discard_ios":
 			z.DiscardIOs, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "DiscardIOs")
 				return
 			}
-			zb0001Mask |= 0x1000
+			zb0001Mask |= 0x2000
 		case "discard_merges":
 			z.DiscardMerges, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "DiscardMerges")
 				return
 			}
-			zb0001Mask |= 0x2000
+			zb0001Mask |= 0x4000
 		case "discard_secotrs":
 			z.DiscardSectors, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "DiscardSectors")
 				return
 			}
-			zb0001Mask |= 0x4000
+			zb0001Mask |= 0x8000
 		case "discard_ticks":
 			z.DiscardTicks, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "DiscardTicks")
 				return
 			}
-			zb0001Mask |= 0x8000
+			zb0001Mask |= 0x10000
 		case "flush_ios":
 			z.FlushIOs, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "FlushIOs")
 				return
 			}
-			zb0001Mask |= 0x10000
+			zb0001Mask |= 0x20000
 		case "flush_ticks":
 			z.FlushTicks, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "FlushTicks")
 				return
 			}
-			zb0001Mask |= 0x20000
+			zb0001Mask |= 0x40000
 		case "bitrot_detected":
 			z.BitrotDetected, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "BitrotDetected")
 				return
 			}
-			zb0001Mask |= 0x40000
+			zb0001Mask |= 0x80000
 		case "bitrot_healed":
 			z.BitrotHealed, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "BitrotHealed")
 				return
 			}
-			zb0001Mask |= 0x80000
+			zb0001Mask |= 0x100000
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -8891,65 +8978,68 @@ func (z *DiskIOStatsLegacy) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xfffff {
+	if zb0001Mask != 0x1fffff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.N = 0
 		}
 		if (zb0001Mask & 0x2) == 0 {
-			z.ReadIOs = 0
+			z.WithIOStats = 0
 		}
 		if (zb0001Mask & 0x4) == 0 {
-			z.ReadMerges = 0
+			z.ReadIOs = 0
 		}
 		if (zb0001Mask & 0x8) == 0 {
-			z.ReadSectors = 0
+			z.ReadMerges = 0
 		}
 		if (zb0001Mask & 0x10) == 0 {
-			z.ReadTicks = 0
+			z.ReadSectors = 0
 		}
 		if (zb0001Mask & 0x20) == 0 {
-			z.WriteIOs = 0
+			z.ReadTicks = 0
 		}
 		if (zb0001Mask & 0x40) == 0 {
-			z.WriteMerges = 0
+			z.WriteIOs = 0
 		}
 		if (zb0001Mask & 0x80) == 0 {
-			z.WriteSectors = 0
+			z.WriteMerges = 0
 		}
 		if (zb0001Mask & 0x100) == 0 {
-			z.WriteTicks = 0
+			z.WriteSectors = 0
 		}
 		if (zb0001Mask & 0x200) == 0 {
-			z.CurrentIOs = 0
+			z.WriteTicks = 0
 		}
 		if (zb0001Mask & 0x400) == 0 {
-			z.TotalTicks = 0
+			z.CurrentIOs = 0
 		}
 		if (zb0001Mask & 0x800) == 0 {
-			z.ReqTicks = 0
+			z.TotalTicks = 0
 		}
 		if (zb0001Mask & 0x1000) == 0 {
-			z.DiscardIOs = 0
+			z.ReqTicks = 0
 		}
 		if (zb0001Mask & 0x2000) == 0 {
-			z.DiscardMerges = 0
+			z.DiscardIOs = 0
 		}
 		if (zb0001Mask & 0x4000) == 0 {
-			z.DiscardSectors = 0
+			z.DiscardMerges = 0
 		}
 		if (zb0001Mask & 0x8000) == 0 {
-			z.DiscardTicks = 0
+			z.DiscardSectors = 0
 		}
 		if (zb0001Mask & 0x10000) == 0 {
-			z.FlushIOs = 0
+			z.DiscardTicks = 0
 		}
 		if (zb0001Mask & 0x20000) == 0 {
-			z.FlushTicks = 0
+			z.FlushIOs = 0
 		}
 		if (zb0001Mask & 0x40000) == 0 {
-			z.BitrotDetected = 0
+			z.FlushTicks = 0
 		}
 		if (zb0001Mask & 0x80000) == 0 {
+			z.BitrotDetected = 0
+		}
+		if (zb0001Mask & 0x100000) == 0 {
 			z.BitrotHealed = 0
 		}
 	}
@@ -8959,7 +9049,7 @@ func (z *DiskIOStatsLegacy) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *DiskIOStatsLegacy) Msgsize() (s int) {
-	s = 3 + 2 + msgp.IntSize + 9 + msgp.Uint64Size + 12 + msgp.Uint64Size + 13 + msgp.Uint64Size + 11 + msgp.Uint64Size + 10 + msgp.Uint64Size + 13 + msgp.Uint64Size + 13 + msgp.Uint64Size + 12 + msgp.Uint64Size + 12 + msgp.Uint64Size + 12 + msgp.Uint64Size + 10 + msgp.Uint64Size + 12 + msgp.Uint64Size + 15 + msgp.Uint64Size + 16 + msgp.Uint64Size + 14 + msgp.Uint64Size + 10 + msgp.Uint64Size + 12 + msgp.Uint64Size + 16 + msgp.Uint64Size + 14 + msgp.Uint64Size
+	s = 3 + 2 + msgp.IntSize + 13 + msgp.IntSize + 9 + msgp.Uint64Size + 12 + msgp.Uint64Size + 13 + msgp.Uint64Size + 11 + msgp.Uint64Size + 10 + msgp.Uint64Size + 13 + msgp.Uint64Size + 13 + msgp.Uint64Size + 12 + msgp.Uint64Size + 12 + msgp.Uint64Size + 12 + msgp.Uint64Size + 10 + msgp.Uint64Size + 12 + msgp.Uint64Size + 15 + msgp.Uint64Size + 16 + msgp.Uint64Size + 14 + msgp.Uint64Size + 10 + msgp.Uint64Size + 12 + msgp.Uint64Size + 16 + msgp.Uint64Size + 14 + msgp.Uint64Size
 	return
 }
 
@@ -8973,7 +9063,7 @@ func (z *DiskMetric) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint32 /* 17 bits */
+	var zb0001Mask uint16 /* 16 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -9299,13 +9389,6 @@ func (z *DiskMetric) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "IOStatsHour")
 				return
 			}
-		case "io_stats_available":
-			z.IOStatsAvailable, err = dc.ReadBool()
-			if err != nil {
-				err = msgp.WrapError(err, "IOStatsAvailable")
-				return
-			}
-			zb0001Mask |= 0x4000
 		case "smart":
 			if dc.IsNil() {
 				err = dc.ReadNil()
@@ -9324,7 +9407,7 @@ func (z *DiskMetric) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x8000
+			zb0001Mask |= 0x4000
 		case "fsType":
 			var zb0007 uint32
 			zb0007, err = dc.ReadMapHeader()
@@ -9353,7 +9436,7 @@ func (z *DiskMetric) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.FSType[za0011] = za0012
 			}
-			zb0001Mask |= 0x10000
+			zb0001Mask |= 0x8000
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -9363,7 +9446,7 @@ func (z *DiskMetric) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x1ffff {
+	if zb0001Mask != 0xffff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.DiskIdx = nil
 		}
@@ -9407,12 +9490,9 @@ func (z *DiskMetric) DecodeMsg(dc *msgp.Reader) (err error) {
 			z.IOStats = nil
 		}
 		if (zb0001Mask & 0x4000) == 0 {
-			z.IOStatsAvailable = false
-		}
-		if (zb0001Mask & 0x8000) == 0 {
 			z.SMART = nil
 		}
-		if (zb0001Mask & 0x10000) == 0 {
+		if (zb0001Mask & 0x8000) == 0 {
 			z.FSType = nil
 		}
 	}
@@ -9422,8 +9502,8 @@ func (z *DiskMetric) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *DiskMetric) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(23)
-	var zb0001Mask uint32 /* 23 bits */
+	zb0001Len := uint32(22)
+	var zb0001Mask uint32 /* 22 bits */
 	_ = zb0001Mask
 	if z.DiskIdx == nil {
 		zb0001Len--
@@ -9481,17 +9561,13 @@ func (z *DiskMetric) EncodeMsg(en *msgp.Writer) (err error) {
 		zb0001Len--
 		zb0001Mask |= 0x10000
 	}
-	if z.IOStatsAvailable == false {
+	if z.SMART == nil {
 		zb0001Len--
 		zb0001Mask |= 0x100000
 	}
-	if z.SMART == nil {
-		zb0001Len--
-		zb0001Mask |= 0x200000
-	}
 	if z.FSType == nil {
 		zb0001Len--
-		zb0001Mask |= 0x400000
+		zb0001Mask |= 0x200000
 	}
 	// variable map header, size zb0001Len
 	err = en.WriteMapHeader(zb0001Len)
@@ -9832,18 +9908,6 @@ func (z *DiskMetric) EncodeMsg(en *msgp.Writer) (err error) {
 			return
 		}
 		if (zb0001Mask & 0x100000) == 0 { // if not omitted
-			// write "io_stats_available"
-			err = en.Append(0xb2, 0x69, 0x6f, 0x5f, 0x73, 0x74, 0x61, 0x74, 0x73, 0x5f, 0x61, 0x76, 0x61, 0x69, 0x6c, 0x61, 0x62, 0x6c, 0x65)
-			if err != nil {
-				return
-			}
-			err = en.WriteBool(z.IOStatsAvailable)
-			if err != nil {
-				err = msgp.WrapError(err, "IOStatsAvailable")
-				return
-			}
-		}
-		if (zb0001Mask & 0x200000) == 0 { // if not omitted
 			// write "smart"
 			err = en.Append(0xa5, 0x73, 0x6d, 0x61, 0x72, 0x74)
 			if err != nil {
@@ -9862,7 +9926,7 @@ func (z *DiskMetric) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x400000) == 0 { // if not omitted
+		if (zb0001Mask & 0x200000) == 0 { // if not omitted
 			// write "fsType"
 			err = en.Append(0xa6, 0x66, 0x73, 0x54, 0x79, 0x70, 0x65)
 			if err != nil {
@@ -9894,8 +9958,8 @@ func (z *DiskMetric) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *DiskMetric) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(23)
-	var zb0001Mask uint32 /* 23 bits */
+	zb0001Len := uint32(22)
+	var zb0001Mask uint32 /* 22 bits */
 	_ = zb0001Mask
 	if z.DiskIdx == nil {
 		zb0001Len--
@@ -9953,17 +10017,13 @@ func (z *DiskMetric) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x10000
 	}
-	if z.IOStatsAvailable == false {
+	if z.SMART == nil {
 		zb0001Len--
 		zb0001Mask |= 0x100000
 	}
-	if z.SMART == nil {
-		zb0001Len--
-		zb0001Mask |= 0x200000
-	}
 	if z.FSType == nil {
 		zb0001Len--
-		zb0001Mask |= 0x400000
+		zb0001Mask |= 0x200000
 	}
 	// variable map header, size zb0001Len
 	o = msgp.AppendMapHeader(o, zb0001Len)
@@ -10147,11 +10207,6 @@ func (z *DiskMetric) MarshalMsg(b []byte) (o []byte, err error) {
 			return
 		}
 		if (zb0001Mask & 0x100000) == 0 { // if not omitted
-			// string "io_stats_available"
-			o = append(o, 0xb2, 0x69, 0x6f, 0x5f, 0x73, 0x74, 0x61, 0x74, 0x73, 0x5f, 0x61, 0x76, 0x61, 0x69, 0x6c, 0x61, 0x62, 0x6c, 0x65)
-			o = msgp.AppendBool(o, z.IOStatsAvailable)
-		}
-		if (zb0001Mask & 0x200000) == 0 { // if not omitted
 			// string "smart"
 			o = append(o, 0xa5, 0x73, 0x6d, 0x61, 0x72, 0x74)
 			if z.SMART == nil {
@@ -10164,7 +10219,7 @@ func (z *DiskMetric) MarshalMsg(b []byte) (o []byte, err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x400000) == 0 { // if not omitted
+		if (zb0001Mask & 0x200000) == 0 { // if not omitted
 			// string "fsType"
 			o = append(o, 0xa6, 0x66, 0x73, 0x54, 0x79, 0x70, 0x65)
 			o = msgp.AppendMapHeader(o, uint32(len(z.FSType)))
@@ -10187,7 +10242,7 @@ func (z *DiskMetric) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint32 /* 17 bits */
+	var zb0001Mask uint16 /* 16 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -10507,13 +10562,6 @@ func (z *DiskMetric) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "IOStatsHour")
 				return
 			}
-		case "io_stats_available":
-			z.IOStatsAvailable, bts, err = msgp.ReadBoolBytes(bts)
-			if err != nil {
-				err = msgp.WrapError(err, "IOStatsAvailable")
-				return
-			}
-			zb0001Mask |= 0x4000
 		case "smart":
 			if msgp.IsNil(bts) {
 				bts, err = msgp.ReadNilBytes(bts)
@@ -10531,7 +10579,7 @@ func (z *DiskMetric) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x8000
+			zb0001Mask |= 0x4000
 		case "fsType":
 			var zb0007 uint32
 			zb0007, bts, err = msgp.ReadMapHeaderBytes(bts)
@@ -10560,7 +10608,7 @@ func (z *DiskMetric) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.FSType[za0011] = za0012
 			}
-			zb0001Mask |= 0x10000
+			zb0001Mask |= 0x8000
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -10570,7 +10618,7 @@ func (z *DiskMetric) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x1ffff {
+	if zb0001Mask != 0xffff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.DiskIdx = nil
 		}
@@ -10614,12 +10662,9 @@ func (z *DiskMetric) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.IOStats = nil
 		}
 		if (zb0001Mask & 0x4000) == 0 {
-			z.IOStatsAvailable = false
-		}
-		if (zb0001Mask & 0x8000) == 0 {
 			z.SMART = nil
 		}
-		if (zb0001Mask & 0x10000) == 0 {
+		if (zb0001Mask & 0x8000) == 0 {
 			z.FSType = nil
 		}
 	}
@@ -10700,7 +10745,7 @@ func (z *DiskMetric) Msgsize() (s int) {
 	} else {
 		s += z.IOStats.Msgsize()
 	}
-	s += 7 + z.IOStatsMinute.Msgsize() + 7 + (*Segmented[DiskIOStats, *DiskIOStats])(&z.IOStatsDay).Msgsize() + 8 + (*Segmented[DiskIOStats, *DiskIOStats])(&z.IOStatsHour).Msgsize() + 19 + msgp.BoolSize + 6
+	s += 7 + z.IOStatsMinute.Msgsize() + 7 + (*Segmented[DiskIOStats, *DiskIOStats])(&z.IOStatsDay).Msgsize() + 8 + (*Segmented[DiskIOStats, *DiskIOStats])(&z.IOStatsHour).Msgsize() + 6
 	if z.SMART == nil {
 		s += msgp.NilSize
 	} else {
