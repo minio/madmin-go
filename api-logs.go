@@ -32,11 +32,21 @@ import (
 	"github.com/tinylib/msgp/msgp"
 )
 
-// APILogOpts represents the options for the APILogOpts
+// APILogOpts represents the options for fetching API logs.
+//
+// Wildcard syntax on Nodes / APIs / Buckets entries (case-insensitive):
+//
+//	"xyz"   → exact match
+//	"xyz*"  → prefix match
+//	"*xyz"  → suffix match
+//	"*xyz*" → contains match
+//	"*"     → matches anything
+//
+// Values within a single field OR-combine; across fields filters AND.
 type APILogOpts struct {
-	Nodes        []string      `json:"nodes,omitempty"`   // entries ending with "*" are prefix matches, otherwise exact match
-	APIs         []string      `json:"apis,omitempty"`    // entries ending with "*" are prefix matches, otherwise exact match
-	Buckets      []string      `json:"buckets,omitempty"` // entries ending with "*" are prefix matches, otherwise exact match
+	Nodes        []string      `json:"nodes,omitempty"`
+	APIs         []string      `json:"apis,omitempty"`
+	Buckets      []string      `json:"buckets,omitempty"`
 	Prefix       string        `json:"prefix,omitempty"`
 	StatusCodes  []int         `json:"statusCodes,omitempty"`
 	StatusRanges []string      `json:"statusRanges,omitempty"` // e.g. "2xx", "4xx", "5xx"
