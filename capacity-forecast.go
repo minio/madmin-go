@@ -1,0 +1,99 @@
+//
+// Copyright (c) 2015-2026 MinIO, Inc.
+//
+// This file is part of MinIO Object Storage stack
+//
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Affero General Public License as
+// published by the Free Software Foundation, either version 3 of the
+// License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU Affero General Public License for more details.
+//
+// You should have received a copy of the GNU Affero General Public License
+// along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+package madmin
+
+import (
+	"context"
+	"encoding/json"
+	"net/http"
+)
+
+// CapacityForecast contains storage capacity predictions based on
+// historical daily snapshots processed through a Kalman filter.
+//
+// Days-until-threshold fields are pointers: nil means "unknown" (for example,
+// not enough history yet, or usage is not growing). A concrete value may be
+// negative when the threshold was already crossed in the past.
+type CapacityForecast struct {
+	CurrentUsedBytes   uint64  `json:"currentUsedBytes"`
+	CurrentTotalBytes  uint64  `json:"currentTotalBytes"`
+	CurrentUsedPercent float64 `json:"currentUsedPercent"`
+
+	// Days until each usage threshold is reached. The projection comes from
+	// a Kalman filter that integrates up to 365 daily samples with greater
+	// weight on recent observations, so a fresh shift in usage dominates
+	// over older history. nil = unknown (slope is non-positive, or there
+	// is not enough history).
+	DaysUntil80Pct  *float64 `json:"daysUntil80Pct,omitempty"`
+	DaysUntil90Pct  *float64 `json:"daysUntil90Pct,omitempty"`
+	DaysUntil100Pct *float64 `json:"daysUntil100Pct,omitempty"`
+
+	// GrowthBytesPerDay is the Kalman filter slope expressed in bytes per
+	// day, projected from the daily snapshots in the circular buffer.
+	// It is independent of DailySnapshotCount: the filter is recency
+	// weighted, not a delta between two endpoints.
+	GrowthBytesPerDay int64 `json:"growthBytesPerDay"`
+
+	// DailySnapshotCount is the number of valid daily snapshots currently
+	// held in the year-long circular buffer (range 0..365). The forecast
+	// fields above are only populated when this count reaches the
+	// minimum required for the filter to produce stable estimates.
+	DailySnapshotCount int `json:"dailySnapshotCount"`
+
+	// Worst-case prediction based on the largest single-day growth
+	// observed between any two consecutive data points. nil = unknown.
+	MinDaysUntilFull *float64 `json:"minDaysUntilFull,omitempty"`
+
+	Variance float64 `json:"variance"` // variance of daily usedFraction deltas
+
+	// Smallest and largest day-to-day changes in used bytes observed
+	// between consecutive snapshots. A negative value means space was
+	// freed between those two days.
+	DayMinDeltaBytes int64 `json:"dayMinDeltaBytes"`
+	DayMaxDeltaBytes int64 `json:"dayMaxDeltaBytes"`
+
+	// Recency-weighted predictions from the Kalman filter.
+	RecentGrowthRatePerDay float64  `json:"recentGrowthRatePerDay"`
+	RecentDaysUntilFull    *float64 `json:"recentDaysUntilFull,omitempty"`
+}
+
+// CapacityForecast returns a storage capacity forecast based on
+// historical daily snapshots.
+func (adm *AdminClient) CapacityForecast(ctx context.Context) (CapacityForecast, error) {
+	resp, err := adm.executeMethod(ctx,
+		http.MethodGet,
+		requestData{
+			relPath: adminAPIPrefix + "/capacity-forecast",
+		})
+	defer closeResponse(resp)
+	if err != nil {
+		return CapacityForecast{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return CapacityForecast{}, httpRespToErrorResponse(resp)
+	}
+
+	var f CapacityForecast
+	if err = json.NewDecoder(resp.Body).Decode(&f); err != nil {
+		return CapacityForecast{}, err
+	}
+
+	return f, nil
+}
