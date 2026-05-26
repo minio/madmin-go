@@ -50,6 +50,17 @@ type ErrorLogOpts struct {
 	Prefixes []string      `json:"prefixes,omitempty"`
 	Interval time.Duration `json:"interval,omitempty"`
 	Limit    int           `json:"limit,omitempty"`
+
+	// Deprecated: use Nodes.
+	Node string `json:"node,omitempty"`
+	// Deprecated: use APIs.
+	API string `json:"api,omitempty"`
+	// Deprecated: use Buckets.
+	Bucket string `json:"bucket,omitempty"`
+	// Deprecated: use Prefixes.
+	Prefix string `json:"prefix,omitempty"`
+	// Deprecated: use Limit.
+	MaxPerNode int `json:"maxPerNode,omitempty"`
 }
 
 // GetErrorLogs fetches the persisted error logs from MinIO
