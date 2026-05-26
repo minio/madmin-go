@@ -704,7 +704,10 @@ func (s *ScannerMetrics) Merge(other *ScannerMetrics) {
 
 // DiskIOStats contains IO stats of a single drive
 type DiskIOStats struct {
-	N              int    `json:"n,omitempty"`
+	N int `json:"n,omitempty"`
+	// WithIOStats is the subset of N whose kernel sysfs iostat
+	// (`/sys/dev/block/.../stat`) was readable; consumers gate I/O UI on it.
+	WithIOStats    int    `json:"with_iostats,omitempty"`
 	ReadIOs        uint64 `json:"read_ios,omitempty"`
 	ReadMerges     uint64 `json:"read_merges,omitempty"`
 	ReadSectors    uint64 `json:"read_sectors,omitempty"`
@@ -726,8 +729,11 @@ type DiskIOStats struct {
 	BitrotHealed   uint64 `json:"bitrot_healed,omitempty"`
 }
 
+// DiskIOStatsLegacy mirrors DiskIOStats field-for-field so direct Go type
+// conversions (used in DiskMetric.Merge) stay valid; mirror new fields too.
 type DiskIOStatsLegacy struct {
 	N              int    `json:"n,omitempty"`
+	WithIOStats    int    `json:"with_iostats,omitempty"`
 	ReadIOs        uint64 `json:"read_ios,omitempty"`
 	ReadMerges     uint64 `json:"read_merges,omitempty"`
 	ReadSectors    uint64 `json:"read_sectors,omitempty"`
@@ -755,6 +761,7 @@ func (d *DiskIOStats) Add(other *DiskIOStats) {
 		return
 	}
 	d.N += other.N
+	d.WithIOStats += other.WithIOStats
 	d.ReadIOs += other.ReadIOs
 	d.ReadMerges += other.ReadMerges
 	d.ReadSectors += other.ReadSectors
