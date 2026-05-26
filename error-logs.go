@@ -32,14 +32,24 @@ import (
 	"github.com/tinylib/msgp/msgp"
 )
 
-// ErrorLogOpts represents the options for the ErrorLogs
+// ErrorLogOpts represents the options for the ErrorLogs.
+//
+// Wildcard syntax on Nodes / APIs / Buckets entries (case-insensitive):
+//
+//	"xyz"   → exact match
+//	"xyz*"  → prefix match
+//	"*xyz"  → suffix match
+//	"*xyz*" → contains match
+//	"*"     → matches anything
+//
+// Values within a single field OR-combine; across fields filters AND.
 type ErrorLogOpts struct {
-	Node       string        `json:"node,omitempty"`
-	API        string        `json:"api,omitempty"`
-	Bucket     string        `json:"bucket,omitempty"`
-	Prefix     string        `json:"prefix,omitempty"`
-	Interval   time.Duration `json:"interval,omitempty"`
-	MaxPerNode int           `json:"maxPerNode,omitempty"`
+	Nodes    []string      `json:"nodes,omitempty"`
+	APIs     []string      `json:"apis,omitempty"`
+	Buckets  []string      `json:"buckets,omitempty"`
+	Prefixes []string      `json:"prefixes,omitempty"`
+	Interval time.Duration `json:"interval,omitempty"`
+	Limit    int           `json:"limit,omitempty"`
 }
 
 // GetErrorLogs fetches the persisted error logs from MinIO
