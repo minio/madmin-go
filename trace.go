@@ -82,6 +82,8 @@ const (
 	TraceTablesScan
 	// TraceSystemInventory will trace per-bucket system inventory operations.
 	TraceSystemInventory
+	// TraceTablesCompaction will trace table compaction operations.
+	TraceTablesCompaction
 	// Add more here...
 
 	// TraceAll contains all valid trace modes.
