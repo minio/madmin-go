@@ -20,9 +20,12 @@
 package madmin
 
 // ClusterRegistrationReq - JSON payload of the subnet api for cluster registration
-// Contains a registration token created by base64 encoding  of the registration info
+// Contains a registration token created by base64 encoding  of the registration info.
+// Set OverwriteName when the caller is reacting to an explicit name change
+// (so SUBNET replaces the stored name).
 type ClusterRegistrationReq struct {
-	Token string `json:"token"`
+	Token         string `json:"token"`
+	OverwriteName bool   `json:"overwrite_name,omitempty"`
 }
 
 // ClusterRegistrationInfo - Information stored in the cluster registration token
