@@ -135,3 +135,43 @@ func (adm *AdminClient) TablesReplicationResetCatalog(ctx context.Context) error
 
 	return nil
 }
+
+// TablesReplicationResyncCatalogOpen enters the post-failover resyncing
+// window (phase 1 of post-failover) on this site.
+func (adm *AdminClient) TablesReplicationResyncCatalogOpen(ctx context.Context) error {
+	reqData := requestData{
+		relPath: adminAPIPrefix + "/tables/resync-catalog/open",
+	}
+
+	resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+
+	return nil
+}
+
+// TablesReplicationResyncCatalogRebuild signals the catalog scanner to run a
+// post-failover rebuild cycle. This is the second and final phase of post-failover.
+func (adm *AdminClient) TablesReplicationResyncCatalogRebuild(ctx context.Context) error {
+	reqData := requestData{
+		relPath: adminAPIPrefix + "/tables/resync-catalog/rebuild",
+	}
+
+	resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+
+	return nil
+}
