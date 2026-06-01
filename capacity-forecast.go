@@ -47,8 +47,9 @@ type CapacityForecast struct {
 	// GrowthBytesPerDay is the Kalman filter slope expressed in bytes per
 	// day, projected from the daily snapshots in the circular buffer.
 	// It is independent of DailySnapshotCount: the filter is recency
-	// weighted, not a delta between two endpoints.
-	GrowthBytesPerDay int64 `json:"growthBytesPerDay"`
+	// weighted, not a delta between two endpoints. It is a float64 so a
+	// slow, sub-byte-per-day slope is not truncated to zero.
+	GrowthBytesPerDay float64 `json:"growthBytesPerDay"`
 
 	// DailySnapshotCount is the number of valid daily snapshots currently
 	// held in the year-long circular buffer (range 0..365). The forecast
@@ -60,17 +61,15 @@ type CapacityForecast struct {
 	// observed between any two consecutive data points. nil = unknown.
 	MinDaysUntilFull *float64 `json:"minDaysUntilFull,omitempty"`
 
-	Variance float64 `json:"variance"` // variance of daily usedFraction deltas
+	// Variance is the population variance (divided by n, not the sample
+	// variance divided by n-1) of the day-to-day changes in usedFraction.
+	Variance float64 `json:"variance"`
 
 	// Smallest and largest day-to-day changes in used bytes observed
 	// between consecutive snapshots. A negative value means space was
 	// freed between those two days.
 	DayMinDeltaBytes int64 `json:"dayMinDeltaBytes"`
 	DayMaxDeltaBytes int64 `json:"dayMaxDeltaBytes"`
-
-	// Recency-weighted predictions from the Kalman filter.
-	RecentGrowthRatePerDay float64  `json:"recentGrowthRatePerDay"`
-	RecentDaysUntilFull    *float64 `json:"recentDaysUntilFull,omitempty"`
 }
 
 // CapacityForecast returns a storage capacity forecast based on
