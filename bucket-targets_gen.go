@@ -18,7 +18,7 @@ func (z *BucketTarget) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint16 /* 10 bits */
+	var zb0001Mask uint16 /* 11 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -198,6 +198,13 @@ func (z *BucketTarget) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "EdgeSyncBeforeExpiry")
 				return
 			}
+		case "disableSyncBeforeExpiry":
+			z.DisableSyncBeforeExpiry, err = dc.ReadBool()
+			if err != nil {
+				err = msgp.WrapError(err, "DisableSyncBeforeExpiry")
+				return
+			}
+			zb0001Mask |= 0x400
 		case "offlineCount":
 			z.OfflineCount, err = dc.ReadInt64()
 			if err != nil {
@@ -219,7 +226,7 @@ func (z *BucketTarget) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3ff {
+	if zb0001Mask != 0x7ff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Path = ""
 		}
@@ -250,6 +257,9 @@ func (z *BucketTarget) DecodeMsg(dc *msgp.Reader) (err error) {
 		if (zb0001Mask & 0x200) == 0 {
 			z.DeploymentID = ""
 		}
+		if (zb0001Mask & 0x400) == 0 {
+			z.DisableSyncBeforeExpiry = false
+		}
 	}
 	return
 }
@@ -257,8 +267,8 @@ func (z *BucketTarget) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *BucketTarget) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(26)
-	var zb0001Mask uint32 /* 26 bits */
+	zb0001Len := uint32(27)
+	var zb0001Mask uint32 /* 27 bits */
 	_ = zb0001Mask
 	if z.Path == "" {
 		zb0001Len--
@@ -299,6 +309,10 @@ func (z *BucketTarget) EncodeMsg(en *msgp.Writer) (err error) {
 	if z.DeploymentID == "" {
 		zb0001Len--
 		zb0001Mask |= 0x200000
+	}
+	if z.DisableSyncBeforeExpiry == false {
+		zb0001Len--
+		zb0001Mask |= 0x1000000
 	}
 	// variable map header, size zb0001Len
 	err = en.WriteMapHeader(zb0001Len)
@@ -575,6 +589,18 @@ func (z *BucketTarget) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "EdgeSyncBeforeExpiry")
 			return
 		}
+		if (zb0001Mask & 0x1000000) == 0 { // if not omitted
+			// write "disableSyncBeforeExpiry"
+			err = en.Append(0xb7, 0x64, 0x69, 0x73, 0x61, 0x62, 0x6c, 0x65, 0x53, 0x79, 0x6e, 0x63, 0x42, 0x65, 0x66, 0x6f, 0x72, 0x65, 0x45, 0x78, 0x70, 0x69, 0x72, 0x79)
+			if err != nil {
+				return
+			}
+			err = en.WriteBool(z.DisableSyncBeforeExpiry)
+			if err != nil {
+				err = msgp.WrapError(err, "DisableSyncBeforeExpiry")
+				return
+			}
+		}
 		// write "offlineCount"
 		err = en.Append(0xac, 0x6f, 0x66, 0x66, 0x6c, 0x69, 0x6e, 0x65, 0x43, 0x6f, 0x75, 0x6e, 0x74)
 		if err != nil {
@@ -603,8 +629,8 @@ func (z *BucketTarget) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *BucketTarget) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(26)
-	var zb0001Mask uint32 /* 26 bits */
+	zb0001Len := uint32(27)
+	var zb0001Mask uint32 /* 27 bits */
 	_ = zb0001Mask
 	if z.Path == "" {
 		zb0001Len--
@@ -645,6 +671,10 @@ func (z *BucketTarget) MarshalMsg(b []byte) (o []byte, err error) {
 	if z.DeploymentID == "" {
 		zb0001Len--
 		zb0001Mask |= 0x200000
+	}
+	if z.DisableSyncBeforeExpiry == false {
+		zb0001Len--
+		zb0001Mask |= 0x1000000
 	}
 	// variable map header, size zb0001Len
 	o = msgp.AppendMapHeader(o, zb0001Len)
@@ -755,6 +785,11 @@ func (z *BucketTarget) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "edgeSyncBeforeExpiry"
 		o = append(o, 0xb4, 0x65, 0x64, 0x67, 0x65, 0x53, 0x79, 0x6e, 0x63, 0x42, 0x65, 0x66, 0x6f, 0x72, 0x65, 0x45, 0x78, 0x70, 0x69, 0x72, 0x79)
 		o = msgp.AppendBool(o, z.EdgeSyncBeforeExpiry)
+		if (zb0001Mask & 0x1000000) == 0 { // if not omitted
+			// string "disableSyncBeforeExpiry"
+			o = append(o, 0xb7, 0x64, 0x69, 0x73, 0x61, 0x62, 0x6c, 0x65, 0x53, 0x79, 0x6e, 0x63, 0x42, 0x65, 0x66, 0x6f, 0x72, 0x65, 0x45, 0x78, 0x70, 0x69, 0x72, 0x79)
+			o = msgp.AppendBool(o, z.DisableSyncBeforeExpiry)
+		}
 		// string "offlineCount"
 		o = append(o, 0xac, 0x6f, 0x66, 0x66, 0x6c, 0x69, 0x6e, 0x65, 0x43, 0x6f, 0x75, 0x6e, 0x74)
 		o = msgp.AppendInt64(o, z.OfflineCount)
@@ -775,7 +810,7 @@ func (z *BucketTarget) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint16 /* 10 bits */
+	var zb0001Mask uint16 /* 11 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -954,6 +989,13 @@ func (z *BucketTarget) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "EdgeSyncBeforeExpiry")
 				return
 			}
+		case "disableSyncBeforeExpiry":
+			z.DisableSyncBeforeExpiry, bts, err = msgp.ReadBoolBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "DisableSyncBeforeExpiry")
+				return
+			}
+			zb0001Mask |= 0x400
 		case "offlineCount":
 			z.OfflineCount, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
@@ -975,7 +1017,7 @@ func (z *BucketTarget) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3ff {
+	if zb0001Mask != 0x7ff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Path = ""
 		}
@@ -1006,6 +1048,9 @@ func (z *BucketTarget) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		if (zb0001Mask & 0x200) == 0 {
 			z.DeploymentID = ""
 		}
+		if (zb0001Mask & 0x400) == 0 {
+			z.DisableSyncBeforeExpiry = false
+		}
 	}
 	o = bts
 	return
@@ -1019,7 +1064,7 @@ func (z *BucketTarget) Msgsize() (s int) {
 	} else {
 		s += z.Credentials.Msgsize()
 	}
-	s += 13 + msgp.StringPrefixSize + len(z.TargetBucket) + 7 + msgp.BoolSize + 5 + msgp.StringPrefixSize + len(z.Path) + 4 + msgp.StringPrefixSize + len(z.API) + 4 + msgp.StringPrefixSize + len(z.Arn) + 5 + msgp.StringPrefixSize + len(string(z.Type)) + 7 + msgp.StringPrefixSize + len(z.Region) + 15 + msgp.Int64Size + 16 + msgp.BoolSize + 13 + msgp.StringPrefixSize + len(z.StorageClass) + 20 + msgp.DurationSize + 13 + msgp.BoolSize + 16 + msgp.TimeSize + 8 + msgp.StringPrefixSize + len(z.ResetID) + 14 + msgp.DurationSize + 11 + msgp.TimeSize + 9 + msgp.BoolSize + 8 + z.Latency.Msgsize() + 13 + msgp.StringPrefixSize + len(z.DeploymentID) + 5 + msgp.BoolSize + 21 + msgp.BoolSize + 13 + msgp.Int64Size + 12 + msgp.BoolSize
+	s += 13 + msgp.StringPrefixSize + len(z.TargetBucket) + 7 + msgp.BoolSize + 5 + msgp.StringPrefixSize + len(z.Path) + 4 + msgp.StringPrefixSize + len(z.API) + 4 + msgp.StringPrefixSize + len(z.Arn) + 5 + msgp.StringPrefixSize + len(string(z.Type)) + 7 + msgp.StringPrefixSize + len(z.Region) + 15 + msgp.Int64Size + 16 + msgp.BoolSize + 13 + msgp.StringPrefixSize + len(z.StorageClass) + 20 + msgp.DurationSize + 13 + msgp.BoolSize + 16 + msgp.TimeSize + 8 + msgp.StringPrefixSize + len(z.ResetID) + 14 + msgp.DurationSize + 11 + msgp.TimeSize + 9 + msgp.BoolSize + 8 + z.Latency.Msgsize() + 13 + msgp.StringPrefixSize + len(z.DeploymentID) + 5 + msgp.BoolSize + 21 + msgp.BoolSize + 24 + msgp.BoolSize + 13 + msgp.Int64Size + 12 + msgp.BoolSize
 	return
 }
 
