@@ -1276,17 +1276,18 @@ func (p *ProcInfo) AddProcInfo(metrics *ProcessMetrics) {
 
 // SysInfo - Includes hardware and system information of the MinIO cluster
 type SysInfo struct {
-	CPUInfo        []CPUs         `json:"cpus,omitempty"`
-	Partitions     []Partitions   `json:"partitions,omitempty"`
-	OSInfo         []OSInfo       `json:"osinfo,omitempty"`
-	MemInfo        []MemInfo      `json:"meminfo,omitempty"`
-	ProcInfo       []ProcInfo     `json:"procinfo,omitempty"`
-	NetInfo        []NetInfo      `json:"netinfo,omitempty"`
-	SysErrs        []SysErrors    `json:"errors,omitempty"`
-	SysServices    []SysServices  `json:"services,omitempty"`
-	SysConfig      []SysConfig    `json:"config,omitempty"`
-	ProductInfo    []ProductInfo  `json:"productinfo,omitempty"`
-	KubernetesInfo KubernetesInfo `json:"kubernetes"`
+	CPUInfo        []CPUs              `json:"cpus,omitempty"`
+	Partitions     []Partitions        `json:"partitions,omitempty"`
+	OSInfo         []OSInfo            `json:"osinfo,omitempty"`
+	MemInfo        []MemInfo           `json:"meminfo,omitempty"`
+	ProcInfo       []ProcInfo          `json:"procinfo,omitempty"`
+	NetInfo        []NetInfo           `json:"netinfo,omitempty"`
+	SysErrs        []SysErrors         `json:"errors,omitempty"`
+	SysServices    []SysServices       `json:"services,omitempty"`
+	SysConfig      []SysConfig         `json:"config,omitempty"`
+	ProductInfo    []ProductInfo       `json:"productinfo,omitempty"`
+	DStateThreads  []DStateThreadsDiag `json:"dstate_threads,omitempty"`
+	KubernetesInfo KubernetesInfo      `json:"kubernetes"`
 }
 
 // DeploymentInfo contains diagnostic information about the AIStor deployment
@@ -1481,38 +1482,40 @@ type HealthDataType string
 
 // HealthDataTypes
 const (
-	HealthDataTypeMinioInfo      HealthDataType = "minioinfo"
-	HealthDataTypeMinioConfig    HealthDataType = "minioconfig"
-	HealthDataTypeSysCPU         HealthDataType = "syscpu"
-	HealthDataTypeSysDriveHw     HealthDataType = "sysdrivehw"
-	HealthDataTypeSysOsInfo      HealthDataType = "sysosinfo"
-	HealthDataTypeSysMem         HealthDataType = "sysmem"
-	HealthDataTypeSysNet         HealthDataType = "sysnet"
-	HealthDataTypeSysProcess     HealthDataType = "sysprocess"
-	HealthDataTypeSysErrors      HealthDataType = "syserrors"
-	HealthDataTypeSysServices    HealthDataType = "sysservices"
-	HealthDataTypeSysConfig      HealthDataType = "sysconfig"
-	HealthDataTypeSysProductInfo HealthDataType = "sysproductinfo"
-	HealthDataTypeReplication    HealthDataType = "replication"
-	HealthDataTypeShardsHealth   HealthDataType = "shardshealth"
+	HealthDataTypeMinioInfo        HealthDataType = "minioinfo"
+	HealthDataTypeMinioConfig      HealthDataType = "minioconfig"
+	HealthDataTypeSysCPU           HealthDataType = "syscpu"
+	HealthDataTypeSysDriveHw       HealthDataType = "sysdrivehw"
+	HealthDataTypeSysOsInfo        HealthDataType = "sysosinfo"
+	HealthDataTypeSysMem           HealthDataType = "sysmem"
+	HealthDataTypeSysNet           HealthDataType = "sysnet"
+	HealthDataTypeSysProcess       HealthDataType = "sysprocess"
+	HealthDataTypeSysErrors        HealthDataType = "syserrors"
+	HealthDataTypeSysServices      HealthDataType = "sysservices"
+	HealthDataTypeSysConfig        HealthDataType = "sysconfig"
+	HealthDataTypeSysProductInfo   HealthDataType = "sysproductinfo"
+	HealthDataTypeReplication      HealthDataType = "replication"
+	HealthDataTypeShardsHealth     HealthDataType = "shardshealth"
+	HealthDataTypeSysDStateThreads HealthDataType = "sysdstatethreads"
 )
 
 // HealthDataTypesMap - Map of Health datatypes
 var HealthDataTypesMap = map[string]HealthDataType{
-	"minioinfo":      HealthDataTypeMinioInfo,
-	"minioconfig":    HealthDataTypeMinioConfig,
-	"syscpu":         HealthDataTypeSysCPU,
-	"sysdrivehw":     HealthDataTypeSysDriveHw,
-	"sysosinfo":      HealthDataTypeSysOsInfo,
-	"sysmem":         HealthDataTypeSysMem,
-	"sysnet":         HealthDataTypeSysNet,
-	"sysprocess":     HealthDataTypeSysProcess,
-	"syserrors":      HealthDataTypeSysErrors,
-	"sysservices":    HealthDataTypeSysServices,
-	"sysconfig":      HealthDataTypeSysConfig,
-	"sysproductinfo": HealthDataTypeSysProductInfo,
-	"replication":    HealthDataTypeReplication,
-	"shardshealth":   HealthDataTypeShardsHealth,
+	"minioinfo":        HealthDataTypeMinioInfo,
+	"minioconfig":      HealthDataTypeMinioConfig,
+	"syscpu":           HealthDataTypeSysCPU,
+	"sysdrivehw":       HealthDataTypeSysDriveHw,
+	"sysosinfo":        HealthDataTypeSysOsInfo,
+	"sysmem":           HealthDataTypeSysMem,
+	"sysnet":           HealthDataTypeSysNet,
+	"sysprocess":       HealthDataTypeSysProcess,
+	"syserrors":        HealthDataTypeSysErrors,
+	"sysservices":      HealthDataTypeSysServices,
+	"sysconfig":        HealthDataTypeSysConfig,
+	"sysproductinfo":   HealthDataTypeSysProductInfo,
+	"replication":      HealthDataTypeReplication,
+	"shardshealth":     HealthDataTypeShardsHealth,
+	"sysdstatethreads": HealthDataTypeSysDStateThreads,
 }
 
 // HealthDataTypesList - List of health datatypes
@@ -1531,6 +1534,7 @@ var HealthDataTypesList = []HealthDataType{
 	HealthDataTypeSysProductInfo,
 	HealthDataTypeReplication,
 	HealthDataTypeShardsHealth,
+	HealthDataTypeSysDStateThreads,
 }
 
 // HealthInfoVersionStruct - struct for health info version
