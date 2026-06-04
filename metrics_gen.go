@@ -36286,7 +36286,7 @@ func (z *SegmentedTableIO) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 			}
 			zb0001Mask |= 0x8
-		case "errors":
+		case "notOk":
 			var zb0006 uint32
 			zb0006, err = dc.ReadArrayHeader()
 			if err != nil {
@@ -36520,8 +36520,8 @@ func (z *SegmentedTableIO) EncodeMsg(en *msgp.Writer) (err error) {
 			}
 		}
 		if (zb0001Mask & 0x40) == 0 { // if not omitted
-			// write "errors"
-			err = en.Append(0xa6, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x73)
+			// write "notOk"
+			err = en.Append(0xa5, 0x6e, 0x6f, 0x74, 0x4f, 0x6b)
 			if err != nil {
 				return
 			}
@@ -36659,8 +36659,8 @@ func (z *SegmentedTableIO) MarshalMsg(b []byte) (o []byte, err error) {
 			}
 		}
 		if (zb0001Mask & 0x40) == 0 { // if not omitted
-			// string "errors"
-			o = append(o, 0xa6, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x73)
+			// string "notOk"
+			o = append(o, 0xa5, 0x6e, 0x6f, 0x74, 0x4f, 0x6b)
 			o = msgp.AppendArrayHeader(o, uint32(len(z.NotOK)))
 			for za0005 := range z.NotOK {
 				o = msgp.AppendInt64(o, z.NotOK[za0005])
@@ -36798,7 +36798,7 @@ func (z *SegmentedTableIO) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 			}
 			zb0001Mask |= 0x8
-		case "errors":
+		case "notOk":
 			var zb0006 uint32
 			zb0006, bts, err = msgp.ReadArrayHeaderBytes(bts)
 			if err != nil {
@@ -36896,7 +36896,7 @@ func (z *SegmentedTableIO) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *SegmentedTableIO) Msgsize() (s int) {
-	s = 1 + 13 + msgp.IntSize + 10 + msgp.TimeSize + 6 + msgp.ArrayHeaderSize + (len(z.Reads) * (msgp.Int64Size)) + 7 + msgp.ArrayHeaderSize + (len(z.Writes) * (msgp.Int64Size)) + 8 + msgp.ArrayHeaderSize + (len(z.BytesIn) * (msgp.Int64Size)) + 9 + msgp.ArrayHeaderSize + (len(z.BytesOut) * (msgp.Int64Size)) + 7 + msgp.ArrayHeaderSize + (len(z.NotOK) * (msgp.Int64Size)) + 9 + msgp.ArrayHeaderSize + (len(z.RequestTimeSecs) * (msgp.Float32Size)) + 9 + msgp.ArrayHeaderSize + (len(z.RespTTFBSecs) * (msgp.Float32Size))
+	s = 1 + 13 + msgp.IntSize + 10 + msgp.TimeSize + 6 + msgp.ArrayHeaderSize + (len(z.Reads) * (msgp.Int64Size)) + 7 + msgp.ArrayHeaderSize + (len(z.Writes) * (msgp.Int64Size)) + 8 + msgp.ArrayHeaderSize + (len(z.BytesIn) * (msgp.Int64Size)) + 9 + msgp.ArrayHeaderSize + (len(z.BytesOut) * (msgp.Int64Size)) + 6 + msgp.ArrayHeaderSize + (len(z.NotOK) * (msgp.Int64Size)) + 9 + msgp.ArrayHeaderSize + (len(z.RequestTimeSecs) * (msgp.Float32Size)) + 9 + msgp.ArrayHeaderSize + (len(z.RespTTFBSecs) * (msgp.Float32Size))
 	return
 }
 

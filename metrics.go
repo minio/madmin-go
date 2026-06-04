@@ -3346,9 +3346,7 @@ func (b *BucketAPIMetrics) Merge(other *BucketAPIMetrics) {
 	}
 }
 
-
 // TableAPIMetrics holds traffic for all active tables aggregated across nodes.
-// Keyed by table UUID.
 type TableAPIMetrics struct {
 	// Time these metrics were collected
 	CollectedAt time.Time `json:"collected"`
@@ -3446,7 +3444,6 @@ type TableIOMetrics struct {
 	LastDay *TableAPIStat `json:"lastDay,omitempty"`
 }
 
-
 // Merge sums other into m. Identity fields (Table/Namespace/Warehouse) are
 // copied verbatim on the first non-empty merge and collapsed to nil on
 // disagreement thereafter, preserving the "set iff single value" contract.
@@ -3512,7 +3509,7 @@ type SegmentedTableIO struct {
 	Writes          []int64   `json:"writes,omitempty"`
 	BytesIn         []int64   `json:"bytesIn,omitempty"`
 	BytesOut        []int64   `json:"bytesOut,omitempty"`
-	NotOK           []int64   `json:"errors,omitempty"`
+	NotOK           []int64   `json:"notOk,omitempty"`
 	RequestTimeSecs []float32 `json:"timeSecs,omitempty"`
 	RespTTFBSecs    []float32 `json:"ttfbSecs,omitempty"`
 }
