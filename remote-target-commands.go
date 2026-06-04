@@ -124,6 +124,8 @@ const (
 	EdgeUpdateType
 	// EdgeExpiryUpdateType sets bucket target to sync before expiry
 	EdgeExpiryUpdateType
+	// SyncExpiryDisabledUpdateType disables hold-expiry-until-replicated for a target
+	SyncExpiryDisabledUpdateType
 	// InsecureTLSUpdateType update tls setting
 	InsecureTLSUpdateType
 )
@@ -161,6 +163,9 @@ func GetTargetUpdateOps(values url.Values) []TargetUpdateType {
 	}
 	if values.Get("edgeSyncBeforeExpiry") == "true" {
 		ops = append(ops, EdgeExpiryUpdateType)
+	}
+	if values.Get("syncBeforeExpiryDisabled") == "true" {
+		ops = append(ops, SyncExpiryDisabledUpdateType)
 	}
 	return ops
 }
@@ -202,6 +207,8 @@ func (adm *AdminClient) UpdateRemoteTarget(ctx context.Context, target *BucketTa
 			queryValues.Set("edge", "true")
 		case EdgeExpiryUpdateType:
 			queryValues.Set("edgeSyncBeforeExpiry", "true")
+		case SyncExpiryDisabledUpdateType:
+			queryValues.Set("syncBeforeExpiryDisabled", "true")
 		}
 	}
 
