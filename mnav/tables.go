@@ -50,15 +50,14 @@ func (node *TableMetricsNode) GetChildren() []MetricChild {
 	if node.tables == nil {
 		return []MetricChild{}
 	}
-	children := []MetricChild{
+	return []MetricChild{
 		{Name: "last_minute", Description: "Cluster table API totals over the last minute"},
 		{Name: "last_hour", Description: "Per-minute segments over the last hour"},
 		{Name: "last_day", Description: "15-minute segments over the last day"},
-		{Name: "top_warehouses", Description: "Top warehouses by request count"},
-		{Name: "top_namespaces", Description: "Top namespaces by request count"},
-		{Name: "top_tables", Description: "Top tables by request count"},
+		{Name: "top_warehouses", Description: "Top warehouses by requests and throughput"},
+		{Name: "top_namespaces", Description: "Top namespaces by requests and throughput"},
+		{Name: "top_tables", Description: "Top tables by requests and throughput"},
 	}
-	return children
 }
 
 func (node *TableMetricsNode) GetLeafData() map[string]string {
@@ -77,15 +76,6 @@ func (node *TableMetricsNode) GetLeafData() map[string]string {
 	}
 	if node.tables.LastMinute != nil {
 		add("Last Minute", describeTableAPIStat(node.tables.LastMinute, 60))
-	}
-	if len(node.tables.TopWarehouses) > 0 {
-		add("Top Warehouses", fmt.Sprintf("%d entries", len(node.tables.TopWarehouses)))
-	}
-	if len(node.tables.TopNamespaces) > 0 {
-		add("Top Namespaces", fmt.Sprintf("%d entries", len(node.tables.TopNamespaces)))
-	}
-	if len(node.tables.TopTables) > 0 {
-		add("Top Tables", fmt.Sprintf("%d entries", len(node.tables.TopTables)))
 	}
 	return data
 }
@@ -108,18 +98,18 @@ func (node *TableMetricsNode) GetChild(name string) (MetricNode, error) {
 			flag: madmin.MetricsDayStats, parent: node, path: node.path + "/last_day",
 		}, nil
 	case "top_warehouses":
-		return &tableTopListNode{
-			entries: node.tables.TopWarehouses, label: "warehouse",
+		return &tableTopGroupNode{
+			top: node.tables.TopWarehouses, label: "warehouse",
 			flag: madmin.MetricsTopWarehouses, parent: node, path: node.path + "/top_warehouses",
 		}, nil
 	case "top_namespaces":
-		return &tableTopListNode{
-			entries: node.tables.TopNamespaces, label: "namespace",
+		return &tableTopGroupNode{
+			top: node.tables.TopNamespaces, label: "namespace",
 			flag: madmin.MetricsTopNamespaces, parent: node, path: node.path + "/top_namespaces",
 		}, nil
 	case "top_tables":
-		return &tableTopListNode{
-			entries: node.tables.TopTables, label: "table",
+		return &tableTopGroupNode{
+			top: node.tables.TopTables, label: "table",
 			flag: madmin.MetricsTopTables, parent: node, path: node.path + "/top_tables",
 		}, nil
 	}
@@ -255,24 +245,117 @@ func (node *tableSegmentEntryNode) GetLeafData() map[string]string {
 	return tableStatLeafData(&node.stat, node.windowSecs)
 }
 
-// tableTopListNode shows a Top* slice: children are individual entries, leaf
-// data is a numbered summary of the same entries.
-type tableTopListNode struct {
-	entries []madmin.TableIOMetrics
-	label   string
-	flag    madmin.MetricFlags
-	parent  MetricNode
-	path    string
+// rankedList describes one of the six TopTableIO ranked slices.
+type rankedList struct {
+	name        string
+	description string
+	entries     []madmin.TableIOMetrics
+	windowSecs  float64
+	flag        madmin.MetricFlags // additional flag beyond the parent's MetricsTopXxx
 }
 
-func (node *tableTopListNode) GetOpts() madmin.MetricsOptions     { return getNodeOpts(node) }
-func (node *tableTopListNode) GetMetricType() madmin.MetricType   { return madmin.MetricsTablesAPI }
-func (node *tableTopListNode) GetMetricFlags() madmin.MetricFlags { return node.flag }
-func (node *tableTopListNode) GetParent() MetricNode              { return node.parent }
-func (node *tableTopListNode) GetPath() string                    { return node.path }
-func (node *tableTopListNode) ShouldPauseRefresh() bool           { return false }
+// tableTopGroupNode exposes one of the three top categories (warehouses,
+// namespaces, tables) and routes to the six ranked sub-lists inside its
+// TopTableIO.
+type tableTopGroupNode struct {
+	top    *madmin.TopTableIO
+	label  string
+	flag   madmin.MetricFlags
+	parent MetricNode
+	path   string
+}
 
-func (node *tableTopListNode) GetChildren() []MetricChild {
+func (node *tableTopGroupNode) GetOpts() madmin.MetricsOptions     { return getNodeOpts(node) }
+func (node *tableTopGroupNode) GetMetricType() madmin.MetricType   { return madmin.MetricsTablesAPI }
+func (node *tableTopGroupNode) GetMetricFlags() madmin.MetricFlags { return node.flag }
+func (node *tableTopGroupNode) GetParent() MetricNode              { return node.parent }
+func (node *tableTopGroupNode) GetPath() string                    { return node.path }
+func (node *tableTopGroupNode) ShouldPauseRefresh() bool           { return false }
+
+func (node *tableTopGroupNode) rankedLists() []rankedList {
+	if node.top == nil {
+		return nil
+	}
+	lbl := node.label
+	return []rankedList{
+		{"reqs_minute", "Last-minute " + lbl + "s by requests", node.top.ByRequestsMin, 60, 0},
+		{"throughput_minute", "Last-minute " + lbl + "s by throughput", node.top.ByThroughputMin, 60, 0},
+		{"reqs_hour", "Last-hour " + lbl + "s by requests", node.top.ByRequestsHour, 3600, madmin.MetricsHourStats},
+		{"throughput_hour", "Last-hour " + lbl + "s by throughput", node.top.ByThroughputHour, 3600, madmin.MetricsHourStats},
+		{"reqs_day", "Last-day " + lbl + "s by requests", node.top.ByRequestsDay, 86400, madmin.MetricsDayStats},
+		{"throughput_day", "Last-day " + lbl + "s by throughput", node.top.ByThroughputDay, 86400, madmin.MetricsDayStats},
+	}
+}
+
+func (node *tableTopGroupNode) GetChildren() []MetricChild {
+	lists := node.rankedLists()
+	children := make([]MetricChild, 0, len(lists))
+	for _, l := range lists {
+		desc := l.description
+		if len(l.entries) > 0 {
+			desc = fmt.Sprintf("%s (%d entries)", desc, len(l.entries))
+		} else {
+			desc = desc + " (no data)"
+		}
+		children = append(children, MetricChild{Name: l.name, Description: desc})
+	}
+	return children
+}
+
+func (node *tableTopGroupNode) GetLeafData() map[string]string {
+	if node.top == nil {
+		return map[string]string{"Status": "No " + node.label + " data"}
+	}
+	data := map[string]string{}
+	idx := 0
+	add := func(k, v string) {
+		data[fmt.Sprintf("%02d:%s", idx, k)] = v
+		idx++
+	}
+	for _, l := range node.rankedLists() {
+		if len(l.entries) == 0 {
+			continue
+		}
+		add(l.description, fmt.Sprintf("%d entries; top: %s",
+			len(l.entries), tableEntryKey(&l.entries[0])))
+	}
+	if idx == 0 {
+		return map[string]string{"Status": "No " + node.label + " data"}
+	}
+	return data
+}
+
+func (node *tableTopGroupNode) GetChild(name string) (MetricNode, error) {
+	for _, l := range node.rankedLists() {
+		if l.name != name {
+			continue
+		}
+		return &tableRankedListNode{
+			entries: l.entries, windowSecs: l.windowSecs,
+			flag: l.flag, parent: node, path: node.path + "/" + name,
+		}, nil
+	}
+	return nil, fmt.Errorf("unknown ranked list: %s", name)
+}
+
+// tableRankedListNode shows one ranked list (e.g., requests over the last
+// minute). Children are the individual entries.
+type tableRankedListNode struct {
+	entries    []madmin.TableIOMetrics
+	windowSecs float64
+	flag       madmin.MetricFlags
+	parent     MetricNode
+	path       string
+}
+
+func (node *tableRankedListNode) GetOpts() madmin.MetricsOptions     { return getNodeOpts(node) }
+func (node *tableRankedListNode) GetMetricType() madmin.MetricType   { return madmin.MetricsTablesAPI }
+func (node *tableRankedListNode) GetMetricFlags() madmin.MetricFlags { return node.flag }
+func (node *tableRankedListNode) GetParent() MetricNode              { return node.parent }
+func (node *tableRankedListNode) GetPath() string                    { return node.path }
+func (node *tableRankedListNode) ShouldPauseRefresh() bool           { return node.windowSecs > 60 }
+
+func (node *tableRankedListNode) GetChildren() []MetricChild {
 	children := make([]MetricChild, 0, len(node.entries))
 	for i := range node.entries {
 		e := &node.entries[i]
@@ -280,27 +363,27 @@ func (node *tableTopListNode) GetChildren() []MetricChild {
 		children = append(children, MetricChild{
 			Name:        url.PathEscape(key),
 			DisplayName: key,
-			Description: describeTableIOMetrics(e),
+			Description: describeTableAPIStat(&e.TableAPIStat, node.windowSecs),
 		})
 	}
 	return children
 }
 
-func (node *tableTopListNode) GetLeafData() map[string]string {
+func (node *tableRankedListNode) GetLeafData() map[string]string {
 	if len(node.entries) == 0 {
-		return map[string]string{"Status": "No " + node.label + " entries"}
+		return map[string]string{"Status": "No entries"}
 	}
 	data := map[string]string{
 		"00:Entries": fmt.Sprintf("%d", len(node.entries)),
 	}
 	for i := range node.entries {
 		key := fmt.Sprintf("%02d:%s", i+1, tableEntryKey(&node.entries[i]))
-		data[key] = describeTableIOMetrics(&node.entries[i])
+		data[key] = describeTableAPIStat(&node.entries[i].TableAPIStat, node.windowSecs)
 	}
 	return data
 }
 
-func (node *tableTopListNode) GetChild(name string) (MetricNode, error) {
+func (node *tableRankedListNode) GetChild(name string) (MetricNode, error) {
 	decoded, err := url.PathUnescape(name)
 	if err != nil {
 		return nil, fmt.Errorf("invalid name: %s", name)
@@ -308,20 +391,21 @@ func (node *tableTopListNode) GetChild(name string) (MetricNode, error) {
 	for i := range node.entries {
 		if tableEntryKey(&node.entries[i]) == decoded {
 			return &tableEntryNode{
-				entry: node.entries[i], flag: node.flag,
-				parent: node, path: node.path + "/" + name,
+				entry: node.entries[i], windowSecs: node.windowSecs,
+				flag: node.flag, parent: node, path: node.path + "/" + name,
 			}, nil
 		}
 	}
 	return nil, fmt.Errorf("entry not found: %s", decoded)
 }
 
-// tableEntryNode is a leaf for a single TableIOMetrics row.
+// tableEntryNode is a leaf for a single TableIOMetrics row from a ranked list.
 type tableEntryNode struct {
-	entry  madmin.TableIOMetrics
-	flag   madmin.MetricFlags
-	parent MetricNode
-	path   string
+	entry      madmin.TableIOMetrics
+	windowSecs float64
+	flag       madmin.MetricFlags
+	parent     MetricNode
+	path       string
 }
 
 func (node *tableEntryNode) GetOpts() madmin.MetricsOptions     { return getNodeOpts(node) }
@@ -329,7 +413,7 @@ func (node *tableEntryNode) GetMetricType() madmin.MetricType   { return madmin.
 func (node *tableEntryNode) GetMetricFlags() madmin.MetricFlags { return node.flag }
 func (node *tableEntryNode) GetParent() MetricNode              { return node.parent }
 func (node *tableEntryNode) GetPath() string                    { return node.path }
-func (node *tableEntryNode) ShouldPauseRefresh() bool           { return false }
+func (node *tableEntryNode) ShouldPauseRefresh() bool           { return node.windowSecs > 60 }
 func (node *tableEntryNode) GetChildren() []MetricChild         { return []MetricChild{} }
 func (node *tableEntryNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children")
@@ -351,15 +435,7 @@ func (node *tableEntryNode) GetLeafData() map[string]string {
 	if node.entry.Table != nil {
 		add("Table", *node.entry.Table)
 	}
-	if node.entry.LastMinute != nil {
-		add("Last Minute", describeTableAPIStat(node.entry.LastMinute, 60))
-	}
-	if node.entry.LastHour != nil {
-		add("Last Hour", describeTableAPIStat(node.entry.LastHour, 3600))
-	}
-	if node.entry.LastDay != nil {
-		add("Last Day", describeTableAPIStat(node.entry.LastDay, 86400))
-	}
+	addTableStatData(&node.entry.TableAPIStat, node.windowSecs, add)
 	if idx == 0 {
 		return map[string]string{"Status": "No data"}
 	}
@@ -382,20 +458,6 @@ func tableEntryKey(e *madmin.TableIOMetrics) string {
 		return "(unnamed)"
 	}
 	return strings.Join(parts, ":")
-}
-
-// describeTableIOMetrics returns a compact one-line summary for a top-list
-// child, preferring the shortest available window.
-func describeTableIOMetrics(e *madmin.TableIOMetrics) string {
-	switch {
-	case e.LastMinute != nil:
-		return describeTableAPIStat(e.LastMinute, 60)
-	case e.LastHour != nil:
-		return describeTableAPIStat(e.LastHour, 3600)
-	case e.LastDay != nil:
-		return describeTableAPIStat(e.LastDay, 86400)
-	}
-	return "No data"
 }
 
 // describeTableAPIStat formats a TableAPIStat as a single line for use in
@@ -442,6 +504,13 @@ func tableStatLeafData(s *madmin.TableAPIStat, windowSecs float64) map[string]st
 		data[fmt.Sprintf("%02d:%s", idx, k)] = v
 		idx++
 	}
+	addTableStatData(s, windowSecs, add)
+	return data
+}
+
+// addTableStatData emits leaf entries for a TableAPIStat through add. The
+// caller controls ordering and key prefixing via its closure.
+func addTableStatData(s *madmin.TableAPIStat, windowSecs float64, add func(k, v string)) {
 	total := s.Reads + s.Writes
 	add("Requests", humanize.Comma(total))
 	if total > 0 && windowSecs > 0 {
@@ -475,5 +544,4 @@ func tableStatLeafData(s *madmin.TableAPIStat, windowSecs float64) map[string]st
 	if total > 0 && s.RespTTFBSecs > 0 {
 		add("Avg TTFB", fmt.Sprintf("%.1fms", (s.RespTTFBSecs/float64(total))*1000))
 	}
-	return data
 }

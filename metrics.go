@@ -3366,19 +3366,62 @@ type TableAPIMetrics struct {
 	LastDay *SegmentedTableIO `json:"lastDay,omitempty"`
 
 	// TopWarehouses contains the top 25 warehouses by request count if MetricsTopWarehouses is set.
-	TopWarehouses []TableIOMetrics `json:"topW,omitempty"`
+	TopWarehouses *TopTableIO `json:"topW,omitempty"`
 
 	// TopNamespaces contains the top 25 namespaces by request count if MetricsTopNamespaces is set.
-	TopNamespaces []TableIOMetrics `json:"topN,omitempty"`
+	TopNamespaces *TopTableIO `json:"topN,omitempty"`
 
 	// TopTables contains the top 25 tables by request count if MetricsTopTables is set.
-	TopTables []TableIOMetrics `json:"topT,omitempty"`
+	TopTables *TopTableIO `json:"topT,omitempty"`
+}
+
+// TopTableIO provides sorted IO numbers for tables.
+type TopTableIO struct {
+	// Minute stats always provided.
+	ByRequestsMin   []TableIOMetrics `json:"reqMin,omitempty"`
+	ByThroughputMin []TableIOMetrics `json:"thrMin,omitempty"`
+
+	// Hour is provided if MetricsHourStats is set.
+	ByRequestsHour   []TableIOMetrics `json:"reqHour,omitempty"`
+	ByThroughputHour []TableIOMetrics `json:"thrHour,omitempty"`
+
+	// Day is provided if MetricsDayStats is set.
+	ByRequestsDay   []TableIOMetrics `json:"reqDay,omitempty"`
+	ByThroughputDay []TableIOMetrics `json:"thrDay,omitempty"`
+}
+
+// Merge folds other into t. Entries with matching key are summed; the result
+// for each ranked list is sorted by its native ranking (requests or throughput).
+func (t *TopTableIO) Merge(other *TopTableIO, key func(*TableIOMetrics) string) {
+	if other == nil {
+		return
+	}
+	t.ByRequestsMin = mergeTopList(t.ByRequestsMin, other.ByRequestsMin, key, cmpByRequests)
+	t.ByThroughputMin = mergeTopList(t.ByThroughputMin, other.ByThroughputMin, key, cmpByThroughput)
+	t.ByRequestsHour = mergeTopList(t.ByRequestsHour, other.ByRequestsHour, key, cmpByRequests)
+	t.ByThroughputHour = mergeTopList(t.ByThroughputHour, other.ByThroughputHour, key, cmpByThroughput)
+	t.ByRequestsDay = mergeTopList(t.ByRequestsDay, other.ByRequestsDay, key, cmpByRequests)
+	t.ByThroughputDay = mergeTopList(t.ByThroughputDay, other.ByThroughputDay, key, cmpByThroughput)
+}
+
+// TopN re-ranks each contained list and trims to n entries. No-op if t is nil
+// or n <= 0.
+func (t *TopTableIO) TopN(n int) {
+	if t == nil || n <= 0 {
+		return
+	}
+	t.ByRequestsMin = sortTrimTopList(t.ByRequestsMin, n, cmpByRequests)
+	t.ByThroughputMin = sortTrimTopList(t.ByThroughputMin, n, cmpByThroughput)
+	t.ByRequestsHour = sortTrimTopList(t.ByRequestsHour, n, cmpByRequests)
+	t.ByThroughputHour = sortTrimTopList(t.ByThroughputHour, n, cmpByThroughput)
+	t.ByRequestsDay = sortTrimTopList(t.ByRequestsDay, n, cmpByRequests)
+	t.ByThroughputDay = sortTrimTopList(t.ByThroughputDay, n, cmpByThroughput)
 }
 
 // Merge folds other into t. CollectedAt takes the later timestamp;
 // Nodes is summed; LastMinute is added; LastHour and LastDay are
-// merged segment-wise; Top* lists are merged by identity and trimmed
-// back to tableTopTrimTarget once any list grows past tableTopTrimThreshold.
+// merged segment-wise; Top* groups are merged per-ranking and trimmed
+// back to tableTopTrimTarget once any ranked list grows past tableTopTrimThreshold.
 func (t *TableAPIMetrics) Merge(other *TableAPIMetrics) {
 	if other == nil {
 		return
@@ -3405,20 +3448,32 @@ func (t *TableAPIMetrics) Merge(other *TableAPIMetrics) {
 		}
 		t.LastDay.Merge(other.LastDay)
 	}
-	t.TopWarehouses = mergeTopTableList(t.TopWarehouses, other.TopWarehouses, (*TableIOMetrics).KeyWarehouse)
-	t.TopNamespaces = mergeTopTableList(t.TopNamespaces, other.TopNamespaces, (*TableIOMetrics).KeyNamespace)
-	t.TopTables = mergeTopTableList(t.TopTables, other.TopTables, (*TableIOMetrics).KeyTable)
+	t.TopWarehouses = mergeTopGroup(t.TopWarehouses, other.TopWarehouses, (*TableIOMetrics).KeyWarehouse)
+	t.TopNamespaces = mergeTopGroup(t.TopNamespaces, other.TopNamespaces, (*TableIOMetrics).KeyNamespace)
+	t.TopTables = mergeTopGroup(t.TopTables, other.TopTables, (*TableIOMetrics).KeyTable)
 }
 
-// TopN re-ranks every Top* list by LastMinute request count descending and
-// trims each to n entries. Pass n <= 0 to leave the lists unchanged.
+// TopN re-ranks every ranked list in each Top* group and trims to n entries.
+// Pass n <= 0 to leave the lists unchanged.
 func (t *TableAPIMetrics) TopN(n int) {
 	if n <= 0 {
 		return
 	}
-	t.TopWarehouses = sortTrimTopTables(t.TopWarehouses, n)
-	t.TopNamespaces = sortTrimTopTables(t.TopNamespaces, n)
-	t.TopTables = sortTrimTopTables(t.TopTables, n)
+	t.TopWarehouses.TopN(n)
+	t.TopNamespaces.TopN(n)
+	t.TopTables.TopN(n)
+}
+
+// mergeTopGroup folds src into dst, allocating dst if needed. Returns dst.
+func mergeTopGroup(dst, src *TopTableIO, key func(*TableIOMetrics) string) *TopTableIO {
+	if src == nil {
+		return dst
+	}
+	if dst == nil {
+		dst = &TopTableIO{}
+	}
+	dst.Merge(src, key)
+	return dst
 }
 
 // TableIOMetrics holds traffic for a table across time windows.
@@ -3432,30 +3487,17 @@ type TableIOMetrics struct {
 	// Warehouse will be populated if all data is from the same warehouse
 	Warehouse *string `json:"warehouse"`
 
-	// LastMinute is the aggregate over the last minute. Always present.
-	LastMinute *TableAPIStat `json:"lastMinute,omitempty"`
-
-	// LastHour is the aggregate over the last hour.
-	// Populated only when MetricsHourStats is requested.
-	LastHour *TableAPIStat `json:"lastHour,omitempty"`
-
-	// LastDay is the aggregate over the last 24 hours.
-	// Populated only when MetricsDayStats is requested.
-	LastDay *TableAPIStat `json:"lastDay,omitempty"`
+	TableAPIStat `msg:",flatten"`
 }
 
 // Merge sums other into m. Identity fields (Table/Namespace/Warehouse) are
 // copied verbatim on the first non-empty merge and collapsed to nil on
 // disagreement thereafter, preserving the "set iff single value" contract.
 func (m *TableIOMetrics) Merge(other *TableIOMetrics) {
-	if other == nil {
+	if other == nil || other.IsZero() {
 		return
 	}
-	otherEmpty := other.LastMinute == nil && other.LastHour == nil && other.LastDay == nil
-	if otherEmpty {
-		return
-	}
-	if m.LastMinute == nil && m.LastHour == nil && m.LastDay == nil {
+	if m.IsZero() {
 		m.Table = other.Table
 		m.Namespace = other.Namespace
 		m.Warehouse = other.Warehouse
@@ -3464,24 +3506,7 @@ func (m *TableIOMetrics) Merge(other *TableIOMetrics) {
 		m.Namespace = mergeIdentityField(m.Namespace, other.Namespace)
 		m.Warehouse = mergeIdentityField(m.Warehouse, other.Warehouse)
 	}
-	if other.LastMinute != nil {
-		if m.LastMinute == nil {
-			m.LastMinute = &TableAPIStat{}
-		}
-		m.LastMinute.Add(other.LastMinute)
-	}
-	if other.LastHour != nil {
-		if m.LastHour == nil {
-			m.LastHour = &TableAPIStat{}
-		}
-		m.LastHour.Add(other.LastHour)
-	}
-	if other.LastDay != nil {
-		if m.LastDay == nil {
-			m.LastDay = &TableAPIStat{}
-		}
-		m.LastDay.Add(other.LastDay)
-	}
+	m.Add(&other.TableAPIStat)
 }
 
 // mergeIdentityField returns a when both pointers reference the same value;
@@ -3583,13 +3608,13 @@ func (s *SegmentedTableIO) AsTableIOStat() []TableAPIStat {
 // table over one time window.
 // Read/Write is decided by the server based on API type.
 type TableAPIStat struct {
-	Reads           int64   `json:"reads,omitempty"`    // Requests classified as reads
-	Writes          int64   `json:"writes,omitempty"`   // Requests classified as writes
-	BytesIn         int64   `json:"bytesIn,omitempty"`  // Bytes in the Request body
-	BytesOut        int64   `json:"bytesOut,omitempty"` // Bytes in the Response body
-	NotOK           int64   `json:"notOK,omitempty"`    // Response >= status code 400
-	RequestTimeSecs float64 `json:"timeSecs,omitempty"` // Total request time
-	RespTTFBSecs    float64 `json:"ttfbSecs,omitempty"` // Total time spent on TTFB (req read -> response first byte) in seconds.
+	Reads           int64   `json:"r,omitempty"`     // Requests classified as reads
+	Writes          int64   `json:"w,omitempty"`     // Requests classified as writes
+	BytesIn         int64   `json:"in,omitempty"`    // Bytes in the Request body
+	BytesOut        int64   `json:"out,omitempty"`   // Bytes in the Response body
+	NotOK           int64   `json:"err,omitempty"`   // Response >= status code 400
+	RequestTimeSecs float64 `json:"rSecs,omitempty"` // Total request time in seconds
+	RespTTFBSecs    float64 `json:"ttfb,omitempty"`  // Total time spent on TTFB in seconds(req read -> response first byte) in seconds.
 }
 
 // Add sums other into t in place.
@@ -3621,37 +3646,22 @@ const (
 	tableTopTrimTarget    = 50
 )
 
-// tableScore returns the primary rank key for ordering Top* entries: total
-// request count over the last minute.
-func tableScore(m *TableIOMetrics) int64 {
-	if m == nil || m.LastMinute == nil {
-		return 0
-	}
-	return m.LastMinute.Reads + m.LastMinute.Writes
+// cmpByRequests orders TableIOMetrics descending by total request count
+// (Reads + Writes).
+func cmpByRequests(a, b *TableIOMetrics) int {
+	return cmp.Compare(b.Reads+b.Writes, a.Reads+a.Writes)
 }
 
-// tableBytes is the tiebreaker for entries with equal tableScore: total
-// last-minute bytes in both directions.
-func tableBytes(m *TableIOMetrics) int64 {
-	if m == nil || m.LastMinute == nil {
-		return 0
-	}
-	return m.LastMinute.BytesIn + m.LastMinute.BytesOut
+// cmpByThroughput orders TableIOMetrics descending by total bytes
+// (BytesIn + BytesOut).
+func cmpByThroughput(a, b *TableIOMetrics) int {
+	return cmp.Compare(b.BytesIn+b.BytesOut, a.BytesIn+a.BytesOut)
 }
 
-// tableRankCompare orders TableIOMetrics descending by tableScore, then by
-// tableBytes as a tiebreaker.
-func tableRankCompare(x, y *TableIOMetrics) int {
-	if c := cmp.Compare(tableScore(y), tableScore(x)); c != 0 {
-		return c
-	}
-	return cmp.Compare(tableBytes(y), tableBytes(x))
-}
-
-// mergeTopTableList unions src into dst, summing entries whose identity key
+// mergeTopList unions src into dst, summing entries whose identity key
 // matches and re-trimming back to tableTopTrimTarget once the combined slice
-// crosses tableTopTrimThreshold.
-func mergeTopTableList(dst, src []TableIOMetrics, key func(*TableIOMetrics) string) []TableIOMetrics {
+// crosses tableTopTrimThreshold. Sort order during trim is given by cmpFn.
+func mergeTopList(dst, src []TableIOMetrics, key func(*TableIOMetrics) string, cmpFn func(*TableIOMetrics, *TableIOMetrics) int) []TableIOMetrics {
 	if len(src) == 0 {
 		return dst
 	}
@@ -3674,19 +3684,19 @@ func mergeTopTableList(dst, src []TableIOMetrics, key func(*TableIOMetrics) stri
 		idx[k] = len(dst) - 1
 	}
 	if len(dst) > tableTopTrimThreshold {
-		dst = sortTrimTopTables(dst, tableTopTrimTarget)
+		dst = sortTrimTopList(dst, tableTopTrimTarget, cmpFn)
 	}
 	return dst
 }
 
-// sortTrimTopTables sorts a by tableRankCompare and trims to n entries.
+// sortTrimTopList sorts a by cmpFn and trims to n entries.
 // Returns a unchanged when n <= 0 or len(a) <= n.
-func sortTrimTopTables(a []TableIOMetrics, n int) []TableIOMetrics {
+func sortTrimTopList(a []TableIOMetrics, n int, cmpFn func(*TableIOMetrics, *TableIOMetrics) int) []TableIOMetrics {
 	if n <= 0 {
 		return a
 	}
 	slices.SortFunc(a, func(x, y TableIOMetrics) int {
-		return tableRankCompare(&x, &y)
+		return cmpFn(&x, &y)
 	})
 	if len(a) > n {
 		a = a[:n]
