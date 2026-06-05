@@ -1494,9 +1494,9 @@ const (
 	HealthDataTypeSysServices      HealthDataType = "sysservices"
 	HealthDataTypeSysConfig        HealthDataType = "sysconfig"
 	HealthDataTypeSysProductInfo   HealthDataType = "sysproductinfo"
+	HealthDataTypeSysDStateThreads HealthDataType = "sysdstatethreads"
 	HealthDataTypeReplication      HealthDataType = "replication"
 	HealthDataTypeShardsHealth     HealthDataType = "shardshealth"
-	HealthDataTypeSysDStateThreads HealthDataType = "sysdstatethreads"
 )
 
 // HealthDataTypesMap - Map of Health datatypes
@@ -1513,9 +1513,9 @@ var HealthDataTypesMap = map[string]HealthDataType{
 	"sysservices":      HealthDataTypeSysServices,
 	"sysconfig":        HealthDataTypeSysConfig,
 	"sysproductinfo":   HealthDataTypeSysProductInfo,
+	"sysdstatethreads": HealthDataTypeSysDStateThreads,
 	"replication":      HealthDataTypeReplication,
 	"shardshealth":     HealthDataTypeShardsHealth,
-	"sysdstatethreads": HealthDataTypeSysDStateThreads,
 }
 
 // HealthDataTypesList - List of health datatypes
@@ -1532,9 +1532,9 @@ var HealthDataTypesList = []HealthDataType{
 	HealthDataTypeSysServices,
 	HealthDataTypeSysConfig,
 	HealthDataTypeSysProductInfo,
+	HealthDataTypeSysDStateThreads,
 	HealthDataTypeReplication,
 	HealthDataTypeShardsHealth,
-	HealthDataTypeSysDStateThreads,
 }
 
 // HealthInfoVersionStruct - struct for health info version

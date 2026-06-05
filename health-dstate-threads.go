@@ -42,9 +42,18 @@ type DStateThreadGroup struct {
 // uninterruptible disk sleep, captured as part of `mc support diag`. Helps
 // engineers debugging a stuck cluster see where threads are blocked without
 // requiring SSH access.
+//
+// Total is the number of threads in D state at sample time. TotalThreads is
+// the size of the per-thread enumeration the sample was drawn from (i.e. all
+// threads in the MinIO process, regardless of state). The ratio
+// Total/TotalThreads gives consumers a sense of how saturated the process
+// is — a handful of momentarily D-state threads on a dense node with
+// thousands of threads is qualitatively different from the same absolute
+// count on a small node.
 type DStateThreadsDiag struct {
 	NodeCommon
 
-	Total  int                 `json:"total"`
-	Groups []DStateThreadGroup `json:"groups,omitempty"`
+	Total        int                 `json:"total"`
+	TotalThreads int                 `json:"total_threads,omitempty"`
+	Groups       []DStateThreadGroup `json:"groups,omitempty"`
 }
