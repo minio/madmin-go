@@ -149,7 +149,7 @@ func (adm *AdminClient) TablesReplicationResyncCatalogOpen(ctx context.Context) 
 		return err
 	}
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusNoContent {
 		return httpRespToErrorResponse(resp)
 	}
 
@@ -169,7 +169,7 @@ func (adm *AdminClient) TablesReplicationResyncCatalogRebuild(ctx context.Contex
 		return err
 	}
 
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusNoContent {
 		return httpRespToErrorResponse(resp)
 	}
 
