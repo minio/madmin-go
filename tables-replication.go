@@ -29,11 +29,26 @@ import (
 	"time"
 )
 
+// TablesRebuildState is the lifecycle state of a post-failover catalog rebuild,
+// reported in TablesReplicationStatus.RebuildState.
+type TablesRebuildState string
+
+const (
+	TablesRebuildPending      TablesRebuildState = "Pending"
+	TablesRebuildInProgress   TablesRebuildState = "InProgress"
+	TablesRebuildFailureRetry TablesRebuildState = "FailureRetry"
+	TablesRebuildFailed       TablesRebuildState = "Failed"
+	TablesRebuildCompleted    TablesRebuildState = "Completed"
+)
+
 // TablesReplicationStatus is one page of the tables replication status admin API.
 type TablesReplicationStatus struct {
 	Status                string                 `json:"status"`
 	Tables                []TableReplicationInfo `json:"tables"`
 	NextContinuationToken string                 `json:"nextContinuationToken,omitempty"`
+	RebuildState          TablesRebuildState     `json:"rebuildState,omitempty"`
+	RebuildAttempts       int                    `json:"rebuildAttempts,omitempty"`
+	RebuildLastError      string                 `json:"rebuildLastError,omitempty"`
 }
 
 // TableReplicationInfo is the per-table replication status.
