@@ -19,24 +19,16 @@
 
 package madmin
 
-// DStateThreadInfo - identifies a single thread caught in uninterruptible
-// disk sleep ("D" state) along with the kernel symbol it was blocked on
-// (wchan) and its kernel stack at the moment of capture.
+// DStateThreadInfo - one thread caught in uninterruptible disk sleep.
 //
-// Starttime is the kernel-reported thread start time in clock ticks since
-// boot (field 22 of /proc/<tid>/stat); together with TID it forms a stable
-// identity that survives PID/TID reuse over the dwell-history window.
+// Starttime is the kernel-reported start time in clock ticks (proc stat
+// field 22); pairing it with TID gives a stable identity even when TIDs
+// are reused over the server's dwell-history window.
 //
-// DwellSeconds is the minimum continuous time the thread has been in D state
-// on the same wchan, derived from consecutive ring-buffer samples on the
-// server. BlkIOSecondsInWindow is the cumulative block-I/O wait that
-// accumulated during that same window (delayacct_blkio_ticks delta), a
-// corroborating signal that the thread was actually waiting on I/O the
-// whole time rather than just unlucky-at-sample.
-//
-// Stuck is true when DwellSeconds >= the server-side threshold; it is the
-// single boolean consumers (health-analyzer, dashboards) should key off
-// of so the threshold definition lives in one place.
+// DwellSeconds is the minimum continuous time the thread has been in D
+// on the same wchan. BlkIOSecondsInWindow is the corroborating
+// delayacct_blkio_ticks delta. Stuck is the server-thresholded boolean
+// so consumers don't redefine "stuck" locally.
 type DStateThreadInfo struct {
 	TID                  int     `json:"tid"`
 	Starttime            uint64  `json:"starttime,omitempty"`
@@ -48,11 +40,9 @@ type DStateThreadInfo struct {
 	Stack                string  `json:"stack,omitempty"`
 }
 
-// DStateThreadGroup - groups D-state threads by their shared wchan, with a
-// representative sample of full stacks. Count is the total threads currently
-// in this wchan bucket; StuckCount is the subset of those whose DwellSeconds
-// crossed the server's stuck threshold. Group sizes give an at-a-glance view
-// of where threads are stuck cluster-wide.
+// DStateThreadGroup groups D-state threads sharing a wchan. Count is all
+// threads currently in this bucket; StuckCount is the subset past the
+// server's dwell threshold.
 type DStateThreadGroup struct {
 	Wchan      string             `json:"wchan"`
 	Count      int                `json:"count"`
@@ -60,22 +50,14 @@ type DStateThreadGroup struct {
 	Samples    []DStateThreadInfo `json:"samples,omitempty"`
 }
 
-// DStateThreadsDiag - per-node snapshot of threads currently in
-// uninterruptible disk sleep, captured as part of `mc support diag`. Helps
-// engineers debugging a stuck cluster see where threads are blocked without
-// requiring SSH access.
+// DStateThreadsDiag is the per-node snapshot of threads in
+// uninterruptible disk sleep, captured by `mc support diag`.
 //
-// Total is the number of threads in D state at sample time. StuckTotal is
-// the subset whose DwellSeconds has crossed StuckThresholdSeconds and is
-// the count to alert on. TotalThreads is the size of the per-thread
-// enumeration the sample was drawn from (i.e. all threads in the MinIO
-// process, regardless of state); Total/TotalThreads gives saturation
-// context for dense nodes.
-//
-// WindowSeconds reports how far back the server's dwell ring buffer
-// covered when this snapshot was built — DwellSeconds for any thread is
-// capped at this value, so a thread with DwellSeconds == WindowSeconds
-// has been in D for at least the entire ring window.
+// StuckTotal is the alertable number (Total can be non-zero on a healthy
+// box doing I/O). TotalThreads gives saturation context for dense nodes.
+// WindowSeconds bounds DwellSeconds — a thread reporting
+// DwellSeconds == WindowSeconds has been in D for at least the entire
+// ring window.
 type DStateThreadsDiag struct {
 	NodeCommon
 
