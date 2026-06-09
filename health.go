@@ -1421,6 +1421,19 @@ type ShardsHealthInfo struct {
 	FailedWrites map[string]map[string][]uint64 `json:"failed_writes,omitempty"`
 }
 
+// IAMPolicyDiag holds per-policy diagnostic findings.
+type IAMPolicyDiag struct {
+	UnsafeConditionKeys []string `json:"unsafe_condition_keys,omitempty"`
+}
+
+// IAMInfo carries IAM diagnostics. TotalPolicies is the count of policies
+// inspected; FlaggedPolicies lists only those with at least one finding.
+type IAMInfo struct {
+	Error           string                   `json:"error,omitempty"`
+	TotalPolicies   int                      `json:"total_policies,omitempty"`
+	FlaggedPolicies map[string]IAMPolicyDiag `json:"flagged_policies,omitempty"`
+}
+
 // MinioHealthInfo - Includes MinIO confifuration information
 type MinioHealthInfo struct {
 	Error string `json:"error,omitempty"`
@@ -1430,6 +1443,7 @@ type MinioHealthInfo struct {
 	Replication     *ReplDiagInfo     `json:"replication,omitempty"` // Deprecated May 2025
 	ReplicationInfo *ReplDiagInfoV2   `json:"replication_info,omitempty"`
 	ShardsHealth    *ShardsHealthInfo `json:"shards_health,omitempty"`
+	IAMInfo         *IAMInfo          `json:"iam_info,omitempty"`
 }
 
 // HealthInfo - MinIO cluster's health Info
@@ -1497,6 +1511,7 @@ const (
 	HealthDataTypeSysDStateThreads HealthDataType = "sysdstatethreads"
 	HealthDataTypeReplication      HealthDataType = "replication"
 	HealthDataTypeShardsHealth     HealthDataType = "shardshealth"
+	HealthDataTypeIAMInfo          HealthDataType = "iaminfo"
 )
 
 // HealthDataTypesMap - Map of Health datatypes
@@ -1516,6 +1531,7 @@ var HealthDataTypesMap = map[string]HealthDataType{
 	"sysdstatethreads": HealthDataTypeSysDStateThreads,
 	"replication":      HealthDataTypeReplication,
 	"shardshealth":     HealthDataTypeShardsHealth,
+	"iaminfo":          HealthDataTypeIAMInfo,
 }
 
 // HealthDataTypesList - List of health datatypes
@@ -1535,6 +1551,7 @@ var HealthDataTypesList = []HealthDataType{
 	HealthDataTypeSysDStateThreads,
 	HealthDataTypeReplication,
 	HealthDataTypeShardsHealth,
+	HealthDataTypeIAMInfo,
 }
 
 // HealthInfoVersionStruct - struct for health info version
