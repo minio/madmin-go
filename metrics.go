@@ -67,6 +67,7 @@ const (
 	MetricsHealing
 	MetricsBuckets
 	MetricsKMS
+	MetricsTablesAPI
 
 	// MetricsAll must be last.
 	// Enables all metrics.
@@ -105,6 +106,7 @@ func (m MetricType) String() string {
 	addIf(m.Contains(MetricsHealing), "Healing")
 	addIf(m.Contains(MetricsBuckets), "Buckets")
 	addIf(m.Contains(MetricsKMS), "KMS")
+	addIf(m.Contains(MetricsTablesAPI), "Tables API")
 	return b.String()
 }
 
@@ -112,13 +114,16 @@ func (m MetricType) String() string {
 type MetricFlags uint64
 
 const (
-	MetricsDayStats     MetricFlags = 1 << (iota) // Include daily statistics (24h, 15-min segments)
-	MetricsByHost                                 // Aggregate metrics by host/node.
-	MetricsByDisk                                 // Aggregate metrics by disk.
-	MetricsLegacyDiskIO                           // Add legacy disk IO metrics.
-	MetricsByDiskSet                              // Aggregate metrics by disk pool+set index.
-	MetricsSMART                                  // Include S.M.A.R.T. disk health data.
-	MetricsHourStats                              // Include last-hour statistics (1h, 1-min segments)
+	MetricsDayStats      MetricFlags = 1 << (iota) // Include daily statistics (24h, 15-min segments)
+	MetricsByHost                                  // Aggregate metrics by host/node.
+	MetricsByDisk                                  // Aggregate metrics by disk.
+	MetricsLegacyDiskIO                            // Add legacy disk IO metrics.
+	MetricsByDiskSet                               // Aggregate metrics by disk pool+set index.
+	MetricsSMART                                   // Include S.M.A.R.T. disk health data.
+	MetricsHourStats                               // Include last-hour statistics (1h, 1-min segments)
+	MetricsTopWarehouses                           // Include top-25 metrics by warehouse
+	MetricsTopNamespaces                           // Include top-25 metrics by namespace
+	MetricsTopTables                               // Include top-25 tables
 )
 
 // Contains returns whether m contains all of x.
@@ -380,6 +385,7 @@ type Metrics struct {
 	Healing     *HealingMetrics     `json:"healing,omitempty"`
 	Buckets     *BucketAPIMetrics   `json:"buckets,omitempty"`
 	KMS         *KMSRtMetrics       `json:"kms,omitempty"`
+	TablesAPI   *TableAPIMetrics    `json:"tables_api,omitempty"`
 }
 
 // Merge other into r.
@@ -456,6 +462,12 @@ func (r *Metrics) Merge(other *Metrics) {
 			r.KMS = &KMSRtMetrics{}
 		}
 		r.KMS.Merge(other.KMS)
+	}
+	if other.TablesAPI != nil {
+		if r.TablesAPI == nil {
+			r.TablesAPI = &TableAPIMetrics{}
+		}
+		r.TablesAPI.Merge(other.TablesAPI)
 	}
 }
 
@@ -3245,15 +3257,15 @@ func (s *SegmentedBucketStats) Merge(other *SegmentedBucketStats) {
 	if s.FirstTime.IsZero() || (!other.FirstTime.IsZero() && other.FirstTime.Before(s.FirstTime)) {
 		s.FirstTime = other.FirstTime
 	}
-	s.Requests = addInt64Slices(s.Requests, other.Requests)
-	s.Gets = addInt64Slices(s.Gets, other.Gets)
-	s.Puts = addInt64Slices(s.Puts, other.Puts)
-	s.Lists = addInt64Slices(s.Lists, other.Lists)
-	s.Errors = addInt64Slices(s.Errors, other.Errors)
-	s.Errors4xx = addInt64Slices(s.Errors4xx, other.Errors4xx)
-	s.Errors5xx = addInt64Slices(s.Errors5xx, other.Errors5xx)
-	s.BytesIn = addInt64Slices(s.BytesIn, other.BytesIn)
-	s.BytesOut = addInt64Slices(s.BytesOut, other.BytesOut)
+	s.Requests = addSlices(s.Requests, other.Requests)
+	s.Gets = addSlices(s.Gets, other.Gets)
+	s.Puts = addSlices(s.Puts, other.Puts)
+	s.Lists = addSlices(s.Lists, other.Lists)
+	s.Errors = addSlices(s.Errors, other.Errors)
+	s.Errors4xx = addSlices(s.Errors4xx, other.Errors4xx)
+	s.Errors5xx = addSlices(s.Errors5xx, other.Errors5xx)
+	s.BytesIn = addSlices(s.BytesIn, other.BytesIn)
+	s.BytesOut = addSlices(s.BytesOut, other.BytesOut)
 }
 
 // BucketMetrics holds all data for one bucket across the available time
@@ -3334,15 +3346,414 @@ func (b *BucketAPIMetrics) Merge(other *BucketAPIMetrics) {
 	}
 }
 
-// addInt64Slices returns the element-wise sum of a and b, right-aligned so
+// TableAPIMetrics holds traffic for all active tables aggregated across nodes.
+type TableAPIMetrics struct {
+	// Time these metrics were collected
+	CollectedAt time.Time `json:"collected"`
+
+	// Nodes responding with data
+	Nodes int `json:"nodes"`
+
+	// LastMinute is the aggregate over the last minute across all tables.
+	LastMinute *TableAPIStat `json:"lastMinute,omitempty"`
+
+	// LastHour is the aggregate over the last hour.
+	// Populated only when MetricsHourStats is requested.
+	LastHour *SegmentedTableIO `json:"lastHour,omitempty"`
+
+	// LastDay is the aggregate over the last 24 hours.
+	// Populated only when MetricsDayStats is requested.
+	LastDay *SegmentedTableIO `json:"lastDay,omitempty"`
+
+	// TopWarehouses contains the top 25 warehouses by request count if MetricsTopWarehouses is set.
+	TopWarehouses *TopTableIO `json:"topW,omitempty"`
+
+	// TopNamespaces contains the top 25 namespaces by request count if MetricsTopNamespaces is set.
+	TopNamespaces *TopTableIO `json:"topN,omitempty"`
+
+	// TopTables contains the top 25 tables by request count if MetricsTopTables is set.
+	TopTables *TopTableIO `json:"topT,omitempty"`
+}
+
+// TopTableIO provides sorted IO numbers for tables.
+type TopTableIO struct {
+	// Minute stats always provided.
+	ByRequestsMin   []TableIOMetrics `json:"reqMin,omitempty"`
+	ByThroughputMin []TableIOMetrics `json:"thrMin,omitempty"`
+
+	// Hour is provided if MetricsHourStats is set.
+	ByRequestsHour   []TableIOMetrics `json:"reqHour,omitempty"`
+	ByThroughputHour []TableIOMetrics `json:"thrHour,omitempty"`
+
+	// Day is provided if MetricsDayStats is set.
+	ByRequestsDay   []TableIOMetrics `json:"reqDay,omitempty"`
+	ByThroughputDay []TableIOMetrics `json:"thrDay,omitempty"`
+}
+
+// Merge folds other into t. Entries with matching key are summed; the result
+// for each ranked list is sorted by its native ranking (requests or throughput).
+func (t *TopTableIO) Merge(other *TopTableIO, key func(*TableIOMetrics) string) {
+	if other == nil {
+		return
+	}
+	t.ByRequestsMin = mergeTopList(t.ByRequestsMin, other.ByRequestsMin, key, cmpByRequests)
+	t.ByThroughputMin = mergeTopList(t.ByThroughputMin, other.ByThroughputMin, key, cmpByThroughput)
+	t.ByRequestsHour = mergeTopList(t.ByRequestsHour, other.ByRequestsHour, key, cmpByRequests)
+	t.ByThroughputHour = mergeTopList(t.ByThroughputHour, other.ByThroughputHour, key, cmpByThroughput)
+	t.ByRequestsDay = mergeTopList(t.ByRequestsDay, other.ByRequestsDay, key, cmpByRequests)
+	t.ByThroughputDay = mergeTopList(t.ByThroughputDay, other.ByThroughputDay, key, cmpByThroughput)
+}
+
+// TopN re-ranks each contained list and trims to n entries. No-op if t is nil
+// or n <= 0.
+func (t *TopTableIO) TopN(n int) {
+	if t == nil || n <= 0 {
+		return
+	}
+	t.ByRequestsMin = sortTrimTopList(t.ByRequestsMin, n, cmpByRequests)
+	t.ByThroughputMin = sortTrimTopList(t.ByThroughputMin, n, cmpByThroughput)
+	t.ByRequestsHour = sortTrimTopList(t.ByRequestsHour, n, cmpByRequests)
+	t.ByThroughputHour = sortTrimTopList(t.ByThroughputHour, n, cmpByThroughput)
+	t.ByRequestsDay = sortTrimTopList(t.ByRequestsDay, n, cmpByRequests)
+	t.ByThroughputDay = sortTrimTopList(t.ByThroughputDay, n, cmpByThroughput)
+}
+
+// Merge folds other into t. CollectedAt takes the later timestamp;
+// Nodes is summed; LastMinute is added; LastHour and LastDay are
+// merged segment-wise; Top* groups are merged per-ranking and trimmed
+// back to tableTopTrimTarget once any ranked list grows past tableTopTrimThreshold.
+func (t *TableAPIMetrics) Merge(other *TableAPIMetrics) {
+	if other == nil {
+		return
+	}
+	if other.CollectedAt.After(t.CollectedAt) {
+		t.CollectedAt = other.CollectedAt
+	}
+	t.Nodes += other.Nodes
+	if other.LastMinute != nil {
+		if t.LastMinute == nil {
+			t.LastMinute = &TableAPIStat{}
+		}
+		t.LastMinute.Add(other.LastMinute)
+	}
+	if other.LastHour != nil {
+		if t.LastHour == nil {
+			t.LastHour = &SegmentedTableIO{}
+		}
+		t.LastHour.Merge(other.LastHour)
+	}
+	if other.LastDay != nil {
+		if t.LastDay == nil {
+			t.LastDay = &SegmentedTableIO{}
+		}
+		t.LastDay.Merge(other.LastDay)
+	}
+	t.TopWarehouses = mergeTopGroup(t.TopWarehouses, other.TopWarehouses, (*TableIOMetrics).KeyWarehouse)
+	t.TopNamespaces = mergeTopGroup(t.TopNamespaces, other.TopNamespaces, (*TableIOMetrics).KeyNamespace)
+	t.TopTables = mergeTopGroup(t.TopTables, other.TopTables, (*TableIOMetrics).KeyTable)
+}
+
+// TopN re-ranks every ranked list in each Top* group and trims to n entries.
+// Pass n <= 0 to leave the lists unchanged.
+func (t *TableAPIMetrics) TopN(n int) {
+	if n <= 0 {
+		return
+	}
+	t.TopWarehouses.TopN(n)
+	t.TopNamespaces.TopN(n)
+	t.TopTables.TopN(n)
+}
+
+// mergeTopGroup folds src into dst, allocating dst if needed. Returns dst.
+func mergeTopGroup(dst, src *TopTableIO, key func(*TableIOMetrics) string) *TopTableIO {
+	if src == nil {
+		return dst
+	}
+	if dst == nil {
+		dst = &TopTableIO{}
+	}
+	dst.Merge(src, key)
+	return dst
+}
+
+// TableIOMetrics holds traffic for a table across time windows.
+type TableIOMetrics struct {
+	// Table will be populated with table name if only one table.
+	Table *string `json:"table"`
+
+	// Namespace will be populated if all data is from the same namespace
+	Namespace *string `json:"namespace"`
+
+	// Warehouse will be populated if all data is from the same warehouse
+	Warehouse *string `json:"warehouse"`
+
+	TableAPIStat `msg:",flatten"`
+}
+
+// Merge sums other into m. Identity fields (Table/Namespace/Warehouse) are
+// copied verbatim on the first non-empty merge and collapsed to nil on
+// disagreement thereafter, preserving the "set iff single value" contract.
+func (m *TableIOMetrics) Merge(other *TableIOMetrics) {
+	if other == nil || other.IsZero() {
+		return
+	}
+	if m.IsZero() {
+		m.Table = other.Table
+		m.Namespace = other.Namespace
+		m.Warehouse = other.Warehouse
+	} else {
+		m.Table = mergeIdentityField(m.Table, other.Table)
+		m.Namespace = mergeIdentityField(m.Namespace, other.Namespace)
+		m.Warehouse = mergeIdentityField(m.Warehouse, other.Warehouse)
+	}
+	m.Add(&other.TableAPIStat)
+}
+
+// mergeIdentityField returns a when both pointers reference the same value;
+// nil on any disagreement, including when either side is nil (a nil side
+// already represents "multiple values").
+func mergeIdentityField(a, b *string) *string {
+	if a == nil || b == nil {
+		return nil
+	}
+	if *a != *b {
+		return nil
+	}
+	return a
+}
+
+type SegmentedTableIO struct {
+	// IntervalSecs is the duration of each slot in seconds.
+	IntervalSecs int `json:"intervalSecs"`
+
+	// FirstTime is the timestamp of the oldest slot.
+	FirstTime time.Time `json:"firstTime"`
+
+	// Per-category counts; one slot per IntervalSecs.
+	Reads           []int64   `json:"reads,omitempty"`
+	Writes          []int64   `json:"writes,omitempty"`
+	BytesIn         []int64   `json:"bytesIn,omitempty"`
+	BytesOut        []int64   `json:"bytesOut,omitempty"`
+	NotOK           []int64   `json:"notOk,omitempty"`
+	RequestTimeSecs []float32 `json:"timeSecs,omitempty"`
+	RespTTFBSecs    []float32 `json:"ttfbSecs,omitempty"`
+}
+
+// Merge folds other into s. Slots are right-aligned and summed so the most
+// recent slot always aligns; FirstTime extends to the earliest reported.
+func (s *SegmentedTableIO) Merge(other *SegmentedTableIO) {
+	if other == nil {
+		return
+	}
+	if s.IntervalSecs == 0 {
+		s.IntervalSecs = other.IntervalSecs
+	}
+	if s.FirstTime.IsZero() || (!other.FirstTime.IsZero() && other.FirstTime.Before(s.FirstTime)) {
+		s.FirstTime = other.FirstTime
+	}
+	s.Reads = addSlices(s.Reads, other.Reads)
+	s.Writes = addSlices(s.Writes, other.Writes)
+	s.BytesIn = addSlices(s.BytesIn, other.BytesIn)
+	s.BytesOut = addSlices(s.BytesOut, other.BytesOut)
+	s.NotOK = addSlices(s.NotOK, other.NotOK)
+	s.RequestTimeSecs = addSlices(s.RequestTimeSecs, other.RequestTimeSecs)
+	s.RespTTFBSecs = addSlices(s.RespTTFBSecs, other.RespTTFBSecs)
+}
+
+// AsTableIOStat returns one TableAPIStat per slot, right-aligned so the most
+// recent slot is at the last index. Per-category slices shorter than the
+// longest are aligned to the right (their oldest slots map to leading zeros).
+func (s *SegmentedTableIO) AsTableIOStat() []TableAPIStat {
+	if s == nil {
+		return nil
+	}
+	n := len(s.Reads)
+	for _, l := range []int{
+		len(s.Writes), len(s.BytesIn), len(s.BytesOut), len(s.NotOK),
+		len(s.RequestTimeSecs), len(s.RespTTFBSecs),
+	} {
+		if l > n {
+			n = l
+		}
+	}
+	if n == 0 {
+		return nil
+	}
+	res := make([]TableAPIStat, n)
+	for i, v := range s.Reads {
+		res[n-len(s.Reads)+i].Reads = v
+	}
+	for i, v := range s.Writes {
+		res[n-len(s.Writes)+i].Writes = v
+	}
+	for i, v := range s.BytesIn {
+		res[n-len(s.BytesIn)+i].BytesIn = v
+	}
+	for i, v := range s.BytesOut {
+		res[n-len(s.BytesOut)+i].BytesOut = v
+	}
+	for i, v := range s.NotOK {
+		res[n-len(s.NotOK)+i].NotOK = v
+	}
+	for i, v := range s.RequestTimeSecs {
+		res[n-len(s.RequestTimeSecs)+i].RequestTimeSecs = float64(v)
+	}
+	for i, v := range s.RespTTFBSecs {
+		res[n-len(s.RespTTFBSecs)+i].RespTTFBSecs = float64(v)
+	}
+	return res
+}
+
+// TableAPIStat holds read/write counts and byte totals for a
+// table over one time window.
+// Read/Write is decided by the server based on API type.
+type TableAPIStat struct {
+	Reads           int64   `json:"r,omitempty"`     // Requests classified as reads
+	Writes          int64   `json:"w,omitempty"`     // Requests classified as writes
+	BytesIn         int64   `json:"in,omitempty"`    // Bytes in the Request body
+	BytesOut        int64   `json:"out,omitempty"`   // Bytes in the Response body
+	NotOK           int64   `json:"err,omitempty"`   // Response >= status code 400
+	RequestTimeSecs float64 `json:"rSecs,omitempty"` // Total request time in seconds
+	RespTTFBSecs    float64 `json:"ttfb,omitempty"`  // Total time spent on TTFB in seconds(req read -> response first byte) in seconds.
+}
+
+// Add sums other into t in place.
+func (t *TableAPIStat) Add(other *TableAPIStat) {
+	if other == nil {
+		return
+	}
+	t.Reads += other.Reads
+	t.Writes += other.Writes
+	t.BytesIn += other.BytesIn
+	t.BytesOut += other.BytesOut
+	t.RequestTimeSecs += other.RequestTimeSecs
+	t.RespTTFBSecs += other.RespTTFBSecs
+	t.NotOK += other.NotOK
+}
+
+// IsZero reports whether all counters are zero.
+func (t *TableAPIStat) IsZero() bool {
+	return t == nil || t.Reads == 0 && t.Writes == 0
+}
+
+// Top-list growth bounds for TableAPIMetrics. Merge accumulates entries
+// across sources; once any Top* slice exceeds tableTopTrimThreshold it is
+// re-ranked and clipped back to tableTopTrimTarget. The buffer between the
+// final top-25 surface and tableTopTrimTarget gives later merges room to
+// promote entries that would otherwise be dropped too early.
+const (
+	tableTopTrimThreshold = 100
+	tableTopTrimTarget    = 50
+)
+
+// cmpByRequests orders TableIOMetrics descending by total request count
+// (Reads + Writes).
+func cmpByRequests(a, b *TableIOMetrics) int {
+	return cmp.Compare(b.Reads+b.Writes, a.Reads+a.Writes)
+}
+
+// cmpByThroughput orders TableIOMetrics descending by total bytes
+// (BytesIn + BytesOut).
+func cmpByThroughput(a, b *TableIOMetrics) int {
+	return cmp.Compare(b.BytesIn+b.BytesOut, a.BytesIn+a.BytesOut)
+}
+
+// mergeTopList unions src into dst, summing entries whose identity key
+// matches and re-trimming back to tableTopTrimTarget once the combined slice
+// crosses tableTopTrimThreshold. Sort order during trim is given by cmpFn.
+func mergeTopList(dst, src []TableIOMetrics, key func(*TableIOMetrics) string, cmpFn func(*TableIOMetrics, *TableIOMetrics) int) []TableIOMetrics {
+	if len(src) == 0 {
+		return dst
+	}
+	if cap(dst) < len(dst)+len(src) {
+		grown := make([]TableIOMetrics, len(dst), len(dst)+len(src))
+		copy(grown, dst)
+		dst = grown
+	}
+	idx := make(map[string]int, len(dst)+len(src))
+	for i := range dst {
+		idx[key(&dst[i])] = i
+	}
+	for i := range src {
+		k := key(&src[i])
+		if pos, ok := idx[k]; ok {
+			dst[pos].Merge(&src[i])
+			continue
+		}
+		dst = append(dst, src[i])
+		idx[k] = len(dst) - 1
+	}
+	if len(dst) > tableTopTrimThreshold {
+		dst = sortTrimTopList(dst, tableTopTrimTarget, cmpFn)
+	}
+	return dst
+}
+
+// sortTrimTopList sorts a by cmpFn and trims to n entries.
+// Returns a unchanged when n <= 0 or len(a) <= n.
+func sortTrimTopList(a []TableIOMetrics, n int, cmpFn func(*TableIOMetrics, *TableIOMetrics) int) []TableIOMetrics {
+	if n <= 0 {
+		return a
+	}
+	slices.SortFunc(a, func(x, y TableIOMetrics) int {
+		return cmpFn(&x, &y)
+	})
+	if len(a) > n {
+		a = a[:n]
+	}
+	return a
+}
+
+// Identity keys for Top* slices. ASCII unit separator avoids accidental
+// collisions between user-provided names (which rarely if ever contain it).
+const tableKeySep = "\x1f"
+
+func ptrStr(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+// KeyWarehouse returns the identity key used when merging warehouse-level
+// Top entries.
+func (m *TableIOMetrics) KeyWarehouse() string {
+	return ptrStr(m.Warehouse)
+}
+
+// KeyNamespace returns the identity key used when merging namespace-level
+// Top entries.
+func (m *TableIOMetrics) KeyNamespace() string {
+	return ptrStr(m.Warehouse) + tableKeySep + ptrStr(m.Namespace)
+}
+
+// KeyTable returns the identity key used when merging table-level Top
+// entries.
+func (m *TableIOMetrics) KeyTable() string {
+	return ptrStr(m.Warehouse) + tableKeySep + ptrStr(m.Namespace) + tableKeySep + ptrStr(m.Table)
+}
+
+type addable interface {
+	~int | ~int8 | ~int16 | ~int32 | ~int64 |
+		~uint | ~uint8 | ~uint16 | ~uint32 | ~uint64 | ~uintptr |
+		~float32 | ~float64
+}
+
+// addSlices returns the element-wise sum of a and b, right-aligned so
 // that slot index len-1 (most recent) always corresponds between both.
-// The longer slice is used as the base; if b is longer, a copy is made so
-// the caller's backing array is not mutated.
-func addInt64Slices(a, b []int64) []int64 {
+// The 'a' array is mutated, but the 'b' value is never mutated.
+func addSlices[A addable](a, b []A) []A {
 	if len(b) > len(a) {
-		tmp := make([]int64, len(b))
-		copy(tmp, b)
-		a, b = tmp, a
+		// Extend a and shift values while adding b.
+		diff := len(b) - len(a)
+		a = append(a, make([]A, diff)...)
+		for i := len(a) - 1; i >= diff; i-- {
+			a[i] = a[i-diff] + b[i]
+		}
+		for i := 0; i < diff; i++ {
+			a[i] = b[i]
+		}
+		return a
 	}
 	offset := len(a) - len(b)
 	for i, v := range b {
