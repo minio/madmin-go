@@ -63,6 +63,11 @@ const (
 	logKeySASLKrbPrincipal = "sasl_krb_principal"
 	logKeyName             = "name"
 
+	// Internal API recorder config keys
+	logKeyRetention           = "retention"
+	logKeyMaintenanceInterval = "maintenance_interval"
+	logKeyOrphanGracePeriod   = "orphan_grace_period"
+
 	// Queue config keys
 	logKeyDir          = "dir"
 	logKeyDirMaxSize   = "dir_max_size"
@@ -141,7 +146,10 @@ type InternalRecorder struct {
 
 // InternalAPIRecorder represents internal recorder config for API logs
 type InternalAPIRecorder struct {
-	Enable LogField `json:"enable" yaml:"enable"`
+	Enable              LogField `json:"enable" yaml:"enable"`
+	Retention           LogField `json:"retention" yaml:"retention"`
+	MaintenanceInterval LogField `json:"maintenanceInterval" yaml:"maintenanceInterval"`
+	OrphanGracePeriod   LogField `json:"orphanGracePeriod" yaml:"orphanGracePeriod"`
 }
 
 // InternalErrorRecorder represents internal recorder config for Error logs
@@ -274,7 +282,10 @@ func parseInternalRecorder(sc SubsysConfig, help Help) InternalRecorder {
 // parseInternalAPIRecorder parses SubsysConfig into InternalAPIRecorder with descriptions from Help
 func parseInternalAPIRecorder(sc SubsysConfig, help Help) InternalAPIRecorder {
 	return InternalAPIRecorder{
-		Enable: getLogField(sc, help, logKeyEnable),
+		Enable:              getLogField(sc, help, logKeyEnable),
+		Retention:           getLogField(sc, help, logKeyRetention),
+		MaintenanceInterval: getLogField(sc, help, logKeyMaintenanceInterval),
+		OrphanGracePeriod:   getLogField(sc, help, logKeyOrphanGracePeriod),
 	}
 }
 
@@ -597,6 +608,15 @@ func buildInternalRecorderKV(cfg InternalRecorder, subSys string) string {
 func buildInternalAPIKV(cfg InternalAPIRecorder) string {
 	var kv kvBuilder
 	kv.add(logKeyEnable, cfg.Enable.Value)
+	if cfg.Retention.Value != "" {
+		kv.add(logKeyRetention, cfg.Retention.Value)
+	}
+	if cfg.MaintenanceInterval.Value != "" {
+		kv.add(logKeyMaintenanceInterval, cfg.MaintenanceInterval.Value)
+	}
+	if cfg.OrphanGracePeriod.Value != "" {
+		kv.add(logKeyOrphanGracePeriod, cfg.OrphanGracePeriod.Value)
+	}
 	return LogAPIInternalSubSys + " " + kv.String()
 }
 
@@ -1116,6 +1136,9 @@ func (c LogRecorderAPIConfig) YAML() string {
 
 	sb.WriteString("internal:\n")
 	writeLogField(&sb, "  ", "enable", c.Internal.Enable)
+	writeLogField(&sb, "  ", "retention", c.Internal.Retention)
+	writeLogField(&sb, "  ", "maintenanceInterval", c.Internal.MaintenanceInterval)
+	writeLogField(&sb, "  ", "orphanGracePeriod", c.Internal.OrphanGracePeriod)
 
 	writeExternalYAML(&sb, c.External)
 
