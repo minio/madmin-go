@@ -461,25 +461,32 @@ type APIVersion struct {
 
 // ServerProperties holds server information
 type ServerProperties struct {
-	State               string            `json:"state,omitempty"`
-	Endpoint            string            `json:"endpoint,omitempty"`
-	Scheme              string            `json:"scheme,omitempty"`
-	Uptime              int64             `json:"uptime,omitempty"`
-	Version             string            `json:"version,omitempty"`
-	CommitID            string            `json:"commitID,omitempty"`
-	Network             map[string]string `json:"network,omitempty"`
-	Disks               []Disk            `json:"drives,omitempty"`
-	PoolNumber          int               `json:"poolNumber,omitempty"` // Only set if len(PoolNumbers) == 1
-	PoolNumbers         []int             `json:"poolNumbers,omitempty"`
-	MemStats            MemStats          `json:"mem_stats"`
-	GoMaxProcs          int               `json:"go_max_procs,omitempty"`
-	NumCPU              int               `json:"num_cpu,omitempty"`
-	RuntimeVersion      string            `json:"runtime_version,omitempty"`
-	MinioEnvVars        map[string]string `json:"minio_env_vars,omitempty"`
-	MinioEnvHash        string            `json:"minio_env_hash,omitempty"`
-	Edition             string            `json:"edition"`
-	License             *LicenseInfo      `json:"license,omitempty"`
-	IsLeader            bool              `json:"is_leader"`
+	State          string            `json:"state,omitempty"`
+	Endpoint       string            `json:"endpoint,omitempty"`
+	Scheme         string            `json:"scheme,omitempty"`
+	Uptime         int64             `json:"uptime,omitempty"`
+	Version        string            `json:"version,omitempty"`
+	CommitID       string            `json:"commitID,omitempty"`
+	Network        map[string]string `json:"network,omitempty"`
+	Disks          []Disk            `json:"drives,omitempty"`
+	PoolNumber     int               `json:"poolNumber,omitempty"` // Only set if len(PoolNumbers) == 1
+	PoolNumbers    []int             `json:"poolNumbers,omitempty"`
+	MemStats       MemStats          `json:"mem_stats"`
+	GoMaxProcs     int               `json:"go_max_procs,omitempty"`
+	NumCPU         int               `json:"num_cpu,omitempty"`
+	RuntimeVersion string            `json:"runtime_version,omitempty"`
+	MinioEnvVars   map[string]string `json:"minio_env_vars,omitempty"`
+	MinioEnvHash   string            `json:"minio_env_hash,omitempty"`
+	Edition        string            `json:"edition"`
+	License        *LicenseInfo      `json:"license,omitempty"`
+	// Deprecated: previously true on the single node that held all leader
+	// locks; now true on any node holding at least one per-task leader lock,
+	// which is typically most nodes. Use Leaders for the per-task breakdown
+	// instead.
+	IsLeader bool `json:"is_leader,omitempty"`
+	// Leaders maps each leader lock name to the hostname:port of the node
+	// currently holding it. Only locks with a known holder are included.
+	Leaders             map[string]string `json:"leaders,omitempty"`
 	ILMExpiryInProgress bool              `json:"ilm_expiry_in_progress"`
 	Host                *HostInfoStat     `json:"host,omitempty"`
 	PID                 int32             `json:"pid,omitempty"`
