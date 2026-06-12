@@ -34,41 +34,39 @@ func _() {
 	_ = x[TraceTablesScan-8388608]
 	_ = x[TraceSystemInventory-16777216]
 	_ = x[TraceTablesCompaction-33554432]
-	_ = x[TraceUntier-67108864]
-	_ = x[TraceAll-134217727]
+	_ = x[TraceAll-67108863]
 }
 
-const _TraceType_name = "OSStorageS3InternalScannerDecommissionHealingBatchReplicationBatchKeyRotationBatchExpireRebalanceReplicationResyncBootstrapFTPILMKMSFormattingAdminObjectReplicationIAMTablesPurgeOnDeleteTablesScanSystemInventoryTablesCompactionUntierAll"
+const _TraceType_name = "OSStorageS3InternalScannerDecommissionHealingBatchReplicationBatchKeyRotationBatchExpireRebalanceReplicationResyncBootstrapFTPILMKMSFormattingAdminObjectReplicationIAMTablesPurgeOnDeleteTablesScanSystemInventoryTablesCompactionAll"
 
 var _TraceType_map = map[TraceType]string{
-	1:         _TraceType_name[0:2],
-	2:         _TraceType_name[2:9],
-	4:         _TraceType_name[9:11],
-	8:         _TraceType_name[11:19],
-	16:        _TraceType_name[19:26],
-	32:        _TraceType_name[26:38],
-	64:        _TraceType_name[38:45],
-	128:       _TraceType_name[45:61],
-	256:       _TraceType_name[61:77],
-	512:       _TraceType_name[77:88],
-	1024:      _TraceType_name[88:97],
-	2048:      _TraceType_name[97:114],
-	4096:      _TraceType_name[114:123],
-	8192:      _TraceType_name[123:126],
-	16384:     _TraceType_name[126:129],
-	32768:     _TraceType_name[129:132],
-	65536:     _TraceType_name[132:142],
-	131072:    _TraceType_name[142:147],
-	262144:    _TraceType_name[147:153],
-	524288:    _TraceType_name[153:164],
-	1048576:   _TraceType_name[164:167],
-	2097152:   _TraceType_name[167:173],
-	4194304:   _TraceType_name[173:186],
-	8388608:   _TraceType_name[186:196],
-	16777216:  _TraceType_name[196:211],
-	33554432:  _TraceType_name[211:227],
-	67108864:  _TraceType_name[227:233],
-	134217727: _TraceType_name[233:236],
+	1:        _TraceType_name[0:2],
+	2:        _TraceType_name[2:9],
+	4:        _TraceType_name[9:11],
+	8:        _TraceType_name[11:19],
+	16:       _TraceType_name[19:26],
+	32:       _TraceType_name[26:38],
+	64:       _TraceType_name[38:45],
+	128:      _TraceType_name[45:61],
+	256:      _TraceType_name[61:77],
+	512:      _TraceType_name[77:88],
+	1024:     _TraceType_name[88:97],
+	2048:     _TraceType_name[97:114],
+	4096:     _TraceType_name[114:123],
+	8192:     _TraceType_name[123:126],
+	16384:    _TraceType_name[126:129],
+	32768:    _TraceType_name[129:132],
+	65536:    _TraceType_name[132:142],
+	131072:   _TraceType_name[142:147],
+	262144:   _TraceType_name[147:153],
+	524288:   _TraceType_name[153:164],
+	1048576:  _TraceType_name[164:167],
+	2097152:  _TraceType_name[167:173],
+	4194304:  _TraceType_name[173:186],
+	8388608:  _TraceType_name[186:196],
+	16777216: _TraceType_name[196:211],
+	33554432: _TraceType_name[211:227],
+	67108863: _TraceType_name[227:230],
 }
 
 func (i TraceType) String() string {
