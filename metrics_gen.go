@@ -40305,9 +40305,9 @@ func (z *UntierInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 		case "lastObject":
-			z.Object, err = dc.ReadString()
+			z.LastObject, err = dc.ReadString()
 			if err != nil {
-				err = msgp.WrapError(err, "Object")
+				err = msgp.WrapError(err, "LastObject")
 				return
 			}
 		case "objects":
@@ -40363,9 +40363,9 @@ func (z *UntierInfo) EncodeMsg(en *msgp.Writer) (err error) {
 	if err != nil {
 		return
 	}
-	err = en.WriteString(z.Object)
+	err = en.WriteString(z.LastObject)
 	if err != nil {
-		err = msgp.WrapError(err, "Object")
+		err = msgp.WrapError(err, "LastObject")
 		return
 	}
 	// write "objects"
@@ -40420,7 +40420,7 @@ func (z *UntierInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.AppendString(o, z.Bucket)
 	// string "lastObject"
 	o = append(o, 0xaa, 0x6c, 0x61, 0x73, 0x74, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74)
-	o = msgp.AppendString(o, z.Object)
+	o = msgp.AppendString(o, z.LastObject)
 	// string "objects"
 	o = append(o, 0xa7, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73)
 	o = msgp.AppendInt64(o, z.Objects)
@@ -40461,9 +40461,9 @@ func (z *UntierInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 		case "lastObject":
-			z.Object, bts, err = msgp.ReadStringBytes(bts)
+			z.LastObject, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "Object")
+				err = msgp.WrapError(err, "LastObject")
 				return
 			}
 		case "objects":
@@ -40504,7 +40504,7 @@ func (z *UntierInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *UntierInfo) Msgsize() (s int) {
-	s = 1 + 7 + msgp.StringPrefixSize + len(z.Bucket) + 11 + msgp.StringPrefixSize + len(z.Object) + 8 + msgp.Int64Size + 14 + msgp.Int64Size + 17 + msgp.Int64Size + 12 + msgp.Int64Size
+	s = 1 + 7 + msgp.StringPrefixSize + len(z.Bucket) + 11 + msgp.StringPrefixSize + len(z.LastObject) + 8 + msgp.Int64Size + 14 + msgp.Int64Size + 17 + msgp.Int64Size + 12 + msgp.Int64Size
 	return
 }
 
