@@ -50,17 +50,17 @@ type DStateThreadGroup struct {
 	Samples    []DStateThreadInfo `json:"samples,omitempty"`
 }
 
-// DStateThreadsDiag is the per-node snapshot of threads in
-// uninterruptible disk sleep, captured by `mc support diag`.
+// DStateThreadsDiag is the per-process snapshot of threads in
+// uninterruptible disk sleep, captured by `mc support diag`. Embedded
+// inside ProcInfo (the process owns its threads); per-node identity
+// comes from the parent ProcInfo's NodeCommon.
 //
-// StuckTotal is the alertable number (Total can be non-zero on a healthy
-// box doing I/O). TotalThreads gives saturation context for dense nodes.
-// WindowSeconds bounds DwellSeconds — a thread reporting
+// StuckTotal is the alertable number (Total can be non-zero on a
+// healthy box doing I/O). TotalThreads gives saturation context for
+// dense nodes. WindowSeconds bounds DwellSeconds — a thread reporting
 // DwellSeconds == WindowSeconds has been in D for at least the entire
 // ring window.
 type DStateThreadsDiag struct {
-	NodeCommon
-
 	Total                 int                 `json:"total"`
 	StuckTotal            int                 `json:"stuck_total,omitempty"`
 	TotalThreads          int                 `json:"total_threads,omitempty"`

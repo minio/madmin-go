@@ -1013,6 +1013,13 @@ type ProcInfo struct {
 	Times          cpu.TimesStat              `json:"times,omitempty"`
 	UIDs           []int32                    `json:"uids,omitempty"`
 	Username       string                     `json:"username,omitempty"`
+
+	// DStateThreads is the per-process snapshot of threads currently in
+	// uninterruptible disk sleep (D), captured for `mc support diag`.
+	// Populated only when the diag collector finds threads in D and the
+	// node has dwell history; nil otherwise (e.g. realtime ProcInfo
+	// callers that don't request thread diagnostics).
+	DStateThreads *DStateThreadsDiag `json:"dstate_threads,omitempty"`
 }
 
 func aTob[a, b any](aa []a, conv func(item a) b) []b {
@@ -1276,18 +1283,17 @@ func (p *ProcInfo) AddProcInfo(metrics *ProcessMetrics) {
 
 // SysInfo - Includes hardware and system information of the MinIO cluster
 type SysInfo struct {
-	CPUInfo        []CPUs              `json:"cpus,omitempty"`
-	Partitions     []Partitions        `json:"partitions,omitempty"`
-	OSInfo         []OSInfo            `json:"osinfo,omitempty"`
-	MemInfo        []MemInfo           `json:"meminfo,omitempty"`
-	ProcInfo       []ProcInfo          `json:"procinfo,omitempty"`
-	NetInfo        []NetInfo           `json:"netinfo,omitempty"`
-	SysErrs        []SysErrors         `json:"errors,omitempty"`
-	SysServices    []SysServices       `json:"services,omitempty"`
-	SysConfig      []SysConfig         `json:"config,omitempty"`
-	ProductInfo    []ProductInfo       `json:"productinfo,omitempty"`
-	DStateThreads  []DStateThreadsDiag `json:"dstate_threads,omitempty"`
-	KubernetesInfo KubernetesInfo      `json:"kubernetes"`
+	CPUInfo        []CPUs         `json:"cpus,omitempty"`
+	Partitions     []Partitions   `json:"partitions,omitempty"`
+	OSInfo         []OSInfo       `json:"osinfo,omitempty"`
+	MemInfo        []MemInfo      `json:"meminfo,omitempty"`
+	ProcInfo       []ProcInfo     `json:"procinfo,omitempty"`
+	NetInfo        []NetInfo      `json:"netinfo,omitempty"`
+	SysErrs        []SysErrors    `json:"errors,omitempty"`
+	SysServices    []SysServices  `json:"services,omitempty"`
+	SysConfig      []SysConfig    `json:"config,omitempty"`
+	ProductInfo    []ProductInfo  `json:"productinfo,omitempty"`
+	KubernetesInfo KubernetesInfo `json:"kubernetes"`
 }
 
 // DeploymentInfo contains diagnostic information about the AIStor deployment
@@ -1496,42 +1502,40 @@ type HealthDataType string
 
 // HealthDataTypes
 const (
-	HealthDataTypeMinioInfo        HealthDataType = "minioinfo"
-	HealthDataTypeMinioConfig      HealthDataType = "minioconfig"
-	HealthDataTypeSysCPU           HealthDataType = "syscpu"
-	HealthDataTypeSysDriveHw       HealthDataType = "sysdrivehw"
-	HealthDataTypeSysOsInfo        HealthDataType = "sysosinfo"
-	HealthDataTypeSysMem           HealthDataType = "sysmem"
-	HealthDataTypeSysNet           HealthDataType = "sysnet"
-	HealthDataTypeSysProcess       HealthDataType = "sysprocess"
-	HealthDataTypeSysErrors        HealthDataType = "syserrors"
-	HealthDataTypeSysServices      HealthDataType = "sysservices"
-	HealthDataTypeSysConfig        HealthDataType = "sysconfig"
-	HealthDataTypeSysProductInfo   HealthDataType = "sysproductinfo"
-	HealthDataTypeSysDStateThreads HealthDataType = "sysdstatethreads"
-	HealthDataTypeReplication      HealthDataType = "replication"
-	HealthDataTypeShardsHealth     HealthDataType = "shardshealth"
-	HealthDataTypeIAMInfo          HealthDataType = "iaminfo"
+	HealthDataTypeMinioInfo      HealthDataType = "minioinfo"
+	HealthDataTypeMinioConfig    HealthDataType = "minioconfig"
+	HealthDataTypeSysCPU         HealthDataType = "syscpu"
+	HealthDataTypeSysDriveHw     HealthDataType = "sysdrivehw"
+	HealthDataTypeSysOsInfo      HealthDataType = "sysosinfo"
+	HealthDataTypeSysMem         HealthDataType = "sysmem"
+	HealthDataTypeSysNet         HealthDataType = "sysnet"
+	HealthDataTypeSysProcess     HealthDataType = "sysprocess"
+	HealthDataTypeSysErrors      HealthDataType = "syserrors"
+	HealthDataTypeSysServices    HealthDataType = "sysservices"
+	HealthDataTypeSysConfig      HealthDataType = "sysconfig"
+	HealthDataTypeSysProductInfo HealthDataType = "sysproductinfo"
+	HealthDataTypeReplication    HealthDataType = "replication"
+	HealthDataTypeShardsHealth   HealthDataType = "shardshealth"
+	HealthDataTypeIAMInfo        HealthDataType = "iaminfo"
 )
 
 // HealthDataTypesMap - Map of Health datatypes
 var HealthDataTypesMap = map[string]HealthDataType{
-	"minioinfo":        HealthDataTypeMinioInfo,
-	"minioconfig":      HealthDataTypeMinioConfig,
-	"syscpu":           HealthDataTypeSysCPU,
-	"sysdrivehw":       HealthDataTypeSysDriveHw,
-	"sysosinfo":        HealthDataTypeSysOsInfo,
-	"sysmem":           HealthDataTypeSysMem,
-	"sysnet":           HealthDataTypeSysNet,
-	"sysprocess":       HealthDataTypeSysProcess,
-	"syserrors":        HealthDataTypeSysErrors,
-	"sysservices":      HealthDataTypeSysServices,
-	"sysconfig":        HealthDataTypeSysConfig,
-	"sysproductinfo":   HealthDataTypeSysProductInfo,
-	"sysdstatethreads": HealthDataTypeSysDStateThreads,
-	"replication":      HealthDataTypeReplication,
-	"shardshealth":     HealthDataTypeShardsHealth,
-	"iaminfo":          HealthDataTypeIAMInfo,
+	"minioinfo":      HealthDataTypeMinioInfo,
+	"minioconfig":    HealthDataTypeMinioConfig,
+	"syscpu":         HealthDataTypeSysCPU,
+	"sysdrivehw":     HealthDataTypeSysDriveHw,
+	"sysosinfo":      HealthDataTypeSysOsInfo,
+	"sysmem":         HealthDataTypeSysMem,
+	"sysnet":         HealthDataTypeSysNet,
+	"sysprocess":     HealthDataTypeSysProcess,
+	"syserrors":      HealthDataTypeSysErrors,
+	"sysservices":    HealthDataTypeSysServices,
+	"sysconfig":      HealthDataTypeSysConfig,
+	"sysproductinfo": HealthDataTypeSysProductInfo,
+	"replication":    HealthDataTypeReplication,
+	"shardshealth":   HealthDataTypeShardsHealth,
+	"iaminfo":        HealthDataTypeIAMInfo,
 }
 
 // HealthDataTypesList - List of health datatypes
@@ -1548,7 +1552,6 @@ var HealthDataTypesList = []HealthDataType{
 	HealthDataTypeSysServices,
 	HealthDataTypeSysConfig,
 	HealthDataTypeSysProductInfo,
-	HealthDataTypeSysDStateThreads,
 	HealthDataTypeReplication,
 	HealthDataTypeShardsHealth,
 	HealthDataTypeIAMInfo,
