@@ -207,6 +207,21 @@ const BatchJobExpireTemplate = `expire:
     delay: 500ms # least amount of delay between each retry
 `
 
+// BatchJobUntierTemplate provides a sample template
+// for batch untier jobs
+const BatchJobUntierTemplate = `untier:
+  apiVersion: v1
+  bucket: mybucket
+
+  notify:
+    endpoint: https://notify.endpoint
+    token: Bearer xxxxx
+
+  retry:
+    attempts: 3
+    delay: 250ms
+`
+
 // BatchJobResult returned by StartBatchJob
 type BatchJobResult struct {
 	ID      string             `json:"id"`
@@ -320,6 +335,8 @@ func (adm *AdminClient) GenerateBatchJob(_ context.Context, opts GenerateBatchJo
 		return BatchJobKeyRotateTemplate, nil
 	case BatchJobExpire:
 		return BatchJobExpireTemplate, nil
+	case BatchJobUntier:
+		return BatchJobUntierTemplate, nil
 	}
 	return "", fmt.Errorf("unknown batch job requested: %s", opts.Type)
 }

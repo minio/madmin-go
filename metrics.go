@@ -1270,7 +1270,7 @@ type CatalogInfo struct {
 // UntierInfo contains progress metrics for a batch untier job.
 type UntierInfo struct {
 	Bucket           string `json:"bucket"`
-	Object           string `json:"lastObject"`
+	LastObject       string `json:"lastObject"`
 	Objects          int64  `json:"objects"`
 	ObjectsFailed    int64  `json:"objectsFailed"`
 	BytesTransferred int64  `json:"bytesTransferred"`
