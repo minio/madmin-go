@@ -1201,6 +1201,7 @@ type JobMetric struct {
 	KeyRotate *KeyRotationInfo `json:"rotation,omitempty"`
 	Expired   *ExpirationInfo  `json:"expired,omitempty"`
 	Catalog   *CatalogInfo     `json:"catalog,omitempty"`
+	Untier    *UntierInfo      `json:"untier,omitempty"`
 }
 
 type ReplicateInfo struct {
@@ -1264,6 +1265,16 @@ type CatalogInfo struct {
 	// Used to resume catalog jobs
 	LastObjectWritten string            `json:"lastObjectWritten,omitempty"`
 	OutputFiles       []CatalogDataFile `json:"outputFiles,omitempty"`
+}
+
+// UntierInfo contains progress metrics for a batch untier job.
+type UntierInfo struct {
+	Bucket           string `json:"bucket"`
+	LastObject       string `json:"lastObject"`
+	Objects          int64  `json:"objects"`
+	ObjectsFailed    int64  `json:"objectsFailed"`
+	BytesTransferred int64  `json:"bytesTransferred"`
+	BytesFailed      int64  `json:"bytesFailed"`
 }
 
 // Merge other into 'o'.
