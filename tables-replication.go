@@ -162,12 +162,15 @@ func (adm *AdminClient) TablesCatalogExport(ctx context.Context) (io.ReadCloser,
 
 	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 	if err != nil {
+		closeResponse(resp)
 		return nil, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		err = httpRespToErrorResponse(resp)
 		closeResponse(resp)
-		return nil, httpRespToErrorResponse(resp)
+		return nil, err
+	}
 	}
 
 	return resp.Body, nil
