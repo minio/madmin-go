@@ -171,7 +171,6 @@ func (adm *AdminClient) TablesCatalogExport(ctx context.Context) (io.ReadCloser,
 		closeResponse(resp)
 		return nil, err
 	}
-	}
 
 	return resp.Body, nil
 }
