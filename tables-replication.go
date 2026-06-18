@@ -151,6 +151,28 @@ func (adm *AdminClient) TablesReplicationResetCatalog(ctx context.Context) error
 	return nil
 }
 
+// TablesCatalogExport downloads the entire tables catalog as a zip archive.
+// Each msgp-encoded catalog file is decoded server-side and stored as a JSON
+// file, preserving the catalog directory layout. The returned reader streams the
+// zip body; the caller must close it.
+func (adm *AdminClient) TablesCatalogExport(ctx context.Context) (io.ReadCloser, error) {
+	reqData := requestData{
+		relPath: adminAPIPrefix + "/tables/catalog-export",
+	}
+
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		closeResponse(resp)
+		return nil, httpRespToErrorResponse(resp)
+	}
+
+	return resp.Body, nil
+}
+
 // TablesReplicationResyncCatalogOpen enters the post-failover resyncing
 // window (phase 1 of post-failover) on this site.
 func (adm *AdminClient) TablesReplicationResyncCatalogOpen(ctx context.Context) error {
