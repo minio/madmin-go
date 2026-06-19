@@ -1013,6 +1013,13 @@ type ProcInfo struct {
 	Times          cpu.TimesStat              `json:"times,omitempty"`
 	UIDs           []int32                    `json:"uids,omitempty"`
 	Username       string                     `json:"username,omitempty"`
+
+	// DStateThreads is the per-process snapshot of threads currently in
+	// uninterruptible disk sleep (D), captured for `mc support diag`.
+	// Populated only when the diag collector finds threads in D and the
+	// node has dwell history; nil otherwise (e.g. realtime ProcInfo
+	// callers that don't request thread diagnostics).
+	DStateThreads *DStateThreadsDiag `json:"dstate_threads,omitempty"`
 }
 
 func aTob[a, b any](aa []a, conv func(item a) b) []b {
