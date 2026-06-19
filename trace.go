@@ -84,8 +84,6 @@ const (
 	TraceSystemInventory
 	// TraceTablesCompaction will trace table compaction operations.
 	TraceTablesCompaction
-	// TraceUntier will trace untier (warm-to-hot repatriation) operations.
-	TraceUntier
 	// Add more here...
 
 	// TraceAll contains all valid trace modes.
