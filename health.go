@@ -404,7 +404,9 @@ type NetInfo struct {
 	NodeCommon
 	Interface       string       `json:"interface,omitempty"`
 	Driver          string       `json:"driver,omitempty"`
+	DriverVersion   string       `json:"driver_version,omitempty"`
 	FirmwareVersion string       `json:"firmware_version,omitempty"`
+	BusInfo         string       `json:"bus_info,omitempty"`
 	Settings        *NetSettings `json:"settings,omitempty"`
 }
 
