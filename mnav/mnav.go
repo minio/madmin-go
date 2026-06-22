@@ -178,6 +178,7 @@ func (node *RealtimeMetricsNode) GetChildren() []MetricChild {
 		{Name: "batch_jobs", Description: "Batch job execution metrics"},
 		{Name: "site_resync", Description: "Site replication resync metrics"},
 		{Name: "kms", Description: "KMS operation metrics"},
+		{Name: "tables", Description: "Iceberg table API metrics"},
 		{Name: "by_host", Description: "Metrics broken down by individual host"},
 		{Name: "by_drive", Description: "Metrics broken down by individual drive"},
 		{Name: "by_drive_set", Description: "Metrics broken down by drive set"},
@@ -257,6 +258,8 @@ func (node *RealtimeMetricsNode) GetChild(name string) (MetricNode, error) {
 		return NewProcessMetricsNode(node.metrics.Aggregated.Process, node, "process"), nil
 	case "kms":
 		return NewKMSMetricsNode(node.metrics.Aggregated.KMS, node, "kms"), nil
+	case "tables":
+		return NewTableMetricsNode(node.metrics.Aggregated.TablesAPI, node, "tables"), nil
 
 	// Grouping nodes - preserved as-is
 	case "by_host":
@@ -340,6 +343,7 @@ func (node *MetricsNode) GetChildren() []MetricChild {
 		{Name: "batch_jobs", Description: "Batch job execution metrics"},
 		{Name: "site_resync", Description: "Site replication resync metrics"},
 		{Name: "kms", Description: "KMS operation metrics"},
+		{Name: "tables", Description: "Iceberg table API metrics"},
 	}
 }
 
@@ -399,6 +403,8 @@ func (node *MetricsNode) GetChild(name string) (MetricNode, error) {
 		return NewProcessMetricsNode(node.metrics.Process, node, fmt.Sprintf("%s/process", node.path)), nil
 	case "kms":
 		return NewKMSMetricsNode(node.metrics.KMS, node, fmt.Sprintf("%s/kms", node.path)), nil
+	case "tables":
+		return NewTableMetricsNode(node.metrics.TablesAPI, node, fmt.Sprintf("%s/tables", node.path)), nil
 	default:
 		return nil, fmt.Errorf("child not found: %s", name)
 	}

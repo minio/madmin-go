@@ -29,11 +29,26 @@ import (
 	"time"
 )
 
+// TablesRebuildState is the lifecycle state of a post-failover catalog rebuild,
+// reported in TablesReplicationStatus.RebuildState.
+type TablesRebuildState string
+
+const (
+	TablesRebuildPending      TablesRebuildState = "Pending"
+	TablesRebuildInProgress   TablesRebuildState = "InProgress"
+	TablesRebuildFailureRetry TablesRebuildState = "FailureRetry"
+	TablesRebuildFailed       TablesRebuildState = "Failed"
+	TablesRebuildCompleted    TablesRebuildState = "Completed"
+)
+
 // TablesReplicationStatus is one page of the tables replication status admin API.
 type TablesReplicationStatus struct {
 	Status                string                 `json:"status"`
 	Tables                []TableReplicationInfo `json:"tables"`
 	NextContinuationToken string                 `json:"nextContinuationToken,omitempty"`
+	RebuildState          TablesRebuildState     `json:"rebuildState,omitempty"`
+	RebuildAttempts       int                    `json:"rebuildAttempts,omitempty"`
+	RebuildLastError      string                 `json:"rebuildLastError,omitempty"`
 }
 
 // TableReplicationInfo is the per-table replication status.
@@ -130,6 +145,70 @@ func (adm *AdminClient) TablesReplicationResetCatalog(ctx context.Context) error
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+
+	return nil
+}
+
+// TablesCatalogExport downloads the entire tables catalog as a zip archive.
+// Each msgp-encoded catalog file is decoded server-side and stored as a JSON
+// file, preserving the catalog directory layout. The returned reader streams the
+// zip body; the caller must close it.
+func (adm *AdminClient) TablesCatalogExport(ctx context.Context) (io.ReadCloser, error) {
+	reqData := requestData{
+		relPath: adminAPIPrefix + "/tables/catalog-export",
+	}
+
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	if err != nil {
+		closeResponse(resp)
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		err = httpRespToErrorResponse(resp)
+		closeResponse(resp)
+		return nil, err
+	}
+
+	return resp.Body, nil
+}
+
+// TablesReplicationResyncCatalogOpen enters the post-failover resyncing
+// window (phase 1 of post-failover) on this site.
+func (adm *AdminClient) TablesReplicationResyncCatalogOpen(ctx context.Context) error {
+	reqData := requestData{
+		relPath: adminAPIPrefix + "/tables/resync-catalog/open",
+	}
+
+	resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusNoContent {
+		return httpRespToErrorResponse(resp)
+	}
+
+	return nil
+}
+
+// TablesReplicationResyncCatalogRebuild signals the catalog scanner to run a
+// post-failover rebuild cycle. This is the second and final phase of post-failover.
+func (adm *AdminClient) TablesReplicationResyncCatalogRebuild(ctx context.Context) error {
+	reqData := requestData{
+		relPath: adminAPIPrefix + "/tables/resync-catalog/rebuild",
+	}
+
+	resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusNoContent {
 		return httpRespToErrorResponse(resp)
 	}
 

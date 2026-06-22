@@ -35,6 +35,8 @@ type SpeedTestStatServer struct {
 	ThroughputPerSec uint64 `json:"throughputPerSec"`
 	ObjectsPerSec    uint64 `json:"objectsPerSec"`
 	Err              string `json:"err"`
+	// Outlier marks a node performing below the healthy-node baseline or one that errored.
+	Outlier bool `json:"outlier,omitempty"`
 }
 
 // SpeedTestStats - stats of all the servers
@@ -44,6 +46,12 @@ type SpeedTestStats struct {
 	Response         Timings               `json:"responseTime"`
 	TTFB             Timings               `json:"ttfb,omitempty"`
 	Servers          []SpeedTestStatServer `json:"servers"`
+	// BaselineThroughputPerSec is the per-node healthy capability (a high percentile) used for projection.
+	BaselineThroughputPerSec uint64 `json:"baselineThroughputPerSec,omitempty"`
+	// ProjectedThroughputPerSec is the aggregate expected once outliers reach the baseline.
+	ProjectedThroughputPerSec uint64 `json:"projectedThroughputPerSec,omitempty"`
+	ProjectedObjectsPerSec    uint64 `json:"projectedObjectsPerSec,omitempty"`
+	OutlierCount              int    `json:"outlierCount,omitempty"`
 }
 
 // SpeedTestResult - result of the speedtest() call

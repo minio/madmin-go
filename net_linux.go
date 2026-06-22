@@ -46,7 +46,9 @@ func GetNetInfo(addr string, iface string) (ni NetInfo) {
 	}
 
 	ni.Driver = di.Driver
+	ni.DriverVersion = di.Version
 	ni.FirmwareVersion = di.FwVersion
+	ni.BusInfo = di.BusInfo
 
 	ring, err := ethHandle.GetRing(ni.Interface)
 	if err != nil {
