@@ -11497,7 +11497,7 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint32 /* 26 bits */
+	var zb0001Mask uint32 /* 25 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -11719,7 +11719,6 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "IsLeader")
 				return
 			}
-			zb0001Mask |= 0x10000
 		case "leaders":
 			var zb0006 uint32
 			zb0006, err = dc.ReadMapHeader()
@@ -11748,7 +11747,7 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.Leaders[za0007] = za0008
 			}
-			zb0001Mask |= 0x20000
+			zb0001Mask |= 0x10000
 		case "ilm_expiry_in_progress":
 			z.ILMExpiryInProgress, err = dc.ReadBool()
 			if err != nil {
@@ -11773,35 +11772,35 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x40000
+			zb0001Mask |= 0x20000
 		case "pid":
 			z.PID, err = dc.ReadInt32()
 			if err != nil {
 				err = msgp.WrapError(err, "PID")
 				return
 			}
-			zb0001Mask |= 0x80000
+			zb0001Mask |= 0x40000
 		case "cmd_line":
 			z.CmdLine, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "CmdLine")
 				return
 			}
-			zb0001Mask |= 0x100000
+			zb0001Mask |= 0x80000
 		case "username":
 			z.Username, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "Username")
 				return
 			}
-			zb0001Mask |= 0x200000
+			zb0001Mask |= 0x100000
 		case "is_background":
 			z.IsBackground, err = dc.ReadBool()
 			if err != nil {
 				err = msgp.WrapError(err, "IsBackground")
 				return
 			}
-			zb0001Mask |= 0x400000
+			zb0001Mask |= 0x200000
 		case "first_cpu":
 			if dc.IsNil() {
 				err = dc.ReadNil()
@@ -11820,14 +11819,14 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x800000
+			zb0001Mask |= 0x400000
 		case "cpu_count":
 			z.CPUCount, err = dc.ReadInt()
 			if err != nil {
 				err = msgp.WrapError(err, "CPUCount")
 				return
 			}
-			zb0001Mask |= 0x1000000
+			zb0001Mask |= 0x800000
 		case "api_version":
 			err = z.APIVersion.DecodeMsg(dc)
 			if err != nil {
@@ -11840,7 +11839,7 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "RestartingSince")
 				return
 			}
-			zb0001Mask |= 0x2000000
+			zb0001Mask |= 0x1000000
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -11850,7 +11849,7 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3ffffff {
+	if zb0001Mask != 0x1ffffff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.State = ""
 		}
@@ -11900,33 +11899,30 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 			z.License = nil
 		}
 		if (zb0001Mask & 0x10000) == 0 {
-			z.IsLeader = false
-		}
-		if (zb0001Mask & 0x20000) == 0 {
 			z.Leaders = nil
 		}
-		if (zb0001Mask & 0x40000) == 0 {
+		if (zb0001Mask & 0x20000) == 0 {
 			z.Host = nil
 		}
-		if (zb0001Mask & 0x80000) == 0 {
+		if (zb0001Mask & 0x40000) == 0 {
 			z.PID = 0
 		}
-		if (zb0001Mask & 0x100000) == 0 {
+		if (zb0001Mask & 0x80000) == 0 {
 			z.CmdLine = ""
 		}
-		if (zb0001Mask & 0x200000) == 0 {
+		if (zb0001Mask & 0x100000) == 0 {
 			z.Username = ""
 		}
-		if (zb0001Mask & 0x400000) == 0 {
+		if (zb0001Mask & 0x200000) == 0 {
 			z.IsBackground = false
 		}
-		if (zb0001Mask & 0x800000) == 0 {
+		if (zb0001Mask & 0x400000) == 0 {
 			z.FirstCPU = nil
 		}
-		if (zb0001Mask & 0x1000000) == 0 {
+		if (zb0001Mask & 0x800000) == 0 {
 			z.CPUCount = 0
 		}
-		if (zb0001Mask & 0x2000000) == 0 {
+		if (zb0001Mask & 0x1000000) == 0 {
 			z.RestartingSince = (time.Time{})
 		}
 	}
@@ -12002,10 +11998,6 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 	if z.License == nil {
 		zb0001Len--
 		zb0001Mask |= 0x20000
-	}
-	if z.IsLeader == false {
-		zb0001Len--
-		zb0001Mask |= 0x40000
 	}
 	if z.Leaders == nil {
 		zb0001Len--
@@ -12308,17 +12300,15 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x40000) == 0 { // if not omitted
-			// write "is_leader"
-			err = en.Append(0xa9, 0x69, 0x73, 0x5f, 0x6c, 0x65, 0x61, 0x64, 0x65, 0x72)
-			if err != nil {
-				return
-			}
-			err = en.WriteBool(z.IsLeader)
-			if err != nil {
-				err = msgp.WrapError(err, "IsLeader")
-				return
-			}
+		// write "is_leader"
+		err = en.Append(0xa9, 0x69, 0x73, 0x5f, 0x6c, 0x65, 0x61, 0x64, 0x65, 0x72)
+		if err != nil {
+			return
+		}
+		err = en.WriteBool(z.IsLeader)
+		if err != nil {
+			err = msgp.WrapError(err, "IsLeader")
+			return
 		}
 		if (zb0001Mask & 0x80000) == 0 { // if not omitted
 			// write "leaders"
@@ -12549,10 +12539,6 @@ func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x20000
 	}
-	if z.IsLeader == false {
-		zb0001Len--
-		zb0001Mask |= 0x40000
-	}
 	if z.Leaders == nil {
 		zb0001Len--
 		zb0001Mask |= 0x80000
@@ -12710,11 +12696,9 @@ func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x40000) == 0 { // if not omitted
-			// string "is_leader"
-			o = append(o, 0xa9, 0x69, 0x73, 0x5f, 0x6c, 0x65, 0x61, 0x64, 0x65, 0x72)
-			o = msgp.AppendBool(o, z.IsLeader)
-		}
+		// string "is_leader"
+		o = append(o, 0xa9, 0x69, 0x73, 0x5f, 0x6c, 0x65, 0x61, 0x64, 0x65, 0x72)
+		o = msgp.AppendBool(o, z.IsLeader)
 		if (zb0001Mask & 0x80000) == 0 { // if not omitted
 			// string "leaders"
 			o = append(o, 0xa7, 0x6c, 0x65, 0x61, 0x64, 0x65, 0x72, 0x73)
@@ -12804,7 +12788,7 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint32 /* 26 bits */
+	var zb0001Mask uint32 /* 25 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -13025,7 +13009,6 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "IsLeader")
 				return
 			}
-			zb0001Mask |= 0x10000
 		case "leaders":
 			var zb0006 uint32
 			zb0006, bts, err = msgp.ReadMapHeaderBytes(bts)
@@ -13054,7 +13037,7 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.Leaders[za0007] = za0008
 			}
-			zb0001Mask |= 0x20000
+			zb0001Mask |= 0x10000
 		case "ilm_expiry_in_progress":
 			z.ILMExpiryInProgress, bts, err = msgp.ReadBoolBytes(bts)
 			if err != nil {
@@ -13078,35 +13061,35 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x40000
+			zb0001Mask |= 0x20000
 		case "pid":
 			z.PID, bts, err = msgp.ReadInt32Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "PID")
 				return
 			}
-			zb0001Mask |= 0x80000
+			zb0001Mask |= 0x40000
 		case "cmd_line":
 			z.CmdLine, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "CmdLine")
 				return
 			}
-			zb0001Mask |= 0x100000
+			zb0001Mask |= 0x80000
 		case "username":
 			z.Username, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Username")
 				return
 			}
-			zb0001Mask |= 0x200000
+			zb0001Mask |= 0x100000
 		case "is_background":
 			z.IsBackground, bts, err = msgp.ReadBoolBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "IsBackground")
 				return
 			}
-			zb0001Mask |= 0x400000
+			zb0001Mask |= 0x200000
 		case "first_cpu":
 			if msgp.IsNil(bts) {
 				bts, err = msgp.ReadNilBytes(bts)
@@ -13124,14 +13107,14 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x800000
+			zb0001Mask |= 0x400000
 		case "cpu_count":
 			z.CPUCount, bts, err = msgp.ReadIntBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "CPUCount")
 				return
 			}
-			zb0001Mask |= 0x1000000
+			zb0001Mask |= 0x800000
 		case "api_version":
 			bts, err = z.APIVersion.UnmarshalMsg(bts)
 			if err != nil {
@@ -13144,7 +13127,7 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "RestartingSince")
 				return
 			}
-			zb0001Mask |= 0x2000000
+			zb0001Mask |= 0x1000000
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -13154,7 +13137,7 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3ffffff {
+	if zb0001Mask != 0x1ffffff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.State = ""
 		}
@@ -13204,33 +13187,30 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.License = nil
 		}
 		if (zb0001Mask & 0x10000) == 0 {
-			z.IsLeader = false
-		}
-		if (zb0001Mask & 0x20000) == 0 {
 			z.Leaders = nil
 		}
-		if (zb0001Mask & 0x40000) == 0 {
+		if (zb0001Mask & 0x20000) == 0 {
 			z.Host = nil
 		}
-		if (zb0001Mask & 0x80000) == 0 {
+		if (zb0001Mask & 0x40000) == 0 {
 			z.PID = 0
 		}
-		if (zb0001Mask & 0x100000) == 0 {
+		if (zb0001Mask & 0x80000) == 0 {
 			z.CmdLine = ""
 		}
-		if (zb0001Mask & 0x200000) == 0 {
+		if (zb0001Mask & 0x100000) == 0 {
 			z.Username = ""
 		}
-		if (zb0001Mask & 0x400000) == 0 {
+		if (zb0001Mask & 0x200000) == 0 {
 			z.IsBackground = false
 		}
-		if (zb0001Mask & 0x800000) == 0 {
+		if (zb0001Mask & 0x400000) == 0 {
 			z.FirstCPU = nil
 		}
-		if (zb0001Mask & 0x1000000) == 0 {
+		if (zb0001Mask & 0x800000) == 0 {
 			z.CPUCount = 0
 		}
-		if (zb0001Mask & 0x2000000) == 0 {
+		if (zb0001Mask & 0x1000000) == 0 {
 			z.RestartingSince = (time.Time{})
 		}
 	}
