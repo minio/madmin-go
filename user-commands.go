@@ -652,7 +652,9 @@ type ListAccessKeysResp struct {
 }
 
 const (
-	AccessKeyListUsersOnly  = "users-only"
+	AccessKeyListUsersOnly = "users-only"
+
+	// Deprecated: STS listing is no longer supported server-side.
 	AccessKeyListSTSOnly    = "sts-only"
 	AccessKeyListSvcaccOnly = "svcacc-only"
 	AccessKeyListAll        = "all"
