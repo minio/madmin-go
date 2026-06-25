@@ -648,7 +648,9 @@ func (adm *AdminClient) ListServiceAccounts(ctx context.Context, user string) (L
 
 type ListAccessKeysResp struct {
 	ServiceAccounts []ServiceAccountInfo `json:"serviceAccounts"`
-	STSKeys         []ServiceAccountInfo `json:"stsKeys"`
+
+	// Deprecated: no longer populated by server
+	STSKeys []ServiceAccountInfo `json:"stsKeys"`
 }
 
 const (
@@ -756,7 +758,9 @@ type OpenIDUserAccessKeys struct {
 	ID              string               `json:"ID"`
 	ReadableName    string               `json:"readableName"`
 	ServiceAccounts []ServiceAccountInfo `json:"serviceAccounts"`
-	STSKeys         []ServiceAccountInfo `json:"stsKeys"`
+
+	// Deprecated: no longer populated by server
+	STSKeys []ServiceAccountInfo `json:"stsKeys"`
 }
 
 type ListAccessKeysOpenIDResp struct {
