@@ -483,7 +483,7 @@ type ServerProperties struct {
 	// locks; now true on any node holding at least one per-task leader lock,
 	// which is typically most nodes. Use Leaders for the per-task breakdown
 	// instead.
-	IsLeader bool `json:"is_leader,omitempty"`
+	IsLeader bool `json:"is_leader"`
 	// Leaders maps each leader lock name to the hostname:port of the node
 	// currently holding it. Only locks with a known holder are included.
 	Leaders             map[string]string `json:"leaders,omitempty"`
