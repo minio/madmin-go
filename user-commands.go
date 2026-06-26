@@ -648,11 +648,15 @@ func (adm *AdminClient) ListServiceAccounts(ctx context.Context, user string) (L
 
 type ListAccessKeysResp struct {
 	ServiceAccounts []ServiceAccountInfo `json:"serviceAccounts"`
-	STSKeys         []ServiceAccountInfo `json:"stsKeys"`
+
+	// Deprecated: no longer populated by server
+	STSKeys []ServiceAccountInfo `json:"stsKeys"`
 }
 
 const (
-	AccessKeyListUsersOnly  = "users-only"
+	AccessKeyListUsersOnly = "users-only"
+
+	// Deprecated: STS listing is no longer supported server-side.
 	AccessKeyListSTSOnly    = "sts-only"
 	AccessKeyListSvcaccOnly = "svcacc-only"
 	AccessKeyListAll        = "all"
@@ -754,12 +758,39 @@ type OpenIDUserAccessKeys struct {
 	ID              string               `json:"ID"`
 	ReadableName    string               `json:"readableName"`
 	ServiceAccounts []ServiceAccountInfo `json:"serviceAccounts"`
-	STSKeys         []ServiceAccountInfo `json:"stsKeys"`
+
+	// Deprecated: no longer populated by server
+	STSKeys []ServiceAccountInfo `json:"stsKeys"`
 }
 
 type ListAccessKeysOpenIDResp struct {
 	ConfigName string                 `json:"configName"`
 	Users      []OpenIDUserAccessKeys `json:"users"`
+}
+
+// ListAccessKeysByProviderResp is the service-account listing grouped by provider.
+type ListAccessKeysByProviderResp struct {
+	Builtin []AccessKeysByConfig `json:"builtin"`
+	LDAP    []AccessKeysByConfig `json:"ldap"`
+	OpenID  []AccessKeysByConfig `json:"openid"`
+	Other   []AccessKeysByConfig `json:"other"`
+}
+
+// AccessKeysByConfig groups a provider's accounts by config name (empty for builtin and other).
+type AccessKeysByConfig struct {
+	Name  string             `json:"name,omitempty"`
+	Users []AccessKeysByUser `json:"users"`
+}
+
+// AccessKeysByUser groups a config's accounts by parent user. ID and
+// ReadableName carry provider-specific identity: for OpenID, ID is the
+// configured ID claim and ReadableName the readable claim; for LDAP, ID is the
+// decoded external DN. Both are empty for builtin accounts.
+type AccessKeysByUser struct {
+	ParentUser      string               `json:"parentUser"`
+	ID              string               `json:"id,omitempty"`
+	ReadableName    string               `json:"readableName,omitempty"`
+	ServiceAccounts []ServiceAccountInfo `json:"serviceAccounts"`
 }
 
 // ListAccessKeysOpenIDBulk - list access keys belonging to the given users or all users
@@ -805,6 +836,36 @@ func (adm *AdminClient) ListAccessKeysOpenIDBulk(ctx context.Context, users []st
 	var listResp []ListAccessKeysOpenIDResp
 	if err = json.Unmarshal(data, &listResp); err != nil {
 		return nil, err
+	}
+	return listResp, nil
+}
+
+// ListAccessKeysByProvider lists all service accounts grouped by identity
+// provider, then configuration name, then parent user.
+func (adm *AdminClient) ListAccessKeysByProvider(ctx context.Context) (ListAccessKeysByProviderResp, error) {
+	reqData := requestData{
+		relPath: adminAPIPrefix + "/list-access-keys-grouped",
+	}
+
+	// Execute GET on /minio/admin/v4/list-access-keys-grouped
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return ListAccessKeysByProviderResp{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return ListAccessKeysByProviderResp{}, httpRespToErrorResponse(resp)
+	}
+
+	data, err := DecryptData(adm.getSecretKey(), resp.Body)
+	if err != nil {
+		return ListAccessKeysByProviderResp{}, err
+	}
+
+	var listResp ListAccessKeysByProviderResp
+	if err = json.Unmarshal(data, &listResp); err != nil {
+		return ListAccessKeysByProviderResp{}, err
 	}
 	return listResp, nil
 }
