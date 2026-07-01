@@ -25,7 +25,7 @@ import "cmp"
 // If updating packages breaks this, update structs below.
 
 //msgp:tag json
-//go:generate msgp -d clearomitted -d "timezone utc" -unexported -file $GOFILE
+//go:generate go tool msgp -d clearomitted -d "timezone utc" -unexported -file $GOFILE
 
 type cpuTimesStat struct {
 	CPU       string  `json:"cpu"`

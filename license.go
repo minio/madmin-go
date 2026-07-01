@@ -27,7 +27,7 @@ import (
 )
 
 //msgp:tag json
-//go:generate msgp -d clearomitted -d "timezone utc"
+//go:generate go tool msgp -d clearomitted -d "timezone utc"
 // LicenseInfo is a structure containing MinIO license information.
 
 type LicenseInfo struct {

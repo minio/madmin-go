@@ -40,7 +40,7 @@ import (
 	"github.com/tinylib/msgp/msgp"
 )
 
-//go:generate msgp -unexported -d clearomitted -d "tag json" -d "timezone utc" -d "maps binkeys" -file $GOFILE
+//go:generate go tool msgp -unexported -d clearomitted -d "tag json" -d "timezone utc" -d "maps binkeys" -file $GOFILE
 
 //msgp:replace HealItemType with:string
 

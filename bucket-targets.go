@@ -25,7 +25,7 @@ import (
 )
 
 //msgp:tag json
-//go:generate msgp -d clearomitted -d "timezone utc"
+//go:generate go tool msgp -d clearomitted -d "timezone utc"
 
 // BucketTargets represents a slice of bucket targets by type and endpoint
 type BucketTargets struct {
