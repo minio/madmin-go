@@ -29,7 +29,9 @@ import (
 //msgp:tag json
 //go:generate msgp -d clearomitted -d "timezone utc" -file $GOFILE
 
-// DistJobType identifies a registered distributed job type.
+// DistJobType identifies a registered distributed job type. The zero value,
+// DistJobTypeUnknown, doubles as the "no filter" sentinel for
+// ListDistJobStatuses.
 //
 // Values are stable across releases: append new types, never renumber
 // existing ones — a rolling upgrade can have two server versions
@@ -37,13 +39,7 @@ import (
 type DistJobType uint8
 
 const (
-	// DistJobTypeUnknown is the zero value. No valid request carries it;
-	// it doubles as the "no filter" sentinel for ListDistJobStatuses.
 	DistJobTypeUnknown DistJobType = iota
-
-	// DistJobTypeDecommission drains one pool that is being removed from
-	// the cluster: every version of every object is copied out and the
-	// pool is left empty.
 	DistJobTypeDecommission
 )
 
@@ -58,16 +54,14 @@ func (t DistJobType) String() string {
 	}
 }
 
-// MarshalJSON encodes the job type using its String() representation so
-// admin API JSON responses carry a human-readable value instead of a bare
-// integer.
+// MarshalJSON encodes the job type as its String() form, not a bare integer.
 func (t DistJobType) MarshalJSON() ([]byte, error) {
 	return json.Marshal(t.String())
 }
 
-// UnmarshalJSON decodes a job type from its String() representation.
-// Unrecognized values decode to DistJobTypeUnknown rather than erroring, so
-// a newer server's job type is forward-compatible with an older client.
+// UnmarshalJSON decodes unrecognized values as DistJobTypeUnknown rather
+// than erroring, so an older client stays forward-compatible with a newer
+// server's job type.
 func (t *DistJobType) UnmarshalJSON(b []byte) error {
 	var s string
 	if err := json.Unmarshal(b, &s); err != nil {
@@ -92,24 +86,18 @@ func ParseDistJobType(s string) DistJobType {
 // DistJobNodeStatus is the observable state of one node participating in a
 // distributed job, as seen by the leader's poll loop.
 type DistJobNodeStatus struct {
-	// Host is the node's grid host address (host:port).
-	Host string `json:"host"`
-	// IsLocal is true only for the leader's own entry.
-	IsLocal bool `json:"isLocal"`
-	// Online is false once this node has missed enough consecutive status
-	// polls that the leader stopped assigning it new work and re-queued
-	// whatever it was processing to another node.
-	Online bool `json:"online"`
-	// ConsecutiveFails counts status poll failures to this node since its
-	// last successful poll; it resets to 0 on any successful poll.
-	ConsecutiveFails int `json:"consecutiveFails"`
-	// CurrentSet and CurrentBucket identify the work item this node is
-	// processing right now. CurrentBucket is empty when idle.
+	Host    string `json:"host"`
+	IsLocal bool   `json:"isLocal"`
+	// Online goes false after enough consecutive status poll failures;
+	// the leader then stops assigning this node work and re-queues
+	// whatever it had to another node.
+	Online           bool `json:"online"`
+	ConsecutiveFails int  `json:"consecutiveFails"`
+	// CurrentSet/CurrentBucket identify the work item in progress now;
+	// CurrentBucket is empty when idle.
 	CurrentSet    int    `json:"currentSet"`
 	CurrentBucket string `json:"currentBucket,omitempty"`
-	// ItemsDone, ItemsFailed, BytesDone, BytesFailed are this node's
-	// cumulative counters across every work item completed so far in this
-	// job run.
+	// Cumulative counters across every work item completed so far in this run.
 	ItemsDone   int64 `json:"itemsDone"`
 	ItemsFailed int64 `json:"itemsFailed"`
 	BytesDone   int64 `json:"bytesDone"`
