@@ -26,6 +26,9 @@ import (
 	"net/url"
 )
 
+//msgp:tag json
+//go:generate msgp -d clearomitted -d "timezone utc" -file $GOFILE
+
 // DistJobType identifies a registered distributed job type. Every node in
 // a cluster resolves a DistJobType to a fixed processing function at the
 // binary level — there is no runtime registration, so a job type is either
