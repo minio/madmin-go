@@ -19,7 +19,7 @@
 
 package madmin
 
-//go:generate msgp -d clearomitted -d "tag json" -d "timezone utc" -file $GOFILE
+//go:generate go tool msgp -d clearomitted -d "tag json" -d "timezone utc" -file $GOFILE
 
 // NetStackStats contains kernel TCP/IP/UDP stack counters sourced from
 // /proc/net/snmp and /proc/net/netstat. All counters are cumulative

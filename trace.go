@@ -26,7 +26,7 @@ import (
 	"time"
 )
 
-//go:generate stringer -type=TraceType -trimprefix=Trace $GOFILE
+//go:generate go tool stringer -type=TraceType -trimprefix=Trace $GOFILE
 
 // TraceType indicates the type of the tracing Info
 type TraceType uint64

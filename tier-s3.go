@@ -19,7 +19,7 @@
 
 package madmin
 
-//go:generate msgp -d clearomitted -d "timezone utc" -file $GOFILE
+//go:generate go tool msgp -d clearomitted -d "timezone utc" -file $GOFILE
 
 // TierS3 represents the remote tier configuration for AWS S3 compatible backend.
 type TierS3 struct {

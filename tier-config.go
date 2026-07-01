@@ -25,7 +25,7 @@ import (
 	"log"
 )
 
-//go:generate msgp -d clearomitted -d "timezone utc" -file $GOFILE
+//go:generate go tool msgp -d clearomitted -d "timezone utc" -file $GOFILE
 
 // TierConfigVer refers to the current tier config version
 const TierConfigVer = "v1"

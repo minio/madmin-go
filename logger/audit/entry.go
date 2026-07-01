@@ -20,7 +20,7 @@ package audit
 import "time"
 
 //msgp:tag json
-//go:generate msgp -d clearomitted -d "timezone utc" -file $GOFILE
+//go:generate go tool msgp -d clearomitted -d "timezone utc" -file $GOFILE
 
 // ObjectVersion object version key/versionId
 type ObjectVersion struct {
