@@ -24,13 +24,13 @@ func (z *DistJobLeaderStatus) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "jobID":
+		case "id":
 			z.JobID, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "JobID")
 				return
 			}
-		case "jobType":
+		case "jt":
 			{
 				var zb0002 uint8
 				zb0002, err = dc.ReadUint8()
@@ -40,13 +40,13 @@ func (z *DistJobLeaderStatus) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.JobType = DistJobType(zb0002)
 			}
-		case "poolIdx":
+		case "pi":
 			z.PoolIdx, err = dc.ReadInt()
 			if err != nil {
 				err = msgp.WrapError(err, "PoolIdx")
 				return
 			}
-		case "nodes":
+		case "n":
 			var zb0003 uint32
 			zb0003, err = dc.ReadArrayHeader()
 			if err != nil {
@@ -79,8 +79,8 @@ func (z *DistJobLeaderStatus) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *DistJobLeaderStatus) EncodeMsg(en *msgp.Writer) (err error) {
 	// map header, size 4
-	// write "jobID"
-	err = en.Append(0x84, 0xa5, 0x6a, 0x6f, 0x62, 0x49, 0x44)
+	// write "id"
+	err = en.Append(0x84, 0xa2, 0x69, 0x64)
 	if err != nil {
 		return
 	}
@@ -89,8 +89,8 @@ func (z *DistJobLeaderStatus) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "JobID")
 		return
 	}
-	// write "jobType"
-	err = en.Append(0xa7, 0x6a, 0x6f, 0x62, 0x54, 0x79, 0x70, 0x65)
+	// write "jt"
+	err = en.Append(0xa2, 0x6a, 0x74)
 	if err != nil {
 		return
 	}
@@ -99,8 +99,8 @@ func (z *DistJobLeaderStatus) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "JobType")
 		return
 	}
-	// write "poolIdx"
-	err = en.Append(0xa7, 0x70, 0x6f, 0x6f, 0x6c, 0x49, 0x64, 0x78)
+	// write "pi"
+	err = en.Append(0xa2, 0x70, 0x69)
 	if err != nil {
 		return
 	}
@@ -109,8 +109,8 @@ func (z *DistJobLeaderStatus) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "PoolIdx")
 		return
 	}
-	// write "nodes"
-	err = en.Append(0xa5, 0x6e, 0x6f, 0x64, 0x65, 0x73)
+	// write "n"
+	err = en.Append(0xa1, 0x6e)
 	if err != nil {
 		return
 	}
@@ -133,17 +133,17 @@ func (z *DistJobLeaderStatus) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *DistJobLeaderStatus) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// map header, size 4
-	// string "jobID"
-	o = append(o, 0x84, 0xa5, 0x6a, 0x6f, 0x62, 0x49, 0x44)
+	// string "id"
+	o = append(o, 0x84, 0xa2, 0x69, 0x64)
 	o = msgp.AppendString(o, z.JobID)
-	// string "jobType"
-	o = append(o, 0xa7, 0x6a, 0x6f, 0x62, 0x54, 0x79, 0x70, 0x65)
+	// string "jt"
+	o = append(o, 0xa2, 0x6a, 0x74)
 	o = msgp.AppendUint8(o, uint8(z.JobType))
-	// string "poolIdx"
-	o = append(o, 0xa7, 0x70, 0x6f, 0x6f, 0x6c, 0x49, 0x64, 0x78)
+	// string "pi"
+	o = append(o, 0xa2, 0x70, 0x69)
 	o = msgp.AppendInt(o, z.PoolIdx)
-	// string "nodes"
-	o = append(o, 0xa5, 0x6e, 0x6f, 0x64, 0x65, 0x73)
+	// string "n"
+	o = append(o, 0xa1, 0x6e)
 	o = msgp.AppendArrayHeader(o, uint32(len(z.Nodes)))
 	for za0001 := range z.Nodes {
 		o, err = z.Nodes[za0001].MarshalMsg(o)
@@ -173,13 +173,13 @@ func (z *DistJobLeaderStatus) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "jobID":
+		case "id":
 			z.JobID, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "JobID")
 				return
 			}
-		case "jobType":
+		case "jt":
 			{
 				var zb0002 uint8
 				zb0002, bts, err = msgp.ReadUint8Bytes(bts)
@@ -189,13 +189,13 @@ func (z *DistJobLeaderStatus) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.JobType = DistJobType(zb0002)
 			}
-		case "poolIdx":
+		case "pi":
 			z.PoolIdx, bts, err = msgp.ReadIntBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "PoolIdx")
 				return
 			}
-		case "nodes":
+		case "n":
 			var zb0003 uint32
 			zb0003, bts, err = msgp.ReadArrayHeaderBytes(bts)
 			if err != nil {
@@ -228,7 +228,7 @@ func (z *DistJobLeaderStatus) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *DistJobLeaderStatus) Msgsize() (s int) {
-	s = 1 + 6 + msgp.StringPrefixSize + len(z.JobID) + 8 + msgp.Uint8Size + 8 + msgp.IntSize + 6 + msgp.ArrayHeaderSize
+	s = 1 + 3 + msgp.StringPrefixSize + len(z.JobID) + 3 + msgp.Uint8Size + 3 + msgp.IntSize + 2 + msgp.ArrayHeaderSize
 	for za0001 := range z.Nodes {
 		s += z.Nodes[za0001].Msgsize()
 	}
@@ -245,8 +245,6 @@ func (z *DistJobNodeStatus) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 1 bits */
-	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
 		field, err = dc.ReadMapKeyPtr()
@@ -255,62 +253,61 @@ func (z *DistJobNodeStatus) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "host":
+		case "h":
 			z.Host, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "Host")
 				return
 			}
-		case "isLocal":
+		case "il":
 			z.IsLocal, err = dc.ReadBool()
 			if err != nil {
 				err = msgp.WrapError(err, "IsLocal")
 				return
 			}
-		case "online":
+		case "on":
 			z.Online, err = dc.ReadBool()
 			if err != nil {
 				err = msgp.WrapError(err, "Online")
 				return
 			}
-		case "consecutiveFails":
+		case "cf":
 			z.ConsecutiveFails, err = dc.ReadInt()
 			if err != nil {
 				err = msgp.WrapError(err, "ConsecutiveFails")
 				return
 			}
-		case "currentSet":
+		case "cs":
 			z.CurrentSet, err = dc.ReadInt()
 			if err != nil {
 				err = msgp.WrapError(err, "CurrentSet")
 				return
 			}
-		case "currentBucket":
+		case "cb":
 			z.CurrentBucket, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "CurrentBucket")
 				return
 			}
-			zb0001Mask |= 0x1
-		case "itemsDone":
+		case "id":
 			z.ItemsDone, err = dc.ReadInt64()
 			if err != nil {
 				err = msgp.WrapError(err, "ItemsDone")
 				return
 			}
-		case "itemsFailed":
+		case "if":
 			z.ItemsFailed, err = dc.ReadInt64()
 			if err != nil {
 				err = msgp.WrapError(err, "ItemsFailed")
 				return
 			}
-		case "bytesDone":
+		case "bd":
 			z.BytesDone, err = dc.ReadInt64()
 			if err != nil {
 				err = msgp.WrapError(err, "BytesDone")
 				return
 			}
-		case "bytesFailed":
+		case "bf":
 			z.BytesFailed, err = dc.ReadInt64()
 			if err != nil {
 				err = msgp.WrapError(err, "BytesFailed")
@@ -324,134 +321,111 @@ func (z *DistJobNodeStatus) DecodeMsg(dc *msgp.Reader) (err error) {
 			}
 		}
 	}
-	// Clear omitted fields.
-	if (zb0001Mask & 0x1) == 0 {
-		z.CurrentBucket = ""
-	}
-
 	return
 }
 
 // EncodeMsg implements msgp.Encodable
 func (z *DistJobNodeStatus) EncodeMsg(en *msgp.Writer) (err error) {
-	// check for omitted fields
-	zb0001Len := uint32(10)
-	var zb0001Mask uint16 /* 10 bits */
-	_ = zb0001Mask
-	if z.CurrentBucket == "" {
-		zb0001Len--
-		zb0001Mask |= 0x20
-	}
-	// variable map header, size zb0001Len
-	err = en.Append(0x80 | uint8(zb0001Len))
+	// map header, size 10
+	// write "h"
+	err = en.Append(0x8a, 0xa1, 0x68)
 	if err != nil {
 		return
 	}
-
-	// skip if no fields are to be emitted
-	if zb0001Len != 0 {
-		// write "host"
-		err = en.Append(0xa4, 0x68, 0x6f, 0x73, 0x74)
-		if err != nil {
-			return
-		}
-		err = en.WriteString(z.Host)
-		if err != nil {
-			err = msgp.WrapError(err, "Host")
-			return
-		}
-		// write "isLocal"
-		err = en.Append(0xa7, 0x69, 0x73, 0x4c, 0x6f, 0x63, 0x61, 0x6c)
-		if err != nil {
-			return
-		}
-		err = en.WriteBool(z.IsLocal)
-		if err != nil {
-			err = msgp.WrapError(err, "IsLocal")
-			return
-		}
-		// write "online"
-		err = en.Append(0xa6, 0x6f, 0x6e, 0x6c, 0x69, 0x6e, 0x65)
-		if err != nil {
-			return
-		}
-		err = en.WriteBool(z.Online)
-		if err != nil {
-			err = msgp.WrapError(err, "Online")
-			return
-		}
-		// write "consecutiveFails"
-		err = en.Append(0xb0, 0x63, 0x6f, 0x6e, 0x73, 0x65, 0x63, 0x75, 0x74, 0x69, 0x76, 0x65, 0x46, 0x61, 0x69, 0x6c, 0x73)
-		if err != nil {
-			return
-		}
-		err = en.WriteInt(z.ConsecutiveFails)
-		if err != nil {
-			err = msgp.WrapError(err, "ConsecutiveFails")
-			return
-		}
-		// write "currentSet"
-		err = en.Append(0xaa, 0x63, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74, 0x53, 0x65, 0x74)
-		if err != nil {
-			return
-		}
-		err = en.WriteInt(z.CurrentSet)
-		if err != nil {
-			err = msgp.WrapError(err, "CurrentSet")
-			return
-		}
-		if (zb0001Mask & 0x20) == 0 { // if not omitted
-			// write "currentBucket"
-			err = en.Append(0xad, 0x63, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74)
-			if err != nil {
-				return
-			}
-			err = en.WriteString(z.CurrentBucket)
-			if err != nil {
-				err = msgp.WrapError(err, "CurrentBucket")
-				return
-			}
-		}
-		// write "itemsDone"
-		err = en.Append(0xa9, 0x69, 0x74, 0x65, 0x6d, 0x73, 0x44, 0x6f, 0x6e, 0x65)
-		if err != nil {
-			return
-		}
-		err = en.WriteInt64(z.ItemsDone)
-		if err != nil {
-			err = msgp.WrapError(err, "ItemsDone")
-			return
-		}
-		// write "itemsFailed"
-		err = en.Append(0xab, 0x69, 0x74, 0x65, 0x6d, 0x73, 0x46, 0x61, 0x69, 0x6c, 0x65, 0x64)
-		if err != nil {
-			return
-		}
-		err = en.WriteInt64(z.ItemsFailed)
-		if err != nil {
-			err = msgp.WrapError(err, "ItemsFailed")
-			return
-		}
-		// write "bytesDone"
-		err = en.Append(0xa9, 0x62, 0x79, 0x74, 0x65, 0x73, 0x44, 0x6f, 0x6e, 0x65)
-		if err != nil {
-			return
-		}
-		err = en.WriteInt64(z.BytesDone)
-		if err != nil {
-			err = msgp.WrapError(err, "BytesDone")
-			return
-		}
-		// write "bytesFailed"
-		err = en.Append(0xab, 0x62, 0x79, 0x74, 0x65, 0x73, 0x46, 0x61, 0x69, 0x6c, 0x65, 0x64)
-		if err != nil {
-			return
-		}
-		err = en.WriteInt64(z.BytesFailed)
-		if err != nil {
-			err = msgp.WrapError(err, "BytesFailed")
-			return
-		}
+	err = en.WriteString(z.Host)
+	if err != nil {
+		err = msgp.WrapError(err, "Host")
+		return
+	}
+	// write "il"
+	err = en.Append(0xa2, 0x69, 0x6c)
+	if err != nil {
+		return
+	}
+	err = en.WriteBool(z.IsLocal)
+	if err != nil {
+		err = msgp.WrapError(err, "IsLocal")
+		return
+	}
+	// write "on"
+	err = en.Append(0xa2, 0x6f, 0x6e)
+	if err != nil {
+		return
+	}
+	err = en.WriteBool(z.Online)
+	if err != nil {
+		err = msgp.WrapError(err, "Online")
+		return
+	}
+	// write "cf"
+	err = en.Append(0xa2, 0x63, 0x66)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt(z.ConsecutiveFails)
+	if err != nil {
+		err = msgp.WrapError(err, "ConsecutiveFails")
+		return
+	}
+	// write "cs"
+	err = en.Append(0xa2, 0x63, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt(z.CurrentSet)
+	if err != nil {
+		err = msgp.WrapError(err, "CurrentSet")
+		return
+	}
+	// write "cb"
+	err = en.Append(0xa2, 0x63, 0x62)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.CurrentBucket)
+	if err != nil {
+		err = msgp.WrapError(err, "CurrentBucket")
+		return
+	}
+	// write "id"
+	err = en.Append(0xa2, 0x69, 0x64)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt64(z.ItemsDone)
+	if err != nil {
+		err = msgp.WrapError(err, "ItemsDone")
+		return
+	}
+	// write "if"
+	err = en.Append(0xa2, 0x69, 0x66)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt64(z.ItemsFailed)
+	if err != nil {
+		err = msgp.WrapError(err, "ItemsFailed")
+		return
+	}
+	// write "bd"
+	err = en.Append(0xa2, 0x62, 0x64)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt64(z.BytesDone)
+	if err != nil {
+		err = msgp.WrapError(err, "BytesDone")
+		return
+	}
+	// write "bf"
+	err = en.Append(0xa2, 0x62, 0x66)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt64(z.BytesFailed)
+	if err != nil {
+		err = msgp.WrapError(err, "BytesFailed")
+		return
 	}
 	return
 }
@@ -459,52 +433,37 @@ func (z *DistJobNodeStatus) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *DistJobNodeStatus) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// check for omitted fields
-	zb0001Len := uint32(10)
-	var zb0001Mask uint16 /* 10 bits */
-	_ = zb0001Mask
-	if z.CurrentBucket == "" {
-		zb0001Len--
-		zb0001Mask |= 0x20
-	}
-	// variable map header, size zb0001Len
-	o = append(o, 0x80|uint8(zb0001Len))
-
-	// skip if no fields are to be emitted
-	if zb0001Len != 0 {
-		// string "host"
-		o = append(o, 0xa4, 0x68, 0x6f, 0x73, 0x74)
-		o = msgp.AppendString(o, z.Host)
-		// string "isLocal"
-		o = append(o, 0xa7, 0x69, 0x73, 0x4c, 0x6f, 0x63, 0x61, 0x6c)
-		o = msgp.AppendBool(o, z.IsLocal)
-		// string "online"
-		o = append(o, 0xa6, 0x6f, 0x6e, 0x6c, 0x69, 0x6e, 0x65)
-		o = msgp.AppendBool(o, z.Online)
-		// string "consecutiveFails"
-		o = append(o, 0xb0, 0x63, 0x6f, 0x6e, 0x73, 0x65, 0x63, 0x75, 0x74, 0x69, 0x76, 0x65, 0x46, 0x61, 0x69, 0x6c, 0x73)
-		o = msgp.AppendInt(o, z.ConsecutiveFails)
-		// string "currentSet"
-		o = append(o, 0xaa, 0x63, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74, 0x53, 0x65, 0x74)
-		o = msgp.AppendInt(o, z.CurrentSet)
-		if (zb0001Mask & 0x20) == 0 { // if not omitted
-			// string "currentBucket"
-			o = append(o, 0xad, 0x63, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74, 0x42, 0x75, 0x63, 0x6b, 0x65, 0x74)
-			o = msgp.AppendString(o, z.CurrentBucket)
-		}
-		// string "itemsDone"
-		o = append(o, 0xa9, 0x69, 0x74, 0x65, 0x6d, 0x73, 0x44, 0x6f, 0x6e, 0x65)
-		o = msgp.AppendInt64(o, z.ItemsDone)
-		// string "itemsFailed"
-		o = append(o, 0xab, 0x69, 0x74, 0x65, 0x6d, 0x73, 0x46, 0x61, 0x69, 0x6c, 0x65, 0x64)
-		o = msgp.AppendInt64(o, z.ItemsFailed)
-		// string "bytesDone"
-		o = append(o, 0xa9, 0x62, 0x79, 0x74, 0x65, 0x73, 0x44, 0x6f, 0x6e, 0x65)
-		o = msgp.AppendInt64(o, z.BytesDone)
-		// string "bytesFailed"
-		o = append(o, 0xab, 0x62, 0x79, 0x74, 0x65, 0x73, 0x46, 0x61, 0x69, 0x6c, 0x65, 0x64)
-		o = msgp.AppendInt64(o, z.BytesFailed)
-	}
+	// map header, size 10
+	// string "h"
+	o = append(o, 0x8a, 0xa1, 0x68)
+	o = msgp.AppendString(o, z.Host)
+	// string "il"
+	o = append(o, 0xa2, 0x69, 0x6c)
+	o = msgp.AppendBool(o, z.IsLocal)
+	// string "on"
+	o = append(o, 0xa2, 0x6f, 0x6e)
+	o = msgp.AppendBool(o, z.Online)
+	// string "cf"
+	o = append(o, 0xa2, 0x63, 0x66)
+	o = msgp.AppendInt(o, z.ConsecutiveFails)
+	// string "cs"
+	o = append(o, 0xa2, 0x63, 0x73)
+	o = msgp.AppendInt(o, z.CurrentSet)
+	// string "cb"
+	o = append(o, 0xa2, 0x63, 0x62)
+	o = msgp.AppendString(o, z.CurrentBucket)
+	// string "id"
+	o = append(o, 0xa2, 0x69, 0x64)
+	o = msgp.AppendInt64(o, z.ItemsDone)
+	// string "if"
+	o = append(o, 0xa2, 0x69, 0x66)
+	o = msgp.AppendInt64(o, z.ItemsFailed)
+	// string "bd"
+	o = append(o, 0xa2, 0x62, 0x64)
+	o = msgp.AppendInt64(o, z.BytesDone)
+	// string "bf"
+	o = append(o, 0xa2, 0x62, 0x66)
+	o = msgp.AppendInt64(o, z.BytesFailed)
 	return
 }
 
@@ -518,8 +477,6 @@ func (z *DistJobNodeStatus) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 1 bits */
-	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
 		field, bts, err = msgp.ReadMapKeyZC(bts)
@@ -528,62 +485,61 @@ func (z *DistJobNodeStatus) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "host":
+		case "h":
 			z.Host, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Host")
 				return
 			}
-		case "isLocal":
+		case "il":
 			z.IsLocal, bts, err = msgp.ReadBoolBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "IsLocal")
 				return
 			}
-		case "online":
+		case "on":
 			z.Online, bts, err = msgp.ReadBoolBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Online")
 				return
 			}
-		case "consecutiveFails":
+		case "cf":
 			z.ConsecutiveFails, bts, err = msgp.ReadIntBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ConsecutiveFails")
 				return
 			}
-		case "currentSet":
+		case "cs":
 			z.CurrentSet, bts, err = msgp.ReadIntBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "CurrentSet")
 				return
 			}
-		case "currentBucket":
+		case "cb":
 			z.CurrentBucket, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "CurrentBucket")
 				return
 			}
-			zb0001Mask |= 0x1
-		case "itemsDone":
+		case "id":
 			z.ItemsDone, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ItemsDone")
 				return
 			}
-		case "itemsFailed":
+		case "if":
 			z.ItemsFailed, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ItemsFailed")
 				return
 			}
-		case "bytesDone":
+		case "bd":
 			z.BytesDone, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "BytesDone")
 				return
 			}
-		case "bytesFailed":
+		case "bf":
 			z.BytesFailed, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "BytesFailed")
@@ -597,18 +553,13 @@ func (z *DistJobNodeStatus) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			}
 		}
 	}
-	// Clear omitted fields.
-	if (zb0001Mask & 0x1) == 0 {
-		z.CurrentBucket = ""
-	}
-
 	o = bts
 	return
 }
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *DistJobNodeStatus) Msgsize() (s int) {
-	s = 1 + 5 + msgp.StringPrefixSize + len(z.Host) + 8 + msgp.BoolSize + 7 + msgp.BoolSize + 17 + msgp.IntSize + 11 + msgp.IntSize + 14 + msgp.StringPrefixSize + len(z.CurrentBucket) + 10 + msgp.Int64Size + 12 + msgp.Int64Size + 10 + msgp.Int64Size + 12 + msgp.Int64Size
+	s = 1 + 2 + msgp.StringPrefixSize + len(z.Host) + 3 + msgp.BoolSize + 3 + msgp.BoolSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.StringPrefixSize + len(z.CurrentBucket) + 3 + msgp.Int64Size + 3 + msgp.Int64Size + 3 + msgp.Int64Size + 3 + msgp.Int64Size
 	return
 }
 

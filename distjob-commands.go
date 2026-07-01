@@ -26,7 +26,7 @@ import (
 	"net/url"
 )
 
-//go:generate go tool msgp -d clearomitted -d "timezone utc" -d "tag json" -file $GOFILE
+//go:generate go tool msgp -d clearomitted -d "timezone utc" -file $GOFILE
 
 // DistJobType identifies a registered distributed job type. The zero value,
 // DistJobTypeUnknown, doubles as the "no filter" sentinel for
@@ -85,31 +85,31 @@ func ParseDistJobType(s string) DistJobType {
 // DistJobNodeStatus is the observable state of one node participating in a
 // distributed job, as seen by the leader's poll loop.
 type DistJobNodeStatus struct {
-	Host    string `json:"host"`
-	IsLocal bool   `json:"isLocal"`
+	Host    string `json:"host"                    msg:"h"`
+	IsLocal bool   `json:"isLocal"                 msg:"il"`
 	// Online goes false after enough consecutive status poll failures;
 	// the leader then stops assigning this node work and re-queues
 	// whatever it had to another node.
-	Online           bool `json:"online"`
-	ConsecutiveFails int  `json:"consecutiveFails"`
+	Online           bool `json:"online"                  msg:"on"`
+	ConsecutiveFails int  `json:"consecutiveFails"        msg:"cf"`
 	// CurrentSet/CurrentBucket identify the work item in progress now;
 	// CurrentBucket is empty when idle.
-	CurrentSet    int    `json:"currentSet"`
-	CurrentBucket string `json:"currentBucket,omitempty"`
+	CurrentSet    int    `json:"currentSet"              msg:"cs"`
+	CurrentBucket string `json:"currentBucket,omitempty" msg:"cb"`
 	// Cumulative counters across every work item completed so far in this run.
-	ItemsDone   int64 `json:"itemsDone"`
-	ItemsFailed int64 `json:"itemsFailed"`
-	BytesDone   int64 `json:"bytesDone"`
-	BytesFailed int64 `json:"bytesFailed"`
+	ItemsDone   int64 `json:"itemsDone"   msg:"id"`
+	ItemsFailed int64 `json:"itemsFailed" msg:"if"`
+	BytesDone   int64 `json:"bytesDone"   msg:"bd"`
+	BytesFailed int64 `json:"bytesFailed" msg:"bf"`
 }
 
 // DistJobLeaderStatus is a point-in-time snapshot of a running distributed
 // job as seen by the leader node.
 type DistJobLeaderStatus struct {
-	JobID   string              `json:"jobID"`
-	JobType DistJobType         `json:"jobType"`
-	PoolIdx int                 `json:"poolIdx"`
-	Nodes   []DistJobNodeStatus `json:"nodes"`
+	JobID   string              `json:"jobID"   msg:"id"`
+	JobType DistJobType         `json:"jobType" msg:"jt"`
+	PoolIdx int                 `json:"poolIdx" msg:"pi"`
+	Nodes   []DistJobNodeStatus `json:"nodes"   msg:"n"`
 }
 
 // ListDistJobStatuses returns the current state of all active distributed
