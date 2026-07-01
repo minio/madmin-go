@@ -26,37 +26,112 @@ import (
 	"net/url"
 )
 
+// DistJobType identifies a registered distributed job type. Every node in
+// a cluster resolves a DistJobType to a fixed processing function at the
+// binary level — there is no runtime registration, so a job type is either
+// known or it isn't.
+//
+// Values are stable across releases: append new types, never renumber
+// existing ones — a rolling upgrade can have two server versions
+// interpreting the same wire value at once.
+type DistJobType uint8
+
+const (
+	// DistJobTypeUnknown is the zero value. No valid request carries it;
+	// it doubles as the "no filter" sentinel for ListDistJobStatuses.
+	DistJobTypeUnknown DistJobType = iota
+
+	// DistJobTypeDecommission drains one pool that is being removed from
+	// the cluster: every version of every object is copied out and the
+	// pool is left empty.
+	DistJobTypeDecommission
+)
+
+// String returns the wire/query-param representation of the job type, e.g.
+// "decommission". Matches the ?job= value accepted by the distjob status API.
+func (t DistJobType) String() string {
+	switch t {
+	case DistJobTypeDecommission:
+		return "decommission"
+	default:
+		return "unknown"
+	}
+}
+
+// MarshalJSON encodes the job type using its String() representation so
+// admin API JSON responses carry a human-readable value instead of a bare
+// integer.
+func (t DistJobType) MarshalJSON() ([]byte, error) {
+	return json.Marshal(t.String())
+}
+
+// UnmarshalJSON decodes a job type from its String() representation.
+// Unrecognized values decode to DistJobTypeUnknown rather than erroring, so
+// a newer server's job type is forward-compatible with an older client.
+func (t *DistJobType) UnmarshalJSON(b []byte) error {
+	var s string
+	if err := json.Unmarshal(b, &s); err != nil {
+		return err
+	}
+	*t = ParseDistJobType(s)
+	return nil
+}
+
+// ParseDistJobType converts a job type's wire/query-param representation
+// back into a DistJobType. Returns DistJobTypeUnknown if s does not match a
+// known type.
+func ParseDistJobType(s string) DistJobType {
+	switch s {
+	case DistJobTypeDecommission.String():
+		return DistJobTypeDecommission
+	default:
+		return DistJobTypeUnknown
+	}
+}
+
 // DistJobNodeStatus is the observable state of one node participating in a
-// distributed job, as reported by the leader.
+// distributed job, as seen by the leader's poll loop.
 type DistJobNodeStatus struct {
-	Host             string `json:"host"`
-	IsLocal          bool   `json:"isLocal"`
-	Online           bool   `json:"online"`
-	ConsecutiveFails int    `json:"consecutiveFails"`
-	AssignedSets     []int  `json:"assignedSets"`
-	ItemsDone        int64  `json:"itemsDone"`
-	ItemsFailed      int64  `json:"itemsFailed"`
-	BytesDone        int64  `json:"bytesDone"`
-	BytesFailed      int64  `json:"bytesFailed"`
+	// Host is the node's grid host address (host:port).
+	Host string `json:"host"`
+	// IsLocal is true only for the leader's own entry.
+	IsLocal bool `json:"isLocal"`
+	// Online is false once this node has missed enough consecutive status
+	// polls that the leader stopped assigning it new work and re-queued
+	// whatever it was processing to another node.
+	Online bool `json:"online"`
+	// ConsecutiveFails counts status poll failures to this node since its
+	// last successful poll; it resets to 0 on any successful poll.
+	ConsecutiveFails int `json:"consecutiveFails"`
+	// CurrentSet and CurrentBucket identify the work item this node is
+	// processing right now. CurrentBucket is empty when idle.
+	CurrentSet    int    `json:"currentSet"`
+	CurrentBucket string `json:"currentBucket,omitempty"`
+	// ItemsDone, ItemsFailed, BytesDone, BytesFailed are this node's
+	// cumulative counters across every work item completed so far in this
+	// job run.
+	ItemsDone   int64 `json:"itemsDone"`
+	ItemsFailed int64 `json:"itemsFailed"`
+	BytesDone   int64 `json:"bytesDone"`
+	BytesFailed int64 `json:"bytesFailed"`
 }
 
 // DistJobLeaderStatus is a point-in-time snapshot of a running distributed
 // job as seen by the leader node.
 type DistJobLeaderStatus struct {
-	JobName       string              `json:"jobName"`
-	PoolIdx       int                 `json:"poolIdx"`
-	CurrentBucket string              `json:"currentBucket"`
-	Generation    uint64              `json:"generation"`
-	Nodes         []DistJobNodeStatus `json:"nodes"`
+	JobID   string              `json:"jobID"`
+	JobType DistJobType         `json:"jobType"`
+	PoolIdx int                 `json:"poolIdx"`
+	Nodes   []DistJobNodeStatus `json:"nodes"`
 }
 
 // ListDistJobStatuses returns the current state of all active distributed
-// jobs. Pass a non-empty jobName to filter to a specific job type
-// (e.g. "decommission"). Pass empty string to return all active jobs.
-func (adm *AdminClient) ListDistJobStatuses(ctx context.Context, jobName string) ([]DistJobLeaderStatus, error) {
+// jobs. Pass a jobType other than DistJobTypeUnknown to filter to a
+// specific job type. Pass DistJobTypeUnknown to return all active jobs.
+func (adm *AdminClient) ListDistJobStatuses(ctx context.Context, jobType DistJobType) ([]DistJobLeaderStatus, error) {
 	values := url.Values{}
-	if jobName != "" {
-		values.Set("job", jobName)
+	if jobType != DistJobTypeUnknown {
+		values.Set("job", jobType.String())
 	}
 	resp, err := adm.executeMethod(ctx, http.MethodGet, requestData{
 		relPath:     adminAPIPrefix + "/distjob/status",
