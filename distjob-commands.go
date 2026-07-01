@@ -26,8 +26,7 @@ import (
 	"net/url"
 )
 
-//msgp:tag json
-//go:generate msgp -d clearomitted -d "timezone utc" -file $GOFILE
+//go:generate go tool msgp -d clearomitted -d "timezone utc" -d "tag json" -file $GOFILE
 
 // DistJobType identifies a registered distributed job type. The zero value,
 // DistJobTypeUnknown, doubles as the "no filter" sentinel for

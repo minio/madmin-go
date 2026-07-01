@@ -43,8 +43,6 @@ jobs:
       - name: Regenerate, vet and test for generated files
         run: |
           go vet ./...
-          go install -v tool
-          export PATH=${PATH}:$(go env GOPATH)/bin
           go generate ./... >/dev/null
           (! git diff --name-only | grep '_gen.go$') || \
             (echo "Non-committed changes in auto-generated code is detected, please commit them to proceed." && false)

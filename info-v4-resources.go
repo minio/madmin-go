@@ -29,7 +29,7 @@ import (
 	"github.com/tinylib/msgp/msgp"
 )
 
-//go:generate msgp -d clearomitted -d "timezone utc" -file $GOFILE
+//go:generate go tool msgp -d clearomitted -d "timezone utc" -file $GOFILE
 
 // PaginatedPoolsResponse represents a paginated response for pools
 type PaginatedPoolsResponse struct {

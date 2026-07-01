@@ -29,7 +29,7 @@ import (
 )
 
 //msgp:tag json
-//go:generate msgp -d clearomitted -d "timezone utc" -file $GOFILE
+//go:generate go tool msgp -d clearomitted -d "timezone utc" -file $GOFILE
 
 const (
 	CordonAction   = "cordon"

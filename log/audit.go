@@ -36,7 +36,7 @@ func redactIfSensitive(key, value string) string {
 }
 
 //msgp:tag json
-//go:generate msgp -d clearomitted -d "timezone utc" $GOFILE
+//go:generate go tool msgp -d clearomitted -d "timezone utc" $GOFILE
 
 // AuditCategory represents the category of audit event
 //

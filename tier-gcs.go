@@ -23,7 +23,7 @@ import (
 	"encoding/base64"
 )
 
-//go:generate msgp -d clearomitted -d "timezone utc" -file $GOFILE
+//go:generate go tool msgp -d clearomitted -d "timezone utc" -file $GOFILE
 
 // TierGCS represents the remote tier configuration for Google Cloud Storage
 type TierGCS struct {

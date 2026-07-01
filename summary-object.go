@@ -28,7 +28,7 @@ import (
 	"github.com/tinylib/msgp/msgp"
 )
 
-//go:generate msgp -d clearomitted -d "timezone utc" -unexported -file=$GOFILE
+//go:generate go tool msgp -d clearomitted -d "timezone utc" -unexported -file=$GOFILE
 
 // ObjectSummaryOptions provides options for ObjectSummary call.
 type ObjectSummaryOptions struct {

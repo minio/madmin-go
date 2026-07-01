@@ -25,7 +25,7 @@ import (
 )
 
 //msgp:tag json
-//go:generate msgp -d clearomitted -d "timezone utc" $GOFILE
+//go:generate go tool msgp -d clearomitted -d "timezone utc" $GOFILE
 
 // Error represents the error event
 type Error struct {
