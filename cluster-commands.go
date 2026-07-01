@@ -174,7 +174,10 @@ type PeerInfo struct {
 	DefaultBandwidth   BucketBandwidth `json:"defaultbandwidth"` // bandwidth limit per bucket in bytes/sec
 	ReplicateILMExpiry bool            `json:"replicate-ilm-expiry"`
 	ObjectNamingMode   string          `json:"objectNamingMode,omitempty"`
-	APIVersion         string          `json:"apiVersion,omitempty"`
+	// TablesReplicaEnabled is true when this peer has the catalog scanner
+	// enabled (i.e. is acting as a tables replica site).
+	TablesReplicaEnabled bool   `json:"tablesReplicaEnabled,omitempty"`
+	APIVersion           string `json:"apiVersion,omitempty"`
 }
 
 // BucketBandwidth has default bandwidth limit per bucket in bytes/sec
@@ -1356,7 +1359,26 @@ type SRMetricsSummary struct {
 	Retries Counter `json:"retries"`
 	// represents the error count
 	Errors Counter `json:"errors"`
+	// Aggregate windowed replicated stats (outbound to all site peers).
+	//
+	// Deprecated: this cluster-level rollup is retained for backward
+	// compatibility during rolling upgrades. Prefer ReplicatedByDeployment
+	// for per-peer data; this field will be removed in a future release.
+	Replicated ReplicationWindowedStats `json:"replicated"`
+	// Aggregate windowed received stats (inbound from all site peers).
+	Received ReplicationWindowedStats `json:"received"`
+	// Per-deployment windowed replicated stats, keyed by deployment ID.
+	ReplicatedByDeployment map[string]ReplicationWindowedStats `json:"replicatedByDeployment,omitempty"`
+	// Per-deployment windowed failed/error stats, keyed by deployment ID.
+	FailedByDeployment    map[string]ReplicationWindowedStats            `json:"failedByDeployment,omitempty"`
+	ReceivedByBucket      map[string]ReplicationWindowedStats            `json:"receivedByBucket,omitempty"`
+	ReplicatedByBucketArn map[string]map[string]ReplicationWindowedStats `json:"replicatedByBucketArn,omitempty"`
+	FailedByBucketArn     map[string]map[string]ReplicationWindowedStats `json:"failedByBucketArn,omitempty"`
 }
+
+// ReplicationWindowedStats holds count and bytes across time windows for
+// replication data transfer (both inbound and outbound).
+type ReplicationWindowedStats = ReplicationReceivedStats
 
 // Counter denotes the counts
 type Counter struct {

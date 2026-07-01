@@ -404,7 +404,9 @@ type NetInfo struct {
 	NodeCommon
 	Interface       string       `json:"interface,omitempty"`
 	Driver          string       `json:"driver,omitempty"`
+	DriverVersion   string       `json:"driver_version,omitempty"`
 	FirmwareVersion string       `json:"firmware_version,omitempty"`
+	BusInfo         string       `json:"bus_info,omitempty"`
 	Settings        *NetSettings `json:"settings,omitempty"`
 }
 
@@ -794,19 +796,19 @@ func getXFSErrorMaxRetries() XFSErrorConfigs {
 type ProductInfo struct {
 	NodeCommon
 
-	Family       string `json:"family"`
-	Name         string `json:"name"`
-	Vendor       string `json:"vendor"`
-	SerialNumber string `json:"serial_number"`
-	UUID         string `json:"uuid"`
-	SKU          string `json:"sku"`
-	Version      string `json:"version"`
+	Family       string `json:"family,omitempty"`
+	Name         string `json:"name,omitempty"`
+	Vendor       string `json:"vendor,omitempty"`
+	SerialNumber string `json:"serial_number,omitempty"`
+	UUID         string `json:"uuid,omitempty"`
+	SKU          string `json:"sku,omitempty"`
+	Version      string `json:"version,omitempty"`
 }
 
 func getDMIInfo(ask string) string {
 	value, err := os.ReadFile(path.Join(sysClassDMI, "id", ask))
 	if err != nil {
-		return "unknown"
+		return ""
 	}
 	return strings.TrimSpace(string(value))
 }
@@ -1013,6 +1015,13 @@ type ProcInfo struct {
 	Times          cpu.TimesStat              `json:"times,omitempty"`
 	UIDs           []int32                    `json:"uids,omitempty"`
 	Username       string                     `json:"username,omitempty"`
+
+	// DStateThreads is the per-process snapshot of threads currently in
+	// uninterruptible disk sleep (D), captured for `mc support diag`.
+	// Populated only when the diag collector finds threads in D and the
+	// node has dwell history; nil otherwise (e.g. realtime ProcInfo
+	// callers that don't request thread diagnostics).
+	DStateThreads *DStateThreadsDiag `json:"dstate_threads,omitempty"`
 }
 
 func aTob[a, b any](aa []a, conv func(item a) b) []b {
@@ -1420,6 +1429,19 @@ type ShardsHealthInfo struct {
 	FailedWrites map[string]map[string][]uint64 `json:"failed_writes,omitempty"`
 }
 
+// IAMPolicyDiag holds per-policy diagnostic findings.
+type IAMPolicyDiag struct {
+	UnsafeConditionKeys []string `json:"unsafe_condition_keys,omitempty"`
+}
+
+// IAMInfo carries IAM diagnostics. TotalPolicies is the count of policies
+// inspected; FlaggedPolicies lists only those with at least one finding.
+type IAMInfo struct {
+	Error           string                   `json:"error,omitempty"`
+	TotalPolicies   int                      `json:"total_policies,omitempty"`
+	FlaggedPolicies map[string]IAMPolicyDiag `json:"flagged_policies,omitempty"`
+}
+
 // MinioHealthInfo - Includes MinIO confifuration information
 type MinioHealthInfo struct {
 	Error string `json:"error,omitempty"`
@@ -1429,6 +1451,7 @@ type MinioHealthInfo struct {
 	Replication     *ReplDiagInfo     `json:"replication,omitempty"` // Deprecated May 2025
 	ReplicationInfo *ReplDiagInfoV2   `json:"replication_info,omitempty"`
 	ShardsHealth    *ShardsHealthInfo `json:"shards_health,omitempty"`
+	IAMInfo         *IAMInfo          `json:"iam_info,omitempty"`
 }
 
 // HealthInfo - MinIO cluster's health Info
@@ -1481,36 +1504,40 @@ type HealthDataType string
 
 // HealthDataTypes
 const (
-	HealthDataTypeMinioInfo    HealthDataType = "minioinfo"
-	HealthDataTypeMinioConfig  HealthDataType = "minioconfig"
-	HealthDataTypeSysCPU       HealthDataType = "syscpu"
-	HealthDataTypeSysDriveHw   HealthDataType = "sysdrivehw"
-	HealthDataTypeSysOsInfo    HealthDataType = "sysosinfo"
-	HealthDataTypeSysMem       HealthDataType = "sysmem"
-	HealthDataTypeSysNet       HealthDataType = "sysnet"
-	HealthDataTypeSysProcess   HealthDataType = "sysprocess"
-	HealthDataTypeSysErrors    HealthDataType = "syserrors"
-	HealthDataTypeSysServices  HealthDataType = "sysservices"
-	HealthDataTypeSysConfig    HealthDataType = "sysconfig"
-	HealthDataTypeReplication  HealthDataType = "replication"
-	HealthDataTypeShardsHealth HealthDataType = "shardshealth"
+	HealthDataTypeMinioInfo      HealthDataType = "minioinfo"
+	HealthDataTypeMinioConfig    HealthDataType = "minioconfig"
+	HealthDataTypeSysCPU         HealthDataType = "syscpu"
+	HealthDataTypeSysDriveHw     HealthDataType = "sysdrivehw"
+	HealthDataTypeSysOsInfo      HealthDataType = "sysosinfo"
+	HealthDataTypeSysMem         HealthDataType = "sysmem"
+	HealthDataTypeSysNet         HealthDataType = "sysnet"
+	HealthDataTypeSysProcess     HealthDataType = "sysprocess"
+	HealthDataTypeSysErrors      HealthDataType = "syserrors"
+	HealthDataTypeSysServices    HealthDataType = "sysservices"
+	HealthDataTypeSysConfig      HealthDataType = "sysconfig"
+	HealthDataTypeSysProductInfo HealthDataType = "sysproductinfo"
+	HealthDataTypeReplication    HealthDataType = "replication"
+	HealthDataTypeShardsHealth   HealthDataType = "shardshealth"
+	HealthDataTypeIAMInfo        HealthDataType = "iaminfo"
 )
 
 // HealthDataTypesMap - Map of Health datatypes
 var HealthDataTypesMap = map[string]HealthDataType{
-	"minioinfo":    HealthDataTypeMinioInfo,
-	"minioconfig":  HealthDataTypeMinioConfig,
-	"syscpu":       HealthDataTypeSysCPU,
-	"sysdrivehw":   HealthDataTypeSysDriveHw,
-	"sysosinfo":    HealthDataTypeSysOsInfo,
-	"sysmem":       HealthDataTypeSysMem,
-	"sysnet":       HealthDataTypeSysNet,
-	"sysprocess":   HealthDataTypeSysProcess,
-	"syserrors":    HealthDataTypeSysErrors,
-	"sysservices":  HealthDataTypeSysServices,
-	"sysconfig":    HealthDataTypeSysConfig,
-	"replication":  HealthDataTypeReplication,
-	"shardshealth": HealthDataTypeShardsHealth,
+	"minioinfo":      HealthDataTypeMinioInfo,
+	"minioconfig":    HealthDataTypeMinioConfig,
+	"syscpu":         HealthDataTypeSysCPU,
+	"sysdrivehw":     HealthDataTypeSysDriveHw,
+	"sysosinfo":      HealthDataTypeSysOsInfo,
+	"sysmem":         HealthDataTypeSysMem,
+	"sysnet":         HealthDataTypeSysNet,
+	"sysprocess":     HealthDataTypeSysProcess,
+	"syserrors":      HealthDataTypeSysErrors,
+	"sysservices":    HealthDataTypeSysServices,
+	"sysconfig":      HealthDataTypeSysConfig,
+	"sysproductinfo": HealthDataTypeSysProductInfo,
+	"replication":    HealthDataTypeReplication,
+	"shardshealth":   HealthDataTypeShardsHealth,
+	"iaminfo":        HealthDataTypeIAMInfo,
 }
 
 // HealthDataTypesList - List of health datatypes
@@ -1526,8 +1553,10 @@ var HealthDataTypesList = []HealthDataType{
 	HealthDataTypeSysErrors,
 	HealthDataTypeSysServices,
 	HealthDataTypeSysConfig,
+	HealthDataTypeSysProductInfo,
 	HealthDataTypeReplication,
 	HealthDataTypeShardsHealth,
+	HealthDataTypeIAMInfo,
 }
 
 // HealthInfoVersionStruct - struct for health info version

@@ -2251,10 +2251,10 @@ func (z *BucketUsageInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.ObjectAccessAgesHistogram[za0007] = za0008
 			}
-		case "lockRetentionVersions":
-			z.LockRetentionVersions, err = dc.ReadUint64()
+		case "lockActiveRetentionVersions":
+			z.LockActiveRetentionVersions, err = dc.ReadUint64()
 			if err != nil {
-				err = msgp.WrapError(err, "LockRetentionVersions")
+				err = msgp.WrapError(err, "LockActiveRetentionVersions")
 				return
 			}
 		case "lockExpiredRetentionVersions":
@@ -2471,14 +2471,14 @@ func (z *BucketUsageInfo) EncodeMsg(en *msgp.Writer) (err error) {
 			return
 		}
 	}
-	// write "lockRetentionVersions"
-	err = en.Append(0xb5, 0x6c, 0x6f, 0x63, 0x6b, 0x52, 0x65, 0x74, 0x65, 0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
+	// write "lockActiveRetentionVersions"
+	err = en.Append(0xbb, 0x6c, 0x6f, 0x63, 0x6b, 0x41, 0x63, 0x74, 0x69, 0x76, 0x65, 0x52, 0x65, 0x74, 0x65, 0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
 	if err != nil {
 		return
 	}
-	err = en.WriteUint64(z.LockRetentionVersions)
+	err = en.WriteUint64(z.LockActiveRetentionVersions)
 	if err != nil {
-		err = msgp.WrapError(err, "LockRetentionVersions")
+		err = msgp.WrapError(err, "LockActiveRetentionVersions")
 		return
 	}
 	// write "lockExpiredRetentionVersions"
@@ -2566,9 +2566,9 @@ func (z *BucketUsageInfo) MarshalMsg(b []byte) (o []byte, err error) {
 		o = msgp.AppendString(o, za0007)
 		o = msgp.AppendUint64(o, za0008)
 	}
-	// string "lockRetentionVersions"
-	o = append(o, 0xb5, 0x6c, 0x6f, 0x63, 0x6b, 0x52, 0x65, 0x74, 0x65, 0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
-	o = msgp.AppendUint64(o, z.LockRetentionVersions)
+	// string "lockActiveRetentionVersions"
+	o = append(o, 0xbb, 0x6c, 0x6f, 0x63, 0x6b, 0x41, 0x63, 0x74, 0x69, 0x76, 0x65, 0x52, 0x65, 0x74, 0x65, 0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
+	o = msgp.AppendUint64(o, z.LockActiveRetentionVersions)
 	// string "lockExpiredRetentionVersions"
 	o = append(o, 0xbc, 0x6c, 0x6f, 0x63, 0x6b, 0x45, 0x78, 0x70, 0x69, 0x72, 0x65, 0x64, 0x52, 0x65, 0x74, 0x65, 0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
 	o = msgp.AppendUint64(o, z.LockExpiredRetentionVersions)
@@ -2768,10 +2768,10 @@ func (z *BucketUsageInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.ObjectAccessAgesHistogram[za0007] = za0008
 			}
-		case "lockRetentionVersions":
-			z.LockRetentionVersions, bts, err = msgp.ReadUint64Bytes(bts)
+		case "lockActiveRetentionVersions":
+			z.LockActiveRetentionVersions, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "LockRetentionVersions")
+				err = msgp.WrapError(err, "LockActiveRetentionVersions")
 				return
 			}
 		case "lockExpiredRetentionVersions":
@@ -2828,7 +2828,7 @@ func (z *BucketUsageInfo) Msgsize() (s int) {
 			s += msgp.StringPrefixSize + len(za0007) + msgp.Uint64Size
 		}
 	}
-	s += 22 + msgp.Uint64Size + 29 + msgp.Uint64Size + 22 + msgp.Uint64Size
+	s += 28 + msgp.Uint64Size + 29 + msgp.Uint64Size + 22 + msgp.Uint64Size
 	return
 }
 
@@ -4269,10 +4269,10 @@ func (z *DataUsageInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.TierStats[za0003] = za0004
 			}
-		case "lockRetentionVersions":
-			z.LockRetentionVersions, err = dc.ReadUint64()
+		case "lockActiveRetentionVersions":
+			z.LockActiveRetentionVersions, err = dc.ReadUint64()
 			if err != nil {
-				err = msgp.WrapError(err, "LockRetentionVersions")
+				err = msgp.WrapError(err, "LockActiveRetentionVersions")
 				return
 			}
 		case "lockExpiredRetentionVersions":
@@ -4489,14 +4489,14 @@ func (z *DataUsageInfo) EncodeMsg(en *msgp.Writer) (err error) {
 			return
 		}
 	}
-	// write "lockRetentionVersions"
-	err = en.Append(0xb5, 0x6c, 0x6f, 0x63, 0x6b, 0x52, 0x65, 0x74, 0x65, 0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
+	// write "lockActiveRetentionVersions"
+	err = en.Append(0xbb, 0x6c, 0x6f, 0x63, 0x6b, 0x41, 0x63, 0x74, 0x69, 0x76, 0x65, 0x52, 0x65, 0x74, 0x65, 0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
 	if err != nil {
 		return
 	}
-	err = en.WriteUint64(z.LockRetentionVersions)
+	err = en.WriteUint64(z.LockActiveRetentionVersions)
 	if err != nil {
-		err = msgp.WrapError(err, "LockRetentionVersions")
+		err = msgp.WrapError(err, "LockActiveRetentionVersions")
 		return
 	}
 	// write "lockExpiredRetentionVersions"
@@ -4613,9 +4613,9 @@ func (z *DataUsageInfo) MarshalMsg(b []byte) (o []byte, err error) {
 		o = append(o, 0xaa, 0x6e, 0x75, 0x6d, 0x4f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73)
 		o = msgp.AppendInt(o, za0004.NumObjects)
 	}
-	// string "lockRetentionVersions"
-	o = append(o, 0xb5, 0x6c, 0x6f, 0x63, 0x6b, 0x52, 0x65, 0x74, 0x65, 0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
-	o = msgp.AppendUint64(o, z.LockRetentionVersions)
+	// string "lockActiveRetentionVersions"
+	o = append(o, 0xbb, 0x6c, 0x6f, 0x63, 0x6b, 0x41, 0x63, 0x74, 0x69, 0x76, 0x65, 0x52, 0x65, 0x74, 0x65, 0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
+	o = msgp.AppendUint64(o, z.LockActiveRetentionVersions)
 	// string "lockExpiredRetentionVersions"
 	o = append(o, 0xbc, 0x6c, 0x6f, 0x63, 0x6b, 0x45, 0x78, 0x70, 0x69, 0x72, 0x65, 0x64, 0x52, 0x65, 0x74, 0x65, 0x6e, 0x74, 0x69, 0x6f, 0x6e, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
 	o = msgp.AppendUint64(o, z.LockExpiredRetentionVersions)
@@ -4803,10 +4803,10 @@ func (z *DataUsageInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.TierStats[za0003] = za0004
 			}
-		case "lockRetentionVersions":
-			z.LockRetentionVersions, bts, err = msgp.ReadUint64Bytes(bts)
+		case "lockActiveRetentionVersions":
+			z.LockActiveRetentionVersions, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "LockRetentionVersions")
+				err = msgp.WrapError(err, "LockActiveRetentionVersions")
 				return
 			}
 		case "lockExpiredRetentionVersions":
@@ -4867,7 +4867,7 @@ func (z *DataUsageInfo) Msgsize() (s int) {
 			s += msgp.StringPrefixSize + len(za0003) + 1 + 10 + msgp.Uint64Size + 12 + msgp.IntSize + 11 + msgp.IntSize
 		}
 	}
-	s += 22 + msgp.Uint64Size + 29 + msgp.Uint64Size + 22 + msgp.Uint64Size + 9 + msgp.Uint64Size + 13 + msgp.Uint64Size + 13 + msgp.Uint64Size
+	s += 28 + msgp.Uint64Size + 29 + msgp.Uint64Size + 22 + msgp.Uint64Size + 9 + msgp.Uint64Size + 13 + msgp.Uint64Size + 13 + msgp.Uint64Size
 	return
 }
 
@@ -11497,7 +11497,7 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint32 /* 24 bits */
+	var zb0001Mask uint32 /* 25 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -11719,6 +11719,35 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "IsLeader")
 				return
 			}
+		case "leaders":
+			var zb0006 uint32
+			zb0006, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "Leaders")
+				return
+			}
+			if z.Leaders == nil {
+				z.Leaders = make(map[string]string, zb0006)
+			} else if len(z.Leaders) > 0 {
+				clear(z.Leaders)
+			}
+			for zb0006 > 0 {
+				zb0006--
+				var za0007 string
+				za0007, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "Leaders")
+					return
+				}
+				var za0008 string
+				za0008, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "Leaders", za0007)
+					return
+				}
+				z.Leaders[za0007] = za0008
+			}
+			zb0001Mask |= 0x10000
 		case "ilm_expiry_in_progress":
 			z.ILMExpiryInProgress, err = dc.ReadBool()
 			if err != nil {
@@ -11743,35 +11772,35 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x10000
+			zb0001Mask |= 0x20000
 		case "pid":
 			z.PID, err = dc.ReadInt32()
 			if err != nil {
 				err = msgp.WrapError(err, "PID")
 				return
 			}
-			zb0001Mask |= 0x20000
+			zb0001Mask |= 0x40000
 		case "cmd_line":
 			z.CmdLine, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "CmdLine")
 				return
 			}
-			zb0001Mask |= 0x40000
+			zb0001Mask |= 0x80000
 		case "username":
 			z.Username, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "Username")
 				return
 			}
-			zb0001Mask |= 0x80000
+			zb0001Mask |= 0x100000
 		case "is_background":
 			z.IsBackground, err = dc.ReadBool()
 			if err != nil {
 				err = msgp.WrapError(err, "IsBackground")
 				return
 			}
-			zb0001Mask |= 0x100000
+			zb0001Mask |= 0x200000
 		case "first_cpu":
 			if dc.IsNil() {
 				err = dc.ReadNil()
@@ -11790,14 +11819,14 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x200000
+			zb0001Mask |= 0x400000
 		case "cpu_count":
 			z.CPUCount, err = dc.ReadInt()
 			if err != nil {
 				err = msgp.WrapError(err, "CPUCount")
 				return
 			}
-			zb0001Mask |= 0x400000
+			zb0001Mask |= 0x800000
 		case "api_version":
 			err = z.APIVersion.DecodeMsg(dc)
 			if err != nil {
@@ -11810,7 +11839,7 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "RestartingSince")
 				return
 			}
-			zb0001Mask |= 0x800000
+			zb0001Mask |= 0x1000000
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -11820,7 +11849,7 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xffffff {
+	if zb0001Mask != 0x1ffffff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.State = ""
 		}
@@ -11870,27 +11899,30 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 			z.License = nil
 		}
 		if (zb0001Mask & 0x10000) == 0 {
-			z.Host = nil
+			z.Leaders = nil
 		}
 		if (zb0001Mask & 0x20000) == 0 {
-			z.PID = 0
+			z.Host = nil
 		}
 		if (zb0001Mask & 0x40000) == 0 {
-			z.CmdLine = ""
+			z.PID = 0
 		}
 		if (zb0001Mask & 0x80000) == 0 {
-			z.Username = ""
+			z.CmdLine = ""
 		}
 		if (zb0001Mask & 0x100000) == 0 {
-			z.IsBackground = false
+			z.Username = ""
 		}
 		if (zb0001Mask & 0x200000) == 0 {
-			z.FirstCPU = nil
+			z.IsBackground = false
 		}
 		if (zb0001Mask & 0x400000) == 0 {
-			z.CPUCount = 0
+			z.FirstCPU = nil
 		}
 		if (zb0001Mask & 0x800000) == 0 {
+			z.CPUCount = 0
+		}
+		if (zb0001Mask & 0x1000000) == 0 {
 			z.RestartingSince = (time.Time{})
 		}
 	}
@@ -11900,8 +11932,8 @@ func (z *ServerProperties) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(29)
-	var zb0001Mask uint32 /* 29 bits */
+	zb0001Len := uint32(30)
+	var zb0001Mask uint32 /* 30 bits */
 	_ = zb0001Mask
 	if z.State == "" {
 		zb0001Len--
@@ -11967,37 +11999,41 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 		zb0001Len--
 		zb0001Mask |= 0x20000
 	}
-	if z.Host == nil {
+	if z.Leaders == nil {
 		zb0001Len--
-		zb0001Mask |= 0x100000
+		zb0001Mask |= 0x80000
 	}
-	if z.PID == 0 {
+	if z.Host == nil {
 		zb0001Len--
 		zb0001Mask |= 0x200000
 	}
-	if z.CmdLine == "" {
+	if z.PID == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x400000
 	}
-	if z.Username == "" {
+	if z.CmdLine == "" {
 		zb0001Len--
 		zb0001Mask |= 0x800000
 	}
-	if z.IsBackground == false {
+	if z.Username == "" {
 		zb0001Len--
 		zb0001Mask |= 0x1000000
 	}
-	if z.FirstCPU == nil {
+	if z.IsBackground == false {
 		zb0001Len--
 		zb0001Mask |= 0x2000000
 	}
-	if z.CPUCount == 0 {
+	if z.FirstCPU == nil {
 		zb0001Len--
 		zb0001Mask |= 0x4000000
 	}
+	if z.CPUCount == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8000000
+	}
 	if z.RestartingSince == (time.Time{}) {
 		zb0001Len--
-		zb0001Mask |= 0x10000000
+		zb0001Mask |= 0x20000000
 	}
 	// variable map header, size zb0001Len
 	err = en.WriteMapHeader(zb0001Len)
@@ -12274,6 +12310,30 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "IsLeader")
 			return
 		}
+		if (zb0001Mask & 0x80000) == 0 { // if not omitted
+			// write "leaders"
+			err = en.Append(0xa7, 0x6c, 0x65, 0x61, 0x64, 0x65, 0x72, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteMapHeader(uint32(len(z.Leaders)))
+			if err != nil {
+				err = msgp.WrapError(err, "Leaders")
+				return
+			}
+			for za0007, za0008 := range z.Leaders {
+				err = en.WriteString(za0007)
+				if err != nil {
+					err = msgp.WrapError(err, "Leaders")
+					return
+				}
+				err = en.WriteString(za0008)
+				if err != nil {
+					err = msgp.WrapError(err, "Leaders", za0007)
+					return
+				}
+			}
+		}
 		// write "ilm_expiry_in_progress"
 		err = en.Append(0xb6, 0x69, 0x6c, 0x6d, 0x5f, 0x65, 0x78, 0x70, 0x69, 0x72, 0x79, 0x5f, 0x69, 0x6e, 0x5f, 0x70, 0x72, 0x6f, 0x67, 0x72, 0x65, 0x73, 0x73)
 		if err != nil {
@@ -12284,7 +12344,7 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "ILMExpiryInProgress")
 			return
 		}
-		if (zb0001Mask & 0x100000) == 0 { // if not omitted
+		if (zb0001Mask & 0x200000) == 0 { // if not omitted
 			// write "host"
 			err = en.Append(0xa4, 0x68, 0x6f, 0x73, 0x74)
 			if err != nil {
@@ -12303,7 +12363,7 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x200000) == 0 { // if not omitted
+		if (zb0001Mask & 0x400000) == 0 { // if not omitted
 			// write "pid"
 			err = en.Append(0xa3, 0x70, 0x69, 0x64)
 			if err != nil {
@@ -12315,7 +12375,7 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x400000) == 0 { // if not omitted
+		if (zb0001Mask & 0x800000) == 0 { // if not omitted
 			// write "cmd_line"
 			err = en.Append(0xa8, 0x63, 0x6d, 0x64, 0x5f, 0x6c, 0x69, 0x6e, 0x65)
 			if err != nil {
@@ -12327,7 +12387,7 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x800000) == 0 { // if not omitted
+		if (zb0001Mask & 0x1000000) == 0 { // if not omitted
 			// write "username"
 			err = en.Append(0xa8, 0x75, 0x73, 0x65, 0x72, 0x6e, 0x61, 0x6d, 0x65)
 			if err != nil {
@@ -12339,7 +12399,7 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x1000000) == 0 { // if not omitted
+		if (zb0001Mask & 0x2000000) == 0 { // if not omitted
 			// write "is_background"
 			err = en.Append(0xad, 0x69, 0x73, 0x5f, 0x62, 0x61, 0x63, 0x6b, 0x67, 0x72, 0x6f, 0x75, 0x6e, 0x64)
 			if err != nil {
@@ -12351,7 +12411,7 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x2000000) == 0 { // if not omitted
+		if (zb0001Mask & 0x4000000) == 0 { // if not omitted
 			// write "first_cpu"
 			err = en.Append(0xa9, 0x66, 0x69, 0x72, 0x73, 0x74, 0x5f, 0x63, 0x70, 0x75)
 			if err != nil {
@@ -12370,7 +12430,7 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x4000000) == 0 { // if not omitted
+		if (zb0001Mask & 0x8000000) == 0 { // if not omitted
 			// write "cpu_count"
 			err = en.Append(0xa9, 0x63, 0x70, 0x75, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74)
 			if err != nil {
@@ -12392,7 +12452,7 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "APIVersion")
 			return
 		}
-		if (zb0001Mask & 0x10000000) == 0 { // if not omitted
+		if (zb0001Mask & 0x20000000) == 0 { // if not omitted
 			// write "restarting_since"
 			err = en.Append(0xb0, 0x72, 0x65, 0x73, 0x74, 0x61, 0x72, 0x74, 0x69, 0x6e, 0x67, 0x5f, 0x73, 0x69, 0x6e, 0x63, 0x65)
 			if err != nil {
@@ -12412,8 +12472,8 @@ func (z *ServerProperties) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(29)
-	var zb0001Mask uint32 /* 29 bits */
+	zb0001Len := uint32(30)
+	var zb0001Mask uint32 /* 30 bits */
 	_ = zb0001Mask
 	if z.State == "" {
 		zb0001Len--
@@ -12479,37 +12539,41 @@ func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x20000
 	}
-	if z.Host == nil {
+	if z.Leaders == nil {
 		zb0001Len--
-		zb0001Mask |= 0x100000
+		zb0001Mask |= 0x80000
 	}
-	if z.PID == 0 {
+	if z.Host == nil {
 		zb0001Len--
 		zb0001Mask |= 0x200000
 	}
-	if z.CmdLine == "" {
+	if z.PID == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x400000
 	}
-	if z.Username == "" {
+	if z.CmdLine == "" {
 		zb0001Len--
 		zb0001Mask |= 0x800000
 	}
-	if z.IsBackground == false {
+	if z.Username == "" {
 		zb0001Len--
 		zb0001Mask |= 0x1000000
 	}
-	if z.FirstCPU == nil {
+	if z.IsBackground == false {
 		zb0001Len--
 		zb0001Mask |= 0x2000000
 	}
-	if z.CPUCount == 0 {
+	if z.FirstCPU == nil {
 		zb0001Len--
 		zb0001Mask |= 0x4000000
 	}
+	if z.CPUCount == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8000000
+	}
 	if z.RestartingSince == (time.Time{}) {
 		zb0001Len--
-		zb0001Mask |= 0x10000000
+		zb0001Mask |= 0x20000000
 	}
 	// variable map header, size zb0001Len
 	o = msgp.AppendMapHeader(o, zb0001Len)
@@ -12635,10 +12699,19 @@ func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "is_leader"
 		o = append(o, 0xa9, 0x69, 0x73, 0x5f, 0x6c, 0x65, 0x61, 0x64, 0x65, 0x72)
 		o = msgp.AppendBool(o, z.IsLeader)
+		if (zb0001Mask & 0x80000) == 0 { // if not omitted
+			// string "leaders"
+			o = append(o, 0xa7, 0x6c, 0x65, 0x61, 0x64, 0x65, 0x72, 0x73)
+			o = msgp.AppendMapHeader(o, uint32(len(z.Leaders)))
+			for za0007, za0008 := range z.Leaders {
+				o = msgp.AppendString(o, za0007)
+				o = msgp.AppendString(o, za0008)
+			}
+		}
 		// string "ilm_expiry_in_progress"
 		o = append(o, 0xb6, 0x69, 0x6c, 0x6d, 0x5f, 0x65, 0x78, 0x70, 0x69, 0x72, 0x79, 0x5f, 0x69, 0x6e, 0x5f, 0x70, 0x72, 0x6f, 0x67, 0x72, 0x65, 0x73, 0x73)
 		o = msgp.AppendBool(o, z.ILMExpiryInProgress)
-		if (zb0001Mask & 0x100000) == 0 { // if not omitted
+		if (zb0001Mask & 0x200000) == 0 { // if not omitted
 			// string "host"
 			o = append(o, 0xa4, 0x68, 0x6f, 0x73, 0x74)
 			if z.Host == nil {
@@ -12651,27 +12724,27 @@ func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x200000) == 0 { // if not omitted
+		if (zb0001Mask & 0x400000) == 0 { // if not omitted
 			// string "pid"
 			o = append(o, 0xa3, 0x70, 0x69, 0x64)
 			o = msgp.AppendInt32(o, z.PID)
 		}
-		if (zb0001Mask & 0x400000) == 0 { // if not omitted
+		if (zb0001Mask & 0x800000) == 0 { // if not omitted
 			// string "cmd_line"
 			o = append(o, 0xa8, 0x63, 0x6d, 0x64, 0x5f, 0x6c, 0x69, 0x6e, 0x65)
 			o = msgp.AppendString(o, z.CmdLine)
 		}
-		if (zb0001Mask & 0x800000) == 0 { // if not omitted
+		if (zb0001Mask & 0x1000000) == 0 { // if not omitted
 			// string "username"
 			o = append(o, 0xa8, 0x75, 0x73, 0x65, 0x72, 0x6e, 0x61, 0x6d, 0x65)
 			o = msgp.AppendString(o, z.Username)
 		}
-		if (zb0001Mask & 0x1000000) == 0 { // if not omitted
+		if (zb0001Mask & 0x2000000) == 0 { // if not omitted
 			// string "is_background"
 			o = append(o, 0xad, 0x69, 0x73, 0x5f, 0x62, 0x61, 0x63, 0x6b, 0x67, 0x72, 0x6f, 0x75, 0x6e, 0x64)
 			o = msgp.AppendBool(o, z.IsBackground)
 		}
-		if (zb0001Mask & 0x2000000) == 0 { // if not omitted
+		if (zb0001Mask & 0x4000000) == 0 { // if not omitted
 			// string "first_cpu"
 			o = append(o, 0xa9, 0x66, 0x69, 0x72, 0x73, 0x74, 0x5f, 0x63, 0x70, 0x75)
 			if z.FirstCPU == nil {
@@ -12684,7 +12757,7 @@ func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x4000000) == 0 { // if not omitted
+		if (zb0001Mask & 0x8000000) == 0 { // if not omitted
 			// string "cpu_count"
 			o = append(o, 0xa9, 0x63, 0x70, 0x75, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74)
 			o = msgp.AppendInt(o, z.CPUCount)
@@ -12696,7 +12769,7 @@ func (z *ServerProperties) MarshalMsg(b []byte) (o []byte, err error) {
 			err = msgp.WrapError(err, "APIVersion")
 			return
 		}
-		if (zb0001Mask & 0x10000000) == 0 { // if not omitted
+		if (zb0001Mask & 0x20000000) == 0 { // if not omitted
 			// string "restarting_since"
 			o = append(o, 0xb0, 0x72, 0x65, 0x73, 0x74, 0x61, 0x72, 0x74, 0x69, 0x6e, 0x67, 0x5f, 0x73, 0x69, 0x6e, 0x63, 0x65)
 			o = msgp.AppendTime(o, z.RestartingSince)
@@ -12715,7 +12788,7 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint32 /* 24 bits */
+	var zb0001Mask uint32 /* 25 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -12936,6 +13009,35 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "IsLeader")
 				return
 			}
+		case "leaders":
+			var zb0006 uint32
+			zb0006, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Leaders")
+				return
+			}
+			if z.Leaders == nil {
+				z.Leaders = make(map[string]string, zb0006)
+			} else if len(z.Leaders) > 0 {
+				clear(z.Leaders)
+			}
+			for zb0006 > 0 {
+				var za0008 string
+				zb0006--
+				var za0007 string
+				za0007, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Leaders")
+					return
+				}
+				za0008, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Leaders", za0007)
+					return
+				}
+				z.Leaders[za0007] = za0008
+			}
+			zb0001Mask |= 0x10000
 		case "ilm_expiry_in_progress":
 			z.ILMExpiryInProgress, bts, err = msgp.ReadBoolBytes(bts)
 			if err != nil {
@@ -12959,35 +13061,35 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x10000
+			zb0001Mask |= 0x20000
 		case "pid":
 			z.PID, bts, err = msgp.ReadInt32Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "PID")
 				return
 			}
-			zb0001Mask |= 0x20000
+			zb0001Mask |= 0x40000
 		case "cmd_line":
 			z.CmdLine, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "CmdLine")
 				return
 			}
-			zb0001Mask |= 0x40000
+			zb0001Mask |= 0x80000
 		case "username":
 			z.Username, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Username")
 				return
 			}
-			zb0001Mask |= 0x80000
+			zb0001Mask |= 0x100000
 		case "is_background":
 			z.IsBackground, bts, err = msgp.ReadBoolBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "IsBackground")
 				return
 			}
-			zb0001Mask |= 0x100000
+			zb0001Mask |= 0x200000
 		case "first_cpu":
 			if msgp.IsNil(bts) {
 				bts, err = msgp.ReadNilBytes(bts)
@@ -13005,14 +13107,14 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x200000
+			zb0001Mask |= 0x400000
 		case "cpu_count":
 			z.CPUCount, bts, err = msgp.ReadIntBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "CPUCount")
 				return
 			}
-			zb0001Mask |= 0x400000
+			zb0001Mask |= 0x800000
 		case "api_version":
 			bts, err = z.APIVersion.UnmarshalMsg(bts)
 			if err != nil {
@@ -13025,7 +13127,7 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "RestartingSince")
 				return
 			}
-			zb0001Mask |= 0x800000
+			zb0001Mask |= 0x1000000
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -13035,7 +13137,7 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xffffff {
+	if zb0001Mask != 0x1ffffff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.State = ""
 		}
@@ -13085,27 +13187,30 @@ func (z *ServerProperties) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.License = nil
 		}
 		if (zb0001Mask & 0x10000) == 0 {
-			z.Host = nil
+			z.Leaders = nil
 		}
 		if (zb0001Mask & 0x20000) == 0 {
-			z.PID = 0
+			z.Host = nil
 		}
 		if (zb0001Mask & 0x40000) == 0 {
-			z.CmdLine = ""
+			z.PID = 0
 		}
 		if (zb0001Mask & 0x80000) == 0 {
-			z.Username = ""
+			z.CmdLine = ""
 		}
 		if (zb0001Mask & 0x100000) == 0 {
-			z.IsBackground = false
+			z.Username = ""
 		}
 		if (zb0001Mask & 0x200000) == 0 {
-			z.FirstCPU = nil
+			z.IsBackground = false
 		}
 		if (zb0001Mask & 0x400000) == 0 {
-			z.CPUCount = 0
+			z.FirstCPU = nil
 		}
 		if (zb0001Mask & 0x800000) == 0 {
+			z.CPUCount = 0
+		}
+		if (zb0001Mask & 0x1000000) == 0 {
 			z.RestartingSince = (time.Time{})
 		}
 	}
@@ -13139,7 +13244,14 @@ func (z *ServerProperties) Msgsize() (s int) {
 	} else {
 		s += z.License.Msgsize()
 	}
-	s += 10 + msgp.BoolSize + 23 + msgp.BoolSize + 5
+	s += 10 + msgp.BoolSize + 8 + msgp.MapHeaderSize
+	if z.Leaders != nil {
+		for za0007, za0008 := range z.Leaders {
+			_ = za0008
+			s += msgp.StringPrefixSize + len(za0007) + msgp.StringPrefixSize + len(za0008)
+		}
+	}
+	s += 23 + msgp.BoolSize + 5
 	if z.Host == nil {
 		s += msgp.NilSize
 	} else {

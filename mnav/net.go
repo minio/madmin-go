@@ -80,10 +80,12 @@ func (node *NetMetricsNavigator) GetChildren() []MetricChild {
 	}
 
 	// Add internode stats
-	children = append(children, MetricChild{
-		Name:        "internode",
-		Description: "Internode communication statistics",
-	})
+	if node.net.NetStats.Name != "" {
+		children = append(children, MetricChild{
+			Name:        "internode",
+			Description: "Internode communication statistics",
+		})
+	}
 
 	children = append(children, MetricChild{Name: "last_day", Description: "Last 24h network statistics"})
 
@@ -410,18 +412,26 @@ func (node *NetLastDayNode) GetLeafData() map[string]string {
 		idx++
 		startTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
 		endTime := startTime.Add(time.Duration(node.segmented.Interval) * time.Second)
-		name := fmt.Sprintf("%02d: %s->%s", idx, startTime.Local().Format("15:04"), endTime.Local().Format("15:04"))
+		name := fmt.Sprintf("%02d: %s->%sZ", idx, startTime.UTC().Format("15:04"), endTime.UTC().Format("15:04"))
 
 		avgRx := seg.RxBytes / uint64(seg.N)
 		avgTx := seg.TxBytes / uint64(seg.N)
 		avgRxPkts := seg.RxPackets / uint64(seg.N)
 		avgTxPkts := seg.TxPackets / uint64(seg.N)
+		var rxDrop float64
+		if seg.RxPackets > 0 {
+			rxDrop = float64(seg.RxDropped) * 100 / float64(seg.RxPackets)
+		}
+		var txDrop float64
+		if seg.TxPackets > 0 {
+			txDrop = float64(seg.TxDropped) * 100 / float64(seg.TxPackets)
+		}
 		// Calculate Gbps (bytes per interval -> bits per second -> Gbps)
 		rxGbps := float64(avgRx) * 8 / float64(node.segmented.Interval) / 1e9
 		txGbps := float64(avgTx) * 8 / float64(node.segmented.Interval) / 1e9
-		data[name] = fmt.Sprintf("RX: %s (%.2f Gbps, %s pkts), TX: %s (%.2f Gbps, %s pkts)",
-			formatBytes(avgRx), rxGbps, formatNumber(avgRxPkts),
-			formatBytes(avgTx), txGbps, formatNumber(avgTxPkts))
+		data[name] = fmt.Sprintf("rx: %s, %.2f gbps, %s pkts, %s errs, %.1f%% drp, tx: %s %.2f gbps, %s pkts, %s errs, %.1f%% drp",
+			formatBytes(avgRx), rxGbps, formatNumber(avgRxPkts), formatNumber(seg.RxErrors), rxDrop,
+			formatBytes(avgTx), txGbps, formatNumber(avgTxPkts), formatNumber(seg.TxErrors), txDrop)
 	}
 	return data
 }

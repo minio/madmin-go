@@ -334,6 +334,30 @@ func (adm *AdminClient) ListTokens(ctx context.Context, shareName string) (*List
 	return &result, nil
 }
 
+// GetTokenProfile retrieves the Delta Sharing profile for a token.
+func (adm *AdminClient) GetTokenProfile(ctx context.Context, tokenID string) (*DeltaSharingProfile, error) {
+	reqData := requestData{
+		relPath: adminAPIPrefix + "/delta-sharing/tokens/" + url.PathEscape(tokenID) + "/profile",
+	}
+
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+
+	var result DeltaSharingProfile
+	if err = json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
 // DeleteToken deletes a specific token
 func (adm *AdminClient) DeleteToken(ctx context.Context, tokenID string) error {
 	reqData := requestData{

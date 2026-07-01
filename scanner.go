@@ -31,14 +31,15 @@ import (
 
 // BucketScanInfo contains information of a bucket scan in a given pool/set
 type BucketScanInfo struct {
-	Pool        int         `msg:"pool"`
-	Set         int         `msg:"set"`
-	Cycle       uint64      `msg:"cycle"`
-	Ongoing     bool        `msg:"ongoing"`
-	LastUpdate  time.Time   `msg:"last_update"`
-	LastStarted time.Time   `msg:"last_started"`
-	LastError   string      `msg:"last_error"`
-	Completed   []time.Time `msg:"completed,omitempty"`
+	Pool        int             `msg:"pool"`
+	Set         int             `msg:"set"`
+	Cycle       uint64          `msg:"cycle"`
+	Ongoing     bool            `msg:"ongoing"`
+	LastUpdate  time.Time       `msg:"last_update"`
+	LastStarted time.Time       `msg:"last_started"`
+	LastError   string          `msg:"last_error"`
+	Completed   []time.Time     `msg:"completed,omitempty"`
+	Durations   []time.Duration `msg:"durations,omitempty"`
 }
 
 // BucketScanInfo returns information of a bucket scan in all pools/sets

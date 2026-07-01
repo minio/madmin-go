@@ -360,6 +360,7 @@ type RequestData struct {
 	QueryValues   url.Values
 	RelPath       string // URL path relative to admin API base endpoint
 	Content       []byte
+	IsKMS         bool
 }
 
 // ExecuteMethod - similar to internal method executeMethod() useful
@@ -370,6 +371,7 @@ func (adm AdminClient) ExecuteMethod(ctx context.Context, method string, reqData
 		queryValues:   reqData.QueryValues,
 		relPath:       reqData.RelPath,
 		content:       reqData.Content,
+		isKMS:         reqData.IsKMS,
 	})
 }
 

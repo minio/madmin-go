@@ -124,10 +124,24 @@ var ErrUnexpectedHeader = errors.New("unexpected header")
 // The data must be a valid ciphertext produced by
 // EncryptData. Otherwise, the decryption will fail.
 func DecryptData(password string, data io.Reader) ([]byte, error) {
+	r, err := DecryptDataStream(password, data)
+	if err != nil {
+		return nil, err
+	}
+	return io.ReadAll(r)
+}
+
+// DecryptDataStream decrypts the data with the key derived
+// from the salt (part of data) and the password using
+// the PBKDF used in EncryptData.
+//
+// The data must be a valid ciphertext produced by
+// EncryptData. Otherwise, the decryption will fail.
+func DecryptDataStream(password string, data io.Reader) (io.Reader, error) {
 	// Parse the stream header
 	var hdr [32 + 1 + 8]byte
 	if _, err := io.ReadFull(data, hdr[:]); err != nil {
-		if errors.Is(err, io.EOF) {
+		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
 			// Incomplete header, return unexpected header
 			return nil, ErrUnexpectedHeader
 		}
@@ -160,7 +174,7 @@ func DecryptData(password string, data io.Reader) ([]byte, error) {
 		return nil, err
 	}
 
-	return io.ReadAll(stream.DecryptReader(data, nonce, nil))
+	return stream.DecryptReader(data, nonce, nil), nil
 }
 
 const (

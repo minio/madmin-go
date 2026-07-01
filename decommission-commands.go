@@ -29,10 +29,13 @@ import (
 
 // PoolDecommissionInfo currently draining information
 type PoolDecommissionInfo struct {
-	StartTime   time.Time `json:"startTime"`
-	StartSize   int64     `json:"startSize"`
-	TotalSize   int64     `json:"totalSize"`
-	CurrentSize int64     `json:"currentSize"`
+	StartTime time.Time `json:"startTime"`
+	// StartSize is the total pool capacity when decommissioning started
+	StartSize int64 `json:"startSize"`
+	// TotalSize is the total pool capacity (same as StartSize, kept for backward compatibility)
+	TotalSize int64 `json:"totalSize"`
+	// CurrentSize is the remaining pool free capacity (space not yet drained)
+	CurrentSize int64 `json:"currentSize"`
 
 	StartInodes   int64 `json:"startInodes"`
 	TotalInodes   int64 `json:"totalInodes"`
@@ -46,6 +49,17 @@ type PoolDecommissionInfo struct {
 	ObjectsDecommissionFailed int64 `json:"objectsDecommissionedFailed"`
 	BytesDone                 int64 `json:"bytesDecommissioned"`
 	BytesFailed               int64 `json:"bytesDecommissionedFailed"`
+
+	// Additional metrics (v4+)
+	ElapsedSeconds     int64 `json:"elapsedSeconds,omitempty"`
+	ItemsUnrecoverable int64 `json:"itemsUnrecoverable,omitempty"`
+	BytesUnrecoverable int64 `json:"bytesUnrecoverable,omitempty"`
+}
+
+// DecommissionPoolOptions holds optional parameters for DecommissionPool.
+type DecommissionPoolOptions struct {
+	// SkipUnrecoverable when true skips objects with quorum loss instead of halting.
+	SkipUnrecoverable bool
 }
 
 // PoolStatus captures current pool status
@@ -59,9 +73,21 @@ type PoolStatus struct {
 // DecommissionPool - starts moving data from specified pool to all other existing pools.
 // Decommissioning if successfully started this function will return `nil`, to check
 // for on-going draining cycle use StatusPool.
+//
+// Deprecated: Use DecommissionPoolWithOptions instead.
 func (adm *AdminClient) DecommissionPool(ctx context.Context, pool string) error {
+	return adm.DecommissionPoolWithOptions(ctx, pool, DecommissionPoolOptions{})
+}
+
+// DecommissionPoolWithOptions - starts moving data from specified pool to all other existing pools.
+// Decommissioning if successfully started this function will return `nil`, to check
+// for on-going draining cycle use StatusPool.
+func (adm *AdminClient) DecommissionPoolWithOptions(ctx context.Context, pool string, opts DecommissionPoolOptions) error {
 	values := url.Values{}
 	values.Set("pool", pool)
+	if opts.SkipUnrecoverable {
+		values.Set("skipUnrecoverable", "true")
+	}
 	resp, err := adm.executeMethod(ctx, http.MethodPost, requestData{
 		// POST <endpoint>/<admin-API>/pools/decommission?pool=http://server{1...4}/disk{1...4}
 		relPath:     adminAPIPrefix + "/pools/decommission",

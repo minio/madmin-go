@@ -20,6 +20,7 @@ package mnav
 import (
 	"fmt"
 	"sort"
+	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/minio/madmin-go/v4"
@@ -51,7 +52,15 @@ func NewCPUMetricsNavigator(cpu *madmin.CPUMetrics, parent MetricNode, path stri
 }
 
 func (node *CPUMetricsNavigator) GetChildren() []MetricChild {
-	return []MetricChild{}
+	if node.cpu == nil {
+		return nil
+	}
+	return []MetricChild{
+		{Name: "last_hour", Description: "Last hour CPU usage (1-min segments)"},
+		{Name: "last_day", Description: "Last 24h CPU usage (15-min segments)"},
+		{Name: "power_last_hour", Description: "Last hour power draw (1-min segments)"},
+		{Name: "power_last_day", Description: "Last 24h power draw (15-min segments)"},
+	}
 }
 
 func (node *CPUMetricsNavigator) GetLeafData() map[string]string {
@@ -91,7 +100,7 @@ func (node *CPUMetricsNavigator) GetLeafData() map[string]string {
 			totalGhz))
 		if node.cpu.Nodes > 0 {
 			avgGhzPerNode := totalGhz / float64(node.cpu.Nodes)
-			addEntry("Power per Node", fmt.Sprintf("%.2f GHz average per node",
+			addEntry("CPU Speed", fmt.Sprintf("%.2f GHz average per node",
 				avgGhzPerNode))
 		}
 	}
@@ -311,6 +320,27 @@ func (node *CPUMetricsNavigator) GetLeafData() map[string]string {
 		}
 	}
 
+	// Power Draw
+	if node.cpu.PowerNodes > 0 {
+		avgWatts := node.cpu.TotalWatts / float64(node.cpu.PowerNodes)
+		addEntry("POWER DRAW", fmt.Sprintf("%d of %d nodes reporting",
+			node.cpu.PowerNodes, node.cpu.Nodes))
+		addEntry("Fleet Total", fmt.Sprintf("%.0f W", node.cpu.TotalWatts))
+		addEntry("Per Node", fmt.Sprintf("%.1f W avg, %.0f W min, %.0f W max",
+			avgWatts, node.cpu.MinNodeWatts, node.cpu.MaxNodeWatts))
+
+		if len(node.cpu.PowerSourceCounts) > 0 {
+			sources := make([]string, 0, len(node.cpu.PowerSourceCounts))
+			for src := range node.cpu.PowerSourceCounts {
+				sources = append(sources, src)
+			}
+			sort.Strings(sources)
+			for _, src := range sources {
+				addEntry(fmt.Sprintf("Source %s", src), fmt.Sprintf("%d nodes", node.cpu.PowerSourceCounts[src]))
+			}
+		}
+	}
+
 	// Convert ordered entries to map with numbered prefixes to preserve order
 	data := make(map[string]string)
 	for i, entry := range entries {
@@ -336,6 +366,138 @@ func (node *CPUMetricsNavigator) GetPath() string {
 	return node.path
 }
 
-func (node *CPUMetricsNavigator) GetChild(_ string) (MetricNode, error) {
-	return nil, fmt.Errorf("no children available - all CPU data shown in main display")
+// CPUSegmentedNode shows time-segmented CPU usage data.
+type CPUSegmentedNode struct {
+	segmented *madmin.SegmentedCPUMetrics
+	parent    MetricNode
+	path      string
+	flags     madmin.MetricFlags
+}
+
+func (node *CPUSegmentedNode) GetOpts() madmin.MetricsOptions     { return getNodeOpts(node) }
+func (node *CPUSegmentedNode) GetPath() string                    { return node.path }
+func (node *CPUSegmentedNode) GetParent() MetricNode              { return node.parent }
+func (node *CPUSegmentedNode) GetMetricType() madmin.MetricType   { return madmin.MetricsCPU }
+func (node *CPUSegmentedNode) GetMetricFlags() madmin.MetricFlags { return node.flags }
+func (node *CPUSegmentedNode) ShouldPauseRefresh() bool           { return true }
+func (node *CPUSegmentedNode) GetChildren() []MetricChild         { return nil }
+
+func (node *CPUSegmentedNode) GetChild(_ string) (MetricNode, error) {
+	return nil, fmt.Errorf("no children")
+}
+
+func (node *CPUSegmentedNode) GetLeafData() map[string]string {
+	if node.segmented == nil || len(node.segmented.Segments) == 0 {
+		return nil
+	}
+	data := make(map[string]string)
+	idx := 0
+	for i := len(node.segmented.Segments) - 1; i >= 0; i-- {
+		seg := node.segmented.Segments[i]
+		if seg.N == 0 {
+			continue
+		}
+		idx++
+		startTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
+		endTime := startTime.Add(time.Duration(node.segmented.Interval) * time.Second)
+		name := fmt.Sprintf("%02d: %s->%s", idx, startTime.Local().Format("15:04"), endTime.Local().Format("15:04"))
+
+		n := float64(seg.N)
+		user := seg.User / n
+		system := seg.System / n
+		idle := seg.Idle / n
+		iowait := seg.Iowait / n
+		total := user + system + idle + seg.Nice/n + iowait +
+			seg.Irq/n + seg.Softirq/n + seg.Steal/n +
+			seg.Guest/n + seg.GuestNice/n
+		if total == 0 {
+			continue
+		}
+		data[name] = fmt.Sprintf("User: %.1f%%, Sys: %.1f%%, Idle: %.1f%%, IOWait: %.1f%% (%d nodes)",
+			user/total*100, system/total*100, idle/total*100, iowait/total*100, seg.N)
+	}
+	return data
+}
+
+// PowerSegmentedNode shows time-segmented power draw data.
+type PowerSegmentedNode struct {
+	segmented *madmin.SegmentedPowerMetrics
+	parent    MetricNode
+	path      string
+	flags     madmin.MetricFlags
+}
+
+func (node *PowerSegmentedNode) GetOpts() madmin.MetricsOptions     { return getNodeOpts(node) }
+func (node *PowerSegmentedNode) GetPath() string                    { return node.path }
+func (node *PowerSegmentedNode) GetParent() MetricNode              { return node.parent }
+func (node *PowerSegmentedNode) GetMetricType() madmin.MetricType   { return madmin.MetricsCPU }
+func (node *PowerSegmentedNode) GetMetricFlags() madmin.MetricFlags { return node.flags }
+func (node *PowerSegmentedNode) ShouldPauseRefresh() bool           { return true }
+func (node *PowerSegmentedNode) GetChildren() []MetricChild         { return nil }
+
+func (node *PowerSegmentedNode) GetChild(_ string) (MetricNode, error) {
+	return nil, fmt.Errorf("no children")
+}
+
+func (node *PowerSegmentedNode) GetLeafData() map[string]string {
+	if node.segmented == nil || len(node.segmented.Segments) == 0 {
+		return nil
+	}
+	data := make(map[string]string)
+	idx := 0
+	for i := len(node.segmented.Segments) - 1; i >= 0; i-- {
+		seg := node.segmented.Segments[i]
+		if seg.N == 0 {
+			continue
+		}
+		idx++
+		startTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
+		endTime := startTime.Add(time.Duration(node.segmented.Interval) * time.Second)
+		name := fmt.Sprintf("%02d: %s->%s", idx, startTime.Local().Format("15:04"), endTime.Local().Format("15:04"))
+		avg := seg.SumWatts / float64(seg.N)
+		data[name] = fmt.Sprintf("Avg: %s, Min: %s, Max: %s (%s nodes)",
+			humanize.SI(avg, "W"),
+			humanize.SI(seg.MinWatts, "W"),
+			humanize.SI(seg.MaxWatts, "W"),
+			humanize.Comma(int64(seg.N)))
+	}
+	return data
+}
+
+func (node *CPUMetricsNavigator) GetChild(name string) (MetricNode, error) {
+	if node.cpu == nil {
+		return nil, fmt.Errorf("no CPU data available")
+	}
+	switch name {
+	case "last_hour":
+		return &CPUSegmentedNode{
+			segmented: node.cpu.LastHour,
+			parent:    node,
+			path:      node.path + "/last_hour",
+			flags:     madmin.MetricsHourStats,
+		}, nil
+	case "last_day":
+		return &CPUSegmentedNode{
+			segmented: node.cpu.LastDay,
+			parent:    node,
+			path:      node.path + "/last_day",
+			flags:     madmin.MetricsDayStats,
+		}, nil
+	case "power_last_hour":
+		return &PowerSegmentedNode{
+			segmented: node.cpu.PowerLastHour,
+			parent:    node,
+			path:      node.path + "/power_last_hour",
+			flags:     madmin.MetricsHourStats,
+		}, nil
+	case "power_last_day":
+		return &PowerSegmentedNode{
+			segmented: node.cpu.PowerLastDay,
+			parent:    node,
+			path:      node.path + "/power_last_day",
+			flags:     madmin.MetricsDayStats,
+		}, nil
+	default:
+		return nil, fmt.Errorf("child not found: %s", name)
+	}
 }

@@ -23,8 +23,9 @@ package madmin
 
 // Table maintenance type constants
 const (
-	MaintenanceTypeIcebergSnapshotManagement = "icebergSnapshotManagement"
-	MaintenanceTypeIcebergCompaction         = "icebergCompaction"
+	MaintenanceTypeIcebergSnapshotManagement      = "icebergSnapshotManagement"
+	MaintenanceTypeIcebergCompaction              = "icebergCompaction"
+	MaintenanceTypeIcebergUnreferencedFileRemoval = "icebergUnreferencedFileRemoval"
 )
 
 // MaintenanceStatus represents the status of a table maintenance configuration.
@@ -47,11 +48,26 @@ type IcebergSnapshotManagementSettings struct {
 	MinSnapshotsToKeep *int `json:"minSnapshotsToKeep,omitempty"`
 }
 
+// IcebergCompactionSettings contains settings for Iceberg table compaction.
+type IcebergCompactionSettings struct {
+	// TargetFileSizeMB is the target file size in MB for compacted files.
+	TargetFileSizeMB *int `json:"targetFileSizeMB,omitempty"`
+}
+
+// IcebergUnreferencedFileRemovalSettings contains settings for Iceberg unreferenced file removal.
+// Files are eligible to be marked noncurrent when their age (anchored to creation time) exceeds
+// UnreferencedDays. Once noncurrent, files are permanently deleted after NoncurrentDays.
+type IcebergUnreferencedFileRemovalSettings struct {
+	UnreferencedDays *int `json:"unreferencedDays,omitempty"`
+	NoncurrentDays   *int `json:"noncurrentDays,omitempty"`
+}
+
 // TableMaintenanceSettings is a union type containing maintenance settings.
 // Only one of the fields should be set at a time based on the maintenance type.
 type TableMaintenanceSettings struct {
-	IcebergSnapshotManagement *IcebergSnapshotManagementSettings `json:"icebergSnapshotManagement,omitempty"`
-	// IcebergCompaction will be added in a future release.
+	IcebergSnapshotManagement      *IcebergSnapshotManagementSettings      `json:"icebergSnapshotManagement,omitempty"`
+	IcebergCompaction              *IcebergCompactionSettings              `json:"icebergCompaction,omitempty"`
+	IcebergUnreferencedFileRemoval *IcebergUnreferencedFileRemovalSettings `json:"icebergUnreferencedFileRemoval,omitempty"`
 }
 
 // TableMaintenanceConfigurationValue represents a maintenance configuration with status.
@@ -92,4 +108,23 @@ type TableMaintenanceJobTypeStatus struct {
 type GetTableMaintenanceJobStatusResponse struct {
 	TableARN string                                   `json:"tableARN"`
 	Status   map[string]TableMaintenanceJobTypeStatus `json:"status"`
+}
+
+// WarehouseMaintenanceConfigurationValue represents a maintenance configuration with status
+// for a warehouse. It is structurally identical to TableMaintenanceConfigurationValue but
+// scoped to a warehouse rather than an individual table.
+type WarehouseMaintenanceConfigurationValue struct {
+	Settings *TableMaintenanceSettings `json:"settings,omitempty"`
+	Status   MaintenanceStatus         `json:"status"`
+}
+
+// PutWarehouseMaintenanceConfigurationRequest is the request body for PutWarehouseMaintenanceConfiguration.
+type PutWarehouseMaintenanceConfigurationRequest struct {
+	Value WarehouseMaintenanceConfigurationValue `json:"value"`
+}
+
+// GetWarehouseMaintenanceConfigurationResponse is the response for GetWarehouseMaintenanceConfiguration.
+type GetWarehouseMaintenanceConfigurationResponse struct {
+	Configuration map[string]WarehouseMaintenanceConfigurationValue `json:"configuration"`
+	WarehouseARN  string                                            `json:"warehouseARN"`
 }

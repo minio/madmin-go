@@ -32,14 +32,25 @@ import (
 	"github.com/tinylib/msgp/msgp"
 )
 
-// AuditLogOpts represents the options for the audit logs
+// AuditLogOpts represents the options for the audit logs.
+//
+// Wildcard syntax on Nodes / APIs / Buckets entries (case-insensitive):
+//
+//	"xyz"   → exact match
+//	"xyz*"  → prefix match
+//	"*xyz"  → suffix match
+//	"*xyz*" → contains match
+//	"*"     → matches anything
+//
+// Values within a single field OR-combine; across fields filters AND.
 type AuditLogOpts struct {
-	Node       string            `json:"node,omitempty"`
-	API        string            `json:"api,omitempty"`
-	Bucket     string            `json:"bucket,omitempty"`
-	Interval   time.Duration     `json:"interval,omitempty"`
-	Category   log.AuditCategory `json:"category,omitempty"`
-	MaxPerNode int               `json:"maxPerNode,omitempty"`
+	Nodes      []string            `json:"nodes,omitempty"`
+	APIs       []string            `json:"apis,omitempty"`
+	Buckets    []string            `json:"buckets,omitempty"`
+	Interval   time.Duration       `json:"interval,omitempty"`
+	Categories []log.AuditCategory `json:"categories,omitempty"`
+	MaxPerNode int                 `json:"maxPerNode,omitempty"` // Deprecated: use Limit
+	Limit      int                 `json:"limit,omitempty"`
 }
 
 // GetAuditLogs fetches the persisted audit logs from MinIO

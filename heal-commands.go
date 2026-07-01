@@ -112,7 +112,7 @@ type HealTaskStatus struct {
 
 // HealItemType - specify the type of heal operation in a healing
 // result
-type HealItemType string
+type HealItemType = string
 
 // HealItemType constants
 const (
@@ -364,7 +364,7 @@ type SetStatus struct {
 	Disks        []Disk `json:"disks"`
 }
 
-//go:generate stringer -type=HealingDriveReason -output=heal-commands-drive-reason_gen.go -trimprefix=HealingReason $GOFILE
+//go:generate go tool stringer -type=HealingDriveReason -output=heal-commands-drive-reason_gen.go -trimprefix=HealingReason $GOFILE
 type HealingDriveReason int8
 
 const (
@@ -374,7 +374,7 @@ const (
 	HealingReasonOfflineDisk
 )
 
-//go:generate stringer -type=OfflineReason -output=heal-commands-offline-reason_gen.go -trimprefix=OfflineReason $GOFILE
+//go:generate go tool stringer -type=OfflineReason -output=heal-commands-offline-reason_gen.go -trimprefix=OfflineReason $GOFILE
 type OfflineReason int8
 
 const (
@@ -385,7 +385,7 @@ const (
 	OfflineReasonDriveTimeout
 )
 
-//go:generate stringer -type=OfflineDecision -output=heal-commands-offline-decision_gen.go -trimprefix=OfflineDecision $GOFILE
+//go:generate go tool stringer -type=OfflineDecision -output=heal-commands-offline-decision_gen.go -trimprefix=OfflineDecision $GOFILE
 type OfflineDecision int8
 
 const (

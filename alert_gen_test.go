@@ -9,8 +9,8 @@ import (
 	"github.com/tinylib/msgp/msgp"
 )
 
-func TestMarshalUnmarshalDiskAction(t *testing.T) {
-	v := DiskAction{}
+func TestMarshalUnmarshalAlert(t *testing.T) {
+	v := Alert{}
 	bts, err := v.MarshalMsg(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -32,8 +32,8 @@ func TestMarshalUnmarshalDiskAction(t *testing.T) {
 	}
 }
 
-func BenchmarkMarshalMsgDiskAction(b *testing.B) {
-	v := DiskAction{}
+func BenchmarkMarshalMsgAlert(b *testing.B) {
+	v := Alert{}
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -41,8 +41,8 @@ func BenchmarkMarshalMsgDiskAction(b *testing.B) {
 	}
 }
 
-func BenchmarkAppendMsgDiskAction(b *testing.B) {
-	v := DiskAction{}
+func BenchmarkAppendMsgAlert(b *testing.B) {
+	v := Alert{}
 	bts := make([]byte, 0, v.Msgsize())
 	bts, _ = v.MarshalMsg(bts[0:0])
 	b.SetBytes(int64(len(bts)))
@@ -53,8 +53,8 @@ func BenchmarkAppendMsgDiskAction(b *testing.B) {
 	}
 }
 
-func BenchmarkUnmarshalDiskAction(b *testing.B) {
-	v := DiskAction{}
+func BenchmarkUnmarshalAlert(b *testing.B) {
+	v := Alert{}
 	bts, _ := v.MarshalMsg(nil)
 	b.ReportAllocs()
 	b.SetBytes(int64(len(bts)))
@@ -67,17 +67,17 @@ func BenchmarkUnmarshalDiskAction(b *testing.B) {
 	}
 }
 
-func TestEncodeDecodeDiskAction(t *testing.T) {
-	v := DiskAction{}
+func TestEncodeDecodeAlert(t *testing.T) {
+	v := Alert{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 
 	m := v.Msgsize()
 	if buf.Len() > m {
-		t.Log("WARNING: TestEncodeDecodeDiskAction Msgsize() is inaccurate")
+		t.Log("WARNING: TestEncodeDecodeAlert Msgsize() is inaccurate")
 	}
 
-	vn := DiskAction{}
+	vn := Alert{}
 	err := msgp.Decode(&buf, &vn)
 	if err != nil {
 		t.Error(err)
@@ -91,8 +91,8 @@ func TestEncodeDecodeDiskAction(t *testing.T) {
 	}
 }
 
-func BenchmarkEncodeDiskAction(b *testing.B) {
-	v := DiskAction{}
+func BenchmarkEncodeAlert(b *testing.B) {
+	v := Alert{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))
@@ -105,8 +105,8 @@ func BenchmarkEncodeDiskAction(b *testing.B) {
 	en.Flush()
 }
 
-func BenchmarkDecodeDiskAction(b *testing.B) {
-	v := DiskAction{}
+func BenchmarkDecodeAlert(b *testing.B) {
+	v := Alert{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))
@@ -122,8 +122,8 @@ func BenchmarkDecodeDiskAction(b *testing.B) {
 	}
 }
 
-func TestMarshalUnmarshalKMSAction(t *testing.T) {
-	v := KMSAction{}
+func TestMarshalUnmarshalAlertLogOpts(t *testing.T) {
+	v := AlertLogOpts{}
 	bts, err := v.MarshalMsg(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -145,8 +145,8 @@ func TestMarshalUnmarshalKMSAction(t *testing.T) {
 	}
 }
 
-func BenchmarkMarshalMsgKMSAction(b *testing.B) {
-	v := KMSAction{}
+func BenchmarkMarshalMsgAlertLogOpts(b *testing.B) {
+	v := AlertLogOpts{}
 	b.ReportAllocs()
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -154,8 +154,8 @@ func BenchmarkMarshalMsgKMSAction(b *testing.B) {
 	}
 }
 
-func BenchmarkAppendMsgKMSAction(b *testing.B) {
-	v := KMSAction{}
+func BenchmarkAppendMsgAlertLogOpts(b *testing.B) {
+	v := AlertLogOpts{}
 	bts := make([]byte, 0, v.Msgsize())
 	bts, _ = v.MarshalMsg(bts[0:0])
 	b.SetBytes(int64(len(bts)))
@@ -166,8 +166,8 @@ func BenchmarkAppendMsgKMSAction(b *testing.B) {
 	}
 }
 
-func BenchmarkUnmarshalKMSAction(b *testing.B) {
-	v := KMSAction{}
+func BenchmarkUnmarshalAlertLogOpts(b *testing.B) {
+	v := AlertLogOpts{}
 	bts, _ := v.MarshalMsg(nil)
 	b.ReportAllocs()
 	b.SetBytes(int64(len(bts)))
@@ -180,17 +180,17 @@ func BenchmarkUnmarshalKMSAction(b *testing.B) {
 	}
 }
 
-func TestEncodeDecodeKMSAction(t *testing.T) {
-	v := KMSAction{}
+func TestEncodeDecodeAlertLogOpts(t *testing.T) {
+	v := AlertLogOpts{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 
 	m := v.Msgsize()
 	if buf.Len() > m {
-		t.Log("WARNING: TestEncodeDecodeKMSAction Msgsize() is inaccurate")
+		t.Log("WARNING: TestEncodeDecodeAlertLogOpts Msgsize() is inaccurate")
 	}
 
-	vn := KMSAction{}
+	vn := AlertLogOpts{}
 	err := msgp.Decode(&buf, &vn)
 	if err != nil {
 		t.Error(err)
@@ -204,8 +204,8 @@ func TestEncodeDecodeKMSAction(t *testing.T) {
 	}
 }
 
-func BenchmarkEncodeKMSAction(b *testing.B) {
-	v := KMSAction{}
+func BenchmarkEncodeAlertLogOpts(b *testing.B) {
+	v := AlertLogOpts{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))
@@ -218,121 +218,8 @@ func BenchmarkEncodeKMSAction(b *testing.B) {
 	en.Flush()
 }
 
-func BenchmarkDecodeKMSAction(b *testing.B) {
-	v := KMSAction{}
-	var buf bytes.Buffer
-	msgp.Encode(&buf, &v)
-	b.SetBytes(int64(buf.Len()))
-	rd := msgp.NewEndlessReader(buf.Bytes(), b)
-	dc := msgp.NewReader(rd)
-	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		err := v.DecodeMsg(dc)
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-func TestMarshalUnmarshalTimedAction(t *testing.T) {
-	v := TimedAction{}
-	bts, err := v.MarshalMsg(nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	left, err := v.UnmarshalMsg(bts)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(left) > 0 {
-		t.Errorf("%d bytes left over after UnmarshalMsg(): %q", len(left), left)
-	}
-
-	left, err = msgp.Skip(bts)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(left) > 0 {
-		t.Errorf("%d bytes left over after Skip(): %q", len(left), left)
-	}
-}
-
-func BenchmarkMarshalMsgTimedAction(b *testing.B) {
-	v := TimedAction{}
-	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		v.MarshalMsg(nil)
-	}
-}
-
-func BenchmarkAppendMsgTimedAction(b *testing.B) {
-	v := TimedAction{}
-	bts := make([]byte, 0, v.Msgsize())
-	bts, _ = v.MarshalMsg(bts[0:0])
-	b.SetBytes(int64(len(bts)))
-	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		bts, _ = v.MarshalMsg(bts[0:0])
-	}
-}
-
-func BenchmarkUnmarshalTimedAction(b *testing.B) {
-	v := TimedAction{}
-	bts, _ := v.MarshalMsg(nil)
-	b.ReportAllocs()
-	b.SetBytes(int64(len(bts)))
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		_, err := v.UnmarshalMsg(bts)
-		if err != nil {
-			b.Fatal(err)
-		}
-	}
-}
-
-func TestEncodeDecodeTimedAction(t *testing.T) {
-	v := TimedAction{}
-	var buf bytes.Buffer
-	msgp.Encode(&buf, &v)
-
-	m := v.Msgsize()
-	if buf.Len() > m {
-		t.Log("WARNING: TestEncodeDecodeTimedAction Msgsize() is inaccurate")
-	}
-
-	vn := TimedAction{}
-	err := msgp.Decode(&buf, &vn)
-	if err != nil {
-		t.Error(err)
-	}
-
-	buf.Reset()
-	msgp.Encode(&buf, &v)
-	err = msgp.NewReader(&buf).Skip()
-	if err != nil {
-		t.Error(err)
-	}
-}
-
-func BenchmarkEncodeTimedAction(b *testing.B) {
-	v := TimedAction{}
-	var buf bytes.Buffer
-	msgp.Encode(&buf, &v)
-	b.SetBytes(int64(buf.Len()))
-	en := msgp.NewWriter(msgp.Nowhere)
-	b.ReportAllocs()
-	b.ResetTimer()
-	for i := 0; i < b.N; i++ {
-		v.EncodeMsg(en)
-	}
-	en.Flush()
-}
-
-func BenchmarkDecodeTimedAction(b *testing.B) {
-	v := TimedAction{}
+func BenchmarkDecodeAlertLogOpts(b *testing.B) {
+	v := AlertLogOpts{}
 	var buf bytes.Buffer
 	msgp.Encode(&buf, &v)
 	b.SetBytes(int64(buf.Len()))

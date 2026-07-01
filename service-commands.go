@@ -171,6 +171,9 @@ type ServiceTraceOpts struct {
 	KMS               bool
 	Formatting        bool
 	PurgeOnDelete     bool
+	TablesScan        bool
+	SystemInventory   bool
+	TablesCompaction  bool
 
 	OnlyErrors    bool
 	Threshold     time.Duration
@@ -200,6 +203,9 @@ func (t ServiceTraceOpts) TraceTypes() TraceType {
 	tt.SetIf(t.KMS, TraceKMS)
 	tt.SetIf(t.Formatting, TraceFormatting)
 	tt.SetIf(t.PurgeOnDelete, TracePurgeOnDelete)
+	tt.SetIf(t.TablesScan, TraceTablesScan)
+	tt.SetIf(t.SystemInventory, TraceSystemInventory)
+	tt.SetIf(t.TablesCompaction, TraceTablesCompaction)
 
 	return tt
 }
@@ -222,6 +228,7 @@ func (t ServiceTraceOpts) AddParams(u url.Values) {
 	u.Set("batch-expire", strconv.FormatBool(t.BatchAll || t.BatchExpire))
 	u.Set("rebalance", strconv.FormatBool(t.Rebalance))
 	u.Set("tables", strconv.FormatBool(t.Tables))
+	u.Set("tables-scan", strconv.FormatBool(t.TablesScan))
 	u.Set("replication-resync", strconv.FormatBool(t.ReplicationResync))
 	u.Set("bootstrap", strconv.FormatBool(t.Bootstrap))
 	u.Set("ftp", strconv.FormatBool(t.FTP))
@@ -229,6 +236,8 @@ func (t ServiceTraceOpts) AddParams(u url.Values) {
 	u.Set("kms", strconv.FormatBool(t.KMS))
 	u.Set("formatting", strconv.FormatBool(t.Formatting))
 	u.Set("purgeondelete", strconv.FormatBool(t.PurgeOnDelete))
+	u.Set("systeminventory", strconv.FormatBool(t.SystemInventory))
+	u.Set("tables-compaction", strconv.FormatBool(t.TablesCompaction))
 }
 
 // ParseParams will parse parameters and set them to t.
@@ -243,6 +252,7 @@ func (t *ServiceTraceOpts) ParseParams(r *http.Request) (err error) {
 	t.BatchExpire = r.Form.Get("batch-expire") == "true"
 	t.Rebalance = r.Form.Get("rebalance") == "true"
 	t.Tables = r.Form.Get("tables") == "true"
+	t.TablesScan = r.Form.Get("tables-scan") == "true"
 	t.Storage = r.Form.Get("storage") == "true"
 	t.Internal = r.Form.Get("internal") == "true"
 	t.OnlyErrors = r.Form.Get("err") == "true"
@@ -253,6 +263,8 @@ func (t *ServiceTraceOpts) ParseParams(r *http.Request) (err error) {
 	t.KMS = r.Form.Get("kms") == "true"
 	t.Formatting = r.Form.Get("formatting") == "true"
 	t.PurgeOnDelete = r.Form.Get("purgeondelete") == "true"
+	t.SystemInventory = r.Form.Get("systeminventory") == "true"
+	t.TablesCompaction = r.Form.Get("tables-compaction") == "true"
 
 	if th := r.Form.Get("threshold"); th != "" {
 		d, err := time.ParseDuration(th)

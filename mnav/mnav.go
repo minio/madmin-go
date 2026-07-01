@@ -23,10 +23,17 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/dustin/go-humanize"
 	"github.com/minio/madmin-go/v4"
 )
+
+func sameLocalDay(t1, t2 time.Time) bool {
+	y1, m1, d1 := t1.Local().Date()
+	y2, m2, d2 := t2.Local().Date()
+	return y1 == y2 && m1 == m2 && d1 == d2
+}
 
 // MetricNavigator provides navigation functionality
 type MetricNavigator interface {
@@ -167,8 +174,11 @@ func (node *RealtimeMetricsNode) GetChildren() []MetricChild {
 		{Name: "process", Description: "Process-level system metrics"},
 		{Name: "replication", Description: "Replication metrics"},
 		{Name: "scanner", Description: "Scanner-related metrics"},
+		{Name: "healing", Description: "Healing operation metrics"},
 		{Name: "batch_jobs", Description: "Batch job execution metrics"},
 		{Name: "site_resync", Description: "Site replication resync metrics"},
+		{Name: "kms", Description: "KMS operation metrics"},
+		{Name: "tables", Description: "Iceberg table API metrics"},
 		{Name: "by_host", Description: "Metrics broken down by individual host"},
 		{Name: "by_drive", Description: "Metrics broken down by individual drive"},
 		{Name: "by_drive_set", Description: "Metrics broken down by drive set"},
@@ -220,6 +230,8 @@ func (node *RealtimeMetricsNode) GetChild(name string) (MetricNode, error) {
 	// Individual metric types - route directly from root
 	case "scanner":
 		return NewScannerMetricsNode(node.metrics.Aggregated.Scanner, node, "scanner"), nil
+	case "healing":
+		return NewHealingMetricsNode(node.metrics.Aggregated.Healing, node, "healing"), nil
 	case "drive":
 		return NewDiskMetricsNavigator(node.metrics.Aggregated.Disk, node, "drive", madmin.MetricsOptions{}), nil
 	case "os":
@@ -244,6 +256,10 @@ func (node *RealtimeMetricsNode) GetChild(name string) (MetricNode, error) {
 		return NewReplicationMetricsNode(node.metrics.Aggregated.Replication, node, "replication"), nil
 	case "process":
 		return NewProcessMetricsNode(node.metrics.Aggregated.Process, node, "process"), nil
+	case "kms":
+		return NewKMSMetricsNode(node.metrics.Aggregated.KMS, node, "kms"), nil
+	case "tables":
+		return NewTableMetricsNode(node.metrics.Aggregated.TablesAPI, node, "tables"), nil
 
 	// Grouping nodes - preserved as-is
 	case "by_host":
@@ -323,8 +339,11 @@ func (node *MetricsNode) GetChildren() []MetricChild {
 		{Name: "process", Description: "Process-level system metrics"},
 		{Name: "replication", Description: "Replication metrics"},
 		{Name: "scanner", Description: "Scanner-related metrics"},
+		{Name: "healing", Description: "Healing operation metrics"},
 		{Name: "batch_jobs", Description: "Batch job execution metrics"},
 		{Name: "site_resync", Description: "Site replication resync metrics"},
+		{Name: "kms", Description: "KMS operation metrics"},
+		{Name: "tables", Description: "Iceberg table API metrics"},
 	}
 }
 
@@ -356,6 +375,8 @@ func (node *MetricsNode) GetChild(name string) (MetricNode, error) {
 	switch name {
 	case "scanner":
 		return NewScannerMetricsNode(node.metrics.Scanner, node, fmt.Sprintf("%s/scanner", node.path)), nil
+	case "healing":
+		return NewHealingMetricsNode(node.metrics.Healing, node, fmt.Sprintf("%s/healing", node.path)), nil
 	case "drive":
 		return NewDiskMetricsNavigator(node.metrics.Disk, node, fmt.Sprintf("%s/drive", node.path), madmin.MetricsOptions{}), nil
 	case "os":
@@ -380,6 +401,10 @@ func (node *MetricsNode) GetChild(name string) (MetricNode, error) {
 		return NewReplicationMetricsNode(node.metrics.Replication, node, fmt.Sprintf("%s/replication", node.path)), nil
 	case "process":
 		return NewProcessMetricsNode(node.metrics.Process, node, fmt.Sprintf("%s/process", node.path)), nil
+	case "kms":
+		return NewKMSMetricsNode(node.metrics.KMS, node, fmt.Sprintf("%s/kms", node.path)), nil
+	case "tables":
+		return NewTableMetricsNode(node.metrics.TablesAPI, node, fmt.Sprintf("%s/tables", node.path)), nil
 	default:
 		return nil, fmt.Errorf("child not found: %s", name)
 	}

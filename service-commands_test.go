@@ -44,3 +44,57 @@ func TestServiceTraceOptsTables(t *testing.T) {
 		t.Fatalf("ParseParams() did not set Tables flag")
 	}
 }
+
+func TestServiceTraceOptsTablesCompaction(t *testing.T) {
+	opts := ServiceTraceOpts{TablesCompaction: true}
+	if got := opts.TraceTypes(); !got.Contains(TraceTablesCompaction) {
+		t.Fatalf("TraceTypes() missing TraceTablesCompaction: got %v", got)
+	}
+
+	vals := make(url.Values)
+	opts.AddParams(vals)
+	if got := vals.Get("tables-compaction"); got != "true" {
+		t.Fatalf("AddParams() tables-compaction flag = %q, want true", got)
+	}
+
+	req := httptest.NewRequest("GET", "/minio/admin/v3/trace?tables-compaction=true", nil)
+	if err := req.ParseForm(); err != nil {
+		t.Fatalf("ParseForm() returned error = %v", err)
+	}
+
+	var parsed ServiceTraceOpts
+	if err := parsed.ParseParams(req); err != nil {
+		t.Fatalf("ParseParams() returned error = %v", err)
+	}
+
+	if !parsed.TablesCompaction {
+		t.Fatalf("ParseParams() did not set TablesCompaction flag")
+	}
+}
+
+func TestServiceTraceOptsSystemInventory(t *testing.T) {
+	opts := ServiceTraceOpts{SystemInventory: true}
+	if got := opts.TraceTypes(); !got.Contains(TraceSystemInventory) {
+		t.Fatalf("TraceTypes() missing TraceSystemInventory: got %v", got)
+	}
+
+	vals := make(url.Values)
+	opts.AddParams(vals)
+	if got := vals.Get("systeminventory"); got != "true" {
+		t.Fatalf("AddParams() systeminventory flag = %q, want true", got)
+	}
+
+	req := httptest.NewRequest("GET", "/minio/admin/v3/trace?systeminventory=true", nil)
+	if err := req.ParseForm(); err != nil {
+		t.Fatalf("ParseForm() returned error = %v", err)
+	}
+
+	var parsed ServiceTraceOpts
+	if err := parsed.ParseParams(req); err != nil {
+		t.Fatalf("ParseParams() returned error = %v", err)
+	}
+
+	if !parsed.SystemInventory {
+		t.Fatalf("ParseParams() did not set SystemInventory flag")
+	}
+}

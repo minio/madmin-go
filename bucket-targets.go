@@ -50,32 +50,33 @@ func (t BucketTargets) Empty() bool {
 
 // BucketTarget represents the target bucket and site association.
 type BucketTarget struct {
-	SourceBucket         string        `json:"sourcebucket"`
-	Endpoint             string        `json:"endpoint"`
-	Credentials          *Credentials  `json:"credentials"`
-	TargetBucket         string        `json:"targetbucket"`
-	Secure               bool          `json:"secure"`
-	Path                 string        `json:"path,omitempty"`
-	API                  string        `json:"api,omitempty"`
-	Arn                  string        `json:"arn,omitempty"`
-	Type                 ServiceType   `json:"type"`
-	Region               string        `json:"region,omitempty"`
-	BandwidthLimit       int64         `json:"bandwidthlimit,omitempty"`
-	ReplicationSync      bool          `json:"replicationSync"`
-	StorageClass         string        `json:"storageclass,omitempty"`
-	HealthCheckDuration  time.Duration `json:"healthCheckDuration,omitempty"`
-	DisableProxy         bool          `json:"disableProxy"`
-	ResetBeforeDate      time.Time     `json:"resetBeforeDate,omitempty"`
-	ResetID              string        `json:"resetID,omitempty"`
-	TotalDowntime        time.Duration `json:"totalDowntime"`
-	LastOnline           time.Time     `json:"lastOnline"`
-	Online               bool          `json:"isOnline"`
-	Latency              LatencyStat   `json:"latency"`
-	DeploymentID         string        `json:"deploymentID,omitempty"`
-	Edge                 bool          `json:"edge"`                 // target is recipient of edge traffic
-	EdgeSyncBeforeExpiry bool          `json:"edgeSyncBeforeExpiry"` // must replicate to edge before expiry
-	OfflineCount         int64         `json:"offlineCount"`
-	InsecureTLS          bool          `json:"insecureTLS"`
+	SourceBucket            string        `json:"sourcebucket"`
+	Endpoint                string        `json:"endpoint"`
+	Credentials             *Credentials  `json:"credentials"`
+	TargetBucket            string        `json:"targetbucket"`
+	Secure                  bool          `json:"secure"`
+	Path                    string        `json:"path,omitempty"`
+	API                     string        `json:"api,omitempty"`
+	Arn                     string        `json:"arn,omitempty"`
+	Type                    ServiceType   `json:"type"`
+	Region                  string        `json:"region,omitempty"`
+	BandwidthLimit          int64         `json:"bandwidthlimit,omitempty"`
+	ReplicationSync         bool          `json:"replicationSync"`
+	StorageClass            string        `json:"storageclass,omitempty"`
+	HealthCheckDuration     time.Duration `json:"healthCheckDuration,omitempty"`
+	DisableProxy            bool          `json:"disableProxy"`
+	ResetBeforeDate         time.Time     `json:"resetBeforeDate,omitempty"`
+	ResetID                 string        `json:"resetID,omitempty"`
+	TotalDowntime           time.Duration `json:"totalDowntime"`
+	LastOnline              time.Time     `json:"lastOnline"`
+	Online                  bool          `json:"isOnline"`
+	Latency                 LatencyStat   `json:"latency"`
+	DeploymentID            string        `json:"deploymentID,omitempty"`
+	Edge                    bool          `json:"edge"`                 // target is recipient of edge traffic
+	EdgeSyncBeforeExpiry    bool          `json:"edgeSyncBeforeExpiry"` // must replicate to edge before expiry
+	DisableSyncBeforeExpiry bool          `json:"disableSyncBeforeExpiry,omitempty"`
+	OfflineCount            int64         `json:"offlineCount"`
+	InsecureTLS             bool          `json:"insecureTLS"`
 }
 
 // Credentials holds access and secret keys.
@@ -89,32 +90,33 @@ type Credentials struct {
 // Clone returns shallow clone of BucketTarget without secret key in credentials
 func (t *BucketTarget) Clone() BucketTarget {
 	return BucketTarget{
-		SourceBucket:         t.SourceBucket,
-		Endpoint:             t.Endpoint,
-		TargetBucket:         t.TargetBucket,
-		Credentials:          &Credentials{AccessKey: t.Credentials.AccessKey},
-		Secure:               t.Secure,
-		Path:                 t.Path,
-		API:                  t.API,
-		Arn:                  t.Arn,
-		Type:                 t.Type,
-		Region:               t.Region,
-		BandwidthLimit:       t.BandwidthLimit,
-		ReplicationSync:      t.ReplicationSync,
-		StorageClass:         t.StorageClass, // target storage class
-		HealthCheckDuration:  t.HealthCheckDuration,
-		DisableProxy:         t.DisableProxy,
-		ResetBeforeDate:      t.ResetBeforeDate,
-		ResetID:              t.ResetID,
-		TotalDowntime:        t.TotalDowntime,
-		LastOnline:           t.LastOnline,
-		Online:               t.Online,
-		Latency:              t.Latency,
-		DeploymentID:         t.DeploymentID,
-		Edge:                 t.Edge,
-		EdgeSyncBeforeExpiry: t.EdgeSyncBeforeExpiry,
-		OfflineCount:         t.OfflineCount,
-		InsecureTLS:          t.InsecureTLS,
+		SourceBucket:            t.SourceBucket,
+		Endpoint:                t.Endpoint,
+		TargetBucket:            t.TargetBucket,
+		Credentials:             &Credentials{AccessKey: t.Credentials.AccessKey},
+		Secure:                  t.Secure,
+		Path:                    t.Path,
+		API:                     t.API,
+		Arn:                     t.Arn,
+		Type:                    t.Type,
+		Region:                  t.Region,
+		BandwidthLimit:          t.BandwidthLimit,
+		ReplicationSync:         t.ReplicationSync,
+		StorageClass:            t.StorageClass, // target storage class
+		HealthCheckDuration:     t.HealthCheckDuration,
+		DisableProxy:            t.DisableProxy,
+		ResetBeforeDate:         t.ResetBeforeDate,
+		ResetID:                 t.ResetID,
+		TotalDowntime:           t.TotalDowntime,
+		LastOnline:              t.LastOnline,
+		Online:                  t.Online,
+		Latency:                 t.Latency,
+		DeploymentID:            t.DeploymentID,
+		Edge:                    t.Edge,
+		EdgeSyncBeforeExpiry:    t.EdgeSyncBeforeExpiry,
+		DisableSyncBeforeExpiry: t.DisableSyncBeforeExpiry,
+		OfflineCount:            t.OfflineCount,
+		InsecureTLS:             t.InsecureTLS,
 	}
 }
 

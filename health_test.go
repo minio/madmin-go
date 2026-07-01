@@ -149,6 +149,62 @@ func ptr(val uint64) *uint64 {
 	return &val
 }
 
+// TestProductInfoJSONMarshal tests that empty DMI fields are dropped from
+// the JSON output via the omitempty tags.
+func TestProductInfoJSONMarshal(t *testing.T) {
+	tests := []struct {
+		name     string
+		input    ProductInfo
+		expected string
+	}{
+		{
+			name: "Only addr set (no DMI — macOS / non-root / container)",
+			input: ProductInfo{
+				NodeCommon: NodeCommon{Addr: "node-1:9000"},
+			},
+			expected: `{"addr":"node-1:9000"}`,
+		},
+		{
+			name: "Fully populated (Linux + root)",
+			input: ProductInfo{
+				NodeCommon:   NodeCommon{Addr: "node-1:9000"},
+				Family:       "PowerEdge",
+				Name:         "PowerEdge R750",
+				Vendor:       "Dell Inc.",
+				SerialNumber: "5XYZ123",
+				UUID:         "4c4c4544-0058-5910-8050-cac04f445232",
+				SKU:          "SKU=PE-R750",
+				Version:      "2.10.0",
+			},
+			expected: `{"addr":"node-1:9000","family":"PowerEdge","name":"PowerEdge R750","vendor":"Dell Inc.","serial_number":"5XYZ123","uuid":"4c4c4544-0058-5910-8050-cac04f445232","sku":"SKU=PE-R750","version":"2.10.0"}`,
+		},
+		{
+			name: "Partial (non-root Linux: serial/uuid restricted)",
+			input: ProductInfo{
+				NodeCommon: NodeCommon{Addr: "node-1:9000"},
+				Family:     "PowerEdge",
+				Name:       "PowerEdge R750",
+				Vendor:     "Dell Inc.",
+				SKU:        "SKU=PE-R750",
+				Version:    "2.10.0",
+			},
+			expected: `{"addr":"node-1:9000","family":"PowerEdge","name":"PowerEdge R750","vendor":"Dell Inc.","sku":"SKU=PE-R750","version":"2.10.0"}`,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			output, err := json.Marshal(tt.input)
+			if err != nil {
+				t.Fatalf("Failed to marshal JSON: %v", err)
+			}
+			if string(output) != tt.expected {
+				t.Errorf("Expected JSON: %s, got: %s", tt.expected, string(output))
+			}
+		})
+	}
+}
+
 // TestCPUMultithreadingDetection tests actual CPU detection on the running system
 func TestCPUMultithreadingDetection(t *testing.T) {
 	cpusInfo := GetCPUs(context.TODO(), "test-addr")

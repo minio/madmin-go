@@ -404,6 +404,347 @@ func (z *GetTableMaintenanceJobStatusResponse) Msgsize() (s int) {
 }
 
 // DecodeMsg implements msgp.Decodable
+func (z *GetWarehouseMaintenanceConfigurationResponse) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "Configuration":
+			var zb0002 uint32
+			zb0002, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "Configuration")
+				return
+			}
+			if z.Configuration == nil {
+				z.Configuration = make(map[string]WarehouseMaintenanceConfigurationValue, zb0002)
+			} else if len(z.Configuration) > 0 {
+				clear(z.Configuration)
+			}
+			for zb0002 > 0 {
+				zb0002--
+				var za0001 string
+				za0001, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "Configuration")
+					return
+				}
+				var za0002 WarehouseMaintenanceConfigurationValue
+				err = za0002.DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "Configuration", za0001)
+					return
+				}
+				z.Configuration[za0001] = za0002
+			}
+		case "WarehouseARN":
+			z.WarehouseARN, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "WarehouseARN")
+				return
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *GetWarehouseMaintenanceConfigurationResponse) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 2
+	// write "Configuration"
+	err = en.Append(0x82, 0xad, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e)
+	if err != nil {
+		return
+	}
+	err = en.WriteMapHeader(uint32(len(z.Configuration)))
+	if err != nil {
+		err = msgp.WrapError(err, "Configuration")
+		return
+	}
+	for za0001, za0002 := range z.Configuration {
+		err = en.WriteString(za0001)
+		if err != nil {
+			err = msgp.WrapError(err, "Configuration")
+			return
+		}
+		err = za0002.EncodeMsg(en)
+		if err != nil {
+			err = msgp.WrapError(err, "Configuration", za0001)
+			return
+		}
+	}
+	// write "WarehouseARN"
+	err = en.Append(0xac, 0x57, 0x61, 0x72, 0x65, 0x68, 0x6f, 0x75, 0x73, 0x65, 0x41, 0x52, 0x4e)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(z.WarehouseARN)
+	if err != nil {
+		err = msgp.WrapError(err, "WarehouseARN")
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *GetWarehouseMaintenanceConfigurationResponse) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 2
+	// string "Configuration"
+	o = append(o, 0x82, 0xad, 0x43, 0x6f, 0x6e, 0x66, 0x69, 0x67, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e)
+	o = msgp.AppendMapHeader(o, uint32(len(z.Configuration)))
+	for za0001, za0002 := range z.Configuration {
+		o = msgp.AppendString(o, za0001)
+		o, err = za0002.MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "Configuration", za0001)
+			return
+		}
+	}
+	// string "WarehouseARN"
+	o = append(o, 0xac, 0x57, 0x61, 0x72, 0x65, 0x68, 0x6f, 0x75, 0x73, 0x65, 0x41, 0x52, 0x4e)
+	o = msgp.AppendString(o, z.WarehouseARN)
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *GetWarehouseMaintenanceConfigurationResponse) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "Configuration":
+			var zb0002 uint32
+			zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Configuration")
+				return
+			}
+			if z.Configuration == nil {
+				z.Configuration = make(map[string]WarehouseMaintenanceConfigurationValue, zb0002)
+			} else if len(z.Configuration) > 0 {
+				clear(z.Configuration)
+			}
+			for zb0002 > 0 {
+				var za0002 WarehouseMaintenanceConfigurationValue
+				zb0002--
+				var za0001 string
+				za0001, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Configuration")
+					return
+				}
+				bts, err = za0002.UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Configuration", za0001)
+					return
+				}
+				z.Configuration[za0001] = za0002
+			}
+		case "WarehouseARN":
+			z.WarehouseARN, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "WarehouseARN")
+				return
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *GetWarehouseMaintenanceConfigurationResponse) Msgsize() (s int) {
+	s = 1 + 14 + msgp.MapHeaderSize
+	if z.Configuration != nil {
+		for za0001, za0002 := range z.Configuration {
+			_ = za0002
+			s += msgp.StringPrefixSize + len(za0001) + za0002.Msgsize()
+		}
+	}
+	s += 13 + msgp.StringPrefixSize + len(z.WarehouseARN)
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *IcebergCompactionSettings) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "TargetFileSizeMB":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "TargetFileSizeMB")
+					return
+				}
+				z.TargetFileSizeMB = nil
+			} else {
+				if z.TargetFileSizeMB == nil {
+					z.TargetFileSizeMB = new(int)
+				}
+				*z.TargetFileSizeMB, err = dc.ReadInt()
+				if err != nil {
+					err = msgp.WrapError(err, "TargetFileSizeMB")
+					return
+				}
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *IcebergCompactionSettings) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 1
+	// write "TargetFileSizeMB"
+	err = en.Append(0x81, 0xb0, 0x54, 0x61, 0x72, 0x67, 0x65, 0x74, 0x46, 0x69, 0x6c, 0x65, 0x53, 0x69, 0x7a, 0x65, 0x4d, 0x42)
+	if err != nil {
+		return
+	}
+	if z.TargetFileSizeMB == nil {
+		err = en.WriteNil()
+		if err != nil {
+			return
+		}
+	} else {
+		err = en.WriteInt(*z.TargetFileSizeMB)
+		if err != nil {
+			err = msgp.WrapError(err, "TargetFileSizeMB")
+			return
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *IcebergCompactionSettings) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 1
+	// string "TargetFileSizeMB"
+	o = append(o, 0x81, 0xb0, 0x54, 0x61, 0x72, 0x67, 0x65, 0x74, 0x46, 0x69, 0x6c, 0x65, 0x53, 0x69, 0x7a, 0x65, 0x4d, 0x42)
+	if z.TargetFileSizeMB == nil {
+		o = msgp.AppendNil(o)
+	} else {
+		o = msgp.AppendInt(o, *z.TargetFileSizeMB)
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *IcebergCompactionSettings) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "TargetFileSizeMB":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.TargetFileSizeMB = nil
+			} else {
+				if z.TargetFileSizeMB == nil {
+					z.TargetFileSizeMB = new(int)
+				}
+				*z.TargetFileSizeMB, bts, err = msgp.ReadIntBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "TargetFileSizeMB")
+					return
+				}
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *IcebergCompactionSettings) Msgsize() (s int) {
+	s = 1 + 17
+	if z.TargetFileSizeMB == nil {
+		s += msgp.NilSize
+	} else {
+		s += msgp.IntSize
+	}
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *IcebergSnapshotManagementSettings) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
@@ -611,6 +952,213 @@ func (z *IcebergSnapshotManagementSettings) Msgsize() (s int) {
 }
 
 // DecodeMsg implements msgp.Decodable
+func (z *IcebergUnreferencedFileRemovalSettings) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "UnreferencedDays":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "UnreferencedDays")
+					return
+				}
+				z.UnreferencedDays = nil
+			} else {
+				if z.UnreferencedDays == nil {
+					z.UnreferencedDays = new(int)
+				}
+				*z.UnreferencedDays, err = dc.ReadInt()
+				if err != nil {
+					err = msgp.WrapError(err, "UnreferencedDays")
+					return
+				}
+			}
+		case "NoncurrentDays":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "NoncurrentDays")
+					return
+				}
+				z.NoncurrentDays = nil
+			} else {
+				if z.NoncurrentDays == nil {
+					z.NoncurrentDays = new(int)
+				}
+				*z.NoncurrentDays, err = dc.ReadInt()
+				if err != nil {
+					err = msgp.WrapError(err, "NoncurrentDays")
+					return
+				}
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *IcebergUnreferencedFileRemovalSettings) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 2
+	// write "UnreferencedDays"
+	err = en.Append(0x82, 0xb0, 0x55, 0x6e, 0x72, 0x65, 0x66, 0x65, 0x72, 0x65, 0x6e, 0x63, 0x65, 0x64, 0x44, 0x61, 0x79, 0x73)
+	if err != nil {
+		return
+	}
+	if z.UnreferencedDays == nil {
+		err = en.WriteNil()
+		if err != nil {
+			return
+		}
+	} else {
+		err = en.WriteInt(*z.UnreferencedDays)
+		if err != nil {
+			err = msgp.WrapError(err, "UnreferencedDays")
+			return
+		}
+	}
+	// write "NoncurrentDays"
+	err = en.Append(0xae, 0x4e, 0x6f, 0x6e, 0x63, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74, 0x44, 0x61, 0x79, 0x73)
+	if err != nil {
+		return
+	}
+	if z.NoncurrentDays == nil {
+		err = en.WriteNil()
+		if err != nil {
+			return
+		}
+	} else {
+		err = en.WriteInt(*z.NoncurrentDays)
+		if err != nil {
+			err = msgp.WrapError(err, "NoncurrentDays")
+			return
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *IcebergUnreferencedFileRemovalSettings) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 2
+	// string "UnreferencedDays"
+	o = append(o, 0x82, 0xb0, 0x55, 0x6e, 0x72, 0x65, 0x66, 0x65, 0x72, 0x65, 0x6e, 0x63, 0x65, 0x64, 0x44, 0x61, 0x79, 0x73)
+	if z.UnreferencedDays == nil {
+		o = msgp.AppendNil(o)
+	} else {
+		o = msgp.AppendInt(o, *z.UnreferencedDays)
+	}
+	// string "NoncurrentDays"
+	o = append(o, 0xae, 0x4e, 0x6f, 0x6e, 0x63, 0x75, 0x72, 0x72, 0x65, 0x6e, 0x74, 0x44, 0x61, 0x79, 0x73)
+	if z.NoncurrentDays == nil {
+		o = msgp.AppendNil(o)
+	} else {
+		o = msgp.AppendInt(o, *z.NoncurrentDays)
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *IcebergUnreferencedFileRemovalSettings) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "UnreferencedDays":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.UnreferencedDays = nil
+			} else {
+				if z.UnreferencedDays == nil {
+					z.UnreferencedDays = new(int)
+				}
+				*z.UnreferencedDays, bts, err = msgp.ReadIntBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "UnreferencedDays")
+					return
+				}
+			}
+		case "NoncurrentDays":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.NoncurrentDays = nil
+			} else {
+				if z.NoncurrentDays == nil {
+					z.NoncurrentDays = new(int)
+				}
+				*z.NoncurrentDays, bts, err = msgp.ReadIntBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "NoncurrentDays")
+					return
+				}
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *IcebergUnreferencedFileRemovalSettings) Msgsize() (s int) {
+	s = 1 + 17
+	if z.UnreferencedDays == nil {
+		s += msgp.NilSize
+	} else {
+		s += msgp.IntSize
+	}
+	s += 15
+	if z.NoncurrentDays == nil {
+		s += msgp.NilSize
+	} else {
+		s += msgp.IntSize
+	}
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *MaintenanceJobStatus) DecodeMsg(dc *msgp.Reader) (err error) {
 	{
 		var zb0001 string
@@ -759,56 +1307,21 @@ func (z *PutTableMaintenanceConfigurationRequest) DecodeMsg(dc *msgp.Reader) (er
 						if z.Value.Settings == nil {
 							z.Value.Settings = new(TableMaintenanceSettings)
 						}
-						var zb0003 uint32
-						zb0003, err = dc.ReadMapHeader()
+						err = z.Value.Settings.DecodeMsg(dc)
 						if err != nil {
 							err = msgp.WrapError(err, "Value", "Settings")
 							return
 						}
-						for zb0003 > 0 {
-							zb0003--
-							field, err = dc.ReadMapKeyPtr()
-							if err != nil {
-								err = msgp.WrapError(err, "Value", "Settings")
-								return
-							}
-							switch msgp.UnsafeString(field) {
-							case "IcebergSnapshotManagement":
-								if dc.IsNil() {
-									err = dc.ReadNil()
-									if err != nil {
-										err = msgp.WrapError(err, "Value", "Settings", "IcebergSnapshotManagement")
-										return
-									}
-									z.Value.Settings.IcebergSnapshotManagement = nil
-								} else {
-									if z.Value.Settings.IcebergSnapshotManagement == nil {
-										z.Value.Settings.IcebergSnapshotManagement = new(IcebergSnapshotManagementSettings)
-									}
-									err = z.Value.Settings.IcebergSnapshotManagement.DecodeMsg(dc)
-									if err != nil {
-										err = msgp.WrapError(err, "Value", "Settings", "IcebergSnapshotManagement")
-										return
-									}
-								}
-							default:
-								err = dc.Skip()
-								if err != nil {
-									err = msgp.WrapError(err, "Value", "Settings")
-									return
-								}
-							}
-						}
 					}
 				case "Status":
 					{
-						var zb0004 string
-						zb0004, err = dc.ReadString()
+						var zb0003 string
+						zb0003, err = dc.ReadString()
 						if err != nil {
 							err = msgp.WrapError(err, "Value", "Status")
 							return
 						}
-						z.Value.Status = MaintenanceStatus(zb0004)
+						z.Value.Status = MaintenanceStatus(zb0003)
 					}
 				default:
 					err = dc.Skip()
@@ -849,23 +1362,10 @@ func (z *PutTableMaintenanceConfigurationRequest) EncodeMsg(en *msgp.Writer) (er
 			return
 		}
 	} else {
-		// map header, size 1
-		// write "IcebergSnapshotManagement"
-		err = en.Append(0x81, 0xb9, 0x49, 0x63, 0x65, 0x62, 0x65, 0x72, 0x67, 0x53, 0x6e, 0x61, 0x70, 0x73, 0x68, 0x6f, 0x74, 0x4d, 0x61, 0x6e, 0x61, 0x67, 0x65, 0x6d, 0x65, 0x6e, 0x74)
+		err = z.Value.Settings.EncodeMsg(en)
 		if err != nil {
+			err = msgp.WrapError(err, "Value", "Settings")
 			return
-		}
-		if z.Value.Settings.IcebergSnapshotManagement == nil {
-			err = en.WriteNil()
-			if err != nil {
-				return
-			}
-		} else {
-			err = z.Value.Settings.IcebergSnapshotManagement.EncodeMsg(en)
-			if err != nil {
-				err = msgp.WrapError(err, "Value", "Settings", "IcebergSnapshotManagement")
-				return
-			}
 		}
 	}
 	// write "Status"
@@ -893,17 +1393,10 @@ func (z *PutTableMaintenanceConfigurationRequest) MarshalMsg(b []byte) (o []byte
 	if z.Value.Settings == nil {
 		o = msgp.AppendNil(o)
 	} else {
-		// map header, size 1
-		// string "IcebergSnapshotManagement"
-		o = append(o, 0x81, 0xb9, 0x49, 0x63, 0x65, 0x62, 0x65, 0x72, 0x67, 0x53, 0x6e, 0x61, 0x70, 0x73, 0x68, 0x6f, 0x74, 0x4d, 0x61, 0x6e, 0x61, 0x67, 0x65, 0x6d, 0x65, 0x6e, 0x74)
-		if z.Value.Settings.IcebergSnapshotManagement == nil {
-			o = msgp.AppendNil(o)
-		} else {
-			o, err = z.Value.Settings.IcebergSnapshotManagement.MarshalMsg(o)
-			if err != nil {
-				err = msgp.WrapError(err, "Value", "Settings", "IcebergSnapshotManagement")
-				return
-			}
+		o, err = z.Value.Settings.MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "Value", "Settings")
+			return
 		}
 	}
 	// string "Status"
@@ -956,55 +1449,21 @@ func (z *PutTableMaintenanceConfigurationRequest) UnmarshalMsg(bts []byte) (o []
 						if z.Value.Settings == nil {
 							z.Value.Settings = new(TableMaintenanceSettings)
 						}
-						var zb0003 uint32
-						zb0003, bts, err = msgp.ReadMapHeaderBytes(bts)
+						bts, err = z.Value.Settings.UnmarshalMsg(bts)
 						if err != nil {
 							err = msgp.WrapError(err, "Value", "Settings")
 							return
 						}
-						for zb0003 > 0 {
-							zb0003--
-							field, bts, err = msgp.ReadMapKeyZC(bts)
-							if err != nil {
-								err = msgp.WrapError(err, "Value", "Settings")
-								return
-							}
-							switch msgp.UnsafeString(field) {
-							case "IcebergSnapshotManagement":
-								if msgp.IsNil(bts) {
-									bts, err = msgp.ReadNilBytes(bts)
-									if err != nil {
-										return
-									}
-									z.Value.Settings.IcebergSnapshotManagement = nil
-								} else {
-									if z.Value.Settings.IcebergSnapshotManagement == nil {
-										z.Value.Settings.IcebergSnapshotManagement = new(IcebergSnapshotManagementSettings)
-									}
-									bts, err = z.Value.Settings.IcebergSnapshotManagement.UnmarshalMsg(bts)
-									if err != nil {
-										err = msgp.WrapError(err, "Value", "Settings", "IcebergSnapshotManagement")
-										return
-									}
-								}
-							default:
-								bts, err = msgp.Skip(bts)
-								if err != nil {
-									err = msgp.WrapError(err, "Value", "Settings")
-									return
-								}
-							}
-						}
 					}
 				case "Status":
 					{
-						var zb0004 string
-						zb0004, bts, err = msgp.ReadStringBytes(bts)
+						var zb0003 string
+						zb0003, bts, err = msgp.ReadStringBytes(bts)
 						if err != nil {
 							err = msgp.WrapError(err, "Value", "Status")
 							return
 						}
-						z.Value.Status = MaintenanceStatus(zb0004)
+						z.Value.Status = MaintenanceStatus(zb0003)
 					}
 				default:
 					bts, err = msgp.Skip(bts)
@@ -1032,12 +1491,242 @@ func (z *PutTableMaintenanceConfigurationRequest) Msgsize() (s int) {
 	if z.Value.Settings == nil {
 		s += msgp.NilSize
 	} else {
-		s += 1 + 26
-		if z.Value.Settings.IcebergSnapshotManagement == nil {
-			s += msgp.NilSize
-		} else {
-			s += z.Value.Settings.IcebergSnapshotManagement.Msgsize()
+		s += z.Value.Settings.Msgsize()
+	}
+	s += 7 + msgp.StringPrefixSize + len(string(z.Value.Status))
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *PutWarehouseMaintenanceConfigurationRequest) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
 		}
+		switch msgp.UnsafeString(field) {
+		case "Value":
+			var zb0002 uint32
+			zb0002, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "Value")
+				return
+			}
+			for zb0002 > 0 {
+				zb0002--
+				field, err = dc.ReadMapKeyPtr()
+				if err != nil {
+					err = msgp.WrapError(err, "Value")
+					return
+				}
+				switch msgp.UnsafeString(field) {
+				case "Settings":
+					if dc.IsNil() {
+						err = dc.ReadNil()
+						if err != nil {
+							err = msgp.WrapError(err, "Value", "Settings")
+							return
+						}
+						z.Value.Settings = nil
+					} else {
+						if z.Value.Settings == nil {
+							z.Value.Settings = new(TableMaintenanceSettings)
+						}
+						err = z.Value.Settings.DecodeMsg(dc)
+						if err != nil {
+							err = msgp.WrapError(err, "Value", "Settings")
+							return
+						}
+					}
+				case "Status":
+					{
+						var zb0003 string
+						zb0003, err = dc.ReadString()
+						if err != nil {
+							err = msgp.WrapError(err, "Value", "Status")
+							return
+						}
+						z.Value.Status = MaintenanceStatus(zb0003)
+					}
+				default:
+					err = dc.Skip()
+					if err != nil {
+						err = msgp.WrapError(err, "Value")
+						return
+					}
+				}
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *PutWarehouseMaintenanceConfigurationRequest) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 1
+	// write "Value"
+	err = en.Append(0x81, 0xa5, 0x56, 0x61, 0x6c, 0x75, 0x65)
+	if err != nil {
+		return
+	}
+	// map header, size 2
+	// write "Settings"
+	err = en.Append(0x82, 0xa8, 0x53, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x73)
+	if err != nil {
+		return
+	}
+	if z.Value.Settings == nil {
+		err = en.WriteNil()
+		if err != nil {
+			return
+		}
+	} else {
+		err = z.Value.Settings.EncodeMsg(en)
+		if err != nil {
+			err = msgp.WrapError(err, "Value", "Settings")
+			return
+		}
+	}
+	// write "Status"
+	err = en.Append(0xa6, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(string(z.Value.Status))
+	if err != nil {
+		err = msgp.WrapError(err, "Value", "Status")
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *PutWarehouseMaintenanceConfigurationRequest) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 1
+	// string "Value"
+	o = append(o, 0x81, 0xa5, 0x56, 0x61, 0x6c, 0x75, 0x65)
+	// map header, size 2
+	// string "Settings"
+	o = append(o, 0x82, 0xa8, 0x53, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x73)
+	if z.Value.Settings == nil {
+		o = msgp.AppendNil(o)
+	} else {
+		o, err = z.Value.Settings.MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "Value", "Settings")
+			return
+		}
+	}
+	// string "Status"
+	o = append(o, 0xa6, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73)
+	o = msgp.AppendString(o, string(z.Value.Status))
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *PutWarehouseMaintenanceConfigurationRequest) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "Value":
+			var zb0002 uint32
+			zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Value")
+				return
+			}
+			for zb0002 > 0 {
+				zb0002--
+				field, bts, err = msgp.ReadMapKeyZC(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Value")
+					return
+				}
+				switch msgp.UnsafeString(field) {
+				case "Settings":
+					if msgp.IsNil(bts) {
+						bts, err = msgp.ReadNilBytes(bts)
+						if err != nil {
+							return
+						}
+						z.Value.Settings = nil
+					} else {
+						if z.Value.Settings == nil {
+							z.Value.Settings = new(TableMaintenanceSettings)
+						}
+						bts, err = z.Value.Settings.UnmarshalMsg(bts)
+						if err != nil {
+							err = msgp.WrapError(err, "Value", "Settings")
+							return
+						}
+					}
+				case "Status":
+					{
+						var zb0003 string
+						zb0003, bts, err = msgp.ReadStringBytes(bts)
+						if err != nil {
+							err = msgp.WrapError(err, "Value", "Status")
+							return
+						}
+						z.Value.Status = MaintenanceStatus(zb0003)
+					}
+				default:
+					bts, err = msgp.Skip(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "Value")
+						return
+					}
+				}
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *PutWarehouseMaintenanceConfigurationRequest) Msgsize() (s int) {
+	s = 1 + 6 + 1 + 9
+	if z.Value.Settings == nil {
+		s += msgp.NilSize
+	} else {
+		s += z.Value.Settings.Msgsize()
 	}
 	s += 7 + msgp.StringPrefixSize + len(string(z.Value.Status))
 	return
@@ -1073,56 +1762,21 @@ func (z *TableMaintenanceConfigurationValue) DecodeMsg(dc *msgp.Reader) (err err
 				if z.Settings == nil {
 					z.Settings = new(TableMaintenanceSettings)
 				}
-				var zb0002 uint32
-				zb0002, err = dc.ReadMapHeader()
+				err = z.Settings.DecodeMsg(dc)
 				if err != nil {
 					err = msgp.WrapError(err, "Settings")
 					return
 				}
-				for zb0002 > 0 {
-					zb0002--
-					field, err = dc.ReadMapKeyPtr()
-					if err != nil {
-						err = msgp.WrapError(err, "Settings")
-						return
-					}
-					switch msgp.UnsafeString(field) {
-					case "IcebergSnapshotManagement":
-						if dc.IsNil() {
-							err = dc.ReadNil()
-							if err != nil {
-								err = msgp.WrapError(err, "Settings", "IcebergSnapshotManagement")
-								return
-							}
-							z.Settings.IcebergSnapshotManagement = nil
-						} else {
-							if z.Settings.IcebergSnapshotManagement == nil {
-								z.Settings.IcebergSnapshotManagement = new(IcebergSnapshotManagementSettings)
-							}
-							err = z.Settings.IcebergSnapshotManagement.DecodeMsg(dc)
-							if err != nil {
-								err = msgp.WrapError(err, "Settings", "IcebergSnapshotManagement")
-								return
-							}
-						}
-					default:
-						err = dc.Skip()
-						if err != nil {
-							err = msgp.WrapError(err, "Settings")
-							return
-						}
-					}
-				}
 			}
 		case "Status":
 			{
-				var zb0003 string
-				zb0003, err = dc.ReadString()
+				var zb0002 string
+				zb0002, err = dc.ReadString()
 				if err != nil {
 					err = msgp.WrapError(err, "Status")
 					return
 				}
-				z.Status = MaintenanceStatus(zb0003)
+				z.Status = MaintenanceStatus(zb0002)
 			}
 		default:
 			err = dc.Skip()
@@ -1149,23 +1803,10 @@ func (z *TableMaintenanceConfigurationValue) EncodeMsg(en *msgp.Writer) (err err
 			return
 		}
 	} else {
-		// map header, size 1
-		// write "IcebergSnapshotManagement"
-		err = en.Append(0x81, 0xb9, 0x49, 0x63, 0x65, 0x62, 0x65, 0x72, 0x67, 0x53, 0x6e, 0x61, 0x70, 0x73, 0x68, 0x6f, 0x74, 0x4d, 0x61, 0x6e, 0x61, 0x67, 0x65, 0x6d, 0x65, 0x6e, 0x74)
+		err = z.Settings.EncodeMsg(en)
 		if err != nil {
+			err = msgp.WrapError(err, "Settings")
 			return
-		}
-		if z.Settings.IcebergSnapshotManagement == nil {
-			err = en.WriteNil()
-			if err != nil {
-				return
-			}
-		} else {
-			err = z.Settings.IcebergSnapshotManagement.EncodeMsg(en)
-			if err != nil {
-				err = msgp.WrapError(err, "Settings", "IcebergSnapshotManagement")
-				return
-			}
 		}
 	}
 	// write "Status"
@@ -1190,17 +1831,10 @@ func (z *TableMaintenanceConfigurationValue) MarshalMsg(b []byte) (o []byte, err
 	if z.Settings == nil {
 		o = msgp.AppendNil(o)
 	} else {
-		// map header, size 1
-		// string "IcebergSnapshotManagement"
-		o = append(o, 0x81, 0xb9, 0x49, 0x63, 0x65, 0x62, 0x65, 0x72, 0x67, 0x53, 0x6e, 0x61, 0x70, 0x73, 0x68, 0x6f, 0x74, 0x4d, 0x61, 0x6e, 0x61, 0x67, 0x65, 0x6d, 0x65, 0x6e, 0x74)
-		if z.Settings.IcebergSnapshotManagement == nil {
-			o = msgp.AppendNil(o)
-		} else {
-			o, err = z.Settings.IcebergSnapshotManagement.MarshalMsg(o)
-			if err != nil {
-				err = msgp.WrapError(err, "Settings", "IcebergSnapshotManagement")
-				return
-			}
+		o, err = z.Settings.MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "Settings")
+			return
 		}
 	}
 	// string "Status"
@@ -1238,55 +1872,21 @@ func (z *TableMaintenanceConfigurationValue) UnmarshalMsg(bts []byte) (o []byte,
 				if z.Settings == nil {
 					z.Settings = new(TableMaintenanceSettings)
 				}
-				var zb0002 uint32
-				zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
+				bts, err = z.Settings.UnmarshalMsg(bts)
 				if err != nil {
 					err = msgp.WrapError(err, "Settings")
 					return
 				}
-				for zb0002 > 0 {
-					zb0002--
-					field, bts, err = msgp.ReadMapKeyZC(bts)
-					if err != nil {
-						err = msgp.WrapError(err, "Settings")
-						return
-					}
-					switch msgp.UnsafeString(field) {
-					case "IcebergSnapshotManagement":
-						if msgp.IsNil(bts) {
-							bts, err = msgp.ReadNilBytes(bts)
-							if err != nil {
-								return
-							}
-							z.Settings.IcebergSnapshotManagement = nil
-						} else {
-							if z.Settings.IcebergSnapshotManagement == nil {
-								z.Settings.IcebergSnapshotManagement = new(IcebergSnapshotManagementSettings)
-							}
-							bts, err = z.Settings.IcebergSnapshotManagement.UnmarshalMsg(bts)
-							if err != nil {
-								err = msgp.WrapError(err, "Settings", "IcebergSnapshotManagement")
-								return
-							}
-						}
-					default:
-						bts, err = msgp.Skip(bts)
-						if err != nil {
-							err = msgp.WrapError(err, "Settings")
-							return
-						}
-					}
-				}
 			}
 		case "Status":
 			{
-				var zb0003 string
-				zb0003, bts, err = msgp.ReadStringBytes(bts)
+				var zb0002 string
+				zb0002, bts, err = msgp.ReadStringBytes(bts)
 				if err != nil {
 					err = msgp.WrapError(err, "Status")
 					return
 				}
-				z.Status = MaintenanceStatus(zb0003)
+				z.Status = MaintenanceStatus(zb0002)
 			}
 		default:
 			bts, err = msgp.Skip(bts)
@@ -1306,12 +1906,7 @@ func (z *TableMaintenanceConfigurationValue) Msgsize() (s int) {
 	if z.Settings == nil {
 		s += msgp.NilSize
 	} else {
-		s += 1 + 26
-		if z.Settings.IcebergSnapshotManagement == nil {
-			s += msgp.NilSize
-		} else {
-			s += z.Settings.IcebergSnapshotManagement.Msgsize()
-		}
+		s += z.Settings.Msgsize()
 	}
 	s += 7 + msgp.StringPrefixSize + len(string(z.Status))
 	return
@@ -1554,6 +2149,77 @@ func (z *TableMaintenanceSettings) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
+		case "IcebergCompaction":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "IcebergCompaction")
+					return
+				}
+				z.IcebergCompaction = nil
+			} else {
+				if z.IcebergCompaction == nil {
+					z.IcebergCompaction = new(IcebergCompactionSettings)
+				}
+				var zb0002 uint32
+				zb0002, err = dc.ReadMapHeader()
+				if err != nil {
+					err = msgp.WrapError(err, "IcebergCompaction")
+					return
+				}
+				for zb0002 > 0 {
+					zb0002--
+					field, err = dc.ReadMapKeyPtr()
+					if err != nil {
+						err = msgp.WrapError(err, "IcebergCompaction")
+						return
+					}
+					switch msgp.UnsafeString(field) {
+					case "TargetFileSizeMB":
+						if dc.IsNil() {
+							err = dc.ReadNil()
+							if err != nil {
+								err = msgp.WrapError(err, "IcebergCompaction", "TargetFileSizeMB")
+								return
+							}
+							z.IcebergCompaction.TargetFileSizeMB = nil
+						} else {
+							if z.IcebergCompaction.TargetFileSizeMB == nil {
+								z.IcebergCompaction.TargetFileSizeMB = new(int)
+							}
+							*z.IcebergCompaction.TargetFileSizeMB, err = dc.ReadInt()
+							if err != nil {
+								err = msgp.WrapError(err, "IcebergCompaction", "TargetFileSizeMB")
+								return
+							}
+						}
+					default:
+						err = dc.Skip()
+						if err != nil {
+							err = msgp.WrapError(err, "IcebergCompaction")
+							return
+						}
+					}
+				}
+			}
+		case "IcebergUnreferencedFileRemoval":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "IcebergUnreferencedFileRemoval")
+					return
+				}
+				z.IcebergUnreferencedFileRemoval = nil
+			} else {
+				if z.IcebergUnreferencedFileRemoval == nil {
+					z.IcebergUnreferencedFileRemoval = new(IcebergUnreferencedFileRemovalSettings)
+				}
+				err = z.IcebergUnreferencedFileRemoval.DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "IcebergUnreferencedFileRemoval")
+					return
+				}
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -1567,9 +2233,9 @@ func (z *TableMaintenanceSettings) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *TableMaintenanceSettings) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 1
+	// map header, size 3
 	// write "IcebergSnapshotManagement"
-	err = en.Append(0x81, 0xb9, 0x49, 0x63, 0x65, 0x62, 0x65, 0x72, 0x67, 0x53, 0x6e, 0x61, 0x70, 0x73, 0x68, 0x6f, 0x74, 0x4d, 0x61, 0x6e, 0x61, 0x67, 0x65, 0x6d, 0x65, 0x6e, 0x74)
+	err = en.Append(0x83, 0xb9, 0x49, 0x63, 0x65, 0x62, 0x65, 0x72, 0x67, 0x53, 0x6e, 0x61, 0x70, 0x73, 0x68, 0x6f, 0x74, 0x4d, 0x61, 0x6e, 0x61, 0x67, 0x65, 0x6d, 0x65, 0x6e, 0x74)
 	if err != nil {
 		return
 	}
@@ -1585,21 +2251,93 @@ func (z *TableMaintenanceSettings) EncodeMsg(en *msgp.Writer) (err error) {
 			return
 		}
 	}
+	// write "IcebergCompaction"
+	err = en.Append(0xb1, 0x49, 0x63, 0x65, 0x62, 0x65, 0x72, 0x67, 0x43, 0x6f, 0x6d, 0x70, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e)
+	if err != nil {
+		return
+	}
+	if z.IcebergCompaction == nil {
+		err = en.WriteNil()
+		if err != nil {
+			return
+		}
+	} else {
+		// map header, size 1
+		// write "TargetFileSizeMB"
+		err = en.Append(0x81, 0xb0, 0x54, 0x61, 0x72, 0x67, 0x65, 0x74, 0x46, 0x69, 0x6c, 0x65, 0x53, 0x69, 0x7a, 0x65, 0x4d, 0x42)
+		if err != nil {
+			return
+		}
+		if z.IcebergCompaction.TargetFileSizeMB == nil {
+			err = en.WriteNil()
+			if err != nil {
+				return
+			}
+		} else {
+			err = en.WriteInt(*z.IcebergCompaction.TargetFileSizeMB)
+			if err != nil {
+				err = msgp.WrapError(err, "IcebergCompaction", "TargetFileSizeMB")
+				return
+			}
+		}
+	}
+	// write "IcebergUnreferencedFileRemoval"
+	err = en.Append(0xbe, 0x49, 0x63, 0x65, 0x62, 0x65, 0x72, 0x67, 0x55, 0x6e, 0x72, 0x65, 0x66, 0x65, 0x72, 0x65, 0x6e, 0x63, 0x65, 0x64, 0x46, 0x69, 0x6c, 0x65, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x61, 0x6c)
+	if err != nil {
+		return
+	}
+	if z.IcebergUnreferencedFileRemoval == nil {
+		err = en.WriteNil()
+		if err != nil {
+			return
+		}
+	} else {
+		err = z.IcebergUnreferencedFileRemoval.EncodeMsg(en)
+		if err != nil {
+			err = msgp.WrapError(err, "IcebergUnreferencedFileRemoval")
+			return
+		}
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z *TableMaintenanceSettings) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 1
+	// map header, size 3
 	// string "IcebergSnapshotManagement"
-	o = append(o, 0x81, 0xb9, 0x49, 0x63, 0x65, 0x62, 0x65, 0x72, 0x67, 0x53, 0x6e, 0x61, 0x70, 0x73, 0x68, 0x6f, 0x74, 0x4d, 0x61, 0x6e, 0x61, 0x67, 0x65, 0x6d, 0x65, 0x6e, 0x74)
+	o = append(o, 0x83, 0xb9, 0x49, 0x63, 0x65, 0x62, 0x65, 0x72, 0x67, 0x53, 0x6e, 0x61, 0x70, 0x73, 0x68, 0x6f, 0x74, 0x4d, 0x61, 0x6e, 0x61, 0x67, 0x65, 0x6d, 0x65, 0x6e, 0x74)
 	if z.IcebergSnapshotManagement == nil {
 		o = msgp.AppendNil(o)
 	} else {
 		o, err = z.IcebergSnapshotManagement.MarshalMsg(o)
 		if err != nil {
 			err = msgp.WrapError(err, "IcebergSnapshotManagement")
+			return
+		}
+	}
+	// string "IcebergCompaction"
+	o = append(o, 0xb1, 0x49, 0x63, 0x65, 0x62, 0x65, 0x72, 0x67, 0x43, 0x6f, 0x6d, 0x70, 0x61, 0x63, 0x74, 0x69, 0x6f, 0x6e)
+	if z.IcebergCompaction == nil {
+		o = msgp.AppendNil(o)
+	} else {
+		// map header, size 1
+		// string "TargetFileSizeMB"
+		o = append(o, 0x81, 0xb0, 0x54, 0x61, 0x72, 0x67, 0x65, 0x74, 0x46, 0x69, 0x6c, 0x65, 0x53, 0x69, 0x7a, 0x65, 0x4d, 0x42)
+		if z.IcebergCompaction.TargetFileSizeMB == nil {
+			o = msgp.AppendNil(o)
+		} else {
+			o = msgp.AppendInt(o, *z.IcebergCompaction.TargetFileSizeMB)
+		}
+	}
+	// string "IcebergUnreferencedFileRemoval"
+	o = append(o, 0xbe, 0x49, 0x63, 0x65, 0x62, 0x65, 0x72, 0x67, 0x55, 0x6e, 0x72, 0x65, 0x66, 0x65, 0x72, 0x65, 0x6e, 0x63, 0x65, 0x64, 0x46, 0x69, 0x6c, 0x65, 0x52, 0x65, 0x6d, 0x6f, 0x76, 0x61, 0x6c)
+	if z.IcebergUnreferencedFileRemoval == nil {
+		o = msgp.AppendNil(o)
+	} else {
+		o, err = z.IcebergUnreferencedFileRemoval.MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "IcebergUnreferencedFileRemoval")
 			return
 		}
 	}
@@ -1641,6 +2379,74 @@ func (z *TableMaintenanceSettings) UnmarshalMsg(bts []byte) (o []byte, err error
 					return
 				}
 			}
+		case "IcebergCompaction":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.IcebergCompaction = nil
+			} else {
+				if z.IcebergCompaction == nil {
+					z.IcebergCompaction = new(IcebergCompactionSettings)
+				}
+				var zb0002 uint32
+				zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "IcebergCompaction")
+					return
+				}
+				for zb0002 > 0 {
+					zb0002--
+					field, bts, err = msgp.ReadMapKeyZC(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "IcebergCompaction")
+						return
+					}
+					switch msgp.UnsafeString(field) {
+					case "TargetFileSizeMB":
+						if msgp.IsNil(bts) {
+							bts, err = msgp.ReadNilBytes(bts)
+							if err != nil {
+								return
+							}
+							z.IcebergCompaction.TargetFileSizeMB = nil
+						} else {
+							if z.IcebergCompaction.TargetFileSizeMB == nil {
+								z.IcebergCompaction.TargetFileSizeMB = new(int)
+							}
+							*z.IcebergCompaction.TargetFileSizeMB, bts, err = msgp.ReadIntBytes(bts)
+							if err != nil {
+								err = msgp.WrapError(err, "IcebergCompaction", "TargetFileSizeMB")
+								return
+							}
+						}
+					default:
+						bts, err = msgp.Skip(bts)
+						if err != nil {
+							err = msgp.WrapError(err, "IcebergCompaction")
+							return
+						}
+					}
+				}
+			}
+		case "IcebergUnreferencedFileRemoval":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.IcebergUnreferencedFileRemoval = nil
+			} else {
+				if z.IcebergUnreferencedFileRemoval == nil {
+					z.IcebergUnreferencedFileRemoval = new(IcebergUnreferencedFileRemovalSettings)
+				}
+				bts, err = z.IcebergUnreferencedFileRemoval.UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "IcebergUnreferencedFileRemoval")
+					return
+				}
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -1661,5 +2467,202 @@ func (z *TableMaintenanceSettings) Msgsize() (s int) {
 	} else {
 		s += z.IcebergSnapshotManagement.Msgsize()
 	}
+	s += 18
+	if z.IcebergCompaction == nil {
+		s += msgp.NilSize
+	} else {
+		s += 1 + 17
+		if z.IcebergCompaction.TargetFileSizeMB == nil {
+			s += msgp.NilSize
+		} else {
+			s += msgp.IntSize
+		}
+	}
+	s += 31
+	if z.IcebergUnreferencedFileRemoval == nil {
+		s += msgp.NilSize
+	} else {
+		s += z.IcebergUnreferencedFileRemoval.Msgsize()
+	}
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *WarehouseMaintenanceConfigurationValue) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "Settings":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "Settings")
+					return
+				}
+				z.Settings = nil
+			} else {
+				if z.Settings == nil {
+					z.Settings = new(TableMaintenanceSettings)
+				}
+				err = z.Settings.DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "Settings")
+					return
+				}
+			}
+		case "Status":
+			{
+				var zb0002 string
+				zb0002, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "Status")
+					return
+				}
+				z.Status = MaintenanceStatus(zb0002)
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *WarehouseMaintenanceConfigurationValue) EncodeMsg(en *msgp.Writer) (err error) {
+	// map header, size 2
+	// write "Settings"
+	err = en.Append(0x82, 0xa8, 0x53, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x73)
+	if err != nil {
+		return
+	}
+	if z.Settings == nil {
+		err = en.WriteNil()
+		if err != nil {
+			return
+		}
+	} else {
+		err = z.Settings.EncodeMsg(en)
+		if err != nil {
+			err = msgp.WrapError(err, "Settings")
+			return
+		}
+	}
+	// write "Status"
+	err = en.Append(0xa6, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteString(string(z.Status))
+	if err != nil {
+		err = msgp.WrapError(err, "Status")
+		return
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *WarehouseMaintenanceConfigurationValue) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// map header, size 2
+	// string "Settings"
+	o = append(o, 0x82, 0xa8, 0x53, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x73)
+	if z.Settings == nil {
+		o = msgp.AppendNil(o)
+	} else {
+		o, err = z.Settings.MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "Settings")
+			return
+		}
+	}
+	// string "Status"
+	o = append(o, 0xa6, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73)
+	o = msgp.AppendString(o, string(z.Status))
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *WarehouseMaintenanceConfigurationValue) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "Settings":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.Settings = nil
+			} else {
+				if z.Settings == nil {
+					z.Settings = new(TableMaintenanceSettings)
+				}
+				bts, err = z.Settings.UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Settings")
+					return
+				}
+			}
+		case "Status":
+			{
+				var zb0002 string
+				zb0002, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Status")
+					return
+				}
+				z.Status = MaintenanceStatus(zb0002)
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *WarehouseMaintenanceConfigurationValue) Msgsize() (s int) {
+	s = 1 + 9
+	if z.Settings == nil {
+		s += msgp.NilSize
+	} else {
+		s += z.Settings.Msgsize()
+	}
+	s += 7 + msgp.StringPrefixSize + len(string(z.Status))
 	return
 }

@@ -32,17 +32,29 @@ import (
 	"github.com/tinylib/msgp/msgp"
 )
 
-// APILogOpts represents the options for the APILogOpts
+// APILogOpts represents the options for fetching API logs.
+//
+// Wildcard syntax on Nodes / APIs / Buckets entries (case-insensitive):
+//
+//	"xyz"   → exact match
+//	"xyz*"  → prefix match
+//	"*xyz"  → suffix match
+//	"*xyz*" → contains match
+//	"*"     → matches anything
+//
+// Values within a single field OR-combine; across fields filters AND.
 type APILogOpts struct {
-	Node       string        `json:"node,omitempty"`
-	API        string        `json:"api,omitempty"`
-	Bucket     string        `json:"bucket,omitempty"`
-	Prefix     string        `json:"prefix,omitempty"`
-	StatusCode int           `json:"statusCode,omitempty"`
-	Interval   time.Duration `json:"interval,omitempty"`
-	Origin     log.Origin    `json:"origin,omitempty"`
-	Type       log.APIType   `json:"type,omitempty"`
-	MaxPerNode int           `json:"maxPerNode,omitempty"`
+	Nodes        []string      `json:"nodes,omitempty"`
+	APIs         []string      `json:"apis,omitempty"`
+	Buckets      []string      `json:"buckets,omitempty"`
+	Prefix       string        `json:"prefix,omitempty"`
+	StatusCodes  []int         `json:"statusCodes,omitempty"`
+	StatusRanges []string      `json:"statusRanges,omitempty"` // e.g. "2xx", "4xx", "5xx"
+	Interval     time.Duration `json:"interval,omitempty"`
+	Origins      []log.Origin  `json:"origins,omitempty"`
+	Types        []log.APIType `json:"types,omitempty"`
+	MaxPerNode   int           `json:"maxPerNode,omitempty"` // Deprecated
+	Limit        int           `json:"limit,omitempty"`
 }
 
 // GetAPILogs fetches the persisted API logs from MinIO

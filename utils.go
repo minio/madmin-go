@@ -190,6 +190,42 @@ func (t *TimedAction) Merge(other TimedAction) {
 	t.MaxTime = max(t.MaxTime, other.MaxTime)
 }
 
+// KMSAction contains per-operation KMS call statistics.
+type KMSAction struct {
+	Count      uint64  `json:"n,omitempty"`
+	AccTime    float64 `json:"t,omitempty"`
+	MinTime    float64 `json:"min,omitempty"`
+	MaxTime    float64 `json:"max,omitempty"`
+	ConnFails  uint64  `json:"cf,omitempty"`
+	RemoteErrs uint64  `json:"re,omitempty"`
+}
+
+// Avg returns the average time spent on the action.
+func (t KMSAction) Avg() time.Duration {
+	if t.Count == 0 {
+		return 0
+	}
+	return time.Duration(t.AccTime * float64(time.Second) / float64(t.Count))
+}
+
+// Add other to t.
+func (t *KMSAction) Add(other *KMSAction) {
+	if other == nil {
+		return
+	}
+	if t.Count == 0 {
+		t.MinTime = other.MinTime
+	}
+	if other.Count > 0 {
+		t.MinTime = min(t.MinTime, other.MinTime)
+	}
+	t.Count += other.Count
+	t.AccTime += other.AccTime
+	t.MaxTime = max(t.MaxTime, other.MaxTime)
+	t.ConnFails += other.ConnFails
+	t.RemoteErrs += other.RemoteErrs
+}
+
 // DiskAction contains a number of actions and their accumulated duration in nanoseconds.
 type DiskAction struct {
 	// Number of actions performed.

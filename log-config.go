@@ -63,13 +63,10 @@ const (
 	logKeySASLKrbPrincipal = "sasl_krb_principal"
 	logKeyName             = "name"
 
-	// Iceberg config keys
-	logKeyIcebergEnable         = "iceberg_enable"
-	logKeyIcebergWarehouse      = "iceberg_warehouse"
-	logKeyIcebergNamespace      = "iceberg_namespace"
-	logKeyIcebergTable          = "iceberg_table"
-	logKeyIcebergCommitInterval = "iceberg_commit_interval"
-	logKeyIcebergWriteInterval  = "iceberg_write_interval"
+	// Internal API recorder config keys
+	logKeyRetention           = "retention"
+	logKeyMaintenanceInterval = "maintenance_interval"
+	logKeyOrphanGracePeriod   = "orphan_grace_period"
 
 	// Queue config keys
 	logKeyDir          = "dir"
@@ -147,20 +144,12 @@ type InternalRecorder struct {
 	FlushInterval LogField `json:"flushInterval" yaml:"flushInterval"`
 }
 
-// IcebergConfig represents Iceberg export configuration for API logs
-type IcebergConfig struct {
-	Enable         LogField `json:"enable" yaml:"enable"`
-	Warehouse      LogField `json:"warehouse" yaml:"warehouse"`
-	Namespace      LogField `json:"namespace" yaml:"namespace"`
-	Table          LogField `json:"table" yaml:"table"`
-	CommitInterval LogField `json:"commitInterval" yaml:"commitInterval"`
-	WriteInterval  LogField `json:"writeInterval" yaml:"writeInterval"`
-}
-
 // InternalAPIRecorder represents internal recorder config for API logs
 type InternalAPIRecorder struct {
-	InternalRecorder `json:",inline" yaml:",inline"`
-	Iceberg          IcebergConfig `json:"iceberg" yaml:"iceberg"`
+	Enable              LogField `json:"enable" yaml:"enable"`
+	Retention           LogField `json:"retention" yaml:"retention"`
+	MaintenanceInterval LogField `json:"maintenanceInterval" yaml:"maintenanceInterval"`
+	OrphanGracePeriod   LogField `json:"orphanGracePeriod" yaml:"orphanGracePeriod"`
 }
 
 // InternalErrorRecorder represents internal recorder config for Error logs
@@ -290,23 +279,13 @@ func parseInternalRecorder(sc SubsysConfig, help Help) InternalRecorder {
 	}
 }
 
-// parseIcebergConfig parses SubsysConfig into IcebergConfig with descriptions from Help
-func parseIcebergConfig(sc SubsysConfig, help Help) IcebergConfig {
-	return IcebergConfig{
-		Enable:         getLogField(sc, help, logKeyIcebergEnable),
-		Warehouse:      getLogField(sc, help, logKeyIcebergWarehouse),
-		Namespace:      getLogField(sc, help, logKeyIcebergNamespace),
-		Table:          getLogField(sc, help, logKeyIcebergTable),
-		CommitInterval: getLogField(sc, help, logKeyIcebergCommitInterval),
-		WriteInterval:  getLogField(sc, help, logKeyIcebergWriteInterval),
-	}
-}
-
 // parseInternalAPIRecorder parses SubsysConfig into InternalAPIRecorder with descriptions from Help
 func parseInternalAPIRecorder(sc SubsysConfig, help Help) InternalAPIRecorder {
 	return InternalAPIRecorder{
-		InternalRecorder: parseInternalRecorder(sc, help),
-		Iceberg:          parseIcebergConfig(sc, help),
+		Enable:              getLogField(sc, help, logKeyEnable),
+		Retention:           getLogField(sc, help, logKeyRetention),
+		MaintenanceInterval: getLogField(sc, help, logKeyMaintenanceInterval),
+		OrphanGracePeriod:   getLogField(sc, help, logKeyOrphanGracePeriod),
 	}
 }
 
@@ -629,15 +608,15 @@ func buildInternalRecorderKV(cfg InternalRecorder, subSys string) string {
 func buildInternalAPIKV(cfg InternalAPIRecorder) string {
 	var kv kvBuilder
 	kv.add(logKeyEnable, cfg.Enable.Value)
-	kv.add(logKeyDriveLimit, cfg.DriveLimit.Value)
-	kv.add(logKeyFlushCount, cfg.FlushCount.Value)
-	kv.add(logKeyFlushInterval, cfg.FlushInterval.Value)
-	kv.add(logKeyIcebergEnable, cfg.Iceberg.Enable.Value)
-	kv.add(logKeyIcebergWarehouse, cfg.Iceberg.Warehouse.Value)
-	kv.add(logKeyIcebergNamespace, cfg.Iceberg.Namespace.Value)
-	kv.add(logKeyIcebergTable, cfg.Iceberg.Table.Value)
-	kv.add(logKeyIcebergCommitInterval, cfg.Iceberg.CommitInterval.Value)
-	kv.add(logKeyIcebergWriteInterval, cfg.Iceberg.WriteInterval.Value)
+	if cfg.Retention.Value != "" {
+		kv.add(logKeyRetention, cfg.Retention.Value)
+	}
+	if cfg.MaintenanceInterval.Value != "" {
+		kv.add(logKeyMaintenanceInterval, cfg.MaintenanceInterval.Value)
+	}
+	if cfg.OrphanGracePeriod.Value != "" {
+		kv.add(logKeyOrphanGracePeriod, cfg.OrphanGracePeriod.Value)
+	}
 	return LogAPIInternalSubSys + " " + kv.String()
 }
 
@@ -1157,16 +1136,9 @@ func (c LogRecorderAPIConfig) YAML() string {
 
 	sb.WriteString("internal:\n")
 	writeLogField(&sb, "  ", "enable", c.Internal.Enable)
-	writeLogField(&sb, "  ", "driveLimit", c.Internal.DriveLimit)
-	writeLogField(&sb, "  ", "flushCount", c.Internal.FlushCount)
-	writeLogField(&sb, "  ", "flushInterval", c.Internal.FlushInterval)
-	sb.WriteString("  iceberg:\n")
-	writeLogField(&sb, "    ", "enable", c.Internal.Iceberg.Enable)
-	writeLogField(&sb, "    ", "warehouse", c.Internal.Iceberg.Warehouse)
-	writeLogField(&sb, "    ", "namespace", c.Internal.Iceberg.Namespace)
-	writeLogField(&sb, "    ", "table", c.Internal.Iceberg.Table)
-	writeLogField(&sb, "    ", "commitInterval", c.Internal.Iceberg.CommitInterval)
-	writeLogField(&sb, "    ", "writeInterval", c.Internal.Iceberg.WriteInterval)
+	writeLogField(&sb, "  ", "retention", c.Internal.Retention)
+	writeLogField(&sb, "  ", "maintenanceInterval", c.Internal.MaintenanceInterval)
+	writeLogField(&sb, "  ", "orphanGracePeriod", c.Internal.OrphanGracePeriod)
 
 	writeExternalYAML(&sb, c.External)
 

@@ -20,6 +20,7 @@
 package madmin
 
 import (
+	"fmt"
 	"reflect"
 	"testing"
 	"time"
@@ -33,6 +34,9 @@ import (
 func TestScannerMetricsMerge(t *testing.T) {
 	now := time.Now()
 	later := now.Add(time.Hour)
+	yesterday := now.AddDate(0, 0, -1)
+	lastMonth := now.AddDate(0, -1, 0)
+	lastYear := now.AddDate(-1, 0, 0)
 
 	tests := []struct {
 		name   string
@@ -96,14 +100,169 @@ func TestScannerMetricsMerge(t *testing.T) {
 				ExcessivePrefixes: []string{"prefix2", "prefix3"},
 			},
 			verify: func(t *testing.T, result *ScannerMetrics) {
-				// Should be deduplicated and sorted
-				if len(result.ExcessivePrefixes) != 3 {
-					t.Errorf("ExcessivePrefixes length = %d, want 3", len(result.ExcessivePrefixes))
-				}
-				// Check sorted order
 				expected := []string{"prefix1", "prefix2", "prefix3"}
 				if !reflect.DeepEqual(result.ExcessivePrefixes, expected) {
 					t.Errorf("ExcessivePrefixes = %v, want %v", result.ExcessivePrefixes, expected)
+				}
+			},
+		},
+		{
+			name: "merge excessive version objects",
+			base: &ScannerMetrics{
+				ExcessiveVersionObjects: []string{"bucket1/obj1", "bucket1/obj2"},
+			},
+			other: &ScannerMetrics{
+				ExcessiveVersionObjects: []string{"bucket1/obj2", "bucket2/obj1"},
+			},
+			verify: func(t *testing.T, result *ScannerMetrics) {
+				expected := []string{"bucket1/obj1", "bucket1/obj2", "bucket2/obj1"}
+				if !reflect.DeepEqual(result.ExcessiveVersionObjects, expected) {
+					t.Errorf("ExcessiveVersionObjects = %v, want %v", result.ExcessiveVersionObjects, expected)
+				}
+				if result.DiscardedExcessEntries != 0 {
+					t.Errorf("DiscardedExcessEntries = %d, want 0", result.DiscardedExcessEntries)
+				}
+			},
+		},
+		{
+			name: "merge excess version objects cap at 100 entries",
+			base: func() *ScannerMetrics {
+				paths := make([]string, 80)
+				for i := range 80 {
+					paths[i] = fmt.Sprintf("prefix%03d", i)
+				}
+				return &ScannerMetrics{ExcessiveVersionObjects: paths}
+			}(),
+			other: func() *ScannerMetrics {
+				paths := make([]string, 60)
+				for i := range 60 {
+					paths[i] = fmt.Sprintf("prefix%03d", i+50) // 50–109, overlap at 50–79
+				}
+				return &ScannerMetrics{ExcessiveVersionObjects: paths}
+			}(),
+			verify: func(t *testing.T, result *ScannerMetrics) {
+				// 0–109 unique = 110 total; cap is 100, so 10 discarded
+				if len(result.ExcessiveVersionObjects) != 100 {
+					t.Errorf("ExcessiveVersionObjects length = %d, want 100", len(result.ExcessiveVersionObjects))
+				}
+				if result.DiscardedExcessEntries != 10 {
+					t.Errorf("DiscardedExcessEntries = %d, want 10", result.DiscardedExcessEntries)
+				}
+			},
+		},
+		{
+			name: "discarded excess entries accumulate across merges",
+			base: &ScannerMetrics{
+				DiscardedExcessEntries: 5,
+			},
+			other: &ScannerMetrics{
+				DiscardedExcessEntries: 3,
+			},
+			verify: func(t *testing.T, result *ScannerMetrics) {
+				if result.DiscardedExcessEntries != 8 {
+					t.Errorf("DiscardedExcessEntries = %d, want 8", result.DiscardedExcessEntries)
+				}
+			},
+		},
+		{
+			name: "merge queued for expiry",
+			base: &ScannerMetrics{
+				QueuedForExpiry: append([]ExpiryObject{{QueuedAt: now}, {QueuedAt: yesterday}}, make([]ExpiryObject, 25)...),
+			},
+			other: &ScannerMetrics{
+				QueuedForExpiry: []ExpiryObject{{QueuedAt: lastMonth}, {QueuedAt: lastYear}},
+			},
+			verify: func(t *testing.T, result *ScannerMetrics) {
+				if len(result.QueuedForExpiry) != 25 {
+					t.Errorf("QueuedForExpiry length = %d, want 25", len(result.QueuedForExpiry))
+				}
+				// Check sorted order of first 5
+				expectedFirstFive := []ExpiryObject{
+					{QueuedAt: now},
+					{QueuedAt: yesterday},
+					{QueuedAt: lastMonth},
+					{QueuedAt: lastYear},
+					{QueuedAt: time.Time{}},
+				}
+				if !reflect.DeepEqual(result.QueuedForExpiry[:5], expectedFirstFive) {
+					t.Errorf("QueuedForExpiry[:5] = %v, want %v", result.QueuedForExpiry[:5], expectedFirstFive)
+				}
+			},
+		},
+		{
+			name: "merge bucket lifetime ILM same bucket same action summed",
+			base: &ScannerMetrics{
+				BucketLifeTimeILM: map[string]*BucketILMStats{
+					"bucket-a": {Bucket: "bucket-a", ActionCounters: map[string]uint64{"DeleteAction": 100, "TransitionAction": 50}},
+				},
+			},
+			other: &ScannerMetrics{
+				BucketLifeTimeILM: map[string]*BucketILMStats{
+					"bucket-a": {Bucket: "bucket-a", ActionCounters: map[string]uint64{"DeleteAction": 200, "TransitionAction": 25}},
+				},
+			},
+			verify: func(t *testing.T, result *ScannerMetrics) {
+				expected := map[string]*BucketILMStats{
+					"bucket-a": {Bucket: "bucket-a", ActionCounters: map[string]uint64{"DeleteAction": 300, "TransitionAction": 75}},
+				}
+				if !reflect.DeepEqual(result.BucketLifeTimeILM, expected) {
+					t.Errorf("BucketLifeTimeILM = %v, want %v", result.BucketLifeTimeILM, expected)
+				}
+			},
+		},
+		{
+			name: "merge bucket lifetime ILM different buckets both appear",
+			base: &ScannerMetrics{
+				BucketLifeTimeILM: map[string]*BucketILMStats{
+					"bucket-a": {Bucket: "bucket-a", ActionCounters: map[string]uint64{"DeleteAction": 10}},
+				},
+			},
+			other: &ScannerMetrics{
+				BucketLifeTimeILM: map[string]*BucketILMStats{
+					"bucket-b": {Bucket: "bucket-b", ActionCounters: map[string]uint64{"TransitionAction": 20}},
+				},
+			},
+			verify: func(t *testing.T, result *ScannerMetrics) {
+				if len(result.BucketLifeTimeILM) != 2 {
+					t.Fatalf("BucketLifeTimeILM len = %d, want 2", len(result.BucketLifeTimeILM))
+				}
+				if got := result.BucketLifeTimeILM["bucket-a"].ActionCounters["DeleteAction"]; got != 10 {
+					t.Errorf("bucket-a DeleteAction = %d, want 10", got)
+				}
+				if got := result.BucketLifeTimeILM["bucket-b"].ActionCounters["TransitionAction"]; got != 20 {
+					t.Errorf("bucket-b TransitionAction = %d, want 20", got)
+				}
+			},
+		},
+		{
+			name: "merge bucket lifetime ILM nil on one side does not panic",
+			base: &ScannerMetrics{
+				BucketLifeTimeILM: map[string]*BucketILMStats{
+					"bucket-a": {Bucket: "bucket-a", ActionCounters: map[string]uint64{"DeleteAction": 5}},
+				},
+			},
+			other: &ScannerMetrics{
+				BucketLifeTimeILM: nil,
+			},
+			verify: func(t *testing.T, result *ScannerMetrics) {
+				if got := result.BucketLifeTimeILM["bucket-a"].ActionCounters["DeleteAction"]; got != 5 {
+					t.Errorf("bucket-a DeleteAction = %d, want 5", got)
+				}
+			},
+		},
+		{
+			name: "merge bucket lifetime ILM nil base populated by other",
+			base: &ScannerMetrics{
+				BucketLifeTimeILM: nil,
+			},
+			other: &ScannerMetrics{
+				BucketLifeTimeILM: map[string]*BucketILMStats{
+					"bucket-c": {Bucket: "bucket-c", ActionCounters: map[string]uint64{"DeleteVersionAction": 7}},
+				},
+			},
+			verify: func(t *testing.T, result *ScannerMetrics) {
+				if got := result.BucketLifeTimeILM["bucket-c"].ActionCounters["DeleteVersionAction"]; got != 7 {
+					t.Errorf("bucket-c DeleteVersionAction = %d, want 7", got)
 				}
 			},
 		},
@@ -3600,6 +3759,351 @@ func TestSMARTInfoMerge(t *testing.T) {
 				}
 				if result.NVMe.AvailableSpare != 90 {
 					t.Errorf("NVMe.AvailableSpare = %d, want 90", result.NVMe.AvailableSpare)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.base.Merge(tt.other)
+			tt.verify(t, tt.base)
+		})
+	}
+}
+
+func TestHealingMetricsMergeActiveSessions(t *testing.T) {
+	now := time.Now()
+	sessionA := HealSession{
+		Bucket:    "bucket-a",
+		Status:    "running",
+		StartTime: now,
+	}
+	sessionB := HealSession{
+		Bucket:    "bucket-b",
+		Status:    "running",
+		StartTime: now,
+	}
+	sessionAUpdated := HealSession{
+		Bucket:    "bucket-a",
+		Status:    "done",
+		StartTime: now,
+		EndTime:   now.Add(time.Minute),
+	}
+
+	tests := []struct {
+		name   string
+		base   *HealingMetrics
+		other  *HealingMetrics
+		verify func(t *testing.T, result *HealingMetrics)
+	}{
+		{
+			name:  "nil other is no-op",
+			base:  &HealingMetrics{ActiveSessions: map[string]HealSession{"tok-a": sessionA}},
+			other: nil,
+			verify: func(t *testing.T, result *HealingMetrics) {
+				if len(result.ActiveSessions) != 1 {
+					t.Fatalf("ActiveSessions len = %d, want 1", len(result.ActiveSessions))
+				}
+			},
+		},
+		{
+			name: "other into nil base map",
+			base: &HealingMetrics{},
+			other: &HealingMetrics{
+				ActiveSessions: map[string]HealSession{"tok-a": sessionA},
+			},
+			verify: func(t *testing.T, result *HealingMetrics) {
+				if len(result.ActiveSessions) != 1 {
+					t.Fatalf("ActiveSessions len = %d, want 1", len(result.ActiveSessions))
+				}
+				if result.ActiveSessions["tok-a"].Bucket != "bucket-a" {
+					t.Errorf("tok-a Bucket = %q, want bucket-a", result.ActiveSessions["tok-a"].Bucket)
+				}
+			},
+		},
+		{
+			name: "union of disjoint sessions",
+			base: &HealingMetrics{
+				ActiveSessions: map[string]HealSession{"tok-a": sessionA},
+			},
+			other: &HealingMetrics{
+				ActiveSessions: map[string]HealSession{"tok-b": sessionB},
+			},
+			verify: func(t *testing.T, result *HealingMetrics) {
+				if len(result.ActiveSessions) != 2 {
+					t.Fatalf("ActiveSessions len = %d, want 2", len(result.ActiveSessions))
+				}
+				if _, ok := result.ActiveSessions["tok-a"]; !ok {
+					t.Error("tok-a missing after merge")
+				}
+				if _, ok := result.ActiveSessions["tok-b"]; !ok {
+					t.Error("tok-b missing after merge")
+				}
+			},
+		},
+		{
+			name: "duplicate token overwrites with other",
+			base: &HealingMetrics{
+				ActiveSessions: map[string]HealSession{"tok-a": sessionA},
+			},
+			other: &HealingMetrics{
+				ActiveSessions: map[string]HealSession{"tok-a": sessionAUpdated},
+			},
+			verify: func(t *testing.T, result *HealingMetrics) {
+				if len(result.ActiveSessions) != 1 {
+					t.Fatalf("ActiveSessions len = %d, want 1", len(result.ActiveSessions))
+				}
+				if result.ActiveSessions["tok-a"].Status != "done" {
+					t.Errorf("tok-a Status = %q, want done", result.ActiveSessions["tok-a"].Status)
+				}
+			},
+		},
+		{
+			name: "both empty maps",
+			base: &HealingMetrics{
+				ActiveSessions: map[string]HealSession{},
+			},
+			other: &HealingMetrics{
+				ActiveSessions: map[string]HealSession{},
+			},
+			verify: func(t *testing.T, result *HealingMetrics) {
+				if len(result.ActiveSessions) != 0 {
+					t.Errorf("ActiveSessions len = %d, want 0", len(result.ActiveSessions))
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.base.Merge(tt.other)
+			tt.verify(t, tt.base)
+		})
+	}
+}
+
+func TestKMSActionAdd(t *testing.T) {
+	tests := []struct {
+		name   string
+		base   KMSAction
+		other  *KMSAction
+		verify func(t *testing.T, result KMSAction)
+	}{
+		{
+			name:  "nil other is no-op",
+			base:  KMSAction{Count: 5, AccTime: 1.0, MinTime: 0.1, MaxTime: 0.5},
+			other: nil,
+			verify: func(t *testing.T, r KMSAction) {
+				if r.Count != 5 {
+					t.Errorf("Count = %d, want 5", r.Count)
+				}
+			},
+		},
+		{
+			name:  "add to zero value",
+			base:  KMSAction{},
+			other: &KMSAction{Count: 3, AccTime: 0.9, MinTime: 0.2, MaxTime: 0.4, ConnFails: 1, RemoteErrs: 2},
+			verify: func(t *testing.T, r KMSAction) {
+				if r.Count != 3 {
+					t.Errorf("Count = %d, want 3", r.Count)
+				}
+				if r.MinTime != 0.2 {
+					t.Errorf("MinTime = %f, want 0.2", r.MinTime)
+				}
+				if r.ConnFails != 1 {
+					t.Errorf("ConnFails = %d, want 1", r.ConnFails)
+				}
+				if r.RemoteErrs != 2 {
+					t.Errorf("RemoteErrs = %d, want 2", r.RemoteErrs)
+				}
+			},
+		},
+		{
+			name:  "accumulate counts and errors",
+			base:  KMSAction{Count: 10, AccTime: 2.0, MinTime: 0.1, MaxTime: 0.5, ConnFails: 2, RemoteErrs: 1},
+			other: &KMSAction{Count: 5, AccTime: 1.5, MinTime: 0.05, MaxTime: 0.8, ConnFails: 1, RemoteErrs: 3},
+			verify: func(t *testing.T, r KMSAction) {
+				if r.Count != 15 {
+					t.Errorf("Count = %d, want 15", r.Count)
+				}
+				if r.AccTime != 3.5 {
+					t.Errorf("AccTime = %f, want 3.5", r.AccTime)
+				}
+				if r.MinTime != 0.05 {
+					t.Errorf("MinTime = %f, want 0.05", r.MinTime)
+				}
+				if r.MaxTime != 0.8 {
+					t.Errorf("MaxTime = %f, want 0.8", r.MaxTime)
+				}
+				if r.ConnFails != 3 {
+					t.Errorf("ConnFails = %d, want 3", r.ConnFails)
+				}
+				if r.RemoteErrs != 4 {
+					t.Errorf("RemoteErrs = %d, want 4", r.RemoteErrs)
+				}
+			},
+		},
+		{
+			name:  "min preserved when other is larger",
+			base:  KMSAction{Count: 1, MinTime: 0.01, MaxTime: 0.01},
+			other: &KMSAction{Count: 1, MinTime: 0.1, MaxTime: 0.1},
+			verify: func(t *testing.T, r KMSAction) {
+				if r.MinTime != 0.01 {
+					t.Errorf("MinTime = %f, want 0.01", r.MinTime)
+				}
+				if r.MaxTime != 0.1 {
+					t.Errorf("MaxTime = %f, want 0.1", r.MaxTime)
+				}
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.base.Add(tt.other)
+			tt.verify(t, tt.base)
+		})
+	}
+}
+
+func TestKMSActionAvg(t *testing.T) {
+	a := KMSAction{Count: 4, AccTime: 2.0}
+	if got := a.Avg(); got != 500*time.Millisecond {
+		t.Errorf("Avg() = %v, want 500ms", got)
+	}
+	zero := KMSAction{}
+	if got := zero.Avg(); got != 0 {
+		t.Errorf("Avg() on zero = %v, want 0", got)
+	}
+}
+
+func TestKMSRtMetricsMerge(t *testing.T) {
+	now := time.Now()
+	later := now.Add(time.Hour)
+
+	tests := []struct {
+		name   string
+		base   *KMSRtMetrics
+		other  *KMSRtMetrics
+		verify func(t *testing.T, result *KMSRtMetrics)
+	}{
+		{
+			name:  "nil other is no-op",
+			base:  &KMSRtMetrics{Nodes: 1, NodesOnline: 1, OnlineSecs: 60},
+			other: nil,
+			verify: func(t *testing.T, r *KMSRtMetrics) {
+				if r.Nodes != 1 {
+					t.Errorf("Nodes = %d, want 1", r.Nodes)
+				}
+			},
+		},
+		{
+			name:  "accumulate nodes and active ops",
+			base:  &KMSRtMetrics{Nodes: 1, ActiveOps: 3},
+			other: &KMSRtMetrics{Nodes: 1, ActiveOps: 2},
+			verify: func(t *testing.T, r *KMSRtMetrics) {
+				if r.Nodes != 2 {
+					t.Errorf("Nodes = %d, want 2", r.Nodes)
+				}
+				if r.ActiveOps != 5 {
+					t.Errorf("ActiveOps = %d, want 5", r.ActiveOps)
+				}
+			},
+		},
+		{
+			name:  "nodes online accumulates",
+			base:  &KMSRtMetrics{Nodes: 1, NodesOnline: 0},
+			other: &KMSRtMetrics{Nodes: 1, NodesOnline: 1},
+			verify: func(t *testing.T, r *KMSRtMetrics) {
+				if r.NodesOnline != 1 {
+					t.Errorf("NodesOnline = %d, want 1", r.NodesOnline)
+				}
+				if r.Nodes != 2 {
+					t.Errorf("Nodes = %d, want 2", r.Nodes)
+				}
+			},
+		},
+		{
+			name:  "online secs takes max",
+			base:  &KMSRtMetrics{OnlineSecs: 30},
+			other: &KMSRtMetrics{OnlineSecs: 120},
+			verify: func(t *testing.T, r *KMSRtMetrics) {
+				if r.OnlineSecs != 120 {
+					t.Errorf("OnlineSecs = %f, want 120", r.OnlineSecs)
+				}
+			},
+		},
+		{
+			name:  "last success takes latest",
+			base:  &KMSRtMetrics{LastSuccess: &now},
+			other: &KMSRtMetrics{LastSuccess: &later},
+			verify: func(t *testing.T, r *KMSRtMetrics) {
+				if r.LastSuccess == nil || !r.LastSuccess.Equal(later) {
+					t.Errorf("LastSuccess = %v, want %v", r.LastSuccess, later)
+				}
+			},
+		},
+		{
+			name:  "last success nil other preserved",
+			base:  &KMSRtMetrics{LastSuccess: &now},
+			other: &KMSRtMetrics{},
+			verify: func(t *testing.T, r *KMSRtMetrics) {
+				if r.LastSuccess == nil || !r.LastSuccess.Equal(now) {
+					t.Errorf("LastSuccess should be preserved")
+				}
+			},
+		},
+		{
+			name:  "collected at takes latest",
+			base:  &KMSRtMetrics{CollectedAt: now},
+			other: &KMSRtMetrics{CollectedAt: later},
+			verify: func(t *testing.T, r *KMSRtMetrics) {
+				if !r.CollectedAt.Equal(later) {
+					t.Errorf("CollectedAt = %v, want %v", r.CollectedAt, later)
+				}
+			},
+		},
+		{
+			name: "merge last minute maps",
+			base: &KMSRtMetrics{
+				LastMinute: map[string]KMSAction{
+					"Decrypt": {Count: 10, AccTime: 1.0, MinTime: 0.05, MaxTime: 0.2},
+				},
+			},
+			other: &KMSRtMetrics{
+				LastMinute: map[string]KMSAction{
+					"Decrypt":     {Count: 5, AccTime: 0.5, MinTime: 0.03, MaxTime: 0.3},
+					"GenerateKey": {Count: 2, AccTime: 0.1, MinTime: 0.04, MaxTime: 0.06},
+				},
+			},
+			verify: func(t *testing.T, r *KMSRtMetrics) {
+				if len(r.LastMinute) != 2 {
+					t.Fatalf("LastMinute len = %d, want 2", len(r.LastMinute))
+				}
+				dec := r.LastMinute["Decrypt"]
+				if dec.Count != 15 {
+					t.Errorf("Decrypt.Count = %d, want 15", dec.Count)
+				}
+				if dec.MinTime != 0.03 {
+					t.Errorf("Decrypt.MinTime = %f, want 0.03", dec.MinTime)
+				}
+				if dec.MaxTime != 0.3 {
+					t.Errorf("Decrypt.MaxTime = %f, want 0.3", dec.MaxTime)
+				}
+				gen := r.LastMinute["GenerateKey"]
+				if gen.Count != 2 {
+					t.Errorf("GenerateKey.Count = %d, want 2", gen.Count)
+				}
+			},
+		},
+		{
+			name:  "merge into nil base maps",
+			base:  &KMSRtMetrics{},
+			other: &KMSRtMetrics{LastMinute: map[string]KMSAction{"MAC": {Count: 1}}},
+			verify: func(t *testing.T, r *KMSRtMetrics) {
+				if r.LastMinute == nil || r.LastMinute["MAC"].Count != 1 {
+					t.Error("LastMinute should be populated from other")
 				}
 			},
 		},

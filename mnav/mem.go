@@ -603,16 +603,22 @@ func (node *MemLastDayNode) GetLeafData() map[string]string {
 		idx++
 		startTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
 		endTime := startTime.Add(time.Duration(node.segmented.Interval) * time.Second)
-		name := fmt.Sprintf("%02d: %s->%s", idx, startTime.Local().Format("15:04"), endTime.Local().Format("15:04"))
+		name := fmt.Sprintf("%02d: %s->%sZ", idx, startTime.UTC().Format("15:04"), endTime.UTC().Format("15:04"))
 
-		avgUsed := seg.Used / uint64(seg.N)
-		avgFree := seg.Free / uint64(seg.N)
-		total := avgUsed + avgFree
+		n := uint64(seg.N)
+		perNodeUsed := seg.Used / n
+		perNodeFree := seg.Free / n
+		perNodeTotal := perNodeUsed + perNodeFree
 		pct := float64(0)
-		if total > 0 {
-			pct = float64(avgUsed) / float64(total) * 100
+		if perNodeTotal > 0 {
+			pct = float64(perNodeUsed) / float64(perNodeTotal) * 100
 		}
-		data[name] = fmt.Sprintf("Used: %s (%.1f%%), Free: %s", formatMemoryBytes(avgUsed), pct, formatMemoryBytes(avgFree))
+
+		data[name] = fmt.Sprintf("%s, %d nodes, Used: %s (%.1f%%), Free: %s/node",
+			startTime.Local().Format("15:04"),
+			seg.N,
+			formatMemoryBytes(perNodeUsed), pct,
+			formatMemoryBytes(perNodeFree))
 	}
 	return data
 }
