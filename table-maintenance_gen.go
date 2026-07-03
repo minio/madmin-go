@@ -638,6 +638,24 @@ func (z *IcebergCompactionSettings) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
+		case "Interval":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "Interval")
+					return
+				}
+				z.Interval = nil
+			} else {
+				if z.Interval == nil {
+					z.Interval = new(int)
+				}
+				*z.Interval, err = dc.ReadInt()
+				if err != nil {
+					err = msgp.WrapError(err, "Interval")
+					return
+				}
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -651,9 +669,9 @@ func (z *IcebergCompactionSettings) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *IcebergCompactionSettings) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 1
+	// map header, size 2
 	// write "TargetFileSizeMB"
-	err = en.Append(0x81, 0xb0, 0x54, 0x61, 0x72, 0x67, 0x65, 0x74, 0x46, 0x69, 0x6c, 0x65, 0x53, 0x69, 0x7a, 0x65, 0x4d, 0x42)
+	err = en.Append(0x82, 0xb0, 0x54, 0x61, 0x72, 0x67, 0x65, 0x74, 0x46, 0x69, 0x6c, 0x65, 0x53, 0x69, 0x7a, 0x65, 0x4d, 0x42)
 	if err != nil {
 		return
 	}
@@ -669,19 +687,43 @@ func (z *IcebergCompactionSettings) EncodeMsg(en *msgp.Writer) (err error) {
 			return
 		}
 	}
+	// write "Interval"
+	err = en.Append(0xa8, 0x49, 0x6e, 0x74, 0x65, 0x72, 0x76, 0x61, 0x6c)
+	if err != nil {
+		return
+	}
+	if z.Interval == nil {
+		err = en.WriteNil()
+		if err != nil {
+			return
+		}
+	} else {
+		err = en.WriteInt(*z.Interval)
+		if err != nil {
+			err = msgp.WrapError(err, "Interval")
+			return
+		}
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z *IcebergCompactionSettings) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 1
+	// map header, size 2
 	// string "TargetFileSizeMB"
-	o = append(o, 0x81, 0xb0, 0x54, 0x61, 0x72, 0x67, 0x65, 0x74, 0x46, 0x69, 0x6c, 0x65, 0x53, 0x69, 0x7a, 0x65, 0x4d, 0x42)
+	o = append(o, 0x82, 0xb0, 0x54, 0x61, 0x72, 0x67, 0x65, 0x74, 0x46, 0x69, 0x6c, 0x65, 0x53, 0x69, 0x7a, 0x65, 0x4d, 0x42)
 	if z.TargetFileSizeMB == nil {
 		o = msgp.AppendNil(o)
 	} else {
 		o = msgp.AppendInt(o, *z.TargetFileSizeMB)
+	}
+	// string "Interval"
+	o = append(o, 0xa8, 0x49, 0x6e, 0x74, 0x65, 0x72, 0x76, 0x61, 0x6c)
+	if z.Interval == nil {
+		o = msgp.AppendNil(o)
+	} else {
+		o = msgp.AppendInt(o, *z.Interval)
 	}
 	return
 }
@@ -721,6 +763,23 @@ func (z *IcebergCompactionSettings) UnmarshalMsg(bts []byte) (o []byte, err erro
 					return
 				}
 			}
+		case "Interval":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.Interval = nil
+			} else {
+				if z.Interval == nil {
+					z.Interval = new(int)
+				}
+				*z.Interval, bts, err = msgp.ReadIntBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Interval")
+					return
+				}
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -737,6 +796,12 @@ func (z *IcebergCompactionSettings) UnmarshalMsg(bts []byte) (o []byte, err erro
 func (z *IcebergCompactionSettings) Msgsize() (s int) {
 	s = 1 + 17
 	if z.TargetFileSizeMB == nil {
+		s += msgp.NilSize
+	} else {
+		s += msgp.IntSize
+	}
+	s += 9
+	if z.Interval == nil {
 		s += msgp.NilSize
 	} else {
 		s += msgp.IntSize
@@ -798,6 +863,24 @@ func (z *IcebergSnapshotManagementSettings) DecodeMsg(dc *msgp.Reader) (err erro
 					return
 				}
 			}
+		case "Interval":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "Interval")
+					return
+				}
+				z.Interval = nil
+			} else {
+				if z.Interval == nil {
+					z.Interval = new(int)
+				}
+				*z.Interval, err = dc.ReadInt()
+				if err != nil {
+					err = msgp.WrapError(err, "Interval")
+					return
+				}
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -811,9 +894,9 @@ func (z *IcebergSnapshotManagementSettings) DecodeMsg(dc *msgp.Reader) (err erro
 
 // EncodeMsg implements msgp.Encodable
 func (z *IcebergSnapshotManagementSettings) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 2
+	// map header, size 3
 	// write "MaxSnapshotAgeHours"
-	err = en.Append(0x82, 0xb3, 0x4d, 0x61, 0x78, 0x53, 0x6e, 0x61, 0x70, 0x73, 0x68, 0x6f, 0x74, 0x41, 0x67, 0x65, 0x48, 0x6f, 0x75, 0x72, 0x73)
+	err = en.Append(0x83, 0xb3, 0x4d, 0x61, 0x78, 0x53, 0x6e, 0x61, 0x70, 0x73, 0x68, 0x6f, 0x74, 0x41, 0x67, 0x65, 0x48, 0x6f, 0x75, 0x72, 0x73)
 	if err != nil {
 		return
 	}
@@ -846,15 +929,32 @@ func (z *IcebergSnapshotManagementSettings) EncodeMsg(en *msgp.Writer) (err erro
 			return
 		}
 	}
+	// write "Interval"
+	err = en.Append(0xa8, 0x49, 0x6e, 0x74, 0x65, 0x72, 0x76, 0x61, 0x6c)
+	if err != nil {
+		return
+	}
+	if z.Interval == nil {
+		err = en.WriteNil()
+		if err != nil {
+			return
+		}
+	} else {
+		err = en.WriteInt(*z.Interval)
+		if err != nil {
+			err = msgp.WrapError(err, "Interval")
+			return
+		}
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z *IcebergSnapshotManagementSettings) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 2
+	// map header, size 3
 	// string "MaxSnapshotAgeHours"
-	o = append(o, 0x82, 0xb3, 0x4d, 0x61, 0x78, 0x53, 0x6e, 0x61, 0x70, 0x73, 0x68, 0x6f, 0x74, 0x41, 0x67, 0x65, 0x48, 0x6f, 0x75, 0x72, 0x73)
+	o = append(o, 0x83, 0xb3, 0x4d, 0x61, 0x78, 0x53, 0x6e, 0x61, 0x70, 0x73, 0x68, 0x6f, 0x74, 0x41, 0x67, 0x65, 0x48, 0x6f, 0x75, 0x72, 0x73)
 	if z.MaxSnapshotAgeHours == nil {
 		o = msgp.AppendNil(o)
 	} else {
@@ -866,6 +966,13 @@ func (z *IcebergSnapshotManagementSettings) MarshalMsg(b []byte) (o []byte, err 
 		o = msgp.AppendNil(o)
 	} else {
 		o = msgp.AppendInt(o, *z.MinSnapshotsToKeep)
+	}
+	// string "Interval"
+	o = append(o, 0xa8, 0x49, 0x6e, 0x74, 0x65, 0x72, 0x76, 0x61, 0x6c)
+	if z.Interval == nil {
+		o = msgp.AppendNil(o)
+	} else {
+		o = msgp.AppendInt(o, *z.Interval)
 	}
 	return
 }
@@ -922,6 +1029,23 @@ func (z *IcebergSnapshotManagementSettings) UnmarshalMsg(bts []byte) (o []byte, 
 					return
 				}
 			}
+		case "Interval":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.Interval = nil
+			} else {
+				if z.Interval == nil {
+					z.Interval = new(int)
+				}
+				*z.Interval, bts, err = msgp.ReadIntBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Interval")
+					return
+				}
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -944,6 +1068,12 @@ func (z *IcebergSnapshotManagementSettings) Msgsize() (s int) {
 	}
 	s += 19
 	if z.MinSnapshotsToKeep == nil {
+		s += msgp.NilSize
+	} else {
+		s += msgp.IntSize
+	}
+	s += 9
+	if z.Interval == nil {
 		s += msgp.NilSize
 	} else {
 		s += msgp.IntSize
@@ -1005,6 +1135,24 @@ func (z *IcebergUnreferencedFileRemovalSettings) DecodeMsg(dc *msgp.Reader) (err
 					return
 				}
 			}
+		case "Interval":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "Interval")
+					return
+				}
+				z.Interval = nil
+			} else {
+				if z.Interval == nil {
+					z.Interval = new(int)
+				}
+				*z.Interval, err = dc.ReadInt()
+				if err != nil {
+					err = msgp.WrapError(err, "Interval")
+					return
+				}
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -1018,9 +1166,9 @@ func (z *IcebergUnreferencedFileRemovalSettings) DecodeMsg(dc *msgp.Reader) (err
 
 // EncodeMsg implements msgp.Encodable
 func (z *IcebergUnreferencedFileRemovalSettings) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 2
+	// map header, size 3
 	// write "UnreferencedDays"
-	err = en.Append(0x82, 0xb0, 0x55, 0x6e, 0x72, 0x65, 0x66, 0x65, 0x72, 0x65, 0x6e, 0x63, 0x65, 0x64, 0x44, 0x61, 0x79, 0x73)
+	err = en.Append(0x83, 0xb0, 0x55, 0x6e, 0x72, 0x65, 0x66, 0x65, 0x72, 0x65, 0x6e, 0x63, 0x65, 0x64, 0x44, 0x61, 0x79, 0x73)
 	if err != nil {
 		return
 	}
@@ -1053,15 +1201,32 @@ func (z *IcebergUnreferencedFileRemovalSettings) EncodeMsg(en *msgp.Writer) (err
 			return
 		}
 	}
+	// write "Interval"
+	err = en.Append(0xa8, 0x49, 0x6e, 0x74, 0x65, 0x72, 0x76, 0x61, 0x6c)
+	if err != nil {
+		return
+	}
+	if z.Interval == nil {
+		err = en.WriteNil()
+		if err != nil {
+			return
+		}
+	} else {
+		err = en.WriteInt(*z.Interval)
+		if err != nil {
+			err = msgp.WrapError(err, "Interval")
+			return
+		}
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z *IcebergUnreferencedFileRemovalSettings) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 2
+	// map header, size 3
 	// string "UnreferencedDays"
-	o = append(o, 0x82, 0xb0, 0x55, 0x6e, 0x72, 0x65, 0x66, 0x65, 0x72, 0x65, 0x6e, 0x63, 0x65, 0x64, 0x44, 0x61, 0x79, 0x73)
+	o = append(o, 0x83, 0xb0, 0x55, 0x6e, 0x72, 0x65, 0x66, 0x65, 0x72, 0x65, 0x6e, 0x63, 0x65, 0x64, 0x44, 0x61, 0x79, 0x73)
 	if z.UnreferencedDays == nil {
 		o = msgp.AppendNil(o)
 	} else {
@@ -1073,6 +1238,13 @@ func (z *IcebergUnreferencedFileRemovalSettings) MarshalMsg(b []byte) (o []byte,
 		o = msgp.AppendNil(o)
 	} else {
 		o = msgp.AppendInt(o, *z.NoncurrentDays)
+	}
+	// string "Interval"
+	o = append(o, 0xa8, 0x49, 0x6e, 0x74, 0x65, 0x72, 0x76, 0x61, 0x6c)
+	if z.Interval == nil {
+		o = msgp.AppendNil(o)
+	} else {
+		o = msgp.AppendInt(o, *z.Interval)
 	}
 	return
 }
@@ -1129,6 +1301,23 @@ func (z *IcebergUnreferencedFileRemovalSettings) UnmarshalMsg(bts []byte) (o []b
 					return
 				}
 			}
+		case "Interval":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.Interval = nil
+			} else {
+				if z.Interval == nil {
+					z.Interval = new(int)
+				}
+				*z.Interval, bts, err = msgp.ReadIntBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Interval")
+					return
+				}
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -1151,6 +1340,12 @@ func (z *IcebergUnreferencedFileRemovalSettings) Msgsize() (s int) {
 	}
 	s += 15
 	if z.NoncurrentDays == nil {
+		s += msgp.NilSize
+	} else {
+		s += msgp.IntSize
+	}
+	s += 9
+	if z.Interval == nil {
 		s += msgp.NilSize
 	} else {
 		s += msgp.IntSize
@@ -2161,45 +2356,10 @@ func (z *TableMaintenanceSettings) DecodeMsg(dc *msgp.Reader) (err error) {
 				if z.IcebergCompaction == nil {
 					z.IcebergCompaction = new(IcebergCompactionSettings)
 				}
-				var zb0002 uint32
-				zb0002, err = dc.ReadMapHeader()
+				err = z.IcebergCompaction.DecodeMsg(dc)
 				if err != nil {
 					err = msgp.WrapError(err, "IcebergCompaction")
 					return
-				}
-				for zb0002 > 0 {
-					zb0002--
-					field, err = dc.ReadMapKeyPtr()
-					if err != nil {
-						err = msgp.WrapError(err, "IcebergCompaction")
-						return
-					}
-					switch msgp.UnsafeString(field) {
-					case "TargetFileSizeMB":
-						if dc.IsNil() {
-							err = dc.ReadNil()
-							if err != nil {
-								err = msgp.WrapError(err, "IcebergCompaction", "TargetFileSizeMB")
-								return
-							}
-							z.IcebergCompaction.TargetFileSizeMB = nil
-						} else {
-							if z.IcebergCompaction.TargetFileSizeMB == nil {
-								z.IcebergCompaction.TargetFileSizeMB = new(int)
-							}
-							*z.IcebergCompaction.TargetFileSizeMB, err = dc.ReadInt()
-							if err != nil {
-								err = msgp.WrapError(err, "IcebergCompaction", "TargetFileSizeMB")
-								return
-							}
-						}
-					default:
-						err = dc.Skip()
-						if err != nil {
-							err = msgp.WrapError(err, "IcebergCompaction")
-							return
-						}
-					}
 				}
 			}
 		case "IcebergUnreferencedFileRemoval":
@@ -2262,23 +2422,10 @@ func (z *TableMaintenanceSettings) EncodeMsg(en *msgp.Writer) (err error) {
 			return
 		}
 	} else {
-		// map header, size 1
-		// write "TargetFileSizeMB"
-		err = en.Append(0x81, 0xb0, 0x54, 0x61, 0x72, 0x67, 0x65, 0x74, 0x46, 0x69, 0x6c, 0x65, 0x53, 0x69, 0x7a, 0x65, 0x4d, 0x42)
+		err = z.IcebergCompaction.EncodeMsg(en)
 		if err != nil {
+			err = msgp.WrapError(err, "IcebergCompaction")
 			return
-		}
-		if z.IcebergCompaction.TargetFileSizeMB == nil {
-			err = en.WriteNil()
-			if err != nil {
-				return
-			}
-		} else {
-			err = en.WriteInt(*z.IcebergCompaction.TargetFileSizeMB)
-			if err != nil {
-				err = msgp.WrapError(err, "IcebergCompaction", "TargetFileSizeMB")
-				return
-			}
 		}
 	}
 	// write "IcebergUnreferencedFileRemoval"
@@ -2321,13 +2468,10 @@ func (z *TableMaintenanceSettings) MarshalMsg(b []byte) (o []byte, err error) {
 	if z.IcebergCompaction == nil {
 		o = msgp.AppendNil(o)
 	} else {
-		// map header, size 1
-		// string "TargetFileSizeMB"
-		o = append(o, 0x81, 0xb0, 0x54, 0x61, 0x72, 0x67, 0x65, 0x74, 0x46, 0x69, 0x6c, 0x65, 0x53, 0x69, 0x7a, 0x65, 0x4d, 0x42)
-		if z.IcebergCompaction.TargetFileSizeMB == nil {
-			o = msgp.AppendNil(o)
-		} else {
-			o = msgp.AppendInt(o, *z.IcebergCompaction.TargetFileSizeMB)
+		o, err = z.IcebergCompaction.MarshalMsg(o)
+		if err != nil {
+			err = msgp.WrapError(err, "IcebergCompaction")
+			return
 		}
 	}
 	// string "IcebergUnreferencedFileRemoval"
@@ -2390,44 +2534,10 @@ func (z *TableMaintenanceSettings) UnmarshalMsg(bts []byte) (o []byte, err error
 				if z.IcebergCompaction == nil {
 					z.IcebergCompaction = new(IcebergCompactionSettings)
 				}
-				var zb0002 uint32
-				zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
+				bts, err = z.IcebergCompaction.UnmarshalMsg(bts)
 				if err != nil {
 					err = msgp.WrapError(err, "IcebergCompaction")
 					return
-				}
-				for zb0002 > 0 {
-					zb0002--
-					field, bts, err = msgp.ReadMapKeyZC(bts)
-					if err != nil {
-						err = msgp.WrapError(err, "IcebergCompaction")
-						return
-					}
-					switch msgp.UnsafeString(field) {
-					case "TargetFileSizeMB":
-						if msgp.IsNil(bts) {
-							bts, err = msgp.ReadNilBytes(bts)
-							if err != nil {
-								return
-							}
-							z.IcebergCompaction.TargetFileSizeMB = nil
-						} else {
-							if z.IcebergCompaction.TargetFileSizeMB == nil {
-								z.IcebergCompaction.TargetFileSizeMB = new(int)
-							}
-							*z.IcebergCompaction.TargetFileSizeMB, bts, err = msgp.ReadIntBytes(bts)
-							if err != nil {
-								err = msgp.WrapError(err, "IcebergCompaction", "TargetFileSizeMB")
-								return
-							}
-						}
-					default:
-						bts, err = msgp.Skip(bts)
-						if err != nil {
-							err = msgp.WrapError(err, "IcebergCompaction")
-							return
-						}
-					}
 				}
 			}
 		case "IcebergUnreferencedFileRemoval":
@@ -2471,12 +2581,7 @@ func (z *TableMaintenanceSettings) Msgsize() (s int) {
 	if z.IcebergCompaction == nil {
 		s += msgp.NilSize
 	} else {
-		s += 1 + 17
-		if z.IcebergCompaction.TargetFileSizeMB == nil {
-			s += msgp.NilSize
-		} else {
-			s += msgp.IntSize
-		}
+		s += z.IcebergCompaction.Msgsize()
 	}
 	s += 31
 	if z.IcebergUnreferencedFileRemoval == nil {

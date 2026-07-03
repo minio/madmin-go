@@ -46,12 +46,18 @@ type IcebergSnapshotManagementSettings struct {
 	// MinSnapshotsToKeep specifies the minimum number of snapshots to retain.
 	// Must be at least 1 if specified.
 	MinSnapshotsToKeep *int `json:"minSnapshotsToKeep,omitempty"`
+	// Interval overrides how often this runs, in minutes. Nil inherits: table
+	// falls back to warehouse, warehouse falls back to the server default.
+	Interval *int `json:"interval,omitempty"`
 }
 
 // IcebergCompactionSettings contains settings for Iceberg table compaction.
 type IcebergCompactionSettings struct {
 	// TargetFileSizeMB is the target file size in MB for compacted files.
 	TargetFileSizeMB *int `json:"targetFileSizeMB,omitempty"`
+	// Interval overrides how often this runs, in minutes. Nil inherits: table
+	// falls back to warehouse, warehouse falls back to the server default.
+	Interval *int `json:"interval,omitempty"`
 }
 
 // IcebergUnreferencedFileRemovalSettings contains settings for Iceberg unreferenced file removal.
@@ -60,6 +66,9 @@ type IcebergCompactionSettings struct {
 type IcebergUnreferencedFileRemovalSettings struct {
 	UnreferencedDays *int `json:"unreferencedDays,omitempty"`
 	NoncurrentDays   *int `json:"noncurrentDays,omitempty"`
+	// Interval overrides how often this runs, in minutes. Nil inherits: table
+	// falls back to warehouse, warehouse falls back to the server default.
+	Interval *int `json:"interval,omitempty"`
 }
 
 // TableMaintenanceSettings is a union type containing maintenance settings.
