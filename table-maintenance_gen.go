@@ -1476,55 +1476,10 @@ func (z *PutTableMaintenanceConfigurationRequest) DecodeMsg(dc *msgp.Reader) (er
 		}
 		switch msgp.UnsafeString(field) {
 		case "Value":
-			var zb0002 uint32
-			zb0002, err = dc.ReadMapHeader()
+			err = z.Value.DecodeMsg(dc)
 			if err != nil {
 				err = msgp.WrapError(err, "Value")
 				return
-			}
-			for zb0002 > 0 {
-				zb0002--
-				field, err = dc.ReadMapKeyPtr()
-				if err != nil {
-					err = msgp.WrapError(err, "Value")
-					return
-				}
-				switch msgp.UnsafeString(field) {
-				case "Settings":
-					if dc.IsNil() {
-						err = dc.ReadNil()
-						if err != nil {
-							err = msgp.WrapError(err, "Value", "Settings")
-							return
-						}
-						z.Value.Settings = nil
-					} else {
-						if z.Value.Settings == nil {
-							z.Value.Settings = new(TableMaintenanceSettings)
-						}
-						err = z.Value.Settings.DecodeMsg(dc)
-						if err != nil {
-							err = msgp.WrapError(err, "Value", "Settings")
-							return
-						}
-					}
-				case "Status":
-					{
-						var zb0003 string
-						zb0003, err = dc.ReadString()
-						if err != nil {
-							err = msgp.WrapError(err, "Value", "Status")
-							return
-						}
-						z.Value.Status = MaintenanceStatus(zb0003)
-					}
-				default:
-					err = dc.Skip()
-					if err != nil {
-						err = msgp.WrapError(err, "Value")
-						return
-					}
-				}
 			}
 		default:
 			err = dc.Skip()
@@ -1545,32 +1500,9 @@ func (z *PutTableMaintenanceConfigurationRequest) EncodeMsg(en *msgp.Writer) (er
 	if err != nil {
 		return
 	}
-	// map header, size 2
-	// write "Settings"
-	err = en.Append(0x82, 0xa8, 0x53, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x73)
+	err = z.Value.EncodeMsg(en)
 	if err != nil {
-		return
-	}
-	if z.Value.Settings == nil {
-		err = en.WriteNil()
-		if err != nil {
-			return
-		}
-	} else {
-		err = z.Value.Settings.EncodeMsg(en)
-		if err != nil {
-			err = msgp.WrapError(err, "Value", "Settings")
-			return
-		}
-	}
-	// write "Status"
-	err = en.Append(0xa6, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73)
-	if err != nil {
-		return
-	}
-	err = en.WriteString(string(z.Value.Status))
-	if err != nil {
-		err = msgp.WrapError(err, "Value", "Status")
+		err = msgp.WrapError(err, "Value")
 		return
 	}
 	return
@@ -1582,21 +1514,11 @@ func (z *PutTableMaintenanceConfigurationRequest) MarshalMsg(b []byte) (o []byte
 	// map header, size 1
 	// string "Value"
 	o = append(o, 0x81, 0xa5, 0x56, 0x61, 0x6c, 0x75, 0x65)
-	// map header, size 2
-	// string "Settings"
-	o = append(o, 0x82, 0xa8, 0x53, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x73)
-	if z.Value.Settings == nil {
-		o = msgp.AppendNil(o)
-	} else {
-		o, err = z.Value.Settings.MarshalMsg(o)
-		if err != nil {
-			err = msgp.WrapError(err, "Value", "Settings")
-			return
-		}
+	o, err = z.Value.MarshalMsg(o)
+	if err != nil {
+		err = msgp.WrapError(err, "Value")
+		return
 	}
-	// string "Status"
-	o = append(o, 0xa6, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73)
-	o = msgp.AppendString(o, string(z.Value.Status))
 	return
 }
 
@@ -1619,54 +1541,10 @@ func (z *PutTableMaintenanceConfigurationRequest) UnmarshalMsg(bts []byte) (o []
 		}
 		switch msgp.UnsafeString(field) {
 		case "Value":
-			var zb0002 uint32
-			zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
+			bts, err = z.Value.UnmarshalMsg(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Value")
 				return
-			}
-			for zb0002 > 0 {
-				zb0002--
-				field, bts, err = msgp.ReadMapKeyZC(bts)
-				if err != nil {
-					err = msgp.WrapError(err, "Value")
-					return
-				}
-				switch msgp.UnsafeString(field) {
-				case "Settings":
-					if msgp.IsNil(bts) {
-						bts, err = msgp.ReadNilBytes(bts)
-						if err != nil {
-							return
-						}
-						z.Value.Settings = nil
-					} else {
-						if z.Value.Settings == nil {
-							z.Value.Settings = new(TableMaintenanceSettings)
-						}
-						bts, err = z.Value.Settings.UnmarshalMsg(bts)
-						if err != nil {
-							err = msgp.WrapError(err, "Value", "Settings")
-							return
-						}
-					}
-				case "Status":
-					{
-						var zb0003 string
-						zb0003, bts, err = msgp.ReadStringBytes(bts)
-						if err != nil {
-							err = msgp.WrapError(err, "Value", "Status")
-							return
-						}
-						z.Value.Status = MaintenanceStatus(zb0003)
-					}
-				default:
-					bts, err = msgp.Skip(bts)
-					if err != nil {
-						err = msgp.WrapError(err, "Value")
-						return
-					}
-				}
 			}
 		default:
 			bts, err = msgp.Skip(bts)
@@ -1682,13 +1560,7 @@ func (z *PutTableMaintenanceConfigurationRequest) UnmarshalMsg(bts []byte) (o []
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *PutTableMaintenanceConfigurationRequest) Msgsize() (s int) {
-	s = 1 + 6 + 1 + 9
-	if z.Value.Settings == nil {
-		s += msgp.NilSize
-	} else {
-		s += z.Value.Settings.Msgsize()
-	}
-	s += 7 + msgp.StringPrefixSize + len(string(z.Value.Status))
+	s = 1 + 6 + z.Value.Msgsize()
 	return
 }
 
@@ -1973,6 +1845,12 @@ func (z *TableMaintenanceConfigurationValue) DecodeMsg(dc *msgp.Reader) (err err
 				}
 				z.Status = MaintenanceStatus(zb0002)
 			}
+		case "Override":
+			z.Override, err = dc.ReadBool()
+			if err != nil {
+				err = msgp.WrapError(err, "Override")
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -1986,9 +1864,9 @@ func (z *TableMaintenanceConfigurationValue) DecodeMsg(dc *msgp.Reader) (err err
 
 // EncodeMsg implements msgp.Encodable
 func (z *TableMaintenanceConfigurationValue) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 2
+	// map header, size 3
 	// write "Settings"
-	err = en.Append(0x82, 0xa8, 0x53, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x73)
+	err = en.Append(0x83, 0xa8, 0x53, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x73)
 	if err != nil {
 		return
 	}
@@ -2014,15 +1892,25 @@ func (z *TableMaintenanceConfigurationValue) EncodeMsg(en *msgp.Writer) (err err
 		err = msgp.WrapError(err, "Status")
 		return
 	}
+	// write "Override"
+	err = en.Append(0xa8, 0x4f, 0x76, 0x65, 0x72, 0x72, 0x69, 0x64, 0x65)
+	if err != nil {
+		return
+	}
+	err = en.WriteBool(z.Override)
+	if err != nil {
+		err = msgp.WrapError(err, "Override")
+		return
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z *TableMaintenanceConfigurationValue) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 2
+	// map header, size 3
 	// string "Settings"
-	o = append(o, 0x82, 0xa8, 0x53, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x73)
+	o = append(o, 0x83, 0xa8, 0x53, 0x65, 0x74, 0x74, 0x69, 0x6e, 0x67, 0x73)
 	if z.Settings == nil {
 		o = msgp.AppendNil(o)
 	} else {
@@ -2035,6 +1923,9 @@ func (z *TableMaintenanceConfigurationValue) MarshalMsg(b []byte) (o []byte, err
 	// string "Status"
 	o = append(o, 0xa6, 0x53, 0x74, 0x61, 0x74, 0x75, 0x73)
 	o = msgp.AppendString(o, string(z.Status))
+	// string "Override"
+	o = append(o, 0xa8, 0x4f, 0x76, 0x65, 0x72, 0x72, 0x69, 0x64, 0x65)
+	o = msgp.AppendBool(o, z.Override)
 	return
 }
 
@@ -2083,6 +1974,12 @@ func (z *TableMaintenanceConfigurationValue) UnmarshalMsg(bts []byte) (o []byte,
 				}
 				z.Status = MaintenanceStatus(zb0002)
 			}
+		case "Override":
+			z.Override, bts, err = msgp.ReadBoolBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Override")
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -2103,7 +2000,7 @@ func (z *TableMaintenanceConfigurationValue) Msgsize() (s int) {
 	} else {
 		s += z.Settings.Msgsize()
 	}
-	s += 7 + msgp.StringPrefixSize + len(string(z.Status))
+	s += 7 + msgp.StringPrefixSize + len(string(z.Status)) + 9 + msgp.BoolSize
 	return
 }
 

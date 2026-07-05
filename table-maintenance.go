@@ -83,6 +83,9 @@ type TableMaintenanceSettings struct {
 type TableMaintenanceConfigurationValue struct {
 	Settings *TableMaintenanceSettings `json:"settings,omitempty"`
 	Status   MaintenanceStatus         `json:"status"`
+	// Override is true if Settings/Status came from the table's own
+	// maintenance override, false if inherited from the warehouse default.
+	Override bool `json:"override"`
 }
 
 // PutTableMaintenanceConfigurationRequest is the request body for PutTableMaintenanceConfiguration.
