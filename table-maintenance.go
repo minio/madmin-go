@@ -48,6 +48,7 @@ type IcebergSnapshotManagementSettings struct {
 	MinSnapshotsToKeep *int `json:"minSnapshotsToKeep,omitempty"`
 	// Interval overrides how often this runs, in minutes. Nil inherits: table
 	// falls back to warehouse, warehouse falls back to the server default.
+	// Must be at least 1 if specified.
 	Interval *int `json:"interval,omitempty"`
 }
 
@@ -57,6 +58,7 @@ type IcebergCompactionSettings struct {
 	TargetFileSizeMB *int `json:"targetFileSizeMB,omitempty"`
 	// Interval overrides how often this runs, in minutes. Nil inherits: table
 	// falls back to warehouse, warehouse falls back to the server default.
+	// Must be at least 1 if specified.
 	Interval *int `json:"interval,omitempty"`
 }
 
@@ -68,6 +70,7 @@ type IcebergUnreferencedFileRemovalSettings struct {
 	NoncurrentDays   *int `json:"noncurrentDays,omitempty"`
 	// Interval overrides how often this runs, in minutes. Nil inherits: table
 	// falls back to warehouse, warehouse falls back to the server default.
+	// Must be at least 1 if specified.
 	Interval *int `json:"interval,omitempty"`
 }
 
