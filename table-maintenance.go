@@ -19,22 +19,11 @@
 
 package madmin
 
-//go:generate go tool msgp -d clearomitted -d "timezone utc" -file $GOFILE
-
 // Table maintenance type constants
 const (
 	MaintenanceTypeIcebergSnapshotManagement      = "icebergSnapshotManagement"
 	MaintenanceTypeIcebergCompaction              = "icebergCompaction"
 	MaintenanceTypeIcebergUnreferencedFileRemoval = "icebergUnreferencedFileRemoval"
-)
-
-// MaintenanceStatus represents the status of a table maintenance configuration.
-type MaintenanceStatus string
-
-// Table maintenance status constants
-const (
-	MaintenanceStatusEnabled  MaintenanceStatus = "enabled"
-	MaintenanceStatusDisabled MaintenanceStatus = "disabled"
 )
 
 // IcebergSnapshotManagementSettings contains settings for Iceberg snapshot management.
@@ -46,9 +35,9 @@ type IcebergSnapshotManagementSettings struct {
 	// MinSnapshotsToKeep specifies the minimum number of snapshots to retain.
 	// Must be at least 1 if specified.
 	MinSnapshotsToKeep *int `json:"minSnapshotsToKeep,omitempty"`
-	// Interval overrides how often this runs, in minutes. Nil inherits: table
-	// falls back to warehouse, warehouse falls back to the server default.
-	// Must be at least 1 if specified.
+	// Interval overrides how often this runs, in minutes.
+	// Inherits: table -> warehouse -> server if nil.
+	// Must be >= 1.
 	Interval *int `json:"interval,omitempty"`
 }
 
@@ -56,9 +45,9 @@ type IcebergSnapshotManagementSettings struct {
 type IcebergCompactionSettings struct {
 	// TargetFileSizeMB is the target file size in MB for compacted files.
 	TargetFileSizeMB *int `json:"targetFileSizeMB,omitempty"`
-	// Interval overrides how often this runs, in minutes. Nil inherits: table
-	// falls back to warehouse, warehouse falls back to the server default.
-	// Must be at least 1 if specified.
+	// Interval overrides how often this runs, in minutes.
+	// Inherits: table -> warehouse -> server if nil.
+	// Must be >= 1.
 	Interval *int `json:"interval,omitempty"`
 }
 
@@ -68,9 +57,9 @@ type IcebergCompactionSettings struct {
 type IcebergUnreferencedFileRemovalSettings struct {
 	UnreferencedDays *int `json:"unreferencedDays,omitempty"`
 	NoncurrentDays   *int `json:"noncurrentDays,omitempty"`
-	// Interval overrides how often this runs, in minutes. Nil inherits: table
-	// falls back to warehouse, warehouse falls back to the server default.
-	// Must be at least 1 if specified.
+	// Interval overrides how often this runs, in minutes.
+	// Inherits: table -> warehouse -> server if nil.
+	// Must be >= 1.
 	Interval *int `json:"interval,omitempty"`
 }
 
@@ -86,7 +75,7 @@ type TableMaintenanceSettings struct {
 type TableMaintenanceConfigurationValue struct {
 	Settings *TableMaintenanceSettings `json:"settings,omitempty"`
 	Status   MaintenanceStatus         `json:"status"`
-	// Override is true if Settings/Status came from the table's own
+	// Override is true if Settings+Status came from the table's own
 	// maintenance override, false if inherited from the warehouse default.
 	Override bool `json:"override"`
 }
