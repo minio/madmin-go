@@ -350,6 +350,104 @@ func TestReplaceKeys(t *testing.T) {
 	}
 }
 
+func TestSetMultiplePrivateKeys(t *testing.T) {
+	priv1, err := rsa.GenerateKey(crand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	priv2, err := rsa.GenerateKey(crand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Write each test stream twice: once encrypted under priv1's key and
+	// once under priv2's key. AddKeyEncrypted switches the key for all
+	// following streams.
+	var buf bytes.Buffer
+	w := NewWriter(&buf)
+	for _, pub := range []*rsa.PublicKey{&priv1.PublicKey, &priv2.PublicKey} {
+		if err := w.AddKeyEncrypted(pub); err != nil {
+			t.Fatal(err)
+		}
+		for name, value := range testStreams {
+			st, err := w.AddEncryptedStream(name, []byte(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := io.Copy(st, bytes.NewBuffer(value)); err != nil {
+				t.Fatal(err)
+			}
+			if err := st.Close(); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	wantStreams := 2 * len(testStreams)
+	encoded := buf.Bytes()
+
+	readAll := func(t *testing.T, setup func(r *Reader)) error {
+		t.Helper()
+		r, err := NewReader(bytes.NewBuffer(encoded))
+		if err != nil {
+			t.Fatal(err)
+		}
+		setup(r)
+		n := 0
+		for {
+			st, err := r.NextStream()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				return err
+			}
+			want, ok := testStreams[st.Name]
+			if !ok {
+				t.Fatalf("unexpected stream name %q", st.Name)
+			}
+			got, err := io.ReadAll(st)
+			if err != nil {
+				return err
+			}
+			if !bytes.Equal(got, want) {
+				t.Errorf("stream %d (%s): content mismatch (len %d,%d)", n, st.Name, len(got), len(want))
+			}
+			n++
+		}
+		if n != wantStreams {
+			t.Errorf("want %d streams, got %d", wantStreams, n)
+		}
+		return nil
+	}
+
+	// Both keys supplied in a single variadic call.
+	t.Run("Variadic", func(t *testing.T) {
+		if err := readAll(t, func(r *Reader) { r.SetPrivateKey(priv1, priv2) }); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	// Repeated calls must accumulate keys, not override the previous one.
+	t.Run("Appended", func(t *testing.T) {
+		if err := readAll(t, func(r *Reader) {
+			r.SetPrivateKey(priv1)
+			r.SetPrivateKey(priv2)
+		}); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	// Sanity check: a single key cannot decrypt streams under the other key.
+	t.Run("SingleKeyInsufficient", func(t *testing.T) {
+		if err := readAll(t, func(r *Reader) { r.SetPrivateKey(priv1) }); err == nil {
+			t.Fatal("expected failure reading streams encrypted under the second key")
+		}
+	})
+}
+
 func TestError(t *testing.T) {
 	var buf bytes.Buffer
 	w := NewWriter(&buf)
@@ -437,6 +535,76 @@ func TestStreamReturnNonDecryptable(t *testing.T) {
 		err = st.Skip()
 		if err != nil {
 			t.Fatalf("stream %d: %v", gotStreams, err)
+		}
+		gotStreams++
+	}
+	if gotStreams != wantStreams {
+		t.Errorf("want %d streams, got %d", wantStreams, gotStreams)
+	}
+}
+
+func TestStreamRoundtripCompressed(t *testing.T) {
+	var buf bytes.Buffer
+	w := NewWriter(&buf)
+	w.WithCompression()
+	if err := w.AddKeyPlain(); err != nil {
+		t.Fatal(err)
+	}
+
+	wantStreams := 0
+	for name, value := range testStreams {
+		for _, enc := range []bool{true, false} {
+			var st io.WriteCloser
+			var err error
+			if enc {
+				st, err = w.AddEncryptedStream(name, []byte(name))
+			} else {
+				st, err = w.AddUnencryptedStream(name, []byte(name))
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err = io.Copy(st, bytes.NewBuffer(value)); err != nil {
+				t.Fatal(err)
+			}
+			if err = st.Close(); err != nil {
+				t.Fatal(err)
+			}
+			wantStreams++
+		}
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Read back...
+	r, err := NewReader(&buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var gotStreams int
+	for {
+		st, err := r.NextStream()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("stream %d: %v", gotStreams, err)
+		}
+		want, ok := testStreams[st.Name]
+		if !ok {
+			t.Fatal("unexpected stream name", st.Name)
+		}
+		if !bytes.Equal(st.Extra, []byte(st.Name)) {
+			t.Fatal("unexpected stream extra:", st.Extra)
+		}
+		got, err := io.ReadAll(st)
+		if err != nil {
+			t.Fatalf("stream %d (%s): %v", gotStreams, st.Name, err)
+		}
+		if !bytes.Equal(got, want) {
+			t.Errorf("stream %d (%s): content mismatch (len %d,%d)", gotStreams, st.Name, len(got), len(want))
 		}
 		gotStreams++
 	}

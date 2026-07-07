@@ -16,11 +16,13 @@ func _() {
 	_ = x[blockEOS-6]
 	_ = x[blockEOF-7]
 	_ = x[blockError-8]
+	_ = x[blockPlainCompressedStream-9]
+	_ = x[blockEncCompressedStream-10]
 }
 
-const _blockID_name = "PlainKeyEncryptedKeyEncStreamPlainStreamDatablockEOSEOFError"
+const _blockID_name = "PlainKeyEncryptedKeyEncStreamPlainStreamDatablockEOSEOFErrorPlainCompressedStreamEncCompressedStream"
 
-var _blockID_index = [...]uint8{0, 8, 20, 29, 40, 49, 52, 55, 60}
+var _blockID_index = [...]uint8{0, 8, 20, 29, 40, 49, 52, 55, 60, 81, 100}
 
 func (i blockID) String() string {
 	idx := int(i) - 1

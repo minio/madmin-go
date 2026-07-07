@@ -28,12 +28,15 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"hash"
 	"io"
 	"runtime"
 
 	"github.com/cespare/xxhash/v2"
+	"github.com/minio/minlz"
 	"github.com/secure-io/sio-go"
 	"github.com/tinylib/msgp/msgp"
+	"github.com/zeebo/xxh3"
 )
 
 type Reader struct {
@@ -44,6 +47,7 @@ type Reader struct {
 	inStream      bool
 	key           *[32]byte
 	private       *rsa.PrivateKey
+	privates      []*rsa.PrivateKey
 	privateFn     func(key *rsa.PublicKey) *rsa.PrivateKey
 	skipEncrypted bool
 	returnNonDec  bool
@@ -68,11 +72,18 @@ func NewReader(r io.Reader) (*Reader, error) {
 	return &Reader{mr: msgp.NewReader(r), majorV: ver[0], minorV: ver[1]}, nil
 }
 
-// SetPrivateKey will set the private key to allow stream decryption.
+// SetPrivateKey will set the private key(s) to allow stream decryption.
 // This overrides any function set by PrivateKeyProvider.
-func (r *Reader) SetPrivateKey(k *rsa.PrivateKey) {
-	r.privateFn = nil
-	r.private = k
+func (r *Reader) SetPrivateKey(keys ...*rsa.PrivateKey) {
+	r.privates = append(r.privates, keys...)
+	r.privateFn = func(key *rsa.PublicKey) *rsa.PrivateKey {
+		for _, k := range r.privates {
+			if k.PublicKey.Equal(key) {
+				return k
+			}
+		}
+		return nil
+	}
 }
 
 // PrivateKeyProvider will ask for a private key matching the public key.
@@ -81,7 +92,7 @@ func (r *Reader) SetPrivateKey(k *rsa.PrivateKey) {
 // This overrides any key set by SetPrivateKey.
 func (r *Reader) PrivateKeyProvider(fn func(key *rsa.PublicKey) *rsa.PrivateKey) {
 	r.privateFn = fn
-	r.private = nil
+	r.privates = nil
 }
 
 // SkipEncrypted will skip encrypted streams if no private key has been set.
@@ -210,7 +221,7 @@ func (r *Reader) NextStream() (*Stream, error) {
 			}
 			r.key = (*[32]byte)(key)
 
-		case blockPlainStream, blockEncStream:
+		case blockPlainStream, blockEncStream, blockPlainCompressedStream, blockEncCompressedStream:
 			// Read metadata
 			name, block, err := msgp.ReadStringBytes(block)
 			if err != nil {
@@ -228,11 +239,15 @@ func (r *Reader) NextStream() (*Stream, error) {
 			if !checksum.valid() {
 				return nil, r.setErr(fmt.Errorf("unknown checksum type %d", checksum))
 			}
-
 			// Return plaintext stream
-			if id == blockPlainStream {
+			if id == blockPlainStream || id == blockPlainCompressedStream {
+				sr := r.newStreamReader(checksum)
+				reader := io.Reader(sr)
+				if id == blockPlainCompressedStream {
+					reader = &drainReader{up: minlz.NewReader(sr), sr: sr}
+				}
 				return &Stream{
-					Reader: r.newStreamReader(checksum),
+					Reader: reader,
 					Name:   name,
 					Extra:  extra,
 					parent: r,
@@ -271,7 +286,10 @@ func (r *Reader) NextStream() (*Stream, error) {
 				return nil, r.setErr(fmt.Errorf("unexpected nonce length: %d", len(nonce)))
 			}
 
-			encr := stream.DecryptReader(r.newStreamReader(checksum), nonce, nil)
+			encr := io.Reader(stream.DecryptReader(r.newStreamReader(checksum), nonce, nil))
+			if id == blockEncCompressedStream {
+				encr = minlz.NewReader(encr)
+			}
 			return &Stream{
 				SentEncrypted: true,
 				Reader:        encr,
@@ -360,16 +378,31 @@ func (r *Reader) setErr(err error) error {
 
 type streamReader struct {
 	up    *Reader
-	h     xxhash.Digest
+	h     hash.Hash
 	buf   bytes.Buffer
 	tmp   []byte
 	isEOF bool
 	check checksumType
 }
+type zeroHasher struct{}
+
+func (z *zeroHasher) Write(b []byte) (int, error) { return 0, nil }
+func (z *zeroHasher) Sum(b []byte) []byte         { return b }
+func (z *zeroHasher) Reset()                      {}
+func (z *zeroHasher) Size() int                   { return 0 }
+func (z *zeroHasher) BlockSize() int              { return 0 }
 
 // newStreamReader creates a stream reader that can be read to get all data blocks.
 func (r *Reader) newStreamReader(ct checksumType) *streamReader {
 	sr := &streamReader{up: r, check: ct}
+	switch ct {
+	case checksumTypeXxhash:
+		sr.h = xxhash.New()
+	case checksumTypeXxhash3:
+		sr.h = xxh3.New()
+	default:
+		sr.h = &zeroHasher{}
+	}
 	sr.h.Reset()
 	r.inStream = true
 	return sr
@@ -424,9 +457,7 @@ func (r *streamReader) Read(b []byte) (int, error) {
 			}
 
 			// Write to buffer and checksum
-			if r.check == checksumTypeXxhash {
-				r.h.Write(buf)
-			}
+			r.h.Write(buf)
 			r.tmp = buf
 			r.buf.Write(buf)
 		case blockEOS:
@@ -436,7 +467,7 @@ func (r *streamReader) Read(b []byte) (int, error) {
 				return 0, r.up.setErr(err)
 			}
 			switch r.check {
-			case checksumTypeXxhash:
+			case checksumTypeXxhash, checksumTypeXxhash3:
 				got := r.h.Sum(nil)
 				if !bytes.Equal(hash, got) {
 					return 0, r.up.setErr(fmt.Errorf("checksum mismatch, want %s, got %s", hex.EncodeToString(hash), hex.EncodeToString(got)))
@@ -465,4 +496,22 @@ func (r *streamReader) Read(b []byte) (int, error) {
 			}
 		}
 	}
+}
+
+// drainReader wraps a decompressor reading from sr. The decompressor stops at
+// its own EOF marker without consuming the stream's trailing EOS/checksum
+// block, so on EOF we drain sr to force checksum verification and reset inStream.
+type drainReader struct {
+	up io.Reader
+	sr *streamReader
+}
+
+func (d *drainReader) Read(b []byte) (int, error) {
+	n, err := d.up.Read(b)
+	if err == io.EOF && !d.sr.isEOF {
+		if _, derr := io.Copy(io.Discard, d.sr); derr != nil {
+			return n, derr
+		}
+	}
+	return n, err
 }

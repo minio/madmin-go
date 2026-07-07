@@ -10,12 +10,13 @@ func _() {
 	var x [1]struct{}
 	_ = x[checksumTypeNone-0]
 	_ = x[checksumTypeXxhash-1]
-	_ = x[checksumTypeUnknown-2]
+	_ = x[checksumTypeXxhash3-2]
+	_ = x[checksumTypeUnknown-3]
 }
 
-const _checksumType_name = "NoneXxhashUnknown"
+const _checksumType_name = "NoneXxhashXxhash3Unknown"
 
-var _checksumType_index = [...]uint8{0, 4, 10, 17}
+var _checksumType_index = [...]uint8{0, 4, 10, 17, 24}
 
 func (i checksumType) String() string {
 	idx := int(i) - 0
