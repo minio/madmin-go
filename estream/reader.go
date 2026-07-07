@@ -386,7 +386,7 @@ type streamReader struct {
 }
 type zeroHasher struct{}
 
-func (z *zeroHasher) Write(b []byte) (int, error) { return 0, nil }
+func (z *zeroHasher) Write(b []byte) (int, error) { return len(b), nil }
 func (z *zeroHasher) Sum(b []byte) []byte         { return b }
 func (z *zeroHasher) Reset()                      {}
 func (z *zeroHasher) Size() int                   { return 0 }
