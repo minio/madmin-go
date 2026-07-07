@@ -154,7 +154,14 @@ func (adm *AdminClient) StorageInfo(ctx context.Context) (StorageInfo, error) {
 // - total objects in a bucket
 // - object size histogram per bucket
 type BucketUsageInfo struct {
-	Size                    uint64 `json:"size"`
+	Size uint64 `json:"size"`
+	// On-disk size of compressed objects only; omitted when zero. The
+	// compression ratio for compressed objects is CompressedActualSize/CompressedSize.
+	CompressedSize uint64 `json:"compressedSize,omitempty"`
+	// Logical (pre-compression) size of compressed objects only; omitted when zero.
+	CompressedActualSize uint64 `json:"compressedActualSize,omitempty"`
+	// Number of object versions stored compressed; omitted when zero
+	CompressedVersionsCount uint64 `json:"compressedVersionsCount,omitempty"`
 	ReplicationPendingSize  uint64 `json:"objectsPendingReplicationTotalSize"`
 	ReplicationFailedSize   uint64 `json:"objectsFailedReplicationTotalSize"`
 	ReplicatedSize          uint64 `json:"objectsReplicatedTotalSize"`
@@ -187,6 +194,15 @@ type DataUsageInfo struct {
 
 	// Objects total size across all buckets
 	ObjectsTotalSize uint64 `json:"objectsTotalSize"`
+
+	// Total on-disk size of compressed objects only across all buckets; omitted when zero
+	ObjectsTotalCompressedSize uint64 `json:"objectsTotalCompressedSize,omitempty"`
+
+	// Total logical (pre-compression) size of compressed objects only across all buckets; omitted when zero
+	ObjectsTotalCompressedActualSize uint64 `json:"objectsTotalCompressedActualSize,omitempty"`
+
+	// Object versions stored compressed across all buckets; omitted when zero
+	ObjectsTotalCompressedVersions uint64 `json:"objectsTotalCompressedVersions,omitempty"`
 
 	// Total Size for objects that have not yet been replicated
 	ReplicationPendingSize uint64 `json:"objectsPendingReplicationTotalSize"`
