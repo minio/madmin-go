@@ -23,6 +23,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/url"
@@ -91,6 +92,9 @@ func (adm *AdminClient) GetBucketCompression(ctx context.Context, bucket string)
 
 // SetBucketCompression sets the per-bucket compression configuration.
 func (adm *AdminClient) SetBucketCompression(ctx context.Context, bucket string, cfg *BucketCompressionConfig) error {
+	if cfg == nil {
+		return errors.New("bucket compression configuration cannot be nil")
+	}
 	data, err := json.Marshal(cfg)
 	if err != nil {
 		return err
