@@ -3858,6 +3858,12 @@ func (z *CacheStats) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "Used")
 				return
 			}
+		case "entries":
+			z.Entries, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "Entries")
+				return
+			}
 		case "hits":
 			z.Hits, err = dc.ReadInt64()
 			if err != nil {
@@ -3901,9 +3907,9 @@ func (z *CacheStats) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *CacheStats) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 8
+	// map header, size 9
 	// write "n"
-	err = en.Append(0x88, 0xa1, 0x6e)
+	err = en.Append(0x89, 0xa1, 0x6e)
 	if err != nil {
 		return
 	}
@@ -3930,6 +3936,16 @@ func (z *CacheStats) EncodeMsg(en *msgp.Writer) (err error) {
 	err = en.WriteInt64(z.Used)
 	if err != nil {
 		err = msgp.WrapError(err, "Used")
+		return
+	}
+	// write "entries"
+	err = en.Append(0xa7, 0x65, 0x6e, 0x74, 0x72, 0x69, 0x65, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt64(z.Entries)
+	if err != nil {
+		err = msgp.WrapError(err, "Entries")
 		return
 	}
 	// write "hits"
@@ -3988,9 +4004,9 @@ func (z *CacheStats) EncodeMsg(en *msgp.Writer) (err error) {
 // MarshalMsg implements msgp.Marshaler
 func (z *CacheStats) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 8
+	// map header, size 9
 	// string "n"
-	o = append(o, 0x88, 0xa1, 0x6e)
+	o = append(o, 0x89, 0xa1, 0x6e)
 	o = msgp.AppendInt(o, z.N)
 	// string "cap"
 	o = append(o, 0xa3, 0x63, 0x61, 0x70)
@@ -3998,6 +4014,9 @@ func (z *CacheStats) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "used"
 	o = append(o, 0xa4, 0x75, 0x73, 0x65, 0x64)
 	o = msgp.AppendInt64(o, z.Used)
+	// string "entries"
+	o = append(o, 0xa7, 0x65, 0x6e, 0x74, 0x72, 0x69, 0x65, 0x73)
+	o = msgp.AppendInt64(o, z.Entries)
 	// string "hits"
 	o = append(o, 0xa4, 0x68, 0x69, 0x74, 0x73)
 	o = msgp.AppendInt64(o, z.Hits)
@@ -4052,6 +4071,12 @@ func (z *CacheStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "Used")
 				return
 			}
+		case "entries":
+			z.Entries, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Entries")
+				return
+			}
 		case "hits":
 			z.Hits, bts, err = msgp.ReadInt64Bytes(bts)
 			if err != nil {
@@ -4096,7 +4121,7 @@ func (z *CacheStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *CacheStats) Msgsize() (s int) {
-	s = 1 + 2 + msgp.IntSize + 4 + msgp.Int64Size + 5 + msgp.Int64Size + 5 + msgp.Int64Size + 7 + msgp.Int64Size + 8 + msgp.Int64Size + 10 + msgp.Int64Size + 11 + msgp.Int64Size
+	s = 1 + 2 + msgp.IntSize + 4 + msgp.Int64Size + 5 + msgp.Int64Size + 8 + msgp.Int64Size + 5 + msgp.Int64Size + 7 + msgp.Int64Size + 8 + msgp.Int64Size + 10 + msgp.Int64Size + 11 + msgp.Int64Size
 	return
 }
 
