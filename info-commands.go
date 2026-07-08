@@ -560,6 +560,7 @@ type CacheStats struct {
 	N          int   `json:"n"`
 	Capacity   int64 `json:"cap"`
 	Used       int64 `json:"used"`
+	Entries    int64 `json:"entries"`
 	Hits       int64 `json:"hits"`
 	Misses     int64 `json:"misses"`
 	DelHits    int64 `json:"delHits"`
@@ -578,6 +579,7 @@ func (c *CacheStats) Merge(other *CacheStats) {
 	c.N += other.N
 	c.Capacity += other.Capacity
 	c.Used += other.Used
+	c.Entries += other.Entries
 	c.Hits += other.Hits
 	c.Misses += other.Misses
 	c.DelHits += other.DelHits
