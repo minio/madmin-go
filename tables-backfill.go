@@ -42,7 +42,7 @@ type BackfillResult struct {
 	Namespaces int      `json:"namespaces"`
 	Tables     int      `json:"tables"`
 	Views      int      `json:"views"`
-	Functions  int      `json:"functions,omitempty"`
+	Functions  int      `json:"functions"`
 	Warnings   []string `json:"warnings,omitempty"`
 }
 
