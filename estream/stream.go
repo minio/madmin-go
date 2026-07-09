@@ -33,6 +33,7 @@ import (
 	"github.com/cespare/xxhash/v2"
 	"github.com/secure-io/sio-go"
 	"github.com/tinylib/msgp/msgp"
+	"github.com/zeebo/xxh3"
 )
 
 // ReplaceFn provides key replacement.
@@ -240,7 +241,7 @@ func (r *Reader) DebugStream(w io.Writer) error {
 
 	// Temp storage for blocks.
 	block := make([]byte, 1024)
-	hashers := []hash.Hash{nil, xxhash.New()}
+	hashers := []hash.Hash{nil, xxhash.New(), xxh3.New()}
 	for {
 		// Read block ID.
 		n, err := r.mr.ReadInt8()
@@ -339,7 +340,7 @@ func (r *Reader) DebugStream(w io.Writer) error {
 			r.key = (*[32]byte)(key)
 			fmt.Fprintf(w, "stream key decoded\n")
 
-		case blockPlainStream, blockEncStream:
+		case blockPlainStream, blockEncStream, blockPlainCompressedStream, blockEncCompressedStream:
 			// Read metadata
 			name, block, err := msgp.ReadStringBytes(block)
 			if err != nil {
@@ -366,7 +367,7 @@ func (r *Reader) DebugStream(w io.Writer) error {
 			}
 
 			// Return plaintext stream
-			if id == blockPlainStream {
+			if id == blockPlainStream || id == blockPlainCompressedStream {
 				r.inStream = true
 				continue
 			}

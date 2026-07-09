@@ -116,6 +116,7 @@ type Stream struct {
 	SentEncrypted bool
 
 	parent *Reader
+	sr     *streamReader
 }
 
 // NextStream will return the next stream.
@@ -251,6 +252,7 @@ func (r *Reader) NextStream() (*Stream, error) {
 					Name:   name,
 					Extra:  extra,
 					parent: r,
+					sr:     sr,
 				}, nil
 			}
 
@@ -286,7 +288,8 @@ func (r *Reader) NextStream() (*Stream, error) {
 				return nil, r.setErr(fmt.Errorf("unexpected nonce length: %d", len(nonce)))
 			}
 
-			encr := io.Reader(stream.DecryptReader(r.newStreamReader(checksum), nonce, nil))
+			sr := r.newStreamReader(checksum)
+			encr := io.Reader(stream.DecryptReader(sr, nonce, nil))
 			if id == blockEncCompressedStream {
 				encr = minlz.NewReader(encr)
 			}
@@ -296,6 +299,7 @@ func (r *Reader) NextStream() (*Stream, error) {
 				Name:          name,
 				Extra:         extra,
 				parent:        r,
+				sr:            sr,
 			}, nil
 		case blockEOS:
 			return nil, errors.New("end-of-stream without being in stream")
@@ -410,9 +414,9 @@ func (r *Reader) newStreamReader(ct checksumType) *streamReader {
 
 // Skip the remainder of the stream.
 func (s *Stream) Skip() error {
-	if sr, ok := s.Reader.(*streamReader); ok {
-		sr.isEOF = true
-		sr.buf.Reset()
+	if s.sr != nil {
+		s.sr.isEOF = true
+		s.sr.buf.Reset()
 	}
 	return s.parent.skipDataBlocks()
 }

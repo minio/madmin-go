@@ -578,7 +578,8 @@ func TestStreamRoundtripCompressed(t *testing.T) {
 	}
 
 	// Read back...
-	r, err := NewReader(&buf)
+	b := buf.Bytes()
+	r, err := NewReader(bytes.NewBuffer(b))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -610,5 +611,62 @@ func TestStreamRoundtripCompressed(t *testing.T) {
 	}
 	if gotStreams != wantStreams {
 		t.Errorf("want %d streams, got %d", wantStreams, gotStreams)
+	}
+
+	// Read back, but Skip() every other stream. This exercises Skip() on the
+	// compressed reader wrappers (drainReader / minlz over sio): after a Skip
+	// the underlying *streamReader must be reset so the following streams still
+	// read correctly.
+	r, err = NewReader(bytes.NewBuffer(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+	gotStreams = 0
+	for {
+		st, err := r.NextStream()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("stream %d: %v", gotStreams, err)
+		}
+		want, ok := testStreams[st.Name]
+		if !ok {
+			t.Fatal("unexpected stream name", st.Name)
+		}
+		if gotStreams%2 == 0 {
+			if err := st.Skip(); err != nil {
+				t.Fatalf("stream %d (%s): skip: %v", gotStreams, st.Name, err)
+			}
+			// A read after Skip must not leak data and must not advance the
+			// parent reader into the following stream's blocks. The wrapping
+			// decompressor/decryptor may surface its own truncation error, but
+			// it must never return data; correctness of the next stream below
+			// proves the parent position was left intact.
+			if n, _ := st.Read(make([]byte, 32)); n != 0 {
+				t.Fatalf("stream %d (%s): read after skip returned %d bytes, want 0", gotStreams, st.Name, n)
+			}
+		} else {
+			got, err := io.ReadAll(st)
+			if err != nil {
+				t.Fatalf("stream %d (%s): %v", gotStreams, st.Name, err)
+			}
+			if !bytes.Equal(got, want) {
+				t.Errorf("stream %d (%s): content mismatch (len %d,%d)", gotStreams, st.Name, len(got), len(want))
+			}
+		}
+		gotStreams++
+	}
+	if gotStreams != wantStreams {
+		t.Errorf("want %d streams, got %d", wantStreams, gotStreams)
+	}
+
+	// DebugStream must understand the compressed stream block IDs.
+	r, err = NewReader(bytes.NewBuffer(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := r.DebugStream(io.Discard); err != nil {
+		t.Fatalf("DebugStream: %v", err)
 	}
 }
