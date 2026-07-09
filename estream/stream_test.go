@@ -670,3 +670,58 @@ func TestStreamRoundtripCompressed(t *testing.T) {
 		t.Fatalf("DebugStream: %v", err)
 	}
 }
+
+// TestStreamEncCompressedDrain verifies that fully reading an encrypted +
+// compressed stream drains the underlying streamReader (through its EOS block)
+// so the following NextStream() succeeds. Uses incompressible payload larger
+// than sio's package size so the ciphertext spans multiple sio packages; the
+// other compressed tests only use highly compressible data that fits one.
+func TestStreamEncCompressedDrain(t *testing.T) {
+	payload := make([]byte, 64<<10)
+	if _, err := io.ReadFull(crand.Reader, payload); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	w := NewWriter(&buf)
+	w.WithCompression()
+	if err := w.AddKeyPlain(); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"first", "second"} {
+		st, err := w.AddEncryptedStream(name, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := st.Write(payload); err != nil {
+			t.Fatal(err)
+		}
+		if err := st.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	r, err := NewReader(&buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	st, err := r.NextStream()
+	if err != nil {
+		t.Fatalf("first NextStream: %v", err)
+	}
+	got, err := io.ReadAll(st)
+	if err != nil {
+		t.Fatalf("read first stream: %v", err)
+	}
+	if !bytes.Equal(got, payload) {
+		t.Fatalf("first stream content mismatch: got %d bytes, want %d", len(got), len(payload))
+	}
+	// If the first stream was not drained, this fails with
+	// "previous stream not read until EOF".
+	if _, err := r.NextStream(); err != nil {
+		t.Fatalf("second NextStream after full read of first: %v", err)
+	}
+}
