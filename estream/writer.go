@@ -103,15 +103,22 @@ func (w *Writer) AddKeyEncrypted(publicKey *rsa.PublicKey) error {
 }
 
 // WithCompression enables compression on streams.
+// WithCompression and WithXXH3 are order-independent: if WithXXH3 was (or is
+// later) selected, xxh3 checksums are retained; otherwise the per-stream
+// checksum is disabled, since compression carries its own integrity check.
 func (w *Writer) WithCompression(opts ...minlz.WriterOption) {
 	// Always disable the index. Doesn't make sense here.
 	opts = append(opts, minlz.WriterCreateIndex(false))
 	w.comp = opts
-	// We have checksum, no need for double checksum.
-	w.checksum = checksumTypeNone
+	// Compression provides its own checksum, so drop the stream checksum
+	// unless xxh3 was explicitly requested via WithXXH3.
+	if w.checksum != checksumTypeXxhash3 {
+		w.checksum = checksumTypeNone
+	}
 }
 
 // WithXXH3 enables xxh3 checksums on streams.
+// It may be called before or after WithCompression; xxh3 is always retained.
 func (w *Writer) WithXXH3() {
 	w.checksum = checksumTypeXxhash3
 }
