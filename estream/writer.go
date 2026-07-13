@@ -58,7 +58,7 @@ const (
 // NewWriter will return a writer that allows to add encrypted and non-encrypted data streams.
 func NewWriter(w io.Writer) *Writer {
 	_, err := w.Write([]byte{writerMajorVersion, writerMinorVersion})
-	writer := &Writer{err: err, up: w, checksum: checksumTypeXxhash3}
+	writer := &Writer{err: err, up: w, checksum: checksumTypeXxhash}
 	writer.bw.init(w)
 	return writer
 }
@@ -107,6 +107,13 @@ func (w *Writer) WithCompression(opts ...minlz.WriterOption) {
 	// Always disable the index. Doesn't make sense here.
 	opts = append(opts, minlz.WriterCreateIndex(false))
 	w.comp = opts
+	// We have checksum, no need for double checksum.
+	w.checksum = checksumTypeNone
+}
+
+// WithXXH3 enables xxh3 checksums on streams.
+func (w *Writer) WithXXH3() {
+	w.checksum = checksumTypeXxhash3
 }
 
 // AddKeyPlain will create a new encryption key and add it to the stream.
