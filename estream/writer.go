@@ -233,6 +233,7 @@ func (w *Writer) AddEncryptedStream(name string, extra []byte) (io.WriteCloser, 
 		after = func() error {
 			err := encw.Close()
 			if err != nil {
+				sw.Close()
 				return err
 			}
 			return sw.Close()
