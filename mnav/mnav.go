@@ -146,6 +146,7 @@ func getNodeOpts(node MetricNode) madmin.MetricsOptions {
 		opts.Flags |= pOpts.Flags
 		opts.Hosts = append(opts.Hosts, pOpts.Hosts...)
 		opts.Disks = append(opts.Disks, pOpts.Disks...)
+		opts.PoolIdx = append(opts.PoolIdx, pOpts.PoolIdx...)
 		opts.DrivePoolIdx = append(opts.DrivePoolIdx, pOpts.DrivePoolIdx...)
 		opts.DriveSetIdx = append(opts.DriveSetIdx, pOpts.DriveSetIdx...)
 	}
@@ -576,7 +577,13 @@ func (node *DiskSetMapNode) ShouldPauseUpdates() bool {
 
 func (node *DiskSetMapNode) GetChildren() []MetricChild {
 	children := make([]MetricChild, 0, len(node.data))
-	for poolID, pool := range node.data {
+	poolIDs := make([]int, 0, len(node.data))
+	for poolID := range node.data {
+		poolIDs = append(poolIDs, poolID)
+	}
+	sort.Ints(poolIDs)
+	for _, poolID := range poolIDs {
+		pool := node.data[poolID]
 		// Calculate pool-level statistics for better description
 		var poolDisks int
 		poolSets := len(pool)
@@ -592,7 +599,7 @@ func (node *DiskSetMapNode) GetChildren() []MetricChild {
 			poolID, poolSets, poolDisks, poolHealthyDisks, poolCurrentIOs)
 
 		children = append(children, MetricChild{
-			Name:        fmt.Sprintf("pool_%d", poolID),
+			Name:        fmt.Sprintf("pool_%02d", poolID),
 			Description: description,
 		})
 	}
@@ -615,11 +622,11 @@ func (node *DiskSetMapNode) GetLeafData() map[string]string {
 
 	// First pass: calculate pool-level aggregated metrics
 	poolMetrics := make(map[int]struct {
-		sets    int
-		ops     uint64
-		accTime float64
-		ioOps   uint64
-		ioBytes uint64
+		sets      int
+		ops       uint64
+		accTime   float64
+		ioOps     uint64
+		ioSectors uint64
 	})
 
 	for poolID, pool := range node.data {
@@ -650,7 +657,7 @@ func (node *DiskSetMapNode) GetLeafData() map[string]string {
 			// Aggregate current IO statistics for this pool
 			ioStat := diskSet.IOStatsMinute
 			poolStat.ioOps += ioStat.ReadIOs + ioStat.WriteIOs + ioStat.DiscardIOs + ioStat.FlushIOs
-			poolStat.ioBytes += ioStat.ReadSectors + ioStat.WriteSectors + ioStat.DiscardSectors // Sectors represent data transferred
+			poolStat.ioSectors += ioStat.ReadSectors + ioStat.WriteSectors + ioStat.DiscardSectors
 
 			_ = setID // Mark as used
 		}
@@ -671,9 +678,11 @@ func (node *DiskSetMapNode) GetLeafData() map[string]string {
 			opsDisplay = "No recent activity"
 		}
 
-		// Calculate current IO metrics for this pool
-		if poolStat.ioOps > 0 || poolStat.ioBytes > 0 {
-			ioDisplay = fmt.Sprintf(", %s IO/s", humanize.Bytes(poolStat.ioBytes))
+		// Calculate current IO metrics for this pool (last-minute rolling window).
+		if poolStat.ioOps > 0 || poolStat.ioSectors > 0 {
+			iosPerSec := float64(poolStat.ioOps) / 60.0
+			mbPerSec := float64(poolStat.ioSectors*512) / 60.0 / (1024 * 1024)
+			ioDisplay = fmt.Sprintf(", %.1f IO/s, %.2f MB/s", iosPerSec, mbPerSec)
 		} else {
 			ioDisplay = ", No current IO"
 		}
@@ -767,7 +776,7 @@ func (node *DiskSetMapNode) GetChild(name string) (MetricNode, error) {
 	}
 
 	if sets, exists := node.data[poolID]; exists {
-		return NewDiskSetPoolNavigator(poolID, sets, node.metricType, node.metricFlags, node, fmt.Sprintf("%s/pool_%d", node.path, poolID)), nil
+		return NewDiskSetPoolNavigator(poolID, sets, node.metricType, node.metricFlags, node, fmt.Sprintf("%s/pool_%02d", node.path, poolID)), nil
 	}
 
 	return nil, fmt.Errorf("pool not found: %d", poolID)
@@ -802,7 +811,7 @@ func (node *DiskSetPoolNavigator) GetChildren() []MetricChild {
 	if node.poolSets == nil {
 		return []MetricChild{}
 	}
-	children := make([]MetricChild, 0, len(node.poolSets))
+	children := make([]MetricChild, 0, len(node.poolSets)+1)
 	for setID, diskSet := range node.poolSets {
 		healthyDisks := diskSet.NDisks - diskSet.Offline - diskSet.Hanging - diskSet.Healing
 		currentIOs := diskSet.IOStatsMinute.CurrentIOs
@@ -810,7 +819,7 @@ func (node *DiskSetPoolNavigator) GetChildren() []MetricChild {
 			setID, diskSet.NDisks, healthyDisks, currentIOs)
 
 		children = append(children, MetricChild{
-			Name:        fmt.Sprintf("set_%d", setID),
+			Name:        fmt.Sprintf("set_%04d", setID),
 			Description: description,
 		})
 	}
@@ -820,7 +829,15 @@ func (node *DiskSetPoolNavigator) GetChildren() []MetricChild {
 		return children[i].Name < children[j].Name
 	})
 
-	return children
+	// Prepend an _ALL entry that merges every set in this pool into one.
+	merged := node.mergedSets()
+	healthyDisks := merged.NDisks - merged.Offline - merged.Hanging - merged.Healing
+	allChild := MetricChild{
+		Name: "_ALL",
+		Description: fmt.Sprintf("All %d sets merged: %d drives (%d healthy), %d current IOs",
+			len(node.poolSets), merged.NDisks, healthyDisks, merged.IOStatsMinute.CurrentIOs),
+	}
+	return append([]MetricChild{allChild}, children...)
 }
 
 func (node *DiskSetPoolNavigator) GetLeafData() map[string]string {
@@ -920,7 +937,21 @@ func (node *DiskSetPoolNavigator) GetParent() MetricNode              { return n
 func (node *DiskSetPoolNavigator) GetPath() string                    { return node.path }
 func (node *DiskSetPoolNavigator) ShouldPauseRefresh() bool           { return false }
 
+func (node *DiskSetPoolNavigator) mergedSets() madmin.DiskMetric {
+	var merged madmin.DiskMetric
+	for setID := range node.poolSets {
+		ds := node.poolSets[setID]
+		merged.Merge(&ds)
+	}
+	return merged
+}
+
 func (node *DiskSetPoolNavigator) GetChild(name string) (MetricNode, error) {
+	if name == "_ALL" {
+		merged := node.mergedSets()
+		return NewDiskMetricsNavigator(&merged, node, fmt.Sprintf("%s/_ALL", node.path), getNodeOpts(node)), nil
+	}
+
 	if !strings.HasPrefix(name, "set_") {
 		return nil, fmt.Errorf("invalid set name format: %s", name)
 	}
@@ -934,7 +965,7 @@ func (node *DiskSetPoolNavigator) GetChild(name string) (MetricNode, error) {
 	if diskMetric, exists := node.poolSets[setID]; exists {
 		opts := getNodeOpts(node)
 		opts.DriveSetIdx = append(opts.DriveSetIdx, setID)
-		return NewDiskMetricsNavigator(&diskMetric, node, fmt.Sprintf("%s/set_%d", node.path, setID), opts), nil
+		return NewDiskMetricsNavigator(&diskMetric, node, fmt.Sprintf("%s/set_%04d", node.path, setID), opts), nil
 	}
 
 	return nil, fmt.Errorf("set not found: %d", setID)

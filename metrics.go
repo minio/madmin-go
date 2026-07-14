@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"math"
 	"net/http"
 	"net/url"
 	"runtime/metrics"
@@ -769,7 +770,9 @@ type DiskIOStatsLegacy struct {
 
 // Add 'other' to 'd'.
 func (d *DiskIOStats) Add(other *DiskIOStats) {
-	if other == nil {
+	if other == nil || other.overflowed() {
+		// Discard segments carrying a uint64 underflow artifact (see overflowed)
+		// instead of polluting the aggregate.
 		return
 	}
 	d.N += other.N
@@ -793,6 +796,28 @@ func (d *DiskIOStats) Add(other *DiskIOStats) {
 	d.FlushTicks += other.FlushTicks
 	d.BitrotDetected += other.BitrotDetected
 	d.BitrotHealed += other.BitrotHealed
+}
+
+// overflowed reports whether any counter has its high bit set (value >
+// math.MaxInt64) — the signature of a uint64 underflow. Kernel iostat deltas
+// underflow to ~MaxUint64 on counter resets (reboot, drive hot-swap, wrap),
+// which is nonsensical as an IO count, so such segments are discarded on merge.
+func (d *DiskIOStats) overflowed() bool {
+	return (d.ReadIOs | d.ReadMerges | d.ReadSectors | d.ReadTicks |
+		d.WriteIOs | d.WriteMerges | d.WriteSectors | d.WriteTicks |
+		d.CurrentIOs | d.TotalTicks | d.ReqTicks |
+		d.DiscardIOs | d.DiscardMerges | d.DiscardSectors | d.DiscardTicks |
+		d.FlushIOs | d.FlushTicks | d.BitrotDetected | d.BitrotHealed) > math.MaxInt64
+}
+
+// discardOverflowedSegments zeroes IO segments carrying a uint64 underflow
+// artifact (see DiskIOStats.overflowed) so they do not survive a merge.
+func discardOverflowedSegments(segs []DiskIOStats) {
+	for i := range segs {
+		if segs[i].overflowed() {
+			segs[i] = DiskIOStats{}
+		}
+	}
 }
 
 type (
@@ -927,6 +952,13 @@ func (d *DiskMetric) Merge(other *DiskMetric) {
 	}
 	if d.NDisks == 0 {
 		*d = *other
+		// *d = *other aliases the IO segment slices; take independent copies and
+		// drop overflowed segments so a corrupt source segment neither survives
+		// the merge nor is mutated by it.
+		d.IOStatsDay.Segments = slices.Clone(other.IOStatsDay.Segments)
+		discardOverflowedSegments(d.IOStatsDay.Segments)
+		d.IOStatsHour.Segments = slices.Clone(other.IOStatsHour.Segments)
+		discardOverflowedSegments(d.IOStatsHour.Segments)
 		d.State = maps.Clone(other.State)
 		d.FSType = maps.Clone(other.FSType)
 		d.LifetimeOps = maps.Clone(other.LifetimeOps)
@@ -1006,9 +1038,11 @@ func (d *DiskMetric) Merge(other *DiskMetric) {
 	d.Hanging += other.Hanging
 	if other.Cache != nil {
 		if d.Cache == nil {
-			d.Cache = other.Cache
+			c := *other.Cache
+			d.Cache = &c
+		} else {
+			d.Cache.Merge(other.Cache)
 		}
-		d.Cache.Merge(other.Cache)
 	}
 	d.Space.Merge(other.Space)
 
@@ -1059,7 +1093,9 @@ func (d *DiskMetric) Merge(other *DiskMetric) {
 	}
 	d.IOStatsMinute.Add(&other.IOStatsMinute)
 	d.IOStatsDay.Add(&other.IOStatsDay)
+	discardOverflowedSegments(d.IOStatsDay.Segments)
 	d.IOStatsHour.Add(&other.IOStatsHour)
+	discardOverflowedSegments(d.IOStatsHour.Segments)
 	// Merge SMART data
 	if other.SMART != nil {
 		if d.SMART == nil {
