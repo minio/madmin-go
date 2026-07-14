@@ -775,6 +775,12 @@ func (d *DiskIOStats) Add(other *DiskIOStats) {
 		// instead of polluting the aggregate.
 		return
 	}
+	if d.overflowed() {
+		// A corrupt receiver would otherwise drag its uint64 underflow artifact
+		// into every subsequent sum; reset it and restart the aggregate from the
+		// valid other value.
+		*d = DiskIOStats{}
+	}
 	d.N += other.N
 	d.WithIOStats += other.WithIOStats
 	d.ReadIOs += other.ReadIOs

@@ -681,7 +681,7 @@ func (node *DiskSetMapNode) GetLeafData() map[string]string {
 		// Calculate current IO metrics for this pool (last-minute rolling window).
 		if poolStat.ioOps > 0 || poolStat.ioSectors > 0 {
 			iosPerSec := float64(poolStat.ioOps) / 60.0
-			mbPerSec := float64(poolStat.ioSectors*512) / 60.0 / (1024 * 1024)
+			mbPerSec := float64(poolStat.ioSectors) * 512 / 60.0 / (1024 * 1024)
 			ioDisplay = fmt.Sprintf(", %.1f IO/s, %.2f MB/s", iosPerSec, mbPerSec)
 		} else {
 			ioDisplay = ", No current IO"
@@ -811,7 +811,7 @@ func (node *DiskSetPoolNavigator) GetChildren() []MetricChild {
 	if node.poolSets == nil {
 		return []MetricChild{}
 	}
-	children := make([]MetricChild, 0, len(node.poolSets)+1)
+	children := make([]MetricChild, 0, len(node.poolSets))
 	for setID, diskSet := range node.poolSets {
 		healthyDisks := diskSet.NDisks - diskSet.Offline - diskSet.Hanging - diskSet.Healing
 		currentIOs := diskSet.IOStatsMinute.CurrentIOs
