@@ -223,6 +223,16 @@ func (node *DiskMetricsNavigator) GetLeafData() map[string]string {
 		}
 	}
 
+	// Cache summary (if drive caching is enabled).
+	if c := node.disk.Cache; c != nil {
+		if c.Capacity > 0 {
+			data["Cache Capacity"] = humanize.Bytes(uint64(c.Capacity))
+		}
+		if reqs := c.Hits + c.Misses; reqs > 0 {
+			data["Cache Hit Rate"] = fmt.Sprintf("%.1f%%", float64(c.Hits)/float64(reqs)*100)
+		}
+	}
+
 	// Additional Features
 	var features []string
 	if node.disk.Cache != nil {

@@ -21,6 +21,7 @@ package madmin
 
 import (
 	"fmt"
+	"math"
 	"reflect"
 	"testing"
 	"time"
@@ -317,6 +318,60 @@ func TestSegmentedAddCopySlice(t *testing.T) {
 	}
 	if empty.Segments[1].Events != 888 {
 		t.Errorf("empty.Segments[1].Events = %d, want 888", empty.Segments[1].Events)
+	}
+}
+
+func TestDiskMetricMergeDiscardsOverflowSegments(t *testing.T) {
+	ft := time.Unix(1700000000, 0).UTC()
+	dayWith := func(readIOs uint64) SegmentedDiskIO {
+		return SegmentedDiskIO{Interval: 900, FirstTime: ft, Segments: []DiskIOStats{{N: 1, ReadIOs: readIOs}}}
+	}
+	const overflow = uint64(math.MaxUint64) - 100 // uint64 underflow artifact (bit 63 set)
+
+	// Overflowed segment in an accumulated set is discarded; the good base stays.
+	merged := DiskMetric{}
+	merged.Merge(&DiskMetric{NDisks: 1, IOStatsDay: dayWith(1000)}) // clone path
+	merged.Merge(&DiskMetric{NDisks: 1, IOStatsDay: dayWith(overflow)})
+	if got := merged.IOStatsDay.Segments[0].ReadIOs; got != 1000 {
+		t.Errorf("accumulate: ReadIOs = %d, want 1000 (overflow discarded)", got)
+	}
+
+	// Overflowed segment in the first (cloned) set is discarded and not aliased.
+	merged2 := DiskMetric{}
+	badFirst := &DiskMetric{NDisks: 1, IOStatsDay: dayWith(overflow)}
+	merged2.Merge(badFirst) // clone path -> overflow zeroed
+	merged2.Merge(&DiskMetric{NDisks: 1, IOStatsDay: dayWith(2000)})
+	if got := merged2.IOStatsDay.Segments[0].ReadIOs; got != 2000 {
+		t.Errorf("clone: ReadIOs = %d, want 2000 (first-set overflow discarded)", got)
+	}
+	if got := badFirst.IOStatsDay.Segments[0].ReadIOs; got != overflow {
+		t.Errorf("clone: source mutated, ReadIOs = %d, want %d", got, overflow)
+	}
+}
+
+func TestDiskMetricMergeCacheNoDouble(t *testing.T) {
+	// Accumulate path (base already has drives) where the base has no cache but
+	// a later metric does: the cache must be copied, not aliased-and-self-merged
+	// (which doubled the values and corrupted the source metric).
+	base := &DiskMetric{NDisks: 1}
+	other := &DiskMetric{
+		NDisks: 1,
+		Cache:  &CacheStats{N: 1, Capacity: 1000, Used: 400, Hits: 80, Misses: 20},
+	}
+
+	base.Merge(other)
+
+	if base.Cache == nil {
+		t.Fatal("merged Cache = nil, want copied cache")
+	}
+	if base.Cache.Capacity != 1000 || base.Cache.Hits != 80 {
+		t.Errorf("merged Cache = %+v, want Capacity 1000 / Hits 80 (not doubled)", *base.Cache)
+	}
+	if other.Cache.Capacity != 1000 || other.Cache.Hits != 80 {
+		t.Errorf("source Cache mutated = %+v, want unchanged Capacity 1000 / Hits 80", *other.Cache)
+	}
+	if base.Cache == other.Cache {
+		t.Error("merged Cache aliases source Cache; want an independent copy")
 	}
 }
 
