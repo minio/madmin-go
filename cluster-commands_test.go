@@ -33,9 +33,12 @@ import (
 // alongside the operation, so a cortex is provisioned with the right config on
 // the peer.
 func TestSRPeerBucketOpsForwardsCortexOpts(t *testing.T) {
-	var captured url.Values
+	// The handler runs in the server's goroutine; hand the captured query back
+	// over a buffered channel so the read below has a clean happens-before edge
+	// (no shared variable across goroutines).
+	capturedCh := make(chan url.Values, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		captured = r.URL.Query()
+		capturedCh <- r.URL.Query()
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer server.Close()
@@ -54,6 +57,7 @@ func TestSRPeerBucketOpsForwardsCortexOpts(t *testing.T) {
 		t.Fatalf("SRPeerBucketOps: %v", err)
 	}
 
+	captured := <-capturedCh
 	if got := captured.Get("operation"); got != string(MakeCortexBktOp) {
 		t.Fatalf("operation: expected %q, got %q", MakeCortexBktOp, got)
 	}
