@@ -19,6 +19,8 @@
 
 package madmin
 
+import "encoding/json"
+
 // Table maintenance type constants
 const (
 	MaintenanceTypeIcebergSnapshotManagement      = "icebergSnapshotManagement"
@@ -49,6 +51,11 @@ type IcebergCompactionSettings struct {
 	// Inherits: table -> warehouse -> server if nil.
 	// Must be >= 1.
 	Interval *int `json:"interval,omitempty"`
+	// Filter is an optional Iceberg expression, in the REST spec's JSON filter
+	// form, that scopes compaction to the data files it can match; matched files
+	// are rewritten in full so no rows are dropped. It is table-scoped only (it
+	// names a table's columns/partitions) and is rejected at the warehouse level.
+	Filter json.RawMessage `json:"filter,omitempty"`
 }
 
 // IcebergUnreferencedFileRemovalSettings contains settings for Iceberg unreferenced file removal.
