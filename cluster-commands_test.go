@@ -21,8 +21,48 @@ package madmin
 
 import (
 	"bytes"
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"testing"
 )
+
+// TestSRPeerBucketOpsForwardsCortexOpts verifies that a MakeCortexBktOp peer
+// request forwards the bucket options (versioning, force-create, created-at)
+// alongside the operation, so a cortex is provisioned with the right config on
+// the peer.
+func TestSRPeerBucketOpsForwardsCortexOpts(t *testing.T) {
+	var captured url.Values
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		captured = r.URL.Query()
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	adm, err := New(server.URL[len("http://"):], "access", "secret", false)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	opts := map[string]string{
+		"versioningEnabled": "true",
+		"forceCreate":       "true",
+		"createdAt":         "2026-01-02T15:04:05Z",
+	}
+	if err := adm.SRPeerBucketOps(context.Background(), "my-cortex", MakeCortexBktOp, opts); err != nil {
+		t.Fatalf("SRPeerBucketOps: %v", err)
+	}
+
+	if got := captured.Get("operation"); got != string(MakeCortexBktOp) {
+		t.Fatalf("operation: expected %q, got %q", MakeCortexBktOp, got)
+	}
+	for k, want := range opts {
+		if got := captured.Get(k); got != want {
+			t.Fatalf("option %q not forwarded for MakeCortexBktOp: expected %q, got %q", k, want, got)
+		}
+	}
+}
 
 func TestSRSessionPolicy_MarshalUnmarshalJSON(t *testing.T) {
 	tests := []struct {
