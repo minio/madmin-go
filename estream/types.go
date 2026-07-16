@@ -32,6 +32,8 @@ const (
 	blockEOS
 	blockEOF
 	blockError
+	blockPlainCompressedStream
+	blockEncCompressedStream
 )
 
 type checksumType uint8
@@ -41,6 +43,7 @@ type checksumType uint8
 const (
 	checksumTypeNone checksumType = iota
 	checksumTypeXxhash
+	checksumTypeXxhash3
 
 	checksumTypeUnknown
 )

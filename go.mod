@@ -13,6 +13,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/golang-jwt/jwt/v4 v4.5.2
 	github.com/minio/minio-go/v7 v7.0.94
+	github.com/minio/minlz v1.2.0
 	github.com/minio/pkg/v3 v3.4.0
 	github.com/prometheus/common v0.67.5
 	github.com/prometheus/procfs v0.16.1
@@ -20,7 +21,8 @@ require (
 	github.com/safchain/ethtool v0.6.1
 	github.com/secure-io/sio-go v0.3.1
 	github.com/shirou/gopsutil/v4 v4.25.5
-	github.com/tinylib/msgp v1.5.0
+	github.com/tinylib/msgp v1.6.4
+	github.com/zeebo/xxh3 v1.1.0
 	golang.org/x/crypto v0.53.0
 	golang.org/x/net v0.55.0
 	golang.org/x/text v0.38.0
@@ -35,7 +37,7 @@ require (
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/grafana/regexp v0.0.0-20250905093917-f7b3be9d1853 // indirect
-	github.com/klauspost/compress v1.18.6 // indirect
+	github.com/klauspost/compress v1.19.0 // indirect
 	github.com/klauspost/cpuid/v2 v2.2.10 // indirect
 	github.com/kr/pretty v0.2.1 // indirect
 	github.com/kr/text v0.2.0 // indirect

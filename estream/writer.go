@@ -27,22 +27,27 @@ import (
 	"crypto/x509"
 	"encoding/binary"
 	"errors"
+	"hash"
 	"io"
 
 	"github.com/cespare/xxhash/v2"
+	"github.com/minio/minlz"
 	"github.com/secure-io/sio-go"
 	"github.com/tinylib/msgp/msgp"
+	"github.com/zeebo/xxh3"
 )
 
 // Writer provides a stream writer.
 // Streams can optionally be encrypted.
 // All streams have checksum verification.
 type Writer struct {
-	up    io.Writer
-	err   error
-	key   *[32]byte
-	bw    blockWriter
-	nonce uint64
+	up       io.Writer
+	err      error
+	key      *[32]byte
+	bw       blockWriter
+	nonce    uint64
+	checksum checksumType
+	comp     []minlz.WriterOption
 }
 
 const (
@@ -53,7 +58,7 @@ const (
 // NewWriter will return a writer that allows to add encrypted and non-encrypted data streams.
 func NewWriter(w io.Writer) *Writer {
 	_, err := w.Write([]byte{writerMajorVersion, writerMinorVersion})
-	writer := &Writer{err: err, up: w}
+	writer := &Writer{err: err, up: w, checksum: checksumTypeXxhash}
 	writer.bw.init(w)
 	return writer
 }
@@ -97,6 +102,27 @@ func (w *Writer) AddKeyEncrypted(publicKey *rsa.PublicKey) error {
 	return w.sendBlock()
 }
 
+// WithCompression enables compression on streams.
+// WithCompression and WithXXH3 are order-independent: if WithXXH3 was (or is
+// later) selected, xxh3 checksums are retained; otherwise the per-stream
+// checksum is disabled, since compression carries its own integrity check.
+func (w *Writer) WithCompression(opts ...minlz.WriterOption) {
+	// Always disable the index. Doesn't make sense here.
+	opts = append(opts, minlz.WriterCreateIndex(false))
+	w.comp = opts
+	// Compression provides its own checksum, so drop the stream checksum
+	// unless xxh3 was explicitly requested via WithXXH3.
+	if w.checksum != checksumTypeXxhash3 {
+		w.checksum = checksumTypeNone
+	}
+}
+
+// WithXXH3 enables xxh3 checksums on streams.
+// It may be called before or after WithCompression; xxh3 is always retained.
+func (w *Writer) WithXXH3() {
+	w.checksum = checksumTypeXxhash3
+}
+
 // AddKeyPlain will create a new encryption key and add it to the stream.
 // The key will be stored without any encryption.
 // All calls to AddEncryptedStream will use this key
@@ -136,16 +162,30 @@ func (w *Writer) AddUnencryptedStream(name string, extra []byte) (io.WriteCloser
 		return nil, w.err
 	}
 
-	mw := w.addBlock(blockPlainStream)
+	var mw *msgp.Writer
+	if w.comp == nil {
+		mw = w.addBlock(blockPlainStream)
+	} else {
+		mw = w.addBlock(blockPlainCompressedStream)
+	}
 
 	// Write metadata...
 	w.setErr(mw.WriteString(name))
 	w.setErr(mw.WriteBytes(extra))
-	w.setErr(mw.WriteUint8(uint8(checksumTypeXxhash)))
+	w.setErr(mw.WriteUint8(uint8(w.checksum)))
 	if err := w.sendBlock(); err != nil {
 		return nil, err
 	}
-	return w.newStreamWriter(), nil
+	sw := w.newStreamWriter()
+	if w.comp == nil {
+		return sw, nil
+	}
+	// minlz.Writer.Close only flushes; it does not close sw, so wrap it to
+	// ensure the EOS/checksum block is written after the compressed data.
+	return &closeWrapper{
+		up:    minlz.NewWriter(sw, w.comp...),
+		after: sw.Close,
+	}, nil
 }
 
 // AddEncryptedStream adds a named encrypted stream.
@@ -160,12 +200,17 @@ func (w *Writer) AddEncryptedStream(name string, extra []byte) (io.WriteCloser, 
 	if w.key == nil {
 		return nil, errors.New("AddEncryptedStream: No key on stream")
 	}
-	mw := w.addBlock(blockEncStream)
+	var mw *msgp.Writer
+	if w.comp == nil {
+		mw = w.addBlock(blockEncStream)
+	} else {
+		mw = w.addBlock(blockEncCompressedStream)
+	}
 
 	// Write metadata...
 	w.setErr(mw.WriteString(name))
 	w.setErr(mw.WriteBytes(extra))
-	w.setErr(mw.WriteUint8(uint8(checksumTypeXxhash)))
+	w.setErr(mw.WriteUint8(uint8(w.checksum)))
 
 	stream, err := sio.AES_256_GCM.Stream(w.key[:])
 	if err != nil {
@@ -186,13 +231,25 @@ func (w *Writer) AddEncryptedStream(name string, extra []byte) (io.WriteCloser, 
 
 	// Send output as blocks.
 	sw := w.newStreamWriter()
-	encw := stream.EncryptWriter(sw, nonce, nil)
+	after := sw.Close
 
-	return &closeWrapper{
-		up: encw,
-		after: func() error {
+	encw := stream.EncryptWriter(sw, nonce, nil)
+	wc := io.WriteCloser(encw)
+	if w.comp != nil {
+		mz := minlz.NewWriter(encw, w.comp...)
+		after = func() error {
+			err := encw.Close()
+			if err != nil {
+				sw.Close()
+				return err
+			}
 			return sw.Close()
-		},
+		}
+		wc = mz
+	}
+	return &closeWrapper{
+		up:    wc,
+		after: after,
 	}, nil
 }
 
@@ -214,8 +271,7 @@ func (w *Writer) sendBlock() error {
 // newStreamWriter creates a new stream writer
 func (w *Writer) newStreamWriter() *streamWriter {
 	sw := &streamWriter{w: w}
-	sw.h.Reset()
-	return sw
+	return sw.init()
 }
 
 // setErr will set a stateful error on w.
@@ -235,8 +291,21 @@ func (w *Writer) setErr(err error) error {
 // Close must be called when writes have completed to send hashes.
 type streamWriter struct {
 	w          *Writer
-	h          xxhash.Digest
+	h          hash.Hash
 	eosWritten bool
+}
+
+func (w *streamWriter) init() *streamWriter {
+	switch w.w.checksum {
+	case checksumTypeXxhash:
+		w.h = xxhash.New()
+	case checksumTypeXxhash3:
+		w.h = xxh3.New()
+	default:
+		w.h = &zeroHasher{}
+	}
+	w.h.Reset()
+	return w
 }
 
 // Write satisfies the io.Writer interface.

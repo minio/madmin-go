@@ -350,6 +350,104 @@ func TestReplaceKeys(t *testing.T) {
 	}
 }
 
+func TestSetMultiplePrivateKeys(t *testing.T) {
+	priv1, err := rsa.GenerateKey(crand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+	priv2, err := rsa.GenerateKey(crand.Reader, 2048)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Write each test stream twice: once encrypted under priv1's key and
+	// once under priv2's key. AddKeyEncrypted switches the key for all
+	// following streams.
+	var buf bytes.Buffer
+	w := NewWriter(&buf)
+	for _, pub := range []*rsa.PublicKey{&priv1.PublicKey, &priv2.PublicKey} {
+		if err := w.AddKeyEncrypted(pub); err != nil {
+			t.Fatal(err)
+		}
+		for name, value := range testStreams {
+			st, err := w.AddEncryptedStream(name, []byte(name))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := io.Copy(st, bytes.NewBuffer(value)); err != nil {
+				t.Fatal(err)
+			}
+			if err := st.Close(); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+	wantStreams := 2 * len(testStreams)
+	encoded := buf.Bytes()
+
+	readAll := func(t *testing.T, setup func(r *Reader)) error {
+		t.Helper()
+		r, err := NewReader(bytes.NewBuffer(encoded))
+		if err != nil {
+			t.Fatal(err)
+		}
+		setup(r)
+		n := 0
+		for {
+			st, err := r.NextStream()
+			if err == io.EOF {
+				break
+			}
+			if err != nil {
+				return err
+			}
+			want, ok := testStreams[st.Name]
+			if !ok {
+				t.Fatalf("unexpected stream name %q", st.Name)
+			}
+			got, err := io.ReadAll(st)
+			if err != nil {
+				return err
+			}
+			if !bytes.Equal(got, want) {
+				t.Errorf("stream %d (%s): content mismatch (len %d,%d)", n, st.Name, len(got), len(want))
+			}
+			n++
+		}
+		if n != wantStreams {
+			t.Errorf("want %d streams, got %d", wantStreams, n)
+		}
+		return nil
+	}
+
+	// Both keys supplied in a single variadic call.
+	t.Run("Variadic", func(t *testing.T) {
+		if err := readAll(t, func(r *Reader) { r.SetPrivateKey(priv1, priv2) }); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	// Repeated calls must accumulate keys, not override the previous one.
+	t.Run("Appended", func(t *testing.T) {
+		if err := readAll(t, func(r *Reader) {
+			r.SetPrivateKey(priv1)
+			r.SetPrivateKey(priv2)
+		}); err != nil {
+			t.Fatal(err)
+		}
+	})
+
+	// Sanity check: a single key cannot decrypt streams under the other key.
+	t.Run("SingleKeyInsufficient", func(t *testing.T) {
+		if err := readAll(t, func(r *Reader) { r.SetPrivateKey(priv1) }); err == nil {
+			t.Fatal("expected failure reading streams encrypted under the second key")
+		}
+	})
+}
+
 func TestError(t *testing.T) {
 	var buf bytes.Buffer
 	w := NewWriter(&buf)
@@ -442,5 +540,188 @@ func TestStreamReturnNonDecryptable(t *testing.T) {
 	}
 	if gotStreams != wantStreams {
 		t.Errorf("want %d streams, got %d", wantStreams, gotStreams)
+	}
+}
+
+func TestStreamRoundtripCompressed(t *testing.T) {
+	var buf bytes.Buffer
+	w := NewWriter(&buf)
+	w.WithCompression()
+	if err := w.AddKeyPlain(); err != nil {
+		t.Fatal(err)
+	}
+
+	wantStreams := 0
+	for name, value := range testStreams {
+		for _, enc := range []bool{true, false} {
+			var st io.WriteCloser
+			var err error
+			if enc {
+				st, err = w.AddEncryptedStream(name, []byte(name))
+			} else {
+				st, err = w.AddUnencryptedStream(name, []byte(name))
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err = io.Copy(st, bytes.NewBuffer(value)); err != nil {
+				t.Fatal(err)
+			}
+			if err = st.Close(); err != nil {
+				t.Fatal(err)
+			}
+			wantStreams++
+		}
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	// Read back...
+	b := buf.Bytes()
+	r, err := NewReader(bytes.NewBuffer(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var gotStreams int
+	for {
+		st, err := r.NextStream()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("stream %d: %v", gotStreams, err)
+		}
+		want, ok := testStreams[st.Name]
+		if !ok {
+			t.Fatal("unexpected stream name", st.Name)
+		}
+		if !bytes.Equal(st.Extra, []byte(st.Name)) {
+			t.Fatal("unexpected stream extra:", st.Extra)
+		}
+		got, err := io.ReadAll(st)
+		if err != nil {
+			t.Fatalf("stream %d (%s): %v", gotStreams, st.Name, err)
+		}
+		if !bytes.Equal(got, want) {
+			t.Errorf("stream %d (%s): content mismatch (len %d,%d)", gotStreams, st.Name, len(got), len(want))
+		}
+		gotStreams++
+	}
+	if gotStreams != wantStreams {
+		t.Errorf("want %d streams, got %d", wantStreams, gotStreams)
+	}
+
+	// Read back, but Skip() every other stream. This exercises Skip() on the
+	// compressed reader wrappers (drainReader / minlz over sio): after a Skip
+	// the underlying *streamReader must be reset so the following streams still
+	// read correctly.
+	r, err = NewReader(bytes.NewBuffer(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+	gotStreams = 0
+	for {
+		st, err := r.NextStream()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatalf("stream %d: %v", gotStreams, err)
+		}
+		want, ok := testStreams[st.Name]
+		if !ok {
+			t.Fatal("unexpected stream name", st.Name)
+		}
+		if gotStreams%2 == 0 {
+			if err := st.Skip(); err != nil {
+				t.Fatalf("stream %d (%s): skip: %v", gotStreams, st.Name, err)
+			}
+			// A read after Skip must not leak data and must not advance the
+			// parent reader into the following stream's blocks. The wrapping
+			// decompressor/decryptor may surface its own truncation error, but
+			// it must never return data; correctness of the next stream below
+			// proves the parent position was left intact.
+			if n, _ := st.Read(make([]byte, 32)); n != 0 {
+				t.Fatalf("stream %d (%s): read after skip returned %d bytes, want 0", gotStreams, st.Name, n)
+			}
+		} else {
+			got, err := io.ReadAll(st)
+			if err != nil {
+				t.Fatalf("stream %d (%s): %v", gotStreams, st.Name, err)
+			}
+			if !bytes.Equal(got, want) {
+				t.Errorf("stream %d (%s): content mismatch (len %d,%d)", gotStreams, st.Name, len(got), len(want))
+			}
+		}
+		gotStreams++
+	}
+	if gotStreams != wantStreams {
+		t.Errorf("want %d streams, got %d", wantStreams, gotStreams)
+	}
+
+	// DebugStream must understand the compressed stream block IDs.
+	r, err = NewReader(bytes.NewBuffer(b))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := r.DebugStream(io.Discard); err != nil {
+		t.Fatalf("DebugStream: %v", err)
+	}
+}
+
+// TestStreamEncCompressedDrain verifies that fully reading an encrypted +
+// compressed stream drains the underlying streamReader (through its EOS block)
+// so the following NextStream() succeeds. Uses incompressible payload larger
+// than sio's package size so the ciphertext spans multiple sio packages; the
+// other compressed tests only use highly compressible data that fits one.
+func TestStreamEncCompressedDrain(t *testing.T) {
+	payload := make([]byte, 64<<10)
+	if _, err := io.ReadFull(crand.Reader, payload); err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	w := NewWriter(&buf)
+	w.WithCompression()
+	if err := w.AddKeyPlain(); err != nil {
+		t.Fatal(err)
+	}
+	for _, name := range []string{"first", "second"} {
+		st, err := w.AddEncryptedStream(name, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err := st.Write(payload); err != nil {
+			t.Fatal(err)
+		}
+		if err := st.Close(); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := w.Close(); err != nil {
+		t.Fatal(err)
+	}
+
+	r, err := NewReader(&buf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	st, err := r.NextStream()
+	if err != nil {
+		t.Fatalf("first NextStream: %v", err)
+	}
+	got, err := io.ReadAll(st)
+	if err != nil {
+		t.Fatalf("read first stream: %v", err)
+	}
+	if !bytes.Equal(got, payload) {
+		t.Fatalf("first stream content mismatch: got %d bytes, want %d", len(got), len(payload))
+	}
+	// If the first stream was not drained, this fails with
+	// "previous stream not read until EOF".
+	if _, err := r.NextStream(); err != nil {
+		t.Fatalf("second NextStream after full read of first: %v", err)
 	}
 }
