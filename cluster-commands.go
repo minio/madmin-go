@@ -242,6 +242,12 @@ const (
 	// predates warehouse replication has no route for this op and rejects it, so
 	// the warehouse is withheld until that peer is upgraded
 	MakeWarehouseBktOp BktOp = "make-warehouse"
+	// make an AIStor Memory cortex bucket and enable versioning. A cortex is
+	// always also a Tables warehouse (a super-bucket), so this op implies the
+	// warehouse capability too. A peer that predates cortex replication has no
+	// route for this op and rejects it, so the cortex is withheld until that peer
+	// is upgraded.
+	MakeCortexBktOp BktOp = "make-cortex"
 	// add replication configuration
 	ConfigureReplBktOp BktOp = "configure-replication"
 	// delete bucket (forceDelete = off)
@@ -259,7 +265,7 @@ func (adm *AdminClient) SRPeerBucketOps(ctx context.Context, bucket string, op B
 	v.Add("operation", string(op))
 
 	// For make-bucket, bucket options may be sent via `opts`
-	if op == MakeWithVersioningBktOp || op == MakeWarehouseBktOp || op == DeleteBucketBktOp {
+	if op == MakeWithVersioningBktOp || op == MakeWarehouseBktOp || op == MakeCortexBktOp || op == DeleteBucketBktOp {
 		for k, val := range opts {
 			v.Add(k, val)
 		}
