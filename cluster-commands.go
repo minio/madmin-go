@@ -238,6 +238,10 @@ type BktOp string
 const (
 	// make bucket and enable versioning
 	MakeWithVersioningBktOp BktOp = "make-with-versioning"
+	// make an AIStor Tables warehouse bucket and enable versioning; a peer that
+	// predates warehouse replication has no route for this op and rejects it, so
+	// the warehouse is withheld until that peer is upgraded
+	MakeWarehouseBktOp BktOp = "make-warehouse"
 	// add replication configuration
 	ConfigureReplBktOp BktOp = "configure-replication"
 	// delete bucket (forceDelete = off)
@@ -255,7 +259,7 @@ func (adm *AdminClient) SRPeerBucketOps(ctx context.Context, bucket string, op B
 	v.Add("operation", string(op))
 
 	// For make-bucket, bucket options may be sent via `opts`
-	if op == MakeWithVersioningBktOp || op == DeleteBucketBktOp {
+	if op == MakeWithVersioningBktOp || op == MakeWarehouseBktOp || op == DeleteBucketBktOp {
 		for k, val := range opts {
 			v.Add(k, val)
 		}
