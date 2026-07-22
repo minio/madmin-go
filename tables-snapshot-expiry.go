@@ -22,7 +22,6 @@ package madmin
 import (
 	"context"
 	"encoding/json"
-	"io"
 	"net/http"
 	"net/url"
 )
@@ -73,11 +72,8 @@ func (adm *AdminClient) RunTableSnapshotExpiry(ctx context.Context, warehouse, n
 		return result, httpRespToErrorResponse(resp)
 	}
 
-	b, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return result, err
-	}
-	if err = json.Unmarshal(b, &result); err != nil {
+	dec := json.NewDecoder(resp.Body)
+	if err = dec.Decode(&result); err != nil {
 		return result, err
 	}
 
