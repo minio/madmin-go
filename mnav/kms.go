@@ -226,6 +226,7 @@ func (node *kmsSegmentedNode) GetChildren() []MetricChild {
 		totalCalls += s.Total().Count
 	}
 	children := []MetricChild{
+		{Name: byTimeName, Description: "Browse by time segment (all operations)"},
 		{Name: "_ALL", Description: fmt.Sprintf("All operations combined (%d calls)", totalCalls)},
 	}
 	ops := sortedKeys(node.data)
@@ -246,6 +247,9 @@ func (node *kmsSegmentedNode) GetLeafData() map[string]string {
 }
 
 func (node *kmsSegmentedNode) GetChild(name string) (MetricNode, error) {
+	if name == byTimeName {
+		return newByTimeNode(kmsView(node.data), node, node.path+"/"+byTimeName), nil
+	}
 	if name == "_ALL" {
 		var merged madmin.SegmentedKMSActions
 		for _, s := range node.data {
@@ -326,6 +330,109 @@ func (node *kmsOpSegmentedNode) GetLeafData() map[string]string {
 	}
 	if len(data) == 0 {
 		return map[string]string{"Status": "No activity"}
+	}
+	return data
+}
+
+// kmsView adapts KMS last-day data to the generic _by_time navigation.
+func kmsView(ops map[string]madmin.SegmentedKMSActions) segView[madmin.KMSAction, *madmin.KMSAction] {
+	return segView[madmin.KMSAction, *madmin.KMSAction]{
+		ops:         ops,
+		metricType:  madmin.MetricsKMS,
+		metricFlags: madmin.MetricsDayStats,
+		empty:       func(a *madmin.KMSAction) bool { return a.Count == 0 && a.ConnFails == 0 && a.RemoteErrs == 0 },
+		segDesc:     kmsSegmentDesc,
+		opDesc:      kmsOpDesc,
+		opLeaf: func(op string, a madmin.KMSAction, segTime time.Time, interval int, parent MetricNode, path string) MetricNode {
+			return &kmsActionLeafNode{op: op, action: a, segTime: segTime, interval: interval, parent: parent, path: path}
+		},
+		sumLeaf: func(a madmin.KMSAction, segTime time.Time, interval int, parent MetricNode, path string) MetricNode {
+			return &kmsActionLeafNode{op: "_ALL", action: a, segTime: segTime, interval: interval, parent: parent, path: path}
+		},
+	}
+}
+
+func kmsSegmentDesc(total madmin.KMSAction, interval int, segTime, end time.Time) string {
+	day := ""
+	if !sameLocalDay(segTime, time.Now()) {
+		day = "Yesterday "
+	}
+	var rps float64
+	if interval > 0 {
+		rps = float64(total.Count) / float64(interval)
+	}
+	desc := fmt.Sprintf("%s%s -> %s, %.1f req/s, %d calls", day, segTime.Local().Format("15:04"), end.Local().Format("15:04"), rps, total.Count)
+	if total.ConnFails+total.RemoteErrs > 0 {
+		desc += fmt.Sprintf(", %d errors", total.ConnFails+total.RemoteErrs)
+	}
+	return desc
+}
+
+func kmsOpDesc(_ string, a madmin.KMSAction, interval int) string {
+	var rps float64
+	if interval > 0 {
+		rps = float64(a.Count) / float64(interval)
+	}
+	desc := fmt.Sprintf("%.1f req/s, %d calls", rps, a.Count)
+	if a.ConnFails+a.RemoteErrs > 0 {
+		desc += fmt.Sprintf(", %d errors", a.ConnFails+a.RemoteErrs)
+	}
+	return desc
+}
+
+// kmsActionLeafNode renders a single KMSAction: one operation within one time
+// segment, or the cross-operation summary (op == "_ALL").
+type kmsActionLeafNode struct {
+	op       string
+	action   madmin.KMSAction
+	segTime  time.Time
+	interval int
+	parent   MetricNode
+	path     string
+}
+
+func (node *kmsActionLeafNode) GetOpts() madmin.MetricsOptions     { return getNodeOpts(node) }
+func (node *kmsActionLeafNode) GetMetricType() madmin.MetricType   { return madmin.MetricsKMS }
+func (node *kmsActionLeafNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
+func (node *kmsActionLeafNode) GetParent() MetricNode              { return node.parent }
+func (node *kmsActionLeafNode) GetPath() string                    { return node.path }
+func (node *kmsActionLeafNode) ShouldPauseRefresh() bool           { return true }
+func (node *kmsActionLeafNode) GetChildren() []MetricChild         { return []MetricChild{} }
+
+func (node *kmsActionLeafNode) GetChild(_ string) (MetricNode, error) {
+	return nil, fmt.Errorf("no children")
+}
+
+func (node *kmsActionLeafNode) GetLeafData() map[string]string {
+	a := node.action
+	if a.Count == 0 && a.ConnFails == 0 && a.RemoteErrs == 0 {
+		return map[string]string{"Status": "No activity"}
+	}
+	data := map[string]string{}
+	idx := 0
+	add := func(k, v string) {
+		data[fmt.Sprintf("%02d:%s", idx, k)] = v
+		idx++
+	}
+	if node.op != "" && node.op != "_ALL" {
+		add("Operation", node.op)
+	}
+	if !node.segTime.IsZero() && node.interval > 0 {
+		end := node.segTime.Add(time.Duration(node.interval) * time.Second)
+		add("Time Segment", fmt.Sprintf("%s -> %s", node.segTime.Local().Format("15:04"), end.Local().Format("15:04")))
+	}
+	add("Calls", strconv.FormatUint(a.Count, 10))
+	if node.interval > 0 {
+		add("Rate", fmt.Sprintf("%.2f req/s", float64(a.Count)/float64(node.interval)))
+	}
+	add("Avg", a.Avg().Round(time.Microsecond).String())
+	add("Min", time.Duration(a.MinTime*float64(time.Second)).Round(time.Microsecond).String())
+	add("Max", time.Duration(a.MaxTime*float64(time.Second)).Round(time.Microsecond).String())
+	if a.ConnFails > 0 {
+		add("Conn Fails", strconv.FormatUint(a.ConnFails, 10))
+	}
+	if a.RemoteErrs > 0 {
+		add("Remote Errors", strconv.FormatUint(a.RemoteErrs, 10))
 	}
 	return data
 }
