@@ -1248,39 +1248,25 @@ func (node *DiskLastDayAllNode) ShouldPauseRefresh() bool           { return tru
 func (node *DiskLastDayAllNode) GetLeafData() map[string]string     { return nil }
 
 func (node *DiskLastDayAllNode) GetChildren() []MetricChild {
-	// Find the reference segmented data (longest segment list) for time alignment
-	var refSeg *madmin.SegmentedDiskActions
-	for _, seg := range node.segmented {
-		s := seg
-		if refSeg == nil || len(s.Segments) > len(refSeg.Segments) {
-			refSeg = &s
-		}
-	}
-	if refSeg == nil || len(refSeg.Segments) == 0 {
+	// Align every operation onto one timeline; each slot is the cross-operation sum.
+	total := totalSegmented(node.segmented)
+	if len(total.Segments) == 0 {
 		return []MetricChild{}
 	}
 
 	children := []MetricChild{{Name: "Total", Description: "Aggregated totals across all time segments"}}
 
-	for i := len(refSeg.Segments) - 1; i >= 0; i-- {
-		segmentTime := refSeg.FirstTime.Add(time.Duration(i*refSeg.Interval) * time.Second)
-		endTime := segmentTime.Add(time.Duration(refSeg.Interval) * time.Second)
-
-		var totalOps uint64
-		var totalTime float64
-		for _, seg := range node.segmented {
-			if i < len(seg.Segments) {
-				totalOps += seg.Segments[i].Count
-				totalTime += seg.Segments[i].AccTime
-			}
-		}
-		if totalOps == 0 {
+	for i := len(total.Segments) - 1; i >= 0; i-- {
+		seg := total.Segments[i]
+		if seg.Count == 0 {
 			continue
 		}
+		segmentTime := total.FirstTime.Add(time.Duration(i*total.Interval) * time.Second)
+		endTime := segmentTime.Add(time.Duration(total.Interval) * time.Second)
 
 		avg := ""
-		if totalTime > 0 {
-			avg = fmt.Sprintf(", %.1fms avg", (totalTime/float64(totalOps))*1000)
+		if seg.AccTime > 0 {
+			avg = fmt.Sprintf(", %.1fms avg", (seg.AccTime/float64(seg.Count))*1000)
 		}
 		day := "Today "
 		if !sameLocalDay(segmentTime, time.Now()) {
@@ -1290,46 +1276,28 @@ func (node *DiskLastDayAllNode) GetChildren() []MetricChild {
 			Name: segmentTime.UTC().Format("15:04Z"),
 			Description: fmt.Sprintf("%s%s -> %s (%d ops%s)",
 				day, segmentTime.Local().Format("15:04"), endTime.Local().Format("15:04"),
-				totalOps, avg),
+				seg.Count, avg),
 		})
 	}
 	return children
 }
 
 func (node *DiskLastDayAllNode) GetChild(name string) (MetricNode, error) {
-	var refSeg *madmin.SegmentedDiskActions
-	for _, seg := range node.segmented {
-		s := seg
-		if refSeg == nil || len(s.Segments) > len(refSeg.Segments) {
-			refSeg = &s
-		}
-	}
-	if refSeg == nil {
+	total := totalSegmented(node.segmented)
+	if len(total.Segments) == 0 {
 		return nil, fmt.Errorf("no segmented data available")
 	}
 
 	if name == "Total" {
-		var total madmin.DiskAction
-		for _, seg := range node.segmented {
-			for i := range seg.Segments {
-				total.Add(&seg.Segments[i])
-			}
-		}
-		return &DiskLastDayAllLeafNode{action: total, label: "Total", parent: node, path: node.path + "/Total"}, nil
+		return &DiskLastDayAllLeafNode{action: total.Total(), label: "Total", parent: node, path: node.path + "/Total"}, nil
 	}
 
-	for i := range refSeg.Segments {
-		segmentTime := refSeg.FirstTime.Add(time.Duration(i*refSeg.Interval) * time.Second)
+	for i := range total.Segments {
+		segmentTime := total.FirstTime.Add(time.Duration(i*total.Interval) * time.Second)
 		if segmentTime.UTC().Format("15:04Z") == name {
-			var total madmin.DiskAction
-			for _, seg := range node.segmented {
-				if i < len(seg.Segments) {
-					total.Add(&seg.Segments[i])
-				}
-			}
-			endTime := segmentTime.Add(time.Duration(refSeg.Interval) * time.Second)
+			endTime := segmentTime.Add(time.Duration(total.Interval) * time.Second)
 			label := fmt.Sprintf("%s -> %s", segmentTime.Local().Format("15:04"), endTime.Local().Format("15:04"))
-			return &DiskLastDayAllLeafNode{action: total, label: label, parent: node, path: node.path + "/" + name}, nil
+			return &DiskLastDayAllLeafNode{action: total.Segments[i], label: label, parent: node, path: node.path + "/" + name}, nil
 		}
 	}
 	return nil, fmt.Errorf("time segment not found: %s", name)
