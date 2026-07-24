@@ -62,11 +62,21 @@ func (ns *DeltaSharingNS) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// DeltaSharingSchema represents a schema containing tables
+// DeltaSharingVolume represents a volume: a directory of unstructured files
+// shared via credential vending rather than presigned URLs.
+type DeltaSharingVolume struct {
+	Name        string `json:"name"`
+	Description string `json:"description,omitempty"`
+	Bucket      string `json:"bucket"`
+	Location    string `json:"location,omitempty"`
+}
+
+// DeltaSharingSchema represents a schema containing tables and volumes
 type DeltaSharingSchema struct {
-	Name        string              `json:"name"`
-	Description string              `json:"description,omitempty"`
-	Tables      []DeltaSharingTable `json:"tables"`
+	Name        string               `json:"name"`
+	Description string               `json:"description,omitempty"`
+	Tables      []DeltaSharingTable  `json:"tables"`
+	Volumes     []DeltaSharingVolume `json:"volumes,omitempty"`
 }
 
 // DeltaSharingShare represents a Delta Sharing share
@@ -404,6 +414,16 @@ func NewSchema(name, description string, tables ...DeltaSharingTable) DeltaShari
 		Name:        name,
 		Description: description,
 		Tables:      tables,
+	}
+}
+
+// NewVolume creates a volume configuration. location is the optional prefix
+// within the bucket; an empty location shares the whole bucket.
+func NewVolume(name, bucket, location string) DeltaSharingVolume {
+	return DeltaSharingVolume{
+		Name:     name,
+		Bucket:   bucket,
+		Location: location,
 	}
 }
 
