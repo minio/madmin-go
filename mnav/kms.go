@@ -340,7 +340,7 @@ func kmsView(ops map[string]madmin.SegmentedKMSActions) segView[madmin.KMSAction
 		ops:         ops,
 		metricType:  madmin.MetricsKMS,
 		metricFlags: madmin.MetricsDayStats,
-		empty:       func(a *madmin.KMSAction) bool { return a.Count == 0 },
+		empty:       func(a *madmin.KMSAction) bool { return a.Count == 0 && a.ConnFails == 0 && a.RemoteErrs == 0 },
 		segDesc:     kmsSegmentDesc,
 		opDesc:      kmsOpDesc,
 		opLeaf: func(op string, a madmin.KMSAction, segTime time.Time, interval int, parent MetricNode, path string) MetricNode {
@@ -405,7 +405,7 @@ func (node *kmsActionLeafNode) GetChild(_ string) (MetricNode, error) {
 
 func (node *kmsActionLeafNode) GetLeafData() map[string]string {
 	a := node.action
-	if a.Count == 0 {
+	if a.Count == 0 && a.ConnFails == 0 && a.RemoteErrs == 0 {
 		return map[string]string{"Status": "No activity"}
 	}
 	data := map[string]string{}

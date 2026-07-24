@@ -165,47 +165,93 @@ func TestByTimeNavigation(t *testing.T) {
 	}
 }
 
-// TestByTimeAllViews checks that every wired view exposes _by_time as its first
-// last_day child and that the full segment -> operation -> stats path resolves.
+// TestByTimeAllViews checks each wired view (RPC, Disk, KMS) exposes _by_time as
+// its first last_day child and that navigation resolves segments by timestamp
+// across operations with staggered, non-contiguous FirstTime values — not by a
+// shared slot index. Each domain runs as an isolated subtest.
 func TestByTimeAllViews(t *testing.T) {
 	t0 := time.Date(2026, 7, 24, 10, 0, 0, 0, time.UTC)
-	m := &madmin.RealtimeMetrics{Aggregated: madmin.Metrics{
-		RPC: &madmin.RPCMetrics{LastDay: map[string]madmin.SegmentedRPCMetrics{
-			"storageRPC": {Interval: 900, FirstTime: t0, Segments: []madmin.RPCStats{{Requests: 3, RequestTimeSecs: 0.3}}},
-		}},
-		Disk: &madmin.DiskMetric{LastDaySegmented: map[string]madmin.SegmentedDiskActions{
-			"WalkDir": {Interval: 900, FirstTime: t0, Segments: []madmin.DiskAction{{Count: 4, AccTime: 0.4}}},
-		}},
-		KMS: &madmin.KMSRtMetrics{LastDay: map[string]madmin.SegmentedKMSActions{
-			"encrypt": {Interval: 900, FirstTime: t0, Segments: []madmin.KMSAction{{Count: 2}}},
-		}},
-	}}
-	nav := NewRealtimeMetricsNavigator(m)
-	segName := t0.UTC().Format("15:04Z")
+	seg00 := t0.UTC().Format("15:04Z")
+	seg15 := t0.Add(15 * time.Minute).UTC().Format("15:04Z")
+	seg30 := t0.Add(30 * time.Minute).UTC().Format("15:04Z")
+	// opA covers [t0, t0+15]; opB is staggered onto [t0+15, t0+30]. The union
+	// timeline (newest first) therefore spans three slots, and at seg15 both ops
+	// are active with distinct values (opA=2, opB=5) so a timestamp match must
+	// pick opB's own segment 0 (5), never grid slot index 1 (9).
+	wantSegs := []string{seg30, seg15, seg00}
 
-	for _, tc := range []struct{ lastDay, op string }{
-		{"rpc/last_day", "storageRPC"},
-		{"drive/ops_last_day", "WalkDir"},
-		{"kms/last_day", "encrypt"},
-	} {
-		ld, err := nav.Navigate(tc.lastDay)
+	// check drives one domain: _by_time-first, the staggered segment list, and the
+	// op / _ALL leaves at seg15 (staggered op value 5, cross-op summary 2+5=7).
+	check := func(t *testing.T, m *madmin.RealtimeMetrics, lastDay, op, leafKey string) {
+		t.Helper()
+		nav := NewRealtimeMetricsNavigator(m)
+
+		ld, err := nav.Navigate(lastDay)
 		if err != nil {
-			t.Fatalf("navigate %s: %v", tc.lastDay, err)
+			t.Fatalf("navigate %s: %v", lastDay, err)
 		}
 		if got := childNames(ld.GetChildren()); len(got) == 0 || got[0] != "_by_time" {
-			t.Errorf("%s first child = %v, want _by_time first", tc.lastDay, got)
+			t.Fatalf("%s first child = %v, want _by_time first", lastDay, got)
 		}
-		for _, leaf := range []string{tc.op, "_ALL"} {
-			path := tc.lastDay + "/_by_time/" + segName + "/" + leaf
-			node, err := nav.Navigate(path)
-			if err != nil {
-				t.Fatalf("navigate %s: %v", path, err)
-			}
-			if len(node.GetLeafData()) == 0 {
-				t.Errorf("%s: leaf has no data", path)
-			}
+
+		bt, err := nav.Navigate(lastDay + "/_by_time")
+		if err != nil {
+			t.Fatalf("navigate %s/_by_time: %v", lastDay, err)
+		}
+		if got := childNames(bt.GetChildren()); !reflect.DeepEqual(got, wantSegs) {
+			t.Fatalf("%s segments = %v, want %v", lastDay, got, wantSegs)
+		}
+
+		// Staggered op resolved by timestamp: opB's segment 0 lives at seg15.
+		opPath := lastDay + "/_by_time/" + seg15 + "/" + op
+		opNode, err := nav.Navigate(opPath)
+		if err != nil {
+			t.Fatalf("navigate %s: %v", opPath, err)
+		}
+		if od := opNode.GetLeafData(); len(od) == 0 {
+			t.Fatalf("%s: op leaf has no data", opPath)
+		} else if got := leafValue(od, leafKey); got != "5" {
+			t.Errorf("%s %s = %q, want 5 (timestamp match, not slot index)", opPath, leafKey, got)
+		}
+
+		allPath := lastDay + "/_by_time/" + seg15 + "/_ALL"
+		allNode, err := nav.Navigate(allPath)
+		if err != nil {
+			t.Fatalf("navigate %s: %v", allPath, err)
+		}
+		if ad := allNode.GetLeafData(); len(ad) == 0 {
+			t.Fatalf("%s: _ALL leaf has no data", allPath)
+		} else if got := leafValue(ad, leafKey); got != "7" {
+			t.Errorf("%s %s = %q, want 7 (2+5 timestamp-matched summary)", allPath, leafKey, got)
 		}
 	}
+
+	t.Run("rpc", func(t *testing.T) {
+		s := func(reqs int64) madmin.RPCStats { return madmin.RPCStats{Requests: reqs} }
+		m := &madmin.RealtimeMetrics{Aggregated: madmin.Metrics{RPC: &madmin.RPCMetrics{LastDay: map[string]madmin.SegmentedRPCMetrics{
+			"storageRPC": {Interval: 900, FirstTime: t0, Segments: []madmin.RPCStats{s(1), s(2)}},
+			"lockRPC":    {Interval: 900, FirstTime: t0.Add(15 * time.Minute), Segments: []madmin.RPCStats{s(5), s(9)}},
+		}}}}
+		check(t, m, "rpc/last_day", "lockRPC", "Total Requests")
+	})
+
+	t.Run("disk", func(t *testing.T) {
+		s := func(count uint64) madmin.DiskAction { return madmin.DiskAction{Count: count} }
+		m := &madmin.RealtimeMetrics{Aggregated: madmin.Metrics{Disk: &madmin.DiskMetric{LastDaySegmented: map[string]madmin.SegmentedDiskActions{
+			"WalkDir":  {Interval: 900, FirstTime: t0, Segments: []madmin.DiskAction{s(1), s(2)}},
+			"ReadFile": {Interval: 900, FirstTime: t0.Add(15 * time.Minute), Segments: []madmin.DiskAction{s(5), s(9)}},
+		}}}}
+		check(t, m, "drive/ops_last_day", "ReadFile", "Operations")
+	})
+
+	t.Run("kms", func(t *testing.T) {
+		s := func(count uint64) madmin.KMSAction { return madmin.KMSAction{Count: count} }
+		m := &madmin.RealtimeMetrics{Aggregated: madmin.Metrics{KMS: &madmin.KMSRtMetrics{LastDay: map[string]madmin.SegmentedKMSActions{
+			"encrypt": {Interval: 900, FirstTime: t0, Segments: []madmin.KMSAction{s(1), s(2)}},
+			"decrypt": {Interval: 900, FirstTime: t0.Add(15 * time.Minute), Segments: []madmin.KMSAction{s(5), s(9)}},
+		}}}}
+		check(t, m, "kms/last_day", "decrypt", "Calls")
+	})
 }
 
 func TestDiskSetLeafData(t *testing.T) {
