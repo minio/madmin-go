@@ -592,6 +592,44 @@ func (node *DiskLastMinuteNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("drive operation not found: %s", name)
 }
 
+// diskView adapts drive ops_last_day data to the generic _by_time navigation.
+func diskView(ops map[string]madmin.SegmentedDiskActions) segView[madmin.DiskAction, *madmin.DiskAction] {
+	return segView[madmin.DiskAction, *madmin.DiskAction]{
+		ops:         ops,
+		metricType:  madmin.MetricsDisk,
+		metricFlags: madmin.MetricsDayStats,
+		empty:       func(a *madmin.DiskAction) bool { return a.Count == 0 },
+		segDesc:     diskSegmentDesc,
+		opDesc:      diskOpDesc,
+		opLeaf: func(op string, a madmin.DiskAction, _ time.Time, _ int, parent MetricNode, path string) MetricNode {
+			return &DiskLastDayAllLeafNode{action: a, label: op, parent: parent, path: path}
+		},
+		sumLeaf: func(a madmin.DiskAction, _ time.Time, _ int, parent MetricNode, path string) MetricNode {
+			return &DiskLastDayAllLeafNode{action: a, label: "All operations", parent: parent, path: path}
+		},
+	}
+}
+
+func diskSegmentDesc(total madmin.DiskAction, _ int, segTime, end time.Time) string {
+	day := "Today "
+	if !sameLocalDay(segTime, time.Now()) {
+		day = "Yesterday "
+	}
+	avg := ""
+	if total.Count > 0 && total.AccTime > 0 {
+		avg = fmt.Sprintf(", %.1fms avg", (total.AccTime/float64(total.Count))*1000)
+	}
+	return fmt.Sprintf("%s%s -> %s (%d ops%s)", day, segTime.Local().Format("15:04"), end.Local().Format("15:04"), total.Count, avg)
+}
+
+func diskOpDesc(_ string, a madmin.DiskAction, _ int) string {
+	avg := ""
+	if a.Count > 0 && a.AccTime > 0 {
+		avg = fmt.Sprintf(", %.1fms avg", (a.AccTime/float64(a.Count))*1000)
+	}
+	return fmt.Sprintf("%d ops%s", a.Count, avg)
+}
+
 // DiskLastDayNode handles navigation for segmented last day operations
 type DiskLastDayNode struct {
 	segmented map[string]madmin.SegmentedDiskActions
@@ -612,13 +650,16 @@ func (node *DiskLastDayNode) GetChildren() []MetricChild {
 		return []MetricChild{}
 	}
 
-	children := make([]MetricChild, 0, len(node.segmented)+1)
+	children := make([]MetricChild, 0, len(node.segmented)+2)
 
-	// Add _ALL entry first for aggregated time-segmented totals
-	children = append(children, MetricChild{
-		Name:        "_ALL",
-		Description: "All operations combined, time segmented",
-	})
+	// Time-first entry, then the aggregated per-operation _ALL.
+	children = append(children,
+		MetricChild{Name: byTimeName, Description: "Browse by time segment (all operations)"},
+		MetricChild{
+			Name:        "_ALL",
+			Description: "All operations combined, time segmented",
+		},
+	)
 
 	// Collect operation types with their total counts
 	type operationInfo struct {
@@ -746,6 +787,10 @@ func (node *DiskLastDayNode) ShouldPauseRefresh() bool {
 func (node *DiskLastDayNode) GetChild(name string) (MetricNode, error) {
 	if node.segmented == nil {
 		return nil, fmt.Errorf("no segmented data available")
+	}
+
+	if name == byTimeName {
+		return newByTimeNode(diskView(node.segmented), node, node.path+"/"+byTimeName), nil
 	}
 
 	if name == "_ALL" {

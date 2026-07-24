@@ -459,6 +459,28 @@ func (node *APILastMinuteNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("endpoint not found: %s", name)
 }
 
+// apiView adapts API last-day data to the generic _by_time navigation.
+func apiView(ops map[string]madmin.SegmentedAPIMetrics) segView[madmin.APIStats, *madmin.APIStats] {
+	return segView[madmin.APIStats, *madmin.APIStats]{
+		ops:         ops,
+		metricType:  madmin.MetricsAPI,
+		metricFlags: madmin.MetricsDayStats,
+		empty:       func(s *madmin.APIStats) bool { return s.Requests == 0 },
+		segDesc: func(total madmin.APIStats, interval int, segTime, end time.Time) string {
+			return formatAPITimeSegmentDesc(total, interval, segTime, end)
+		},
+		opDesc: func(_ string, s madmin.APIStats, interval int) string {
+			return formatAPISegmentDesc(s, interval, 1)
+		},
+		opLeaf: func(op string, s madmin.APIStats, _ time.Time, _ int, parent MetricNode, path string) MetricNode {
+			return &APIEndpointNode{endpoint: op, stats: s, parent: parent, path: path}
+		},
+		sumLeaf: func(s madmin.APIStats, segTime time.Time, _ int, parent MetricNode, path string) MetricNode {
+			return &APITimeSegmentAllNode{segment: s, segmentTime: segTime, parent: parent, path: path}
+		},
+	}
+}
+
 // APILastDayNode shows last day API statistics segmented
 type APILastDayNode struct {
 	api    *madmin.APIMetrics
@@ -479,13 +501,16 @@ func (node *APILastDayNode) GetChildren() []MetricChild {
 		return []MetricChild{}
 	}
 
-	children := make([]MetricChild, 0, len(node.api.LastDayAPI)+1)
+	children := make([]MetricChild, 0, len(node.api.LastDayAPI)+2)
 
-	// Add "All" entry first - shows aggregated time segments
-	children = append(children, MetricChild{
-		Name:        "All",
-		Description: "Aggregated 24h statistics for all API endpoints",
-	})
+	// Time-first entry, then the aggregated per-operation "All".
+	children = append(children,
+		MetricChild{Name: byTimeName, Description: "Browse by time segment (all endpoints)"},
+		MetricChild{
+			Name:        "All",
+			Description: "Aggregated 24h statistics for all API endpoints",
+		},
+	)
 
 	// Add individual API endpoints, sorted alphabetically
 	apiNames := make([]string, 0, len(node.api.LastDayAPI))
@@ -524,6 +549,10 @@ func (node *APILastDayNode) GetParent() MetricNode              { return node.pa
 func (node *APILastDayNode) GetPath() string                    { return node.path }
 
 func (node *APILastDayNode) GetChild(name string) (MetricNode, error) {
+	if name == byTimeName {
+		return newByTimeNode(apiView(node.api.LastDayAPI), node, node.path+"/"+byTimeName), nil
+	}
+
 	// Handle "All" entry - shows aggregated time segments
 	if name == "All" {
 		return &APILastDayAllNode{
