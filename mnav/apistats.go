@@ -472,8 +472,8 @@ func apiView(ops map[string]madmin.SegmentedAPIMetrics) segView[madmin.APIStats,
 		opDesc: func(_ string, s madmin.APIStats, interval int) string {
 			return formatAPISegmentDesc(s, interval, 1)
 		},
-		opLeaf: func(op string, s madmin.APIStats, _ time.Time, _ int, parent MetricNode, path string) MetricNode {
-			return &APIEndpointNode{endpoint: op, stats: s, parent: parent, path: path}
+		opLeaf: func(op string, s madmin.APIStats, segTime time.Time, interval int, parent MetricNode, path string) MetricNode {
+			return &APIEndpointNode{endpoint: op, stats: s, segmentTime: segTime, interval: interval, parent: parent, path: path}
 		},
 		sumLeaf: func(s madmin.APIStats, segTime time.Time, _ int, parent MetricNode, path string) MetricNode {
 			return &APITimeSegmentAllNode{segment: s, segmentTime: segTime, parent: parent, path: path}
@@ -934,10 +934,12 @@ func (node *APITimeSegmentNode) GetChild(name string) (MetricNode, error) {
 
 // APIEndpointNode shows detailed statistics for a specific endpoint
 type APIEndpointNode struct {
-	endpoint string
-	stats    madmin.APIStats
-	parent   MetricNode
-	path     string
+	endpoint    string
+	stats       madmin.APIStats
+	segmentTime time.Time
+	interval    int
+	parent      MetricNode
+	path        string
 }
 
 func (node *APIEndpointNode) GetOpts() madmin.MetricsOptions {
@@ -964,6 +966,13 @@ func (node *APIEndpointNode) GetLeafData() map[string]string {
 
 	// === ENDPOINT HEADER ===
 	entries = append(entries, struct{ key, value string }{"Endpoint", node.endpoint})
+	if !node.segmentTime.IsZero() && node.interval > 0 {
+		end := node.segmentTime.Add(time.Duration(node.interval) * time.Second)
+		entries = append(entries, struct{ key, value string }{
+			"Time Segment",
+			fmt.Sprintf("%s -> %s", node.segmentTime.Local().Format("15:04"), end.Local().Format("15:04")),
+		})
+	}
 	entries = append(entries, struct{ key, value string }{"Total Requests", humanize.Comma(node.stats.Requests)})
 
 	// Calculate RPS if we have wall time
