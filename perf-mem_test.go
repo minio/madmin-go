@@ -21,6 +21,7 @@ package madmin
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -139,8 +140,15 @@ func TestMemPerfNegativeOpts(t *testing.T) {
 			}))
 			defer server.Close()
 
-			if _, err := newMemPerfTestClient(t, server.URL).MemPerf(context.Background(), tc.opts); err == nil {
+			_, err := newMemPerfTestClient(t, server.URL).MemPerf(context.Background(), tc.opts)
+			if err == nil {
 				t.Fatal("expected an error for a negative option")
+			}
+			// Assert the reason rather than merely that something failed: a
+			// dial error would otherwise satisfy this test.
+			var errResp ErrorResponse
+			if !errors.As(err, &errResp) || errResp.Code != "InvalidArgument" {
+				t.Errorf("expected an InvalidArgument ErrorResponse, got %#v", err)
 			}
 			if called {
 				t.Error("no request should be issued when validation fails")
