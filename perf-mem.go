@@ -88,6 +88,11 @@ type MemPerfNodeResult struct {
 // the topology could not be read. Values below roughly 0.65 are worth
 // investigating before trusting any other benchmark from the node.
 func (r MemPerfNodeResult) Efficiency() float64 {
+	// A theoretical figure with no source behind it is not a measurement;
+	// reporting a ratio from it would dress up a guess as data.
+	if r.TopologySource == "" || r.TopologySource == MemPerfTopologyUnavailable {
+		return 0
+	}
 	if r.TheoreticalBps == 0 {
 		return 0
 	}
@@ -127,6 +132,16 @@ type MemPerfOpts struct {
 // anything else running on those nodes; treat it as a deployment validation
 // step rather than something to run against a live workload.
 func (adm *AdminClient) MemPerf(ctx context.Context, opts MemPerfOpts) (result MemPerfResult, err error) {
+	// Zero means "server default"; a negative is a caller mistake. Treating it
+	// as the default would quietly turn a typo into a saturating run across
+	// every core.
+	if opts.Duration < 0 {
+		return result, ErrInvalidArgument("duration cannot be negative")
+	}
+	if opts.Threads < 0 {
+		return result, ErrInvalidArgument("threads cannot be negative")
+	}
+
 	queryVals := make(url.Values)
 	if opts.Duration > 0 {
 		queryVals.Set("duration", opts.Duration.String())
