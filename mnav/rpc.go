@@ -182,6 +182,52 @@ func (node *RPCLastMinuteNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available for last minute RPC stats")
 }
 
+// rpcView adapts RPC last-day data to the generic _by_time navigation.
+func rpcView(ops map[string]madmin.SegmentedRPCMetrics) segView[madmin.RPCStats, *madmin.RPCStats] {
+	return segView[madmin.RPCStats, *madmin.RPCStats]{
+		ops:         ops,
+		metricType:  madmin.MetricsRPC,
+		metricFlags: madmin.MetricsDayStats,
+		empty:       func(s *madmin.RPCStats) bool { return s.Requests == 0 },
+		segDesc:     rpcSegmentDesc,
+		opDesc:      rpcOpDesc,
+		opLeaf: func(op string, s madmin.RPCStats, segTime time.Time, _ int, parent MetricNode, path string) MetricNode {
+			return &RPCHandlerSegmentNode{handler: op, stats: s, segmentTime: segTime, parent: parent, path: path}
+		},
+		sumLeaf: func(s madmin.RPCStats, segTime time.Time, _ int, parent MetricNode, path string) MetricNode {
+			return &RPCTimeSegmentAllNode{segment: s, segmentTime: segTime, parent: parent, path: path}
+		},
+	}
+}
+
+func rpcSegmentDesc(total madmin.RPCStats, interval int, segTime, end time.Time) string {
+	day := ""
+	if !sameLocalDay(segTime, time.Now()) {
+		day = "Yesterday "
+	}
+	var rps float64
+	if interval > 0 {
+		rps = float64(total.Requests) / float64(interval)
+	}
+	desc := fmt.Sprintf("%s%s -> %s, %.1f req/s", day, segTime.Local().Format("15:04"), end.Local().Format("15:04"), rps)
+	if total.Requests > 0 && total.RequestTimeSecs > 0 {
+		desc += fmt.Sprintf(", %.1fms avg", (total.RequestTimeSecs/float64(total.Requests))*1000)
+	}
+	return desc
+}
+
+func rpcOpDesc(_ string, s madmin.RPCStats, interval int) string {
+	var rps float64
+	if interval > 0 {
+		rps = float64(s.Requests) / float64(interval)
+	}
+	desc := fmt.Sprintf("%.1f req/s", rps)
+	if s.Requests > 0 && s.RequestTimeSecs > 0 {
+		desc += fmt.Sprintf(", %.1fms avg", (s.RequestTimeSecs/float64(s.Requests))*1000)
+	}
+	return desc
+}
+
 // RPCLastDayNode shows last day RPC statistics segmented
 type RPCLastDayNode struct {
 	rpc    *madmin.RPCMetrics
@@ -200,13 +246,16 @@ func (node *RPCLastDayNode) GetChildren() []MetricChild {
 		return []MetricChild{}
 	}
 
-	children := make([]MetricChild, 0, len(node.rpc.LastDay)+1)
+	children := make([]MetricChild, 0, len(node.rpc.LastDay)+2)
 
-	// Add "All" entry first
-	children = append(children, MetricChild{
-		Name:        "All",
-		Description: "Aggregated statistics for all RPC handlers",
-	})
+	// Time-first entry, then the aggregated per-handler "All".
+	children = append(children,
+		MetricChild{Name: byTimeName, Description: "Browse by time segment (all handlers)"},
+		MetricChild{
+			Name:        "All",
+			Description: "Aggregated statistics for all RPC handlers",
+		},
+	)
 
 	// Add individual handlers, sorted alphabetically
 	handlerNames := make([]string, 0, len(node.rpc.LastDay))
@@ -263,6 +312,10 @@ func (node *RPCLastDayNode) GetParent() MetricNode              { return node.pa
 func (node *RPCLastDayNode) GetPath() string                    { return node.path }
 
 func (node *RPCLastDayNode) GetChild(name string) (MetricNode, error) {
+	if name == byTimeName {
+		return newByTimeNode(rpcView(node.rpc.LastDay), node, node.path+"/"+byTimeName), nil
+	}
+
 	// Handle "All" entry
 	if name == "All" {
 		return &RPCLastDayAllNode{
