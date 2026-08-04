@@ -738,10 +738,12 @@ func (node *APILastDayEndpointNode) GetChild(name string) (MetricNode, error) {
 		segmentTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
 		if segmentTime.UTC().Format("15:04Z") == name {
 			return &APIEndpointNode{
-				endpoint: node.apiName,
-				stats:    node.segmented.Segments[i],
-				parent:   node,
-				path:     node.path + "/" + name,
+				endpoint:    node.apiName,
+				stats:       node.segmented.Segments[i],
+				segmentTime: segmentTime,
+				interval:    node.segmented.Interval,
+				parent:      node,
+				path:        node.path + "/" + name,
 			}, nil
 		}
 	}
