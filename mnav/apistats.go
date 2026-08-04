@@ -968,9 +968,13 @@ func (node *APIEndpointNode) GetLeafData() map[string]string {
 	entries = append(entries, struct{ key, value string }{"Endpoint", node.endpoint})
 	if !node.segmentTime.IsZero() && node.interval > 0 {
 		end := node.segmentTime.Add(time.Duration(node.interval) * time.Second)
+		day := "Today "
+		if !sameLocalDay(node.segmentTime, time.Now()) {
+			day = "Yesterday "
+		}
 		entries = append(entries, struct{ key, value string }{
 			"Time Segment",
-			fmt.Sprintf("%s -> %s", node.segmentTime.Local().Format("15:04"), end.Local().Format("15:04")),
+			fmt.Sprintf("%s%s -> %s", day, node.segmentTime.Local().Format("15:04"), end.Local().Format("15:04")),
 		})
 	}
 	entries = append(entries, struct{ key, value string }{"Total Requests", humanize.Comma(node.stats.Requests)})

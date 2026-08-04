@@ -419,7 +419,11 @@ func (node *kmsActionLeafNode) GetLeafData() map[string]string {
 	}
 	if !node.segTime.IsZero() && node.interval > 0 {
 		end := node.segTime.Add(time.Duration(node.interval) * time.Second)
-		add("Time Segment", fmt.Sprintf("%s -> %s", node.segTime.Local().Format("15:04"), end.Local().Format("15:04")))
+		day := "Today "
+		if !sameLocalDay(node.segTime, time.Now()) {
+			day = "Yesterday "
+		}
+		add("Time Segment", fmt.Sprintf("%s%s -> %s", day, node.segTime.Local().Format("15:04"), end.Local().Format("15:04")))
 	}
 	add("Calls", strconv.FormatUint(a.Count, 10))
 	if node.interval > 0 {
