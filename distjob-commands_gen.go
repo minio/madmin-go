@@ -313,6 +313,12 @@ func (z *DistJobNodeStatus) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "BytesFailed")
 				return
 			}
+		case "is":
+			z.ItemsSkipped, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "ItemsSkipped")
+				return
+			}
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -326,9 +332,9 @@ func (z *DistJobNodeStatus) DecodeMsg(dc *msgp.Reader) (err error) {
 
 // EncodeMsg implements msgp.Encodable
 func (z *DistJobNodeStatus) EncodeMsg(en *msgp.Writer) (err error) {
-	// map header, size 10
+	// map header, size 11
 	// write "h"
-	err = en.Append(0x8a, 0xa1, 0x68)
+	err = en.Append(0x8b, 0xa1, 0x68)
 	if err != nil {
 		return
 	}
@@ -427,15 +433,25 @@ func (z *DistJobNodeStatus) EncodeMsg(en *msgp.Writer) (err error) {
 		err = msgp.WrapError(err, "BytesFailed")
 		return
 	}
+	// write "is"
+	err = en.Append(0xa2, 0x69, 0x73)
+	if err != nil {
+		return
+	}
+	err = en.WriteInt64(z.ItemsSkipped)
+	if err != nil {
+		err = msgp.WrapError(err, "ItemsSkipped")
+		return
+	}
 	return
 }
 
 // MarshalMsg implements msgp.Marshaler
 func (z *DistJobNodeStatus) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
-	// map header, size 10
+	// map header, size 11
 	// string "h"
-	o = append(o, 0x8a, 0xa1, 0x68)
+	o = append(o, 0x8b, 0xa1, 0x68)
 	o = msgp.AppendString(o, z.Host)
 	// string "il"
 	o = append(o, 0xa2, 0x69, 0x6c)
@@ -464,6 +480,9 @@ func (z *DistJobNodeStatus) MarshalMsg(b []byte) (o []byte, err error) {
 	// string "bf"
 	o = append(o, 0xa2, 0x62, 0x66)
 	o = msgp.AppendInt64(o, z.BytesFailed)
+	// string "is"
+	o = append(o, 0xa2, 0x69, 0x73)
+	o = msgp.AppendInt64(o, z.ItemsSkipped)
 	return
 }
 
@@ -545,6 +564,12 @@ func (z *DistJobNodeStatus) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "BytesFailed")
 				return
 			}
+		case "is":
+			z.ItemsSkipped, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ItemsSkipped")
+				return
+			}
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -559,7 +584,7 @@ func (z *DistJobNodeStatus) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *DistJobNodeStatus) Msgsize() (s int) {
-	s = 1 + 2 + msgp.StringPrefixSize + len(z.Host) + 3 + msgp.BoolSize + 3 + msgp.BoolSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.StringPrefixSize + len(z.CurrentBucket) + 3 + msgp.Int64Size + 3 + msgp.Int64Size + 3 + msgp.Int64Size + 3 + msgp.Int64Size
+	s = 1 + 2 + msgp.StringPrefixSize + len(z.Host) + 3 + msgp.BoolSize + 3 + msgp.BoolSize + 3 + msgp.IntSize + 3 + msgp.IntSize + 3 + msgp.StringPrefixSize + len(z.CurrentBucket) + 3 + msgp.Int64Size + 3 + msgp.Int64Size + 3 + msgp.Int64Size + 3 + msgp.Int64Size + 3 + msgp.Int64Size
 	return
 }
 
