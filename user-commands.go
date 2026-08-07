@@ -59,6 +59,9 @@ type BucketDetails struct {
 	Retention           *BucketRetention `json:"retention,omitempty"`
 	QoSRules            int              `json:"qosRules,omitempty"`
 	Compression         bool             `json:"compression,omitempty"`
+	// CompressionILM reports that the bucket has at least one lifecycle rule
+	// carrying a compression action.
+	CompressionILM bool `json:"compressionILM,omitempty"`
 }
 
 // BucketAccessInfo represents bucket usage of a bucket, and its relevant
