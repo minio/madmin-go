@@ -22,8 +22,11 @@ package madmin
 import (
 	"context"
 	"encoding/json"
+	"net/http"
+	"net/http/httptest"
 	"runtime"
 	"testing"
+	"time"
 )
 
 // TestCPUFreqStatsJSONMarshal tests that only Name and Governor are included in JSON output when set
@@ -274,5 +277,53 @@ func TestCPUMultithreadingDetection(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+// TestServerHealthInfoPreservesBufferedFrames verifies the version probe does
+// not swallow the frames behind it. The probe's decoder reads ahead, so when
+// the server emits several frames into one flush the bytes after the version
+// frame land in that decoder's buffer. Callers decode the rest of the stream
+// from resp.Body with a decoder of their own, and would otherwise pick up a
+// frame whose prefix is already gone.
+func TestServerHealthInfoPreservesBufferedFrames(t *testing.T) {
+	frame := func(ts time.Time) []byte {
+		b, err := json.Marshal(HealthInfo{Version: HealthInfoVersion, TimeStamp: ts})
+		if err != nil {
+			t.Fatalf("Marshal: %v", err)
+		}
+		return b
+	}
+	first, second := time.Unix(500, 0).UTC(), time.Unix(1000, 0).UTC()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		// Both frames in a single write, so they reach the client in one read.
+		_, _ = w.Write(append(frame(first), frame(second)...))
+	}))
+	defer server.Close()
+
+	client, err := New(mustParseHost(t, server.URL), "ak", "sk", false)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+
+	resp, version, err := client.ServerHealthInfo(context.Background(),
+		[]HealthDataType{HealthDataTypeMinioInfo}, time.Second, "")
+	if err != nil {
+		t.Fatalf("ServerHealthInfo: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if version != HealthInfoVersion {
+		t.Errorf("version = %q, want %q", version, HealthInfoVersion)
+	}
+
+	var got HealthInfo
+	if err := json.NewDecoder(resp.Body).Decode(&got); err != nil {
+		t.Fatalf("decoding the frame after the version probe: %v", err)
+	}
+	if !got.TimeStamp.Equal(second) {
+		t.Errorf("TimeStamp = %v, want the frame after the probe (%v)", got.TimeStamp, second)
 	}
 }
