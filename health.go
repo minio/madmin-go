@@ -1612,5 +1612,15 @@ func (adm *AdminClient) ServerHealthInfo(ctx context.Context, types []HealthData
 		return nil, "", errors.New("Upgrade Minio Client to support health info version " + version.Version)
 	}
 
+	// decoder reads ahead, so it can hold bytes belonging to the frames after
+	// the version one. Callers decode those from resp.Body with a decoder of
+	// their own, so the buffered remainder has to go back in front of the
+	// stream; otherwise the next frame silently loses its prefix.
+	body := resp.Body
+	resp.Body = &closeWrapper{
+		Reader: io.MultiReader(decoder.Buffered(), body),
+		Closer: body,
+	}
+
 	return resp, version.Version, nil
 }
