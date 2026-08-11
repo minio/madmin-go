@@ -123,12 +123,7 @@ func (node *SiteResyncMetricsNode) GetLeafData() map[string]string {
 	if node.resync.Bucket != "" {
 		currentInfo := node.resync.Bucket
 		if node.resync.Object != "" {
-			// Truncate long object names
-			obj := node.resync.Object
-			if len(obj) > 30 {
-				obj = obj[:27] + "..."
-			}
-			currentInfo += "/" + obj
+			currentInfo += "/" + truncate(node.resync.Object, 30)
 		}
 		data["Current"] = currentInfo
 	}

@@ -43,6 +43,7 @@ const (
 	BatchJobExpire    BatchJobType = "expire"
 	BatchJobCatalog   BatchJobType = "catalog"
 	BatchJobUntier    BatchJobType = "untier"
+	BatchJobCompress  BatchJobType = "compress"
 )
 
 const (

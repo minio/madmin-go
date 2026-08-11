@@ -40,6 +40,7 @@ type DistJobType uint8
 const (
 	DistJobTypeUnknown DistJobType = iota
 	DistJobTypeDecommission
+	DistJobTypeCompress
 )
 
 // String returns the wire/query-param representation of the job type, e.g.
@@ -48,6 +49,8 @@ func (t DistJobType) String() string {
 	switch t {
 	case DistJobTypeDecommission:
 		return "decommission"
+	case DistJobTypeCompress:
+		return "compress"
 	default:
 		return "unknown"
 	}
@@ -77,6 +80,8 @@ func ParseDistJobType(s string) DistJobType {
 	switch s {
 	case DistJobTypeDecommission.String():
 		return DistJobTypeDecommission
+	case DistJobTypeCompress.String():
+		return DistJobTypeCompress
 	default:
 		return DistJobTypeUnknown
 	}
@@ -101,6 +106,8 @@ type DistJobNodeStatus struct {
 	ItemsFailed int64 `json:"itemsFailed" msg:"if"`
 	BytesDone   int64 `json:"bytesDone"   msg:"bd"`
 	BytesFailed int64 `json:"bytesFailed" msg:"bf"`
+	// ItemsSkipped counts items the job examined and deliberately left alone.
+	ItemsSkipped int64 `json:"itemsSkipped" msg:"is"`
 }
 
 // DistJobLeaderStatus is a point-in-time snapshot of a running distributed

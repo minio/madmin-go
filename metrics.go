@@ -1244,6 +1244,7 @@ type JobMetric struct {
 	Expired   *ExpirationInfo  `json:"expired,omitempty"`
 	Catalog   *CatalogInfo     `json:"catalog,omitempty"`
 	Untier    *UntierInfo      `json:"untier,omitempty"`
+	Compress  *CompressInfo    `json:"compress,omitempty"`
 }
 
 type ReplicateInfo struct {
@@ -1317,6 +1318,22 @@ type UntierInfo struct {
 	ObjectsFailed    int64  `json:"objectsFailed"`
 	BytesTransferred int64  `json:"bytesTransferred"`
 	BytesFailed      int64  `json:"bytesFailed"`
+}
+
+// CompressInfo contains progress metrics for a batch compress job. Objects
+// counts only versions the job actually re-encoded; ObjectsSkipped counts the
+// ones it examined and left alone.
+type CompressInfo struct {
+	Bucket        string `json:"bucket"`
+	LastObject    string `json:"lastObject"`
+	Objects       int64  `json:"objects"`
+	ObjectsFailed int64  `json:"objectsFailed"`
+	// BytesSaved is the on-disk space reclaimed by re-encoding, and
+	// BytesFailed the on-disk size of the versions that failed.
+	BytesSaved  int64 `json:"bytesSaved"`
+	BytesFailed int64 `json:"bytesFailed"`
+	// ObjectsSkipped counts versions the job examined and left alone.
+	ObjectsSkipped int64 `json:"objectsSkipped"`
 }
 
 // Merge other into 'o'.
