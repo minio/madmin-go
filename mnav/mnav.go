@@ -35,6 +35,19 @@ func sameLocalDay(t1, t2 time.Time) bool {
 	return y1 == y2 && m1 == m2 && d1 == d2
 }
 
+// truncate shortens s to at most maxRunes runes, appending "..." within that
+// budget when shortened. Operates on runes so multi-byte characters are never split.
+func truncate(s string, maxRunes int) string {
+	r := []rune(s)
+	if len(r) <= maxRunes {
+		return s
+	}
+	if maxRunes <= 3 {
+		return string(r[:max(maxRunes, 0)])
+	}
+	return string(r[:maxRunes-3]) + "..."
+}
+
 // MetricNavigator provides navigation functionality
 type MetricNavigator interface {
 	Navigate(path string) (MetricNode, error)

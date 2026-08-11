@@ -327,12 +327,7 @@ func addReplicateData(data map[string]string, info *madmin.ReplicateInfo) {
 	if info.Bucket != "" {
 		currentInfo := info.Bucket
 		if info.Object != "" {
-			// Truncate long object names
-			obj := info.Object
-			if len(obj) > 30 {
-				obj = obj[:27] + "..."
-			}
-			currentInfo += "/" + obj
+			currentInfo += "/" + truncate(info.Object, 30)
 		}
 		data["Current"] = currentInfo
 	}
@@ -354,12 +349,7 @@ func addExpirationData(data map[string]string, info *madmin.ExpirationInfo) {
 	if info.Bucket != "" {
 		currentInfo := info.Bucket
 		if info.Object != "" {
-			// Truncate long object names
-			obj := info.Object
-			if len(obj) > 30 {
-				obj = obj[:27] + "..."
-			}
-			currentInfo += "/" + obj
+			currentInfo += "/" + truncate(info.Object, 30)
 		}
 		data["Current"] = currentInfo
 	}
@@ -375,12 +365,7 @@ func addKeyRotateData(data map[string]string, info *madmin.KeyRotationInfo) {
 	if info.Bucket != "" {
 		currentInfo := info.Bucket
 		if info.Object != "" {
-			// Truncate long object names
-			obj := info.Object
-			if len(obj) > 30 {
-				obj = obj[:27] + "..."
-			}
-			currentInfo += "/" + obj
+			currentInfo += "/" + truncate(info.Object, 30)
 		}
 		data["Current"] = currentInfo
 	}
@@ -410,11 +395,7 @@ func addCatalogData(data map[string]string, info *madmin.CatalogInfo) {
 	if info.Bucket != "" {
 		currentInfo := info.Bucket
 		if info.LastObjectScanned != "" {
-			obj := info.LastObjectScanned
-			if len(obj) > 30 {
-				obj = obj[:27] + "..."
-			}
-			currentInfo += "/" + obj
+			currentInfo += "/" + truncate(info.LastObjectScanned, 30)
 		}
 		data["Current"] = currentInfo
 	}
@@ -439,11 +420,7 @@ func addCompressData(data map[string]string, info *madmin.CompressInfo) {
 	if info.Bucket != "" {
 		currentInfo := info.Bucket
 		if info.LastObject != "" {
-			obj := info.LastObject
-			if len(obj) > 30 {
-				obj = obj[:27] + "..."
-			}
-			currentInfo += "/" + obj
+			currentInfo += "/" + truncate(info.LastObject, 30)
 		}
 		data["Current"] = currentInfo
 	}

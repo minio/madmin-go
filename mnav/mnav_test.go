@@ -22,6 +22,7 @@ import (
 	"strings"
 	"testing"
 	"time"
+	"unicode/utf8"
 
 	"github.com/minio/madmin-go/v4"
 )
@@ -289,6 +290,63 @@ func TestDiskSetLeafData(t *testing.T) {
 		}
 		if got := d["Cache Hit Rate"]; got != "80.0%" {
 			t.Errorf("%s: Cache Hit Rate = %q, want 80.0%%", path, got)
+		}
+	}
+}
+
+func TestCompressLastObjectTruncation(t *testing.T) {
+	// 40 multi-byte runes: byte slicing would split a code point.
+	long := strings.Repeat("é", 40)
+	data := map[string]string{}
+	addCompressData(data, &madmin.CompressInfo{Bucket: "bkt", LastObject: long})
+
+	got := data["Current"]
+	if !utf8.ValidString(got) {
+		t.Errorf("Current = %q, not valid UTF-8", got)
+	}
+	want := "bkt/" + strings.Repeat("é", 27) + "..."
+	if got != want {
+		t.Errorf("Current = %q, want %q", got, want)
+	}
+
+	// Exactly 30 runes is left untouched.
+	exact := strings.Repeat("é", 30)
+	data = map[string]string{}
+	addCompressData(data, &madmin.CompressInfo{Bucket: "bkt", LastObject: exact})
+	if got, want := data["Current"], "bkt/"+exact; got != want {
+		t.Errorf("Current = %q, want %q", got, want)
+	}
+}
+
+func TestTruncate(t *testing.T) {
+	tests := []struct {
+		s        string
+		maxRunes int
+		want     string
+	}{
+		{"short", 30, "short"},
+		{strings.Repeat("a", 30), 30, strings.Repeat("a", 30)},
+		{strings.Repeat("a", 31), 30, strings.Repeat("a", 27) + "..."},
+		{strings.Repeat("é", 40), 30, strings.Repeat("é", 27) + "..."},
+		{strings.Repeat("世", 40), 30, strings.Repeat("世", 27) + "..."},
+		{"héllo wörld", 5, "hé..."},
+		{"", 30, ""},
+		// No room for the ellipsis: plain truncation.
+		{"héllo", 3, "hél"},
+		{"héllo", 1, "h"},
+		{"héllo", 0, ""},
+		{"héllo", -1, ""},
+	}
+	for _, tt := range tests {
+		got := truncate(tt.s, tt.maxRunes)
+		if got != tt.want {
+			t.Errorf("truncate(%q, %d) = %q, want %q", tt.s, tt.maxRunes, got, tt.want)
+		}
+		if !utf8.ValidString(got) {
+			t.Errorf("truncate(%q, %d) = %q, not valid UTF-8", tt.s, tt.maxRunes, got)
+		}
+		if n := utf8.RuneCountInString(got); n > max(tt.maxRunes, 0) {
+			t.Errorf("truncate(%q, %d) = %q, %d runes exceeds limit", tt.s, tt.maxRunes, got, n)
 		}
 	}
 }

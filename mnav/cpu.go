@@ -157,12 +157,8 @@ func (node *CPUMetricsNavigator) GetLeafData() map[string]string {
 		}
 		if mostCommonModel != "" {
 			percentage := float64(maxCount) / float64(node.cpu.CPUCount) * 100
-			modelDisplay := mostCommonModel
-			if len(modelDisplay) > 50 {
-				modelDisplay = modelDisplay[:47] + "..."
-			}
 			addEntry("Primary CPU Model", fmt.Sprintf("%s (%d CPUs, %.1f%%)",
-				modelDisplay, maxCount, percentage))
+				truncate(mostCommonModel, 50), maxCount, percentage))
 		}
 	}
 
@@ -275,12 +271,7 @@ func (node *CPUMetricsNavigator) GetLeafData() map[string]string {
 			}
 			percentage := float64(model.count) / float64(totalCPUs) * 100
 			key := fmt.Sprintf("CPU Model %d", i+1)
-			// Truncate long model names
-			name := model.name
-			if len(name) > 40 {
-				name = name[:37] + "..."
-			}
-			addEntry(key, fmt.Sprintf("%s (%d CPUs, %.1f%%)", name, model.count, percentage))
+			addEntry(key, fmt.Sprintf("%s (%d CPUs, %.1f%%)", truncate(model.name, 40), model.count, percentage))
 		}
 
 		if len(models) > 3 {
