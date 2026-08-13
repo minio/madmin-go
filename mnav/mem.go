@@ -718,10 +718,18 @@ func (node *MemCgroupNode) GetLeafData() map[string]string {
 		"Current": formatMemoryBytes(cg.Current),
 		"Peak":    formatMemoryBytes(cg.Peak),
 	}
-	if cg.Max > 0 {
+	// Any unlimited contributor makes the aggregate unlimited, whatever the
+	// limited nodes sum to.
+	switch {
+	case cg.UnlimitedMax > 0 && cg.Max > 0:
+		data["Limit"] = fmt.Sprintf("unlimited on %d node(s); %s across the rest",
+			cg.UnlimitedMax, formatMemoryBytes(cg.Max))
+	case cg.UnlimitedMax > 0:
+		data["Limit"] = "unlimited"
+	case cg.Max > 0:
 		data["Limit"] = fmt.Sprintf("%s (%s used)", formatMemoryBytes(cg.Max),
 			calculatePercentage(cg.Current, cg.Max))
-	} else {
+	default:
 		data["Limit"] = "unlimited"
 	}
 	if cg.High > 0 {

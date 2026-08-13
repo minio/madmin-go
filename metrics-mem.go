@@ -90,12 +90,17 @@ type MemCgroupStats struct {
 	Peak        uint64 `json:"peak,omitempty"`
 	High        uint64 `json:"high,omitempty"`
 	SwapCurrent uint64 `json:"swap_current,omitempty"`
-	// Max is memory.max; 0 means unlimited.
-	//
-	// Merged as the sum of the FINITE limits: an unlimited cgroup contributes 0,
-	// so a cluster mixing limited and unlimited nodes reports less than the true
-	// ceiling. Nothing here distinguishes that case, so read Max as a floor.
+	// Max is the sum of the FINITE memory.max limits. An unlimited cgroup
+	// contributes nothing to it and is counted in UnlimitedMax instead.
 	Max uint64 `json:"max,omitempty"`
+
+	// UnlimitedMax counts contributors whose memory.max is unlimited.
+	//
+	// Treat the aggregate as unlimited whenever this is above zero: Max is then
+	// only the ceiling of the limited nodes, and the cluster as a whole has none.
+	// MemMetrics.Nodes cannot answer this -- it counts every node, including
+	// those with no cgroup-v2 data at all.
+	UnlimitedMax int `json:"unlimited_max,omitempty"`
 
 	// Events maps a memory.events key to its cumulative count: "low", "high",
 	// "max", "oom", "oom_kill", "oom_group_kill".
@@ -116,6 +121,14 @@ func (c *MemCgroupStats) Merge(other *MemCgroupStats) {
 	c.High += other.High
 	c.SwapCurrent += other.SwapCurrent
 	c.Max += other.Max
+	switch {
+	case other.UnlimitedMax > 0:
+		c.UnlimitedMax += other.UnlimitedMax
+	case other.Max == 0:
+		// A report from before UnlimitedMax existed, where a zero Max was the only
+		// way to say unlimited.
+		c.UnlimitedMax++
+	}
 	addMap(&c.Events, other.Events)
 }
 
@@ -219,12 +232,18 @@ func (z *MemZoneFrag) Add(other *MemZoneFrag) {
 	}
 	z.FreeBytes += other.FreeBytes
 	z.FreeBytesLarge += other.FreeBytesLarge
-	if len(other.Orders) > len(z.Orders) {
-		z.Orders = append(z.Orders, make([]uint64, len(other.Orders)-len(z.Orders))...)
+	if len(other.Orders) == 0 {
+		return
 	}
+	// Accumulate into a fresh slice rather than in place: a receiver copied from
+	// another report's map value shares this backing array with it, and adding in
+	// place would write through into that report.
+	orders := make([]uint64, max(len(z.Orders), len(other.Orders)))
+	copy(orders, z.Orders)
 	for i, v := range other.Orders {
-		z.Orders[i] += v
+		orders[i] += v
 	}
+	z.Orders = orders
 }
 
 // Merge other into f.

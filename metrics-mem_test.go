@@ -54,10 +54,9 @@ func TestMemCgroupStatsMerge(t *testing.T) {
 	if got.Current != 400 || got.Peak != 600 {
 		t.Errorf("Current/Peak = %d/%d, want 400/600", got.Current, got.Peak)
 	}
-	// Max sums so the cluster's aggregate limit is comparable to its aggregate
-	// Current.
-	if got.Max != 2000 {
-		t.Errorf("Max = %d, want 2000", got.Max)
+	// Max is the sum of the FINITE limits, and neither node here is unlimited.
+	if got.Max != 2000 || got.UnlimitedMax != 0 {
+		t.Errorf("Max/UnlimitedMax = %d/%d, want 2000/0", got.Max, got.UnlimitedMax)
 	}
 	if !maps.Equal(got.Events, map[string]uint64{"high": 3, "oom_kill": 1}) {
 		t.Errorf("Events = %v", got.Events)
@@ -115,9 +114,22 @@ func TestMemFragStatsMerge(t *testing.T) {
 		},
 	}
 
+	// Retained before merging: Add accumulates per order, and if it ever did so in
+	// place on a receiver copied from one of these maps it would write through into
+	// the source report.
+	wantAOrders := append([]uint64(nil), a.ByZone["0/Normal"].Orders...)
+	wantBOrders := append([]uint64(nil), b.ByZone["0/Normal"].Orders...)
+
 	var got MemFragStats
 	got.Merge(a)
 	got.Merge(b)
+
+	if !reflect.DeepEqual(a.ByZone["0/Normal"].Orders, wantAOrders) {
+		t.Errorf("source a mutated: %v, want %v", a.ByZone["0/Normal"].Orders, wantAOrders)
+	}
+	if !reflect.DeepEqual(b.ByZone["0/Normal"].Orders, wantBOrders) {
+		t.Errorf("source b mutated: %v, want %v", b.ByZone["0/Normal"].Orders, wantBOrders)
+	}
 
 	if got.Zones != 3 || got.PageSize != page {
 		t.Errorf("Zones/PageSize = %d/%d, want 3/%d", got.Zones, got.PageSize, page)
@@ -236,5 +248,72 @@ func TestMemSegmentAddCoversAllFields(t *testing.T) {
 			t.Errorf("%s has kind %v; a segment field must be a plain summable "+
 				"counter", name, v.Field(i).Kind())
 		}
+	}
+}
+
+// Max cannot express unlimited, so an unlimited cgroup is counted separately and
+// contributes nothing to the finite total.
+func TestMemCgroupStatsMergeMixedLimits(t *testing.T) {
+	limited := &MemCgroupStats{Current: 100, Max: 1000}
+	unlimited := &MemCgroupStats{Current: 400, UnlimitedMax: 1}
+
+	var got MemCgroupStats
+	got.Merge(limited)
+	got.Merge(unlimited)
+
+	if got.Current != 500 {
+		t.Errorf("Current = %d, want 500", got.Current)
+	}
+	// The limited node's ceiling is preserved rather than lost to the unlimited
+	// one, and the unlimited one is visible rather than silently absent.
+	if got.Max != 1000 {
+		t.Errorf("Max = %d, want 1000: the finite total must survive", got.Max)
+	}
+	if got.UnlimitedMax != 1 {
+		t.Errorf("UnlimitedMax = %d, want 1: an unlimited node must be visible", got.UnlimitedMax)
+	}
+
+	// Order independence: collectRealtimeMetrics merges remote reports first.
+	var rev MemCgroupStats
+	rev.Merge(unlimited)
+	rev.Merge(limited)
+	if !reflect.DeepEqual(rev, got) {
+		t.Errorf("order dependent: %+v vs %+v", rev, got)
+	}
+}
+
+func TestMemCgroupStatsMergeAllUnlimited(t *testing.T) {
+	var got MemCgroupStats
+	for range 3 {
+		got.Merge(&MemCgroupStats{Current: 10, UnlimitedMax: 1})
+	}
+
+	if got.Max != 0 {
+		t.Errorf("Max = %d, want 0: no node has a finite limit", got.Max)
+	}
+	if got.UnlimitedMax != 3 {
+		t.Errorf("UnlimitedMax = %d, want 3", got.UnlimitedMax)
+	}
+	if got.Current != 30 {
+		t.Errorf("Current = %d, want 30", got.Current)
+	}
+}
+
+// A peer from before UnlimitedMax existed says unlimited by sending Max 0, and
+// must still be counted as an unlimited contributor.
+func TestMemCgroupStatsMergeOlderPeerUnlimited(t *testing.T) {
+	older := &MemCgroupStats{Current: 50} // Max 0, UnlimitedMax 0
+	current := &MemCgroupStats{Current: 50, Max: 2048}
+
+	var got MemCgroupStats
+	got.Merge(older)
+	got.Merge(current)
+
+	if got.UnlimitedMax != 1 {
+		t.Errorf("UnlimitedMax = %d, want 1: a zero Max from an older peer means "+
+			"unlimited", got.UnlimitedMax)
+	}
+	if got.Max != 2048 {
+		t.Errorf("Max = %d, want 2048", got.Max)
 	}
 }

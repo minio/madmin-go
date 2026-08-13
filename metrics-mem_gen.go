@@ -16,7 +16,7 @@ func (z *MemCgroupStats) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 6 bits */
+	var zb0001Mask uint8 /* 7 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -61,6 +61,13 @@ func (z *MemCgroupStats) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 			zb0001Mask |= 0x10
+		case "unlimited_max":
+			z.UnlimitedMax, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "UnlimitedMax")
+				return
+			}
+			zb0001Mask |= 0x20
 		case "events":
 			var zb0002 uint32
 			zb0002, err = dc.ReadMapHeader()
@@ -89,7 +96,7 @@ func (z *MemCgroupStats) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.Events[za0001] = za0002
 			}
-			zb0001Mask |= 0x20
+			zb0001Mask |= 0x40
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -99,7 +106,7 @@ func (z *MemCgroupStats) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3f {
+	if zb0001Mask != 0x7f {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Current = 0
 		}
@@ -116,6 +123,9 @@ func (z *MemCgroupStats) DecodeMsg(dc *msgp.Reader) (err error) {
 			z.Max = 0
 		}
 		if (zb0001Mask & 0x20) == 0 {
+			z.UnlimitedMax = 0
+		}
+		if (zb0001Mask & 0x40) == 0 {
 			z.Events = nil
 		}
 	}
@@ -125,8 +135,8 @@ func (z *MemCgroupStats) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *MemCgroupStats) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(6)
-	var zb0001Mask uint8 /* 6 bits */
+	zb0001Len := uint32(7)
+	var zb0001Mask uint8 /* 7 bits */
 	_ = zb0001Mask
 	if z.Current == 0 {
 		zb0001Len--
@@ -148,9 +158,13 @@ func (z *MemCgroupStats) EncodeMsg(en *msgp.Writer) (err error) {
 		zb0001Len--
 		zb0001Mask |= 0x10
 	}
-	if z.Events == nil {
+	if z.UnlimitedMax == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x20
+	}
+	if z.Events == nil {
+		zb0001Len--
+		zb0001Mask |= 0x40
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -221,6 +235,18 @@ func (z *MemCgroupStats) EncodeMsg(en *msgp.Writer) (err error) {
 			}
 		}
 		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// write "unlimited_max"
+			err = en.Append(0xad, 0x75, 0x6e, 0x6c, 0x69, 0x6d, 0x69, 0x74, 0x65, 0x64, 0x5f, 0x6d, 0x61, 0x78)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt(z.UnlimitedMax)
+			if err != nil {
+				err = msgp.WrapError(err, "UnlimitedMax")
+				return
+			}
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
 			// write "events"
 			err = en.Append(0xa6, 0x65, 0x76, 0x65, 0x6e, 0x74, 0x73)
 			if err != nil {
@@ -252,8 +278,8 @@ func (z *MemCgroupStats) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *MemCgroupStats) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(6)
-	var zb0001Mask uint8 /* 6 bits */
+	zb0001Len := uint32(7)
+	var zb0001Mask uint8 /* 7 bits */
 	_ = zb0001Mask
 	if z.Current == 0 {
 		zb0001Len--
@@ -275,9 +301,13 @@ func (z *MemCgroupStats) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x10
 	}
-	if z.Events == nil {
+	if z.UnlimitedMax == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x20
+	}
+	if z.Events == nil {
+		zb0001Len--
+		zb0001Mask |= 0x40
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -310,6 +340,11 @@ func (z *MemCgroupStats) MarshalMsg(b []byte) (o []byte, err error) {
 			o = msgp.AppendUint64(o, z.Max)
 		}
 		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// string "unlimited_max"
+			o = append(o, 0xad, 0x75, 0x6e, 0x6c, 0x69, 0x6d, 0x69, 0x74, 0x65, 0x64, 0x5f, 0x6d, 0x61, 0x78)
+			o = msgp.AppendInt(o, z.UnlimitedMax)
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
 			// string "events"
 			o = append(o, 0xa6, 0x65, 0x76, 0x65, 0x6e, 0x74, 0x73)
 			o = msgp.AppendMapHeader(o, uint32(len(z.Events)))
@@ -332,7 +367,7 @@ func (z *MemCgroupStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 6 bits */
+	var zb0001Mask uint8 /* 7 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -377,6 +412,13 @@ func (z *MemCgroupStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 			zb0001Mask |= 0x10
+		case "unlimited_max":
+			z.UnlimitedMax, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "UnlimitedMax")
+				return
+			}
+			zb0001Mask |= 0x20
 		case "events":
 			var zb0002 uint32
 			zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
@@ -405,7 +447,7 @@ func (z *MemCgroupStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.Events[za0001] = za0002
 			}
-			zb0001Mask |= 0x20
+			zb0001Mask |= 0x40
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -415,7 +457,7 @@ func (z *MemCgroupStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3f {
+	if zb0001Mask != 0x7f {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Current = 0
 		}
@@ -432,6 +474,9 @@ func (z *MemCgroupStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.Max = 0
 		}
 		if (zb0001Mask & 0x20) == 0 {
+			z.UnlimitedMax = 0
+		}
+		if (zb0001Mask & 0x40) == 0 {
 			z.Events = nil
 		}
 	}
@@ -441,7 +486,7 @@ func (z *MemCgroupStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *MemCgroupStats) Msgsize() (s int) {
-	s = 1 + 8 + msgp.Uint64Size + 5 + msgp.Uint64Size + 5 + msgp.Uint64Size + 13 + msgp.Uint64Size + 4 + msgp.Uint64Size + 7 + msgp.MapHeaderSize
+	s = 1 + 8 + msgp.Uint64Size + 5 + msgp.Uint64Size + 5 + msgp.Uint64Size + 13 + msgp.Uint64Size + 4 + msgp.Uint64Size + 14 + msgp.IntSize + 7 + msgp.MapHeaderSize
 	if z.Events != nil {
 		for za0001, za0002 := range z.Events {
 			_ = za0002
