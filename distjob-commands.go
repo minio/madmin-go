@@ -41,6 +41,7 @@ const (
 	DistJobTypeUnknown DistJobType = iota
 	DistJobTypeDecommission
 	DistJobTypeCompress
+	DistJobTypeRebalance
 )
 
 // String returns the wire/query-param representation of the job type, e.g.
@@ -51,6 +52,8 @@ func (t DistJobType) String() string {
 		return "decommission"
 	case DistJobTypeCompress:
 		return "compress"
+	case DistJobTypeRebalance:
+		return "rebalance"
 	default:
 		return "unknown"
 	}
@@ -82,6 +85,8 @@ func ParseDistJobType(s string) DistJobType {
 		return DistJobTypeDecommission
 	case DistJobTypeCompress.String():
 		return DistJobTypeCompress
+	case DistJobTypeRebalance.String():
+		return DistJobTypeRebalance
 	default:
 		return DistJobTypeUnknown
 	}

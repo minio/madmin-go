@@ -19,6 +19,8 @@ package mnav
 
 import (
 	"fmt"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -120,7 +122,121 @@ func (node *ProcessMetricsNode) GetLeafData() map[string]string {
 		data["Total Write I/O"] = humanize.Bytes(node.process.IOCounters.WriteBytes)
 	}
 
+	// Kernel thread states, busiest first.
+	if len(node.process.ThreadStates) > 0 {
+		data["Thread States"] = formatCountMap(node.process.ThreadStates, 8)
+	}
+
+	// PSI: mean stall across the reporting nodes, with the worst node, so a
+	// single stalled host is distinguishable from a stalled cluster.
+	// Known lines first in their fixed order, then anything the kernel has added
+	// since -- Pressure is an open map precisely so a new resource needs no wire
+	// change, and dropping unknown keys here would defeat that.
+	known := make(map[string]bool, len(psiLineOrder))
+	for _, line := range psiLineOrder {
+		known[line] = true
+	}
+	extra := make([]string, 0, len(node.process.Pressure))
+	for line := range node.process.Pressure {
+		if !known[line] {
+			extra = append(extra, line)
+		}
+	}
+	sort.Strings(extra)
+
+	for _, line := range append(append([]string{}, psiLineOrder...), extra...) {
+		stall, ok := node.process.Pressure[line]
+		if !ok || stall.N == 0 {
+			continue
+		}
+		label, ok := psiLineLabels[line]
+		if !ok {
+			label = line
+		}
+		data["Pressure "+label] = fmt.Sprintf("%.2f%% avg10 (max %.2f%%), %s stalled",
+			stall.Avg10Sum/float64(stall.N), stall.Avg10Max,
+			formatDuration(time.Duration(stall.StallUS)*time.Microsecond))
+	}
+
+	if d := node.process.DState; d != nil {
+		if len(d.DwellBuckets) > 0 {
+			data["Uninterruptible Dwell"] = formatDwellBuckets(d.DwellBuckets, d.WindowSecs)
+		}
+		if len(d.ByWchan) > 0 {
+			data["Uninterruptible By Wchan"] = formatCountMap(d.ByWchan, 5)
+		}
+	}
+
 	return data
+}
+
+// psiLineOrder fixes the display order of PSI lines; psiLineLabels gives each
+// the operator-facing name.
+var (
+	psiLineOrder  = []string{"cpu_some", "cpu_full", "io_some", "io_full", "mem_some", "mem_full"}
+	psiLineLabels = map[string]string{
+		"cpu_some": "CPU (some)",
+		"cpu_full": "CPU (all)",
+		"io_some":  "I/O (some)",
+		"io_full":  "I/O (all)",
+		"mem_some": "Memory (some)",
+		"mem_full": "Memory (all)",
+	}
+)
+
+// formatDwellBuckets renders the cumulative at-least-N-seconds ladder shortest
+// rung first, so "3 threads blocked, 1 of them for 30s or more" reads directly.
+func formatDwellBuckets(buckets map[int]int, windowSecs int) string {
+	rungs := make([]int, 0, len(buckets))
+	for k := range buckets {
+		rungs = append(rungs, k)
+	}
+	sort.Ints(rungs)
+
+	parts := make([]string, 0, len(rungs)+1)
+	for _, r := range rungs {
+		if buckets[r] == 0 {
+			continue
+		}
+		parts = append(parts, fmt.Sprintf("%d at %ds+", buckets[r], r))
+	}
+	if len(parts) == 0 {
+		return "none"
+	}
+	out := strings.Join(parts, ", ")
+	if windowSecs > 0 {
+		out += fmt.Sprintf(" (%ds window)", windowSecs)
+	}
+	return out
+}
+
+// formatCountMap renders a bounded value-to-count map largest first, keeping at
+// most topN entries and summarising the rest.
+func formatCountMap[K comparable, V int | int64 | uint64](m map[K]V, topN int) string {
+	type kv struct {
+		k K
+		v V
+	}
+	entries := make([]kv, 0, len(m))
+	for k, v := range m {
+		entries = append(entries, kv{k, v})
+	}
+	sort.Slice(entries, func(i, j int) bool {
+		if entries[i].v != entries[j].v {
+			return entries[i].v > entries[j].v
+		}
+		return fmt.Sprint(entries[i].k) < fmt.Sprint(entries[j].k)
+	})
+
+	parts := make([]string, 0, topN+1)
+	for i, e := range entries {
+		if i >= topN {
+			parts = append(parts, fmt.Sprintf("+%d more", len(entries)-topN))
+			break
+		}
+		parts = append(parts, fmt.Sprintf("%v=%v", e.k, e.v))
+	}
+	return strings.Join(parts, " ")
 }
 
 func (node *ProcessMetricsNode) GetChild(name string) (MetricNode, error) {

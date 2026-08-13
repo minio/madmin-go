@@ -59,9 +59,59 @@ type NetStackStats struct {
 	TCPLostRetransmit   *uint64 `json:"tcp_lost_retransmit,omitempty"`
 }
 
+// Merge other into s.
+//
+// The always-present counters sum. TCPCurrEstab sums too: it is a gauge, but it
+// counts sockets, so a cluster total is meaningful.
+//
+// The optional TcpExt counters are pointers because nil means "this kernel does
+// not expose it", which must never collapse to zero: a nil in other leaves s
+// untouched, and a nil in s adopts other's value. A cluster where only some
+// kernels expose a counter therefore reports the sum over the kernels that do,
+// rather than silently reading as a smaller number than reality.
+func (s *NetStackStats) Merge(other *NetStackStats) {
+	if other == nil {
+		return
+	}
+
+	s.TCPActiveOpens += other.TCPActiveOpens
+	s.TCPPassiveOpens += other.TCPPassiveOpens
+	s.TCPAttemptFails += other.TCPAttemptFails
+	s.TCPEstabResets += other.TCPEstabResets
+	s.TCPCurrEstab += other.TCPCurrEstab
+	s.TCPInSegs += other.TCPInSegs
+	s.TCPOutSegs += other.TCPOutSegs
+	s.TCPRetransSegs += other.TCPRetransSegs
+	s.TCPInErrs += other.TCPInErrs
+	s.TCPOutRsts += other.TCPOutRsts
+	s.IPInDiscards += other.IPInDiscards
+	s.IPInHdrErrors += other.IPInHdrErrors
+	s.UDPInErrors += other.UDPInErrors
+	s.UDPRcvbufErrors += other.UDPRcvbufErrors
+	s.UDPSndbufErrors += other.UDPSndbufErrors
+
+	addOptCounter(&s.TCPListenDrops, other.TCPListenDrops)
+	addOptCounter(&s.TCPListenOverflows, other.TCPListenOverflows)
+	addOptCounter(&s.TCPSynRetrans, other.TCPSynRetrans)
+	addOptCounter(&s.TCPSyncookiesSent, other.TCPSyncookiesSent)
+	addOptCounter(&s.TCPSyncookiesRecv, other.TCPSyncookiesRecv)
+	addOptCounter(&s.TCPSyncookiesFailed, other.TCPSyncookiesFailed)
+	addOptCounter(&s.TCPAbortOnTimeout, other.TCPAbortOnTimeout)
+	addOptCounter(&s.TCPAbortOnData, other.TCPAbortOnData)
+	addOptCounter(&s.TCPSpuriousRTOs, other.TCPSpuriousRTOs)
+	addOptCounter(&s.TCPLossUndo, other.TCPLossUndo)
+	addOptCounter(&s.TCPOFOQueue, other.TCPOFOQueue)
+	addOptCounter(&s.TCPRenoRecovery, other.TCPRenoRecovery)
+	addOptCounter(&s.TCPLostRetransmit, other.TCPLostRetransmit)
+}
+
 // NetConnStates contains TCP socket counts grouped by connection state
 // plus accept-queue depths for listening sockets, sourced from netlink
 // sock_diag (with a /proc/net/tcp fallback).
+//
+// This is the raw per-node collector shape. Realtime metrics carry
+// NetConnStats instead, because Listeners is keyed by a host-specific local
+// address and so cannot be merged across nodes.
 type NetConnStates struct {
 	// States maps canonical TCP state names (ESTABLISHED, TIME_WAIT,
 	// CLOSE_WAIT, ...) to socket counts.
@@ -85,6 +135,10 @@ type NetListenerBacklog struct {
 
 // NetIfaceLink describes the link state of one network interface,
 // sourced from /sys/class/net/<iface>/.
+//
+// This is the raw per-node collector shape. Realtime metrics carry NetLinkStats
+// instead: interface names collide across hosts and these fields have no
+// summing semantics, so a name-keyed map cannot be merged.
 type NetIfaceLink struct {
 	Name string `json:"name"`
 	// OperState is the interface operational state ("up", "down", ...).

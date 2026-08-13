@@ -35,7 +35,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/prometheus/procfs"
 	"github.com/shirou/gopsutil/v4/cpu"
 	"github.com/shirou/gopsutil/v4/load"
 	"github.com/tinylib/msgp/msgp"
@@ -69,6 +68,12 @@ const (
 	MetricsBuckets
 	MetricsKMS
 	MetricsTablesAPI
+	MetricsDistJobs
+	MetricsTargets
+	MetricsTier
+	MetricsILM
+	MetricsLocks
+	MetricsIAM
 
 	// MetricsAll must be last.
 	// Enables all metrics.
@@ -108,6 +113,12 @@ func (m MetricType) String() string {
 	addIf(m.Contains(MetricsBuckets), "Buckets")
 	addIf(m.Contains(MetricsKMS), "KMS")
 	addIf(m.Contains(MetricsTablesAPI), "Tables API")
+	addIf(m.Contains(MetricsDistJobs), "DistJobs")
+	addIf(m.Contains(MetricsTargets), "Targets")
+	addIf(m.Contains(MetricsTier), "Tier")
+	addIf(m.Contains(MetricsILM), "ILM")
+	addIf(m.Contains(MetricsLocks), "Locks")
+	addIf(m.Contains(MetricsIAM), "IAM")
 	return b.String()
 }
 
@@ -125,6 +136,7 @@ const (
 	MetricsTopWarehouses                           // Include top-25 metrics by warehouse
 	MetricsTopNamespaces                           // Include top-25 metrics by namespace
 	MetricsTopTables                               // Include top-25 tables
+	MetricsTablesCatalog                           // Include the tables catalog inventory (leader-only; walks the catalog)
 )
 
 // Contains returns whether m contains all of x.
@@ -157,6 +169,10 @@ func (m MetricFlags) String() string {
 	addIf(m.Contains(MetricsByDiskSet), "ByDiskSet")
 	addIf(m.Contains(MetricsSMART), "SMART")
 	addIf(m.Contains(MetricsHourStats), "HourStats")
+	addIf(m.Contains(MetricsTopWarehouses), "TopWarehouses")
+	addIf(m.Contains(MetricsTopNamespaces), "TopNamespaces")
+	addIf(m.Contains(MetricsTopTables), "TopTables")
+	addIf(m.Contains(MetricsTablesCatalog), "TablesCatalog")
 	return b.String()
 }
 
@@ -370,23 +386,29 @@ func (r *RealtimeMetrics) Merge(other *RealtimeMetrics) {
 
 // Metrics contains all metric types.
 type Metrics struct {
-	Scanner     *ScannerMetrics     `json:"scanner,omitempty"`
-	Disk        *DiskMetric         `json:"disk,omitempty"`
-	OS          *OSMetrics          `json:"os,omitempty"`
-	BatchJobs   *BatchJobMetrics    `json:"batchJobs,omitempty"`
-	SiteResync  *SiteResyncMetrics  `json:"siteResync,omitempty"`
-	Net         *NetMetrics         `json:"net,omitempty"`
-	Mem         *MemMetrics         `json:"mem,omitempty"`
-	CPU         *CPUMetrics         `json:"cpu,omitempty"`
-	RPC         *RPCMetrics         `json:"rpc,omitempty"`
-	Go          *RuntimeMetrics     `json:"go,omitempty"`
-	API         *APIMetrics         `json:"api,omitempty"`
-	Replication *ReplicationMetrics `json:"replication,omitempty"`
-	Process     *ProcessMetrics     `json:"process,omitempty"`
-	Healing     *HealingMetrics     `json:"healing,omitempty"`
-	Buckets     *BucketAPIMetrics   `json:"buckets,omitempty"`
-	KMS         *KMSRtMetrics       `json:"kms,omitempty"`
-	TablesAPI   *TableAPIMetrics    `json:"tables_api,omitempty"`
+	Scanner     *ScannerMetrics        `json:"scanner,omitempty"`
+	Disk        *DiskMetric            `json:"disk,omitempty"`
+	OS          *OSMetrics             `json:"os,omitempty"`
+	BatchJobs   *BatchJobMetrics       `json:"batchJobs,omitempty"`
+	SiteResync  *SiteResyncMetrics     `json:"siteResync,omitempty"`
+	Net         *NetMetrics            `json:"net,omitempty"`
+	Mem         *MemMetrics            `json:"mem,omitempty"`
+	CPU         *CPUMetrics            `json:"cpu,omitempty"`
+	RPC         *RPCMetrics            `json:"rpc,omitempty"`
+	Go          *RuntimeMetrics        `json:"go,omitempty"`
+	API         *APIMetrics            `json:"api,omitempty"`
+	Replication *ReplicationMetrics    `json:"replication,omitempty"`
+	Process     *ProcessMetrics        `json:"process,omitempty"`
+	Healing     *HealingMetrics        `json:"healing,omitempty"`
+	Buckets     *BucketAPIMetrics      `json:"buckets,omitempty"`
+	KMS         *KMSRtMetrics          `json:"kms,omitempty"`
+	TablesAPI   *TableAPIMetrics       `json:"tables_api,omitempty"`
+	DistJobs    *DistJobMetrics        `json:"dist_jobs,omitempty"`
+	Targets     *DeliveryTargetMetrics `json:"targets,omitempty"`
+	Tier        *WarmTierMetrics       `json:"tier,omitempty"`
+	ILM         *ILMMetrics            `json:"ilm,omitempty"`
+	Locks       *LockMetrics           `json:"locks,omitempty"`
+	IAM         *IAMMetrics            `json:"iam,omitempty"`
 }
 
 // Merge other into r.
@@ -469,6 +491,42 @@ func (r *Metrics) Merge(other *Metrics) {
 			r.TablesAPI = &TableAPIMetrics{}
 		}
 		r.TablesAPI.Merge(other.TablesAPI)
+	}
+	if other.DistJobs != nil {
+		if r.DistJobs == nil {
+			r.DistJobs = &DistJobMetrics{}
+		}
+		r.DistJobs.Merge(other.DistJobs)
+	}
+	if other.Targets != nil {
+		if r.Targets == nil {
+			r.Targets = &DeliveryTargetMetrics{}
+		}
+		r.Targets.Merge(other.Targets)
+	}
+	if other.Tier != nil {
+		if r.Tier == nil {
+			r.Tier = &WarmTierMetrics{}
+		}
+		r.Tier.Merge(other.Tier)
+	}
+	if other.ILM != nil {
+		if r.ILM == nil {
+			r.ILM = &ILMMetrics{}
+		}
+		r.ILM.Merge(other.ILM)
+	}
+	if other.Locks != nil {
+		if r.Locks == nil {
+			r.Locks = &LockMetrics{}
+		}
+		r.Locks.Merge(other.Locks)
+	}
+	if other.IAM != nil {
+		if r.IAM == nil {
+			r.IAM = &IAMMetrics{}
+		}
+		r.IAM.Merge(other.IAM)
 	}
 }
 
@@ -871,6 +929,10 @@ type DiskMetric struct {
 	// Space info.
 	Space DriveSpaceInfo `json:"space"`
 
+	// Reclaim is background space reclamation on this drive: what the cleanup
+	// routines have deleted to give capacity back.
+	Reclaim DriveReclaimStats `json:"reclaim,omitempty"`
+
 	// Number of accumulated operations by type.
 	LifetimeOps map[string]DiskAction `json:"lifetime_ops,omitempty"`
 
@@ -951,7 +1013,52 @@ func (t *TotalMinMaxUint64) Merge(other TotalMinMaxUint64, tCnt int) {
 	t.Max = max(t.Max, other.Max)
 }
 
-// Merge other into 's'.
+// DriveReclaimStats is background space reclamation on one drive.
+//
+// Every field is a monotonic counter, so a rate is the delta between two scrapes.
+// A value rather than a pointer so DiskMetric.Merge's copy fast path cannot alias
+// it.
+type DriveReclaimStats struct {
+	// StaleMultipartPurged is expired multipart upload entries moved to trash.
+	StaleMultipartPurged uint64 `json:"stale_multipart_purged,omitempty"`
+
+	// TmpWriteDirPurged is expired temporary write directories moved to trash.
+	// Counted separately from StaleMultipartPurged: the two cleanups run in the
+	// same pass but reclaim different things.
+	TmpWriteDirPurged uint64 `json:"tmp_write_dir_purged,omitempty"`
+
+	// TrashPurged and TrashPurgedBytes are objects finally deleted from trash.
+	// Reclamation is two-stage -- the counters above move things INTO trash, these
+	// remove them -- so a gap between them is capacity not yet returned.
+	TrashPurged      uint64 `json:"trash_purged,omitempty"`
+	TrashPurgedBytes uint64 `json:"trash_purged_bytes,omitempty"`
+
+	// CleanupCycles is completed cleanup passes over this drive.
+	CleanupCycles uint64 `json:"cleanup_cycles,omitempty"`
+
+	// LastCleanupAt is when the last pass finished, or zero if none has. A
+	// timestamp rather than an age; merged oldest-wins so a drive whose cleanup
+	// has stalled is what the reader sees.
+	LastCleanupAt time.Time `json:"last_cleanup_at,omitempty"`
+}
+
+// Add other into r.
+func (r *DriveReclaimStats) Add(other *DriveReclaimStats) {
+	if other == nil {
+		return
+	}
+	r.StaleMultipartPurged += other.StaleMultipartPurged
+	r.TmpWriteDirPurged += other.TmpWriteDirPurged
+	r.TrashPurged += other.TrashPurged
+	r.TrashPurgedBytes += other.TrashPurgedBytes
+	r.CleanupCycles += other.CleanupCycles
+	if !other.LastCleanupAt.IsZero() &&
+		(r.LastCleanupAt.IsZero() || other.LastCleanupAt.Before(r.LastCleanupAt)) {
+		r.LastCleanupAt = other.LastCleanupAt
+	}
+}
+
+// Merge other into 'd'.
 func (d *DiskMetric) Merge(other *DiskMetric) {
 	if other == nil {
 		return
@@ -1051,6 +1158,7 @@ func (d *DiskMetric) Merge(other *DiskMetric) {
 		}
 	}
 	d.Space.Merge(other.Space)
+	d.Reclaim.Add(&other.Reclaim)
 
 	if len(other.LifetimeOps) > 0 && d.LifetimeOps == nil {
 		d.LifetimeOps = make(map[string]DiskAction, len(other.LifetimeOps))
@@ -1400,187 +1508,6 @@ func (o *SiteResyncMetrics) Merge(other *SiteResyncMetrics) {
 
 // SegmentedInterfaceStats is Time segmented interface stats.
 type SegmentedInterfaceStats = Segmented[InterfaceStats, *InterfaceStats]
-
-type NetMetrics struct {
-	// Time these metrics were collected
-	CollectedAt time.Time `json:"collected"`
-
-	// NICs contains interface -> stats map.
-	Interfaces map[string]InterfaceStats
-
-	// Last day delta statistics.
-	LastDay *SegmentedInterfaceStats `json:"last_day,omitempty"`
-
-	// Last hour delta statistics (1-min segments).
-	LastHour *SegmentedInterfaceStats `json:"last_hour,omitempty"`
-
-	// Deprecated: Does not merge.
-	InterfaceName string `json:"interfaceName"`
-
-	// Internode Stats.
-	NetStats procfs.NetDevLine `json:"netstats"`
-}
-
-//msgp:replace procfs.NetDevLine with:procfsNetDevLine
-
-// Merge other into 'o'.
-func (n *NetMetrics) Merge(other *NetMetrics) {
-	if other == nil {
-		return
-	}
-	if n.CollectedAt.Before(other.CollectedAt) {
-		// Use latest timestamp
-		n.CollectedAt = other.CollectedAt
-	}
-	for k, v := range other.Interfaces {
-		if n.Interfaces == nil {
-			n.Interfaces = make(map[string]InterfaceStats, len(other.Interfaces))
-		}
-		n.Interfaces[k] = n.Interfaces[k].add(v)
-	}
-	if other.LastDay != nil && n.LastDay == nil {
-		n.LastDay = new(SegmentedInterfaceStats)
-	}
-	n.LastDay.Add(other.LastDay)
-	if other.LastHour != nil && n.LastHour == nil {
-		n.LastHour = new(SegmentedInterfaceStats)
-	}
-	n.LastHour.Add(other.LastHour)
-	n.NetStats = procfs.NetDevLine(procfsNetDevLine(n.NetStats).add(procfsNetDevLine(other.NetStats)))
-}
-
-// InterfaceStats contains accumulated stats for a network interface.
-type InterfaceStats struct {
-	N                 int `json:"n"`
-	procfs.NetDevLine `json:"stats"`
-}
-
-func (n *InterfaceStats) Add(other *InterfaceStats) {
-	if other == nil || n == nil || other.N == 0 {
-		return
-	}
-	n.N = n.N + other.N
-	n.NetDevLine = procfs.NetDevLine(procfsNetDevLine(n.NetDevLine).add(procfsNetDevLine(other.NetDevLine)))
-}
-
-func (n InterfaceStats) add(other InterfaceStats) InterfaceStats {
-	return InterfaceStats{
-		N:          n.N + other.N,
-		NetDevLine: procfs.NetDevLine(procfsNetDevLine(n.NetDevLine).add(procfsNetDevLine(other.NetDevLine))),
-	}
-}
-
-//msgp:replace NodeCommon with:nodeCommon
-
-// nodeCommon - use as replacement for NodeCommon
-// We do not want to give NodeCommon codegen, since it is used for embedding.
-type nodeCommon struct {
-	Addr  string `json:"addr"`
-	Error string `json:"error,omitempty"`
-}
-
-type MemMetrics struct {
-	// Time these metrics were collected
-	CollectedAt time.Time `json:"collected"`
-
-	Nodes int `json:"nodes"` // Note: Will be zero for older servers.
-
-	Info MemInfo `json:"memInfo"`
-
-	LastDay *SegmentedMemMetrics `json:"lastDay,omitempty"`
-
-	// Last hour statistics (1-min segments).
-	LastHour *SegmentedMemMetrics `json:"lastHour,omitempty"`
-}
-
-// Merge other into 'm'.
-func (m *MemMetrics) Merge(other *MemMetrics) {
-	if other == nil {
-		return
-	}
-	m.Nodes += other.Nodes
-	if m.CollectedAt.Before(other.CollectedAt) {
-		// Use latest timestamp
-		m.CollectedAt = other.CollectedAt
-	}
-	m.Info.Merge(&other.Info)
-	if other.LastDay != nil {
-		if m.LastDay == nil {
-			m.LastDay = new(SegmentedMemMetrics)
-		}
-		m.LastDay.Add(other.LastDay)
-	}
-	if other.LastHour != nil {
-		if m.LastHour == nil {
-			m.LastHour = new(SegmentedMemMetrics)
-		}
-		m.LastHour.Add(other.LastHour)
-	}
-}
-
-// MemInfo contains system's RAM and swap information.
-type MemInfo struct {
-	// NodeCommon shouldn't be used since it cannot be merged.
-	NodeCommon
-
-	Total          uint64 `json:"total,omitempty"`
-	Used           uint64 `json:"used,omitempty"`
-	Free           uint64 `json:"free,omitempty"`
-	Available      uint64 `json:"available,omitempty"`
-	Shared         uint64 `json:"shared,omitempty"`
-	Cache          uint64 `json:"cache,omitempty"`
-	Buffers        uint64 `json:"buffer,omitempty"`
-	SwapSpaceTotal uint64 `json:"swap_space_total,omitempty"`
-	SwapSpaceFree  uint64 `json:"swap_space_free,omitempty"`
-	// Limit will store cgroup limit if configured and
-	// less than Total, otherwise same as Total
-	Limit uint64 `json:"limit,omitempty"`
-}
-
-func (m *MemInfo) Merge(other *MemInfo) {
-	if other == nil {
-		return
-	}
-	if m.Total == 0 && m.Addr == "" {
-		m.NodeCommon = other.NodeCommon
-	} else if m.NodeCommon != other.NodeCommon {
-		m.NodeCommon = NodeCommon{}
-	}
-	m.Total += other.Total
-	m.Used += other.Used
-	m.Free += other.Free
-	m.Available += other.Available
-	m.Shared += other.Shared
-	m.Cache += other.Cache
-	m.Buffers += other.Buffers
-	m.SwapSpaceTotal += other.SwapSpaceTotal
-	m.SwapSpaceFree += other.SwapSpaceFree
-	m.Limit += other.Limit
-}
-
-// MemSegment contains compact memory metrics for time-series segmentation.
-type MemSegment struct {
-	Used      uint64 `json:"used,omitempty"`
-	Free      uint64 `json:"free,omitempty"`
-	Available uint64 `json:"available,omitempty"`
-	Limit     uint64 `json:"limit,omitempty"`
-	N         int    `json:"n"`
-}
-
-// Add other to m for Segmenter interface.
-func (m *MemSegment) Add(other *MemSegment) {
-	if other == nil {
-		return
-	}
-	m.Used += other.Used
-	m.Free += other.Free
-	m.Available += other.Available
-	m.Limit += other.Limit
-	m.N += other.N
-}
-
-// SegmentedMemMetrics are time-segmented memory metrics.
-type SegmentedMemMetrics = Segmented[MemSegment, *MemSegment]
 
 // CPUSegment stores CPU time breakdown for a single time segment.
 type CPUSegment struct {
@@ -2757,10 +2684,122 @@ type ProcessMetrics struct {
 	// Aggregated memory maps (platform-specific)
 	MemMaps ProcessMemoryMaps `json:"mem_maps,omitempty"`
 
+	// ThreadStates maps the kernel scheduling state letter to the number of
+	// threads in it: "R" running, "S" interruptible sleep, "D" uninterruptible
+	// sleep, "I" idle kernel thread, "Z" zombie, "T"/"t" stopped or traced.
+	// Bounded by the kernel's state set, so summing across hosts gives the
+	// cluster distribution; divide by Nodes for the per-node mean and use
+	// ByHost for the outlier. Absent where /proc is unavailable.
+	ThreadStates map[string]int `json:"thread_states,omitempty"`
+
+	// Pressure holds Linux PSI (Pressure Stall Information) lines keyed
+	// "<resource>_<share>": "cpu_some", "cpu_full", "io_some", "io_full",
+	// "mem_some", "mem_full", and whatever a newer kernel adds. Keyed rather
+	// than fielded so a new kernel resource adds a key, not a wire field. An
+	// absent key means the running kernel does not expose that line; the whole
+	// map is absent off Linux.
+	Pressure map[string]PSIStall `json:"pressure,omitempty"`
+
+	// DState is the aggregate view of threads in uninterruptible sleep.
+	DState *DStateStats `json:"dstate,omitempty"`
+
 	LastDay *SegmentedProcessMetrics `json:"lastDay,omitempty"`
 
 	// Last hour statistics (1-min segments).
 	LastHour *SegmentedProcessMetrics `json:"lastHour,omitempty"`
+}
+
+// PSIStall is one Linux Pressure Stall Information line.
+//
+// StallUS is the cumulative stall clock and is a plain counter, so it sums
+// across hosts and is the value worth trending. The three kernel moving
+// averages are percentages that do not sum, so each carries a sum and a max
+// over the N hosts that reported this line: the mean is Avg10Sum/N and the
+// worst node is Avg10Max, and the gap between them says whether one box is
+// stalled or the whole cluster is. The three windows share one N because they
+// always arrive together.
+//
+// No Min: the low side of a stall percentage is never the incident. No average
+// either -- Sum and N are both here.
+type PSIStall struct {
+	// N is the number of hosts that reported this line.
+	N int `json:"n,omitempty"`
+
+	// StallUS is cumulative stall time in microseconds.
+	StallUS uint64 `json:"stall_us,omitempty"`
+
+	// Kernel moving averages, as percentages, summed and maxed across N.
+	Avg10Sum  float64 `json:"avg10_sum,omitempty"`
+	Avg10Max  float64 `json:"avg10_max,omitempty"`
+	Avg60Sum  float64 `json:"avg60_sum,omitempty"`
+	Avg60Max  float64 `json:"avg60_max,omitempty"`
+	Avg300Sum float64 `json:"avg300_sum,omitempty"`
+	Avg300Max float64 `json:"avg300_max,omitempty"`
+}
+
+// Add other into p. Satisfies Segmenter, and is the reduction used for the
+// Pressure map. Both extremes are guarded on N == 0 so the zero value is an
+// unconditional identity for Add.
+func (p *PSIStall) Add(other *PSIStall) {
+	if other == nil || other.N == 0 {
+		return
+	}
+	if p.N == 0 {
+		p.Avg10Max, p.Avg60Max, p.Avg300Max = other.Avg10Max, other.Avg60Max, other.Avg300Max
+	} else {
+		p.Avg10Max = max(p.Avg10Max, other.Avg10Max)
+		p.Avg60Max = max(p.Avg60Max, other.Avg60Max)
+		p.Avg300Max = max(p.Avg300Max, other.Avg300Max)
+	}
+	p.StallUS += other.StallUS
+	p.Avg10Sum += other.Avg10Sum
+	p.Avg60Sum += other.Avg60Sum
+	p.Avg300Sum += other.Avg300Sum
+	p.N += other.N
+}
+
+// DStateStats is the aggregate view of threads in uninterruptible sleep
+// (kernel state "D"), which is where a stalled storage path shows up.
+//
+// It deliberately carries no thread stacks: /proc/<tid>/stack requires
+// CAP_SYS_ADMIN, so stacks stay in the support-diag bundle and never reach
+// this API.
+//
+// The number of D-state threads is ProcessMetrics.ThreadStates["D"], sampled
+// in the same /proc walk, and is not repeated here.
+type DStateStats struct {
+	// WindowSecs is how far back a dwell can be measured, i.e. the wall span
+	// covered by the server's sample ring. It bounds every DwellBuckets key
+	// and is identical on every node, so it merges with max.
+	WindowSecs int `json:"window_secs,omitempty"`
+
+	// DwellBuckets maps a lower bound in seconds to the number of D-state
+	// threads that have been blocked at least that long, on the same wait
+	// channel throughout.
+	//
+	// The buckets are cumulative, not exclusive bins, so a thread blocked for
+	// 30s counts in every rung at or below 30. That is deliberate: it lets a
+	// reader apply whatever "stuck" threshold it wants, and it means adding a
+	// rung in a later release never changes what an existing rung means. If
+	// the exact rung you want is absent, the next lower one is an upper bound.
+	DwellBuckets map[int]int `json:"dwell_buckets,omitempty"`
+
+	// ByWchan maps the kernel wait channel symbol to the number of D-state
+	// threads blocked on it -- the "what are they waiting for" axis, where
+	// DwellBuckets is "for how long". Bounded by the server: the largest
+	// groups are kept and the remainder is folded into an "other" key, so the
+	// counts still sum to ThreadStates["D"].
+	ByWchan map[string]int `json:"by_wchan,omitempty"`
+}
+
+// Merge other into d.
+func (d *DStateStats) Merge(other *DStateStats) {
+	if other == nil {
+		return
+	}
+	d.WindowSecs = max(d.WindowSecs, other.WindowSecs)
+	addMap(&d.DwellBuckets, other.DwellBuckets)
+	addMap(&d.ByWchan, other.ByWchan)
 }
 
 // ProcessMemoryInfo represents aggregated memory information
@@ -2910,6 +2949,16 @@ func (m *ProcessMetrics) Merge(other *ProcessMetrics) {
 	m.MemMaps.TotalAnonymous += other.MemMaps.TotalAnonymous
 	m.MemMaps.TotalSwap += other.MemMaps.TotalSwap
 	m.MemMaps.Count += other.MemMaps.Count
+
+	addMap(&m.ThreadStates, other.ThreadStates)
+	mergeMap(&m.Pressure, other.Pressure)
+	if other.DState != nil {
+		if m.DState == nil {
+			m.DState = &DStateStats{}
+		}
+		m.DState.Merge(other.DState)
+	}
+
 	if other.LastDay != nil {
 		if m.LastDay == nil {
 			m.LastDay = new(SegmentedProcessMetrics)
@@ -2956,6 +3005,25 @@ type ProcessSegment struct {
 	CPUGuest     float64 `json:"cpu_guest,omitempty"`
 	CPUGuestNice float64 `json:"cpu_guest_nice,omitempty"`
 
+	// ThreadsD is the summed count of threads in uninterruptible sleep over
+	// the samples in this segment; the mean over the bucket is ThreadsD/N.
+	ThreadsD int64 `json:"threads_d,omitempty"`
+
+	// PSI moving averages (avg10 only), as percentages, summed over PSIN
+	// samples. Only avg10 is trended: the hour and day windows already give
+	// the longer view at higher resolution than avg60 or avg300 would.
+	//
+	// PSIN is separate from N because PSI is Linux-only and can be absent on a
+	// host where the process sample is present, so dividing by N would
+	// under-report by the fraction of hosts without it. Zero PSIN means "no
+	// data", not "no stall".
+	PSIN         int     `json:"psi_n,omitempty"`
+	PSICPUSome10 float64 `json:"psi_cpu_some10,omitempty"`
+	PSIIOSome10  float64 `json:"psi_io_some10,omitempty"`
+	PSIIOFull10  float64 `json:"psi_io_full10,omitempty"`
+	PSIMemSome10 float64 `json:"psi_mem_some10,omitempty"`
+	PSIMemFull10 float64 `json:"psi_mem_full10,omitempty"`
+
 	N int `json:"n"`
 }
 
@@ -2988,6 +3056,13 @@ func (p *ProcessSegment) Add(other *ProcessSegment) {
 	p.CPUSteal += other.CPUSteal
 	p.CPUGuest += other.CPUGuest
 	p.CPUGuestNice += other.CPUGuestNice
+	p.ThreadsD += other.ThreadsD
+	p.PSIN += other.PSIN
+	p.PSICPUSome10 += other.PSICPUSome10
+	p.PSIIOSome10 += other.PSIIOSome10
+	p.PSIIOFull10 += other.PSIIOFull10
+	p.PSIMemSome10 += other.PSIMemSome10
+	p.PSIMemFull10 += other.PSIMemFull10
 	p.N += other.N
 }
 
@@ -3416,35 +3491,6 @@ func (b *BucketAPIMetrics) Merge(other *BucketAPIMetrics) {
 	}
 }
 
-// TableAPIMetrics holds traffic for all active tables aggregated across nodes.
-type TableAPIMetrics struct {
-	// Time these metrics were collected
-	CollectedAt time.Time `json:"collected"`
-
-	// Nodes responding with data
-	Nodes int `json:"nodes"`
-
-	// LastMinute is the aggregate over the last minute across all tables.
-	LastMinute *TableAPIStat `json:"lastMinute,omitempty"`
-
-	// LastHour is the aggregate over the last hour.
-	// Populated only when MetricsHourStats is requested.
-	LastHour *SegmentedTableIO `json:"lastHour,omitempty"`
-
-	// LastDay is the aggregate over the last 24 hours.
-	// Populated only when MetricsDayStats is requested.
-	LastDay *SegmentedTableIO `json:"lastDay,omitempty"`
-
-	// TopWarehouses contains the top 25 warehouses by request count if MetricsTopWarehouses is set.
-	TopWarehouses *TopTableIO `json:"topW,omitempty"`
-
-	// TopNamespaces contains the top 25 namespaces by request count if MetricsTopNamespaces is set.
-	TopNamespaces *TopTableIO `json:"topN,omitempty"`
-
-	// TopTables contains the top 25 tables by request count if MetricsTopTables is set.
-	TopTables *TopTableIO `json:"topT,omitempty"`
-}
-
 // TopTableIO provides sorted IO numbers for tables.
 type TopTableIO struct {
 	// Minute stats always provided.
@@ -3488,52 +3534,6 @@ func (t *TopTableIO) TopN(n int) {
 	t.ByThroughputDay = sortTrimTopList(t.ByThroughputDay, n, cmpByThroughput)
 }
 
-// Merge folds other into t. CollectedAt takes the later timestamp;
-// Nodes is summed; LastMinute is added; LastHour and LastDay are
-// merged segment-wise; Top* groups are merged per-ranking and trimmed
-// back to tableTopTrimTarget once any ranked list grows past tableTopTrimThreshold.
-func (t *TableAPIMetrics) Merge(other *TableAPIMetrics) {
-	if other == nil {
-		return
-	}
-	if other.CollectedAt.After(t.CollectedAt) {
-		t.CollectedAt = other.CollectedAt
-	}
-	t.Nodes += other.Nodes
-	if other.LastMinute != nil {
-		if t.LastMinute == nil {
-			t.LastMinute = &TableAPIStat{}
-		}
-		t.LastMinute.Add(other.LastMinute)
-	}
-	if other.LastHour != nil {
-		if t.LastHour == nil {
-			t.LastHour = &SegmentedTableIO{}
-		}
-		t.LastHour.Merge(other.LastHour)
-	}
-	if other.LastDay != nil {
-		if t.LastDay == nil {
-			t.LastDay = &SegmentedTableIO{}
-		}
-		t.LastDay.Merge(other.LastDay)
-	}
-	t.TopWarehouses = mergeTopGroup(t.TopWarehouses, other.TopWarehouses, (*TableIOMetrics).KeyWarehouse)
-	t.TopNamespaces = mergeTopGroup(t.TopNamespaces, other.TopNamespaces, (*TableIOMetrics).KeyNamespace)
-	t.TopTables = mergeTopGroup(t.TopTables, other.TopTables, (*TableIOMetrics).KeyTable)
-}
-
-// TopN re-ranks every ranked list in each Top* group and trims to n entries.
-// Pass n <= 0 to leave the lists unchanged.
-func (t *TableAPIMetrics) TopN(n int) {
-	if n <= 0 {
-		return
-	}
-	t.TopWarehouses.TopN(n)
-	t.TopNamespaces.TopN(n)
-	t.TopTables.TopN(n)
-}
-
 // mergeTopGroup folds src into dst, allocating dst if needed. Returns dst.
 func mergeTopGroup(dst, src *TopTableIO, key func(*TableIOMetrics) string) *TopTableIO {
 	if src == nil {
@@ -3544,39 +3544,6 @@ func mergeTopGroup(dst, src *TopTableIO, key func(*TableIOMetrics) string) *TopT
 	}
 	dst.Merge(src, key)
 	return dst
-}
-
-// TableIOMetrics holds traffic for a table across time windows.
-type TableIOMetrics struct {
-	// Table will be populated with table name if only one table.
-	Table *string `json:"table"`
-
-	// Namespace will be populated if all data is from the same namespace
-	Namespace *string `json:"namespace"`
-
-	// Warehouse will be populated if all data is from the same warehouse
-	Warehouse *string `json:"warehouse"`
-
-	TableAPIStat `msg:",flatten"`
-}
-
-// Merge sums other into m. Identity fields (Table/Namespace/Warehouse) are
-// copied verbatim on the first non-empty merge and collapsed to nil on
-// disagreement thereafter, preserving the "set iff single value" contract.
-func (m *TableIOMetrics) Merge(other *TableIOMetrics) {
-	if other == nil || other.IsZero() {
-		return
-	}
-	if m.IsZero() {
-		m.Table = other.Table
-		m.Namespace = other.Namespace
-		m.Warehouse = other.Warehouse
-	} else {
-		m.Table = mergeIdentityField(m.Table, other.Table)
-		m.Namespace = mergeIdentityField(m.Namespace, other.Namespace)
-		m.Warehouse = mergeIdentityField(m.Warehouse, other.Warehouse)
-	}
-	m.Add(&other.TableAPIStat)
 }
 
 // mergeIdentityField returns a when both pointers reference the same value;
@@ -3590,120 +3557,6 @@ func mergeIdentityField(a, b *string) *string {
 		return nil
 	}
 	return a
-}
-
-type SegmentedTableIO struct {
-	// IntervalSecs is the duration of each slot in seconds.
-	IntervalSecs int `json:"intervalSecs"`
-
-	// FirstTime is the timestamp of the oldest slot.
-	FirstTime time.Time `json:"firstTime"`
-
-	// Per-category counts; one slot per IntervalSecs.
-	Reads           []int64   `json:"reads,omitempty"`
-	Writes          []int64   `json:"writes,omitempty"`
-	BytesIn         []int64   `json:"bytesIn,omitempty"`
-	BytesOut        []int64   `json:"bytesOut,omitempty"`
-	NotOK           []int64   `json:"notOk,omitempty"`
-	RequestTimeSecs []float32 `json:"timeSecs,omitempty"`
-	RespTTFBSecs    []float32 `json:"ttfbSecs,omitempty"`
-}
-
-// Merge folds other into s. Slots are right-aligned and summed so the most
-// recent slot always aligns; FirstTime extends to the earliest reported.
-func (s *SegmentedTableIO) Merge(other *SegmentedTableIO) {
-	if other == nil {
-		return
-	}
-	if s.IntervalSecs == 0 {
-		s.IntervalSecs = other.IntervalSecs
-	}
-	if s.FirstTime.IsZero() || (!other.FirstTime.IsZero() && other.FirstTime.Before(s.FirstTime)) {
-		s.FirstTime = other.FirstTime
-	}
-	s.Reads = addSlices(s.Reads, other.Reads)
-	s.Writes = addSlices(s.Writes, other.Writes)
-	s.BytesIn = addSlices(s.BytesIn, other.BytesIn)
-	s.BytesOut = addSlices(s.BytesOut, other.BytesOut)
-	s.NotOK = addSlices(s.NotOK, other.NotOK)
-	s.RequestTimeSecs = addSlices(s.RequestTimeSecs, other.RequestTimeSecs)
-	s.RespTTFBSecs = addSlices(s.RespTTFBSecs, other.RespTTFBSecs)
-}
-
-// AsTableIOStat returns one TableAPIStat per slot, right-aligned so the most
-// recent slot is at the last index. Per-category slices shorter than the
-// longest are aligned to the right (their oldest slots map to leading zeros).
-func (s *SegmentedTableIO) AsTableIOStat() []TableAPIStat {
-	if s == nil {
-		return nil
-	}
-	n := len(s.Reads)
-	for _, l := range []int{
-		len(s.Writes), len(s.BytesIn), len(s.BytesOut), len(s.NotOK),
-		len(s.RequestTimeSecs), len(s.RespTTFBSecs),
-	} {
-		if l > n {
-			n = l
-		}
-	}
-	if n == 0 {
-		return nil
-	}
-	res := make([]TableAPIStat, n)
-	for i, v := range s.Reads {
-		res[n-len(s.Reads)+i].Reads = v
-	}
-	for i, v := range s.Writes {
-		res[n-len(s.Writes)+i].Writes = v
-	}
-	for i, v := range s.BytesIn {
-		res[n-len(s.BytesIn)+i].BytesIn = v
-	}
-	for i, v := range s.BytesOut {
-		res[n-len(s.BytesOut)+i].BytesOut = v
-	}
-	for i, v := range s.NotOK {
-		res[n-len(s.NotOK)+i].NotOK = v
-	}
-	for i, v := range s.RequestTimeSecs {
-		res[n-len(s.RequestTimeSecs)+i].RequestTimeSecs = float64(v)
-	}
-	for i, v := range s.RespTTFBSecs {
-		res[n-len(s.RespTTFBSecs)+i].RespTTFBSecs = float64(v)
-	}
-	return res
-}
-
-// TableAPIStat holds read/write counts and byte totals for a
-// table over one time window.
-// Read/Write is decided by the server based on API type.
-type TableAPIStat struct {
-	Reads           int64   `json:"r,omitempty"`     // Requests classified as reads
-	Writes          int64   `json:"w,omitempty"`     // Requests classified as writes
-	BytesIn         int64   `json:"in,omitempty"`    // Bytes in the Request body
-	BytesOut        int64   `json:"out,omitempty"`   // Bytes in the Response body
-	NotOK           int64   `json:"err,omitempty"`   // Response >= status code 400
-	RequestTimeSecs float64 `json:"rSecs,omitempty"` // Total request time in seconds
-	RespTTFBSecs    float64 `json:"ttfb,omitempty"`  // Total time spent on TTFB in seconds(req read -> response first byte) in seconds.
-}
-
-// Add sums other into t in place.
-func (t *TableAPIStat) Add(other *TableAPIStat) {
-	if other == nil {
-		return
-	}
-	t.Reads += other.Reads
-	t.Writes += other.Writes
-	t.BytesIn += other.BytesIn
-	t.BytesOut += other.BytesOut
-	t.RequestTimeSecs += other.RequestTimeSecs
-	t.RespTTFBSecs += other.RespTTFBSecs
-	t.NotOK += other.NotOK
-}
-
-// IsZero reports whether all counters are zero.
-func (t *TableAPIStat) IsZero() bool {
-	return t == nil || t.Reads == 0 && t.Writes == 0
 }
 
 // Top-list growth bounds for TableAPIMetrics. Merge accumulates entries
@@ -3783,24 +3636,6 @@ func ptrStr(s *string) string {
 		return ""
 	}
 	return *s
-}
-
-// KeyWarehouse returns the identity key used when merging warehouse-level
-// Top entries.
-func (m *TableIOMetrics) KeyWarehouse() string {
-	return ptrStr(m.Warehouse)
-}
-
-// KeyNamespace returns the identity key used when merging namespace-level
-// Top entries.
-func (m *TableIOMetrics) KeyNamespace() string {
-	return ptrStr(m.Warehouse) + tableKeySep + ptrStr(m.Namespace)
-}
-
-// KeyTable returns the identity key used when merging table-level Top
-// entries.
-func (m *TableIOMetrics) KeyTable() string {
-	return ptrStr(m.Warehouse) + tableKeySep + ptrStr(m.Namespace) + tableKeySep + ptrStr(m.Table)
 }
 
 type addable interface {
