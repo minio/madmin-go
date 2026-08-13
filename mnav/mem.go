@@ -60,7 +60,7 @@ func (node *MemMetricsNavigator) GetChildren() []MetricChild {
 	if node.mem == nil {
 		return []MetricChild{}
 	}
-	children := make([]MetricChild, 0, 5)
+	children := make([]MetricChild, 0, 9)
 	children = append(children,
 		MetricChild{Name: "usage", Description: "Core memory usage statistics and utilization"},
 		MetricChild{Name: "system", Description: "System memory details (cache, buffers, shared)"},
@@ -68,6 +68,22 @@ func (node *MemMetricsNavigator) GetChildren() []MetricChild {
 		MetricChild{Name: "limits", Description: "Memory limits and cgroup configuration"},
 		MetricChild{Name: "last_day", Description: "Last 24h memory statistics"},
 	)
+	if node.mem.VMStat != nil {
+		children = append(children,
+			MetricChild{Name: "vmstat", Description: "Kernel memory-management counters since boot"})
+	}
+	if node.mem.Cgroup != nil {
+		children = append(children,
+			MetricChild{Name: "cgroup", Description: "cgroup-v2 memory accounting and OOM events"})
+	}
+	if node.mem.ECC != nil {
+		children = append(children,
+			MetricChild{Name: "ecc", Description: "ECC correctable/uncorrectable error rollup"})
+	}
+	if node.mem.Fragmentation != nil {
+		children = append(children,
+			MetricChild{Name: "fragmentation", Description: "Free memory reachable as contiguous runs"})
+	}
 	return children
 }
 
@@ -159,6 +175,14 @@ func (node *MemMetricsNavigator) GetChild(name string) (MetricNode, error) {
 		return NewMemLimitsNode(node.mem, node, fmt.Sprintf("%s/limits", node.path)), nil
 	case "last_day":
 		return NewMemLastDayNode(node.mem.LastDay, node, fmt.Sprintf("%s/last_day", node.path)), nil
+	case "vmstat":
+		return NewMemVMStatNode(node.mem.VMStat, node, fmt.Sprintf("%s/vmstat", node.path)), nil
+	case "cgroup":
+		return NewMemCgroupNode(node.mem.Cgroup, node, fmt.Sprintf("%s/cgroup", node.path)), nil
+	case "ecc":
+		return NewMemECCNode(node.mem.ECC, node, fmt.Sprintf("%s/ecc", node.path)), nil
+	case "fragmentation":
+		return NewMemFragNode(node.mem.Fragmentation, node, fmt.Sprintf("%s/fragmentation", node.path)), nil
 	default:
 		return nil, fmt.Errorf("child not found: %s", name)
 	}
@@ -621,4 +645,205 @@ func (node *MemLastDayNode) GetLeafData() map[string]string {
 			formatMemoryBytes(perNodeFree))
 	}
 	return data
+}
+
+// MemVMStatNode shows the kernel memory-management counters.
+type MemVMStatNode struct {
+	vm     *madmin.MemVMStat
+	parent MetricNode
+	path   string
+}
+
+func (node *MemVMStatNode) GetOpts() madmin.MetricsOptions { return getNodeOpts(node) }
+
+// NewMemVMStatNode creates a navigator for the vmstat counters.
+func NewMemVMStatNode(vm *madmin.MemVMStat, parent MetricNode, path string) *MemVMStatNode {
+	return &MemVMStatNode{vm: vm, parent: parent, path: path}
+}
+
+func (node *MemVMStatNode) GetChildren() []MetricChild { return []MetricChild{} }
+
+func (node *MemVMStatNode) GetLeafData() map[string]string {
+	if node.vm == nil {
+		return map[string]string{"Status": "vmstat counters not available (Linux only)"}
+	}
+	vm := node.vm
+	data := map[string]string{
+		"Swap In":            formatMemoryBytes(vm.SwapInBytes),
+		"Swap Out":           formatMemoryBytes(vm.SwapOutBytes),
+		"Major Faults":       strconv.FormatUint(vm.MajorFaults, 10),
+		"OOM Kills":          strconv.FormatUint(vm.OOMKill, 10),
+		"Workingset Refault": strconv.FormatUint(vm.WorkingsetRefault, 10),
+		"Direct Reclaim":     fmt.Sprintf("%d scanned, %d reclaimed", vm.PgScanDirect, vm.PgStealDirect),
+	}
+	if vm.CompactStall > 0 || vm.CompactFail > 0 || vm.THPCollapseAllocFailed > 0 {
+		data["Compaction Stalls"] = fmt.Sprintf("%d (%d failed)", vm.CompactStall, vm.CompactFail)
+		data["THP Collapse Failed"] = strconv.FormatUint(vm.THPCollapseAllocFailed, 10)
+	}
+	return data
+}
+
+func (node *MemVMStatNode) GetMetricType() madmin.MetricType   { return madmin.MetricsMem }
+func (node *MemVMStatNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *MemVMStatNode) GetParent() MetricNode              { return node.parent }
+func (node *MemVMStatNode) GetPath() string                    { return node.path }
+func (node *MemVMStatNode) ShouldPauseRefresh() bool           { return false }
+
+func (node *MemVMStatNode) GetChild(name string) (MetricNode, error) {
+	return nil, fmt.Errorf("child not found: %s", name)
+}
+
+// MemCgroupNode shows cgroup-v2 memory accounting.
+type MemCgroupNode struct {
+	cg     *madmin.MemCgroupStats
+	parent MetricNode
+	path   string
+}
+
+func (node *MemCgroupNode) GetOpts() madmin.MetricsOptions { return getNodeOpts(node) }
+
+// NewMemCgroupNode creates a navigator for cgroup-v2 memory accounting.
+func NewMemCgroupNode(cg *madmin.MemCgroupStats, parent MetricNode, path string) *MemCgroupNode {
+	return &MemCgroupNode{cg: cg, parent: parent, path: path}
+}
+
+func (node *MemCgroupNode) GetChildren() []MetricChild { return []MetricChild{} }
+
+func (node *MemCgroupNode) GetLeafData() map[string]string {
+	if node.cg == nil {
+		return map[string]string{"Status": "not running under cgroup v2"}
+	}
+	cg := node.cg
+	data := map[string]string{
+		"Current": formatMemoryBytes(cg.Current),
+		"Peak":    formatMemoryBytes(cg.Peak),
+	}
+	if cg.Max > 0 {
+		data["Limit"] = fmt.Sprintf("%s (%s used)", formatMemoryBytes(cg.Max),
+			calculatePercentage(cg.Current, cg.Max))
+	} else {
+		data["Limit"] = "unlimited"
+	}
+	if cg.High > 0 {
+		data["Throttle At"] = formatMemoryBytes(cg.High)
+	}
+	if cg.SwapCurrent > 0 {
+		data["Swap"] = formatMemoryBytes(cg.SwapCurrent)
+	}
+	// The cgroup OOM killer, not the global one, is what kills the server under
+	// Kubernetes.
+	for _, k := range sortedKeys(cg.Events) {
+		data["Event "+k] = strconv.FormatUint(cg.Events[k], 10)
+	}
+	return data
+}
+
+func (node *MemCgroupNode) GetMetricType() madmin.MetricType   { return madmin.MetricsMem }
+func (node *MemCgroupNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *MemCgroupNode) GetParent() MetricNode              { return node.parent }
+func (node *MemCgroupNode) GetPath() string                    { return node.path }
+func (node *MemCgroupNode) ShouldPauseRefresh() bool           { return false }
+
+func (node *MemCgroupNode) GetChild(name string) (MetricNode, error) {
+	return nil, fmt.Errorf("child not found: %s", name)
+}
+
+// MemECCNode shows the ECC error rollup.
+type MemECCNode struct {
+	ecc    *madmin.MemECCStats
+	parent MetricNode
+	path   string
+}
+
+func (node *MemECCNode) GetOpts() madmin.MetricsOptions { return getNodeOpts(node) }
+
+// NewMemECCNode creates a navigator for the ECC rollup.
+func NewMemECCNode(ecc *madmin.MemECCStats, parent MetricNode, path string) *MemECCNode {
+	return &MemECCNode{ecc: ecc, parent: parent, path: path}
+}
+
+func (node *MemECCNode) GetChildren() []MetricChild { return []MetricChild{} }
+
+func (node *MemECCNode) GetLeafData() map[string]string {
+	if node.ecc == nil {
+		return map[string]string{"Status": "no ECC reporting hardware detected"}
+	}
+	ecc := node.ecc
+	data := map[string]string{
+		"Controllers": strconv.Itoa(ecc.Controllers),
+		"DIMMs":       strconv.Itoa(ecc.DIMMs),
+	}
+	// The DIMM counts are the outlier axis a total loses.
+	data["Correctable"] = fmt.Sprintf("%d across %d DIMM(s)", ecc.Corrected, ecc.DIMMsWithCorrected)
+	data["Uncorrectable"] = fmt.Sprintf("%d across %d DIMM(s)", ecc.Uncorrected, ecc.DIMMsWithUncorrected)
+	if ecc.HardwareCorruptedBytes > 0 {
+		data["Retired Memory"] = formatMemoryBytes(ecc.HardwareCorruptedBytes)
+	}
+	return data
+}
+
+func (node *MemECCNode) GetMetricType() madmin.MetricType   { return madmin.MetricsMem }
+func (node *MemECCNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *MemECCNode) GetParent() MetricNode              { return node.parent }
+func (node *MemECCNode) GetPath() string                    { return node.path }
+func (node *MemECCNode) ShouldPauseRefresh() bool           { return false }
+
+func (node *MemECCNode) GetChild(name string) (MetricNode, error) {
+	return nil, fmt.Errorf("child not found: %s", name)
+}
+
+// MemFragNode shows the buddy-allocator view of free memory.
+type MemFragNode struct {
+	frag   *madmin.MemFragStats
+	parent MetricNode
+	path   string
+}
+
+func (node *MemFragNode) GetOpts() madmin.MetricsOptions { return getNodeOpts(node) }
+
+// NewMemFragNode creates a navigator for memory fragmentation.
+func NewMemFragNode(frag *madmin.MemFragStats, parent MetricNode, path string) *MemFragNode {
+	return &MemFragNode{frag: frag, parent: parent, path: path}
+}
+
+func (node *MemFragNode) GetChildren() []MetricChild { return []MetricChild{} }
+
+func (node *MemFragNode) GetLeafData() map[string]string {
+	if node.frag == nil {
+		return map[string]string{"Status": "fragmentation metrics not available (Linux only)"}
+	}
+	f := node.frag
+	data := map[string]string{
+		"Zones": strconv.Itoa(f.Zones),
+		"Free":  formatMemoryBytes(f.FreeBytes),
+	}
+	if f.PageSize > 0 {
+		data["Page Size"] = formatMemoryBytes(f.PageSize)
+	} else if f.Zones > 0 {
+		data["Page Size"] = "mixed across hosts"
+	}
+	if f.LargeOrderBytes > 0 {
+		data["Large Allocation"] = formatMemoryBytes(f.LargeOrderBytes)
+		data["Free (Large Runs)"] = fmt.Sprintf("%s (%s of free)",
+			formatMemoryBytes(f.FreeBytesLarge),
+			calculatePercentage(f.FreeBytesLarge, f.FreeBytes))
+		// The unusable-free-space index, derived rather than carried.
+		data["Fragmentation"] = calculatePercentage(f.FreeBytes-f.FreeBytesLarge, f.FreeBytes)
+	}
+	for _, zone := range sortedKeys(f.ByZone) {
+		z := f.ByZone[zone]
+		data["Zone "+zone] = fmt.Sprintf("%s free, %s in large runs",
+			formatMemoryBytes(z.FreeBytes), formatMemoryBytes(z.FreeBytesLarge))
+	}
+	return data
+}
+
+func (node *MemFragNode) GetMetricType() madmin.MetricType   { return madmin.MetricsMem }
+func (node *MemFragNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *MemFragNode) GetParent() MetricNode              { return node.parent }
+func (node *MemFragNode) GetPath() string                    { return node.path }
+func (node *MemFragNode) ShouldPauseRefresh() bool           { return false }
+
+func (node *MemFragNode) GetChild(name string) (MetricNode, error) {
+	return nil, fmt.Errorf("child not found: %s", name)
 }

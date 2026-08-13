@@ -22,6 +22,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/dustin/go-humanize"
+
 	"github.com/minio/madmin-go/v4"
 )
 
@@ -87,6 +89,12 @@ func (node *NetMetricsNavigator) GetChildren() []MetricChild {
 		})
 	}
 
+	if node.net.RDMA != nil {
+		children = append(children, MetricChild{
+			Name:        "rdma",
+			Description: "Internode RDMA: writes, credits, write slots, staging pools",
+		})
+	}
 	children = append(children, MetricChild{Name: "last_day", Description: "Last 24h network statistics"})
 
 	return children
@@ -118,7 +126,64 @@ func (node *NetMetricsNavigator) GetLeafData() map[string]string {
 		data["Total TX Bytes"] = formatBytes(uint64(totalTxBytes))
 	}
 
+	if st := node.net.Stack; st != nil {
+		data["TCP Established"] = formatNumber(uint64(st.TCPCurrEstab))
+		data["TCP Retransmits"] = formatNumber(st.TCPRetransSegs)
+		data["TCP Resets Sent"] = formatNumber(st.TCPOutRsts)
+		data["TCP Checksum Errors"] = formatNumber(st.TCPInErrs)
+		if st.TCPListenDrops != nil {
+			data["TCP Listen Drops"] = formatNumber(*st.TCPListenDrops)
+		}
+		if st.TCPSynRetrans != nil {
+			data["TCP SYN Retransmits"] = formatNumber(*st.TCPSynRetrans)
+		}
+	}
+
+	if c := node.net.Conns; c != nil {
+		if len(c.States) > 0 {
+			data["Socket States"] = formatCountMap(c.States, 6)
+		}
+		if b := c.Backlog; b != nil && b.N > 0 {
+			// The mean and the worst queue together say whether one listener is
+			// saturated or all of them are; the limit is the ceiling both are
+			// measured against.
+			data["Accept Queue"] = fmt.Sprintf("mean %.1f, max %d of %d, across %d listeners",
+				float64(b.DepthSum)/float64(b.N), b.DepthMax, b.LimitMin, b.N)
+		}
+	}
+
+	if l := node.net.Links; l != nil && l.N > 0 {
+		data["Physical Links"] = fmt.Sprintf("%d (%d up)", l.N, l.OperStates["up"])
+		if len(l.SpeedMbps) > 0 {
+			data["Link Speeds"] = formatLinkSpeeds(l.SpeedMbps)
+		}
+		if len(l.MTU) > 1 {
+			// More than one MTU across the fleet is usually a misconfiguration.
+			data["Link MTUs"] = formatCountMap(l.MTU, 4)
+		}
+		if l.CarrierChanges > 0 {
+			data["Carrier Changes"] = formatNumber(l.CarrierChanges)
+		}
+	}
+
 	return data
+}
+
+// formatLinkSpeeds renders negotiated link speeds, translating the collector's
+// -1 "unknown" into a word rather than a number.
+func formatLinkSpeeds(speeds map[int64]int) string {
+	labelled := make(map[string]int, len(speeds))
+	for mbps, count := range speeds {
+		switch {
+		case mbps < 0:
+			labelled["unknown"] += count
+		case mbps >= 1000:
+			labelled[fmt.Sprintf("%dG", mbps/1000)] += count
+		default:
+			labelled[fmt.Sprintf("%dM", mbps)] += count
+		}
+	}
+	return formatCountMap(labelled, 5)
 }
 
 func (node *NetMetricsNavigator) GetChild(name string) (MetricNode, error) {
@@ -135,6 +200,8 @@ func (node *NetMetricsNavigator) GetChild(name string) (MetricNode, error) {
 			parent:  node,
 			path:    node.path + "/internode",
 		}, nil
+	case "rdma":
+		return NewRDMANode(node.net.RDMA, node, fmt.Sprintf("%s/rdma", node.path)), nil
 	case "last_day":
 		return NewNetLastDayNode(node.net.LastDay, node, node.path+"/last_day"), nil
 	}
@@ -432,6 +499,80 @@ func (node *NetLastDayNode) GetLeafData() map[string]string {
 		data[name] = fmt.Sprintf("rx: %s, %.2f gbps, %s pkts, %s errs, %.1f%% drp, tx: %s %.2f gbps, %s pkts, %s errs, %.1f%% drp",
 			formatBytes(avgRx), rxGbps, formatNumber(avgRxPkts), formatNumber(seg.RxErrors), rxDrop,
 			formatBytes(avgTx), txGbps, formatNumber(avgTxPkts), formatNumber(seg.TxErrors), txDrop)
+	}
+	return data
+}
+
+// RDMANode is internode RDMA activity.
+type RDMANode struct {
+	rdma   *madmin.RDMAStats
+	parent MetricNode
+	path   string
+}
+
+// NewRDMANode constructs a new RDMANode.
+func NewRDMANode(rdma *madmin.RDMAStats, parent MetricNode, path string) *RDMANode {
+	return &RDMANode{rdma: rdma, parent: parent, path: path}
+}
+
+func (node *RDMANode) GetOpts() madmin.MetricsOptions     { return getNodeOpts(node) }
+func (node *RDMANode) GetMetricType() madmin.MetricType   { return madmin.MetricNet }
+func (node *RDMANode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *RDMANode) GetParent() MetricNode              { return node.parent }
+func (node *RDMANode) GetPath() string                    { return node.path }
+func (node *RDMANode) ShouldPauseRefresh() bool           { return false }
+func (node *RDMANode) GetChildren() []MetricChild         { return []MetricChild{} }
+
+func (node *RDMANode) GetChild(name string) (MetricNode, error) {
+	return nil, fmt.Errorf("child not found: %s", name)
+}
+
+func (node *RDMANode) GetLeafData() map[string]string {
+	if node.rdma == nil {
+		return map[string]string{"Status": "RDMA not enabled"}
+	}
+	r := node.rdma
+	data := map[string]string{
+		"Nodes With RDMA": strconv.Itoa(r.Nodes),
+		"NICs":            strconv.Itoa(r.NICs),
+	}
+
+	// Shown side by side rather than differenced: the library fills them
+	// independently, so completed can transiently lead sent.
+	data["Immediate Writes"] = fmt.Sprintf("%d sent, %d completed, %d in flight",
+		r.ImmWritesSent, r.ImmWritesCompleted, r.InflightImmWrites)
+	if r.ImmWritesThrottled > 0 {
+		data["Writes Throttled"] = strconv.FormatUint(r.ImmWritesThrottled, 10)
+	}
+	if r.SendsSent > 0 || r.RecvCompletions > 0 {
+		data["Sends / Recv"] = fmt.Sprintf("%d / %d", r.SendsSent, r.RecvCompletions)
+	}
+	if r.RecvCqErrors > 0 {
+		data["Recv CQ Errors"] = strconv.FormatUint(r.RecvCqErrors, 10)
+	}
+	if r.MrRegisterFallback > 0 {
+		data["MR Register Fallbacks"] = strconv.FormatUint(r.MrRegisterFallback, 10)
+	}
+	// Rising credit waits precede throughput loss.
+	if r.CreditWaits > 0 || r.GrantSendTimeouts > 0 {
+		data["Flow Control"] = fmt.Sprintf("%d credit wait(s), %d grant timeout(s)",
+			r.CreditWaits, r.GrantSendTimeouts)
+	}
+
+	if r.WriteSlotsCap > 0 {
+		data["Write Slots"] = fmt.Sprintf("%d of %d (%s)", r.WriteSlotsInUse, r.WriteSlotsCap,
+			calculatePercentage(uint64(max(r.WriteSlotsInUse, 0)), uint64(r.WriteSlotsCap)))
+	}
+	if r.Peers > 0 {
+		data["Peers"] = fmt.Sprintf("%d, %d saturated", r.Peers, r.PeersSaturated)
+	}
+
+	// In use is Cap - Free: the pool tracks what is available.
+	for _, name := range sortedKeys(r.Pools) {
+		p := r.Pools[name]
+		data["Pool "+name] = fmt.Sprintf("%s in use of %s",
+			humanize.IBytes(uint64(max(p.CapBytes-p.FreeBytes, 0))),
+			humanize.IBytes(uint64(max(p.CapBytes, 0))))
 	}
 	return data
 }

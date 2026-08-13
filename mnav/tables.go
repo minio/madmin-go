@@ -77,7 +77,80 @@ func (node *TableMetricsNode) GetLeafData() map[string]string {
 	if node.tables.LastMinute != nil {
 		add("Last Minute", describeTableAPIStat(node.tables.LastMinute, 60))
 	}
+
+	if c := node.tables.Catalog; c != nil {
+		add("Catalog", fmt.Sprintf("%s warehouses, %s namespaces, %s tables, %s views",
+			humanize.Comma(int64(c.Warehouses)), humanize.Comma(int64(c.Namespaces)),
+			humanize.Comma(int64(c.Tables)), humanize.Comma(int64(c.Views))))
+		if c.StagedTables > 0 {
+			add("Staged Tables", humanize.Comma(int64(c.StagedTables)))
+		}
+		add("Active Transactions", humanize.Comma(int64(c.ActiveTxns)))
+	}
+
+	if h := node.tables.Health; h != nil {
+		add("Zombie Transactions", humanize.Comma(int64(h.ZombieTxns)))
+		add("Recovery Operations", humanize.Comma(int64(h.RecoveryOps)))
+		if len(h.Rollbacks) > 0 {
+			add("Rollbacks", formatCountMap(h.Rollbacks, 4))
+		}
+		if len(h.VendedCreds) > 0 {
+			add("Vended Credentials", formatCountMap(h.VendedCreds, 6))
+		}
+	}
+
+	for _, name := range tableMaintenanceOrder {
+		job, ok := node.tables.Maintenance[name]
+		if !ok {
+			continue
+		}
+		add("Maintenance "+tableMaintenanceLabels[name], describeMaintenanceJob(job))
+	}
+
 	return data
+}
+
+// tableMaintenanceOrder fixes the display order of the maintenance jobs;
+// tableMaintenanceLabels gives each an operator-facing name.
+var (
+	tableMaintenanceOrder  = []string{"snapshot_expiration", "unreferenced_file_removal", "compaction"}
+	tableMaintenanceLabels = map[string]string{
+		"snapshot_expiration":       "Snapshot Expiry",
+		"unreferenced_file_removal": "Orphan File Removal",
+		"compaction":                "Compaction",
+	}
+)
+
+// describeMaintenanceJob renders one maintenance job on a single line.
+//
+// Counters reset when the job's leader lock moves to another node, so the cycle
+// count is the current leader's, not the cluster's lifetime total.
+func describeMaintenanceJob(job madmin.TableMaintenanceJob) string {
+	parts := make([]string, 0, 6)
+	if job.Running {
+		parts = append(parts, "running")
+	} else if job.LastRun.IsZero() {
+		parts = append(parts, "never run")
+	} else {
+		parts = append(parts, "last "+job.LastRun.Format("15:04:05"))
+	}
+	parts = append(parts, fmt.Sprintf("%s cycles", humanize.Comma(int64(job.Cycles))))
+	if job.TablesProcessed > 0 {
+		parts = append(parts, fmt.Sprintf("%s tables", humanize.Comma(int64(job.TablesProcessed))))
+	}
+	if job.LastCycleSecs > 0 {
+		parts = append(parts, fmt.Sprintf("%.1fs/cycle", job.LastCycleSecs))
+	}
+	if job.Errors > 0 {
+		parts = append(parts, fmt.Sprintf("%s errors", humanize.Comma(int64(job.Errors))))
+	}
+	if job.ConfigsTotal > 0 {
+		parts = append(parts, fmt.Sprintf("%d/%d enabled", job.ConfigsEnabled, job.ConfigsTotal))
+	}
+	if len(job.Work) > 0 {
+		parts = append(parts, formatCountMap(job.Work, 3))
+	}
+	return strings.Join(parts, ", ")
 }
 
 func (node *TableMetricsNode) GetChild(name string) (MetricNode, error) {

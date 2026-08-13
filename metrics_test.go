@@ -4171,3 +4171,69 @@ func TestKMSRtMetricsMerge(t *testing.T) {
 		})
 	}
 }
+
+// Every MetricType bit and its value, pinned in one place.
+//
+// This is the only test that asserts MetricsAll. Per-section tests used to assert
+// it too, which meant a new bit broke every one of them for no reason -- adding a
+// type should touch exactly this table and nothing else.
+//
+// The values are wire values: a client asks for types by bit, and MetricsAll is
+// what the server uses when a client omits "types" entirely. Reordering the iota
+// block silently re-points every existing caller at a different section.
+func TestMetricTypeBitsAreStable(t *testing.T) {
+	want := []struct {
+		name string
+		got  MetricType
+		val  MetricType
+	}{
+		{"MetricsScanner", MetricsScanner, 1 << 0},
+		{"MetricsDisk", MetricsDisk, 1 << 1},
+		{"MetricsOS", MetricsOS, 1 << 2},
+		{"MetricsBatchJobs", MetricsBatchJobs, 1 << 3},
+		{"MetricsSiteResync", MetricsSiteResync, 1 << 4},
+		{"MetricNet", MetricNet, 1 << 5},
+		{"MetricsMem", MetricsMem, 1 << 6},
+		{"MetricsCPU", MetricsCPU, 1 << 7},
+		{"MetricsRPC", MetricsRPC, 1 << 8},
+		{"MetricsRuntime", MetricsRuntime, 1 << 9},
+		{"MetricsAPI", MetricsAPI, 1 << 10},
+		{"MetricsReplication", MetricsReplication, 1 << 11},
+		{"MetricsProcess", MetricsProcess, 1 << 12},
+		{"MetricsHealing", MetricsHealing, 1 << 13},
+		{"MetricsBuckets", MetricsBuckets, 1 << 14},
+		{"MetricsKMS", MetricsKMS, 1 << 15},
+		{"MetricsTablesAPI", MetricsTablesAPI, 1 << 16},
+		{"MetricsDistJobs", MetricsDistJobs, 1 << 17},
+		{"MetricsTargets", MetricsTargets, 1 << 18},
+		{"MetricsTier", MetricsTier, 1 << 19},
+		{"MetricsILM", MetricsILM, 1 << 20},
+		{"MetricsLocks", MetricsLocks, 1 << 21},
+		{"MetricsIAM", MetricsIAM, 1 << 22},
+	}
+
+	for _, w := range want {
+		if w.got != w.val {
+			t.Errorf("%s = %d, want %d: a MetricType was inserted or reordered, "+
+				"which re-points every existing caller at a different section",
+				w.name, w.got, w.val)
+		}
+	}
+
+	// MetricsAll must cover exactly the bits above and nothing more. A gap here
+	// means a bit was added without extending this table.
+	wantAll := want[len(want)-1].val<<1 - 1
+	if MetricsAll != int(wantAll) {
+		t.Errorf("MetricsAll = %d, want %d: append the new type to this table, and "+
+			"remember MetricsAll is the DEFAULT when a client omits types -- every "+
+			"new bit is on by default", MetricsAll, wantAll)
+	}
+
+	// String() is a hand-maintained addIf list, so a new bit is silently nameless
+	// if the line is forgotten.
+	for _, w := range want {
+		if got := w.got.String(); got == "" || got == "Unknown" {
+			t.Errorf("%s.String() = %q: add an addIf line in MetricType.String()", w.name, got)
+		}
+	}
+}

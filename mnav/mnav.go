@@ -193,6 +193,12 @@ func (node *RealtimeMetricsNode) GetChildren() []MetricChild {
 		{Name: "site_resync", Description: "Site replication resync metrics"},
 		{Name: "kms", Description: "KMS operation metrics"},
 		{Name: "tables", Description: "Iceberg table API metrics"},
+		{Name: "dist_jobs", Description: "Distributed server-pool jobs (decommission, rebalance)"},
+		{Name: "targets", Description: "Notification, audit and log delivery target metrics"},
+		{Name: "tier", Description: "Warm storage tier operations, latency and failures"},
+		{Name: "ilm", Description: "Lifecycle worker pools: queues, throughput, failures"},
+		{Name: "locks", Description: "Distributed locking: held, contention, expiry"},
+		{Name: "iam", Description: "Identity inventory and IAM store latency"},
 		{Name: "by_host", Description: "Metrics broken down by individual host"},
 		{Name: "by_drive", Description: "Metrics broken down by individual drive"},
 		{Name: "by_drive_set", Description: "Metrics broken down by drive set"},
@@ -274,6 +280,18 @@ func (node *RealtimeMetricsNode) GetChild(name string) (MetricNode, error) {
 		return NewKMSMetricsNode(node.metrics.Aggregated.KMS, node, "kms"), nil
 	case "tables":
 		return NewTableMetricsNode(node.metrics.Aggregated.TablesAPI, node, "tables"), nil
+	case "dist_jobs":
+		return NewDistJobMetricsNode(node.metrics.Aggregated.DistJobs, node, "dist_jobs"), nil
+	case "targets":
+		return NewTargetMetricsNode(node.metrics.Aggregated.Targets, node, "targets"), nil
+	case "tier":
+		return NewWarmTierMetricsNode(node.metrics.Aggregated.Tier, node, "tier"), nil
+	case "ilm":
+		return NewILMMetricsNode(node.metrics.Aggregated.ILM, node, "ilm"), nil
+	case "locks":
+		return NewLockMetricsNode(node.metrics.Aggregated.Locks, node, "locks"), nil
+	case "iam":
+		return NewIAMMetricsNode(node.metrics.Aggregated.IAM, node, "iam"), nil
 
 	// Grouping nodes - preserved as-is
 	case "by_host":
@@ -358,6 +376,12 @@ func (node *MetricsNode) GetChildren() []MetricChild {
 		{Name: "site_resync", Description: "Site replication resync metrics"},
 		{Name: "kms", Description: "KMS operation metrics"},
 		{Name: "tables", Description: "Iceberg table API metrics"},
+		{Name: "dist_jobs", Description: "Distributed server-pool jobs (decommission, rebalance)"},
+		{Name: "targets", Description: "Notification, audit and log delivery target metrics"},
+		{Name: "tier", Description: "Warm storage tier operations, latency and failures"},
+		{Name: "ilm", Description: "Lifecycle worker pools: queues, throughput, failures"},
+		{Name: "locks", Description: "Distributed locking: held, contention, expiry"},
+		{Name: "iam", Description: "Identity inventory and IAM store latency"},
 	}
 }
 
@@ -419,6 +443,18 @@ func (node *MetricsNode) GetChild(name string) (MetricNode, error) {
 		return NewKMSMetricsNode(node.metrics.KMS, node, fmt.Sprintf("%s/kms", node.path)), nil
 	case "tables":
 		return NewTableMetricsNode(node.metrics.TablesAPI, node, fmt.Sprintf("%s/tables", node.path)), nil
+	case "dist_jobs":
+		return NewDistJobMetricsNode(node.metrics.DistJobs, node, fmt.Sprintf("%s/dist_jobs", node.path)), nil
+	case "targets":
+		return NewTargetMetricsNode(node.metrics.Targets, node, fmt.Sprintf("%s/targets", node.path)), nil
+	case "tier":
+		return NewWarmTierMetricsNode(node.metrics.Tier, node, fmt.Sprintf("%s/tier", node.path)), nil
+	case "ilm":
+		return NewILMMetricsNode(node.metrics.ILM, node, fmt.Sprintf("%s/ilm", node.path)), nil
+	case "locks":
+		return NewLockMetricsNode(node.metrics.Locks, node, fmt.Sprintf("%s/locks", node.path)), nil
+	case "iam":
+		return NewIAMMetricsNode(node.metrics.IAM, node, fmt.Sprintf("%s/iam", node.path)), nil
 	default:
 		return nil, fmt.Errorf("child not found: %s", name)
 	}
