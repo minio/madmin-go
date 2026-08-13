@@ -217,12 +217,12 @@ func (node *TargetNode) GetLeafData() map[string]string {
 	// Every completed attempt is timed. The mean is derived here.
 	if lm := t.LastMinute; lm.Count > 0 {
 		data["Latency (last min)"] = fmt.Sprintf("avg %s, min %s, max %s over %d request(s)",
-			time.Duration(lm.AccTime/lm.Count).Round(time.Microsecond),
+			durationOf(lm.AccTime, lm.Count),
 			time.Duration(lm.MinTime).Round(time.Microsecond),
 			time.Duration(lm.MaxTime).Round(time.Microsecond),
 			lm.Count)
 		if lm.Bytes > 0 {
-			data["Sent (last min)"] = humanize.IBytes(uint64(lm.Bytes))
+			data["Sent (last min)"] = humanize.IBytes(lm.Bytes)
 		}
 	}
 

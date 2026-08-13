@@ -112,12 +112,12 @@ type WarmTierStat struct {
 	// LastSuccess is the most recent successful operation. Together with LastError it
 	// answers reachability from traffic that was going to happen anyway. A zero value
 	// with zero counters means the tier has never been used.
-	LastSuccess time.Time `json:"last_success,omitempty"`
+	LastSuccess time.Time `json:"last_success,omitzero"`
 
 	// LastError is the most recent failure, server-truncated. Both fields merge
 	// latest-wins on LastErrorTime rather than summing.
 	LastError     string    `json:"last_error,omitempty"`
-	LastErrorTime time.Time `json:"last_error_time,omitempty"`
+	LastErrorTime time.Time `json:"last_error_time,omitzero"`
 }
 
 // Add other into t.

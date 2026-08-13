@@ -129,12 +129,31 @@ func (node *ProcessMetricsNode) GetLeafData() map[string]string {
 
 	// PSI: mean stall across the reporting nodes, with the worst node, so a
 	// single stalled host is distinguishable from a stalled cluster.
+	// Known lines first in their fixed order, then anything the kernel has added
+	// since -- Pressure is an open map precisely so a new resource needs no wire
+	// change, and dropping unknown keys here would defeat that.
+	known := make(map[string]bool, len(psiLineOrder))
 	for _, line := range psiLineOrder {
+		known[line] = true
+	}
+	extra := make([]string, 0, len(node.process.Pressure))
+	for line := range node.process.Pressure {
+		if !known[line] {
+			extra = append(extra, line)
+		}
+	}
+	sort.Strings(extra)
+
+	for _, line := range append(append([]string{}, psiLineOrder...), extra...) {
 		stall, ok := node.process.Pressure[line]
 		if !ok || stall.N == 0 {
 			continue
 		}
-		data["Pressure "+psiLineLabels[line]] = fmt.Sprintf("%.2f%% avg10 (max %.2f%%), %s stalled",
+		label, ok := psiLineLabels[line]
+		if !ok {
+			label = line
+		}
+		data["Pressure "+label] = fmt.Sprintf("%.2f%% avg10 (max %.2f%%), %s stalled",
 			stall.Avg10Sum/float64(stall.N), stall.Avg10Max,
 			formatDuration(time.Duration(stall.StallUS)*time.Microsecond))
 	}

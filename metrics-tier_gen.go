@@ -1289,7 +1289,7 @@ func (z *WarmTierStat) EncodeMsg(en *msgp.Writer) (err error) {
 		zb0001Len--
 		zb0001Mask |= 0x40
 	}
-	if z.LastSuccess == (time.Time{}) {
+	if z.LastSuccess.IsZero() {
 		zb0001Len--
 		zb0001Mask |= 0x80
 	}
@@ -1297,7 +1297,7 @@ func (z *WarmTierStat) EncodeMsg(en *msgp.Writer) (err error) {
 		zb0001Len--
 		zb0001Mask |= 0x100
 	}
-	if z.LastErrorTime == (time.Time{}) {
+	if z.LastErrorTime.IsZero() {
 		zb0001Len--
 		zb0001Mask |= 0x200
 	}
@@ -1480,7 +1480,7 @@ func (z *WarmTierStat) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x40
 	}
-	if z.LastSuccess == (time.Time{}) {
+	if z.LastSuccess.IsZero() {
 		zb0001Len--
 		zb0001Mask |= 0x80
 	}
@@ -1488,7 +1488,7 @@ func (z *WarmTierStat) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x100
 	}
-	if z.LastErrorTime == (time.Time{}) {
+	if z.LastErrorTime.IsZero() {
 		zb0001Len--
 		zb0001Mask |= 0x200
 	}

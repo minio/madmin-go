@@ -80,7 +80,7 @@ func (l *LockMetrics) Merge(other *LockMetrics) {
 type LockPurgeStats struct {
 	// SampledAt is when the pass ran, merged oldest-wins so a node whose cleanup has
 	// stalled is what the reader sees.
-	SampledAt time.Time `json:"sampled_at,omitempty"`
+	SampledAt time.Time `json:"sampled_at,omitzero"`
 
 	Readers int64 `json:"readers,omitempty"`
 	Writers int64 `json:"writers,omitempty"`
@@ -91,7 +91,7 @@ type LockPurgeStats struct {
 	// OldestHeldAt is when the oldest still-held lock was acquired, or zero if none.
 	// A timestamp rather than an age, merged oldest-wins so one stuck lock stays
 	// visible.
-	OldestHeldAt time.Time `json:"oldest_held_at,omitempty"`
+	OldestHeldAt time.Time `json:"oldest_held_at,omitzero"`
 }
 
 // Merge other into p.

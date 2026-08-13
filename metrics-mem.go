@@ -91,6 +91,10 @@ type MemCgroupStats struct {
 	High        uint64 `json:"high,omitempty"`
 	SwapCurrent uint64 `json:"swap_current,omitempty"`
 	// Max is memory.max; 0 means unlimited.
+	//
+	// Merged as the sum of the FINITE limits: an unlimited cgroup contributes 0,
+	// so a cluster mixing limited and unlimited nodes reports less than the true
+	// ceiling. Nothing here distinguishes that case, so read Max as a floor.
 	Max uint64 `json:"max,omitempty"`
 
 	// Events maps a memory.events key to its cumulative count: "low", "high",
@@ -229,11 +233,15 @@ func (f *MemFragStats) Merge(other *MemFragStats) {
 		return
 	}
 	// PageSize is a config echo: keep the common value, blank it once hosts
-	// disagree so a reader cannot misinterpret Orders.
-	if f.Zones == 0 {
-		f.PageSize = other.PageSize
-	} else if f.PageSize != other.PageSize {
-		f.PageSize = 0
+	// disagree so a reader cannot misinterpret Orders. A report with no zones
+	// carries no page size, so it takes no part in that comparison.
+	if other.Zones > 0 {
+		switch {
+		case f.Zones == 0:
+			f.PageSize = other.PageSize
+		case f.PageSize != other.PageSize:
+			f.PageSize = 0
+		}
 	}
 	f.Zones += other.Zones
 	f.LargeOrderBytes = max(f.LargeOrderBytes, other.LargeOrderBytes)
@@ -331,7 +339,6 @@ type nodeCommon struct {
 	Addr  string `json:"addr"`
 	Error string `json:"error,omitempty"`
 }
-
 
 // MemInfo contains system's RAM and swap information.
 type MemInfo struct {

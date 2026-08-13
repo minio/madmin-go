@@ -121,7 +121,7 @@ type ILMQueueStats struct {
 	// With Queued it separates throughput-bound from wedged: a deep queue with a
 	// recent head is draining, with an old head is stuck. Merged oldest-wins so one
 	// wedged pool stays visible. Zero means nothing has been dequeued.
-	HeadQueuedAt time.Time `json:"head_queued_at,omitempty"`
+	HeadQueuedAt time.Time `json:"head_queued_at,omitzero"`
 }
 
 // Merge other into q.

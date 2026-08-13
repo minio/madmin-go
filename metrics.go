@@ -1013,7 +1013,6 @@ func (t *TotalMinMaxUint64) Merge(other TotalMinMaxUint64, tCnt int) {
 	t.Max = max(t.Max, other.Max)
 }
 
-// Merge other into 's'.
 // DriveReclaimStats is background space reclamation on one drive.
 //
 // Every field is a monotonic counter, so a rate is the delta between two scrapes.
@@ -1059,6 +1058,7 @@ func (r *DriveReclaimStats) Add(other *DriveReclaimStats) {
 	}
 }
 
+// Merge other into 'd'.
 func (d *DiskMetric) Merge(other *DiskMetric) {
 	if other == nil {
 		return

@@ -828,7 +828,11 @@ func (node *MemFragNode) GetLeafData() map[string]string {
 			formatMemoryBytes(f.FreeBytesLarge),
 			calculatePercentage(f.FreeBytesLarge, f.FreeBytes))
 		// The unusable-free-space index, derived rather than carried.
-		data["Fragmentation"] = calculatePercentage(f.FreeBytes-f.FreeBytesLarge, f.FreeBytes)
+		var unusable uint64
+		if f.FreeBytes > f.FreeBytesLarge {
+			unusable = f.FreeBytes - f.FreeBytesLarge
+		}
+		data["Fragmentation"] = calculatePercentage(unusable, f.FreeBytes)
 	}
 	for _, zone := range sortedKeys(f.ByZone) {
 		z := f.ByZone[zone]

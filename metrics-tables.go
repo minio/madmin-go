@@ -19,7 +19,10 @@
 
 package madmin
 
-import "time"
+import (
+	"maps"
+	"time"
+)
 
 //go:generate go tool msgp -unexported -d clearomitted -d "tag json" -d "timezone utc" -d "maps binkeys" -file $GOFILE
 
@@ -261,6 +264,9 @@ func (t *TableAPIMetrics) Merge(other *TableAPIMetrics) {
 			t.Maintenance = make(map[string]TableMaintenanceJob, len(other.Maintenance))
 		}
 		if cur, ok := t.Maintenance[k]; !ok || o.fresherThan(cur) {
+			// Clone Work: storing o wholesale would share the source report's map,
+			// so a caller mutating the aggregate would reach back into it.
+			o.Work = maps.Clone(o.Work)
 			t.Maintenance[k] = o
 		}
 	}

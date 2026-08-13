@@ -20,6 +20,7 @@ package mnav
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -108,10 +109,10 @@ func (node *WarmTierMetricsNode) GetLeafData() map[string]string {
 		data["Failures"] = strconv.FormatUint(errs, 10)
 	}
 	if len(failing) > 0 {
-		data["Unreachable"] = joinNames(failing)
+		data["Unreachable"] = strings.Join(failing, ", ")
 	}
 	if len(idle) > 0 {
-		data["Never Used"] = joinNames(idle)
+		data["Never Used"] = strings.Join(idle, ", ")
 	}
 	return data
 }
@@ -167,9 +168,10 @@ func (node *WarmTierNode) GetLeafData() map[string]string {
 		data["Get TTFB"] = fmt.Sprintf("avg %s, max %s over %d read(s)",
 			durationOf(t.GetTTFB.AccTime, t.GetTTFB.Count),
 			time.Duration(t.GetTTFB.MaxTime).Round(time.Millisecond), t.GetTTFB.Count)
-		// Reads that started and never finished.
-		if unfinished := t.GetTTFB.Count - t.Ops["get"].Count; unfinished > 0 {
-			data["Unfinished Reads"] = strconv.FormatUint(unfinished, 10)
+		// Reads that started and never finished. Pruning a tier between a read's
+		// TTFB and its close can invert the two, so this is a guarded subtraction.
+		if done := t.Ops["get"].Count; t.GetTTFB.Count > done {
+			data["Unfinished Reads"] = strconv.FormatUint(t.GetTTFB.Count-done, 10)
 		}
 	}
 
@@ -210,12 +212,4 @@ func durationOf(acc, count uint64) string {
 		return "n/a"
 	}
 	return time.Duration(acc / count).Round(time.Microsecond).String()
-}
-
-func joinNames(names []string) string {
-	out := names[0]
-	for _, n := range names[1:] {
-		out += ", " + n
-	}
-	return out
 }

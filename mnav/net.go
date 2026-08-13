@@ -20,6 +20,7 @@ package mnav
 import (
 	"fmt"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -177,8 +178,13 @@ func formatLinkSpeeds(speeds map[int64]int) string {
 		switch {
 		case mbps < 0:
 			labelled["unknown"] += count
-		case mbps >= 1000:
+		case mbps >= 1000 && mbps%1000 == 0:
 			labelled[fmt.Sprintf("%dG", mbps/1000)] += count
+		case mbps >= 1000:
+			// 2500 is 2.5GbE, not 2G: integer division would collapse it onto a
+			// neighbouring label and sum the counts under the wrong speed.
+			labelled[strings.TrimRight(strings.TrimRight(
+				fmt.Sprintf("%.2f", float64(mbps)/1000), "0"), ".")+"G"] += count
 		default:
 			labelled[fmt.Sprintf("%dM", mbps)] += count
 		}
@@ -187,6 +193,9 @@ func formatLinkSpeeds(speeds map[int64]int) string {
 }
 
 func (node *NetMetricsNavigator) GetChild(name string) (MetricNode, error) {
+	if node.net == nil {
+		return nil, fmt.Errorf("no network data available")
+	}
 	switch name {
 	case "interfaces":
 		return &NetInterfacesNode{

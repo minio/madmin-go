@@ -570,7 +570,7 @@ func (z *LockPurgeStats) EncodeMsg(en *msgp.Writer) (err error) {
 	zb0001Len := uint32(5)
 	var zb0001Mask uint8 /* 5 bits */
 	_ = zb0001Mask
-	if z.SampledAt == (time.Time{}) {
+	if z.SampledAt.IsZero() {
 		zb0001Len--
 		zb0001Mask |= 0x1
 	}
@@ -586,7 +586,7 @@ func (z *LockPurgeStats) EncodeMsg(en *msgp.Writer) (err error) {
 		zb0001Len--
 		zb0001Mask |= 0x8
 	}
-	if z.OldestHeldAt == (time.Time{}) {
+	if z.OldestHeldAt.IsZero() {
 		zb0001Len--
 		zb0001Mask |= 0x10
 	}
@@ -669,7 +669,7 @@ func (z *LockPurgeStats) MarshalMsg(b []byte) (o []byte, err error) {
 	zb0001Len := uint32(5)
 	var zb0001Mask uint8 /* 5 bits */
 	_ = zb0001Mask
-	if z.SampledAt == (time.Time{}) {
+	if z.SampledAt.IsZero() {
 		zb0001Len--
 		zb0001Mask |= 0x1
 	}
@@ -685,7 +685,7 @@ func (z *LockPurgeStats) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x8
 	}
-	if z.OldestHeldAt == (time.Time{}) {
+	if z.OldestHeldAt.IsZero() {
 		zb0001Len--
 		zb0001Mask |= 0x10
 	}

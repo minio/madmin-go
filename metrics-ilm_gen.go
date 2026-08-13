@@ -777,7 +777,7 @@ func (z *ILMQueueStats) EncodeMsg(en *msgp.Writer) (err error) {
 		zb0001Len--
 		zb0001Mask |= 0x40
 	}
-	if z.HeadQueuedAt == (time.Time{}) {
+	if z.HeadQueuedAt.IsZero() {
 		zb0001Len--
 		zb0001Mask |= 0x80
 	}
@@ -930,7 +930,7 @@ func (z *ILMQueueStats) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x40
 	}
-	if z.HeadQueuedAt == (time.Time{}) {
+	if z.HeadQueuedAt.IsZero() {
 		zb0001Len--
 		zb0001Mask |= 0x80
 	}

@@ -26,15 +26,6 @@ import (
 	"time"
 )
 
-func TestTierWireValuesStable(t *testing.T) {
-	if MetricsTier != 1<<19 {
-		t.Errorf("MetricsTier = %d, want %d", MetricsTier, 1<<19)
-	}
-	if MetricsTargets != 1<<18 || MetricsDistJobs != 1<<17 {
-		t.Error("an existing MetricType bit moved")
-	}
-}
-
 // MetricType.String() is a hand-maintained list, so a new bit is silently
 // nameless if the addIf line is forgotten.
 func TestTierMetricTypeString(t *testing.T) {

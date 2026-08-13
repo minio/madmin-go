@@ -220,22 +220,29 @@ func TestTableAPIStatErrorClassIdentity(t *testing.T) {
 // A peer on an older build sends shorter or absent slices; the merge must
 // right-align rather than panic.
 func TestSegmentedTableIOMergeMixedVersions(t *testing.T) {
-	current := &SegmentedTableIO{
-		IntervalSecs: 60,
-		Reads:        []int64{1, 2},
-		NotOK:        []int64{1, 1},
-		Errors5xx:    []int64{0, 1},
-		Canceled:     []int64{1, 0},
+	// Built by a func, not copied: a struct copy shares the slice backing arrays,
+	// so the first Merge would write through into the fixture and the reverse
+	// direction below would then be testing against mutated input.
+	newCurrent := func() *SegmentedTableIO {
+		return &SegmentedTableIO{
+			IntervalSecs: 60,
+			Reads:        []int64{1, 2},
+			NotOK:        []int64{1, 1},
+			Errors5xx:    []int64{0, 1},
+			Canceled:     []int64{1, 0},
+		}
 	}
 	// No Errors5xx or Canceled at all, and a shorter history.
-	older := &SegmentedTableIO{
-		IntervalSecs: 60,
-		Reads:        []int64{5},
-		NotOK:        []int64{2},
+	newOlder := func() *SegmentedTableIO {
+		return &SegmentedTableIO{
+			IntervalSecs: 60,
+			Reads:        []int64{5},
+			NotOK:        []int64{2},
+		}
 	}
 
-	got := *current
-	got.Merge(older)
+	got := newCurrent()
+	got.Merge(newOlder())
 
 	if len(got.Reads) != 2 || got.Reads[1] != 7 {
 		t.Errorf("Reads = %v, want the older history right-aligned", got.Reads)
@@ -245,8 +252,8 @@ func TestSegmentedTableIOMergeMixedVersions(t *testing.T) {
 	}
 
 	// And the other direction: a current peer merging into an older accumulator.
-	rev := *older
-	rev.Merge(current)
+	rev := newOlder()
+	rev.Merge(newCurrent())
 	if len(rev.Errors5xx) != 2 || rev.Errors5xx[1] != 1 {
 		t.Errorf("Errors5xx = %v after merging into an older accumulator", rev.Errors5xx)
 	}
@@ -265,5 +272,21 @@ func TestSegmentedTableIOAsTableIOStatCarriesErrorClasses(t *testing.T) {
 	}
 	if stats[1].Errors5xx != 2 || stats[1].Canceled != 1 || stats[1].NotOK != 4 {
 		t.Errorf("stats[1] = %+v, want NotOK=4 Errors5xx=2 Canceled=1", stats[1])
+	}
+}
+
+// The leader-owned select stores the winning report wholesale, so its Work map
+// must be cloned or a caller mutating the aggregate reaches into the source.
+func TestTableMaintenanceMergeClonesWork(t *testing.T) {
+	src := &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{
+		"compaction": {Cycles: 1, Work: map[string]uint64{"files_rewritten": 5}},
+	}}
+
+	var dst TableAPIMetrics
+	dst.Merge(src)
+
+	dst.Maintenance["compaction"].Work["files_rewritten"] = 999
+	if got := src.Maintenance["compaction"].Work["files_rewritten"]; got != 5 {
+		t.Errorf("source Work mutated through the aggregate: %d, want 5", got)
 	}
 }
