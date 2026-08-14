@@ -71,6 +71,9 @@ func (node *DiskMetricsNavigator) GetChildren() []MetricChild {
 	children = append(children, MetricChild{Name: "space", Description: "Drive space information"})
 
 	// Optional features - only add if data exists
+	if diskReclaimActive(node.disk.Reclaim) {
+		children = append(children, MetricChild{Name: "reclaim", Description: "Background space reclamation (stale writes and trash)"})
+	}
 	if node.disk.HealingInfo != nil {
 		children = append(children, MetricChild{Name: "healing", Description: "Drive healing information"})
 	}
@@ -289,6 +292,8 @@ func (node *DiskMetricsNavigator) GetChild(name string) (MetricNode, error) {
 		return NewDiskIODailyStatsNode(node.disk, node, fmt.Sprintf("%s/io_last_day", node.path)), nil
 	case "space":
 		return NewDiskSpaceNode(&node.disk.Space, node, fmt.Sprintf("%s/space", node.path)), nil
+	case "reclaim":
+		return NewDiskReclaimNode(node.disk.Reclaim, node, fmt.Sprintf("%s/reclaim", node.path)), nil
 	case "healing":
 		return NewDiskHealingNode(node.disk.HealingInfo, node, fmt.Sprintf("%s/healing", node.path)), nil
 	case "cache":
@@ -2587,4 +2592,78 @@ func formatIOStats(data map[string]string, opType string, ios, merges, sectors, 
 		totalLine += fmt.Sprintf(", %s merged", humanize.Comma(int64(merges)))
 	}
 	data[opType+" Totals"] = totalLine
+}
+
+// diskReclaimActive reports whether background reclamation has anything to show.
+// DiskMetric.Reclaim is a value rather than a pointer, so presence cannot be
+// tested by nil: an all-zero block means no cleanup pass has completed yet.
+func diskReclaimActive(r madmin.DriveReclaimStats) bool {
+	return r.CleanupCycles > 0 || !r.LastCleanupAt.IsZero() ||
+		r.StaleMultipartPurged > 0 || r.TmpWriteDirPurged > 0 ||
+		r.TrashPurged > 0 || r.TrashPurgedBytes > 0
+}
+
+// DiskReclaimNode is background space reclamation on a drive: what the cleanup
+// passes moved into trash and what they finally removed from it.
+type DiskReclaimNode struct {
+	reclaim madmin.DriveReclaimStats
+	parent  MetricNode
+	path    string
+}
+
+// NewDiskReclaimNode constructs a new DiskReclaimNode.
+func NewDiskReclaimNode(reclaim madmin.DriveReclaimStats, parent MetricNode, path string) *DiskReclaimNode {
+	return &DiskReclaimNode{reclaim: reclaim, parent: parent, path: path}
+}
+
+func (node *DiskReclaimNode) GetOpts() madmin.MetricsOptions     { return getNodeOpts(node) }
+func (node *DiskReclaimNode) GetMetricType() madmin.MetricType   { return madmin.MetricsDisk }
+func (node *DiskReclaimNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *DiskReclaimNode) GetParent() MetricNode              { return node.parent }
+func (node *DiskReclaimNode) GetPath() string                    { return node.path }
+func (node *DiskReclaimNode) ShouldPauseRefresh() bool           { return false }
+func (node *DiskReclaimNode) GetChildren() []MetricChild         { return []MetricChild{} }
+
+func (node *DiskReclaimNode) GetChild(_ string) (MetricNode, error) {
+	return nil, fmt.Errorf("no children")
+}
+
+func (node *DiskReclaimNode) GetLeafData() map[string]string {
+	r := node.reclaim
+	if !diskReclaimActive(r) {
+		return map[string]string{"Status": "no cleanup pass has completed yet"}
+	}
+	data := map[string]string{}
+	idx := 0
+	add := func(k, v string) {
+		data[fmt.Sprintf("%02d:%s", idx, k)] = v
+		idx++
+	}
+
+	// Stage one: what the passes moved into trash, split by what was reclaimed.
+	// The two run in the same pass but retire different things -- an upload entry
+	// versus a whole temporary write window -- so a rise in one is a different
+	// story from a rise in the other.
+	add("Stale Multipart Purged", humanize.Comma(int64(r.StaleMultipartPurged)))
+	add("Tmp Write Dirs Purged", humanize.Comma(int64(r.TmpWriteDirPurged)))
+
+	// Stage two: what left the trash. The gap against stage one is capacity that
+	// has been given up on but not yet returned to the filesystem.
+	add("Trash Purged", fmt.Sprintf("%s object(s), %s",
+		humanize.Comma(int64(r.TrashPurged)), humanize.IBytes(r.TrashPurgedBytes)))
+	if staged := r.StaleMultipartPurged + r.TmpWriteDirPurged; staged > r.TrashPurged {
+		add("Awaiting Trash Purge", humanize.Comma(int64(staged-r.TrashPurged))+" entry/entries")
+	}
+
+	add("Cleanup Cycles", humanize.Comma(int64(r.CleanupCycles)))
+	// Age derived here; the wire carries the timestamp so the merge can take the
+	// oldest and surface a drive whose cleanup has stalled.
+	if !r.LastCleanupAt.IsZero() {
+		add("Last Cleanup", fmt.Sprintf("%s (%s ago)",
+			r.LastCleanupAt.Format("2006-01-02 15:04:05"),
+			roundDuration(time.Since(r.LastCleanupAt))))
+	} else {
+		add("Last Cleanup", "no pass has finished yet")
+	}
+	return data
 }

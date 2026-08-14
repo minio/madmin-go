@@ -231,7 +231,9 @@ func TestCPUWindowRowKeyIsUTC(t *testing.T) {
 	data := node.GetLeafData()
 	var found bool
 	for key := range data {
-		if !strings.Contains(key, ":") || !strings.Contains(key, "0:30") && !strings.Contains(key, "10:30") {
+		// Matches the row whatever zone it was rendered in: 00:30Z is 10:30 in
+		// Sydney and 02:30 in Berlin, and every one of those ends in "0:30".
+		if !strings.Contains(key, "0:30") {
 			continue
 		}
 		found = true
@@ -321,6 +323,28 @@ func TestDurationOfScalesPrecision(t *testing.T) {
 	} {
 		if got := durationOf(tc.acc, tc.count); got != tc.want {
 			t.Errorf("durationOf(%d, %d) = %q, want %q", tc.acc, tc.count, got, tc.want)
+		}
+	}
+}
+
+// A span below a minute must not render as "0m": coverDuration is generic, and a
+// window with a short interval would have reported its coverage as zero.
+func TestCoverDurationSubMinute(t *testing.T) {
+	for _, tc := range []struct {
+		secs int
+		want string
+	}{
+		{1, "1s"},
+		{15, "15s"},
+		{59, "59s"},
+		{60, "1m"},
+		{90, "2m"},
+		{900, "15m"},
+		{3600, "1h"},
+		{86400 - 900, "23h45m"},
+	} {
+		if got := coverDuration(time.Duration(tc.secs) * time.Second); got != tc.want {
+			t.Errorf("coverDuration(%ds) = %q, want %q", tc.secs, got, tc.want)
 		}
 	}
 }

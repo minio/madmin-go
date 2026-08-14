@@ -140,6 +140,12 @@ func windowCoverage(start time.Time, seconds int) string {
 // coverDuration renders a span the way an operator states one: "23h45m", not
 // "23h45m0s".
 func coverDuration(d time.Duration) string {
+	// Below a minute, rounding to the minute would render every span as "0m". No
+	// family currently uses an interval that short, but this is a generic helper
+	// and a window that did would report its coverage as zero.
+	if d < time.Minute {
+		return strconv.Itoa(int(d.Round(time.Second)/time.Second)) + "s"
+	}
 	d = d.Round(time.Minute)
 	h, m := int(d/time.Hour), int(d/time.Minute)%60
 	switch {
