@@ -631,8 +631,12 @@ func (node *ScannerLastDayNode) GetChildren() []MetricChild {
 		return children
 	}
 
+	owners := segmentSecOwners(refSeg.FirstTime, refSeg.Interval, len(refSeg.Segments))
 	for i := len(refSeg.Segments) - 1; i >= 0; i-- {
-		segmentTime := refSeg.FirstTime.Add(time.Duration(i*refSeg.Interval) * time.Second)
+		segmentTime := segmentStart(refSeg.FirstTime, refSeg.Interval, i)
+		if owners[segmentKey(segmentTime)] != i {
+			continue
+		}
 		endTime := segmentTime.Add(time.Duration(refSeg.Interval) * time.Second)
 
 		var totalOps uint64
@@ -653,7 +657,7 @@ func (node *ScannerLastDayNode) GetChildren() []MetricChild {
 		}
 
 		opsPerSec := float64(totalOps) / float64(refSeg.Interval)
-		name := segmentTime.UTC().Format("15:04Z")
+		name := segmentKey(segmentTime)
 		children = append(children, MetricChild{
 			Name:        name,
 			Description: fmt.Sprintf("%s, ending %s, %d action types, %s ops/s", day, endTime.Local().Format("15:04"), activeTypes, formatOpsPerSec(opsPerSec)),
@@ -720,11 +724,10 @@ func (node *ScannerLastDayNode) GetChild(name string) (MetricNode, error) {
 	if refSeg == nil {
 		return nil, fmt.Errorf("segment not found: %s", name)
 	}
-	for i := range refSeg.Segments {
-		segmentTime := refSeg.FirstTime.Add(time.Duration(i*refSeg.Interval) * time.Second)
-		if segmentTime.UTC().Format("15:04Z") == name {
-			return NewScannerLastDaySegmentNode(node.lastDay, i, segmentTime, node, fmt.Sprintf("%s/%s", node.path, name)), nil
-		}
+	owners := segmentSecOwners(refSeg.FirstTime, refSeg.Interval, len(refSeg.Segments))
+	if i, ok := owners[name]; ok {
+		segmentTime := segmentStart(refSeg.FirstTime, refSeg.Interval, i)
+		return NewScannerLastDaySegmentNode(node.lastDay, i, segmentTime, node, fmt.Sprintf("%s/%s", node.path, name)), nil
 	}
 	return nil, fmt.Errorf("segment not found: %s", name)
 }

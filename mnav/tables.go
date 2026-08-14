@@ -240,19 +240,24 @@ func (node *tableSegmentedNode) GetChildren() []MetricChild {
 		return []MetricChild{}
 	}
 	interval := time.Duration(node.seg.IntervalSecs) * time.Second
+	owners := segmentOwners(node.seg.FirstTime, interval, len(stats))
 	var children []MetricChild
 	for i := len(stats) - 1; i >= 0; i-- {
 		if stats[i].IsZero() {
 			continue
 		}
 		t := node.seg.FirstTime.Add(time.Duration(i) * interval)
+		name := segmentKey(t)
+		if owners[name] != i {
+			continue
+		}
 		end := t.Add(interval)
 		day := ""
 		if !sameLocalDay(t, time.Now()) {
 			day = "Yesterday "
 		}
 		children = append(children, MetricChild{
-			Name: t.UTC().Format("15:04Z"),
+			Name: name,
 			Description: fmt.Sprintf("%s%s -> %s, %s", day,
 				t.Local().Format("15:04"), end.Local().Format("15:04"),
 				describeTableAPIStat(&stats[i], float64(node.seg.IntervalSecs))),
@@ -282,14 +287,11 @@ func (node *tableSegmentedNode) GetChild(name string) (MetricNode, error) {
 	}
 	stats := node.seg.AsTableIOStat()
 	interval := time.Duration(node.seg.IntervalSecs) * time.Second
-	for i := range stats {
-		t := node.seg.FirstTime.Add(time.Duration(i) * interval)
-		if t.UTC().Format("15:04Z") == name {
-			return &tableSegmentEntryNode{
-				stat: stats[i], windowSecs: float64(node.seg.IntervalSecs),
-				flag: node.flag, parent: node, path: node.path + "/" + name,
-			}, nil
-		}
+	if i, ok := segmentOwners(node.seg.FirstTime, interval, len(stats))[name]; ok {
+		return &tableSegmentEntryNode{
+			stat: stats[i], windowSecs: float64(node.seg.IntervalSecs),
+			flag: node.flag, parent: node, path: node.path + "/" + name,
+		}, nil
 	}
 	return nil, fmt.Errorf("segment not found: %s", name)
 }

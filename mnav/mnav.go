@@ -198,7 +198,7 @@ func (node *RealtimeMetricsNode) GetChildren() []MetricChild {
 		{Name: "tier", Description: "Warm storage tier operations, latency and failures"},
 		{Name: "ilm", Description: "Lifecycle worker pools: queues, throughput, failures"},
 		{Name: "locks", Description: "Distributed locking: held, contention, expiry"},
-		{Name: "iam", Description: "Identity inventory and IAM store latency"},
+		{Name: "iam", Description: "Identity inventory, authorization cost and store latency"},
 		{Name: "by_host", Description: "Metrics broken down by individual host"},
 		{Name: "by_drive", Description: "Metrics broken down by individual drive"},
 		{Name: "by_drive_set", Description: "Metrics broken down by drive set"},
@@ -381,7 +381,7 @@ func (node *MetricsNode) GetChildren() []MetricChild {
 		{Name: "tier", Description: "Warm storage tier operations, latency and failures"},
 		{Name: "ilm", Description: "Lifecycle worker pools: queues, throughput, failures"},
 		{Name: "locks", Description: "Distributed locking: held, contention, expiry"},
-		{Name: "iam", Description: "Identity inventory and IAM store latency"},
+		{Name: "iam", Description: "Identity inventory, authorization cost and store latency"},
 	}
 }
 

@@ -627,7 +627,7 @@ func (node *MemLastDayNode) GetLeafData() map[string]string {
 		idx++
 		startTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
 		endTime := startTime.Add(time.Duration(node.segmented.Interval) * time.Second)
-		name := fmt.Sprintf("%02d: %s->%sZ", idx, startTime.UTC().Format("15:04"), endTime.UTC().Format("15:04"))
+		name := segmentRowKey(idx, startTime, endTime)
 
 		n := uint64(seg.N)
 		perNodeUsed := seg.Used / n

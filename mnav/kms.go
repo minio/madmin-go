@@ -190,8 +190,13 @@ func (node *kmsSummaryNode) GetMetricType() madmin.MetricType   { return madmin.
 func (node *kmsSummaryNode) GetMetricFlags() madmin.MetricFlags { return node.flags }
 func (node *kmsSummaryNode) GetParent() MetricNode              { return node.parent }
 func (node *kmsSummaryNode) GetPath() string                    { return node.path }
-func (node *kmsSummaryNode) ShouldPauseRefresh() bool           { return false }
-func (node *kmsSummaryNode) GetChildren() []MetricChild         { return []MetricChild{} }
+
+// ShouldPauseRefresh pauses only when this node actually asks for a historic
+// window, so the segments are pulled once rather than on every refresh tick.
+func (node *kmsSummaryNode) ShouldPauseRefresh() bool {
+	return node.flags&(madmin.MetricsHourStats|madmin.MetricsDayStats) != 0
+}
+func (node *kmsSummaryNode) GetChildren() []MetricChild { return []MetricChild{} }
 
 func (node *kmsSummaryNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children")
@@ -214,7 +219,10 @@ func (node *kmsSegmentedNode) GetMetricType() madmin.MetricType   { return madmi
 func (node *kmsSegmentedNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
 func (node *kmsSegmentedNode) GetParent() MetricNode              { return node.parent }
 func (node *kmsSegmentedNode) GetPath() string                    { return node.path }
-func (node *kmsSegmentedNode) ShouldPauseRefresh() bool           { return false }
+
+// ShouldPauseRefresh is true: this node requests a day window, and refetching 96
+// segments on every tick is what the pause exists to avoid.
+func (node *kmsSegmentedNode) ShouldPauseRefresh() bool { return true }
 
 func (node *kmsSegmentedNode) GetChildren() []MetricChild {
 	if len(node.data) == 0 {
@@ -311,7 +319,7 @@ func (node *kmsOpSegmentedNode) GetLeafData() map[string]string {
 		}
 		t := node.seg.FirstTime.Add(time.Duration(i) * interval)
 		end := t.Add(interval)
-		key := fmt.Sprintf("%02d:%s->%sZ", idx, t.UTC().Format("15:04"), end.UTC().Format("15:04"))
+		key := segmentRowKey(idx, t, end)
 		avg := s.Avg()
 		rps := float64(s.Count) / interval.Seconds()
 		line := fmt.Sprintf("%s->%s - %.1f req/s, %d calls, avg %v, min %v, max %v",
@@ -346,7 +354,7 @@ func kmsView(ops map[string]madmin.SegmentedKMSActions) segView[madmin.KMSAction
 		opLeaf: func(op string, a madmin.KMSAction, segTime time.Time, interval int, parent MetricNode, path string) MetricNode {
 			return &kmsActionLeafNode{op: op, action: a, segTime: segTime, interval: interval, parent: parent, path: path}
 		},
-		sumLeaf: func(a madmin.KMSAction, segTime time.Time, interval int, parent MetricNode, path string) MetricNode {
+		sumLeaf: func(a madmin.KMSAction, segTime time.Time, interval, _ int, parent MetricNode, path string) MetricNode {
 			return &kmsActionLeafNode{op: "_ALL", action: a, segTime: segTime, interval: interval, parent: parent, path: path}
 		},
 	}

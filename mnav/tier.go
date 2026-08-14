@@ -206,10 +206,25 @@ func (node *WarmTierNode) GetLeafData() map[string]string {
 	return data
 }
 
-// durationOf renders acc/count as a duration.
+// durationOf renders acc/count as a duration, at a precision that suits its
+// magnitude: microseconds are what a sub-second latency needs, and carrying them
+// into a figure of minutes only produces noise a reader has to scan past
+// ("13m19.506473s"). Roughly four significant figures either way.
 func durationOf(acc, count uint64) string {
 	if count == 0 {
 		return "n/a"
 	}
-	return time.Duration(acc / count).Round(time.Microsecond).String()
+	return roundDuration(time.Duration(acc / count)).String()
+}
+
+// roundDuration drops precision that the magnitude does not justify.
+func roundDuration(d time.Duration) time.Duration {
+	switch a := d.Abs(); {
+	case a >= time.Minute:
+		return d.Round(time.Second)
+	case a >= time.Second:
+		return d.Round(time.Millisecond)
+	default:
+		return d.Round(time.Microsecond)
+	}
 }

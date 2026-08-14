@@ -46,7 +46,7 @@ type segView[T any, PT segPtr[T]] struct {
 	segDesc     func(total T, interval int, segTime, end time.Time) string // _by_time list row
 	opDesc      func(op string, s T, interval int) string                  // per-segment op list row
 	opLeaf      func(op string, s T, segTime time.Time, interval int, parent MetricNode, path string) MetricNode
-	sumLeaf     func(total T, segTime time.Time, interval int, parent MetricNode, path string) MetricNode
+	sumLeaf     func(total T, segTime time.Time, interval, merged int, parent MetricNode, path string) MetricNode
 }
 
 // newByTimeNode returns the "_by_time" entry: pick a time segment first, then see
@@ -82,16 +82,21 @@ func segmentAt[T any, PT segPtr[T]](s madmin.Segmented[T, PT], segTime time.Time
 	return zero, false
 }
 
-// segmentSummary sums every operation's value at segTime (== totalSegmented slot).
-func segmentSummary[T any, PT segPtr[T]](ops map[string]madmin.Segmented[T, PT], segTime time.Time) T {
+// segmentSummary sums every operation's value at segTime (== totalSegmented slot),
+// and reports how many contributed. The count is what a per-node field has to be
+// divided by: each operation carries its own sample per node, so a summary over
+// three operations reports a five-node cluster as fifteen.
+func segmentSummary[T any, PT segPtr[T]](ops map[string]madmin.Segmented[T, PT], segTime time.Time) (T, int) {
 	var total T
+	var merged int
 	pt := PT(&total)
 	for _, op := range sortedKeys(ops) {
 		if v, ok := segmentAt(ops[op], segTime); ok {
 			pt.Add(&v)
+			merged++
 		}
 	}
-	return total
+	return total, merged
 }
 
 // byTimeNode lists the last-day time segments, newest first, empties filtered.
@@ -111,15 +116,20 @@ func (node *byTimeNode[T, PT]) GetLeafData() map[string]string     { return nil 
 
 func (node *byTimeNode[T, PT]) GetChildren() []MetricChild {
 	total := totalSegmented(node.view.ops)
+	owners := segmentSecOwners(total.FirstTime, total.Interval, len(total.Segments))
 	var children []MetricChild
 	for i := len(total.Segments) - 1; i >= 0; i-- {
 		if node.view.empty(&total.Segments[i]) {
 			continue
 		}
-		segTime := total.FirstTime.Add(time.Duration(i*total.Interval) * time.Second)
+		segTime := segmentStart(total.FirstTime, total.Interval, i)
+		name := segmentKey(segTime)
+		if owners[name] != i {
+			continue
+		}
 		end := segTime.Add(time.Duration(total.Interval) * time.Second)
 		children = append(children, MetricChild{
-			Name:        segTime.UTC().Format("15:04Z"),
+			Name:        name,
 			Description: node.view.segDesc(total.Segments[i], total.Interval, segTime, end),
 		})
 	}
@@ -128,17 +138,15 @@ func (node *byTimeNode[T, PT]) GetChildren() []MetricChild {
 
 func (node *byTimeNode[T, PT]) GetChild(name string) (MetricNode, error) {
 	total := totalSegmented(node.view.ops)
-	for i := range total.Segments {
-		segTime := total.FirstTime.Add(time.Duration(i*total.Interval) * time.Second)
-		if segTime.UTC().Format("15:04Z") == name {
-			return &byTimeSegmentNode[T, PT]{
-				view:     node.view,
-				segTime:  segTime,
-				interval: total.Interval,
-				parent:   node,
-				path:     node.path + "/" + name,
-			}, nil
-		}
+	owners := segmentSecOwners(total.FirstTime, total.Interval, len(total.Segments))
+	if i, ok := owners[name]; ok {
+		return &byTimeSegmentNode[T, PT]{
+			view:     node.view,
+			segTime:  segmentStart(total.FirstTime, total.Interval, i),
+			interval: total.Interval,
+			parent:   node,
+			path:     node.path + "/" + name,
+		}, nil
 	}
 	return nil, fmt.Errorf("time segment not found: %s", name)
 }
@@ -179,8 +187,8 @@ func (node *byTimeSegmentNode[T, PT]) GetChildren() []MetricChild {
 
 func (node *byTimeSegmentNode[T, PT]) GetChild(name string) (MetricNode, error) {
 	if name == "_ALL" {
-		total := segmentSummary(node.view.ops, node.segTime)
-		return node.view.sumLeaf(total, node.segTime, node.interval, node, node.path+"/_ALL"), nil
+		total, merged := segmentSummary(node.view.ops, node.segTime)
+		return node.view.sumLeaf(total, node.segTime, node.interval, merged, node, node.path+"/_ALL"), nil
 	}
 	seg, ok := node.view.ops[name]
 	if !ok {
@@ -194,6 +202,6 @@ func (node *byTimeSegmentNode[T, PT]) GetChild(name string) (MetricNode, error) 
 }
 
 func (node *byTimeSegmentNode[T, PT]) GetLeafData() map[string]string {
-	total := segmentSummary(node.view.ops, node.segTime)
-	return node.view.sumLeaf(total, node.segTime, node.interval, node, node.path).GetLeafData()
+	total, merged := segmentSummary(node.view.ops, node.segTime)
+	return node.view.sumLeaf(total, node.segTime, node.interval, merged, node, node.path).GetLeafData()
 }

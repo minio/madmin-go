@@ -775,6 +775,13 @@ func (node *ProcessLastDayNode) GetMetricFlags() madmin.MetricFlags { return mad
 func (node *ProcessLastDayNode) ShouldPauseRefresh() bool           { return true }
 func (node *ProcessLastDayNode) GetLeafData() map[string]string     { return nil }
 
+// segmentOwners maps this node's navigation keys -- segment end instants -- to the
+// slot that owns each.
+func (node *ProcessLastDayNode) segmentOwners() map[string]int {
+	step := time.Duration(node.segmented.Interval) * time.Second
+	return segmentOwners(node.segmented.FirstTime.Add(step), step, len(node.segmented.Segments))
+}
+
 func (node *ProcessLastDayNode) GetChildren() []MetricChild {
 	if node.segmented == nil || len(node.segmented.Segments) == 0 {
 		return nil
@@ -786,15 +793,21 @@ func (node *ProcessLastDayNode) GetChildren() []MetricChild {
 		Description: "Aggregated process statistics across all time segments",
 	})
 
+	// A segment is named by the instant it ends here, so the owner map starts one
+	// interval later than the window does.
+	owners := node.segmentOwners()
 	for i := len(node.segmented.Segments) - 1; i >= 0; i-- {
 		seg := node.segmented.Segments[i]
 		if seg.N == 0 {
 			continue
 		}
 
-		segmentTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
+		segmentTime := segmentStart(node.segmented.FirstTime, node.segmented.Interval, i)
 		endTime := segmentTime.Add(time.Duration(node.segmented.Interval) * time.Second)
-		segmentName := endTime.UTC().Format("15:04Z")
+		segmentName := segmentKey(endTime)
+		if owners[segmentName] != i {
+			continue
+		}
 
 		avgCPU := seg.CPUPercent / float64(seg.N)
 		avgRSS := seg.RSS / uint64(seg.N)
@@ -832,18 +845,14 @@ func (node *ProcessLastDayNode) GetChild(name string) (MetricNode, error) {
 		}, nil
 	}
 
-	for i := len(node.segmented.Segments) - 1; i >= 0; i-- {
-		segmentTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
-		endTime := segmentTime.Add(time.Duration(node.segmented.Interval) * time.Second)
-		if endTime.UTC().Format("15:04Z") == name {
-			return &ProcessTimeSegmentNode{
-				segment:     node.segmented.Segments[i],
-				segmentTime: segmentTime,
-				interval:    node.segmented.Interval,
-				parent:      node,
-				path:        node.path + "/" + name,
-			}, nil
-		}
+	if i, ok := node.segmentOwners()[name]; ok {
+		return &ProcessTimeSegmentNode{
+			segment:     node.segmented.Segments[i],
+			segmentTime: segmentStart(node.segmented.FirstTime, node.segmented.Interval, i),
+			interval:    node.segmented.Interval,
+			parent:      node,
+			path:        node.path + "/" + name,
+		}, nil
 	}
 
 	return nil, fmt.Errorf("time segment not found: %s", name)

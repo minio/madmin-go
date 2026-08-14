@@ -20,7 +20,7 @@
 package madmin
 
 import (
-	"maps"
+	"slices"
 	"testing"
 	"time"
 )
@@ -39,29 +39,34 @@ func TestTargetMetricsAdd(t *testing.T) {
 
 	a := &TargetMetrics{
 		N: 1, Subsystem: "notify_webhook", Name: "primary", Type: "webhook",
-		NodesOnline: 1,
-		TotalEvents: 100, TotalRequests: 20, FailedRequests: 1, WriterErrors: 1,
-		Drops:         map[string]uint64{"queue_full": 2},
+		NodesOnline:   1,
 		QueueLength:   10,
 		QueueCapacity: 100_000,
 		LastMinute:    TimedAction{Count: 5, AccTime: 500, MinTime: 50, MaxTime: 200},
 		LastError:     "older", LastErrorTime: t0,
+		LastHour: targetWindow(t0, TargetSegment{
+			N: 1, Events: 100, Requests: 20, RequestNanos: 2000,
+			WriterErrors: 1, DroppedQueueFull: 2,
+		}),
 	}
 	b := &TargetMetrics{
 		N: 1, Subsystem: "notify_webhook", Name: "primary", Type: "webhook",
 		NodesOnline: 0, NodesChecking: 1,
-		TotalEvents: 50, TotalRequests: 10, FailedRequests: 4, WriterErrors: 2,
-		Drops:         map[string]uint64{"queue_full": 1, "retries_exhausted": 3},
 		QueueLength:   90_000,
 		QueueCapacity: 100_000,
 		LastMinute:    TimedAction{Count: 3, AccTime: 900, MinTime: 300, MaxTime: 400},
 		LastError:     "newer", LastErrorTime: t0.Add(time.Minute),
+		LastHour: targetWindow(t0, TargetSegment{
+			N: 1, Events: 50, Requests: 10, RequestNanos: 3000,
+			WriterErrors:     2,
+			DroppedQueueFull: 1, DroppedRetriesExhausted: 3,
+		}),
 	}
 
-	// Add mutates the receiver's maps in place by design, so a shallow copy of
+	// Add mutates the receiver's windows in place by design, so a shallow copy of
 	// the input would alias them. mergeMap never does that in production: it
-	// starts from the zero value and addMap allocates rather than aliasing a
-	// source -- see TestTargetMetricsAddDoesNotMutateArgument.
+	// starts from the zero value, and merging into an empty window copies the
+	// source's segments -- see TestTargetMetricsAddDoesNotMutateArgument.
 	got := cloneTargetMetrics(a)
 	got.Add(b)
 
@@ -69,11 +74,13 @@ func TestTargetMetricsAdd(t *testing.T) {
 	if got.N != 2 || got.NodesOnline != 1 || got.NodesChecking != 1 {
 		t.Errorf("readiness = %+v, want N=2 online=1 checking=1", got)
 	}
-	if got.TotalEvents != 150 || got.TotalRequests != 30 || got.WriterErrors != 3 {
-		t.Errorf("counters = %+v", got)
-	}
-	if !maps.Equal(got.Drops, map[string]uint64{"queue_full": 3, "retries_exhausted": 3}) {
-		t.Errorf("Drops = %v", got.Drops)
+	// Flow lives only in the windows, and every segment field is a plain sum.
+	if tot := got.LastHour.Total(); tot != (TargetSegment{
+		N: 2, Events: 150, Requests: 30, RequestNanos: 5000,
+		WriterErrors:     3,
+		DroppedQueueFull: 3, DroppedRetriesExhausted: 3,
+	}) {
+		t.Errorf("LastHour total = %+v", tot)
 	}
 	// Both sum, so saturation is correct at either scope.
 	if got.QueueLength != 90_010 || got.QueueCapacity != 200_000 {
@@ -91,61 +98,101 @@ func TestTargetMetricsAdd(t *testing.T) {
 	rev := cloneTargetMetrics(b)
 	rev.Add(a)
 	if rev.LastError != got.LastError || rev.LastMinute != got.LastMinute ||
-		rev.N != got.N || !maps.Equal(rev.Drops, got.Drops) {
+		rev.N != got.N || rev.LastHour.Total() != got.LastHour.Total() {
 		t.Errorf("order dependent:\n%+v\n%+v", rev, got)
+	}
+}
+
+// targetWindow is one node's report: a single segment on the minute grid.
+func targetWindow(first time.Time, seg TargetSegment) *SegmentedTargetMetrics {
+	return &SegmentedTargetMetrics{
+		Interval:  60,
+		FirstTime: first,
+		Segments:  []TargetSegment{seg},
+	}
+}
+
+// logVolumeWindow is one node's log-volume report: a single segment on the minute
+// grid.
+func logVolumeWindow(first time.Time, seg LogVolumeSegment) *SegmentedLogVolume {
+	return &SegmentedLogVolume{
+		Interval:  60,
+		FirstTime: first,
+		Segments:  []LogVolumeSegment{seg},
 	}
 }
 
 func cloneTargetMetrics(t *TargetMetrics) TargetMetrics {
 	out := *t
-	out.Drops = maps.Clone(t.Drops)
+	out.LastHour = cloneTargetWindow(t.LastHour)
+	out.LastDay = cloneTargetWindow(t.LastDay)
 	return out
+}
+
+func cloneTargetWindow(w *SegmentedTargetMetrics) *SegmentedTargetMetrics {
+	if w == nil {
+		return nil
+	}
+	out := *w
+	out.Segments = slices.Clone(w.Segments)
+	return &out
 }
 
 // Merge must never write through into the value it is given: the caller's copy is
 // another node's report, and mergeMap relies on Add being side-effect free on its
 // argument.
 func TestTargetMetricsAddDoesNotMutateArgument(t *testing.T) {
-	src := &TargetMetrics{N: 1, TotalEvents: 5, Drops: map[string]uint64{"queue_full": 2}}
-	want := maps.Clone(src.Drops)
+	t0 := time.Date(2026, 8, 12, 10, 0, 0, 0, time.UTC)
+	src := &TargetMetrics{
+		N:        1,
+		LastHour: targetWindow(t0, TargetSegment{N: 1, Events: 5, DroppedQueueFull: 2}),
+	}
+	want := src.LastHour.Total()
 
 	dst := TargetMetrics{}
 	dst.Add(src)
 	dst.Add(src)
 
-	if !maps.Equal(src.Drops, want) {
-		t.Errorf("argument mutated: %v, want %v", src.Drops, want)
+	if got := src.LastHour.Total(); got != want {
+		t.Errorf("argument mutated: %+v, want %+v", got, want)
 	}
-	if dst.Drops["queue_full"] != 4 {
-		t.Errorf("dst = %v, want queue_full 4 after two merges", dst.Drops)
+	if got := dst.LastHour.Total(); got.Events != 10 || got.DroppedQueueFull != 4 {
+		t.Errorf("dst = %+v, want 10 events and 4 queue_full drops after two merges", got)
 	}
 }
 
 // The same guard one level up: merging a map of targets must not write into the
 // source maps.
 func TestDeliveryTargetMetricsMergeDoesNotMutateArgument(t *testing.T) {
+	t0 := time.Date(2026, 8, 12, 10, 0, 0, 0, time.UTC)
 	src := &DeliveryTargetMetrics{
 		Nodes: 1,
 		Notification: map[string]TargetMetrics{
-			"notify_webhook:p": {N: 1, TotalEvents: 3, Drops: map[string]uint64{"shutdown": 1}},
+			"notify_webhook:p": {
+				N:        1,
+				LastHour: targetWindow(t0, TargetSegment{N: 1, Events: 3, DroppedShutdown: 1}),
+			},
 		},
-		LogVolume: map[string]uint64{"error": 2},
+		LogVolumeLastHour: logVolumeWindow(t0, LogVolumeSegment{N: 1, ErrorLines: 2}),
 	}
-	wantDrops := maps.Clone(src.Notification["notify_webhook:p"].Drops)
-	wantVolume := maps.Clone(src.LogVolume)
+	wantWindow := src.Notification["notify_webhook:p"].LastHour.Total()
+	wantVolume := src.LogVolumeLastHour.Total()
 
 	var dst DeliveryTargetMetrics
 	dst.Merge(src)
 	dst.Merge(src)
 
-	if !maps.Equal(src.Notification["notify_webhook:p"].Drops, wantDrops) {
-		t.Errorf("source target Drops mutated: %v", src.Notification["notify_webhook:p"].Drops)
+	if got := src.Notification["notify_webhook:p"].LastHour.Total(); got != wantWindow {
+		t.Errorf("source target window mutated: %+v, want %+v", got, wantWindow)
 	}
-	if !maps.Equal(src.LogVolume, wantVolume) {
-		t.Errorf("source LogVolume mutated: %v", src.LogVolume)
+	if got := src.LogVolumeLastHour.Total(); got != wantVolume {
+		t.Errorf("source log volume mutated: %+v, want %+v", got, wantVolume)
 	}
-	if got := dst.Notification["notify_webhook:p"]; got.TotalEvents != 6 || got.Drops["shutdown"] != 2 {
-		t.Errorf("dst = %+v, want events 6 and shutdown 2", got)
+	if got := dst.LogVolumeLastHour.Total(); got != (LogVolumeSegment{N: 2, ErrorLines: 4}) {
+		t.Errorf("dst log volume = %+v, want 4 error lines from 2 nodes", got)
+	}
+	if got := dst.Notification["notify_webhook:p"].LastHour.Total(); got.Events != 6 || got.DroppedShutdown != 2 {
+		t.Errorf("dst = %+v, want events 6 and 2 shutdown drops", got)
 	}
 }
 
@@ -164,19 +211,27 @@ func TestTargetMetricsAddKeepsIdentity(t *testing.T) {
 // The three classes stay in separate maps because a target name is only unique
 // within its config subsystem.
 func TestDeliveryTargetMetricsMerge(t *testing.T) {
+	t0 := time.Date(2026, 8, 12, 10, 0, 0, 0, time.UTC)
+	target := func(events uint64) TargetMetrics {
+		return TargetMetrics{N: 1, LastHour: targetWindow(t0, TargetSegment{N: 1, Events: events})}
+	}
+
 	a := &DeliveryTargetMetrics{
 		Nodes:        1,
-		Notification: map[string]TargetMetrics{"notify_webhook:p": {N: 1, TotalEvents: 10}},
-		Audit:        map[string]TargetMetrics{"audit_kafka:1": {N: 1, TotalEvents: 5}},
+		Notification: map[string]TargetMetrics{"notify_webhook:p": target(10)},
+		Audit:        map[string]TargetMetrics{"audit_kafka:1": target(5)},
 		Spill:        &TargetSpillStats{Bytes: 100, Files: 1},
-		LogVolume:    map[string]uint64{"error": 3},
+
+		LogVolumeLastHour: logVolumeWindow(t0, LogVolumeSegment{N: 1, ErrorLines: 3}),
 	}
 	b := &DeliveryTargetMetrics{
 		Nodes:        1,
-		Notification: map[string]TargetMetrics{"notify_webhook:p": {N: 1, TotalEvents: 7}},
-		Logs:         map[string]TargetMetrics{"logger_webhook:main": {N: 1, TotalEvents: 2}},
+		Notification: map[string]TargetMetrics{"notify_webhook:p": target(7)},
+		Logs:         map[string]TargetMetrics{"logger_webhook:main": target(2)},
 		Spill:        &TargetSpillStats{Bytes: 50, Files: 2},
-		LogVolume:    map[string]uint64{"error": 1, "warning": 4},
+
+		LogVolumeLastHour: logVolumeWindow(t0, LogVolumeSegment{N: 1, ErrorLines: 1, WarningLines: 4}),
+		LogVolumeLastDay:  logVolumeWindow(t0, LogVolumeSegment{N: 1, FatalLines: 1}),
 	}
 
 	var got DeliveryTargetMetrics
@@ -186,26 +241,36 @@ func TestDeliveryTargetMetricsMerge(t *testing.T) {
 	if got.Nodes != 2 {
 		t.Errorf("Nodes = %d, want 2", got.Nodes)
 	}
-	if n := got.Notification["notify_webhook:p"]; n.N != 2 || n.TotalEvents != 17 {
+	if n := got.Notification["notify_webhook:p"]; n.N != 2 || n.LastHour.Total().Events != 17 {
 		t.Errorf("notification = %+v, want N=2 events=17", n)
 	}
 	// A class only one node reported must survive.
-	if got.Audit["audit_kafka:1"].TotalEvents != 5 || got.Logs["logger_webhook:main"].TotalEvents != 2 {
+	if got.Audit["audit_kafka:1"].LastHour.Total().Events != 5 ||
+		got.Logs["logger_webhook:main"].LastHour.Total().Events != 2 {
 		t.Errorf("audit/logs lost: %+v / %+v", got.Audit, got.Logs)
 	}
 	if got.Spill == nil || got.Spill.Bytes != 150 || got.Spill.Files != 3 {
 		t.Errorf("Spill = %+v, want 150/3", got.Spill)
 	}
-	if !maps.Equal(got.LogVolume, map[string]uint64{"error": 4, "warning": 4}) {
-		t.Errorf("LogVolume = %v", got.LogVolume)
+	// Log volume is node-level, so it sums across reports like everything else --
+	// and a window only one node reported must survive.
+	if tot := got.LogVolumeLastHour.Total(); tot != (LogVolumeSegment{N: 2, ErrorLines: 4, WarningLines: 4}) {
+		t.Errorf("LogVolumeLastHour total = %+v", tot)
+	}
+	if tot := got.LogVolumeLastDay.Total(); tot != (LogVolumeSegment{N: 1, FatalLines: 1}) {
+		t.Errorf("LogVolumeLastDay total = %+v", tot)
 	}
 }
 
 func TestDeliveryTargetMetricsMergeNil(t *testing.T) {
+	t0 := time.Date(2026, 8, 12, 10, 0, 0, 0, time.UTC)
 	full := &DeliveryTargetMetrics{
-		Nodes:        1,
-		Notification: map[string]TargetMetrics{"notify_webhook:p": {N: 1, TotalEvents: 10}},
-		Spill:        &TargetSpillStats{Bytes: 100},
+		Nodes: 1,
+		Notification: map[string]TargetMetrics{
+			"notify_webhook:p": {N: 1, LastHour: targetWindow(t0, TargetSegment{N: 1, Events: 10})},
+		},
+		Spill:             &TargetSpillStats{Bytes: 100},
+		LogVolumeLastHour: logVolumeWindow(t0, LogVolumeSegment{N: 1, ErrorLines: 7}),
 	}
 
 	var got DeliveryTargetMetrics
@@ -213,7 +278,8 @@ func TestDeliveryTargetMetricsMergeNil(t *testing.T) {
 	got.Merge(&DeliveryTargetMetrics{})
 	got.Merge(nil)
 
-	if got.Notification["notify_webhook:p"].TotalEvents != 10 || got.Spill == nil {
+	if got.Notification["notify_webhook:p"].LastHour.Total().Events != 10 || got.Spill == nil ||
+		got.LogVolumeLastHour.Total().ErrorLines != 7 {
 		t.Errorf("a node reporting nothing blanked a real report: %+v", got)
 	}
 }

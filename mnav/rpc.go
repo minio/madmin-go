@@ -194,7 +194,7 @@ func rpcView(ops map[string]madmin.SegmentedRPCMetrics) segView[madmin.RPCStats,
 		opLeaf: func(op string, s madmin.RPCStats, segTime time.Time, _ int, parent MetricNode, path string) MetricNode {
 			return &RPCHandlerSegmentNode{handler: op, stats: s, segmentTime: segTime, parent: parent, path: path}
 		},
-		sumLeaf: func(s madmin.RPCStats, segTime time.Time, _ int, parent MetricNode, path string) MetricNode {
+		sumLeaf: func(s madmin.RPCStats, segTime time.Time, _, _ int, parent MetricNode, path string) MetricNode {
 			return &RPCTimeSegmentAllNode{segment: s, segmentTime: segTime, parent: parent, path: path}
 		},
 	}
@@ -367,13 +367,17 @@ func (node *RPCLastDayAllNode) GetChildren() []MetricChild {
 
 	// Calculate union of all time segments across all handlers
 	timeSegments := node.calculateAllTimeSegments()
+	owners := node.segmentOwners(timeSegments)
 
 	// Add time segments, most recent first (filter out empty segments)
 	for i := len(timeSegments) - 1; i >= 0; i-- {
 		segment := timeSegments[i]
 		segmentTime := segment.Time
 		endTime := segmentTime.Add(time.Duration(segment.Interval) * time.Second)
-		segmentName := segmentTime.UTC().Format("15:04Z")
+		segmentName := segmentKey(segmentTime)
+		if owners[segmentName] != i {
+			continue
+		}
 
 		// Filter out time segments with no requests
 		if segment.TotalRequests == 0 {
@@ -406,6 +410,17 @@ type timeSegmentInfo struct {
 	Interval      int
 	TotalRequests int64
 	TotalTime     float64
+}
+
+// segmentOwners maps this node's navigation keys to the slot that owns each. The
+// union spans more than a day as soon as two handlers' FirstTime differ, so two
+// slots can carry the same wall-clock name; the newest keeps it.
+func (node *RPCLastDayAllNode) segmentOwners(segments []timeSegmentInfo) map[string]int {
+	times := make([]time.Time, len(segments))
+	for i, s := range segments {
+		times[i] = s.Time
+	}
+	return segmentTimeOwners(times)
 }
 
 // calculateAllTimeSegments calculates the union of all time segments across all handlers
@@ -488,30 +503,29 @@ func (node *RPCLastDayAllNode) GetChild(name string) (MetricNode, error) {
 	timeSegments := node.calculateAllTimeSegments()
 
 	// Handle time segments
-	for _, segment := range timeSegments {
-		segmentTime := segment.Time
-		if segmentTime.UTC().Format("15:04Z") == name {
-			// Create aggregated stats for this time segment
-			var aggregatedStats madmin.RPCStats
+	if i, ok := node.segmentOwners(timeSegments)[name]; ok {
+		segmentTime := timeSegments[i].Time
 
-			// Aggregate data from all handlers for this specific time
-			for _, segmented := range node.rpc.LastDay {
-				for i, handlerSegment := range segmented.Segments {
-					handlerSegmentTime := segmented.FirstTime.Add(time.Duration(i*segmented.Interval) * time.Second)
-					if handlerSegmentTime.Equal(segmentTime) {
-						aggregatedStats.Merge(handlerSegment)
-						break
-					}
+		// Create aggregated stats for this time segment
+		var aggregatedStats madmin.RPCStats
+
+		// Aggregate data from all handlers for this specific time
+		for _, segmented := range node.rpc.LastDay {
+			for i, handlerSegment := range segmented.Segments {
+				handlerSegmentTime := segmented.FirstTime.Add(time.Duration(i*segmented.Interval) * time.Second)
+				if handlerSegmentTime.Equal(segmentTime) {
+					aggregatedStats.Merge(handlerSegment)
+					break
 				}
 			}
-
-			return &RPCTimeSegmentAllNode{
-				segment:     aggregatedStats,
-				segmentTime: segmentTime,
-				parent:      node,
-				path:        node.path + "/" + name,
-			}, nil
 		}
+
+		return &RPCTimeSegmentAllNode{
+			segment:     aggregatedStats,
+			segmentTime: segmentTime,
+			parent:      node,
+			path:        node.path + "/" + name,
+		}, nil
 	}
 
 	return nil, fmt.Errorf("time segment not found: %s", name)
@@ -609,6 +623,7 @@ func (node *RPCLastDayHandlerNode) GetChildren() []MetricChild {
 	})
 
 	// Add time segments, most recent first (filter out empty segments)
+	owners := segmentSecOwners(node.segmented.FirstTime, node.segmented.Interval, len(node.segmented.Segments))
 	for i := len(node.segmented.Segments) - 1; i >= 0; i-- {
 		segment := node.segmented.Segments[i]
 
@@ -617,9 +632,12 @@ func (node *RPCLastDayHandlerNode) GetChildren() []MetricChild {
 			continue
 		}
 
-		segmentTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
+		segmentTime := segmentStart(node.segmented.FirstTime, node.segmented.Interval, i)
 		endTime := segmentTime.Add(time.Duration(node.segmented.Interval) * time.Second)
-		segmentName := segmentTime.UTC().Format("15:04Z")
+		segmentName := segmentKey(segmentTime)
+		if owners[segmentName] != i {
+			continue
+		}
 
 		rps := float64(segment.Requests) / float64(node.segmented.Interval)
 		day := ""
@@ -671,17 +689,15 @@ func (node *RPCLastDayHandlerNode) GetChild(name string) (MetricNode, error) {
 	}
 
 	// Handle time segments
-	for i := len(node.segmented.Segments) - 1; i >= 0; i-- {
-		segmentTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
-		if segmentTime.UTC().Format("15:04Z") == name {
-			return &RPCHandlerSegmentNode{
-				handler:     node.handlerName,
-				stats:       node.segmented.Segments[i],
-				segmentTime: segmentTime,
-				parent:      node,
-				path:        node.path + "/" + name,
-			}, nil
-		}
+	owners := segmentSecOwners(node.segmented.FirstTime, node.segmented.Interval, len(node.segmented.Segments))
+	if i, ok := owners[name]; ok {
+		return &RPCHandlerSegmentNode{
+			handler:     node.handlerName,
+			stats:       node.segmented.Segments[i],
+			segmentTime: segmentStart(node.segmented.FirstTime, node.segmented.Interval, i),
+			parent:      node,
+			path:        node.path + "/" + name,
+		}, nil
 	}
 
 	return nil, fmt.Errorf("time segment not found: %s", name)

@@ -666,9 +666,13 @@ func (node *ReplicationLastDayNode) GetChildren() []MetricChild {
 	})
 
 	// Add time segments, most recent first (filter out empty segments)
+	owners := segmentSecOwners(node.segmented.FirstTime, node.segmented.Interval, len(node.segmented.Segments))
 	for i := len(node.segmented.Segments) - 1; i >= 0; i-- {
-		segmentTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
-		segmentName := segmentTime.UTC().Format("15:04Z")
+		segmentTime := segmentStart(node.segmented.FirstTime, node.segmented.Interval, i)
+		segmentName := segmentKey(segmentTime)
+		if owners[segmentName] != i {
+			continue
+		}
 
 		// Get event count for this segment
 		var events int64
@@ -735,18 +739,16 @@ func (node *ReplicationLastDayNode) GetChild(name string) (MetricNode, error) {
 
 	// Handle time segments - find by time format (with UTC indicator)
 	if node.segmented != nil {
-		for i := len(node.segmented.Segments) - 1; i >= 0; i-- {
-			segmentTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
-			if segmentTime.UTC().Format("15:04Z") == name {
-				return &ReplicationTimeSegmentNode{
-					targetName:  node.targetName,
-					segment:     node.segmented.Segments[i],
-					segmentTime: segmentTime,
-					interval:    node.segmented.Interval,
-					parent:      node,
-					path:        node.path + "/" + name,
-				}, nil
-			}
+		owners := segmentSecOwners(node.segmented.FirstTime, node.segmented.Interval, len(node.segmented.Segments))
+		if i, ok := owners[name]; ok {
+			return &ReplicationTimeSegmentNode{
+				targetName:  node.targetName,
+				segment:     node.segmented.Segments[i],
+				segmentTime: segmentStart(node.segmented.FirstTime, node.segmented.Interval, i),
+				interval:    node.segmented.Interval,
+				parent:      node,
+				path:        node.path + "/" + name,
+			}, nil
 		}
 	}
 
@@ -899,14 +901,19 @@ func (node *ReplicationLastDayAggregatedNode) GetChildren() []MetricChild {
 		Description: "Aggregated total across all targets",
 	}}
 
+	owners := segmentSecOwners(seg.FirstTime, seg.Interval, len(seg.Segments))
 	for i := len(seg.Segments) - 1; i >= 0; i-- {
 		if seg.Segments[i].Events == 0 {
 			continue
 		}
-		segTime := seg.FirstTime.Add(time.Duration(i*seg.Interval) * time.Second)
+		segTime := segmentStart(seg.FirstTime, seg.Interval, i)
+		name := segmentKey(segTime)
+		if owners[name] != i {
+			continue
+		}
 		endTime := segTime.Add(time.Duration(seg.Interval) * time.Second)
 		children = append(children, MetricChild{
-			Name:        segTime.UTC().Format("15:04Z"),
+			Name:        name,
 			Description: replicationSegmentDesc(segTime, endTime, seg.Segments[i]),
 		})
 	}
@@ -959,18 +966,15 @@ func (node *ReplicationLastDayAggregatedNode) GetChild(name string) (MetricNode,
 		}, nil
 	}
 
-	for i := len(seg.Segments) - 1; i >= 0; i-- {
-		segTime := seg.FirstTime.Add(time.Duration(i*seg.Interval) * time.Second)
-		if segTime.UTC().Format("15:04Z") == name {
-			return &ReplicationTimeSegmentNode{
-				targetName:  "all targets",
-				segment:     seg.Segments[i],
-				segmentTime: segTime,
-				interval:    seg.Interval,
-				parent:      node,
-				path:        fmt.Sprintf("%s/%s", node.path, name),
-			}, nil
-		}
+	if i, ok := segmentSecOwners(seg.FirstTime, seg.Interval, len(seg.Segments))[name]; ok {
+		return &ReplicationTimeSegmentNode{
+			targetName:  "all targets",
+			segment:     seg.Segments[i],
+			segmentTime: segmentStart(seg.FirstTime, seg.Interval, i),
+			interval:    seg.Interval,
+			parent:      node,
+			path:        fmt.Sprintf("%s/%s", node.path, name),
+		}, nil
 	}
 	return nil, fmt.Errorf("time segment not found: %s", name)
 }

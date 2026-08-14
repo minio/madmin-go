@@ -475,7 +475,7 @@ func apiView(ops map[string]madmin.SegmentedAPIMetrics) segView[madmin.APIStats,
 		opLeaf: func(op string, s madmin.APIStats, segTime time.Time, interval int, parent MetricNode, path string) MetricNode {
 			return &APIEndpointNode{endpoint: op, stats: s, segmentTime: segTime, interval: interval, parent: parent, path: path}
 		},
-		sumLeaf: func(s madmin.APIStats, segTime time.Time, _ int, parent MetricNode, path string) MetricNode {
+		sumLeaf: func(s madmin.APIStats, segTime time.Time, _, _ int, parent MetricNode, path string) MetricNode {
 			return &APITimeSegmentAllNode{segment: s, segmentTime: segTime, parent: parent, path: path}
 		},
 	}
@@ -606,16 +606,21 @@ func (node *APILastDayAllNode) GetChildren() []MetricChild {
 	})
 
 	// Add time segments, most recent first (filter out empty segments)
+	owners := segmentSecOwners(segmented.FirstTime, segmented.Interval, len(segmented.Segments))
 	for i := len(segmented.Segments) - 1; i >= 0; i-- {
 		seg := segmented.Segments[i]
 		if seg.Requests == 0 {
 			continue
 		}
-		segmentTime := segmented.FirstTime.Add(time.Duration(i*segmented.Interval) * time.Second)
+		segmentTime := segmentStart(segmented.FirstTime, segmented.Interval, i)
+		name := segmentKey(segmentTime)
+		if owners[name] != i {
+			continue
+		}
 		endTime := segmentTime.Add(time.Duration(segmented.Interval) * time.Second)
 
 		children = append(children, MetricChild{
-			Name:        segmentTime.UTC().Format("15:04Z"),
+			Name:        name,
 			Description: formatAPITimeSegmentDesc(seg, segmented.Interval, segmentTime, endTime),
 		})
 	}
@@ -639,16 +644,14 @@ func (node *APILastDayAllNode) GetChild(name string) (MetricNode, error) {
 	}
 
 	// Handle time segments - find by time format (with UTC indicator)
-	for i := len(segmented.Segments) - 1; i >= 0; i-- {
-		segmentTime := segmented.FirstTime.Add(time.Duration(i*segmented.Interval) * time.Second)
-		if segmentTime.UTC().Format("15:04Z") == name {
-			return &APITimeSegmentAllNode{
-				segment:     segmented.Segments[i],
-				segmentTime: segmentTime,
-				parent:      node,
-				path:        node.path + "/" + name,
-			}, nil
-		}
+	owners := segmentSecOwners(segmented.FirstTime, segmented.Interval, len(segmented.Segments))
+	if i, ok := owners[name]; ok {
+		return &APITimeSegmentAllNode{
+			segment:     segmented.Segments[i],
+			segmentTime: segmentStart(segmented.FirstTime, segmented.Interval, i),
+			parent:      node,
+			path:        node.path + "/" + name,
+		}, nil
 	}
 
 	return nil, fmt.Errorf("time segment not found: %s", name)
@@ -695,16 +698,21 @@ func (node *APILastDayEndpointNode) GetChildren() []MetricChild {
 	})
 
 	// Add time segments, most recent first (filter out empty segments)
+	owners := segmentSecOwners(node.segmented.FirstTime, node.segmented.Interval, len(node.segmented.Segments))
 	for i := len(node.segmented.Segments) - 1; i >= 0; i-- {
 		seg := node.segmented.Segments[i]
 		if seg.Requests == 0 {
 			continue
 		}
-		segmentTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
+		segmentTime := segmentStart(node.segmented.FirstTime, node.segmented.Interval, i)
+		name := segmentKey(segmentTime)
+		if owners[name] != i {
+			continue
+		}
 		endTime := segmentTime.Add(time.Duration(node.segmented.Interval) * time.Second)
 
 		children = append(children, MetricChild{
-			Name:        segmentTime.UTC().Format("15:04Z"),
+			Name:        name,
 			Description: formatAPITimeSegmentDesc(seg, node.segmented.Interval, segmentTime, endTime),
 		})
 	}
@@ -734,18 +742,16 @@ func (node *APILastDayEndpointNode) GetChild(name string) (MetricNode, error) {
 	}
 
 	// Handle time segments - find by time format (with UTC indicator)
-	for i := len(node.segmented.Segments) - 1; i >= 0; i-- {
-		segmentTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
-		if segmentTime.UTC().Format("15:04Z") == name {
-			return &APIEndpointNode{
-				endpoint:    node.apiName,
-				stats:       node.segmented.Segments[i],
-				segmentTime: segmentTime,
-				interval:    node.segmented.Interval,
-				parent:      node,
-				path:        node.path + "/" + name,
-			}, nil
-		}
+	owners := segmentSecOwners(node.segmented.FirstTime, node.segmented.Interval, len(node.segmented.Segments))
+	if i, ok := owners[name]; ok {
+		return &APIEndpointNode{
+			endpoint:    node.apiName,
+			stats:       node.segmented.Segments[i],
+			segmentTime: segmentStart(node.segmented.FirstTime, node.segmented.Interval, i),
+			interval:    node.segmented.Interval,
+			parent:      node,
+			path:        node.path + "/" + name,
+		}, nil
 	}
 
 	return nil, fmt.Errorf("time segment not found: %s", name)

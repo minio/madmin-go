@@ -211,13 +211,17 @@ func (node *HealingLastDayNode) GetChildren() []MetricChild {
 		return []MetricChild{}
 	}
 	children := []MetricChild{{Name: "total", Description: "Aggregated totals across all segments"}}
+	owners := segmentSecOwners(node.lastDay.FirstTime, node.lastDay.Interval, len(node.lastDay.Segments))
 	for i := len(node.lastDay.Segments) - 1; i >= 0; i-- {
 		seg := node.lastDay.Segments[i]
 		if seg.Started == 0 {
 			continue
 		}
-		segTime := node.lastDay.FirstTime.Add(time.Duration(i*node.lastDay.Interval) * time.Second)
-		name := segTime.UTC().Format("15:04Z")
+		segTime := segmentStart(node.lastDay.FirstTime, node.lastDay.Interval, i)
+		name := segmentKey(segTime)
+		if owners[name] != i {
+			continue
+		}
 		children = append(children, MetricChild{
 			Name:        name,
 			Description: fmt.Sprintf("%s started, %s completed", humanize.Comma(seg.Started), humanize.Comma(seg.Completed)),
@@ -264,11 +268,9 @@ func (node *HealingLastDayNode) GetChild(name string) (MetricNode, error) {
 		}
 		return NewHealingCountsNode(&total, node, node.path+"/total"), nil
 	}
-	for i := range node.lastDay.Segments {
-		segTime := node.lastDay.FirstTime.Add(time.Duration(i*node.lastDay.Interval) * time.Second)
-		if segTime.UTC().Format("15:04Z") == name {
-			return NewHealingCountsNode(&node.lastDay.Segments[i], node, node.path+"/"+name), nil
-		}
+	owners := segmentSecOwners(node.lastDay.FirstTime, node.lastDay.Interval, len(node.lastDay.Segments))
+	if i, ok := owners[name]; ok {
+		return NewHealingCountsNode(&node.lastDay.Segments[i], node, node.path+"/"+name), nil
 	}
 	return nil, fmt.Errorf("segment not found: %s", name)
 }

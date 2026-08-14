@@ -36,6 +36,10 @@ import "time"
 // atomic loads either way, so selectivity is legitimately a client-side concern,
 // and three bits would triple the collect, merge, navigation and test surface
 // for one concept.
+//
+// Nothing here is cumulative since process start. The per-target time bases are
+// stated on TargetMetrics; log volume arrives as the two persisted segmented
+// windows below.
 type DeliveryTargetMetrics struct {
 	CollectedAt time.Time `json:"collected"`
 	Nodes       int       `json:"nodes"`
@@ -55,14 +59,18 @@ type DeliveryTargetMetrics struct {
 	// Spill is the on-disk overflow store shared by the audit and log queues.
 	Spill *TargetSpillStats `json:"spill,omitempty"`
 
-	// LogVolume maps a log severity ("error", "warning", "fatal", "info",
-	// "event") to the number of lines emitted since process start.
+	// Log lines emitted, by severity, over a segmented window.
 	//
-	// It is on the section rather than on a target because a line is counted
+	// They are on the section rather than on a target because a line is counted
 	// once on emission regardless of how many targets it fans out to -- and
 	// because it is the only signal here that still works with no target
 	// configured at all.
-	LogVolume map[string]uint64 `json:"log_volume,omitempty"`
+	//
+	// LogVolumeLastDay is 96 x 15-minute segments, requested with the DayStats
+	// flag; LogVolumeLastHour is 60 x 1-minute segments, requested with the
+	// HourStats flag.
+	LogVolumeLastDay  *SegmentedLogVolume `json:"logVolumeLastDay,omitempty"`
+	LogVolumeLastHour *SegmentedLogVolume `json:"logVolumeLastHour,omitempty"`
 }
 
 // TargetSpillStats is the disk overflow store for a delivery queue.
@@ -73,10 +81,27 @@ type TargetSpillStats struct {
 
 // TargetMetrics is one delivery target's state in this scope.
 //
+// Four time bases live here, and which one a field uses is stated on the field.
+// No value is cumulative since process start: a lifetime counter needs two
+// collections before it says anything, and resets invisibly on restart.
+//
+//   - Identity and configuration, echoed identically by every node: Subsystem,
+//     Name, Type, Endpoint.
+//   - Instantaneous, read live at collection: N, NodesOnline, NodesChecking,
+//     QueueLength, QueueCapacity, Inflight, Workers.
+//   - Sliding last minute, from in-memory accumulators, never persisted:
+//     LastMinute.
+//   - Segmented windows, persisted across restarts: LastHour, LastDay. Delivered
+//     events, requests, failures and dropped events live only there, because a
+//     one-minute view never catches events that arrive in bursts hours apart.
+//
+// LastError sits outside all four: it is the single most recent failure in
+// scope, kept with its own timestamp.
+//
 // Every numeric field sums across hosts except LastMinute, which merges as a
-// TimedAction, and Drops, which sums by key. A per-node outlier -- one node
-// whose queue is full while five are idle -- shows up as a ByHost entry, and
-// QueueLength against QueueCapacity is a correct saturation figure at either
+// TimedAction, and the windows, which merge segment-wise. A per-node outlier --
+// one node whose queue is full while five are idle -- shows up as a ByHost entry,
+// and QueueLength against QueueCapacity is a correct saturation figure at either
 // scope because both sum.
 type TargetMetrics struct {
 	// N is the number of nodes reporting this target. Nodes are expected to
@@ -94,20 +119,6 @@ type TargetMetrics struct {
 	NodesOnline   int `json:"nodes_online,omitempty"`
 	NodesChecking int `json:"nodes_checking,omitempty"`
 
-	// Cumulative flow since process start; resets on restart.
-	TotalEvents    uint64 `json:"total_events,omitempty"`
-	TotalRequests  uint64 `json:"total_requests,omitempty"`
-	FailedRequests uint64 `json:"failed_requests,omitempty"`
-	WriterErrors   uint64 `json:"writer_errors,omitempty"`
-
-	// Drops maps the reason an event was discarded to a count: "queue_full",
-	// "retries_exhausted", "shutdown", or "other".
-	//
-	// The sum over this map is the total dropped-event count, so there is no
-	// separate total field. "other" exists so that sum stays exact even when the
-	// server cannot classify a drop.
-	Drops map[string]uint64 `json:"drops,omitempty"`
-
 	// Backpressure gauges.
 	QueueLength   int64 `json:"queue_length,omitempty"`
 	QueueCapacity int64 `json:"queue_capacity,omitempty"`
@@ -117,10 +128,10 @@ type TargetMetrics struct {
 	// LastMinute is delivery over the last ~60s.
 	//
 	// Count is *requests*, not events: a batching target covers up to its batch
-	// size per request, so TotalEvents/Count is the batch factor rather than a
-	// rate. The mean latency is AccTime/Count and the delivery rate is
-	// Count/60 -- neither is sent. Bytes is populated only by the writer path
-	// that knows the encoded payload size.
+	// size per request, so the batch factor is a window's Events/Requests rather
+	// than anything derivable here. The mean latency is AccTime/Count and the
+	// delivery rate is Count/60 -- neither is sent. Bytes is populated only by the
+	// writer path that knows the encoded payload size.
 	LastMinute TimedAction `json:"last_minute"`
 
 	// LastError is the most recent delivery failure anywhere in scope, kept with
@@ -128,6 +139,12 @@ type TargetMetrics struct {
 	// timestamps break on the lexicographically smaller message.
 	LastError     string    `json:"last_error,omitempty"`
 	LastErrorTime time.Time `json:"last_error_time,omitzero"`
+
+	// LastDay is 96 x 15-minute segments, requested with the DayStats flag.
+	LastDay *SegmentedTargetMetrics `json:"lastDay,omitempty"`
+
+	// LastHour is 60 x 1-minute segments, requested with the HourStats flag.
+	LastHour *SegmentedTargetMetrics `json:"lastHour,omitempty"`
 }
 
 // Add other into t.
@@ -141,17 +158,27 @@ func (t *TargetMetrics) Add(other *TargetMetrics) {
 	t.N += other.N
 	t.NodesOnline += other.NodesOnline
 	t.NodesChecking += other.NodesChecking
-	t.TotalEvents += other.TotalEvents
-	t.TotalRequests += other.TotalRequests
-	t.FailedRequests += other.FailedRequests
-	t.WriterErrors += other.WriterErrors
-	addMap(&t.Drops, other.Drops)
 	t.QueueLength += other.QueueLength
 	t.QueueCapacity += other.QueueCapacity
 	t.Inflight += other.Inflight
 	t.Workers += other.Workers
 	t.LastMinute.Merge(other.LastMinute)
 	takeLater(&t.LastErrorTime, &t.LastError, other.LastErrorTime, other.LastError)
+	// Presence survives the merge: a window that was requested and came back with
+	// no completed segment is kept non-nil, so a reader can tell it apart from one
+	// that was never asked for.
+	if o := other.LastDay; o != nil {
+		if t.LastDay == nil {
+			t.LastDay = new(SegmentedTargetMetrics)
+		}
+		t.LastDay.Add(o)
+	}
+	if o := other.LastHour; o != nil {
+		if t.LastHour == nil {
+			t.LastHour = new(SegmentedTargetMetrics)
+		}
+		t.LastHour.Add(o)
+	}
 }
 
 // Merge other into d.
@@ -173,5 +200,112 @@ func (d *DeliveryTargetMetrics) Merge(other *DeliveryTargetMetrics) {
 		d.Spill.Bytes += other.Spill.Bytes
 		d.Spill.Files += other.Spill.Files
 	}
-	addMap(&d.LogVolume, other.LogVolume)
+	// Presence survives the merge; see TargetMetrics.Add.
+	if o := other.LogVolumeLastDay; o != nil {
+		if d.LogVolumeLastDay == nil {
+			d.LogVolumeLastDay = new(SegmentedLogVolume)
+		}
+		d.LogVolumeLastDay.Add(o)
+	}
+	if o := other.LogVolumeLastHour; o != nil {
+		if d.LogVolumeLastHour == nil {
+			d.LogVolumeLastHour = new(SegmentedLogVolume)
+		}
+		d.LogVolumeLastHour.Add(o)
+	}
+}
+
+// SegmentedTargetMetrics is a time-segmented view of one target's delivery flow.
+type SegmentedTargetMetrics = Segmented[TargetSegment, *TargetSegment]
+
+// TargetSegment is one delivery target's flow over one time segment.
+//
+// Every field is a plain sum over the segment, so segments merge across nodes and
+// rescale to a coarser interval by addition. Reading a window rolls it forward, so
+// a field whose additive identity is not zero would be corrupted by the read.
+//
+// Queue depth, in-flight and worker counts are absent: they are instantaneous
+// gauges, and a sum of samples across a segment means nothing.
+type TargetSegment struct {
+	// Events is events accepted for delivery and Requests the attempts they were
+	// batched into, so Events/Requests is the batch factor. RequestNanos is the
+	// summed delivery latency, so RequestNanos/Requests is the mean.
+	Events       uint64 `json:"events,omitempty"`
+	Requests     uint64 `json:"requests,omitempty"`
+	RequestNanos uint64 `json:"request_nanos,omitempty"`
+
+	// WriterErrors is every delivery attempt that failed to write. Attempts are
+	// retried, so one event can contribute several.
+	//
+	// There is deliberately no separate failed-request count beside it: the two
+	// move together on every non-batching path, and a batching target increments
+	// only this one, so a second field would be the same value twice and would read
+	// as zero for Kafka.
+	WriterErrors uint64 `json:"writer_errors,omitempty"`
+
+	// The reasons an event was discarded, as fixed fields rather than a map so the
+	// segment stays a flat record of sums. They sum to the segment's dropped-event
+	// count, so there is no separate total; DroppedOther keeps that sum exact when
+	// the server cannot classify a drop.
+	DroppedQueueFull        uint64 `json:"dropped_queue_full,omitempty"`
+	DroppedRetriesExhausted uint64 `json:"dropped_retries_exhausted,omitempty"`
+	DroppedShutdown         uint64 `json:"dropped_shutdown,omitempty"`
+	DroppedOther            uint64 `json:"dropped_other,omitempty"`
+
+	// N is contributing nodes.
+	N int `json:"n"`
+}
+
+// Add other to s for the Segmenter interface.
+func (s *TargetSegment) Add(other *TargetSegment) {
+	if other == nil {
+		return
+	}
+	s.Events += other.Events
+	s.Requests += other.Requests
+	s.RequestNanos += other.RequestNanos
+	s.WriterErrors += other.WriterErrors
+	s.DroppedQueueFull += other.DroppedQueueFull
+	s.DroppedRetriesExhausted += other.DroppedRetriesExhausted
+	s.DroppedShutdown += other.DroppedShutdown
+	s.DroppedOther += other.DroppedOther
+	s.N += other.N
+}
+
+// SegmentedLogVolume is a time-segmented view of log lines emitted.
+type SegmentedLogVolume = Segmented[LogVolumeSegment, *LogVolumeSegment]
+
+// LogVolumeSegment is the log lines emitted over one time segment, by severity.
+//
+// Every field is a plain sum over the segment, so segments merge across nodes and
+// rescale to a coarser interval by addition. Reading a window rolls it forward, so
+// a field whose additive identity is not zero would be corrupted by the read.
+//
+// The severities are fixed fields rather than a map: they are a bounded enum, and
+// a map would be repeated in all 156 segments a node carries.
+//
+// These count lines *emitted*, so suppression happens before the count: a burst
+// reported through LogOnceIf contributes one line plus its periodic rollups.
+type LogVolumeSegment struct {
+	ErrorLines   uint64 `json:"error_lines,omitempty"`
+	WarningLines uint64 `json:"warning_lines,omitempty"`
+	FatalLines   uint64 `json:"fatal_lines,omitempty"`
+	InfoLines    uint64 `json:"info_lines,omitempty"`
+	EventLines   uint64 `json:"event_lines,omitempty"`
+
+	// N is contributing nodes.
+	N int `json:"n"`
+}
+
+// Add other to s for the Segmenter interface.
+func (s *LogVolumeSegment) Add(other *LogVolumeSegment) {
+	if other == nil {
+		return
+	}
+	s.ErrorLines += other.ErrorLines
+	s.WarningLines += other.WarningLines
+	s.FatalLines += other.FatalLines
+	s.InfoLines += other.InfoLines
+	s.EventLines += other.EventLines
+	s.N += other.N
 }

@@ -7,6 +7,366 @@ import (
 )
 
 // DecodeMsg implements msgp.Decodable
+func (z *IAMAuthStats) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 4 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "by_path":
+			var zb0002 uint32
+			zb0002, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "ByPath")
+				return
+			}
+			if z.ByPath == nil {
+				z.ByPath = make(map[string]TimedAction, zb0002)
+			} else if len(z.ByPath) > 0 {
+				clear(z.ByPath)
+			}
+			for zb0002 > 0 {
+				zb0002--
+				var za0001 string
+				za0001, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "ByPath")
+					return
+				}
+				var za0002 TimedAction
+				err = za0002.DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "ByPath", za0001)
+					return
+				}
+				z.ByPath[za0001] = za0002
+			}
+			zb0001Mask |= 0x1
+		case "denied":
+			z.Denied, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "Denied")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "errors":
+			z.Errors, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "Errors")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "cache_miss":
+			z.CacheMiss, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "CacheMiss")
+				return
+			}
+			zb0001Mask |= 0x8
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0xf {
+		if (zb0001Mask & 0x1) == 0 {
+			z.ByPath = nil
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.Denied = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.Errors = 0
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.CacheMiss = 0
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *IAMAuthStats) EncodeMsg(en *msgp.Writer) (err error) {
+	// check for omitted fields
+	zb0001Len := uint32(4)
+	var zb0001Mask uint8 /* 4 bits */
+	_ = zb0001Mask
+	if z.ByPath == nil {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.Denied == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.Errors == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	if z.CacheMiss == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	// variable map header, size zb0001Len
+	err = en.Append(0x80 | uint8(zb0001Len))
+	if err != nil {
+		return
+	}
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// write "by_path"
+			err = en.Append(0xa7, 0x62, 0x79, 0x5f, 0x70, 0x61, 0x74, 0x68)
+			if err != nil {
+				return
+			}
+			err = en.WriteMapHeader(uint32(len(z.ByPath)))
+			if err != nil {
+				err = msgp.WrapError(err, "ByPath")
+				return
+			}
+			for za0001, za0002 := range z.ByPath {
+				err = en.WriteString(za0001)
+				if err != nil {
+					err = msgp.WrapError(err, "ByPath")
+					return
+				}
+				err = za0002.EncodeMsg(en)
+				if err != nil {
+					err = msgp.WrapError(err, "ByPath", za0001)
+					return
+				}
+			}
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// write "denied"
+			err = en.Append(0xa6, 0x64, 0x65, 0x6e, 0x69, 0x65, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.Denied)
+			if err != nil {
+				err = msgp.WrapError(err, "Denied")
+				return
+			}
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// write "errors"
+			err = en.Append(0xa6, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.Errors)
+			if err != nil {
+				err = msgp.WrapError(err, "Errors")
+				return
+			}
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// write "cache_miss"
+			err = en.Append(0xaa, 0x63, 0x61, 0x63, 0x68, 0x65, 0x5f, 0x6d, 0x69, 0x73, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.CacheMiss)
+			if err != nil {
+				err = msgp.WrapError(err, "CacheMiss")
+				return
+			}
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *IAMAuthStats) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// check for omitted fields
+	zb0001Len := uint32(4)
+	var zb0001Mask uint8 /* 4 bits */
+	_ = zb0001Mask
+	if z.ByPath == nil {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.Denied == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.Errors == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	if z.CacheMiss == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	// variable map header, size zb0001Len
+	o = append(o, 0x80|uint8(zb0001Len))
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// string "by_path"
+			o = append(o, 0xa7, 0x62, 0x79, 0x5f, 0x70, 0x61, 0x74, 0x68)
+			o = msgp.AppendMapHeader(o, uint32(len(z.ByPath)))
+			for za0001, za0002 := range z.ByPath {
+				o = msgp.AppendString(o, za0001)
+				o, err = za0002.MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "ByPath", za0001)
+					return
+				}
+			}
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// string "denied"
+			o = append(o, 0xa6, 0x64, 0x65, 0x6e, 0x69, 0x65, 0x64)
+			o = msgp.AppendUint64(o, z.Denied)
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// string "errors"
+			o = append(o, 0xa6, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x73)
+			o = msgp.AppendUint64(o, z.Errors)
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// string "cache_miss"
+			o = append(o, 0xaa, 0x63, 0x61, 0x63, 0x68, 0x65, 0x5f, 0x6d, 0x69, 0x73, 0x73)
+			o = msgp.AppendUint64(o, z.CacheMiss)
+		}
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *IAMAuthStats) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 4 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "by_path":
+			var zb0002 uint32
+			zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ByPath")
+				return
+			}
+			if z.ByPath == nil {
+				z.ByPath = make(map[string]TimedAction, zb0002)
+			} else if len(z.ByPath) > 0 {
+				clear(z.ByPath)
+			}
+			for zb0002 > 0 {
+				var za0002 TimedAction
+				zb0002--
+				var za0001 string
+				za0001, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "ByPath")
+					return
+				}
+				bts, err = za0002.UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "ByPath", za0001)
+					return
+				}
+				z.ByPath[za0001] = za0002
+			}
+			zb0001Mask |= 0x1
+		case "denied":
+			z.Denied, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Denied")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "errors":
+			z.Errors, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Errors")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "cache_miss":
+			z.CacheMiss, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "CacheMiss")
+				return
+			}
+			zb0001Mask |= 0x8
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0xf {
+		if (zb0001Mask & 0x1) == 0 {
+			z.ByPath = nil
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.Denied = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.Errors = 0
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.CacheMiss = 0
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *IAMAuthStats) Msgsize() (s int) {
+	s = 1 + 8 + msgp.MapHeaderSize
+	if z.ByPath != nil {
+		for za0001, za0002 := range z.ByPath {
+			_ = za0002
+			s += msgp.StringPrefixSize + len(za0001) + za0002.Msgsize()
+		}
+	}
+	s += 7 + msgp.Uint64Size + 7 + msgp.Uint64Size + 11 + msgp.Uint64Size
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *IAMCacheStats) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
@@ -510,7 +870,7 @@ func (z *IAMMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 2 bits */
+	var zb0001Mask uint8 /* 5 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -551,6 +911,25 @@ func (z *IAMMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 			}
 			zb0001Mask |= 0x1
+		case "auth":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "Auth")
+					return
+				}
+				z.Auth = nil
+			} else {
+				if z.Auth == nil {
+					z.Auth = new(IAMAuthStats)
+				}
+				err = z.Auth.DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "Auth")
+					return
+				}
+			}
+			zb0001Mask |= 0x2
 		case "store":
 			var zb0002 uint32
 			zb0002, err = dc.ReadMapHeader()
@@ -579,7 +958,45 @@ func (z *IAMMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.Store[za0001] = za0002
 			}
-			zb0001Mask |= 0x2
+			zb0001Mask |= 0x4
+		case "lastHour":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "LastHour")
+					return
+				}
+				z.LastHour = nil
+			} else {
+				if z.LastHour == nil {
+					z.LastHour = new(SegmentedIAMMetrics)
+				}
+				err = (*Segmented[IAMSegment, *IAMSegment])(z.LastHour).DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "LastHour")
+					return
+				}
+			}
+			zb0001Mask |= 0x8
+		case "lastDay":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "LastDay")
+					return
+				}
+				z.LastDay = nil
+			} else {
+				if z.LastDay == nil {
+					z.LastDay = new(SegmentedIAMMetrics)
+				}
+				err = (*Segmented[IAMSegment, *IAMSegment])(z.LastDay).DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "LastDay")
+					return
+				}
+			}
+			zb0001Mask |= 0x10
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -589,12 +1006,21 @@ func (z *IAMMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3 {
+	if zb0001Mask != 0x1f {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Cache = nil
 		}
 		if (zb0001Mask & 0x2) == 0 {
+			z.Auth = nil
+		}
+		if (zb0001Mask & 0x4) == 0 {
 			z.Store = nil
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.LastHour = nil
+		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.LastDay = nil
 		}
 	}
 	return
@@ -603,16 +1029,28 @@ func (z *IAMMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *IAMMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(4)
-	var zb0001Mask uint8 /* 4 bits */
+	zb0001Len := uint32(7)
+	var zb0001Mask uint8 /* 7 bits */
 	_ = zb0001Mask
 	if z.Cache == nil {
 		zb0001Len--
 		zb0001Mask |= 0x4
 	}
-	if z.Store == nil {
+	if z.Auth == nil {
 		zb0001Len--
 		zb0001Mask |= 0x8
+	}
+	if z.Store == nil {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	if z.LastHour == nil {
+		zb0001Len--
+		zb0001Mask |= 0x20
+	}
+	if z.LastDay == nil {
+		zb0001Len--
+		zb0001Mask |= 0x40
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -662,6 +1100,25 @@ func (z *IAMMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 			}
 		}
 		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// write "auth"
+			err = en.Append(0xa4, 0x61, 0x75, 0x74, 0x68)
+			if err != nil {
+				return
+			}
+			if z.Auth == nil {
+				err = en.WriteNil()
+				if err != nil {
+					return
+				}
+			} else {
+				err = z.Auth.EncodeMsg(en)
+				if err != nil {
+					err = msgp.WrapError(err, "Auth")
+					return
+				}
+			}
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
 			// write "store"
 			err = en.Append(0xa5, 0x73, 0x74, 0x6f, 0x72, 0x65)
 			if err != nil {
@@ -685,6 +1142,44 @@ func (z *IAMMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// write "lastHour"
+			err = en.Append(0xa8, 0x6c, 0x61, 0x73, 0x74, 0x48, 0x6f, 0x75, 0x72)
+			if err != nil {
+				return
+			}
+			if z.LastHour == nil {
+				err = en.WriteNil()
+				if err != nil {
+					return
+				}
+			} else {
+				err = (*Segmented[IAMSegment, *IAMSegment])(z.LastHour).EncodeMsg(en)
+				if err != nil {
+					err = msgp.WrapError(err, "LastHour")
+					return
+				}
+			}
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
+			// write "lastDay"
+			err = en.Append(0xa7, 0x6c, 0x61, 0x73, 0x74, 0x44, 0x61, 0x79)
+			if err != nil {
+				return
+			}
+			if z.LastDay == nil {
+				err = en.WriteNil()
+				if err != nil {
+					return
+				}
+			} else {
+				err = (*Segmented[IAMSegment, *IAMSegment])(z.LastDay).EncodeMsg(en)
+				if err != nil {
+					err = msgp.WrapError(err, "LastDay")
+					return
+				}
+			}
+		}
 	}
 	return
 }
@@ -693,16 +1188,28 @@ func (z *IAMMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *IAMMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(4)
-	var zb0001Mask uint8 /* 4 bits */
+	zb0001Len := uint32(7)
+	var zb0001Mask uint8 /* 7 bits */
 	_ = zb0001Mask
 	if z.Cache == nil {
 		zb0001Len--
 		zb0001Mask |= 0x4
 	}
-	if z.Store == nil {
+	if z.Auth == nil {
 		zb0001Len--
 		zb0001Mask |= 0x8
+	}
+	if z.Store == nil {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	if z.LastHour == nil {
+		zb0001Len--
+		zb0001Mask |= 0x20
+	}
+	if z.LastDay == nil {
+		zb0001Len--
+		zb0001Mask |= 0x40
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -729,6 +1236,19 @@ func (z *IAMMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 			}
 		}
 		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// string "auth"
+			o = append(o, 0xa4, 0x61, 0x75, 0x74, 0x68)
+			if z.Auth == nil {
+				o = msgp.AppendNil(o)
+			} else {
+				o, err = z.Auth.MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "Auth")
+					return
+				}
+			}
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
 			// string "store"
 			o = append(o, 0xa5, 0x73, 0x74, 0x6f, 0x72, 0x65)
 			o = msgp.AppendMapHeader(o, uint32(len(z.Store)))
@@ -737,6 +1257,32 @@ func (z *IAMMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 				o, err = za0002.MarshalMsg(o)
 				if err != nil {
 					err = msgp.WrapError(err, "Store", za0001)
+					return
+				}
+			}
+		}
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// string "lastHour"
+			o = append(o, 0xa8, 0x6c, 0x61, 0x73, 0x74, 0x48, 0x6f, 0x75, 0x72)
+			if z.LastHour == nil {
+				o = msgp.AppendNil(o)
+			} else {
+				o, err = (*Segmented[IAMSegment, *IAMSegment])(z.LastHour).MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "LastHour")
+					return
+				}
+			}
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
+			// string "lastDay"
+			o = append(o, 0xa7, 0x6c, 0x61, 0x73, 0x74, 0x44, 0x61, 0x79)
+			if z.LastDay == nil {
+				o = msgp.AppendNil(o)
+			} else {
+				o, err = (*Segmented[IAMSegment, *IAMSegment])(z.LastDay).MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "LastDay")
 					return
 				}
 			}
@@ -755,7 +1301,7 @@ func (z *IAMMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 2 bits */
+	var zb0001Mask uint8 /* 5 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -795,6 +1341,24 @@ func (z *IAMMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 			}
 			zb0001Mask |= 0x1
+		case "auth":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.Auth = nil
+			} else {
+				if z.Auth == nil {
+					z.Auth = new(IAMAuthStats)
+				}
+				bts, err = z.Auth.UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Auth")
+					return
+				}
+			}
+			zb0001Mask |= 0x2
 		case "store":
 			var zb0002 uint32
 			zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
@@ -823,7 +1387,43 @@ func (z *IAMMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.Store[za0001] = za0002
 			}
-			zb0001Mask |= 0x2
+			zb0001Mask |= 0x4
+		case "lastHour":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.LastHour = nil
+			} else {
+				if z.LastHour == nil {
+					z.LastHour = new(SegmentedIAMMetrics)
+				}
+				bts, err = (*Segmented[IAMSegment, *IAMSegment])(z.LastHour).UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "LastHour")
+					return
+				}
+			}
+			zb0001Mask |= 0x8
+		case "lastDay":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.LastDay = nil
+			} else {
+				if z.LastDay == nil {
+					z.LastDay = new(SegmentedIAMMetrics)
+				}
+				bts, err = (*Segmented[IAMSegment, *IAMSegment])(z.LastDay).UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "LastDay")
+					return
+				}
+			}
+			zb0001Mask |= 0x10
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -833,12 +1433,21 @@ func (z *IAMMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3 {
+	if zb0001Mask != 0x1f {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Cache = nil
 		}
 		if (zb0001Mask & 0x2) == 0 {
+			z.Auth = nil
+		}
+		if (zb0001Mask & 0x4) == 0 {
 			z.Store = nil
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.LastHour = nil
+		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.LastDay = nil
 		}
 	}
 	o = bts
@@ -853,6 +1462,12 @@ func (z *IAMMetrics) Msgsize() (s int) {
 	} else {
 		s += z.Cache.Msgsize()
 	}
+	s += 5
+	if z.Auth == nil {
+		s += msgp.NilSize
+	} else {
+		s += z.Auth.Msgsize()
+	}
 	s += 6 + msgp.MapHeaderSize
 	if z.Store != nil {
 		for za0001, za0002 := range z.Store {
@@ -860,5 +1475,1186 @@ func (z *IAMMetrics) Msgsize() (s int) {
 			s += msgp.StringPrefixSize + len(za0001) + za0002.Msgsize()
 		}
 	}
+	s += 9
+	if z.LastHour == nil {
+		s += msgp.NilSize
+	} else {
+		s += (*Segmented[IAMSegment, *IAMSegment])(z.LastHour).Msgsize()
+	}
+	s += 8
+	if z.LastDay == nil {
+		s += msgp.NilSize
+	} else {
+		s += (*Segmented[IAMSegment, *IAMSegment])(z.LastDay).Msgsize()
+	}
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *IAMSegment) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint32 /* 23 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "plugin_count":
+			z.PluginCount, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "PluginCount")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "plugin_ns":
+			z.PluginNanos, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "PluginNanos")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "owner_count":
+			z.OwnerCount, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "OwnerCount")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "owner_ns":
+			z.OwnerNanos, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "OwnerNanos")
+				return
+			}
+			zb0001Mask |= 0x8
+		case "sts_count":
+			z.STSCount, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "STSCount")
+				return
+			}
+			zb0001Mask |= 0x10
+		case "sts_ns":
+			z.STSNanos, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "STSNanos")
+				return
+			}
+			zb0001Mask |= 0x20
+		case "svcacct_count":
+			z.SvcAcctCount, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "SvcAcctCount")
+				return
+			}
+			zb0001Mask |= 0x40
+		case "svcacct_ns":
+			z.SvcAcctNanos, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "SvcAcctNanos")
+				return
+			}
+			zb0001Mask |= 0x80
+		case "user_count":
+			z.UserCount, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "UserCount")
+				return
+			}
+			zb0001Mask |= 0x100
+		case "user_ns":
+			z.UserNanos, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "UserNanos")
+				return
+			}
+			zb0001Mask |= 0x200
+		case "max_ns":
+			z.MaxNanos, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "MaxNanos")
+				return
+			}
+			zb0001Mask |= 0x400
+		case "denied":
+			z.Denied, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "Denied")
+				return
+			}
+			zb0001Mask |= 0x800
+		case "errors":
+			z.Errors, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "Errors")
+				return
+			}
+			zb0001Mask |= 0x1000
+		case "cache_miss":
+			z.CacheMiss, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "CacheMiss")
+				return
+			}
+			zb0001Mask |= 0x2000
+		case "save_count":
+			z.SaveCount, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "SaveCount")
+				return
+			}
+			zb0001Mask |= 0x4000
+		case "save_ns":
+			z.SaveNanos, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "SaveNanos")
+				return
+			}
+			zb0001Mask |= 0x8000
+		case "load_count":
+			z.LoadCount, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "LoadCount")
+				return
+			}
+			zb0001Mask |= 0x10000
+		case "load_ns":
+			z.LoadNanos, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "LoadNanos")
+				return
+			}
+			zb0001Mask |= 0x20000
+		case "delete_count":
+			z.DeleteCount, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "DeleteCount")
+				return
+			}
+			zb0001Mask |= 0x40000
+		case "delete_ns":
+			z.DeleteNanos, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "DeleteNanos")
+				return
+			}
+			zb0001Mask |= 0x80000
+		case "list_count":
+			z.ListCount, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "ListCount")
+				return
+			}
+			zb0001Mask |= 0x100000
+		case "list_ns":
+			z.ListNanos, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "ListNanos")
+				return
+			}
+			zb0001Mask |= 0x200000
+		case "store_errors":
+			z.StoreErrors, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "StoreErrors")
+				return
+			}
+			zb0001Mask |= 0x400000
+		case "n":
+			z.N, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "N")
+				return
+			}
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x7fffff {
+		if (zb0001Mask & 0x1) == 0 {
+			z.PluginCount = 0
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.PluginNanos = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.OwnerCount = 0
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.OwnerNanos = 0
+		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.STSCount = 0
+		}
+		if (zb0001Mask & 0x20) == 0 {
+			z.STSNanos = 0
+		}
+		if (zb0001Mask & 0x40) == 0 {
+			z.SvcAcctCount = 0
+		}
+		if (zb0001Mask & 0x80) == 0 {
+			z.SvcAcctNanos = 0
+		}
+		if (zb0001Mask & 0x100) == 0 {
+			z.UserCount = 0
+		}
+		if (zb0001Mask & 0x200) == 0 {
+			z.UserNanos = 0
+		}
+		if (zb0001Mask & 0x400) == 0 {
+			z.MaxNanos = 0
+		}
+		if (zb0001Mask & 0x800) == 0 {
+			z.Denied = 0
+		}
+		if (zb0001Mask & 0x1000) == 0 {
+			z.Errors = 0
+		}
+		if (zb0001Mask & 0x2000) == 0 {
+			z.CacheMiss = 0
+		}
+		if (zb0001Mask & 0x4000) == 0 {
+			z.SaveCount = 0
+		}
+		if (zb0001Mask & 0x8000) == 0 {
+			z.SaveNanos = 0
+		}
+		if (zb0001Mask & 0x10000) == 0 {
+			z.LoadCount = 0
+		}
+		if (zb0001Mask & 0x20000) == 0 {
+			z.LoadNanos = 0
+		}
+		if (zb0001Mask & 0x40000) == 0 {
+			z.DeleteCount = 0
+		}
+		if (zb0001Mask & 0x80000) == 0 {
+			z.DeleteNanos = 0
+		}
+		if (zb0001Mask & 0x100000) == 0 {
+			z.ListCount = 0
+		}
+		if (zb0001Mask & 0x200000) == 0 {
+			z.ListNanos = 0
+		}
+		if (zb0001Mask & 0x400000) == 0 {
+			z.StoreErrors = 0
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *IAMSegment) EncodeMsg(en *msgp.Writer) (err error) {
+	// check for omitted fields
+	zb0001Len := uint32(24)
+	var zb0001Mask uint32 /* 24 bits */
+	_ = zb0001Mask
+	if z.PluginCount == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.PluginNanos == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.OwnerCount == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	if z.OwnerNanos == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.STSCount == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	if z.STSNanos == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x20
+	}
+	if z.SvcAcctCount == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x40
+	}
+	if z.SvcAcctNanos == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x80
+	}
+	if z.UserCount == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x100
+	}
+	if z.UserNanos == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x200
+	}
+	if z.MaxNanos == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x400
+	}
+	if z.Denied == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x800
+	}
+	if z.Errors == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x1000
+	}
+	if z.CacheMiss == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2000
+	}
+	if z.SaveCount == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4000
+	}
+	if z.SaveNanos == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8000
+	}
+	if z.LoadCount == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x10000
+	}
+	if z.LoadNanos == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x20000
+	}
+	if z.DeleteCount == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x40000
+	}
+	if z.DeleteNanos == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x80000
+	}
+	if z.ListCount == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x100000
+	}
+	if z.ListNanos == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x200000
+	}
+	if z.StoreErrors == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x400000
+	}
+	// variable map header, size zb0001Len
+	err = en.WriteMapHeader(zb0001Len)
+	if err != nil {
+		return
+	}
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// write "plugin_count"
+			err = en.Append(0xac, 0x70, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.PluginCount)
+			if err != nil {
+				err = msgp.WrapError(err, "PluginCount")
+				return
+			}
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// write "plugin_ns"
+			err = en.Append(0xa9, 0x70, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x5f, 0x6e, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.PluginNanos)
+			if err != nil {
+				err = msgp.WrapError(err, "PluginNanos")
+				return
+			}
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// write "owner_count"
+			err = en.Append(0xab, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.OwnerCount)
+			if err != nil {
+				err = msgp.WrapError(err, "OwnerCount")
+				return
+			}
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// write "owner_ns"
+			err = en.Append(0xa8, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x5f, 0x6e, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.OwnerNanos)
+			if err != nil {
+				err = msgp.WrapError(err, "OwnerNanos")
+				return
+			}
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// write "sts_count"
+			err = en.Append(0xa9, 0x73, 0x74, 0x73, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.STSCount)
+			if err != nil {
+				err = msgp.WrapError(err, "STSCount")
+				return
+			}
+		}
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// write "sts_ns"
+			err = en.Append(0xa6, 0x73, 0x74, 0x73, 0x5f, 0x6e, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.STSNanos)
+			if err != nil {
+				err = msgp.WrapError(err, "STSNanos")
+				return
+			}
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
+			// write "svcacct_count"
+			err = en.Append(0xad, 0x73, 0x76, 0x63, 0x61, 0x63, 0x63, 0x74, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.SvcAcctCount)
+			if err != nil {
+				err = msgp.WrapError(err, "SvcAcctCount")
+				return
+			}
+		}
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
+			// write "svcacct_ns"
+			err = en.Append(0xaa, 0x73, 0x76, 0x63, 0x61, 0x63, 0x63, 0x74, 0x5f, 0x6e, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.SvcAcctNanos)
+			if err != nil {
+				err = msgp.WrapError(err, "SvcAcctNanos")
+				return
+			}
+		}
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
+			// write "user_count"
+			err = en.Append(0xaa, 0x75, 0x73, 0x65, 0x72, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.UserCount)
+			if err != nil {
+				err = msgp.WrapError(err, "UserCount")
+				return
+			}
+		}
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
+			// write "user_ns"
+			err = en.Append(0xa7, 0x75, 0x73, 0x65, 0x72, 0x5f, 0x6e, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.UserNanos)
+			if err != nil {
+				err = msgp.WrapError(err, "UserNanos")
+				return
+			}
+		}
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
+			// write "max_ns"
+			err = en.Append(0xa6, 0x6d, 0x61, 0x78, 0x5f, 0x6e, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.MaxNanos)
+			if err != nil {
+				err = msgp.WrapError(err, "MaxNanos")
+				return
+			}
+		}
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
+			// write "denied"
+			err = en.Append(0xa6, 0x64, 0x65, 0x6e, 0x69, 0x65, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.Denied)
+			if err != nil {
+				err = msgp.WrapError(err, "Denied")
+				return
+			}
+		}
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
+			// write "errors"
+			err = en.Append(0xa6, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.Errors)
+			if err != nil {
+				err = msgp.WrapError(err, "Errors")
+				return
+			}
+		}
+		if (zb0001Mask & 0x2000) == 0 { // if not omitted
+			// write "cache_miss"
+			err = en.Append(0xaa, 0x63, 0x61, 0x63, 0x68, 0x65, 0x5f, 0x6d, 0x69, 0x73, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.CacheMiss)
+			if err != nil {
+				err = msgp.WrapError(err, "CacheMiss")
+				return
+			}
+		}
+		if (zb0001Mask & 0x4000) == 0 { // if not omitted
+			// write "save_count"
+			err = en.Append(0xaa, 0x73, 0x61, 0x76, 0x65, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.SaveCount)
+			if err != nil {
+				err = msgp.WrapError(err, "SaveCount")
+				return
+			}
+		}
+		if (zb0001Mask & 0x8000) == 0 { // if not omitted
+			// write "save_ns"
+			err = en.Append(0xa7, 0x73, 0x61, 0x76, 0x65, 0x5f, 0x6e, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.SaveNanos)
+			if err != nil {
+				err = msgp.WrapError(err, "SaveNanos")
+				return
+			}
+		}
+		if (zb0001Mask & 0x10000) == 0 { // if not omitted
+			// write "load_count"
+			err = en.Append(0xaa, 0x6c, 0x6f, 0x61, 0x64, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.LoadCount)
+			if err != nil {
+				err = msgp.WrapError(err, "LoadCount")
+				return
+			}
+		}
+		if (zb0001Mask & 0x20000) == 0 { // if not omitted
+			// write "load_ns"
+			err = en.Append(0xa7, 0x6c, 0x6f, 0x61, 0x64, 0x5f, 0x6e, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.LoadNanos)
+			if err != nil {
+				err = msgp.WrapError(err, "LoadNanos")
+				return
+			}
+		}
+		if (zb0001Mask & 0x40000) == 0 { // if not omitted
+			// write "delete_count"
+			err = en.Append(0xac, 0x64, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.DeleteCount)
+			if err != nil {
+				err = msgp.WrapError(err, "DeleteCount")
+				return
+			}
+		}
+		if (zb0001Mask & 0x80000) == 0 { // if not omitted
+			// write "delete_ns"
+			err = en.Append(0xa9, 0x64, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x5f, 0x6e, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.DeleteNanos)
+			if err != nil {
+				err = msgp.WrapError(err, "DeleteNanos")
+				return
+			}
+		}
+		if (zb0001Mask & 0x100000) == 0 { // if not omitted
+			// write "list_count"
+			err = en.Append(0xaa, 0x6c, 0x69, 0x73, 0x74, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.ListCount)
+			if err != nil {
+				err = msgp.WrapError(err, "ListCount")
+				return
+			}
+		}
+		if (zb0001Mask & 0x200000) == 0 { // if not omitted
+			// write "list_ns"
+			err = en.Append(0xa7, 0x6c, 0x69, 0x73, 0x74, 0x5f, 0x6e, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.ListNanos)
+			if err != nil {
+				err = msgp.WrapError(err, "ListNanos")
+				return
+			}
+		}
+		if (zb0001Mask & 0x400000) == 0 { // if not omitted
+			// write "store_errors"
+			err = en.Append(0xac, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x5f, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.StoreErrors)
+			if err != nil {
+				err = msgp.WrapError(err, "StoreErrors")
+				return
+			}
+		}
+		// write "n"
+		err = en.Append(0xa1, 0x6e)
+		if err != nil {
+			return
+		}
+		err = en.WriteInt(z.N)
+		if err != nil {
+			err = msgp.WrapError(err, "N")
+			return
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *IAMSegment) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// check for omitted fields
+	zb0001Len := uint32(24)
+	var zb0001Mask uint32 /* 24 bits */
+	_ = zb0001Mask
+	if z.PluginCount == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.PluginNanos == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.OwnerCount == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	if z.OwnerNanos == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.STSCount == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	if z.STSNanos == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x20
+	}
+	if z.SvcAcctCount == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x40
+	}
+	if z.SvcAcctNanos == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x80
+	}
+	if z.UserCount == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x100
+	}
+	if z.UserNanos == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x200
+	}
+	if z.MaxNanos == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x400
+	}
+	if z.Denied == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x800
+	}
+	if z.Errors == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x1000
+	}
+	if z.CacheMiss == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2000
+	}
+	if z.SaveCount == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4000
+	}
+	if z.SaveNanos == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8000
+	}
+	if z.LoadCount == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x10000
+	}
+	if z.LoadNanos == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x20000
+	}
+	if z.DeleteCount == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x40000
+	}
+	if z.DeleteNanos == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x80000
+	}
+	if z.ListCount == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x100000
+	}
+	if z.ListNanos == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x200000
+	}
+	if z.StoreErrors == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x400000
+	}
+	// variable map header, size zb0001Len
+	o = msgp.AppendMapHeader(o, zb0001Len)
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// string "plugin_count"
+			o = append(o, 0xac, 0x70, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74)
+			o = msgp.AppendUint64(o, z.PluginCount)
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// string "plugin_ns"
+			o = append(o, 0xa9, 0x70, 0x6c, 0x75, 0x67, 0x69, 0x6e, 0x5f, 0x6e, 0x73)
+			o = msgp.AppendUint64(o, z.PluginNanos)
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// string "owner_count"
+			o = append(o, 0xab, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74)
+			o = msgp.AppendUint64(o, z.OwnerCount)
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// string "owner_ns"
+			o = append(o, 0xa8, 0x6f, 0x77, 0x6e, 0x65, 0x72, 0x5f, 0x6e, 0x73)
+			o = msgp.AppendUint64(o, z.OwnerNanos)
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// string "sts_count"
+			o = append(o, 0xa9, 0x73, 0x74, 0x73, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74)
+			o = msgp.AppendUint64(o, z.STSCount)
+		}
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// string "sts_ns"
+			o = append(o, 0xa6, 0x73, 0x74, 0x73, 0x5f, 0x6e, 0x73)
+			o = msgp.AppendUint64(o, z.STSNanos)
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
+			// string "svcacct_count"
+			o = append(o, 0xad, 0x73, 0x76, 0x63, 0x61, 0x63, 0x63, 0x74, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74)
+			o = msgp.AppendUint64(o, z.SvcAcctCount)
+		}
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
+			// string "svcacct_ns"
+			o = append(o, 0xaa, 0x73, 0x76, 0x63, 0x61, 0x63, 0x63, 0x74, 0x5f, 0x6e, 0x73)
+			o = msgp.AppendUint64(o, z.SvcAcctNanos)
+		}
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
+			// string "user_count"
+			o = append(o, 0xaa, 0x75, 0x73, 0x65, 0x72, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74)
+			o = msgp.AppendUint64(o, z.UserCount)
+		}
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
+			// string "user_ns"
+			o = append(o, 0xa7, 0x75, 0x73, 0x65, 0x72, 0x5f, 0x6e, 0x73)
+			o = msgp.AppendUint64(o, z.UserNanos)
+		}
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
+			// string "max_ns"
+			o = append(o, 0xa6, 0x6d, 0x61, 0x78, 0x5f, 0x6e, 0x73)
+			o = msgp.AppendUint64(o, z.MaxNanos)
+		}
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
+			// string "denied"
+			o = append(o, 0xa6, 0x64, 0x65, 0x6e, 0x69, 0x65, 0x64)
+			o = msgp.AppendUint64(o, z.Denied)
+		}
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
+			// string "errors"
+			o = append(o, 0xa6, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x73)
+			o = msgp.AppendUint64(o, z.Errors)
+		}
+		if (zb0001Mask & 0x2000) == 0 { // if not omitted
+			// string "cache_miss"
+			o = append(o, 0xaa, 0x63, 0x61, 0x63, 0x68, 0x65, 0x5f, 0x6d, 0x69, 0x73, 0x73)
+			o = msgp.AppendUint64(o, z.CacheMiss)
+		}
+		if (zb0001Mask & 0x4000) == 0 { // if not omitted
+			// string "save_count"
+			o = append(o, 0xaa, 0x73, 0x61, 0x76, 0x65, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74)
+			o = msgp.AppendUint64(o, z.SaveCount)
+		}
+		if (zb0001Mask & 0x8000) == 0 { // if not omitted
+			// string "save_ns"
+			o = append(o, 0xa7, 0x73, 0x61, 0x76, 0x65, 0x5f, 0x6e, 0x73)
+			o = msgp.AppendUint64(o, z.SaveNanos)
+		}
+		if (zb0001Mask & 0x10000) == 0 { // if not omitted
+			// string "load_count"
+			o = append(o, 0xaa, 0x6c, 0x6f, 0x61, 0x64, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74)
+			o = msgp.AppendUint64(o, z.LoadCount)
+		}
+		if (zb0001Mask & 0x20000) == 0 { // if not omitted
+			// string "load_ns"
+			o = append(o, 0xa7, 0x6c, 0x6f, 0x61, 0x64, 0x5f, 0x6e, 0x73)
+			o = msgp.AppendUint64(o, z.LoadNanos)
+		}
+		if (zb0001Mask & 0x40000) == 0 { // if not omitted
+			// string "delete_count"
+			o = append(o, 0xac, 0x64, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74)
+			o = msgp.AppendUint64(o, z.DeleteCount)
+		}
+		if (zb0001Mask & 0x80000) == 0 { // if not omitted
+			// string "delete_ns"
+			o = append(o, 0xa9, 0x64, 0x65, 0x6c, 0x65, 0x74, 0x65, 0x5f, 0x6e, 0x73)
+			o = msgp.AppendUint64(o, z.DeleteNanos)
+		}
+		if (zb0001Mask & 0x100000) == 0 { // if not omitted
+			// string "list_count"
+			o = append(o, 0xaa, 0x6c, 0x69, 0x73, 0x74, 0x5f, 0x63, 0x6f, 0x75, 0x6e, 0x74)
+			o = msgp.AppendUint64(o, z.ListCount)
+		}
+		if (zb0001Mask & 0x200000) == 0 { // if not omitted
+			// string "list_ns"
+			o = append(o, 0xa7, 0x6c, 0x69, 0x73, 0x74, 0x5f, 0x6e, 0x73)
+			o = msgp.AppendUint64(o, z.ListNanos)
+		}
+		if (zb0001Mask & 0x400000) == 0 { // if not omitted
+			// string "store_errors"
+			o = append(o, 0xac, 0x73, 0x74, 0x6f, 0x72, 0x65, 0x5f, 0x65, 0x72, 0x72, 0x6f, 0x72, 0x73)
+			o = msgp.AppendUint64(o, z.StoreErrors)
+		}
+		// string "n"
+		o = append(o, 0xa1, 0x6e)
+		o = msgp.AppendInt(o, z.N)
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *IAMSegment) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint32 /* 23 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "plugin_count":
+			z.PluginCount, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "PluginCount")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "plugin_ns":
+			z.PluginNanos, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "PluginNanos")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "owner_count":
+			z.OwnerCount, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "OwnerCount")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "owner_ns":
+			z.OwnerNanos, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "OwnerNanos")
+				return
+			}
+			zb0001Mask |= 0x8
+		case "sts_count":
+			z.STSCount, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "STSCount")
+				return
+			}
+			zb0001Mask |= 0x10
+		case "sts_ns":
+			z.STSNanos, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "STSNanos")
+				return
+			}
+			zb0001Mask |= 0x20
+		case "svcacct_count":
+			z.SvcAcctCount, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "SvcAcctCount")
+				return
+			}
+			zb0001Mask |= 0x40
+		case "svcacct_ns":
+			z.SvcAcctNanos, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "SvcAcctNanos")
+				return
+			}
+			zb0001Mask |= 0x80
+		case "user_count":
+			z.UserCount, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "UserCount")
+				return
+			}
+			zb0001Mask |= 0x100
+		case "user_ns":
+			z.UserNanos, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "UserNanos")
+				return
+			}
+			zb0001Mask |= 0x200
+		case "max_ns":
+			z.MaxNanos, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "MaxNanos")
+				return
+			}
+			zb0001Mask |= 0x400
+		case "denied":
+			z.Denied, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Denied")
+				return
+			}
+			zb0001Mask |= 0x800
+		case "errors":
+			z.Errors, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Errors")
+				return
+			}
+			zb0001Mask |= 0x1000
+		case "cache_miss":
+			z.CacheMiss, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "CacheMiss")
+				return
+			}
+			zb0001Mask |= 0x2000
+		case "save_count":
+			z.SaveCount, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "SaveCount")
+				return
+			}
+			zb0001Mask |= 0x4000
+		case "save_ns":
+			z.SaveNanos, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "SaveNanos")
+				return
+			}
+			zb0001Mask |= 0x8000
+		case "load_count":
+			z.LoadCount, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "LoadCount")
+				return
+			}
+			zb0001Mask |= 0x10000
+		case "load_ns":
+			z.LoadNanos, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "LoadNanos")
+				return
+			}
+			zb0001Mask |= 0x20000
+		case "delete_count":
+			z.DeleteCount, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "DeleteCount")
+				return
+			}
+			zb0001Mask |= 0x40000
+		case "delete_ns":
+			z.DeleteNanos, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "DeleteNanos")
+				return
+			}
+			zb0001Mask |= 0x80000
+		case "list_count":
+			z.ListCount, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ListCount")
+				return
+			}
+			zb0001Mask |= 0x100000
+		case "list_ns":
+			z.ListNanos, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ListNanos")
+				return
+			}
+			zb0001Mask |= 0x200000
+		case "store_errors":
+			z.StoreErrors, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "StoreErrors")
+				return
+			}
+			zb0001Mask |= 0x400000
+		case "n":
+			z.N, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "N")
+				return
+			}
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x7fffff {
+		if (zb0001Mask & 0x1) == 0 {
+			z.PluginCount = 0
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.PluginNanos = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.OwnerCount = 0
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.OwnerNanos = 0
+		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.STSCount = 0
+		}
+		if (zb0001Mask & 0x20) == 0 {
+			z.STSNanos = 0
+		}
+		if (zb0001Mask & 0x40) == 0 {
+			z.SvcAcctCount = 0
+		}
+		if (zb0001Mask & 0x80) == 0 {
+			z.SvcAcctNanos = 0
+		}
+		if (zb0001Mask & 0x100) == 0 {
+			z.UserCount = 0
+		}
+		if (zb0001Mask & 0x200) == 0 {
+			z.UserNanos = 0
+		}
+		if (zb0001Mask & 0x400) == 0 {
+			z.MaxNanos = 0
+		}
+		if (zb0001Mask & 0x800) == 0 {
+			z.Denied = 0
+		}
+		if (zb0001Mask & 0x1000) == 0 {
+			z.Errors = 0
+		}
+		if (zb0001Mask & 0x2000) == 0 {
+			z.CacheMiss = 0
+		}
+		if (zb0001Mask & 0x4000) == 0 {
+			z.SaveCount = 0
+		}
+		if (zb0001Mask & 0x8000) == 0 {
+			z.SaveNanos = 0
+		}
+		if (zb0001Mask & 0x10000) == 0 {
+			z.LoadCount = 0
+		}
+		if (zb0001Mask & 0x20000) == 0 {
+			z.LoadNanos = 0
+		}
+		if (zb0001Mask & 0x40000) == 0 {
+			z.DeleteCount = 0
+		}
+		if (zb0001Mask & 0x80000) == 0 {
+			z.DeleteNanos = 0
+		}
+		if (zb0001Mask & 0x100000) == 0 {
+			z.ListCount = 0
+		}
+		if (zb0001Mask & 0x200000) == 0 {
+			z.ListNanos = 0
+		}
+		if (zb0001Mask & 0x400000) == 0 {
+			z.StoreErrors = 0
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *IAMSegment) Msgsize() (s int) {
+	s = 3 + 13 + msgp.Uint64Size + 10 + msgp.Uint64Size + 12 + msgp.Uint64Size + 9 + msgp.Uint64Size + 10 + msgp.Uint64Size + 7 + msgp.Uint64Size + 14 + msgp.Uint64Size + 11 + msgp.Uint64Size + 11 + msgp.Uint64Size + 8 + msgp.Uint64Size + 7 + msgp.Uint64Size + 7 + msgp.Uint64Size + 7 + msgp.Uint64Size + 11 + msgp.Uint64Size + 11 + msgp.Uint64Size + 8 + msgp.Uint64Size + 11 + msgp.Uint64Size + 8 + msgp.Uint64Size + 13 + msgp.Uint64Size + 10 + msgp.Uint64Size + 11 + msgp.Uint64Size + 8 + msgp.Uint64Size + 13 + msgp.Uint64Size + 2 + msgp.IntSize
 	return
 }
