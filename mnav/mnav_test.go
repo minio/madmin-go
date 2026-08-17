@@ -253,6 +253,28 @@ func TestByTimeAllViews(t *testing.T) {
 		}}}}
 		check(t, m, "kms/last_day", "decrypt", "Calls")
 	})
+
+	// The two targets are staggered across classes, so the flattened map must key
+	// them by the bare wire key and still align them on one timeline.
+	t.Run("targets", func(t *testing.T) {
+		w := func(first time.Time, events ...uint64) *madmin.SegmentedTargetMetrics {
+			segs := make([]madmin.TargetSegment, len(events))
+			for i, e := range events {
+				segs[i] = madmin.TargetSegment{N: 1, Events: e}
+			}
+			return &madmin.SegmentedTargetMetrics{Interval: 900, FirstTime: first, Segments: segs}
+		}
+		m := &madmin.RealtimeMetrics{Aggregated: madmin.Metrics{Targets: &madmin.DeliveryTargetMetrics{
+			Nodes: 1,
+			Notification: map[string]madmin.TargetMetrics{
+				"notify_webhook:a": {N: 1, Subsystem: "notify_webhook", Name: "a", LastDay: w(t0, 1, 2)},
+			},
+			Audit: map[string]madmin.TargetMetrics{
+				"audit_kafka:b": {N: 1, Subsystem: "audit_kafka", Name: "b", LastDay: w(t0.Add(15*time.Minute), 5, 9)},
+			},
+		}}}
+		check(t, m, "targets/last_day", "audit_kafka:b", "Events")
+	})
 }
 
 func TestDiskSetLeafData(t *testing.T) {

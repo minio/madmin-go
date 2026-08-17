@@ -147,6 +147,74 @@ type RealtimeMetricsNode struct {
 	metrics *madmin.RealtimeMetrics
 }
 
+// collectionTimer is implemented by nodes that know when their metrics were
+// collected. Metric families carry their own timestamp, so the nearest ancestor
+// implementing this is more precise than the root.
+type collectionTimer interface {
+	collectionTime() time.Time
+}
+
+// collectedAt reports when the metrics at node were collected, walking up to the
+// root for the nearest node that knows, and whether any node knew.
+//
+// Every age rendered from a wire timestamp must be measured against this rather
+// than the wall clock: the navigator is also pointed at metrics loaded from a
+// saved capture, where time.Since would add however long ago the capture was
+// taken to every age. When no node on the chain carries a collection time there
+// is no reference point at all, so callers must show the absolute timestamp
+// rather than substitute the wall clock -- that substitution is the same bug.
+func collectedAt(node MetricNode) (time.Time, bool) {
+	for n := node; n != nil; n = n.GetParent() {
+		if ct, ok := n.(collectionTimer); ok {
+			if t := ct.collectionTime(); !t.IsZero() {
+				return t, true
+			}
+		}
+	}
+	return time.Time{}, false
+}
+
+// since is the age of ts at the collection time of node. future reports that ts
+// is after collection: clock skew between merged nodes can stamp an event after
+// the collection that observed it, which must not render as a negative age. ok is
+// false when the collection time is unknown, leaving no age to derive.
+func since(node MetricNode, ts time.Time) (d time.Duration, future, ok bool) {
+	base, ok := collectedAt(node)
+	if !ok {
+		return 0, false, false
+	}
+	if d = base.Sub(ts); d < 0 {
+		return -d, true, true
+	}
+	return d, false, true
+}
+
+// stampAge renders ts in layout followed by its age at node's collection time,
+// rounded to r. Only the stamp is rendered when that time is unknown.
+func stampAge(node MetricNode, ts time.Time, layout string, r time.Duration) string {
+	d, future, ok := since(node, ts)
+	if !ok {
+		return ts.Format(layout)
+	}
+	if future {
+		return fmt.Sprintf("%s (in %s)", ts.Format(layout), d.Round(r))
+	}
+	return fmt.Sprintf("%s (%s ago)", ts.Format(layout), d.Round(r))
+}
+
+// ageStamp renders the age of ts at node's collection time, rounded to r, falling
+// back to ts in layout when that time is unknown.
+func ageStamp(node MetricNode, ts time.Time, layout string, r time.Duration) string {
+	d, future, ok := since(node, ts)
+	if !ok {
+		return ts.Format(layout)
+	}
+	if future {
+		return fmt.Sprintf("in %s", d.Round(r))
+	}
+	return fmt.Sprintf("%s ago", d.Round(r))
+}
+
 func getNodeOpts(node MetricNode) madmin.MetricsOptions {
 	var opts madmin.MetricsOptions
 	opts.Type = node.GetMetricType()
@@ -168,6 +236,13 @@ func getNodeOpts(node MetricNode) madmin.MetricsOptions {
 
 func (node *RealtimeMetricsNode) GetOpts() madmin.MetricsOptions {
 	return getNodeOpts(node)
+}
+
+func (node *RealtimeMetricsNode) collectionTime() time.Time {
+	if node.metrics == nil {
+		return time.Time{}
+	}
+	return node.metrics.CollectedAt
 }
 
 func (node *RealtimeMetricsNode) ShouldPauseUpdates() bool {
@@ -198,7 +273,7 @@ func (node *RealtimeMetricsNode) GetChildren() []MetricChild {
 		{Name: "tier", Description: "Warm storage tier operations, latency and failures"},
 		{Name: "ilm", Description: "Lifecycle worker pools: queues, throughput, failures"},
 		{Name: "locks", Description: "Distributed locking: held, contention, expiry"},
-		{Name: "iam", Description: "Identity inventory and IAM store latency"},
+		{Name: "iam", Description: "Identity inventory, authorization cost and store latency"},
 		{Name: "by_host", Description: "Metrics broken down by individual host"},
 		{Name: "by_drive", Description: "Metrics broken down by individual drive"},
 		{Name: "by_drive_set", Description: "Metrics broken down by drive set"},
@@ -381,7 +456,7 @@ func (node *MetricsNode) GetChildren() []MetricChild {
 		{Name: "tier", Description: "Warm storage tier operations, latency and failures"},
 		{Name: "ilm", Description: "Lifecycle worker pools: queues, throughput, failures"},
 		{Name: "locks", Description: "Distributed locking: held, contention, expiry"},
-		{Name: "iam", Description: "Identity inventory and IAM store latency"},
+		{Name: "iam", Description: "Identity inventory, authorization cost and store latency"},
 	}
 }
 

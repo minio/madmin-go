@@ -36,6 +36,13 @@ type DiskMetricsNavigator struct {
 	opts   madmin.MetricsOptions
 }
 
+func (node *DiskMetricsNavigator) collectionTime() time.Time {
+	if node.disk == nil {
+		return time.Time{}
+	}
+	return node.disk.CollectedAt
+}
+
 func (node *DiskMetricsNavigator) GetOpts() madmin.MetricsOptions {
 	opts := getNodeOpts(node)
 	opts.DriveSetIdx = append(opts.DriveSetIdx, node.opts.DriveSetIdx...)
@@ -71,6 +78,9 @@ func (node *DiskMetricsNavigator) GetChildren() []MetricChild {
 	children = append(children, MetricChild{Name: "space", Description: "Drive space information"})
 
 	// Optional features - only add if data exists
+	if diskReclaimActive(node.disk.Reclaim) {
+		children = append(children, MetricChild{Name: "reclaim", Description: "Background space reclamation (stale writes and trash)"})
+	}
 	if node.disk.HealingInfo != nil {
 		children = append(children, MetricChild{Name: "healing", Description: "Drive healing information"})
 	}
@@ -289,6 +299,8 @@ func (node *DiskMetricsNavigator) GetChild(name string) (MetricNode, error) {
 		return NewDiskIODailyStatsNode(node.disk, node, fmt.Sprintf("%s/io_last_day", node.path)), nil
 	case "space":
 		return NewDiskSpaceNode(&node.disk.Space, node, fmt.Sprintf("%s/space", node.path)), nil
+	case "reclaim":
+		return NewDiskReclaimNode(node.disk.Reclaim, node, fmt.Sprintf("%s/reclaim", node.path)), nil
 	case "healing":
 		return NewDiskHealingNode(node.disk.HealingInfo, node, fmt.Sprintf("%s/healing", node.path)), nil
 	case "cache":
@@ -604,7 +616,7 @@ func diskView(ops map[string]madmin.SegmentedDiskActions) segView[madmin.DiskAct
 		opLeaf: func(op string, a madmin.DiskAction, _ time.Time, _ int, parent MetricNode, path string) MetricNode {
 			return &DiskLastDayAllLeafNode{action: a, label: op, parent: parent, path: path}
 		},
-		sumLeaf: func(a madmin.DiskAction, _ time.Time, _ int, parent MetricNode, path string) MetricNode {
+		sumLeaf: func(a madmin.DiskAction, _ time.Time, _, _ int, parent MetricNode, path string) MetricNode {
 			return &DiskLastDayAllLeafNode{action: a, label: "All operations", parent: parent, path: path}
 		},
 	}
@@ -983,10 +995,14 @@ func (node *DiskIODailyStatsNode) GetChildren() []MetricChild {
 	dailyStats := &node.disk.IOStatsDay
 
 	// Add time segments, most recent first (filter out empty segments)
+	owners := segmentSecOwners(dailyStats.FirstTime, dailyStats.Interval, len(dailyStats.Segments))
 	for i := len(dailyStats.Segments) - 1; i >= 0; i-- {
-		segmentTime := dailyStats.FirstTime.Add(time.Duration(i*dailyStats.Interval) * time.Second)
+		segmentTime := segmentStart(dailyStats.FirstTime, dailyStats.Interval, i)
 		endTime := segmentTime.Add(time.Duration(dailyStats.Interval) * time.Second)
-		segmentName := segmentTime.UTC().Format("15:04Z")
+		segmentName := segmentKey(segmentTime)
+		if owners[segmentName] != i {
+			continue
+		}
 
 		segment := dailyStats.Segments[i]
 		totalIOs := segment.ReadIOs + segment.WriteIOs + segment.DiscardIOs + segment.FlushIOs
@@ -1131,11 +1147,10 @@ func (node *DiskIODailyStatsNode) GetChild(name string) (MetricNode, error) {
 	}
 
 	// Handle time segments - find by time format (with UTC indicator)
-	for i := len(dailyStats.Segments) - 1; i >= 0; i-- {
-		segmentTime := dailyStats.FirstTime.Add(time.Duration(i*dailyStats.Interval) * time.Second)
-		if segmentTime.UTC().Format("15:04Z") == name {
-			return NewDiskIOTimeSegmentNode(dailyStats.Segments[i], segmentTime, dailyStats.Interval, node, fmt.Sprintf("%s/%s", node.path, name)), nil
-		}
+	owners := segmentSecOwners(dailyStats.FirstTime, dailyStats.Interval, len(dailyStats.Segments))
+	if i, ok := owners[name]; ok {
+		segmentTime := segmentStart(dailyStats.FirstTime, dailyStats.Interval, i)
+		return NewDiskIOTimeSegmentNode(dailyStats.Segments[i], segmentTime, dailyStats.Interval, node, fmt.Sprintf("%s/%s", node.path, name)), nil
 	}
 
 	return nil, fmt.Errorf("time segment not found: %s", name)
@@ -1256,12 +1271,17 @@ func (node *DiskLastDayAllNode) GetChildren() []MetricChild {
 
 	children := []MetricChild{{Name: "Total", Description: "Aggregated totals across all time segments"}}
 
+	owners := segmentSecOwners(total.FirstTime, total.Interval, len(total.Segments))
 	for i := len(total.Segments) - 1; i >= 0; i-- {
 		seg := total.Segments[i]
 		if seg.Count == 0 {
 			continue
 		}
-		segmentTime := total.FirstTime.Add(time.Duration(i*total.Interval) * time.Second)
+		segmentTime := segmentStart(total.FirstTime, total.Interval, i)
+		segmentName := segmentKey(segmentTime)
+		if owners[segmentName] != i {
+			continue
+		}
 		endTime := segmentTime.Add(time.Duration(total.Interval) * time.Second)
 
 		avg := ""
@@ -1273,7 +1293,7 @@ func (node *DiskLastDayAllNode) GetChildren() []MetricChild {
 			day = "Yesterday "
 		}
 		children = append(children, MetricChild{
-			Name: segmentTime.UTC().Format("15:04Z"),
+			Name: segmentName,
 			Description: fmt.Sprintf("%s%s -> %s (%d ops%s)",
 				day, segmentTime.Local().Format("15:04"), endTime.Local().Format("15:04"),
 				seg.Count, avg),
@@ -1292,13 +1312,12 @@ func (node *DiskLastDayAllNode) GetChild(name string) (MetricNode, error) {
 		return &DiskLastDayAllLeafNode{action: total.Total(), label: "Total", parent: node, path: node.path + "/Total"}, nil
 	}
 
-	for i := range total.Segments {
-		segmentTime := total.FirstTime.Add(time.Duration(i*total.Interval) * time.Second)
-		if segmentTime.UTC().Format("15:04Z") == name {
-			endTime := segmentTime.Add(time.Duration(total.Interval) * time.Second)
-			label := fmt.Sprintf("%s -> %s", segmentTime.Local().Format("15:04"), endTime.Local().Format("15:04"))
-			return &DiskLastDayAllLeafNode{action: total.Segments[i], label: label, parent: node, path: node.path + "/" + name}, nil
-		}
+	owners := segmentSecOwners(total.FirstTime, total.Interval, len(total.Segments))
+	if i, ok := owners[name]; ok {
+		segmentTime := segmentStart(total.FirstTime, total.Interval, i)
+		endTime := segmentTime.Add(time.Duration(total.Interval) * time.Second)
+		label := fmt.Sprintf("%s -> %s", segmentTime.Local().Format("15:04"), endTime.Local().Format("15:04"))
+		return &DiskLastDayAllLeafNode{action: total.Segments[i], label: label, parent: node, path: node.path + "/" + name}, nil
 	}
 	return nil, fmt.Errorf("time segment not found: %s", name)
 }
@@ -1381,10 +1400,14 @@ func (node *DiskLastDayOperationNode) GetChildren() []MetricChild {
 	})
 
 	// Add time segments, most recent first (filter out empty segments)
+	owners := segmentSecOwners(node.segmented.FirstTime, node.segmented.Interval, len(node.segmented.Segments))
 	for i := len(node.segmented.Segments) - 1; i >= 0; i-- {
-		segmentTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
+		segmentTime := segmentStart(node.segmented.FirstTime, node.segmented.Interval, i)
 		endTime := segmentTime.Add(time.Duration(node.segmented.Interval) * time.Second)
-		segmentName := segmentTime.UTC().Format("15:04Z")
+		segmentName := segmentKey(segmentTime)
+		if owners[segmentName] != i {
+			continue
+		}
 
 		// Get operation count for this segment
 		var operations uint64
@@ -1435,18 +1458,16 @@ func (node *DiskLastDayOperationNode) GetChild(name string) (MetricNode, error) 
 	}
 
 	// Handle time segments - find by time format (with UTC indicator)
-	for i := len(node.segmented.Segments) - 1; i >= 0; i-- {
-		segmentTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
-		if segmentTime.UTC().Format("15:04Z") == name {
-			return &DiskOperationTimeSegmentNode{
-				operationType: node.operationType,
-				segment:       node.segmented.Segments[i],
-				segmentTime:   segmentTime,
-				interval:      node.segmented.Interval,
-				parent:        node,
-				path:          fmt.Sprintf("%s/%s", node.path, name),
-			}, nil
-		}
+	owners := segmentSecOwners(node.segmented.FirstTime, node.segmented.Interval, len(node.segmented.Segments))
+	if i, ok := owners[name]; ok {
+		return &DiskOperationTimeSegmentNode{
+			operationType: node.operationType,
+			segment:       node.segmented.Segments[i],
+			segmentTime:   segmentStart(node.segmented.FirstTime, node.segmented.Interval, i),
+			interval:      node.segmented.Interval,
+			parent:        node,
+			path:          fmt.Sprintf("%s/%s", node.path, name),
+		}, nil
 	}
 
 	return nil, fmt.Errorf("time segment not found: %s", name)
@@ -1695,6 +1716,7 @@ func (node *DiskIOLastDayAllNode) GetChildren() []MetricChild {
 
 	children := []MetricChild{{Name: "Total", Description: "Aggregated IO totals across all time segments"}}
 
+	owners := segmentSecOwners(node.dailyStats.FirstTime, node.dailyStats.Interval, len(node.dailyStats.Segments))
 	for i := len(node.dailyStats.Segments) - 1; i >= 0; i-- {
 		seg := node.dailyStats.Segments[i]
 		totalIOs := seg.ReadIOs + seg.WriteIOs + seg.DiscardIOs + seg.FlushIOs
@@ -1702,7 +1724,11 @@ func (node *DiskIOLastDayAllNode) GetChildren() []MetricChild {
 			continue
 		}
 
-		segmentTime := node.dailyStats.FirstTime.Add(time.Duration(i*node.dailyStats.Interval) * time.Second)
+		segmentTime := segmentStart(node.dailyStats.FirstTime, node.dailyStats.Interval, i)
+		segmentName := segmentKey(segmentTime)
+		if owners[segmentName] != i {
+			continue
+		}
 		endTime := segmentTime.Add(time.Duration(node.dailyStats.Interval) * time.Second)
 
 		intervalSecs := float64(node.dailyStats.Interval)
@@ -1724,7 +1750,7 @@ func (node *DiskIOLastDayAllNode) GetChildren() []MetricChild {
 		}
 
 		children = append(children, MetricChild{
-			Name:        segmentTime.UTC().Format("15:04Z"),
+			Name:        segmentName,
 			Description: desc,
 		})
 	}
@@ -1744,11 +1770,10 @@ func (node *DiskIOLastDayAllNode) GetChild(name string) (MetricNode, error) {
 		}, nil
 	}
 
-	for i := range node.dailyStats.Segments {
-		segmentTime := node.dailyStats.FirstTime.Add(time.Duration(i*node.dailyStats.Interval) * time.Second)
-		if segmentTime.UTC().Format("15:04Z") == name {
-			return NewDiskIOTimeSegmentNode(node.dailyStats.Segments[i], segmentTime, node.dailyStats.Interval, node, node.path+"/"+name), nil
-		}
+	owners := segmentSecOwners(node.dailyStats.FirstTime, node.dailyStats.Interval, len(node.dailyStats.Segments))
+	if i, ok := owners[name]; ok {
+		segmentTime := segmentStart(node.dailyStats.FirstTime, node.dailyStats.Interval, i)
+		return NewDiskIOTimeSegmentNode(node.dailyStats.Segments[i], segmentTime, node.dailyStats.Interval, node, node.path+"/"+name), nil
 	}
 	return nil, fmt.Errorf("time segment not found: %s", name)
 }
@@ -2574,4 +2599,76 @@ func formatIOStats(data map[string]string, opType string, ios, merges, sectors, 
 		totalLine += fmt.Sprintf(", %s merged", humanize.Comma(int64(merges)))
 	}
 	data[opType+" Totals"] = totalLine
+}
+
+// diskReclaimActive reports whether background reclamation has anything to show.
+// DiskMetric.Reclaim is a value rather than a pointer, so presence cannot be
+// tested by nil: an all-zero block means no cleanup pass has completed yet.
+func diskReclaimActive(r madmin.DriveReclaimStats) bool {
+	return r.CleanupCycles > 0 || !r.LastCleanupAt.IsZero() ||
+		r.StaleMultipartPurged > 0 || r.TmpWriteDirPurged > 0 ||
+		r.TrashPurged > 0 || r.TrashPurgedBytes > 0
+}
+
+// DiskReclaimNode is background space reclamation on a drive: what the cleanup
+// passes moved into trash and what they finally removed from it.
+type DiskReclaimNode struct {
+	reclaim madmin.DriveReclaimStats
+	parent  MetricNode
+	path    string
+}
+
+// NewDiskReclaimNode constructs a new DiskReclaimNode.
+func NewDiskReclaimNode(reclaim madmin.DriveReclaimStats, parent MetricNode, path string) *DiskReclaimNode {
+	return &DiskReclaimNode{reclaim: reclaim, parent: parent, path: path}
+}
+
+func (node *DiskReclaimNode) GetOpts() madmin.MetricsOptions     { return getNodeOpts(node) }
+func (node *DiskReclaimNode) GetMetricType() madmin.MetricType   { return madmin.MetricsDisk }
+func (node *DiskReclaimNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *DiskReclaimNode) GetParent() MetricNode              { return node.parent }
+func (node *DiskReclaimNode) GetPath() string                    { return node.path }
+func (node *DiskReclaimNode) ShouldPauseRefresh() bool           { return false }
+func (node *DiskReclaimNode) GetChildren() []MetricChild         { return []MetricChild{} }
+
+func (node *DiskReclaimNode) GetChild(_ string) (MetricNode, error) {
+	return nil, fmt.Errorf("no children")
+}
+
+func (node *DiskReclaimNode) GetLeafData() map[string]string {
+	r := node.reclaim
+	if !diskReclaimActive(r) {
+		return map[string]string{"Status": "no cleanup pass has completed yet"}
+	}
+	data := map[string]string{}
+	idx := 0
+	add := func(k, v string) {
+		data[fmt.Sprintf("%02d:%s", idx, k)] = v
+		idx++
+	}
+
+	// What the passes moved into trash, split by what was reclaimed. The two run
+	// in the same pass but retire different things -- an upload entry versus a
+	// whole temporary write window -- so a rise in one is a different story from
+	// a rise in the other.
+	add("Stale Multipart Purged", humanize.Comma(int64(r.StaleMultipartPurged)))
+	add("Tmp Write Dirs Purged", humanize.Comma(int64(r.TmpWriteDirPurged)))
+
+	// What left the trash. Not comparable against the counters above: the sweeper
+	// also removes entries staged by paths that do not increment them, so no
+	// backlog can be derived from the difference.
+	add("Trash Purged", fmt.Sprintf("%s object(s), %s",
+		humanize.Comma(int64(r.TrashPurged)), humanize.IBytes(r.TrashPurgedBytes)))
+
+	add("Cleanup Cycles", humanize.Comma(int64(r.CleanupCycles)))
+	// Age derived here; the wire carries the timestamp so the merge can take the
+	// oldest and surface a drive whose cleanup has stalled. Measured against the
+	// collection time, not the wall clock: these metrics may have been loaded from
+	// a capture taken long ago.
+	if !r.LastCleanupAt.IsZero() {
+		add("Last Cleanup", stampAge(node, r.LastCleanupAt, "2006-01-02 15:04:05", time.Second))
+	} else {
+		add("Last Cleanup", "no pass has finished yet")
+	}
+	return data
 }

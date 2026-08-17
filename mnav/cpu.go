@@ -391,7 +391,7 @@ func (node *CPUSegmentedNode) GetLeafData() map[string]string {
 		idx++
 		startTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
 		endTime := startTime.Add(time.Duration(node.segmented.Interval) * time.Second)
-		name := fmt.Sprintf("%02d: %s->%s", idx, startTime.Local().Format("15:04"), endTime.Local().Format("15:04"))
+		name := segmentRowKey(idx, startTime, endTime)
 
 		n := float64(seg.N)
 		user := seg.User / n
@@ -444,7 +444,7 @@ func (node *PowerSegmentedNode) GetLeafData() map[string]string {
 		idx++
 		startTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
 		endTime := startTime.Add(time.Duration(node.segmented.Interval) * time.Second)
-		name := fmt.Sprintf("%02d: %s->%s", idx, startTime.Local().Format("15:04"), endTime.Local().Format("15:04"))
+		name := segmentRowKey(idx, startTime, endTime)
 		avg := seg.SumWatts / float64(seg.N)
 		data[name] = fmt.Sprintf("Avg: %s, Min: %s, Max: %s (%s nodes)",
 			humanize.SI(avg, "W"),

@@ -34,6 +34,13 @@ type HealingMetricsNode struct {
 	path    string
 }
 
+func (node *HealingMetricsNode) collectionTime() time.Time {
+	if node.healing == nil {
+		return time.Time{}
+	}
+	return node.healing.CollectedAt
+}
+
 // NewHealingMetricsNode creates a new HealingMetricsNode.
 func NewHealingMetricsNode(healing *madmin.HealingMetrics, parent MetricNode, path string) *HealingMetricsNode {
 	return &HealingMetricsNode{healing: healing, parent: parent, path: path}
@@ -211,13 +218,17 @@ func (node *HealingLastDayNode) GetChildren() []MetricChild {
 		return []MetricChild{}
 	}
 	children := []MetricChild{{Name: "total", Description: "Aggregated totals across all segments"}}
+	owners := segmentSecOwners(node.lastDay.FirstTime, node.lastDay.Interval, len(node.lastDay.Segments))
 	for i := len(node.lastDay.Segments) - 1; i >= 0; i-- {
 		seg := node.lastDay.Segments[i]
 		if seg.Started == 0 {
 			continue
 		}
-		segTime := node.lastDay.FirstTime.Add(time.Duration(i*node.lastDay.Interval) * time.Second)
-		name := segTime.UTC().Format("15:04Z")
+		segTime := segmentStart(node.lastDay.FirstTime, node.lastDay.Interval, i)
+		name := segmentKey(segTime)
+		if owners[name] != i {
+			continue
+		}
 		children = append(children, MetricChild{
 			Name:        name,
 			Description: fmt.Sprintf("%s started, %s completed", humanize.Comma(seg.Started), humanize.Comma(seg.Completed)),
@@ -264,11 +275,9 @@ func (node *HealingLastDayNode) GetChild(name string) (MetricNode, error) {
 		}
 		return NewHealingCountsNode(&total, node, node.path+"/total"), nil
 	}
-	for i := range node.lastDay.Segments {
-		segTime := node.lastDay.FirstTime.Add(time.Duration(i*node.lastDay.Interval) * time.Second)
-		if segTime.UTC().Format("15:04Z") == name {
-			return NewHealingCountsNode(&node.lastDay.Segments[i], node, node.path+"/"+name), nil
-		}
+	owners := segmentSecOwners(node.lastDay.FirstTime, node.lastDay.Interval, len(node.lastDay.Segments))
+	if i, ok := owners[name]; ok {
+		return NewHealingCountsNode(&node.lastDay.Segments[i], node, node.path+"/"+name), nil
 	}
 	return nil, fmt.Errorf("segment not found: %s", name)
 }
@@ -481,7 +490,16 @@ func (node *HealSessionLeafNode) GetLeafData() map[string]string {
 		data["04:Ended"] = s.EndTime.Format("2006-01-02 15:04:05")
 		data["05:Duration"] = s.EndTime.Sub(s.StartTime).Round(time.Second).String()
 	} else if !s.StartTime.IsZero() {
-		data["05:Duration"] = time.Since(s.StartTime).Round(time.Second).String() + " (running)"
+		// Started is rendered absolutely above, so without a collection time to
+		// measure against there is nothing to add beyond the fact that it is running.
+		switch running, future, ok := since(node, s.StartTime); {
+		case !ok:
+			data["05:Duration"] = "running"
+		case future:
+			data["05:Duration"] = "0s (running)"
+		default:
+			data["05:Duration"] = running.Round(time.Second).String() + " (running)"
+		}
 	}
 	if !s.LastActivity.IsZero() {
 		data["06:Last activity"] = s.LastActivity.Format("15:04:05")
