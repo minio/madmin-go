@@ -43,10 +43,13 @@ type SystemInventoryBucketStatus struct {
 }
 
 // SystemInventoryStatus reports whether the per-bucket system inventory feature
-// is enabled and the inventory table state for every eligible bucket.
+// is enabled, whether object annotation maintenance is currently active, and
+// the inventory table state for every eligible bucket. Annotations is true only
+// when both inventory and annotation maintenance are enabled.
 type SystemInventoryStatus struct {
-	Enabled bool                          `json:"enabled"`
-	Buckets []SystemInventoryBucketStatus `json:"buckets"`
+	Enabled     bool                          `json:"enabled"`
+	Annotations bool                          `json:"annotations"`
+	Buckets     []SystemInventoryBucketStatus `json:"buckets"`
 }
 
 // SystemInventoryStatus returns the system inventory feature state and the

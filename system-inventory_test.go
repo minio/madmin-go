@@ -65,7 +65,7 @@ func TestSystemInventoryStatusRequest(t *testing.T) {
 func TestSystemInventoryStatusDecode(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"enabled":true,"buckets":[{"bucket":"active","status":"Active"},{"bucket":"backfill","status":"Backfilling"},{"bucket":"off","status":"Disabled"}]}`))
+		w.Write([]byte(`{"enabled":true,"annotations":true,"buckets":[{"bucket":"active","status":"Active"},{"bucket":"backfill","status":"Backfilling"},{"bucket":"off","status":"Disabled"}]}`))
 	}))
 	defer server.Close()
 
@@ -76,6 +76,9 @@ func TestSystemInventoryStatusDecode(t *testing.T) {
 
 	if !got.Enabled {
 		t.Fatal("Enabled = false, want true")
+	}
+	if !got.Annotations {
+		t.Fatal("Annotations = false, want true")
 	}
 	if len(got.Buckets) != 3 {
 		t.Fatalf("Buckets len = %d, want 3", len(got.Buckets))
@@ -89,6 +92,26 @@ func TestSystemInventoryStatusDecode(t *testing.T) {
 		if got.Buckets[i] != want[i] {
 			t.Errorf("Buckets[%d] = %+v, want %+v", i, got.Buckets[i], want[i])
 		}
+	}
+}
+
+// Servers older than the annotations field omit it; it must decode as false.
+func TestSystemInventoryStatusDecodeOmittedAnnotations(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"enabled":true,"buckets":[]}`))
+	}))
+	defer server.Close()
+
+	got, err := newSystemInventoryTestClient(t, server.URL).SystemInventoryStatus(context.Background())
+	if err != nil {
+		t.Fatalf("SystemInventoryStatus: %v", err)
+	}
+	if !got.Enabled {
+		t.Fatal("Enabled = false, want true")
+	}
+	if got.Annotations {
+		t.Error("Annotations = true, want false")
 	}
 }
 
