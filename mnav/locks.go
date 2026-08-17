@@ -32,6 +32,13 @@ type LockMetricsNode struct {
 	path   string
 }
 
+func (node *LockMetricsNode) collectionTime() time.Time {
+	if node.locks == nil {
+		return time.Time{}
+	}
+	return node.locks.CollectedAt
+}
+
 // NewLockMetricsNode constructs a new LockMetricsNode.
 func NewLockMetricsNode(locks *madmin.LockMetrics, parent MetricNode, path string) *LockMetricsNode {
 	return &LockMetricsNode{locks: locks, parent: parent, path: path}
@@ -141,11 +148,10 @@ func (node *LockMetricsNode) GetLeafData() map[string]string {
 	if p := l.Purge; p != nil {
 		data["Read / Write Locks"] = fmt.Sprintf("%d / %d", p.Readers, p.Writers)
 		if !p.OldestHeldAt.IsZero() {
-			data["Oldest Lock Held"] = time.Since(p.OldestHeldAt).Round(time.Second).String()
+			data["Oldest Lock Held"] = ageStamp(node, p.OldestHeldAt, "15:04:05", time.Second)
 		}
 		if !p.SampledAt.IsZero() {
-			data["Cleanup Sampled"] = fmt.Sprintf("%s ago",
-				time.Since(p.SampledAt).Round(time.Second))
+			data["Cleanup Sampled"] = ageStamp(node, p.SampledAt, "15:04:05", time.Second)
 		}
 	}
 	return data
@@ -443,19 +449,24 @@ func (node *LockPurgeNode) GetLeafData() map[string]string {
 	p := node.purge
 	data := map[string]string{
 		// Up to one cleanup interval old; not comparable with the live counters.
-		"Sampled At": fmt.Sprintf("%s (%s ago)",
-			p.SampledAt.Format("15:04:05"), time.Since(p.SampledAt).Round(time.Second)),
+		"Sampled At":  stampAge(node, p.SampledAt, "15:04:05", time.Second),
 		"Read Locks":  strconv.FormatInt(p.Readers, 10),
 		"Write Locks": strconv.FormatInt(p.Writers, 10),
 	}
 	if p.Expired > 0 {
 		data["Expired (last pass)"] = strconv.FormatInt(p.Expired, 10)
 	}
-	// Age derived here; the wire carries only the timestamp.
+	// Age derived here; the wire carries only the timestamp. Without a collection
+	// time to measure against, the acquisition time is all that can be shown.
 	if !p.OldestHeldAt.IsZero() {
-		data["Oldest Lock"] = fmt.Sprintf("held %s (since %s)",
-			time.Since(p.OldestHeldAt).Round(time.Second),
-			p.OldestHeldAt.Format("15:04:05"))
+		stamp := p.OldestHeldAt.Format("15:04:05")
+		if held, future, ok := since(node, p.OldestHeldAt); !ok {
+			data["Oldest Lock"] = fmt.Sprintf("since %s", stamp)
+		} else if future {
+			data["Oldest Lock"] = fmt.Sprintf("acquired in %s (at %s)", held.Round(time.Second), stamp)
+		} else {
+			data["Oldest Lock"] = fmt.Sprintf("held %s (since %s)", held.Round(time.Second), stamp)
+		}
 	}
 	return data
 }

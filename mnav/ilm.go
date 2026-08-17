@@ -33,6 +33,13 @@ type ILMMetricsNode struct {
 	path   string
 }
 
+func (node *ILMMetricsNode) collectionTime() time.Time {
+	if node.ilm == nil {
+		return time.Time{}
+	}
+	return node.ilm.CollectedAt
+}
+
 // NewILMMetricsNode constructs a new ILMMetricsNode.
 func NewILMMetricsNode(ilm *madmin.ILMMetrics, parent MetricNode, path string) *ILMMetricsNode {
 	return &ILMMetricsNode{ilm: ilm, parent: parent, path: path}
@@ -167,7 +174,17 @@ func (node *ILMQueueNode) GetLeafData() map[string]string {
 
 	// A recent head means throughput-bound, an old one means wedged. Derived here.
 	if !q.HeadQueuedAt.IsZero() {
-		data["Head Lag"] = fmt.Sprintf("<= %s", time.Since(q.HeadQueuedAt).Round(time.Second))
+		lag, future, ok := since(node, q.HeadQueuedAt)
+		switch {
+		case !ok:
+			// No collection time to measure the lag against, so report when the head
+			// was queued and leave the lag to the reader.
+			data["Head Lag"] = fmt.Sprintf("queued at %s", q.HeadQueuedAt.Format("15:04:05"))
+		case future:
+			data["Head Lag"] = "<= 0s"
+		default:
+			data["Head Lag"] = fmt.Sprintf("<= %s", lag.Round(time.Second))
+		}
 	}
 	return data
 }

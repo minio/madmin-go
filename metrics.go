@@ -1027,9 +1027,13 @@ type DriveReclaimStats struct {
 	// same pass but reclaim different things.
 	TmpWriteDirPurged uint64 `json:"tmp_write_dir_purged,omitempty"`
 
-	// TrashPurged and TrashPurgedBytes are objects finally deleted from trash.
-	// Reclamation is two-stage -- the counters above move things INTO trash, these
-	// remove them -- so a gap between them is capacity not yet returned.
+	// TrashPurged and TrashPurgedBytes are objects finally deleted from trash by
+	// the generic trash sweeper. This covers a wider population than the counters
+	// above: the trash also receives entries from metacache cleanup and other
+	// delete/rename paths, which do not increment them. No backlog can therefore
+	// be derived by subtracting these from the counters above -- unrelated
+	// removals can cancel or exceed the staged counts, and trash already present
+	// when the counters start is purged with no matching staging increment.
 	TrashPurged      uint64 `json:"trash_purged,omitempty"`
 	TrashPurgedBytes uint64 `json:"trash_purged_bytes,omitempty"`
 

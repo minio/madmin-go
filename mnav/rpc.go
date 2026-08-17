@@ -34,6 +34,13 @@ type RPCMetricsNode struct {
 	path   string
 }
 
+func (node *RPCMetricsNode) collectionTime() time.Time {
+	if node.rpc == nil {
+		return time.Time{}
+	}
+	return node.rpc.CollectedAt
+}
+
 func (node *RPCMetricsNode) GetOpts() madmin.MetricsOptions {
 	return getNodeOpts(node)
 }
@@ -1116,12 +1123,10 @@ func (node *RPCDestinationNode) GetLeafData() map[string]string {
 
 	// Connection timing
 	if !node.stats.LastConnectTime.IsZero() {
-		data["Last Connect"] = fmt.Sprintf("%s (%v ago)", node.stats.LastConnectTime.Format("2006-01-02 15:04:05"),
-			time.Since(node.stats.LastConnectTime).Round(time.Minute).String())
+		data["Last Connect"] = stampAge(node, node.stats.LastConnectTime, "2006-01-02 15:04:05", time.Minute)
 	}
 	if !node.stats.LastPongTime.IsZero() {
-		data["Last Pong"] = fmt.Sprintf("%s (%v ago)", node.stats.LastPongTime.Format("2006-01-02 15:04:05"),
-			time.Since(node.stats.LastPongTime).Round(time.Minute).String())
+		data["Last Pong"] = stampAge(node, node.stats.LastPongTime, "2006-01-02 15:04:05", time.Minute)
 	}
 
 	return data
@@ -1189,12 +1194,10 @@ func (node *RPCCallerNode) GetLeafData() map[string]string {
 
 	// Connection timing
 	if !node.stats.LastConnectTime.IsZero() {
-		data["Last Connect"] = fmt.Sprintf("%s (%v ago)", node.stats.LastConnectTime.Format("2006-01-02 15:04:05"),
-			time.Since(node.stats.LastConnectTime).Round(time.Minute).String())
+		data["Last Connect"] = stampAge(node, node.stats.LastConnectTime, "2006-01-02 15:04:05", time.Minute)
 	}
 	if !node.stats.LastPongTime.IsZero() {
-		data["Last Pong"] = fmt.Sprintf("%s (%v ago)", node.stats.LastPongTime.Format("2006-01-02 15:04:05"),
-			time.Since(node.stats.LastPongTime).Round(time.Minute).String())
+		data["Last Pong"] = stampAge(node, node.stats.LastPongTime, "2006-01-02 15:04:05", time.Minute)
 	}
 
 	return data

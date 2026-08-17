@@ -36,6 +36,13 @@ type DiskMetricsNavigator struct {
 	opts   madmin.MetricsOptions
 }
 
+func (node *DiskMetricsNavigator) collectionTime() time.Time {
+	if node.disk == nil {
+		return time.Time{}
+	}
+	return node.disk.CollectedAt
+}
+
 func (node *DiskMetricsNavigator) GetOpts() madmin.MetricsOptions {
 	opts := getNodeOpts(node)
 	opts.DriveSetIdx = append(opts.DriveSetIdx, node.opts.DriveSetIdx...)
@@ -2640,28 +2647,26 @@ func (node *DiskReclaimNode) GetLeafData() map[string]string {
 		idx++
 	}
 
-	// Stage one: what the passes moved into trash, split by what was reclaimed.
-	// The two run in the same pass but retire different things -- an upload entry
-	// versus a whole temporary write window -- so a rise in one is a different
-	// story from a rise in the other.
+	// What the passes moved into trash, split by what was reclaimed. The two run
+	// in the same pass but retire different things -- an upload entry versus a
+	// whole temporary write window -- so a rise in one is a different story from
+	// a rise in the other.
 	add("Stale Multipart Purged", humanize.Comma(int64(r.StaleMultipartPurged)))
 	add("Tmp Write Dirs Purged", humanize.Comma(int64(r.TmpWriteDirPurged)))
 
-	// Stage two: what left the trash. The gap against stage one is capacity that
-	// has been given up on but not yet returned to the filesystem.
+	// What left the trash. Not comparable against the counters above: the sweeper
+	// also removes entries staged by paths that do not increment them, so no
+	// backlog can be derived from the difference.
 	add("Trash Purged", fmt.Sprintf("%s object(s), %s",
 		humanize.Comma(int64(r.TrashPurged)), humanize.IBytes(r.TrashPurgedBytes)))
-	if staged := r.StaleMultipartPurged + r.TmpWriteDirPurged; staged > r.TrashPurged {
-		add("Awaiting Trash Purge", humanize.Comma(int64(staged-r.TrashPurged))+" entry/entries")
-	}
 
 	add("Cleanup Cycles", humanize.Comma(int64(r.CleanupCycles)))
 	// Age derived here; the wire carries the timestamp so the merge can take the
-	// oldest and surface a drive whose cleanup has stalled.
+	// oldest and surface a drive whose cleanup has stalled. Measured against the
+	// collection time, not the wall clock: these metrics may have been loaded from
+	// a capture taken long ago.
 	if !r.LastCleanupAt.IsZero() {
-		add("Last Cleanup", fmt.Sprintf("%s (%s ago)",
-			r.LastCleanupAt.Format("2006-01-02 15:04:05"),
-			roundDuration(time.Since(r.LastCleanupAt))))
+		add("Last Cleanup", stampAge(node, r.LastCleanupAt, "2006-01-02 15:04:05", time.Second))
 	} else {
 		add("Last Cleanup", "no pass has finished yet")
 	}

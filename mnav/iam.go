@@ -32,6 +32,13 @@ type IAMMetricsNode struct {
 	path   string
 }
 
+func (node *IAMMetricsNode) collectionTime() time.Time {
+	if node.iam == nil {
+		return time.Time{}
+	}
+	return node.iam.CollectedAt
+}
+
 // NewIAMMetricsNode constructs a new IAMMetricsNode.
 func NewIAMMetricsNode(iam *madmin.IAMMetrics, parent MetricNode, path string) *IAMMetricsNode {
 	return &IAMMetricsNode{iam: iam, parent: parent, path: path}
@@ -99,8 +106,7 @@ func (node *IAMMetricsNode) GetLeafData() map[string]string {
 		data["Policy Mappings"] = fmt.Sprintf("%d user, %d group, %d STS",
 			c.UserPolicyMappings, c.GroupPolicyMappings, c.STSPolicyMappings)
 		// Cached, so it can lag the section's own timestamp.
-		data["Inventory Sampled"] = fmt.Sprintf("%s ago",
-			time.Since(c.SampledAt).Round(time.Second))
+		data["Inventory Sampled"] = ageStamp(node, c.SampledAt, "15:04:05", time.Second)
 	} else {
 		data["Inventory"] = "not available (node still initialising)"
 	}

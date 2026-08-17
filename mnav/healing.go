@@ -34,6 +34,13 @@ type HealingMetricsNode struct {
 	path    string
 }
 
+func (node *HealingMetricsNode) collectionTime() time.Time {
+	if node.healing == nil {
+		return time.Time{}
+	}
+	return node.healing.CollectedAt
+}
+
 // NewHealingMetricsNode creates a new HealingMetricsNode.
 func NewHealingMetricsNode(healing *madmin.HealingMetrics, parent MetricNode, path string) *HealingMetricsNode {
 	return &HealingMetricsNode{healing: healing, parent: parent, path: path}
@@ -483,7 +490,16 @@ func (node *HealSessionLeafNode) GetLeafData() map[string]string {
 		data["04:Ended"] = s.EndTime.Format("2006-01-02 15:04:05")
 		data["05:Duration"] = s.EndTime.Sub(s.StartTime).Round(time.Second).String()
 	} else if !s.StartTime.IsZero() {
-		data["05:Duration"] = time.Since(s.StartTime).Round(time.Second).String() + " (running)"
+		// Started is rendered absolutely above, so without a collection time to
+		// measure against there is nothing to add beyond the fact that it is running.
+		switch running, future, ok := since(node, s.StartTime); {
+		case !ok:
+			data["05:Duration"] = "running"
+		case future:
+			data["05:Duration"] = "0s (running)"
+		default:
+			data["05:Duration"] = running.Round(time.Second).String() + " (running)"
+		}
 	}
 	if !s.LastActivity.IsZero() {
 		data["06:Last activity"] = s.LastActivity.Format("15:04:05")
