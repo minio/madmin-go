@@ -121,6 +121,50 @@ func TestCollectedAtUnknownShowsAbsolute(t *testing.T) {
 	}
 }
 
+// An unset timestamp has no stamp and no age to show, so its row is omitted
+// rather than rendered as the zero time -- which would read as year one, or as an
+// age of two millennia once measured against collection.
+func TestUnsetTimestampOmitsRow(t *testing.T) {
+	nav := NewRealtimeMetricsNavigator(&madmin.RealtimeMetrics{
+		CollectedAt: captureAt,
+		Aggregated: madmin.Metrics{
+			Locks: &madmin.LockMetrics{
+				CollectedAt: captureAt,
+				// Counts recorded, no timestamp on either field.
+				Purge: &madmin.LockPurgeStats{Readers: 4, Writers: 2, Expired: 1},
+			},
+			IAM: &madmin.IAMMetrics{
+				CollectedAt: captureAt,
+				Cache:       &madmin.IAMCacheStats{Policies: 3},
+			},
+		},
+	})
+
+	for _, tc := range []struct{ path, key string }{
+		{"locks/purge", "Sampled At"},
+		{"locks", "Cleanup Sampled"},
+		{"locks", "Oldest Lock Held"},
+		{"iam", "Inventory Sampled"},
+	} {
+		leaf, err := nav.Navigate(tc.path)
+		if err != nil {
+			t.Fatalf("navigate %s: %v", tc.path, err)
+		}
+		if got := leafValue(leaf.GetLeafData(), tc.key); got != "" {
+			t.Errorf("%s[%s] = %q, want the row omitted for an unset timestamp", tc.path, tc.key, got)
+		}
+	}
+
+	// The rows that do not depend on a timestamp must still be there.
+	leaf, err := nav.Navigate("locks/purge")
+	if err != nil {
+		t.Fatalf("navigate locks/purge: %v", err)
+	}
+	if got, want := leafValue(leaf.GetLeafData(), "Read Locks"), "4"; got != want {
+		t.Errorf("Read Locks = %q, want %q", got, want)
+	}
+}
+
 // The same rule on an age-only row: it degrades to the absolute stamp, since
 // there is no stamp elsewhere on the row to fall back to.
 func TestCollectedAtUnknownAgeOnlyRow(t *testing.T) {

@@ -105,8 +105,11 @@ func (node *IAMMetricsNode) GetLeafData() map[string]string {
 		data["Groups"] = strconv.Itoa(c.Groups)
 		data["Policy Mappings"] = fmt.Sprintf("%d user, %d group, %d STS",
 			c.UserPolicyMappings, c.GroupPolicyMappings, c.STSPolicyMappings)
-		// Cached, so it can lag the section's own timestamp.
-		data["Inventory Sampled"] = ageStamp(node, c.SampledAt, "15:04:05", time.Second)
+		// Cached, so it can lag the section's own timestamp. Absent until the cache
+		// has been sampled, rather than rendered as the zero time.
+		if !c.SampledAt.IsZero() {
+			data["Inventory Sampled"] = ageStamp(node, c.SampledAt, "15:04:05", time.Second)
+		}
 	} else {
 		data["Inventory"] = "not available (node still initialising)"
 	}

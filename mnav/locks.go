@@ -448,10 +448,14 @@ func (node *LockPurgeNode) GetLeafData() map[string]string {
 	}
 	p := node.purge
 	data := map[string]string{
-		// Up to one cleanup interval old; not comparable with the live counters.
-		"Sampled At":  stampAge(node, p.SampledAt, "15:04:05", time.Second),
 		"Read Locks":  strconv.FormatInt(p.Readers, 10),
 		"Write Locks": strconv.FormatInt(p.Writers, 10),
+	}
+	// Up to one cleanup interval old; not comparable with the live counters. Omitted
+	// rather than formatted as the zero time when the pass carries counts but no
+	// timestamp, matching how LockMetricsNode summarizes it.
+	if !p.SampledAt.IsZero() {
+		data["Sampled At"] = stampAge(node, p.SampledAt, "15:04:05", time.Second)
 	}
 	if p.Expired > 0 {
 		data["Expired (last pass)"] = strconv.FormatInt(p.Expired, 10)
