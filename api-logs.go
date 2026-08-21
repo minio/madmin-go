@@ -85,13 +85,18 @@ func (adm AdminClient) GetAPILogs(ctx context.Context, opts APILogOpts) iter.Seq
 				if errors.Is(err, io.EOF) {
 					break
 				}
+				if !yield(log.API{}, err) {
+					return
+				}
 				continue
 			}
 			select {
 			case <-ctx.Done():
 				return
 			default:
-				yield(info, nil)
+				if !yield(info, nil) {
+					return
+				}
 			}
 		}
 	}

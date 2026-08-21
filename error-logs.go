@@ -91,13 +91,18 @@ func (adm AdminClient) GetErrorLogs(ctx context.Context, opts ErrorLogOpts) iter
 				if errors.Is(err, io.EOF) {
 					break
 				}
+				if !yield(log.Error{}, err) {
+					return
+				}
 				continue
 			}
 			select {
 			case <-ctx.Done():
 				return
 			default:
-				yield(info, nil)
+				if !yield(info, nil) {
+					return
+				}
 			}
 		}
 	}
