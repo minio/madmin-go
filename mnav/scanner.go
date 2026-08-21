@@ -520,6 +520,7 @@ func (node *ScannerTimedActionNode) GetLeafData() map[string]string {
 		"bytes":       strconv.FormatUint(node.action.Bytes, 10),
 	}
 }
+
 func (node *ScannerTimedActionNode) GetMetricType() madmin.MetricType   { return madmin.MetricsScanner }
 func (node *ScannerTimedActionNode) GetMetricFlags() madmin.MetricFlags { return 0 }
 func (node *ScannerTimedActionNode) GetParent() MetricNode              { return node.parent }
@@ -775,6 +776,7 @@ func (node *ScannerLastDayTotalNode) GetLeafData() map[string]string {
 }
 
 func (node *ScannerLastDayTotalNode) GetMetricType() madmin.MetricType { return madmin.MetricsScanner }
+
 func (node *ScannerLastDayTotalNode) GetMetricFlags() madmin.MetricFlags {
 	return madmin.MetricsDayStats
 }
