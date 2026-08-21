@@ -51,7 +51,7 @@ type MetricType uint32
 const MetricsNone MetricType = 0
 
 const (
-	MetricsScanner MetricType = 1 << (iota)
+	MetricsScanner MetricType = 1 << iota
 	MetricsDisk
 	MetricsOS
 	MetricsBatchJobs
@@ -77,7 +77,7 @@ const (
 
 	// MetricsAll must be last.
 	// Enables all metrics.
-	MetricsAll = 1<<(iota) - 1
+	MetricsAll = 1<<iota - 1
 )
 
 // Contains returns whether m contains all of x.
@@ -126,17 +126,17 @@ func (m MetricType) String() string {
 type MetricFlags uint64
 
 const (
-	MetricsDayStats      MetricFlags = 1 << (iota) // Include daily statistics (24h, 15-min segments)
-	MetricsByHost                                  // Aggregate metrics by host/node.
-	MetricsByDisk                                  // Aggregate metrics by disk.
-	MetricsLegacyDiskIO                            // Add legacy disk IO metrics.
-	MetricsByDiskSet                               // Aggregate metrics by disk pool+set index.
-	MetricsSMART                                   // Include S.M.A.R.T. disk health data.
-	MetricsHourStats                               // Include last-hour statistics (1h, 1-min segments)
-	MetricsTopWarehouses                           // Include top-25 metrics by warehouse
-	MetricsTopNamespaces                           // Include top-25 metrics by namespace
-	MetricsTopTables                               // Include top-25 tables
-	MetricsTablesCatalog                           // Include the tables catalog inventory (leader-only; walks the catalog)
+	MetricsDayStats      MetricFlags = 1 << iota // Include daily statistics (24h, 15-min segments)
+	MetricsByHost                                // Aggregate metrics by host/node.
+	MetricsByDisk                                // Aggregate metrics by disk.
+	MetricsLegacyDiskIO                          // Add legacy disk IO metrics.
+	MetricsByDiskSet                             // Aggregate metrics by disk pool+set index.
+	MetricsSMART                                 // Include S.M.A.R.T. disk health data.
+	MetricsHourStats                             // Include last-hour statistics (1h, 1-min segments)
+	MetricsTopWarehouses                         // Include top-25 metrics by warehouse
+	MetricsTopNamespaces                         // Include top-25 metrics by namespace
+	MetricsTopTables                             // Include top-25 tables
+	MetricsTablesCatalog                         // Include the tables catalog inventory (leader-only; walks the catalog)
 )
 
 // Contains returns whether m contains all of x.
