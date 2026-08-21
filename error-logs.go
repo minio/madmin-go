@@ -80,6 +80,7 @@ func (adm AdminClient) GetErrorLogs(ctx context.Context, opts ErrorLogOpts) iter
 			yield(log.Error{}, err)
 			return
 		}
+		defer closeResponse(resp)
 		if resp.StatusCode != http.StatusOK {
 			yield(log.Error{}, httpRespToErrorResponse(resp))
 			return
@@ -91,13 +92,16 @@ func (adm AdminClient) GetErrorLogs(ctx context.Context, opts ErrorLogOpts) iter
 				if errors.Is(err, io.EOF) {
 					break
 				}
-				continue
+				yield(log.Error{}, err)
+				return
 			}
 			select {
 			case <-ctx.Done():
 				return
 			default:
-				yield(info, nil)
+				if !yield(info, nil) {
+					return
+				}
 			}
 		}
 	}

@@ -74,6 +74,7 @@ func (adm AdminClient) GetAPILogs(ctx context.Context, opts APILogOpts) iter.Seq
 			yield(log.API{}, err)
 			return
 		}
+		defer closeResponse(resp)
 		if resp.StatusCode != http.StatusOK {
 			yield(log.API{}, httpRespToErrorResponse(resp))
 			return
@@ -85,13 +86,16 @@ func (adm AdminClient) GetAPILogs(ctx context.Context, opts APILogOpts) iter.Seq
 				if errors.Is(err, io.EOF) {
 					break
 				}
-				continue
+				yield(log.API{}, err)
+				return
 			}
 			select {
 			case <-ctx.Done():
 				return
 			default:
-				yield(info, nil)
+				if !yield(info, nil) {
+					return
+				}
 			}
 		}
 	}
