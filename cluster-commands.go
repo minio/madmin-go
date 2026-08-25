@@ -764,6 +764,11 @@ type SRInfo struct {
 	ILMExpiryRules map[string]ILMExpiryRule      // map of ILM Expiry rule to content
 	State          SRStateInfo                   // peer state
 	APIVersion     string                        `json:"apiVersion,omitempty"`
+
+	// TablesReplicaEnabled reports whether the site runs the AIStor Tables
+	// replica catalog. Absent from peers that predate the field, which decode
+	// it as false.
+	TablesReplicaEnabled bool `json:"tablesReplicaEnabled,omitempty"`
 }
 
 // SRMetaInfo - returns replication metadata info for a site.
