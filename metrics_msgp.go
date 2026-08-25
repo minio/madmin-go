@@ -69,7 +69,7 @@ func (z *Segmented[T, PT]) DecodeMsg(dc *msgp.Reader) (err error) {
 				return err
 			}
 			if cap(z.Segments) >= int(zb0002) {
-				z.Segments = (z.Segments)[:zb0002]
+				z.Segments = z.Segments[:zb0002]
 			} else {
 				z.Segments = make([]T, zb0002)
 			}
@@ -269,7 +269,7 @@ func (z *Segmented[T, PT]) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return o, err
 			}
 			if cap(z.Segments) >= int(zb0002) {
-				z.Segments = (z.Segments)[:zb0002]
+				z.Segments = z.Segments[:zb0002]
 			} else {
 				z.Segments = make([]T, zb0002)
 			}

@@ -163,6 +163,7 @@ type byTimeSegmentNode[T any, PT segPtr[T]] struct {
 
 func (node *byTimeSegmentNode[T, PT]) GetOpts() madmin.MetricsOptions   { return getNodeOpts(node) }
 func (node *byTimeSegmentNode[T, PT]) GetMetricType() madmin.MetricType { return node.view.metricType }
+
 func (node *byTimeSegmentNode[T, PT]) GetMetricFlags() madmin.MetricFlags {
 	return node.view.metricFlags
 }
