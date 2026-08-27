@@ -870,16 +870,24 @@ func (node *ReplicationLastDayAggregatedNode) aggregated() *madmin.SegmentedRepl
 		return nil
 	}
 	var merged madmin.SegmentedReplicationStats
+	var maxNodes int
 	for _, t := range node.replication.Targets {
 		if t.LastDay != nil {
 			merged.Add(t.LastDay)
 		}
+		maxNodes = max(maxNodes, t.Nodes)
 	}
 	if len(merged.Segments) == 0 {
 		return nil
 	}
 	// Add summed Nodes along the target axis; clamp to the responding nodes.
-	madmin.ReplicationDayNodes(&merged, node.replication.Nodes)
+	// With no count to clamp against, fall back to the per-target maximum rather
+	// than zeroing every segment, as AllTargets does.
+	nodes := node.replication.Nodes
+	if nodes <= 0 {
+		nodes = maxNodes
+	}
+	madmin.ReplicationDayNodes(&merged, nodes)
 	return &merged
 }
 

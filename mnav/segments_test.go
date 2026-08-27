@@ -451,6 +451,43 @@ func TestReplicationDayTotalLeavesReportNodeCount(t *testing.T) {
 	}
 }
 
+// A capture whose top-level node count never got filled in still has per-target
+// counts, and clamping to zero would drop "Nodes Reporting" from every segment
+// and from the total. The per-target maximum stands in instead.
+func TestReplicationDayAggregatedWithoutNodeCount(t *testing.T) {
+	day := func() *madmin.SegmentedReplicationStats {
+		return &madmin.SegmentedReplicationStats{
+			Interval: 900, FirstTime: dupFirstTime,
+			Segments: []madmin.ReplicationStats{{Nodes: 2, Events: 100, PutObject: 100}},
+		}
+	}
+	nav := NewRealtimeMetricsNavigator(&madmin.RealtimeMetrics{
+		Aggregated: madmin.Metrics{Replication: &madmin.ReplicationMetrics{
+			Targets: map[string]madmin.ReplicationTargetStats{
+				"peer:a": {Nodes: 2, LastDay: day()},
+				"peer:b": {Nodes: 2, LastDay: day()},
+			},
+		}},
+	})
+
+	for _, path := range []string{
+		"replication/last_day/" + dupFirstTime.Format("15:04Z"),
+		"replication/last_day/Total",
+	} {
+		node, err := nav.Navigate(path)
+		if err != nil {
+			t.Fatalf("navigate %s: %v", path, err)
+		}
+		data := node.GetLeafData()
+		if got, want := leafValue(data, "Nodes Reporting"), "2"; got != want {
+			t.Errorf("%s: Nodes Reporting = %q, want %q", path, got, want)
+		}
+		if got, want := leafValue(data, "Total Events"), "200"; got != want {
+			t.Errorf("%s: Total Events = %q, want %q", path, got, want)
+		}
+	}
+}
+
 // The all-targets day view folds every target's window onto one timeline, so a
 // segment's node count comes out summed along the target axis. Two targets on a
 // 3-node cluster reported "6" for a segment all three nodes covered; each
