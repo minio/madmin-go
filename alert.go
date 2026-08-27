@@ -53,6 +53,9 @@ const (
 	// AlertTypeLicensedCapacity represents cluster usage approaching the
 	// licensed (org-wide) storage capacity
 	AlertTypeLicensedCapacity AlertType = "licensed-capacity"
+	// AlertTypeBucketQuota represents a bucket's usage approaching its
+	// configured hard quota
+	AlertTypeBucketQuota AlertType = "bucket-quota"
 	// AlertTypeScannerExcessFolders represents alerts for prefixes with excessive sub-folders
 	AlertTypeScannerExcessFolders AlertType = "scanner-excess-folders"
 	// AlertTypeScannerExcessVersions represents alerts for objects with excessive versions
