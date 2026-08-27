@@ -2587,12 +2587,6 @@ type ReplicationStats struct {
 
 type SegmentedReplicationStats = Segmented[ReplicationStats, *ReplicationStats]
 
-// SegmentedReplicationTotal folds every time segment into a single
-// ReplicationStats.
-//
-// Add sums Nodes, which is only correct along the node axis. The same nodes
-// report every segment, so folding along the time axis must not sum; Nodes is
-// set to the widest single segment instead.
 // ReplicationDayNodes recomputes per-segment Nodes on dst, a window built by
 // folding the per-target windows in srcs together.
 //
@@ -2625,6 +2619,12 @@ func ReplicationDayNodes(dst *SegmentedReplicationStats, srcs ...*SegmentedRepli
 	}
 }
 
+// SegmentedReplicationTotal folds every time segment into a single
+// ReplicationStats.
+//
+// Add sums Nodes, which is only correct along the node axis. The same nodes
+// report every segment, so folding along the time axis must not sum; Nodes is
+// set to the widest single segment instead.
 func SegmentedReplicationTotal(s *SegmentedReplicationStats) ReplicationStats {
 	var res ReplicationStats
 	if s == nil {
