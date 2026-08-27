@@ -62,6 +62,11 @@ type BucketDetails struct {
 	// CompressionILM reports that the bucket has at least one lifecycle rule
 	// carrying a compression action.
 	CompressionILM bool `json:"compressionILM,omitempty"`
+	// IsWarehouse reports that the bucket is an AIStor Tables warehouse.
+	// Warehouses are configured through the Tables API rather than the S3
+	// bucket-configuration APIs, so a caller listing buckets needs to tell them
+	// apart to know which configuration applies.
+	IsWarehouse bool `json:"isWarehouse,omitempty"`
 }
 
 // BucketAccessInfo represents bucket usage of a bucket, and its relevant
