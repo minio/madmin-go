@@ -1847,7 +1847,6 @@ func (m *RPCMetrics) LastMinuteTotal() RPCStats {
 		}
 	}
 
-	// Since we are merging across APIs must reset track node count.
 	return res
 }
 
@@ -2179,6 +2178,22 @@ func (a *APIStats) Merge(other APIStats) {
 // SegmentedAPIMetrics are segmented API metrics.
 type SegmentedAPIMetrics = Segmented[APIStats, *APIStats]
 
+// SegmentedAPITotal folds every time segment into a single APIStats.
+//
+// Merge sums Nodes, which is only correct along the node axis. The same nodes
+// report every segment, so folding along the time axis must not sum; Nodes is
+// set to the widest single segment instead.
+func SegmentedAPITotal(s SegmentedAPIMetrics) APIStats {
+	var res APIStats
+	var nodes int
+	for _, seg := range s.Segments {
+		res.Merge(seg)
+		nodes = max(nodes, seg.Nodes)
+	}
+	res.Nodes = nodes
+	return res
+}
+
 // APIMetrics contains metrics for API operations.
 type APIMetrics struct {
 	// Time these metrics were collected
@@ -2400,6 +2415,11 @@ func (s *Segmented[T, PT]) Add(other *Segmented[T, PT]) {
 }
 
 // Total returns the total of all segments.
+//
+// Every field is folded with T's Add, so fields that are not additive along the
+// time axis -- a count of reporting nodes, say -- come back multiplied by the
+// segment count. T is opaque here, so callers whose T has such a field must
+// correct it; see SegmentedAPITotal and SegmentedReplicationTotal.
 func (s *Segmented[T, PT]) Total() T {
 	var res T
 	if s == nil {
@@ -2409,7 +2429,6 @@ func (s *Segmented[T, PT]) Total() T {
 	for i := range s.Segments {
 		pt.Add(&s.Segments[i])
 	}
-	// Since we are merging across APIs must reset track node count.
 	return res
 }
 
@@ -2461,8 +2480,27 @@ func (m *ReplicationMetrics) Merge(other *ReplicationMetrics) {
 // AllTargets returns aggregated stats for all targets.
 func (m *ReplicationMetrics) AllTargets() ReplicationTargetStats {
 	var dst ReplicationTargetStats
+	var nodes, lastMinute, lastHour, sinceStart int
 	for _, v := range m.Targets {
 		dst.Merge(&v)
+		nodes = max(nodes, v.Nodes)
+		lastMinute = max(lastMinute, v.LastMinute.Nodes)
+		lastHour = max(lastHour, v.LastHour.Nodes)
+		sinceStart = max(sinceStart, v.SinceStart.Nodes)
+	}
+	// Merge sums Nodes, which is only correct along the node axis. The same
+	// nodes report every target, so folding across targets must not sum;
+	// keep the widest single observation instead.
+	dst.Nodes = nodes
+	dst.LastMinute.Nodes = lastMinute
+	dst.LastHour.Nodes = lastHour
+	dst.SinceStart.Nodes = sinceStart
+	if dst.LastDay != nil {
+		// Per-segment counts cannot be recovered once the timelines are
+		// merged; nodes is an upper bound and never inflates.
+		for i := range dst.LastDay.Segments {
+			dst.LastDay.Segments[i].Nodes = nodes
+		}
 	}
 	return dst
 }
@@ -2548,6 +2586,26 @@ type ReplicationStats struct {
 }
 
 type SegmentedReplicationStats = Segmented[ReplicationStats, *ReplicationStats]
+
+// SegmentedReplicationTotal folds every time segment into a single
+// ReplicationStats.
+//
+// Add sums Nodes, which is only correct along the node axis. The same nodes
+// report every segment, so folding along the time axis must not sum; Nodes is
+// set to the widest single segment instead.
+func SegmentedReplicationTotal(s *SegmentedReplicationStats) ReplicationStats {
+	var res ReplicationStats
+	if s == nil {
+		return res
+	}
+	var nodes int
+	for i := range s.Segments {
+		res.Add(&s.Segments[i])
+		nodes = max(nodes, s.Segments[i].Nodes)
+	}
+	res.Nodes = nodes
+	return res
+}
 
 // Add 'other' to a.
 func (a *ReplicationStats) Add(other *ReplicationStats) {

@@ -725,10 +725,7 @@ func (node *ReplicationLastDayNode) GetLeafData() map[string]string {
 func (node *ReplicationLastDayNode) GetChild(name string) (MetricNode, error) {
 	// Handle "Total" entry - shows aggregated stats
 	if name == "Total" {
-		var total madmin.ReplicationStats
-		if node.segmented != nil {
-			total = node.segmented.Total()
-		}
+		total := madmin.SegmentedReplicationTotal(node.segmented)
 		return &ReplicationLastDayTotalNode{
 			targetName: node.targetName,
 			total:      total,
@@ -957,7 +954,7 @@ func (node *ReplicationLastDayAggregatedNode) GetChild(name string) (MetricNode,
 	}
 
 	if name == "Total" {
-		total := seg.Total()
+		total := madmin.SegmentedReplicationTotal(seg)
 		return &ReplicationLastDayTotalNode{
 			targetName: "all targets",
 			total:      total,

@@ -900,6 +900,53 @@ func TestAPIMetricsMerge(t *testing.T) {
 	}
 }
 
+// Merge sums Nodes, which is only correct along the node axis. SegmentedAPITotal
+// folds along the time axis, where every segment carries the same nodes: a
+// 3-node cluster over 95 quarter-hour segments must still report 3, not 285.
+func TestSegmentedAPITotalNodesNeverSums(t *testing.T) {
+	const nodes, segments = 3, 95
+	seg := SegmentedAPIMetrics{
+		Interval:  900,
+		FirstTime: time.Date(2026, 8, 26, 10, 0, 0, 0, time.UTC),
+		Segments:  make([]APIStats, segments),
+	}
+	for i := range seg.Segments {
+		seg.Segments[i] = APIStats{Nodes: nodes, Requests: 100}
+	}
+
+	total := SegmentedAPITotal(seg)
+	if total.Nodes != nodes {
+		t.Errorf("Nodes = %d, want %d (summed across %d segments)", total.Nodes, nodes, segments)
+	}
+	// Requests really are a cross-segment sum and must not be reset.
+	if want := int64(segments * 100); total.Requests != want {
+		t.Errorf("Requests = %d, want %d", total.Requests, want)
+	}
+}
+
+// A node that joined or left mid-window reported only some segments, so the fold
+// keeps the widest single observation rather than the first or last.
+func TestSegmentedAPITotalNodesUsesWidestSegment(t *testing.T) {
+	seg := SegmentedAPIMetrics{
+		Interval: 900,
+		Segments: []APIStats{
+			{Nodes: 1, Requests: 10},
+			{Nodes: 3, Requests: 10},
+			{Nodes: 2, Requests: 10},
+		},
+	}
+	if got := SegmentedAPITotal(seg).Nodes; got != 3 {
+		t.Errorf("Nodes = %d, want 3", got)
+	}
+}
+
+func TestSegmentedAPITotalEmpty(t *testing.T) {
+	total := SegmentedAPITotal(SegmentedAPIMetrics{})
+	if total.Nodes != 0 || total.Requests != 0 {
+		t.Errorf("empty fold = %+v, want zero value", total)
+	}
+}
+
 // TestReplicationMetricsMerge tests ReplicationMetrics.Merge functionality
 func TestReplicationMetricsMerge(t *testing.T) {
 	now := time.Now()
@@ -1265,6 +1312,100 @@ func TestReplicationTargetStatsMerge(t *testing.T) {
 			tt.base.Merge(tt.other)
 			tt.verify(t, tt.base)
 		})
+	}
+}
+
+// AllTargets folds along the target axis, where the same nodes report every
+// target: 46 targets on a 3-node cluster must report 3, not 138.
+func TestAllTargetsNodesNeverSums(t *testing.T) {
+	const nodes, targets = 3, 46
+	m := &ReplicationMetrics{
+		Nodes:   nodes,
+		Targets: make(map[string]ReplicationTargetStats, targets),
+	}
+	for i := range targets {
+		m.Targets[fmt.Sprintf("peer:bucket-%d", i)] = ReplicationTargetStats{
+			Nodes:      nodes,
+			LastMinute: ReplicationStats{Nodes: nodes, Events: 1},
+			LastHour:   ReplicationStats{Nodes: nodes, Events: 100},
+			SinceStart: ReplicationStats{Nodes: nodes, Events: 1000},
+			LastDay: &SegmentedReplicationStats{
+				Interval: 900,
+				Segments: []ReplicationStats{{Nodes: nodes, Events: 50}},
+			},
+		}
+	}
+
+	all := m.AllTargets()
+	for _, tc := range []struct {
+		name string
+		got  int
+	}{
+		{"Nodes", all.Nodes},
+		{"LastMinute.Nodes", all.LastMinute.Nodes},
+		{"LastHour.Nodes", all.LastHour.Nodes},
+		{"SinceStart.Nodes", all.SinceStart.Nodes},
+	} {
+		if tc.got != nodes {
+			t.Errorf("%s = %d, want %d (summed across %d targets)", tc.name, tc.got, nodes, targets)
+		}
+	}
+	for i, s := range all.LastDay.Segments {
+		if s.Nodes != nodes {
+			t.Errorf("LastDay.Segments[%d].Nodes = %d, want %d", i, s.Nodes, nodes)
+		}
+	}
+
+	// Event counters are additive along the target axis and must be untouched.
+	if want := int64(targets * 100); all.LastHour.Events != want {
+		t.Errorf("LastHour.Events = %d, want %d", all.LastHour.Events, want)
+	}
+}
+
+// The time-axis counterpart of the above, for the replication family.
+func TestSegmentedReplicationTotalNodesNeverSums(t *testing.T) {
+	const nodes, segments = 3, 96
+	seg := &SegmentedReplicationStats{
+		Interval: 900,
+		Segments: make([]ReplicationStats, segments),
+	}
+	for i := range seg.Segments {
+		seg.Segments[i] = ReplicationStats{Nodes: nodes, Events: 100}
+	}
+
+	total := SegmentedReplicationTotal(seg)
+	if total.Nodes != nodes {
+		t.Errorf("Nodes = %d, want %d (summed across %d segments)", total.Nodes, nodes, segments)
+	}
+	if want := int64(segments * 100); total.Events != want {
+		t.Errorf("Events = %d, want %d", total.Events, want)
+	}
+}
+
+// A nil window is the common case for a target that has never replicated.
+func TestSegmentedReplicationTotalNil(t *testing.T) {
+	total := SegmentedReplicationTotal(nil)
+	if total.Nodes != 0 || total.Events != 0 {
+		t.Errorf("nil fold = %+v, want zero value", total)
+	}
+}
+
+// Targets that no node reported are skipped by Merge and must not drag the node
+// count down.
+func TestAllTargetsIgnoresUnreportedTargets(t *testing.T) {
+	m := &ReplicationMetrics{
+		Nodes: 3,
+		Targets: map[string]ReplicationTargetStats{
+			"peer:live": {Nodes: 3, LastHour: ReplicationStats{Nodes: 3, Events: 7}},
+			"peer:cold": {},
+		},
+	}
+	all := m.AllTargets()
+	if all.Nodes != 3 {
+		t.Errorf("Nodes = %d, want 3", all.Nodes)
+	}
+	if all.LastHour.Events != 7 {
+		t.Errorf("LastHour.Events = %d, want 7", all.LastHour.Events)
 	}
 }
 

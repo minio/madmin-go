@@ -18,6 +18,7 @@
 package mnav
 
 import (
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -299,6 +300,154 @@ func TestWindowAllLeafReportsNodeCount(t *testing.T) {
 	// The counters really are cross-segment sums, so those must NOT be divided.
 	if got, want := leafValue(d, "Acquires"), "120"; got != want {
 		t.Errorf("Acquires = %q, want %q: a counter still sums over the window", got, want)
+	}
+}
+
+// The API family reaches the same invariant by a different route: APIStats.Merge
+// sums Nodes, which is only right along the node axis. Folding a day of segments
+// into one endpoint total walks the time axis instead, where every segment
+// carries the same nodes. A 3-node cluster over 95 quarter-hour segments reported
+// "285 nodes", which reads as a fleet size and is off by the segment count.
+func TestAPIEndpointLeavesReportNodeCount(t *testing.T) {
+	const nodes, segments = 3, 95
+	segs := make([]madmin.APIStats, segments)
+	for i := range segs {
+		segs[i] = madmin.APIStats{
+			Nodes: nodes, Requests: 1000, IncomingBytes: 4096,
+			RequestTimeSecs: 4.0, RespTTFBSecsMax: 0.3,
+		}
+	}
+	nav := NewRealtimeMetricsNavigator(&madmin.RealtimeMetrics{
+		Aggregated: madmin.Metrics{API: &madmin.APIMetrics{
+			Nodes: nodes,
+			LastDayAPI: map[string]madmin.SegmentedAPIMetrics{
+				"s3.PutObject": {Interval: 900, FirstTime: dupFirstTime, Segments: segs},
+			},
+		}},
+	})
+
+	// The endpoint leaf and its Total child fold the same segments; both used to
+	// inflate, so both are pinned.
+	for _, path := range []string{
+		"api/last_day/s3.PutObject",
+		"api/last_day/s3.PutObject/Total",
+	} {
+		node, err := nav.Navigate(path)
+		if err != nil {
+			t.Fatalf("navigate %s: %v", path, err)
+		}
+		data := node.GetLeafData()
+		if got, want := leafValue(data, "Responding Nodes"), "3 nodes"; got != want {
+			t.Errorf("%s: Responding Nodes = %q, want %q: summing Nodes over %d segments gives %d",
+				path, got, want, segments, nodes*segments)
+		}
+		// The request counters really are cross-segment sums, so those must NOT be reset.
+		if got, want := leafValue(data, "Total Requests"), "95,000"; got != want {
+			t.Errorf("%s: Total Requests = %q, want %q", path, got, want)
+		}
+	}
+}
+
+// A single time segment is already a per-node fan-in, so it reports the node
+// count directly -- the fold is what has to be corrected, not the segment.
+func TestAPITimeSegmentLeafReportsNodeCount(t *testing.T) {
+	nav := NewRealtimeMetricsNavigator(&madmin.RealtimeMetrics{
+		Aggregated: madmin.Metrics{API: &madmin.APIMetrics{
+			Nodes: 3,
+			LastDayAPI: map[string]madmin.SegmentedAPIMetrics{
+				"s3.PutObject": {
+					Interval: 900, FirstTime: dupFirstTime,
+					Segments: []madmin.APIStats{{Nodes: 3, Requests: 1000, RequestTimeSecs: 4.0}},
+				},
+			},
+		}},
+	})
+	node, err := nav.Navigate("api/last_day/s3.PutObject/" + dupFirstTime.Format("15:04Z"))
+	if err != nil {
+		t.Fatalf("navigate segment: %v", err)
+	}
+	if got, want := leafValue(node.GetLeafData(), "Responding Nodes"), "3 nodes"; got != want {
+		t.Errorf("Responding Nodes = %q, want %q", got, want)
+	}
+}
+
+// Replication folds along the target axis rather than time, but the invariant is
+// the same: every target is reported by the same nodes, so 46 targets on a 3-node
+// cluster reported "138".
+func TestReplicationLastHourLeafReportsNodeCount(t *testing.T) {
+	const nodes, targets = 3, 46
+	rm := &madmin.ReplicationMetrics{
+		Nodes:   nodes,
+		Targets: make(map[string]madmin.ReplicationTargetStats, targets),
+	}
+	for i := range targets {
+		rm.Targets[fmt.Sprintf("peer%d:bucket-%d", i, i)] = madmin.ReplicationTargetStats{
+			Nodes:      nodes,
+			LastHour:   madmin.ReplicationStats{Nodes: nodes, Events: 7000, PutObject: 7000},
+			SinceStart: madmin.ReplicationStats{Nodes: nodes, Events: 90000},
+		}
+	}
+	nav := NewRealtimeMetricsNavigator(&madmin.RealtimeMetrics{
+		Aggregated: madmin.Metrics{Replication: rm},
+	})
+
+	node, err := nav.Navigate("replication/last_hour")
+	if err != nil {
+		t.Fatalf("navigate replication/last_hour: %v", err)
+	}
+	data := node.GetLeafData()
+	if got, want := leafValue(data, "Nodes Reporting"), "3"; got != want {
+		t.Errorf("Nodes Reporting = %q, want %q: summing Nodes over %d targets gives %d",
+			got, want, targets, nodes*targets)
+	}
+	// Events are additive across targets and must survive the reset.
+	if got, want := leafValue(data, "Total Events"), "322,000"; got != want {
+		t.Errorf("Total Events = %q, want %q", got, want)
+	}
+}
+
+// Replication's last-day Total nodes fold via the generic Segmented.Total,
+// which cannot correct a node count because T is opaque to it. Both the
+// per-target and the all-targets path reported "288" for 96 quarter-hour
+// segments on a 3-node cluster.
+func TestReplicationDayTotalLeavesReportNodeCount(t *testing.T) {
+	const nodes, segments = 3, 96
+	segs := make([]madmin.ReplicationStats, segments)
+	for i := range segs {
+		segs[i] = madmin.ReplicationStats{Nodes: nodes, Events: 100, PutObject: 100}
+	}
+	nav := NewRealtimeMetricsNavigator(&madmin.RealtimeMetrics{
+		Aggregated: madmin.Metrics{Replication: &madmin.ReplicationMetrics{
+			Nodes: nodes,
+			Targets: map[string]madmin.ReplicationTargetStats{
+				"peer:bucket": {
+					Nodes:    nodes,
+					LastHour: madmin.ReplicationStats{Nodes: nodes, Events: 10},
+					LastDay: &madmin.SegmentedReplicationStats{
+						Interval: 900, FirstTime: dupFirstTime, Segments: segs,
+					},
+				},
+			},
+		}},
+	})
+
+	for _, path := range []string{
+		"replication/last_day/Total",
+		"replication/peer:bucket/last_day/Total",
+	} {
+		node, err := nav.Navigate(path)
+		if err != nil {
+			t.Fatalf("navigate %s: %v", path, err)
+		}
+		data := node.GetLeafData()
+		if got, want := leafValue(data, "Nodes Reporting"), "3"; got != want {
+			t.Errorf("%s: Nodes Reporting = %q, want %q: summing Nodes over %d segments gives %d",
+				path, got, want, segments, nodes*segments)
+		}
+		// Events are a real cross-segment sum and must not be reset.
+		if got, want := leafValue(data, "Total Events"), "9,600"; got != want {
+			t.Errorf("%s: Total Events = %q, want %q", path, got, want)
+		}
 	}
 }
 

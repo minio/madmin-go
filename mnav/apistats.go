@@ -728,10 +728,7 @@ func (node *APILastDayEndpointNode) GetChild(name string) (MetricNode, error) {
 	// Handle "Total" entry
 	if name == "Total" {
 		// Calculate total stats for this endpoint
-		total := madmin.APIStats{}
-		for _, segment := range node.segmented.Segments {
-			total.Merge(segment)
-		}
+		total := madmin.SegmentedAPITotal(node.segmented)
 
 		return &APIEndpointNode{
 			endpoint: node.apiName,
@@ -763,10 +760,7 @@ func (node *APILastDayEndpointNode) GetLeafData() map[string]string {
 	}
 
 	// Calculate total stats for this endpoint
-	total := madmin.APIStats{}
-	for _, segment := range node.segmented.Segments {
-		total.Merge(segment)
-	}
+	total := madmin.SegmentedAPITotal(node.segmented)
 	return generateAPIStatsDisplay(total, 1, false, nil)
 }
 
