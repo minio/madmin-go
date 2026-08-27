@@ -900,6 +900,53 @@ func TestAPIMetricsMerge(t *testing.T) {
 	}
 }
 
+// Merge sums Nodes, which is only correct along the node axis. SegmentedAPITotal
+// folds along the time axis, where every segment carries the same nodes: a
+// 3-node cluster over 95 quarter-hour segments must still report 3, not 285.
+func TestSegmentedAPITotalNodesNeverSums(t *testing.T) {
+	const nodes, segments = 3, 95
+	seg := SegmentedAPIMetrics{
+		Interval:  900,
+		FirstTime: time.Date(2026, 8, 26, 10, 0, 0, 0, time.UTC),
+		Segments:  make([]APIStats, segments),
+	}
+	for i := range seg.Segments {
+		seg.Segments[i] = APIStats{Nodes: nodes, Requests: 100}
+	}
+
+	total := SegmentedAPITotal(seg)
+	if total.Nodes != nodes {
+		t.Errorf("Nodes = %d, want %d (summed across %d segments)", total.Nodes, nodes, segments)
+	}
+	// Requests really are a cross-segment sum and must not be reset.
+	if want := int64(segments * 100); total.Requests != want {
+		t.Errorf("Requests = %d, want %d", total.Requests, want)
+	}
+}
+
+// A node that joined or left mid-window reported only some segments, so the fold
+// keeps the widest single observation rather than the first or last.
+func TestSegmentedAPITotalNodesUsesWidestSegment(t *testing.T) {
+	seg := SegmentedAPIMetrics{
+		Interval: 900,
+		Segments: []APIStats{
+			{Nodes: 1, Requests: 10},
+			{Nodes: 3, Requests: 10},
+			{Nodes: 2, Requests: 10},
+		},
+	}
+	if got := SegmentedAPITotal(seg).Nodes; got != 3 {
+		t.Errorf("Nodes = %d, want 3", got)
+	}
+}
+
+func TestSegmentedAPITotalEmpty(t *testing.T) {
+	total := SegmentedAPITotal(SegmentedAPIMetrics{})
+	if total.Nodes != 0 || total.Requests != 0 {
+		t.Errorf("empty fold = %+v, want zero value", total)
+	}
+}
+
 // TestReplicationMetricsMerge tests ReplicationMetrics.Merge functionality
 func TestReplicationMetricsMerge(t *testing.T) {
 	now := time.Now()
@@ -1265,6 +1312,334 @@ func TestReplicationTargetStatsMerge(t *testing.T) {
 			tt.base.Merge(tt.other)
 			tt.verify(t, tt.base)
 		})
+	}
+}
+
+// AllTargets folds along the target axis, where the same nodes report every
+// target: 46 targets on a 3-node cluster must report 3, not 138.
+func TestAllTargetsNodesNeverSums(t *testing.T) {
+	const nodes, targets = 3, 46
+	m := &ReplicationMetrics{
+		Nodes:   nodes,
+		Targets: make(map[string]ReplicationTargetStats, targets),
+	}
+	for i := range targets {
+		m.Targets[fmt.Sprintf("peer:bucket-%d", i)] = ReplicationTargetStats{
+			Nodes:      nodes,
+			LastMinute: ReplicationStats{Nodes: nodes, Events: 1},
+			LastHour:   ReplicationStats{Nodes: nodes, Events: 100},
+			SinceStart: ReplicationStats{Nodes: nodes, Events: 1000},
+			LastDay: &SegmentedReplicationStats{
+				Interval: 900,
+				Segments: []ReplicationStats{{Nodes: nodes, Events: 50}},
+			},
+		}
+	}
+
+	all := m.AllTargets()
+	for _, tc := range []struct {
+		name string
+		got  int
+	}{
+		{"Nodes", all.Nodes},
+		{"LastMinute.Nodes", all.LastMinute.Nodes},
+		{"LastHour.Nodes", all.LastHour.Nodes},
+		{"SinceStart.Nodes", all.SinceStart.Nodes},
+	} {
+		if tc.got != nodes {
+			t.Errorf("%s = %d, want %d (summed across %d targets)", tc.name, tc.got, nodes, targets)
+		}
+	}
+	for i, s := range all.LastDay.Segments {
+		if s.Nodes != nodes {
+			t.Errorf("LastDay.Segments[%d].Nodes = %d, want %d", i, s.Nodes, nodes)
+		}
+	}
+
+	// Event counters are additive along the target axis and must be untouched.
+	if want := int64(targets * 100); all.LastHour.Events != want {
+		t.Errorf("LastHour.Events = %d, want %d", all.LastHour.Events, want)
+	}
+}
+
+// Each day segment is bounded on its own: a quarter hour that only some nodes
+// reported must not be rounded up to the whole-window figure. Two targets on a
+// 3-node cluster, second segment reported by one node each, gives 3 for the busy
+// segment and stays under it for the quiet one.
+func TestAllTargetsDayNodesArePerSegment(t *testing.T) {
+	ft := time.Date(2026, 8, 26, 10, 0, 0, 0, time.UTC)
+	day := func() *SegmentedReplicationStats {
+		return &SegmentedReplicationStats{
+			Interval: 900, FirstTime: ft,
+			Segments: []ReplicationStats{
+				{Nodes: 3, Events: 100},
+				{Nodes: 1, Events: 10},
+			},
+		}
+	}
+	m := &ReplicationMetrics{
+		Nodes: 3,
+		Targets: map[string]ReplicationTargetStats{
+			"peer:a": {Nodes: 3, LastHour: ReplicationStats{Nodes: 3, Events: 5}, LastDay: day()},
+			"peer:b": {Nodes: 3, LastHour: ReplicationStats{Nodes: 3, Events: 5}, LastDay: day()},
+		},
+	}
+
+	all := m.AllTargets()
+	// Segment 1 was reported by one node per target; whether that is the same
+	// node is not knowable from counts, so the sum stands where it is under the
+	// responding-node bound.
+	wantNodes := []int{3, 2}
+	wantEvents := []int64{200, 20} // Events really do sum across targets.
+	for i, seg := range all.LastDay.Segments {
+		if seg.Nodes != wantNodes[i] {
+			t.Errorf("LastDay.Segments[%d].Nodes = %d, want %d", i, seg.Nodes, wantNodes[i])
+		}
+		if seg.Events != wantEvents[i] {
+			t.Errorf("LastDay.Segments[%d].Events = %d, want %d", i, seg.Events, wantEvents[i])
+		}
+	}
+}
+
+// Each segment is clamped on its own: one over the bound comes down to it, one
+// under it is left alone, and a slot no target covered stays at zero.
+func TestReplicationDayNodesClampsPerSegment(t *testing.T) {
+	ft := time.Date(2026, 8, 26, 10, 0, 0, 0, time.UTC)
+	dst := &SegmentedReplicationStats{
+		Interval: 900, FirstTime: ft,
+		Segments: []ReplicationStats{
+			{Nodes: 6, Events: 100}, // summed over two targets, above the bound
+			{Nodes: 2, Events: 20},  // already under it
+			{Events: 0},             // uncovered
+		},
+	}
+	ReplicationDayNodes(dst, 3)
+
+	for i, want := range []int{3, 2, 0} {
+		if got := dst.Segments[i].Nodes; got != want {
+			t.Errorf("Segments[%d].Nodes = %d, want %d", i, got, want)
+		}
+	}
+	// Event counters sum across targets and must be untouched.
+	if got := dst.Segments[0].Events; got != 100 {
+		t.Errorf("Segments[0].Events = %d, want 100", got)
+	}
+}
+
+// Targets need not cover the same span: Add builds a unified timeline starting
+// at the earliest FirstTime, and the clamp must apply to those slots as merged.
+func TestReplicationDayNodesOffsetWindows(t *testing.T) {
+	ft := time.Date(2026, 8, 26, 10, 0, 0, 0, time.UTC)
+	early := &SegmentedReplicationStats{
+		Interval: 900, FirstTime: ft,
+		Segments: []ReplicationStats{{Nodes: 2, Events: 1}, {Nodes: 1, Events: 1}},
+	}
+	// Starts one interval later, so its segments land on slots 1 and 2.
+	late := &SegmentedReplicationStats{
+		Interval: 900, FirstTime: ft.Add(15 * time.Minute),
+		Segments: []ReplicationStats{{Nodes: 3, Events: 1}, {Nodes: 1, Events: 1}},
+	}
+
+	var merged SegmentedReplicationStats
+	merged.Add(early)
+	merged.Add(late)
+	ReplicationDayNodes(&merged, 3)
+
+	// Slot 1 summed to 4 across the two windows and comes down to the bound.
+	for i, want := range []int{2, 3, 1} {
+		if got := merged.Segments[i].Nodes; got != want {
+			t.Errorf("Segments[%d].Nodes = %d, want %d", i, got, want)
+		}
+	}
+}
+
+func TestReplicationDayNodesNilAndEmpty(t *testing.T) {
+	ReplicationDayNodes(nil, 3) // must not panic
+	empty := &SegmentedReplicationStats{Interval: 900}
+	ReplicationDayNodes(empty, 3)
+	if len(empty.Segments) != 0 {
+		t.Errorf("Segments = %d, want 0", len(empty.Segments))
+	}
+}
+
+// The time-axis counterpart of the above, for the replication family.
+func TestSegmentedReplicationTotalNodesNeverSums(t *testing.T) {
+	const nodes, segments = 3, 96
+	seg := &SegmentedReplicationStats{
+		Interval: 900,
+		Segments: make([]ReplicationStats, segments),
+	}
+	for i := range seg.Segments {
+		seg.Segments[i] = ReplicationStats{Nodes: nodes, Events: 100}
+	}
+
+	total := SegmentedReplicationTotal(seg)
+	if total.Nodes != nodes {
+		t.Errorf("Nodes = %d, want %d (summed across %d segments)", total.Nodes, nodes, segments)
+	}
+	if want := int64(segments * 100); total.Events != want {
+		t.Errorf("Events = %d, want %d", total.Events, want)
+	}
+}
+
+// A nil window is the common case for a target that has never replicated.
+func TestSegmentedReplicationTotalNil(t *testing.T) {
+	total := SegmentedReplicationTotal(nil)
+	if total.Nodes != 0 || total.Events != 0 {
+		t.Errorf("nil fold = %+v, want zero value", total)
+	}
+}
+
+// Targets that no node reported are skipped by Merge and must not drag the node
+// count down.
+func TestAllTargetsIgnoresUnreportedTargets(t *testing.T) {
+	m := &ReplicationMetrics{
+		Nodes: 3,
+		Targets: map[string]ReplicationTargetStats{
+			"peer:live": {Nodes: 3, LastHour: ReplicationStats{Nodes: 3, Events: 7}},
+			"peer:cold": {},
+		},
+	}
+	all := m.AllTargets()
+	if all.Nodes != 3 {
+		t.Errorf("Nodes = %d, want 3", all.Nodes)
+	}
+	if all.LastHour.Events != 7 {
+		t.Errorf("LastHour.Events = %d, want 7", all.LastHour.Events)
+	}
+}
+
+// oneNodeReplication is one node's report: every target it knows about carries
+// Nodes == 1. The day window, when given, is shared by all of that node's
+// targets.
+func oneNodeReplication(day *SegmentedReplicationStats, arns ...string) *ReplicationMetrics {
+	m := &ReplicationMetrics{Nodes: 1, Targets: make(map[string]ReplicationTargetStats, len(arns))}
+	for _, arn := range arns {
+		t := ReplicationTargetStats{
+			Nodes:      1,
+			LastMinute: ReplicationStats{Nodes: 1, Events: 1},
+			LastHour:   ReplicationStats{Nodes: 1, Events: 100},
+			SinceStart: ReplicationStats{Nodes: 1, Events: 1000},
+		}
+		if day != nil {
+			cp := *day
+			cp.Segments = append([]ReplicationStats(nil), day.Segments...)
+			t.LastDay = &cp
+		}
+		m.Targets[arn] = t
+	}
+	return m
+}
+
+func checkAllTargetNodes(t *testing.T, all ReplicationTargetStats, want int) {
+	t.Helper()
+	for _, tc := range []struct {
+		name string
+		got  int
+	}{
+		{"Nodes", all.Nodes},
+		{"LastMinute.Nodes", all.LastMinute.Nodes},
+		{"LastHour.Nodes", all.LastHour.Nodes},
+		{"SinceStart.Nodes", all.SinceStart.Nodes},
+	} {
+		if tc.got != want {
+			t.Errorf("%s = %d, want %d", tc.name, tc.got, want)
+		}
+	}
+}
+
+// A node gains a map entry for a target only once it has processed an event for
+// it, so reporter sets differ per target. Two nodes reporting one target each
+// leave every target at Nodes == 1 while two distinct nodes contributed to the
+// aggregate: the per-target maximum used to return 1.
+func TestAllTargetsDisjointReporters(t *testing.T) {
+	day := &SegmentedReplicationStats{
+		Interval: 900, FirstTime: time.Date(2026, 8, 26, 10, 0, 0, 0, time.UTC),
+		Segments: []ReplicationStats{{Nodes: 1, Events: 50}},
+	}
+
+	var m ReplicationMetrics
+	m.Merge(oneNodeReplication(day, "peer:a"))
+	m.Merge(oneNodeReplication(day, "peer:b"))
+
+	all := m.AllTargets()
+	checkAllTargetNodes(t, all, 2)
+	if got := all.LastDay.Segments[0].Nodes; got != 2 {
+		t.Errorf("LastDay.Segments[0].Nodes = %d, want 2", got)
+	}
+	// The per-target view is untouched: one node really did report each.
+	for _, arn := range []string{"peer:a", "peer:b"} {
+		if got := m.Targets[arn].Nodes; got != 1 {
+			t.Errorf("Targets[%s].Nodes = %d, want 1", arn, got)
+		}
+	}
+	// Event counters still sum along both axes.
+	if all.LastHour.Events != 200 {
+		t.Errorf("LastHour.Events = %d, want 200", all.LastHour.Events)
+	}
+}
+
+// Partially overlapping reporter sets. Three nodes: n1 reports both targets, n2
+// only peer:a, n3 only peer:b -- so each target has two reporters while three
+// nodes contributed. The per-target maximum used to return 2.
+func TestAllTargetsPartiallyOverlappingReporters(t *testing.T) {
+	day := &SegmentedReplicationStats{
+		Interval: 900, FirstTime: time.Date(2026, 8, 26, 10, 0, 0, 0, time.UTC),
+		Segments: []ReplicationStats{{Nodes: 1, Events: 10}, {Nodes: 1, Events: 10}},
+	}
+
+	var m ReplicationMetrics
+	m.Merge(oneNodeReplication(day, "peer:a", "peer:b"))
+	m.Merge(oneNodeReplication(day, "peer:a"))
+	m.Merge(oneNodeReplication(day, "peer:b"))
+
+	all := m.AllTargets()
+	checkAllTargetNodes(t, all, 3)
+
+	// Each slot summed to 4 across the four (node, target) windows covering it
+	// and comes down to the three nodes that responded. Events keep the sum.
+	for i, seg := range all.LastDay.Segments {
+		if seg.Nodes != 3 {
+			t.Errorf("LastDay.Segments[%d].Nodes = %d, want 3", i, seg.Nodes)
+		}
+		if seg.Events != 40 {
+			t.Errorf("LastDay.Segments[%d].Events = %d, want 40", i, seg.Events)
+		}
+	}
+}
+
+// The bound is the responding node count, so it overcounts when few nodes hold
+// many targets each: one node with three targets in a cluster where three
+// responded reports 3, not 1. Pinned deliberately -- the alternative, the
+// per-target maximum, undercounts the cases above, and counts alone cannot
+// separate the two.
+func TestAllTargetsClampOvercountsIdleNodes(t *testing.T) {
+	var m ReplicationMetrics
+	m.Merge(oneNodeReplication(nil, "peer:a", "peer:b", "peer:c"))
+	m.Merge(&ReplicationMetrics{Nodes: 1}) // responded, has processed nothing
+	m.Merge(&ReplicationMetrics{Nodes: 1})
+
+	if m.Nodes != 3 {
+		t.Fatalf("Nodes = %d, want 3: nodes without targets still responded", m.Nodes)
+	}
+	checkAllTargetNodes(t, m.AllTargets(), 3)
+}
+
+// Without a responding node count to bound the sum, fall back to the per-target
+// maximum rather than zeroing every count.
+func TestAllTargetsWithoutNodeCount(t *testing.T) {
+	m := &ReplicationMetrics{
+		Targets: map[string]ReplicationTargetStats{
+			"peer:a": {Nodes: 2, LastHour: ReplicationStats{Nodes: 2, Events: 7}},
+			"peer:b": {Nodes: 2, LastHour: ReplicationStats{Nodes: 2, Events: 7}},
+		},
+	}
+	all := m.AllTargets()
+	if all.Nodes != 2 {
+		t.Errorf("Nodes = %d, want 2", all.Nodes)
+	}
+	if all.LastHour.Events != 14 {
+		t.Errorf("LastHour.Events = %d, want 14", all.LastHour.Events)
 	}
 }
 

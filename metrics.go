@@ -1847,7 +1847,6 @@ func (m *RPCMetrics) LastMinuteTotal() RPCStats {
 		}
 	}
 
-	// Since we are merging across APIs must reset track node count.
 	return res
 }
 
@@ -2179,6 +2178,22 @@ func (a *APIStats) Merge(other APIStats) {
 // SegmentedAPIMetrics are segmented API metrics.
 type SegmentedAPIMetrics = Segmented[APIStats, *APIStats]
 
+// SegmentedAPITotal folds every time segment into a single APIStats.
+//
+// Merge sums Nodes, which is only correct along the node axis. The same nodes
+// report every segment, so folding along the time axis must not sum; Nodes is
+// set to the widest single segment instead.
+func SegmentedAPITotal(s SegmentedAPIMetrics) APIStats {
+	var res APIStats
+	var nodes int
+	for _, seg := range s.Segments {
+		res.Merge(seg)
+		nodes = max(nodes, seg.Nodes)
+	}
+	res.Nodes = nodes
+	return res
+}
+
 // APIMetrics contains metrics for API operations.
 type APIMetrics struct {
 	// Time these metrics were collected
@@ -2400,6 +2415,11 @@ func (s *Segmented[T, PT]) Add(other *Segmented[T, PT]) {
 }
 
 // Total returns the total of all segments.
+//
+// Every field is folded with T's Add, so fields that are not additive along the
+// time axis -- a count of reporting nodes, say -- come back multiplied by the
+// segment count. T is opaque here, so callers whose T has such a field must
+// correct it; see SegmentedAPITotal and SegmentedReplicationTotal.
 func (s *Segmented[T, PT]) Total() T {
 	var res T
 	if s == nil {
@@ -2409,7 +2429,6 @@ func (s *Segmented[T, PT]) Total() T {
 	for i := range s.Segments {
 		pt.Add(&s.Segments[i])
 	}
-	// Since we are merging across APIs must reset track node count.
 	return res
 }
 
@@ -2459,11 +2478,36 @@ func (m *ReplicationMetrics) Merge(other *ReplicationMetrics) {
 }
 
 // AllTargets returns aggregated stats for all targets.
+//
+// Node counts cannot be folded exactly along the target axis. A node gains a
+// map entry for a target only once it has processed an event for that target,
+// so reporter sets differ per target and the sums Merge leaves behind bound the
+// union of reporters without pinning it: max over targets is a lower bound, and
+// the number of nodes that responded is an upper one. Two targets reported by
+// one distinct node each give every target Nodes == 1 while two nodes really
+// contributed, so the lower bound undercounts; this clamps the sum to the upper
+// bound instead, which is exact whenever every responding node reported at
+// least one target, and never reads below the per-target maximum.
 func (m *ReplicationMetrics) AllTargets() ReplicationTargetStats {
 	var dst ReplicationTargetStats
+	var maxNodes int
 	for _, v := range m.Targets {
 		dst.Merge(&v)
+		maxNodes = max(maxNodes, v.Nodes)
 	}
+	nodes := m.Nodes
+	if nodes <= 0 {
+		// Nothing to clamp against, so fall back to the lower bound rather than
+		// zeroing every count.
+		nodes = maxNodes
+	}
+	dst.Nodes = min(dst.Nodes, nodes)
+	dst.LastMinute.Nodes = min(dst.LastMinute.Nodes, nodes)
+	dst.LastHour.Nodes = min(dst.LastHour.Nodes, nodes)
+	dst.SinceStart.Nodes = min(dst.SinceStart.Nodes, nodes)
+	// The day window is clamped per segment: a quarter hour that only some nodes
+	// reported must not be rounded up to the whole-window figure.
+	ReplicationDayNodes(dst.LastDay, nodes)
 	return dst
 }
 
@@ -2548,6 +2592,47 @@ type ReplicationStats struct {
 }
 
 type SegmentedReplicationStats = Segmented[ReplicationStats, *ReplicationStats]
+
+// ReplicationDayNodes clamps per-segment Nodes on dst, a window built by folding
+// per-target windows together, to nodes -- the number of nodes that responded.
+//
+// Segmented.Add sums every field, so a segment's Nodes comes back multiplied by
+// the number of targets covering it. Reporter sets differ per target, so the
+// union behind a segment is not recoverable from that sum; the responding node
+// count is the tightest bound available. Clamping per segment rather than over
+// the whole window keeps a quarter hour that only some nodes reported from being
+// rounded up to the cluster size. Event counters are left alone: those really do
+// sum across targets.
+//
+// See ReplicationMetrics.AllTargets for why the union cannot be derived.
+func ReplicationDayNodes(dst *SegmentedReplicationStats, nodes int) {
+	if dst == nil {
+		return
+	}
+	for i := range dst.Segments {
+		dst.Segments[i].Nodes = min(dst.Segments[i].Nodes, nodes)
+	}
+}
+
+// SegmentedReplicationTotal folds every time segment into a single
+// ReplicationStats.
+//
+// Add sums Nodes, which is only correct along the node axis. The same nodes
+// report every segment, so folding along the time axis must not sum; Nodes is
+// set to the widest single segment instead.
+func SegmentedReplicationTotal(s *SegmentedReplicationStats) ReplicationStats {
+	var res ReplicationStats
+	if s == nil {
+		return res
+	}
+	var nodes int
+	for i := range s.Segments {
+		res.Add(&s.Segments[i])
+		nodes = max(nodes, s.Segments[i].Nodes)
+	}
+	res.Nodes = nodes
+	return res
+}
 
 // Add 'other' to a.
 func (a *ReplicationStats) Add(other *ReplicationStats) {

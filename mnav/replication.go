@@ -725,10 +725,7 @@ func (node *ReplicationLastDayNode) GetLeafData() map[string]string {
 func (node *ReplicationLastDayNode) GetChild(name string) (MetricNode, error) {
 	// Handle "Total" entry - shows aggregated stats
 	if name == "Total" {
-		var total madmin.ReplicationStats
-		if node.segmented != nil {
-			total = node.segmented.Total()
-		}
+		total := madmin.SegmentedReplicationTotal(node.segmented)
 		return &ReplicationLastDayTotalNode{
 			targetName: node.targetName,
 			total:      total,
@@ -873,16 +870,24 @@ func (node *ReplicationLastDayAggregatedNode) aggregated() *madmin.SegmentedRepl
 		return nil
 	}
 	var merged madmin.SegmentedReplicationStats
-	var found bool
+	var maxNodes int
 	for _, t := range node.replication.Targets {
-		if t.LastDay != nil && len(t.LastDay.Segments) > 0 {
+		if t.LastDay != nil {
 			merged.Add(t.LastDay)
-			found = true
 		}
+		maxNodes = max(maxNodes, t.Nodes)
 	}
-	if !found {
+	if len(merged.Segments) == 0 {
 		return nil
 	}
+	// Add summed Nodes along the target axis; clamp to the responding nodes.
+	// With no count to clamp against, fall back to the per-target maximum rather
+	// than zeroing every segment, as AllTargets does.
+	nodes := node.replication.Nodes
+	if nodes <= 0 {
+		nodes = maxNodes
+	}
+	madmin.ReplicationDayNodes(&merged, nodes)
 	return &merged
 }
 
@@ -957,7 +962,7 @@ func (node *ReplicationLastDayAggregatedNode) GetChild(name string) (MetricNode,
 	}
 
 	if name == "Total" {
-		total := seg.Total()
+		total := madmin.SegmentedReplicationTotal(seg)
 		return &ReplicationLastDayTotalNode{
 			targetName: "all targets",
 			total:      total,
