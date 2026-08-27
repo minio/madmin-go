@@ -452,10 +452,10 @@ func TestReplicationDayTotalLeavesReportNodeCount(t *testing.T) {
 }
 
 // The all-targets day view folds every target's window onto one timeline, so a
-// segment's node count is summed along the target axis as well as reused along
-// the time axis. Two targets on a 3-node cluster reported "6" for a segment all
-// three nodes covered and "2" for one only a single node covered; both are the
-// per-target sum, and the second is not even the window's node count.
+// segment's node count comes out summed along the target axis. Two targets on a
+// 3-node cluster reported "6" for a segment all three nodes covered; each
+// segment is now bounded by the nodes that responded, per segment rather than
+// once for the window.
 func TestReplicationDayAggregatedNodeCountsArePerSegment(t *testing.T) {
 	day := func() *madmin.SegmentedReplicationStats {
 		return &madmin.SegmentedReplicationStats{
@@ -481,8 +481,10 @@ func TestReplicationDayAggregatedNodeCountsArePerSegment(t *testing.T) {
 	}{
 		// Both targets cover this slot with all three nodes.
 		{"replication/last_day/" + dupFirstTime.Format("15:04Z"), "3", "200"},
-		// One node per target covered this slot; events still sum.
-		{"replication/last_day/" + dupFirstTime.Add(15*time.Minute).Format("15:04Z"), "1", "20"},
+		// One node per target covered this slot. Whether that is the same node
+		// is not knowable from counts, so the sum stands under the bound of
+		// three; events still sum.
+		{"replication/last_day/" + dupFirstTime.Add(15*time.Minute).Format("15:04Z"), "2", "20"},
 		// The window total takes the widest segment, not the sum.
 		{"replication/last_day/Total", "3", "220"},
 	} {

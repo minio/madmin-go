@@ -870,18 +870,16 @@ func (node *ReplicationLastDayAggregatedNode) aggregated() *madmin.SegmentedRepl
 		return nil
 	}
 	var merged madmin.SegmentedReplicationStats
-	days := make([]*madmin.SegmentedReplicationStats, 0, len(node.replication.Targets))
 	for _, t := range node.replication.Targets {
-		if t.LastDay != nil && len(t.LastDay.Segments) > 0 {
+		if t.LastDay != nil {
 			merged.Add(t.LastDay)
-			days = append(days, t.LastDay)
 		}
 	}
-	if len(days) == 0 {
+	if len(merged.Segments) == 0 {
 		return nil
 	}
-	// Add summed Nodes along the target axis; recover the per-segment maximum.
-	madmin.ReplicationDayNodes(&merged, days...)
+	// Add summed Nodes along the target axis; clamp to the responding nodes.
+	madmin.ReplicationDayNodes(&merged, node.replication.Nodes)
 	return &merged
 }
 
