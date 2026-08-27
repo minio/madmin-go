@@ -1362,6 +1362,96 @@ func TestAllTargetsNodesNeverSums(t *testing.T) {
 	}
 }
 
+// Each day segment carries its own count: a quarter hour that only some nodes
+// reported must come back with that count, not the summed one Add leaves and not
+// the whole-window figure. Two targets on a 3-node cluster, second segment
+// reported by one node each, used to yield 3 (window figure) where Add left 2.
+func TestAllTargetsDayNodesArePerSegment(t *testing.T) {
+	ft := time.Date(2026, 8, 26, 10, 0, 0, 0, time.UTC)
+	day := func() *SegmentedReplicationStats {
+		return &SegmentedReplicationStats{
+			Interval: 900, FirstTime: ft,
+			Segments: []ReplicationStats{
+				{Nodes: 3, Events: 100},
+				{Nodes: 1, Events: 10},
+			},
+		}
+	}
+	m := &ReplicationMetrics{
+		Nodes: 3,
+		Targets: map[string]ReplicationTargetStats{
+			"peer:a": {Nodes: 3, LastHour: ReplicationStats{Nodes: 3, Events: 5}, LastDay: day()},
+			"peer:b": {Nodes: 3, LastHour: ReplicationStats{Nodes: 3, Events: 5}, LastDay: day()},
+		},
+	}
+
+	all := m.AllTargets()
+	wantNodes := []int{3, 1}
+	wantEvents := []int64{200, 20} // Events really do sum across targets.
+	for i, seg := range all.LastDay.Segments {
+		if seg.Nodes != wantNodes[i] {
+			t.Errorf("LastDay.Segments[%d].Nodes = %d, want %d", i, seg.Nodes, wantNodes[i])
+		}
+		if seg.Events != wantEvents[i] {
+			t.Errorf("LastDay.Segments[%d].Events = %d, want %d", i, seg.Events, wantEvents[i])
+		}
+	}
+}
+
+// Targets need not cover the same span: Add builds a unified timeline starting
+// at the earliest FirstTime, so the per-segment maximum has to be applied at the
+// right offset. A slot no target covered stays at zero.
+func TestReplicationDayNodesAlignsOffsetWindows(t *testing.T) {
+	ft := time.Date(2026, 8, 26, 10, 0, 0, 0, time.UTC)
+	early := &SegmentedReplicationStats{
+		Interval: 900, FirstTime: ft,
+		Segments: []ReplicationStats{{Nodes: 2, Events: 1}, {Nodes: 1, Events: 1}},
+	}
+	// Starts one interval later, so its segments land on slots 1 and 2.
+	late := &SegmentedReplicationStats{
+		Interval: 900, FirstTime: ft.Add(15 * time.Minute),
+		Segments: []ReplicationStats{{Nodes: 3, Events: 1}, {Nodes: 1, Events: 1}},
+	}
+
+	var merged SegmentedReplicationStats
+	merged.Add(early)
+	merged.Add(late)
+	ReplicationDayNodes(&merged, early, late)
+
+	for i, want := range []int{2, 3, 1} {
+		if got := merged.Segments[i].Nodes; got != want {
+			t.Errorf("Segments[%d].Nodes = %d, want %d", i, got, want)
+		}
+	}
+}
+
+// A window whose resolution does not match is dropped by Add, so it must not
+// contribute a node count either.
+func TestReplicationDayNodesSkipsMismatchedInterval(t *testing.T) {
+	ft := time.Date(2026, 8, 26, 10, 0, 0, 0, time.UTC)
+	dst := &SegmentedReplicationStats{
+		Interval: 900, FirstTime: ft,
+		Segments: []ReplicationStats{{Nodes: 99, Events: 1}},
+	}
+	other := &SegmentedReplicationStats{
+		Interval: 60, FirstTime: ft,
+		Segments: []ReplicationStats{{Nodes: 7, Events: 1}},
+	}
+	ReplicationDayNodes(dst, other)
+	if got := dst.Segments[0].Nodes; got != 0 {
+		t.Errorf("Nodes = %d, want 0: a mismatched resolution contributes nothing", got)
+	}
+}
+
+func TestReplicationDayNodesNilAndEmpty(t *testing.T) {
+	ReplicationDayNodes(nil) // must not panic
+	empty := &SegmentedReplicationStats{Interval: 900}
+	ReplicationDayNodes(empty, nil)
+	if len(empty.Segments) != 0 {
+		t.Errorf("Segments = %d, want 0", len(empty.Segments))
+	}
+}
+
 // The time-axis counterpart of the above, for the replication family.
 func TestSegmentedReplicationTotalNodesNeverSums(t *testing.T) {
 	const nodes, segments = 3, 96

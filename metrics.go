@@ -2481,12 +2481,16 @@ func (m *ReplicationMetrics) Merge(other *ReplicationMetrics) {
 func (m *ReplicationMetrics) AllTargets() ReplicationTargetStats {
 	var dst ReplicationTargetStats
 	var nodes, lastMinute, lastHour, sinceStart int
+	days := make([]*SegmentedReplicationStats, 0, len(m.Targets))
 	for _, v := range m.Targets {
 		dst.Merge(&v)
 		nodes = max(nodes, v.Nodes)
 		lastMinute = max(lastMinute, v.LastMinute.Nodes)
 		lastHour = max(lastHour, v.LastHour.Nodes)
 		sinceStart = max(sinceStart, v.SinceStart.Nodes)
+		if v.LastDay != nil {
+			days = append(days, v.LastDay)
+		}
 	}
 	// Merge sums Nodes, which is only correct along the node axis. The same
 	// nodes report every target, so folding across targets must not sum;
@@ -2495,13 +2499,9 @@ func (m *ReplicationMetrics) AllTargets() ReplicationTargetStats {
 	dst.LastMinute.Nodes = lastMinute
 	dst.LastHour.Nodes = lastHour
 	dst.SinceStart.Nodes = sinceStart
-	if dst.LastDay != nil {
-		// Per-segment counts cannot be recovered once the timelines are
-		// merged; nodes is an upper bound and never inflates.
-		for i := range dst.LastDay.Segments {
-			dst.LastDay.Segments[i].Nodes = nodes
-		}
-	}
+	// The day window keeps its own count per segment: a quarter hour that only
+	// some nodes reported must not be rounded up to the whole-window figure.
+	ReplicationDayNodes(dst.LastDay, days...)
 	return dst
 }
 
@@ -2593,6 +2593,38 @@ type SegmentedReplicationStats = Segmented[ReplicationStats, *ReplicationStats]
 // Add sums Nodes, which is only correct along the node axis. The same nodes
 // report every segment, so folding along the time axis must not sum; Nodes is
 // set to the widest single segment instead.
+// ReplicationDayNodes recomputes per-segment Nodes on dst, a window built by
+// folding the per-target windows in srcs together.
+//
+// Segmented.Add sums every field, so a segment's Nodes comes back multiplied by
+// the number of targets covering it. The same nodes report every target, so the
+// correct value is the per-segment maximum across srcs. Taking it per segment
+// rather than once for the whole window also keeps a segment that only some
+// nodes reported from being rounded up to the cluster size. Event counters are
+// left alone: those really do sum across targets.
+func ReplicationDayNodes(dst *SegmentedReplicationStats, srcs ...*SegmentedReplicationStats) {
+	if dst == nil || dst.Interval <= 0 {
+		return
+	}
+	step := time.Duration(dst.Interval) * time.Second
+	nodes := make([]int, len(dst.Segments))
+	for _, src := range srcs {
+		// Add drops mismatched resolutions, so they contribute nothing here either.
+		if src == nil || src.Interval != dst.Interval {
+			continue
+		}
+		off := int(src.FirstTime.Sub(dst.FirstTime) / step)
+		for i := range src.Segments {
+			if j := off + i; j >= 0 && j < len(nodes) {
+				nodes[j] = max(nodes[j], src.Segments[i].Nodes)
+			}
+		}
+	}
+	for i := range dst.Segments {
+		dst.Segments[i].Nodes = nodes[i]
+	}
+}
+
 func SegmentedReplicationTotal(s *SegmentedReplicationStats) ReplicationStats {
 	var res ReplicationStats
 	if s == nil {

@@ -451,6 +451,55 @@ func TestReplicationDayTotalLeavesReportNodeCount(t *testing.T) {
 	}
 }
 
+// The all-targets day view folds every target's window onto one timeline, so a
+// segment's node count is summed along the target axis as well as reused along
+// the time axis. Two targets on a 3-node cluster reported "6" for a segment all
+// three nodes covered and "2" for one only a single node covered; both are the
+// per-target sum, and the second is not even the window's node count.
+func TestReplicationDayAggregatedNodeCountsArePerSegment(t *testing.T) {
+	day := func() *madmin.SegmentedReplicationStats {
+		return &madmin.SegmentedReplicationStats{
+			Interval: 900, FirstTime: dupFirstTime,
+			Segments: []madmin.ReplicationStats{
+				{Nodes: 3, Events: 100, PutObject: 100},
+				{Nodes: 1, Events: 10, PutObject: 10},
+			},
+		}
+	}
+	nav := NewRealtimeMetricsNavigator(&madmin.RealtimeMetrics{
+		Aggregated: madmin.Metrics{Replication: &madmin.ReplicationMetrics{
+			Nodes: 3,
+			Targets: map[string]madmin.ReplicationTargetStats{
+				"peer:a": {Nodes: 3, LastHour: madmin.ReplicationStats{Nodes: 3, Events: 5}, LastDay: day()},
+				"peer:b": {Nodes: 3, LastHour: madmin.ReplicationStats{Nodes: 3, Events: 5}, LastDay: day()},
+			},
+		}},
+	})
+
+	for _, tc := range []struct {
+		path, nodes, events string
+	}{
+		// Both targets cover this slot with all three nodes.
+		{"replication/last_day/" + dupFirstTime.Format("15:04Z"), "3", "200"},
+		// One node per target covered this slot; events still sum.
+		{"replication/last_day/" + dupFirstTime.Add(15*time.Minute).Format("15:04Z"), "1", "20"},
+		// The window total takes the widest segment, not the sum.
+		{"replication/last_day/Total", "3", "220"},
+	} {
+		node, err := nav.Navigate(tc.path)
+		if err != nil {
+			t.Fatalf("navigate %s: %v", tc.path, err)
+		}
+		data := node.GetLeafData()
+		if got := leafValue(data, "Nodes Reporting"); got != tc.nodes {
+			t.Errorf("%s: Nodes Reporting = %q, want %q", tc.path, got, tc.nodes)
+		}
+		if got := leafValue(data, "Total Events"); got != tc.events {
+			t.Errorf("%s: Total Events = %q, want %q", tc.path, got, tc.events)
+		}
+	}
+}
+
 // Microsecond precision is what a sub-second latency needs and pure noise on a
 // figure of minutes, which is how a mean failed-wait rendered as
 // "13m19.506473s".
