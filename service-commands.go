@@ -170,6 +170,10 @@ type ServiceTraceOpts struct {
 	ILM               bool
 	KMS               bool
 	Formatting        bool
+	Admin             bool
+	Object            bool
+	Replication       bool
+	IAM               bool
 	PurgeOnDelete     bool
 	TablesScan        bool
 	SystemInventory   bool
@@ -202,6 +206,10 @@ func (t ServiceTraceOpts) TraceTypes() TraceType {
 	tt.SetIf(t.ILM, TraceILM)
 	tt.SetIf(t.KMS, TraceKMS)
 	tt.SetIf(t.Formatting, TraceFormatting)
+	tt.SetIf(t.Admin, TraceAdmin)
+	tt.SetIf(t.Object, TraceObject)
+	tt.SetIf(t.Replication, TraceReplication)
+	tt.SetIf(t.IAM, TraceIAM)
 	tt.SetIf(t.PurgeOnDelete, TracePurgeOnDelete)
 	tt.SetIf(t.TablesScan, TraceTablesScan)
 	tt.SetIf(t.SystemInventory, TraceSystemInventory)
@@ -235,6 +243,10 @@ func (t ServiceTraceOpts) AddParams(u url.Values) {
 	u.Set("ilm", strconv.FormatBool(t.ILM))
 	u.Set("kms", strconv.FormatBool(t.KMS))
 	u.Set("formatting", strconv.FormatBool(t.Formatting))
+	u.Set("admin", strconv.FormatBool(t.Admin))
+	u.Set("object", strconv.FormatBool(t.Object))
+	u.Set("replication", strconv.FormatBool(t.Replication))
+	u.Set("iam", strconv.FormatBool(t.IAM))
 	u.Set("purgeondelete", strconv.FormatBool(t.PurgeOnDelete))
 	u.Set("systeminventory", strconv.FormatBool(t.SystemInventory))
 	u.Set("tables-compaction", strconv.FormatBool(t.TablesCompaction))
@@ -262,6 +274,10 @@ func (t *ServiceTraceOpts) ParseParams(r *http.Request) (err error) {
 	t.ILM = r.Form.Get("ilm") == "true"
 	t.KMS = r.Form.Get("kms") == "true"
 	t.Formatting = r.Form.Get("formatting") == "true"
+	t.Admin = r.Form.Get("admin") == "true"
+	t.Object = r.Form.Get("object") == "true"
+	t.Replication = r.Form.Get("replication") == "true"
+	t.IAM = r.Form.Get("iam") == "true"
 	t.PurgeOnDelete = r.Form.Get("purgeondelete") == "true"
 	t.SystemInventory = r.Form.Get("systeminventory") == "true"
 	t.TablesCompaction = r.Form.Get("tables-compaction") == "true"
