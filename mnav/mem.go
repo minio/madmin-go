@@ -117,7 +117,7 @@ func (r *memRows) total(label string, v, whole uint64) {
 	if v == 0 {
 		return
 	}
-	r.add(label, fmtBytes(float64(v))+qualify(r.nodes, float64(v), float64(whole), fmtBytes))
+	r.add(label, fmtBytes(float64(v))+qualify(r.nodes, "node", float64(v), float64(whole), fmtBytes))
 }
 
 func (node *MemMetricsNavigator) GetLeafData() map[string]string {
@@ -333,7 +333,7 @@ func (node *MemSwapNode) GetLeafData() map[string]string {
 	// Rendered even at zero: "none in use" is the reassurance being looked for,
 	// and hiding it makes a healthy cluster look unreported.
 	used := info.SwapSpaceTotal - info.SwapSpaceFree
-	r.add("Used", fmtBytes(float64(used))+qualify(r.nodes, float64(used), float64(info.SwapSpaceTotal), fmtBytes))
+	r.add("Used", fmtBytes(float64(used))+qualify(r.nodes, "node", float64(used), float64(info.SwapSpaceTotal), fmtBytes))
 	r.total("Free", info.SwapSpaceFree, info.SwapSpaceTotal)
 	if info.Total > 0 {
 		r.add("Swap : RAM", fmt.Sprintf("%.2f : 1", float64(info.SwapSpaceTotal)/float64(info.Total)))

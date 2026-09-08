@@ -113,7 +113,7 @@ func (r *procRows) total(label string, v float64, render func(float64) string) {
 	if v == 0 {
 		return
 	}
-	r.add(label, render(v)+qualify(r.count, v, 0, render))
+	r.add(label, render(v)+qualify(r.count, "process", v, 0, render))
 }
 
 // share is total with the value's percentage of a whole, for the breakdowns whose
@@ -122,7 +122,7 @@ func (r *procRows) share(label string, v, whole float64, render func(float64) st
 	if v == 0 {
 		return
 	}
-	r.add(label, render(v)+qualify(r.count, v, whole, render))
+	r.add(label, render(v)+qualify(r.count, "process", v, whole, render))
 }
 
 // counter is total with the per-process rate over the uptime, which is the window
@@ -131,7 +131,7 @@ func (r *procRows) counter(label string, v float64, render func(float64) string,
 	if v == 0 {
 		return
 	}
-	value := render(v) + qualify(r.count, v, 0, render)
+	value := render(v) + qualify(r.count, "process", v, 0, render)
 	if r.up > 0 {
 		value += ", " + fmtRate(v/float64(r.count)/r.up.Seconds(), render, unit)
 	}

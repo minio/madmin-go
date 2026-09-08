@@ -27,8 +27,12 @@ import (
 
 // Every process value on the wire is a sum over the processes that reported, so
 // the fleet figure alone answers nothing: "File Descriptors 38,102" across 17
-// nodes is 2,241 each, and only the second number is comparable to a limit.
-func TestProcessValuesCarryPerNodeMean(t *testing.T) {
+// processes is 2,241 each, and only the second number is comparable to a limit.
+//
+// The divisor is Count, so the mean is labelled per process rather than per node.
+// The two are equal on a normal deployment and the section states both, but a
+// host running more than one server would make "/node" a lie.
+func TestProcessValuesCarryPerProcessMean(t *testing.T) {
 	const nodes = 17
 	nav := NewRealtimeMetricsNavigator(&madmin.RealtimeMetrics{
 		Aggregated: madmin.Metrics{Process: &madmin.ProcessMetrics{
@@ -52,12 +56,12 @@ func TestProcessValuesCarryPerNodeMean(t *testing.T) {
 	for _, want := range []struct{ label, value string }{
 		{"Nodes", "17 node(s)"},
 		{"Uptime", "1h (mean per process)"},
-		{"CPU", "142.8% (8.4%/node)"},
-		{"Threads", "4,216 (248/node)"},
-		{"File Descriptors", "38,097 (2,241/node)"},
-		{"Resident", "36 GB (2.1 GB/node)"},
+		{"CPU", "142.8% (8.4%/process)"},
+		{"Threads", "4,216 (248/process)"},
+		{"File Descriptors", "38,097 (2,241/process)"},
+		{"Resident", "36 GB (2.1 GB/process)"},
 		// Cumulative since process start, so it carries the rate over the uptime.
-		{"Read", "61 GB (3.6 GB/node), 1.0 MB/s"},
+		{"Read", "61 GB (3.6 GB/process), 1.0 MB/s"},
 	} {
 		if got := leafValue(data, want.label); got != want.value {
 			t.Errorf("%s = %q, want %q", want.label, got, want.value)
@@ -90,8 +94,8 @@ func TestProcessSubsectionRatesUseParentUptime(t *testing.T) {
 	}
 	data := node.GetLeafData()
 	for _, want := range []struct{ label, value string }{
-		{"Read", "14 GB (3.6 GB/node), 1.0 MB/s"},
-		{"Reads", "144,000 (36,000/node), 10 ops/s"},
+		{"Read", "14 GB (3.6 GB/process), 1.0 MB/s"},
+		{"Reads", "144,000 (36,000/process), 10 ops/s"},
 		{"Mean Read", "100 kB"},
 	} {
 		if got := leafValue(data, want.label); got != want.value {

@@ -215,7 +215,7 @@ func (r *runtimeRows) share(v goVals, label, key string, whole float64, render f
 	if !ok {
 		return
 	}
-	r.add(label, render(part)+qualify(v.nodes, part, whole, render))
+	r.add(label, render(part)+qualify(v.nodes, "node", part, whole, render))
 }
 
 // cpuShare renders a CPU class against the CPU time available since start.
@@ -232,7 +232,7 @@ func (r *runtimeRows) cpuShare(v goVals, label, key string) {
 	if !okTotal {
 		total = 0
 	}
-	r.add(label, fmtSecs(part)+" CPU-time"+qualify(v.nodes, part, total, fmtSecs))
+	r.add(label, fmtSecs(part)+" CPU-time"+qualify(v.nodes, "node", part, total, fmtSecs))
 }
 
 // hist renders a histogram row, skipping one the reporting Go version omits.

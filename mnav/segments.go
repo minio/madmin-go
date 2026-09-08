@@ -326,13 +326,18 @@ func fmtPct(part, whole float64) string {
 	return "0%"
 }
 
-// qualify is the parenthesised tail a value carries: its per-node mean, and its
-// share of a whole where there is one. Either may be absent -- a single node has
-// no mean worth repeating -- and with neither the value stands alone.
-func qualify(nodes int, part, whole float64, render func(float64) string) string {
+// qualify is the parenthesised tail a value carries: its mean over the things
+// that reported it, and its share of a whole where there is one. Either may be
+// absent -- a single reporter has no mean worth repeating -- and with neither the
+// value stands alone.
+//
+// unit names what reporters counts, because the families do not agree: memory and
+// the Go runtime divide by nodes, while the process family divides by processes
+// and says so, since a host may run more than one.
+func qualify(reporters int, unit string, part, whole float64, render func(float64) string) string {
 	var parts []string
-	if nodes > 1 {
-		parts = append(parts, render(part/float64(nodes))+"/node")
+	if reporters > 1 {
+		parts = append(parts, render(part/float64(reporters))+"/"+unit)
 	}
 	if whole > 0 {
 		parts = append(parts, fmtPct(part, whole))
