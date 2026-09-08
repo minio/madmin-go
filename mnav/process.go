@@ -60,71 +60,118 @@ func (node *ProcessMetricsNode) GetChildren() []MetricChild {
 	return children
 }
 
+// procUptime is the mean per-process uptime: TotalRunningSecs is now minus each
+// process's start, summed, so Count is what turns it back into one process's.
+//
+// It is the window every cumulative counter in this family is measured over --
+// I/O, faults and switches are all since process start -- and being a mean, it
+// hides a node that restarted while the others stayed up.
+func procUptime(p *madmin.ProcessMetrics) (time.Duration, bool) {
+	if p == nil || p.Count <= 0 || p.TotalRunningSecs <= 0 {
+		return 0, false
+	}
+	return time.Duration(p.TotalRunningSecs / float64(p.Count) * float64(time.Second)), true
+}
+
+// procAncestor walks up to the node holding the whole sample, so a subsection can
+// reach the uptime and process count that its own struct does not carry.
+func procAncestor(n MetricNode) *madmin.ProcessMetrics {
+	for ; n != nil; n = n.GetParent() {
+		if p, ok := n.(*ProcessMetricsNode); ok {
+			return p.process
+		}
+	}
+	return nil
+}
+
+// procRows builds leaf data in display order, dividing every summed value back
+// down to one process.
+//
+// Everything on this wire is a sum over the processes that reported: a 17-node
+// cluster's file-descriptor count is the fleet total, and a bare total answers no
+// question an operator has. count is what makes it per-process, and each
+// subsection carries its own because a node can report memory but not I/O.
+type procRows struct {
+	data  map[string]string
+	n     int
+	count int
+	up    time.Duration
+}
+
+func newProcRows(count int, up time.Duration) *procRows {
+	return &procRows{data: make(map[string]string), count: max(count, 1), up: up}
+}
+
+func (r *procRows) add(label, value string) {
+	r.data[fmt.Sprintf("%02d:%s", r.n, label)] = value
+	r.n++
+}
+
+// total states a summed value as the cluster figure with the per-process mean
+// behind it, and skips a value nobody reported.
+func (r *procRows) total(label string, v float64, render func(float64) string) {
+	if v == 0 {
+		return
+	}
+	r.add(label, render(v)+qualify(r.count, v, 0, render))
+}
+
+// share is total with the value's percentage of a whole, for the breakdowns whose
+// point is the split.
+func (r *procRows) share(label string, v, whole float64, render func(float64) string) {
+	if v == 0 {
+		return
+	}
+	r.add(label, render(v)+qualify(r.count, v, whole, render))
+}
+
+// counter is total with the per-process rate over the uptime, which is the window
+// a value cumulative since process start was accrued over.
+func (r *procRows) counter(label string, v float64, render func(float64) string, unit string) {
+	if v == 0 {
+		return
+	}
+	value := render(v) + qualify(r.count, v, 0, render)
+	if r.up > 0 {
+		value += ", " + fmtRate(v/float64(r.count)/r.up.Seconds(), render, unit)
+	}
+	r.add(label, value)
+}
+
 func (node *ProcessMetricsNode) GetLeafData() map[string]string {
 	if node.process == nil {
 		return map[string]string{"Status": "No process metrics available"}
 	}
+	p := node.process
+	up, hasUp := procUptime(p)
+	r := newProcRows(p.Count, up)
 
-	data := make(map[string]string)
-
-	// Overview
-	data["00:Process Overview"] = fmt.Sprintf("Collected at %s",
-		node.process.CollectedAt.Format("2006-01-02 15:04:05"))
-
-	// Cluster information
-	if node.process.Nodes > 0 {
-		data["Cluster Status"] = fmt.Sprintf("%s nodes reporting", humanize.Comma(int64(node.process.Nodes)))
-		if node.process.Count > 0 {
-			data["Total Processes"] = fmt.Sprintf("%s MinIO processes", humanize.Comma(int64(node.process.Count)))
-		}
+	r.add("Collected At", p.CollectedAt.Format("2006-01-02 15:04:05"))
+	if p.Nodes > 0 {
+		r.add("Nodes", formatNodeCount(p.Nodes, 1))
+	}
+	if p.Count > 0 && p.Count != p.Nodes {
+		r.add("Processes", humanize.Comma(int64(p.Count)))
+	}
+	if hasUp {
+		r.add("Uptime", coverDuration(up)+" (mean per process)")
+	}
+	if p.RunningProcesses > 0 || p.BackgroundProcesses > 0 {
+		r.add("Running / Background", fmt.Sprintf("%d / %d", p.RunningProcesses, p.BackgroundProcesses))
 	}
 
-	// Process status
-	if node.process.RunningProcesses > 0 || node.process.BackgroundProcesses > 0 {
-		data["Running Processes"] = humanize.Comma(int64(node.process.RunningProcesses))
-		data["Background Processes"] = humanize.Comma(int64(node.process.BackgroundProcesses))
-	}
-
-	// Key performance metrics
-	if node.process.TotalCPUPercent > 0 {
-		data["Total CPU Usage"] = fmt.Sprintf("%.2f%% across cluster", node.process.TotalCPUPercent)
-	}
-
-	if node.process.TotalRunningSecs > 0 {
-		uptime := time.Duration(node.process.TotalRunningSecs) * time.Second
-		data["Cumulative Uptime"] = formatDuration(uptime)
-	}
-
-	// Resource utilization
-	if node.process.TotalNumConnections > 0 {
-		data["Network Connections"] = humanize.Comma(int64(node.process.TotalNumConnections))
-	}
-
-	if node.process.TotalNumFDs > 0 {
-		data["File Descriptors"] = humanize.Comma(node.process.TotalNumFDs)
-	}
-
-	if node.process.TotalNumThreads > 0 {
-		data["Total Threads"] = humanize.Comma(node.process.TotalNumThreads)
-	}
-
-	// Memory summary
-	if node.process.MemInfo.RSS > 0 {
-		data["Resident Memory"] = humanize.Bytes(node.process.MemInfo.RSS)
-		if node.process.MemInfo.VMS > 0 {
-			data["Virtual Memory"] = humanize.Bytes(node.process.MemInfo.VMS)
-		}
-	}
-
-	// I/O summary
-	if node.process.IOCounters.ReadBytes > 0 || node.process.IOCounters.WriteBytes > 0 {
-		data["Total Read I/O"] = humanize.Bytes(node.process.IOCounters.ReadBytes)
-		data["Total Write I/O"] = humanize.Bytes(node.process.IOCounters.WriteBytes)
-	}
+	r.total("CPU", p.TotalCPUPercent, func(v float64) string { return fmt.Sprintf("%.1f%%", v) })
+	r.total("Threads", float64(p.TotalNumThreads), fmtCount)
+	r.total("File Descriptors", float64(p.TotalNumFDs), fmtCount)
+	r.total("Connections", float64(p.TotalNumConnections), fmtCount)
+	r.total("Resident", float64(p.MemInfo.RSS), fmtBytes)
+	r.total("Virtual", float64(p.MemInfo.VMS), fmtBytes)
+	r.counter("Read", float64(p.IOCounters.ReadBytes), fmtBytes, "")
+	r.counter("Written", float64(p.IOCounters.WriteBytes), fmtBytes, "")
 
 	// Kernel thread states, busiest first.
-	if len(node.process.ThreadStates) > 0 {
-		data["Thread States"] = formatCountMap(node.process.ThreadStates, 8)
+	if len(p.ThreadStates) > 0 {
+		r.add("Thread States", formatCountMap(p.ThreadStates, 8))
 	}
 
 	// PSI: mean stall across the reporting nodes, with the worst node, so a
@@ -136,8 +183,8 @@ func (node *ProcessMetricsNode) GetLeafData() map[string]string {
 	for _, line := range psiLineOrder {
 		known[line] = true
 	}
-	extra := make([]string, 0, len(node.process.Pressure))
-	for line := range node.process.Pressure {
+	extra := make([]string, 0, len(p.Pressure))
+	for line := range p.Pressure {
 		if !known[line] {
 			extra = append(extra, line)
 		}
@@ -145,7 +192,7 @@ func (node *ProcessMetricsNode) GetLeafData() map[string]string {
 	sort.Strings(extra)
 
 	for _, line := range append(append([]string{}, psiLineOrder...), extra...) {
-		stall, ok := node.process.Pressure[line]
+		stall, ok := p.Pressure[line]
 		if !ok || stall.N == 0 {
 			continue
 		}
@@ -153,21 +200,21 @@ func (node *ProcessMetricsNode) GetLeafData() map[string]string {
 		if !ok {
 			label = line
 		}
-		data["Pressure "+label] = fmt.Sprintf("%.2f%% avg10 (max %.2f%%), %s stalled",
+		r.add("Pressure "+label, fmt.Sprintf("%.2f%% avg10 (max %.2f%%), %s stalled",
 			stall.Avg10Sum/float64(stall.N), stall.Avg10Max,
-			formatDuration(time.Duration(stall.StallUS)*time.Microsecond))
+			fmtSecs(float64(stall.StallUS)/1e6)))
 	}
 
-	if d := node.process.DState; d != nil {
+	if d := p.DState; d != nil {
 		if len(d.DwellBuckets) > 0 {
-			data["Uninterruptible Dwell"] = formatDwellBuckets(d.DwellBuckets, d.WindowSecs)
+			r.add("Uninterruptible Dwell", formatDwellBuckets(d.DwellBuckets, d.WindowSecs))
 		}
 		if len(d.ByWchan) > 0 {
-			data["Uninterruptible By Wchan"] = formatCountMap(d.ByWchan, 5)
+			r.add("Uninterruptible By Wchan", formatCountMap(d.ByWchan, 5))
 		}
 	}
 
-	return data
+	return r.data
 }
 
 // psiLineOrder fixes the display order of PSI lines; psiLineLabels gives each
@@ -296,61 +343,40 @@ func (node *ProcessCPUTimesNode) GetLeafData() map[string]string {
 	if node.cpuTimes == nil {
 		return map[string]string{"Status": "No CPU timing data available"}
 	}
+	c := node.cpuTimes
+	up, _ := procUptime(procAncestor(node))
+	r := newProcRows(c.Count, up)
 
-	data := make(map[string]string)
-
-	if node.cpuTimes.Count > 0 {
-		data["Data Sources"] = fmt.Sprintf("%d processes reporting", node.cpuTimes.Count)
+	total := c.User + c.System + c.Idle + c.Nice + c.Iowait + c.Irq +
+		c.Softirq + c.Steal + c.Guest + c.GuestNice
+	if total == 0 {
+		return map[string]string{"Status": "No CPU time recorded"}
 	}
-
-	// Calculate total time for percentages
-	totalTime := node.cpuTimes.User + node.cpuTimes.System + node.cpuTimes.Idle +
-		node.cpuTimes.Nice + node.cpuTimes.Iowait + node.cpuTimes.Irq +
-		node.cpuTimes.Softirq + node.cpuTimes.Steal + node.cpuTimes.Guest +
-		node.cpuTimes.GuestNice
-
-	if totalTime > 0 {
-		data["00:CPU"] = "Cumulative CPU time across all processes"
-
-		data["User Time"] = fmt.Sprintf("%.2f seconds (%.1f%%)",
-			node.cpuTimes.User, (node.cpuTimes.User/totalTime)*100)
-		data["System Time"] = fmt.Sprintf("%.2f seconds (%.1f%%)",
-			node.cpuTimes.System, (node.cpuTimes.System/totalTime)*100)
-		data["Idle Time"] = fmt.Sprintf("%.2f seconds (%.1f%%)",
-			node.cpuTimes.Idle, (node.cpuTimes.Idle/totalTime)*100)
-
-		// Only show non-zero times
-		if node.cpuTimes.Nice > 0 {
-			data["Nice Time"] = fmt.Sprintf("%.2f seconds (%.1f%%)",
-				node.cpuTimes.Nice, (node.cpuTimes.Nice/totalTime)*100)
-		}
-		if node.cpuTimes.Iowait > 0 {
-			data["IO Wait Time"] = fmt.Sprintf("%.2f seconds (%.1f%%)",
-				node.cpuTimes.Iowait, (node.cpuTimes.Iowait/totalTime)*100)
-		}
-		if node.cpuTimes.Irq > 0 {
-			data["IRQ Time"] = fmt.Sprintf("%.2f seconds (%.1f%%)",
-				node.cpuTimes.Irq, (node.cpuTimes.Irq/totalTime)*100)
-		}
-		if node.cpuTimes.Softirq > 0 {
-			data["Soft IRQ Time"] = fmt.Sprintf("%.2f seconds (%.1f%%)",
-				node.cpuTimes.Softirq, (node.cpuTimes.Softirq/totalTime)*100)
-		}
-		if node.cpuTimes.Steal > 0 {
-			data["Steal Time"] = fmt.Sprintf("%.2f seconds (%.1f%%)",
-				node.cpuTimes.Steal, (node.cpuTimes.Steal/totalTime)*100)
-		}
-		if node.cpuTimes.Guest > 0 {
-			data["Guest Time"] = fmt.Sprintf("%.2f seconds (%.1f%%)",
-				node.cpuTimes.Guest, (node.cpuTimes.Guest/totalTime)*100)
-		}
-		if node.cpuTimes.GuestNice > 0 {
-			data["Guest Nice Time"] = fmt.Sprintf("%.2f seconds (%.1f%%)",
-				node.cpuTimes.GuestNice, (node.cpuTimes.GuestNice/totalTime)*100)
-		}
+	r.add("Processes", humanize.Comma(int64(max(c.Count, 1))))
+	// Cumulative since process start, so the share of the uptime is what says
+	// how busy a process was; the seconds alone only say how long it has run.
+	if up > 0 {
+		r.add("Busy", fmtPct(total-c.Idle, up.Seconds()*float64(max(c.Count, 1)))+" of one core, per process")
 	}
-
-	return data
+	r.share("Total", total, 0, fmtSecs)
+	for _, row := range []struct {
+		label string
+		v     float64
+	}{
+		{"User", c.User},
+		{"System", c.System},
+		{"Idle", c.Idle},
+		{"Nice", c.Nice},
+		{"IO Wait", c.Iowait},
+		{"IRQ", c.Irq},
+		{"Soft IRQ", c.Softirq},
+		{"Steal", c.Steal},
+		{"Guest", c.Guest},
+		{"Guest Nice", c.GuestNice},
+	} {
+		r.share(row.label, row.v, total, fmtSecs)
+	}
+	return r.data
 }
 
 func (node *ProcessCPUTimesNode) GetChild(_ string) (MetricNode, error) {
@@ -389,44 +415,30 @@ func (node *ProcessMemoryInfoNode) GetLeafData() map[string]string {
 	if node.memInfo == nil {
 		return map[string]string{"Status": "No memory information available"}
 	}
-
-	data := make(map[string]string)
-
-	if node.memInfo.Count > 0 {
-		data["Data Sources"] = fmt.Sprintf("%d processes reporting", node.memInfo.Count)
+	m := node.memInfo
+	r := newProcRows(m.Count, 0)
+	r.add("Processes", humanize.Comma(int64(max(m.Count, 1))))
+	// Resident first: it is the number that decides whether a host is about to
+	// run out. Virtual and the segment breakdown explain its shape.
+	for _, row := range []struct {
+		label string
+		v     uint64
+	}{
+		{"Resident", m.RSS},
+		{"Peak Resident", m.HWM},
+		{"Virtual", m.VMS},
+		{"Data", m.Data},
+		{"Stack", m.Stack},
+		{"Shared", m.Shared},
+		{"Locked", m.Locked},
+		{"Swap", m.Swap},
+	} {
+		r.total(row.label, float64(row.v), fmtBytes)
 	}
-
-	data["00:Memory usage"] = "Cumulative memory usage across all processes"
-
-	// Primary memory metrics
-	if node.memInfo.RSS > 0 {
-		data["Resident Set Size"] = humanize.Bytes(node.memInfo.RSS)
+	if r.n == 1 {
+		return map[string]string{"Status": "No memory usage recorded"}
 	}
-	if node.memInfo.VMS > 0 {
-		data["Virtual Memory Size"] = humanize.Bytes(node.memInfo.VMS)
-	}
-	if node.memInfo.HWM > 0 {
-		data["High Water Mark"] = humanize.Bytes(node.memInfo.HWM)
-	}
-
-	// Detailed memory breakdown
-	if node.memInfo.Data > 0 {
-		data["Data Segment"] = humanize.Bytes(node.memInfo.Data)
-	}
-	if node.memInfo.Stack > 0 {
-		data["Stack Memory"] = humanize.Bytes(node.memInfo.Stack)
-	}
-	if node.memInfo.Shared > 0 {
-		data["Shared Memory"] = humanize.Bytes(node.memInfo.Shared)
-	}
-	if node.memInfo.Locked > 0 {
-		data["Locked Memory"] = humanize.Bytes(node.memInfo.Locked)
-	}
-	if node.memInfo.Swap > 0 {
-		data["Swap Memory"] = humanize.Bytes(node.memInfo.Swap)
-	}
-
-	return data
+	return r.data
 }
 
 func (node *ProcessMemoryInfoNode) GetChild(_ string) (MetricNode, error) {
@@ -465,42 +477,26 @@ func (node *ProcessIOCountersNode) GetLeafData() map[string]string {
 	if node.ioCounters == nil {
 		return map[string]string{"Status": "No I/O statistics available"}
 	}
-
-	data := make(map[string]string)
-
-	if node.ioCounters.Count > 0 {
-		data["Data Sources"] = fmt.Sprintf("%d processes reporting", node.ioCounters.Count)
+	io := node.ioCounters
+	up, _ := procUptime(procAncestor(node))
+	r := newProcRows(io.Count, up)
+	r.add("Processes", humanize.Comma(int64(max(io.Count, 1))))
+	r.counter("Read", float64(io.ReadBytes), fmtBytes, "")
+	r.counter("Written", float64(io.WriteBytes), fmtBytes, "")
+	r.counter("Reads", float64(io.ReadCount), fmtCount, "ops")
+	r.counter("Writes", float64(io.WriteCount), fmtCount, "ops")
+	// Mean request size says whether the load is streaming or metadata-shaped,
+	// which the byte and operation counts only imply separately.
+	if io.ReadCount > 0 && io.ReadBytes > 0 {
+		r.add("Mean Read", fmtBytes(float64(io.ReadBytes)/float64(io.ReadCount)))
 	}
-
-	data["00:I/O"] = "Cumulative I/O operations across all processes"
-
-	// Operation counts
-	if node.ioCounters.ReadCount > 0 {
-		data["Read Operations"] = humanize.Comma(int64(node.ioCounters.ReadCount))
+	if io.WriteCount > 0 && io.WriteBytes > 0 {
+		r.add("Mean Write", fmtBytes(float64(io.WriteBytes)/float64(io.WriteCount)))
 	}
-	if node.ioCounters.WriteCount > 0 {
-		data["Write Operations"] = humanize.Comma(int64(node.ioCounters.WriteCount))
+	if r.n == 1 {
+		return map[string]string{"Status": "No I/O recorded"}
 	}
-
-	// Data transferred
-	if node.ioCounters.ReadBytes > 0 {
-		data["Bytes Read"] = humanize.Bytes(node.ioCounters.ReadBytes)
-	}
-	if node.ioCounters.WriteBytes > 0 {
-		data["Bytes Written"] = humanize.Bytes(node.ioCounters.WriteBytes)
-	}
-
-	// Calculate averages if we have both counts and bytes
-	if node.ioCounters.ReadCount > 0 && node.ioCounters.ReadBytes > 0 {
-		avgReadSize := float64(node.ioCounters.ReadBytes) / float64(node.ioCounters.ReadCount)
-		data["Average Read Size"] = humanize.Bytes(uint64(avgReadSize))
-	}
-	if node.ioCounters.WriteCount > 0 && node.ioCounters.WriteBytes > 0 {
-		avgWriteSize := float64(node.ioCounters.WriteBytes) / float64(node.ioCounters.WriteCount)
-		data["Average Write Size"] = humanize.Bytes(uint64(avgWriteSize))
-	}
-
-	return data
+	return r.data
 }
 
 func (node *ProcessIOCountersNode) GetChild(_ string) (MetricNode, error) {
@@ -539,34 +535,21 @@ func (node *ProcessCtxSwitchesNode) GetLeafData() map[string]string {
 	if node.ctxSwitches == nil {
 		return map[string]string{"Status": "No context switch data available"}
 	}
-
-	data := make(map[string]string)
-
-	if node.ctxSwitches.Count > 0 {
-		data["Data Sources"] = fmt.Sprintf("%d processes reporting", node.ctxSwitches.Count)
+	c := node.ctxSwitches
+	total := c.Voluntary + c.Involuntary
+	if total == 0 {
+		return map[string]string{"Status": "No context switches recorded"}
 	}
-
-	data["00:Context Switches"] = "Cumulative context switches across all processes"
-
-	totalSwitches := node.ctxSwitches.Voluntary + node.ctxSwitches.Involuntary
-
-	if totalSwitches > 0 {
-		data["Total Context Switches"] = humanize.Comma(totalSwitches)
-
-		if node.ctxSwitches.Voluntary > 0 {
-			voluntaryPercent := float64(node.ctxSwitches.Voluntary) / float64(totalSwitches) * 100
-			data["Voluntary Switches"] = fmt.Sprintf("%s (%.1f%%)",
-				humanize.Comma(node.ctxSwitches.Voluntary), voluntaryPercent)
-		}
-
-		if node.ctxSwitches.Involuntary > 0 {
-			involuntaryPercent := float64(node.ctxSwitches.Involuntary) / float64(totalSwitches) * 100
-			data["Involuntary Switches"] = fmt.Sprintf("%s (%.1f%%)",
-				humanize.Comma(node.ctxSwitches.Involuntary), involuntaryPercent)
-		}
-	}
-
-	return data
+	up, _ := procUptime(procAncestor(node))
+	r := newProcRows(c.Count, up)
+	r.add("Processes", humanize.Comma(int64(max(c.Count, 1))))
+	r.counter("Total", float64(total), fmtCount, "")
+	// Voluntary means the thread blocked and gave the CPU up; involuntary means
+	// the scheduler took it away, which is the one that says the box is
+	// oversubscribed.
+	r.share("Voluntary", float64(c.Voluntary), float64(total), fmtCount)
+	r.share("Involuntary", float64(c.Involuntary), float64(total), fmtCount)
+	return r.data
 }
 
 func (node *ProcessCtxSwitchesNode) GetChild(_ string) (MetricNode, error) {
@@ -605,47 +588,23 @@ func (node *ProcessPageFaultsNode) GetLeafData() map[string]string {
 	if node.pageFaults == nil {
 		return map[string]string{"Status": "No page fault data available"}
 	}
-
-	data := make(map[string]string)
-
-	if node.pageFaults.Count > 0 {
-		data["Data Sources"] = fmt.Sprintf("%d processes reporting", node.pageFaults.Count)
+	f := node.pageFaults
+	total := f.MinorFaults + f.MajorFaults
+	if total == 0 {
+		return map[string]string{"Status": "No page faults recorded"}
 	}
-
-	data["00:Page Faults"] = "Cumulative page faults across all processes"
-
-	totalFaults := node.pageFaults.MinorFaults + node.pageFaults.MajorFaults
-	totalChildFaults := node.pageFaults.ChildMinorFaults + node.pageFaults.ChildMajorFaults
-
-	if totalFaults > 0 {
-		data["Total Page Faults"] = humanize.Comma(int64(totalFaults))
-
-		if node.pageFaults.MinorFaults > 0 {
-			minorPercent := float64(node.pageFaults.MinorFaults) / float64(totalFaults) * 100
-			data["Minor Faults"] = fmt.Sprintf("%s (%.1f%%)",
-				humanize.Comma(int64(node.pageFaults.MinorFaults)), minorPercent)
-		}
-
-		if node.pageFaults.MajorFaults > 0 {
-			majorPercent := float64(node.pageFaults.MajorFaults) / float64(totalFaults) * 100
-			data["Major Faults"] = fmt.Sprintf("%s (%.1f%%)",
-				humanize.Comma(int64(node.pageFaults.MajorFaults)), majorPercent)
-		}
+	up, _ := procUptime(procAncestor(node))
+	r := newProcRows(f.Count, up)
+	r.add("Processes", humanize.Comma(int64(max(f.Count, 1))))
+	r.counter("Total", float64(total), fmtCount, "")
+	// A minor fault found the page already in memory; a major one went to disk,
+	// and its rate is what says the host is thrashing.
+	r.share("Minor", float64(f.MinorFaults), float64(total), fmtCount)
+	r.counter("Major", float64(f.MajorFaults), fmtCount, "")
+	if child := f.ChildMinorFaults + f.ChildMajorFaults; child > 0 {
+		r.total("Child Processes", float64(child), fmtCount)
 	}
-
-	if totalChildFaults > 0 {
-		data["Child Process Faults"] = humanize.Comma(int64(totalChildFaults))
-
-		if node.pageFaults.ChildMinorFaults > 0 {
-			data["Child Minor Faults"] = humanize.Comma(int64(node.pageFaults.ChildMinorFaults))
-		}
-
-		if node.pageFaults.ChildMajorFaults > 0 {
-			data["Child Major Faults"] = humanize.Comma(int64(node.pageFaults.ChildMajorFaults))
-		}
-	}
-
-	return data
+	return r.data
 }
 
 func (node *ProcessPageFaultsNode) GetChild(_ string) (MetricNode, error) {
@@ -687,50 +646,29 @@ func (node *ProcessMemoryMapsNode) GetLeafData() map[string]string {
 			"Note":   "Memory mapping details are platform-specific",
 		}
 	}
-
-	data := make(map[string]string)
-	data["Data Sources"] = fmt.Sprintf("%d processes reporting", node.memMaps.Count)
-	data["00:Memory Maps"] = "Memory mapping details (platform-specific)"
-
-	// Total mapping sizes
-	if node.memMaps.TotalSize > 0 {
-		data["Total Map Size"] = humanize.Bytes(node.memMaps.TotalSize)
+	m := node.memMaps
+	r := newProcRows(m.Count, 0)
+	r.add("Processes", humanize.Comma(int64(max(m.Count, 1))))
+	r.total("Mapped", float64(m.TotalSize), fmtBytes)
+	// Against the mapped total, so a row says what share of the address space is
+	// actually backed rather than only how large it is.
+	for _, row := range []struct {
+		label string
+		v     uint64
+	}{
+		{"Resident", m.TotalRSS},
+		{"Proportional", m.TotalPSS},
+		{"Shared Clean", m.TotalSharedClean},
+		{"Shared Dirty", m.TotalSharedDirty},
+		{"Private Clean", m.TotalPrivateClean},
+		{"Private Dirty", m.TotalPrivateDirty},
+		{"Referenced", m.TotalReferenced},
+		{"Anonymous", m.TotalAnonymous},
+		{"Swapped", m.TotalSwap},
+	} {
+		r.share(row.label, float64(row.v), float64(m.TotalSize), fmtBytes)
 	}
-	if node.memMaps.TotalRSS > 0 {
-		data["Total RSS"] = humanize.Bytes(node.memMaps.TotalRSS)
-	}
-	if node.memMaps.TotalPSS > 0 {
-		data["Total PSS"] = humanize.Bytes(node.memMaps.TotalPSS)
-	}
-
-	// Shared memory
-	if node.memMaps.TotalSharedClean > 0 {
-		data["Shared Clean"] = humanize.Bytes(node.memMaps.TotalSharedClean)
-	}
-	if node.memMaps.TotalSharedDirty > 0 {
-		data["Shared Dirty"] = humanize.Bytes(node.memMaps.TotalSharedDirty)
-	}
-
-	// Private memory
-	if node.memMaps.TotalPrivateClean > 0 {
-		data["Private Clean"] = humanize.Bytes(node.memMaps.TotalPrivateClean)
-	}
-	if node.memMaps.TotalPrivateDirty > 0 {
-		data["Private Dirty"] = humanize.Bytes(node.memMaps.TotalPrivateDirty)
-	}
-
-	// Other memory details
-	if node.memMaps.TotalReferenced > 0 {
-		data["Referenced Memory"] = humanize.Bytes(node.memMaps.TotalReferenced)
-	}
-	if node.memMaps.TotalAnonymous > 0 {
-		data["Anonymous Memory"] = humanize.Bytes(node.memMaps.TotalAnonymous)
-	}
-	if node.memMaps.TotalSwap > 0 {
-		data["Swap Memory"] = humanize.Bytes(node.memMaps.TotalSwap)
-	}
-
-	return data
+	return r.data
 }
 
 func (node *ProcessMemoryMapsNode) GetChild(_ string) (MetricNode, error) {
@@ -756,7 +694,8 @@ func formatDuration(d time.Duration) string {
 	return fmt.Sprintf("%d days, %.1f hours", days, hours)
 }
 
-// ProcessLastDayNode shows last 24h process statistics with time segment navigation
+// ProcessLastDayNode shows the last-day process window: a navigable child per
+// time segment, and an _ALL entry over the whole span.
 type ProcessLastDayNode struct {
 	segmented *madmin.SegmentedProcessMetrics
 	parent    MetricNode
@@ -773,79 +712,72 @@ func (node *ProcessLastDayNode) GetParent() MetricNode              { return nod
 func (node *ProcessLastDayNode) GetMetricType() madmin.MetricType   { return madmin.MetricsProcess }
 func (node *ProcessLastDayNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
 func (node *ProcessLastDayNode) ShouldPauseRefresh() bool           { return true }
-func (node *ProcessLastDayNode) GetLeafData() map[string]string     { return nil }
 
-// segmentOwners maps this node's navigation keys -- segment end instants -- to the
-// slot that owns each.
-func (node *ProcessLastDayNode) segmentOwners() map[string]int {
-	step := time.Duration(node.segmented.Interval) * time.Second
-	return segmentOwners(node.segmented.FirstTime.Add(step), step, len(node.segmented.Segments))
+// hasSegments reports whether the window can be placed on a timeline at all. An
+// interval of zero would stamp every segment with the same time.
+func (node *ProcessLastDayNode) hasSegments() bool {
+	return node.segmented != nil && node.segmented.Interval > 0 && len(node.segmented.Segments) > 0
+}
+
+// wholeSecs is the span the whole window covers.
+func (node *ProcessLastDayNode) wholeSecs() int {
+	return node.segmented.Interval * len(node.segmented.Segments)
+}
+
+func (node *ProcessLastDayNode) GetLeafData() map[string]string {
+	if status := windowStatus(node.segmented, "day"); status != "" {
+		return map[string]string{"Status": status}
+	}
+	// The aggregate only: each segment states its own figures in the
+	// description of the child that opens it.
+	return processSegmentRows(node.segmented.Total(), node.segmented.Interval,
+		len(node.segmented.Segments), windowCoverage(node.segmented.FirstTime, node.wholeSecs()))
 }
 
 func (node *ProcessLastDayNode) GetChildren() []MetricChild {
-	if node.segmented == nil || len(node.segmented.Segments) == 0 {
-		return nil
+	if !node.hasSegments() {
+		return []MetricChild{}
 	}
-
-	var children []MetricChild
-	children = append(children, MetricChild{
-		Name:        "Total",
-		Description: "Aggregated process statistics across all time segments",
-	})
-
-	// A segment is named by the instant it ends here, so the owner map starts one
-	// interval later than the window does.
-	owners := node.segmentOwners()
+	children := []MetricChild{{
+		Name: "_ALL",
+		Description: "Every segment in the window combined. " +
+			windowCoverage(node.segmented.FirstTime, node.wholeSecs()),
+	}}
+	owners := segmentSecOwners(node.segmented.FirstTime, node.segmented.Interval, len(node.segmented.Segments))
+	withDate := windowCrossesDay(node.segmented.FirstTime, node.segmented.Interval, len(node.segmented.Segments))
+	// Newest first, as every other family lists a window: the reader is here to
+	// see what just happened, not to read a day from the beginning.
 	for i := len(node.segmented.Segments) - 1; i >= 0; i-- {
 		seg := node.segmented.Segments[i]
 		if seg.N == 0 {
 			continue
 		}
-
-		segmentTime := segmentStart(node.segmented.FirstTime, node.segmented.Interval, i)
-		endTime := segmentTime.Add(time.Duration(node.segmented.Interval) * time.Second)
-		segmentName := segmentKey(endTime)
-		if owners[segmentName] != i {
+		start := segmentStart(node.segmented.FirstTime, node.segmented.Interval, i)
+		name := segmentKey(start)
+		if owners[name] != i {
 			continue
 		}
-
-		avgCPU := seg.CPUPercent / float64(seg.N)
-		avgRSS := seg.RSS / uint64(seg.N)
-		throughput := seg.ReadBytes + seg.WriteBytes
-
-		day := "Today "
-		if segmentTime.Local().Day() != time.Now().Day() {
-			day = "Yesterday "
-		}
-
 		children = append(children, MetricChild{
-			Name: segmentName,
-			Description: fmt.Sprintf("%s%s -> %s: CPU %.1f%%, RSS %s, I/O %s",
-				day,
-				segmentTime.Local().Format("15:04"),
-				endTime.Local().Format("15:04"),
-				avgCPU,
-				humanize.Bytes(avgRSS),
-				humanize.Bytes(throughput)),
+			Name:        name,
+			Description: segmentDescTime(start, withDate) + ", " + describeProcessSegment(seg, node.segmented.Interval),
 		})
 	}
 	return children
 }
 
 func (node *ProcessLastDayNode) GetChild(name string) (MetricNode, error) {
-	if node.segmented == nil {
-		return nil, fmt.Errorf("no segmented data")
+	if !node.hasSegments() {
+		return nil, fmt.Errorf("no last-day process segments available")
 	}
-
-	if name == "Total" {
+	if name == "_ALL" {
 		return &ProcessSegmentTotalNode{
 			segmented: node.segmented,
 			parent:    node,
-			path:      node.path + "/Total",
+			path:      node.path + "/" + name,
 		}, nil
 	}
-
-	if i, ok := node.segmentOwners()[name]; ok {
+	owners := segmentSecOwners(node.segmented.FirstTime, node.segmented.Interval, len(node.segmented.Segments))
+	if i, ok := owners[name]; ok {
 		return &ProcessTimeSegmentNode{
 			segment:     node.segmented.Segments[i],
 			segmentTime: segmentStart(node.segmented.FirstTime, node.segmented.Interval, i),
@@ -854,142 +786,172 @@ func (node *ProcessLastDayNode) GetChild(name string) (MetricNode, error) {
 			path:        node.path + "/" + name,
 		}, nil
 	}
-
 	return nil, fmt.Errorf("time segment not found: %s", name)
 }
 
-// ProcessSegmentTotalNode shows aggregated process statistics across all time segments
+// describeProcessSegment renders one segment on a single line, per process.
+func describeProcessSegment(seg madmin.ProcessSegment, interval int) string {
+	n := float64(seg.N)
+	parts := []string{fmt.Sprintf("CPU %.1f%%", seg.CPUPercent/n)}
+	if seg.RSS > 0 {
+		parts = append(parts, "RSS "+fmtBytes(float64(seg.RSS)/n))
+	}
+	if seg.NumThreads > 0 {
+		parts = append(parts, "threads "+fmtCount(float64(seg.NumThreads)/n))
+	}
+	// I/O is a within-segment sum, not a level, so it earns a rate.
+	if io := seg.ReadBytes + seg.WriteBytes; io > 0 && interval > 0 {
+		parts = append(parts, "I/O "+fmtRate(float64(io)/n/float64(interval), fmtBytes, ""))
+	}
+	return strings.Join(parts, ", ") + " per process"
+}
+
+// processSegmentRows renders one segment, or a whole window, as leaf data.
+//
+// Every field is summed over the samples folded in -- N of them, one per process
+// per sample -- so nothing here is read without dividing by N first.
+//
+// That quotient is a mean over samples, and one sample covers one interval, so
+// interval is the divisor for every rate and utilisation here even when the whole
+// window is being rendered. Handing it the window span instead understated a
+// day's CPU and I/O by the number of segments in it: a 14-segment window read
+// 136% of a core where the segments it was built from each read ~1900%.
+//
+// segments is how many were folded in, so N can be turned back into a count of
+// the processes reporting rather than a count of samples.
+func processSegmentRows(seg madmin.ProcessSegment, interval, segments int, coverage string) map[string]string {
+	if seg.N == 0 {
+		return map[string]string{"Status": "no process reported this time segment"}
+	}
+	n := float64(seg.N)
+	r := newProcRows(1, 0)
+	r.add("Coverage", coverage)
+	r.add("Processes", formatNodeCount(seg.N, segments)+" reporting")
+	r.add("CPU", fmt.Sprintf("%.2f%% per process", seg.CPUPercent/n))
+
+	// CPU seconds, per process per interval, as a share of that interval: one
+	// full core is 100%. The old form divided the cluster-wide sum by the
+	// window, scaling every figure by the number of processes reporting.
+	cpuRow := func(label string, v float64) {
+		if v <= 0 {
+			return
+		}
+		perProc := v / n
+		if interval > 0 {
+			r.add(label, fmt.Sprintf("%s (%s of one core)", fmtSecs(perProc), fmtPct(perProc, float64(interval))))
+			return
+		}
+		r.add(label, fmtSecs(perProc))
+	}
+	for _, row := range []struct {
+		label string
+		v     float64
+	}{
+		{"CPU User", seg.CPUUser},
+		{"CPU System", seg.CPUSystem},
+		{"CPU IO Wait", seg.CPUIowait},
+		{"CPU Nice", seg.CPUNice},
+		{"CPU IRQ", seg.CPUIrq},
+		{"CPU Soft IRQ", seg.CPUSoftirq},
+		{"CPU Steal", seg.CPUSteal},
+		{"CPU Guest", seg.CPUGuest},
+		{"CPU Guest Nice", seg.CPUGuestNice},
+		{"CPU Idle", seg.CPUIdle},
+	} {
+		cpuRow(row.label, row.v)
+	}
+
+	r.add("Resident", fmtBytes(float64(seg.RSS)/n)+" per process")
+	if seg.VMS > 0 {
+		r.add("Virtual", fmtBytes(float64(seg.VMS)/n)+" per process")
+	}
+	r.add("Threads", fmtCount(float64(seg.NumThreads)/n)+" per process")
+	r.add("File Descriptors", fmtCount(float64(seg.NumFDs)/n)+" per process")
+	r.add("Connections", fmtCount(float64(seg.NumConnections)/n)+" per process")
+	if seg.ThreadsD > 0 {
+		r.add("Uninterruptible", fmtCount(float64(seg.ThreadsD)/n)+" threads per process")
+	}
+
+	// I/O and the fault and switch counters accrue inside the window, so they
+	// carry a rate rather than a level.
+	ioRow := func(label string, v float64, render func(float64) string, unit string) {
+		if v <= 0 {
+			return
+		}
+		perProc := v / n
+		value := render(perProc) + " per process"
+		if interval > 0 {
+			value += ", " + fmtRate(perProc/float64(interval), render, unit)
+		}
+		r.add(label, value)
+	}
+	ioRow("Read", float64(seg.ReadBytes), fmtBytes, "")
+	ioRow("Written", float64(seg.WriteBytes), fmtBytes, "")
+	ioRow("Reads", float64(seg.ReadCount), fmtCount, "ops")
+	ioRow("Writes", float64(seg.WriteCount), fmtCount, "ops")
+	ioRow("Ctx Switches (vol)", float64(seg.CtxSwitchesVoluntary), fmtCount, "")
+	ioRow("Ctx Switches (invol)", float64(seg.CtxSwitchesInvoluntary), fmtCount, "")
+	ioRow("Minor Faults", float64(seg.MinorFaults), fmtCount, "")
+	ioRow("Major Faults", float64(seg.MajorFaults), fmtCount, "")
+
+	// PSI is Linux-only and can be missing on a host whose process sample is
+	// present, so it has its own count; dividing by N would under-report by the
+	// share of hosts without it.
+	if seg.PSIN > 0 {
+		psi := float64(seg.PSIN)
+		for _, row := range []struct {
+			label string
+			v     float64
+		}{
+			{"Pressure CPU (some)", seg.PSICPUSome10},
+			{"Pressure I/O (some)", seg.PSIIOSome10},
+			{"Pressure I/O (all)", seg.PSIIOFull10},
+			{"Pressure Memory (some)", seg.PSIMemSome10},
+			{"Pressure Memory (all)", seg.PSIMemFull10},
+		} {
+			if row.v > 0 {
+				r.add(row.label, fmt.Sprintf("%.2f%% avg10", row.v/psi))
+			}
+		}
+	}
+	return r.data
+}
+
+// ProcessSegmentTotalNode is the _ALL entry: the whole window rather than one
+// slot of it.
 type ProcessSegmentTotalNode struct {
 	segmented *madmin.SegmentedProcessMetrics
 	parent    MetricNode
 	path      string
 }
 
-func (node *ProcessSegmentTotalNode) GetOpts() madmin.MetricsOptions     { return getNodeOpts(node) }
-func (node *ProcessSegmentTotalNode) GetPath() string                    { return node.path }
-func (node *ProcessSegmentTotalNode) GetParent() MetricNode              { return node.parent }
-func (node *ProcessSegmentTotalNode) GetMetricType() madmin.MetricType   { return madmin.MetricsProcess }
-func (node *ProcessSegmentTotalNode) GetMetricFlags() madmin.MetricFlags { return 0 }
-func (node *ProcessSegmentTotalNode) ShouldPauseRefresh() bool           { return false }
-func (node *ProcessSegmentTotalNode) GetChildren() []MetricChild         { return nil }
+func (node *ProcessSegmentTotalNode) GetOpts() madmin.MetricsOptions   { return getNodeOpts(node) }
+func (node *ProcessSegmentTotalNode) GetPath() string                  { return node.path }
+func (node *ProcessSegmentTotalNode) GetParent() MetricNode            { return node.parent }
+func (node *ProcessSegmentTotalNode) GetMetricType() madmin.MetricType { return madmin.MetricsProcess }
+
+// GetMetricFlags keeps the day window on the refresh request: without it a tick
+// would drop the very segments this node renders.
+func (node *ProcessSegmentTotalNode) GetMetricFlags() madmin.MetricFlags {
+	return madmin.MetricsDayStats
+}
+func (node *ProcessSegmentTotalNode) ShouldPauseRefresh() bool   { return true }
+func (node *ProcessSegmentTotalNode) GetChildren() []MetricChild { return []MetricChild{} }
 
 func (node *ProcessSegmentTotalNode) GetChild(_ string) (MetricNode, error) {
-	return nil, fmt.Errorf("total is a leaf node")
+	return nil, fmt.Errorf("no children")
 }
 
 func (node *ProcessSegmentTotalNode) GetLeafData() map[string]string {
 	if node.segmented == nil || len(node.segmented.Segments) == 0 {
-		return nil
+		return map[string]string{"Status": "no last-day process segments available"}
 	}
-
-	total := node.segmented.Total()
-	if total.N == 0 {
-		return map[string]string{"Status": "No data collected"}
-	}
-
-	data := make(map[string]string)
-	n := float64(total.N)
-
-	// Time range
-	firstTime := node.segmented.FirstTime
-	lastSegmentTime := node.segmented.FirstTime.Add(time.Duration((len(node.segmented.Segments)-1)*node.segmented.Interval) * time.Second)
-	endTime := lastSegmentTime.Add(time.Duration(node.segmented.Interval) * time.Second)
-	data["00:Time Range"] = fmt.Sprintf("%s -> %s", firstTime.Local().Format("15:04"), endTime.Local().Format("15:04"))
-
-	// CPU
-	wallTime := float64(len(node.segmented.Segments) * node.segmented.Interval)
-	data["01:CPU Usage"] = fmt.Sprintf("%.2f%% average", total.CPUPercent/n)
-	if total.CPUUser > 0 {
-		data["01a:CPU User"] = fmt.Sprintf("%.1fs (%.1f%% wall)", total.CPUUser, (total.CPUUser/wallTime)*100)
-	}
-	if total.CPUSystem > 0 {
-		data["01b:CPU System"] = fmt.Sprintf("%.1fs (%.1f%% wall)", total.CPUSystem, (total.CPUSystem/wallTime)*100)
-	}
-	if total.CPUIdle > 0 {
-		data["01c:CPU Idle"] = fmt.Sprintf("%.1fs (%.1f%% wall)", total.CPUIdle, (total.CPUIdle/wallTime)*100)
-	}
-	if total.CPUNice > 0 {
-		data["01d:CPU Nice"] = fmt.Sprintf("%.1fs (%.1f%% wall)", total.CPUNice, (total.CPUNice/wallTime)*100)
-	}
-	if total.CPUIowait > 0 {
-		data["01e:CPU IOwait"] = fmt.Sprintf("%.1fs (%.1f%% wall)", total.CPUIowait, (total.CPUIowait/wallTime)*100)
-	}
-	if total.CPUIrq > 0 {
-		data["01f:CPU IRQ"] = fmt.Sprintf("%.1fs (%.1f%% wall)", total.CPUIrq, (total.CPUIrq/wallTime)*100)
-	}
-	if total.CPUSoftirq > 0 {
-		data["01g:CPU SoftIRQ"] = fmt.Sprintf("%.1fs (%.1f%% wall)", total.CPUSoftirq, (total.CPUSoftirq/wallTime)*100)
-	}
-	if total.CPUSteal > 0 {
-		data["01h:CPU Steal"] = fmt.Sprintf("%.1fs (%.1f%% wall)", total.CPUSteal, (total.CPUSteal/wallTime)*100)
-	}
-	if total.CPUGuest > 0 {
-		data["01i:CPU Guest"] = fmt.Sprintf("%.1fs (%.1f%% wall)", total.CPUGuest, (total.CPUGuest/wallTime)*100)
-	}
-	if total.CPUGuestNice > 0 {
-		data["01j:CPU GuestNice"] = fmt.Sprintf("%.1fs (%.1f%% wall)", total.CPUGuestNice, (total.CPUGuestNice/wallTime)*100)
-	}
-
-	// Memory
-	data["02:RSS"] = humanize.Bytes(total.RSS/uint64(total.N)) + " average"
-	data["03:VMS"] = humanize.Bytes(total.VMS/uint64(total.N)) + " average"
-
-	// Threads/FDs/Connections
-	data["04:Threads"] = humanize.Comma(total.NumThreads/int64(total.N)) + " average"
-	data["05:FDs"] = humanize.Comma(total.NumFDs/int64(total.N)) + " average"
-	data["06:Connections"] = humanize.Comma(int64(total.NumConnections/total.N)) + " average"
-
-	// I/O totals
-	data["07:Read Ops"] = humanize.Comma(int64(total.ReadCount))
-	data["08:Write Ops"] = humanize.Comma(int64(total.WriteCount))
-	data["09:Bytes Read"] = humanize.Bytes(total.ReadBytes)
-	data["10:Bytes Written"] = humanize.Bytes(total.WriteBytes)
-
-	// Context switches
-	data["11:Voln Ctx Sw"] = humanize.Comma(total.CtxSwitchesVoluntary)
-	data["12:Involn Ctx Sw"] = humanize.Comma(total.CtxSwitchesInvoluntary)
-
-	// Page faults
-	data["13:Minor Faults"] = humanize.Comma(int64(total.MinorFaults))
-	data["14:Major Faults"] = humanize.Comma(int64(total.MajorFaults))
-
-	// CPU time breakdown (show as percentages of total CPU time)
-	totalCPUTime := total.CPUUser + total.CPUSystem + total.CPUIdle + total.CPUNice +
-		total.CPUIowait + total.CPUIrq + total.CPUSoftirq + total.CPUSteal +
-		total.CPUGuest + total.CPUGuestNice
-	if totalCPUTime > 0 {
-		data["15a:CPU User %"] = fmt.Sprintf("%.1f%% of cpu", (total.CPUUser/totalCPUTime)*100)
-		data["15b:CPU System %"] = fmt.Sprintf("%.1f%% of cpu", (total.CPUSystem/totalCPUTime)*100)
-		if total.CPUIdle > 0 {
-			data["15c:CPU Idle %"] = fmt.Sprintf("%.1f%% of cpu", (total.CPUIdle/totalCPUTime)*100)
-		}
-		if total.CPUNice > 0 {
-			data["15d:CPU Nice %"] = fmt.Sprintf("%.1f%% of cpu", (total.CPUNice/totalCPUTime)*100)
-		}
-		if total.CPUIowait > 0 {
-			data["15e:CPU IOwait %"] = fmt.Sprintf("%.1f%% of cpu", (total.CPUIowait/totalCPUTime)*100)
-		}
-		if total.CPUIrq > 0 {
-			data["15f:CPU IRQ %"] = fmt.Sprintf("%.1f%% of cpu", (total.CPUIrq/totalCPUTime)*100)
-		}
-		if total.CPUSoftirq > 0 {
-			data["15g:CPU SoftIRQ %"] = fmt.Sprintf("%.1f%% of cpu", (total.CPUSoftirq/totalCPUTime)*100)
-		}
-		if total.CPUSteal > 0 {
-			data["15h:CPU Steal %"] = fmt.Sprintf("%.1f%% of cpu", (total.CPUSteal/totalCPUTime)*100)
-		}
-		if total.CPUGuest > 0 {
-			data["15i:CPU Guest %"] = fmt.Sprintf("%.1f%% of cpu", (total.CPUGuest/totalCPUTime)*100)
-		}
-		if total.CPUGuestNice > 0 {
-			data["15j:CPU GuestNice %"] = fmt.Sprintf("%.1f%% of cpu", (total.CPUGuestNice/totalCPUTime)*100)
-		}
-	}
-
-	return data
+	secs := node.segmented.Interval * len(node.segmented.Segments)
+	return processSegmentRows(node.segmented.Total(), node.segmented.Interval,
+		len(node.segmented.Segments), windowCoverage(node.segmented.FirstTime, secs))
 }
 
-// ProcessTimeSegmentNode shows process statistics for a specific time segment
+// ProcessTimeSegmentNode is one time segment of the window.
 type ProcessTimeSegmentNode struct {
 	segment     madmin.ProcessSegment
 	segmentTime time.Time
@@ -998,120 +960,24 @@ type ProcessTimeSegmentNode struct {
 	path        string
 }
 
-func (node *ProcessTimeSegmentNode) GetOpts() madmin.MetricsOptions     { return getNodeOpts(node) }
-func (node *ProcessTimeSegmentNode) GetPath() string                    { return node.path }
-func (node *ProcessTimeSegmentNode) GetParent() MetricNode              { return node.parent }
-func (node *ProcessTimeSegmentNode) GetMetricType() madmin.MetricType   { return madmin.MetricsProcess }
-func (node *ProcessTimeSegmentNode) GetMetricFlags() madmin.MetricFlags { return 0 }
-func (node *ProcessTimeSegmentNode) ShouldPauseRefresh() bool           { return false }
-func (node *ProcessTimeSegmentNode) GetChildren() []MetricChild         { return nil }
+func (node *ProcessTimeSegmentNode) GetOpts() madmin.MetricsOptions   { return getNodeOpts(node) }
+func (node *ProcessTimeSegmentNode) GetPath() string                  { return node.path }
+func (node *ProcessTimeSegmentNode) GetParent() MetricNode            { return node.parent }
+func (node *ProcessTimeSegmentNode) GetMetricType() madmin.MetricType { return madmin.MetricsProcess }
+
+// GetMetricFlags keeps the day window on the refresh request, as for the _ALL
+// node above.
+func (node *ProcessTimeSegmentNode) GetMetricFlags() madmin.MetricFlags {
+	return madmin.MetricsDayStats
+}
+func (node *ProcessTimeSegmentNode) ShouldPauseRefresh() bool   { return true }
+func (node *ProcessTimeSegmentNode) GetChildren() []MetricChild { return []MetricChild{} }
 
 func (node *ProcessTimeSegmentNode) GetChild(_ string) (MetricNode, error) {
-	return nil, fmt.Errorf("time segment is a leaf node")
+	return nil, fmt.Errorf("no children")
 }
 
 func (node *ProcessTimeSegmentNode) GetLeafData() map[string]string {
-	seg := node.segment
-	if seg.N == 0 {
-		return map[string]string{"Status": "No data for this segment"}
-	}
-
-	data := make(map[string]string)
-	n := float64(seg.N)
-
-	// Time range
-	endTime := node.segmentTime.Add(time.Duration(node.interval) * time.Second)
-	data["00:Time Range"] = fmt.Sprintf("%s -> %s", node.segmentTime.Local().Format("15:04"), endTime.Local().Format("15:04"))
-
-	// CPU
-	wallTime := float64(node.interval)
-	data["01:CPU Usage"] = fmt.Sprintf("%.2f%% average", seg.CPUPercent/n)
-	if seg.CPUUser > 0 {
-		data["01a:CPU User"] = fmt.Sprintf("%.1fs (%.1f%% wall)", seg.CPUUser, (seg.CPUUser/wallTime)*100)
-	}
-	if seg.CPUSystem > 0 {
-		data["01b:CPU System"] = fmt.Sprintf("%.1fs (%.1f%% wall)", seg.CPUSystem, (seg.CPUSystem/wallTime)*100)
-	}
-	if seg.CPUIdle > 0 {
-		data["01c:CPU Idle"] = fmt.Sprintf("%.1fs (%.1f%% wall)", seg.CPUIdle, (seg.CPUIdle/wallTime)*100)
-	}
-	if seg.CPUNice > 0 {
-		data["01d:CPU Nice"] = fmt.Sprintf("%.1fs (%.1f%% wall)", seg.CPUNice, (seg.CPUNice/wallTime)*100)
-	}
-	if seg.CPUIowait > 0 {
-		data["01e:CPU IOwait"] = fmt.Sprintf("%.1fs (%.1f%% wall)", seg.CPUIowait, (seg.CPUIowait/wallTime)*100)
-	}
-	if seg.CPUIrq > 0 {
-		data["01f:CPU IRQ"] = fmt.Sprintf("%.1fs (%.1f%% wall)", seg.CPUIrq, (seg.CPUIrq/wallTime)*100)
-	}
-	if seg.CPUSoftirq > 0 {
-		data["01g:CPU SoftIRQ"] = fmt.Sprintf("%.1fs (%.1f%% wall)", seg.CPUSoftirq, (seg.CPUSoftirq/wallTime)*100)
-	}
-	if seg.CPUSteal > 0 {
-		data["01h:CPU Steal"] = fmt.Sprintf("%.1fs (%.1f%% wall)", seg.CPUSteal, (seg.CPUSteal/wallTime)*100)
-	}
-	if seg.CPUGuest > 0 {
-		data["01i:CPU Guest"] = fmt.Sprintf("%.1fs (%.1f%% wall)", seg.CPUGuest, (seg.CPUGuest/wallTime)*100)
-	}
-	if seg.CPUGuestNice > 0 {
-		data["01j:CPU GuestNice"] = fmt.Sprintf("%.1fs (%.1f%% wall)", seg.CPUGuestNice, (seg.CPUGuestNice/wallTime)*100)
-	}
-
-	// Memory
-	data["02:RSS"] = humanize.Bytes(seg.RSS/uint64(seg.N)) + " average"
-	data["03:VMS"] = humanize.Bytes(seg.VMS/uint64(seg.N)) + " average"
-
-	// Threads/FDs/Connections
-	data["04:Threads"] = humanize.Comma(seg.NumThreads/int64(seg.N)) + " average"
-	data["05:FDs"] = humanize.Comma(seg.NumFDs/int64(seg.N)) + " average"
-	data["06:Connections"] = humanize.Comma(int64(seg.NumConnections/seg.N)) + " average"
-
-	// I/O
-	data["07:Read Ops"] = humanize.Comma(int64(seg.ReadCount))
-	data["08:Write Ops"] = humanize.Comma(int64(seg.WriteCount))
-	data["09:Bytes Read"] = humanize.Bytes(seg.ReadBytes)
-	data["10:Bytes Written"] = humanize.Bytes(seg.WriteBytes)
-
-	// Context switches
-	data["11:Voln Ctx Sw"] = humanize.Comma(seg.CtxSwitchesVoluntary)
-	data["12:Involn Ctx Sw"] = humanize.Comma(seg.CtxSwitchesInvoluntary)
-
-	// Page faults
-	data["13:Minor Faults"] = humanize.Comma(int64(seg.MinorFaults))
-	data["14:Major Faults"] = humanize.Comma(int64(seg.MajorFaults))
-
-	// CPU time breakdown
-	totalCPUTime := seg.CPUUser + seg.CPUSystem + seg.CPUIdle + seg.CPUNice +
-		seg.CPUIowait + seg.CPUIrq + seg.CPUSoftirq + seg.CPUSteal +
-		seg.CPUGuest + seg.CPUGuestNice
-	if totalCPUTime > 0 {
-		data["15a:CPU User %"] = fmt.Sprintf("%.1f%% of cpu", (seg.CPUUser/totalCPUTime)*100)
-		data["15b:CPU System %"] = fmt.Sprintf("%.1f%% of cpu", (seg.CPUSystem/totalCPUTime)*100)
-		if seg.CPUIdle > 0 {
-			data["15c:CPU Idle %"] = fmt.Sprintf("%.1f%% of cpu", (seg.CPUIdle/totalCPUTime)*100)
-		}
-		if seg.CPUNice > 0 {
-			data["15d:CPU Nice %"] = fmt.Sprintf("%.1f%% of cpu", (seg.CPUNice/totalCPUTime)*100)
-		}
-		if seg.CPUIowait > 0 {
-			data["15e:CPU IOwait %"] = fmt.Sprintf("%.1f%% of cpu", (seg.CPUIowait/totalCPUTime)*100)
-		}
-		if seg.CPUIrq > 0 {
-			data["15f:CPU IRQ %"] = fmt.Sprintf("%.1f%% of cpu", (seg.CPUIrq/totalCPUTime)*100)
-		}
-		if seg.CPUSoftirq > 0 {
-			data["15g:CPU SoftIRQ %"] = fmt.Sprintf("%.1f%% of cpu", (seg.CPUSoftirq/totalCPUTime)*100)
-		}
-		if seg.CPUSteal > 0 {
-			data["15h:CPU Steal %"] = fmt.Sprintf("%.1f%% of cpu", (seg.CPUSteal/totalCPUTime)*100)
-		}
-		if seg.CPUGuest > 0 {
-			data["15i:CPU Guest %"] = fmt.Sprintf("%.1f%% of cpu", (seg.CPUGuest/totalCPUTime)*100)
-		}
-		if seg.CPUGuestNice > 0 {
-			data["15j:CPU GuestNice %"] = fmt.Sprintf("%.1f%% of cpu", (seg.CPUGuestNice/totalCPUTime)*100)
-		}
-	}
-
-	return data
+	return processSegmentRows(node.segment, node.interval, 1,
+		windowCoverage(node.segmentTime, node.interval))
 }

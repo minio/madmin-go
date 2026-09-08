@@ -127,7 +127,9 @@ func TestDuplicateSegmentKeysAcrossFamilies(t *testing.T) {
 			key: "Started", want: "11",
 		},
 		{
-			// Named by the instant a segment ends, so its keys sit one interval on.
+			// Keyed by the segment start, like every family above it. It used to
+			// name a segment by the instant it ended, putting its keys one
+			// interval on from everyone else's for the same slot.
 			name: "process",
 			node: func() MetricNode {
 				w := dupWindow[madmin.ProcessSegment, *madmin.ProcessSegment](
@@ -135,7 +137,7 @@ func TestDuplicateSegmentKeysAcrossFamilies(t *testing.T) {
 				)
 				return NewProcessLastDayNode(&w, nil, "process/last_day")
 			}(),
-			dup: "10:15Z", key: "CPU Usage", want: "11.00% average",
+			key: "CPU", want: "11.00% per process",
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
@@ -368,6 +370,172 @@ func TestAPITimeSegmentLeafReportsNodeCount(t *testing.T) {
 	}
 	if got, want := leafValue(node.GetLeafData(), "Responding Nodes"), "3 nodes"; got != want {
 		t.Errorf("Responding Nodes = %q, want %q", got, want)
+	}
+}
+
+// A rate needs the window its stats cover, and WallTimeSecs is not that window:
+// Merge sums it from every source folded in, so a minute of 20 operations on 16
+// nodes carries 19200 seconds. Dividing by it read a 100k-request minute as
+// "5.2 req/sec", while the api overview page above it read the same minute
+// correctly.
+func TestAPILastMinuteRateUsesTheMinute(t *testing.T) {
+	const nodes, endpoints = 16, 20
+	api := &madmin.APIMetrics{
+		Nodes:         nodes,
+		LastMinuteAPI: make(map[string]madmin.APIStats, endpoints),
+	}
+	for i := range endpoints {
+		api.LastMinuteAPI[fmt.Sprintf("s3.Op%02d", i)] = madmin.APIStats{
+			Nodes: nodes, Requests: 5000, WallTimeSecs: 60 * nodes, RequestTimeSecs: 500,
+		}
+	}
+	nav := NewRealtimeMetricsNavigator(&madmin.RealtimeMetrics{
+		Aggregated: madmin.Metrics{API: api},
+	})
+
+	// 100,000 requests in a minute.
+	total, err := nav.Navigate("api/last_minute")
+	if err != nil {
+		t.Fatalf("navigate last_minute: %v", err)
+	}
+	if got, want := leafValue(total.GetLeafData(), "Request Rate"), "1666.7 req/sec"; got != want {
+		t.Errorf("last_minute Request Rate = %q, want %q: dividing by the summed wall time (%d s) gives %.1f",
+			got, want, 60*nodes*endpoints, 100000.0/float64(60*nodes*endpoints))
+	}
+
+	// The overview page one level up derives the same minute from the request
+	// count alone; the two must not disagree.
+	overview, err := nav.Navigate("api")
+	if err != nil {
+		t.Fatalf("navigate api: %v", err)
+	}
+	if got := leafValue(overview.GetLeafData(), "Request Rate"); !strings.Contains(got, "1666.7 req/sec") {
+		t.Errorf("api overview Request Rate = %q, want it to contain 1666.7 req/sec", got)
+	}
+
+	// A single endpoint covers the same minute, not 16 nodes' worth of it.
+	ep, err := nav.Navigate("api/last_minute/s3.Op00")
+	if err != nil {
+		t.Fatalf("navigate endpoint: %v", err)
+	}
+	if got, want := leafValue(ep.GetLeafData(), "Request Rate"), "83.3 req/sec"; got != want {
+		t.Errorf("endpoint Request Rate = %q, want %q", got, want)
+	}
+}
+
+// The same defect one level down, where only the node axis is folded: a quarter
+// hour of one endpoint on 17 nodes carries 15300 wall seconds, reading 1832
+// requests as "0.1 req/sec" while the segment listing said 122.1 req/min --
+// 2.0 req/sec -- for the very same numbers.
+func TestAPILastDayRateUsesSegmentWindow(t *testing.T) {
+	const nodes, segments = 17, 2
+	segs := make([]madmin.APIStats, segments)
+	for i := range segs {
+		segs[i] = madmin.APIStats{
+			Nodes: nodes, Requests: 1832, WallTimeSecs: 900 * nodes, RequestTimeSecs: 2512,
+		}
+	}
+	nav := NewRealtimeMetricsNavigator(&madmin.RealtimeMetrics{
+		Aggregated: madmin.Metrics{API: &madmin.APIMetrics{
+			Nodes: nodes,
+			LastDayAPI: map[string]madmin.SegmentedAPIMetrics{
+				"s3.HeadBucket": {Interval: 900, FirstTime: dupFirstTime, Segments: segs},
+			},
+		}},
+	})
+
+	// One segment covers 900 s; the folds below cover both, 1800 s for twice the
+	// requests, so every one of them lands on the same rate.
+	for _, path := range []string{
+		"api/last_day/s3.HeadBucket/" + dupKey,
+		"api/last_day/s3.HeadBucket/Total",
+		"api/last_day/s3.HeadBucket",
+		"api/last_day/_by_time/" + dupKey + "/_ALL",
+		"api/last_day",
+	} {
+		node, err := nav.Navigate(path)
+		if err != nil {
+			t.Fatalf("navigate %s: %v", path, err)
+		}
+		if got, want := leafValue(node.GetLeafData(), "Request Rate"), "2.0 req/sec"; got != want {
+			t.Errorf("%s: Request Rate = %q, want %q", path, got, want)
+		}
+	}
+}
+
+// Since-start is the one API view with no window of its own, so the node count is
+// what gets divided back out: 3 nodes up for an hour carry 10800 wall seconds.
+func TestAPISinceStartRateDividesNodesOut(t *testing.T) {
+	nav := NewRealtimeMetricsNavigator(&madmin.RealtimeMetrics{
+		Aggregated: madmin.Metrics{API: &madmin.APIMetrics{
+			Nodes: 3,
+			SinceStart: madmin.APIStats{
+				Nodes: 3, Requests: 36000, WallTimeSecs: 3600 * 3, RequestTimeSecs: 3600,
+			},
+		}},
+	})
+	node, err := nav.Navigate("api/since_start")
+	if err != nil {
+		t.Fatalf("navigate since_start: %v", err)
+	}
+	if got, want := leafValue(node.GetLeafData(), "Request Rate"), "10.0 req/sec"; got != want {
+		t.Errorf("Request Rate = %q, want %q", got, want)
+	}
+}
+
+// Replication divides by the same field, and folds along the target axis on top
+// of the node one: two targets on 3 nodes turn an hour into 21600 seconds, which
+// reported a sixth of the real throughput and a six-hour duration.
+func TestReplicationRateUsesKnownWindow(t *testing.T) {
+	const nodes, targets = 3, 2
+	start := dupFirstTime
+	end := start.Add(time.Hour)
+	day := make([]madmin.ReplicationStats, 96)
+	for i := range day {
+		day[i] = madmin.ReplicationStats{
+			Nodes: nodes, Events: 100, Bytes: 900_000_000, WallTimeSecs: 900 * nodes,
+		}
+	}
+	rm := &madmin.ReplicationMetrics{
+		Nodes:   nodes,
+		Targets: make(map[string]madmin.ReplicationTargetStats, targets),
+	}
+	for i := range targets {
+		rm.Targets[fmt.Sprintf("peer%d:bucket", i)] = madmin.ReplicationTargetStats{
+			Nodes: nodes,
+			LastHour: madmin.ReplicationStats{
+				Nodes: nodes, StartTime: &start, EndTime: &end,
+				Events: 1000, Bytes: 1_800_000_000, WallTimeSecs: 3600 * nodes,
+			},
+			LastDay: &madmin.SegmentedReplicationStats{
+				Interval: 900, FirstTime: dupFirstTime, Segments: day,
+			},
+		}
+	}
+	nav := NewRealtimeMetricsNavigator(&madmin.RealtimeMetrics{
+		Aggregated: madmin.Metrics{Replication: rm},
+	})
+
+	// 3.6 GB over the hour, across both targets.
+	hour, err := nav.Navigate("replication/last_hour")
+	if err != nil {
+		t.Fatalf("navigate last_hour: %v", err)
+	}
+	data := hour.GetLeafData()
+	if got, want := leafValue(data, "Throughput"), "1.0 MB/s"; got != want {
+		t.Errorf("Throughput = %q, want %q: the summed wall time is %d s", got, want, 3600*nodes*targets)
+	}
+	if got, want := leafValue(data, "Duration"), "3600.0 seconds"; got != want {
+		t.Errorf("Duration = %q, want %q", got, want)
+	}
+
+	// A folded day covers its segments: 86.4 GB over 96 quarter hours, per target.
+	total, err := nav.Navigate("replication/peer0:bucket/last_day/Total")
+	if err != nil {
+		t.Fatalf("navigate last_day/Total: %v", err)
+	}
+	if got, want := leafValue(total.GetLeafData(), "Throughput"), "1.0 MB/s"; got != want {
+		t.Errorf("last_day Total Throughput = %q, want %q", got, want)
 	}
 }
 

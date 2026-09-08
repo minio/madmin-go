@@ -710,72 +710,6 @@ func (node *RPCLastDayHandlerNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("time segment not found: %s", name)
 }
 
-// RPCConnectionsNode shows RPC connection statistics and health
-type RPCConnectionsNode struct {
-	rpc    *madmin.RPCMetrics
-	parent MetricNode
-	path   string
-}
-
-func (node *RPCConnectionsNode) GetOpts() madmin.MetricsOptions {
-	return getNodeOpts(node)
-}
-
-func (node *RPCConnectionsNode) ShouldPauseRefresh() bool { return false }
-
-func (node *RPCConnectionsNode) GetChildren() []MetricChild {
-	if node.rpc == nil {
-		return []MetricChild{}
-	}
-	children := make([]MetricChild, 0, 1)
-	// Connection summary
-	children = append(children, MetricChild{
-		Name:        "summary",
-		Description: fmt.Sprintf("Connection health overview (Connected: %d, Disconnected: %d)", node.rpc.Connected, node.rpc.Disconnected),
-	})
-
-	return children
-}
-
-func (node *RPCConnectionsNode) GetLeafData() map[string]string {
-	if node.rpc == nil {
-		return map[string]string{"Status": "No RPC connection data available"}
-	}
-
-	data := make(map[string]string)
-
-	data["Total Nodes"] = fmt.Sprintf("%d", node.rpc.Nodes)
-	data["Connected"] = fmt.Sprintf("%d", node.rpc.Connected)
-	data["Disconnected"] = fmt.Sprintf("%d", node.rpc.Disconnected)
-
-	if node.rpc.Nodes > 0 {
-		connectionRate := float64(node.rpc.Connected) / float64(node.rpc.Nodes) * 100
-		data["Connection Rate"] = fmt.Sprintf("%.1f%%", connectionRate)
-	}
-
-	data["Last Updated"] = node.rpc.CollectedAt.Format("2006-01-02 15:04:05")
-
-	return data
-}
-
-func (node *RPCConnectionsNode) GetMetricType() madmin.MetricType   { return madmin.MetricsRPC }
-func (node *RPCConnectionsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
-func (node *RPCConnectionsNode) GetParent() MetricNode              { return node.parent }
-func (node *RPCConnectionsNode) GetPath() string                    { return node.path }
-
-func (node *RPCConnectionsNode) GetChild(name string) (MetricNode, error) {
-	switch name {
-	case "summary":
-		return &RPCConnectionSummaryNode{
-			rpc:    node.rpc,
-			parent: node,
-			path:   node.path + "/" + name,
-		}, nil
-	default:
-		return nil, fmt.Errorf("connection child not found: %s", name)
-	}
-}
-
 // RPCConnectionSummaryNode shows connection summary details
 type RPCConnectionSummaryNode struct {
 	rpc    *madmin.RPCMetrics
@@ -1209,32 +1143,6 @@ func (node *RPCCallerNode) GetParent() MetricNode              { return node.par
 func (node *RPCCallerNode) GetPath() string                    { return node.path }
 func (node *RPCCallerNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available for caller")
-}
-
-// RPCHandlerNode shows detailed statistics for a specific RPC handler
-type RPCHandlerNode struct {
-	stats  madmin.RPCStats
-	parent MetricNode
-	path   string
-}
-
-func (node *RPCHandlerNode) GetOpts() madmin.MetricsOptions {
-	return getNodeOpts(node)
-}
-
-func (node *RPCHandlerNode) ShouldPauseRefresh() bool   { return true }
-func (node *RPCHandlerNode) GetChildren() []MetricChild { return []MetricChild{} }
-
-func (node *RPCHandlerNode) GetLeafData() map[string]string {
-	return generateRPCStatsDisplay(node.stats, 1, false, nil)
-}
-
-func (node *RPCHandlerNode) GetMetricType() madmin.MetricType   { return madmin.MetricsRPC }
-func (node *RPCHandlerNode) GetMetricFlags() madmin.MetricFlags { return 0 }
-func (node *RPCHandlerNode) GetParent() MetricNode              { return node.parent }
-func (node *RPCHandlerNode) GetPath() string                    { return node.path }
-func (node *RPCHandlerNode) GetChild(_ string) (MetricNode, error) {
-	return nil, fmt.Errorf("no children available for RPC handler")
 }
 
 // RPCHandlerTotalNode shows total statistics for a handler over a time range

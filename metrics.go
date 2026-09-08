@@ -1981,6 +1981,18 @@ type RuntimeMetrics struct {
 	// N tracks the number of merged entries.
 	N int `json:"n"`
 
+	// UptimeSecs is the accumulated process uptime of the nodes that reported
+	// one, in seconds. The mean is what a rate over these cumulative counters
+	// needs as its denominator.
+	UptimeSecs float64 `json:"uptimeSecs,omitempty"`
+
+	// UptimeNodes is how many nodes contributed to UptimeSecs.
+	//
+	// Deliberately not N: a mixed-version cluster has nodes that do not report
+	// an uptime yet, and dividing by N would scale the mean down by whatever
+	// share of the fleet stayed silent. Zero means nobody reported one.
+	UptimeNodes int `json:"uptimeNodes,omitempty"`
+
 	LastDay *SegmentedRuntimeMetrics `json:"lastDay,omitempty"`
 
 	// Last hour statistics (1-min segments).
@@ -2022,6 +2034,8 @@ func (m *RuntimeMetrics) Merge(other *RuntimeMetrics) {
 		}
 	}
 	m.N += other.N
+	m.UptimeSecs += other.UptimeSecs
+	m.UptimeNodes += other.UptimeNodes
 	if other.LastDay != nil {
 		if m.LastDay == nil {
 			m.LastDay = new(SegmentedRuntimeMetrics)

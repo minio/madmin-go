@@ -33617,7 +33617,7 @@ func (z *RuntimeMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 5 bits */
+	var zb0001Mask uint8 /* 7 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -33720,6 +33720,20 @@ func (z *RuntimeMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "N")
 				return
 			}
+		case "uptimeSecs":
+			z.UptimeSecs, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "UptimeSecs")
+				return
+			}
+			zb0001Mask |= 0x8
+		case "uptimeNodes":
+			z.UptimeNodes, err = dc.ReadInt()
+			if err != nil {
+				err = msgp.WrapError(err, "UptimeNodes")
+				return
+			}
+			zb0001Mask |= 0x10
 		case "lastDay":
 			if dc.IsNil() {
 				err = dc.ReadNil()
@@ -33738,7 +33752,7 @@ func (z *RuntimeMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x8
+			zb0001Mask |= 0x20
 		case "lastHour":
 			if dc.IsNil() {
 				err = dc.ReadNil()
@@ -33757,7 +33771,7 @@ func (z *RuntimeMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x10
+			zb0001Mask |= 0x40
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -33767,7 +33781,7 @@ func (z *RuntimeMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x1f {
+	if zb0001Mask != 0x7f {
 		if (zb0001Mask & 0x1) == 0 {
 			z.UintMetrics = nil
 		}
@@ -33778,9 +33792,15 @@ func (z *RuntimeMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 			z.HistMetrics = nil
 		}
 		if (zb0001Mask & 0x8) == 0 {
-			z.LastDay = nil
+			z.UptimeSecs = 0
 		}
 		if (zb0001Mask & 0x10) == 0 {
+			z.UptimeNodes = 0
+		}
+		if (zb0001Mask & 0x20) == 0 {
+			z.LastDay = nil
+		}
+		if (zb0001Mask & 0x40) == 0 {
 			z.LastHour = nil
 		}
 	}
@@ -33790,8 +33810,8 @@ func (z *RuntimeMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *RuntimeMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(6)
-	var zb0001Mask uint8 /* 6 bits */
+	zb0001Len := uint32(8)
+	var zb0001Mask uint8 /* 8 bits */
 	_ = zb0001Mask
 	if z.UintMetrics == nil {
 		zb0001Len--
@@ -33805,13 +33825,21 @@ func (z *RuntimeMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 		zb0001Len--
 		zb0001Mask |= 0x4
 	}
-	if z.LastDay == nil {
+	if z.UptimeSecs == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x10
 	}
-	if z.LastHour == nil {
+	if z.UptimeNodes == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x20
+	}
+	if z.LastDay == nil {
+		zb0001Len--
+		zb0001Mask |= 0x40
+	}
+	if z.LastHour == nil {
+		zb0001Len--
+		zb0001Mask |= 0x80
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -33904,6 +33932,30 @@ func (z *RuntimeMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 			return
 		}
 		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// write "uptimeSecs"
+			err = en.Append(0xaa, 0x75, 0x70, 0x74, 0x69, 0x6d, 0x65, 0x53, 0x65, 0x63, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.UptimeSecs)
+			if err != nil {
+				err = msgp.WrapError(err, "UptimeSecs")
+				return
+			}
+		}
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// write "uptimeNodes"
+			err = en.Append(0xab, 0x75, 0x70, 0x74, 0x69, 0x6d, 0x65, 0x4e, 0x6f, 0x64, 0x65, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt(z.UptimeNodes)
+			if err != nil {
+				err = msgp.WrapError(err, "UptimeNodes")
+				return
+			}
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
 			// write "lastDay"
 			err = en.Append(0xa7, 0x6c, 0x61, 0x73, 0x74, 0x44, 0x61, 0x79)
 			if err != nil {
@@ -33922,7 +33974,7 @@ func (z *RuntimeMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x20) == 0 { // if not omitted
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
 			// write "lastHour"
 			err = en.Append(0xa8, 0x6c, 0x61, 0x73, 0x74, 0x48, 0x6f, 0x75, 0x72)
 			if err != nil {
@@ -33949,8 +34001,8 @@ func (z *RuntimeMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *RuntimeMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(6)
-	var zb0001Mask uint8 /* 6 bits */
+	zb0001Len := uint32(8)
+	var zb0001Mask uint8 /* 8 bits */
 	_ = zb0001Mask
 	if z.UintMetrics == nil {
 		zb0001Len--
@@ -33964,13 +34016,21 @@ func (z *RuntimeMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x4
 	}
-	if z.LastDay == nil {
+	if z.UptimeSecs == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x10
 	}
-	if z.LastHour == nil {
+	if z.UptimeNodes == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x20
+	}
+	if z.LastDay == nil {
+		zb0001Len--
+		zb0001Mask |= 0x40
+	}
+	if z.LastHour == nil {
+		zb0001Len--
+		zb0001Mask |= 0x80
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -34012,6 +34072,16 @@ func (z *RuntimeMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 		o = append(o, 0xa1, 0x6e)
 		o = msgp.AppendInt(o, z.N)
 		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// string "uptimeSecs"
+			o = append(o, 0xaa, 0x75, 0x70, 0x74, 0x69, 0x6d, 0x65, 0x53, 0x65, 0x63, 0x73)
+			o = msgp.AppendFloat64(o, z.UptimeSecs)
+		}
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// string "uptimeNodes"
+			o = append(o, 0xab, 0x75, 0x70, 0x74, 0x69, 0x6d, 0x65, 0x4e, 0x6f, 0x64, 0x65, 0x73)
+			o = msgp.AppendInt(o, z.UptimeNodes)
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
 			// string "lastDay"
 			o = append(o, 0xa7, 0x6c, 0x61, 0x73, 0x74, 0x44, 0x61, 0x79)
 			if z.LastDay == nil {
@@ -34024,7 +34094,7 @@ func (z *RuntimeMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x20) == 0 { // if not omitted
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
 			// string "lastHour"
 			o = append(o, 0xa8, 0x6c, 0x61, 0x73, 0x74, 0x48, 0x6f, 0x75, 0x72)
 			if z.LastHour == nil {
@@ -34051,7 +34121,7 @@ func (z *RuntimeMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 5 bits */
+	var zb0001Mask uint8 /* 7 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -34154,6 +34224,20 @@ func (z *RuntimeMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "N")
 				return
 			}
+		case "uptimeSecs":
+			z.UptimeSecs, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "UptimeSecs")
+				return
+			}
+			zb0001Mask |= 0x8
+		case "uptimeNodes":
+			z.UptimeNodes, bts, err = msgp.ReadIntBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "UptimeNodes")
+				return
+			}
+			zb0001Mask |= 0x10
 		case "lastDay":
 			if msgp.IsNil(bts) {
 				bts, err = msgp.ReadNilBytes(bts)
@@ -34171,7 +34255,7 @@ func (z *RuntimeMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x8
+			zb0001Mask |= 0x20
 		case "lastHour":
 			if msgp.IsNil(bts) {
 				bts, err = msgp.ReadNilBytes(bts)
@@ -34189,7 +34273,7 @@ func (z *RuntimeMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x10
+			zb0001Mask |= 0x40
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -34199,7 +34283,7 @@ func (z *RuntimeMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x1f {
+	if zb0001Mask != 0x7f {
 		if (zb0001Mask & 0x1) == 0 {
 			z.UintMetrics = nil
 		}
@@ -34210,9 +34294,15 @@ func (z *RuntimeMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.HistMetrics = nil
 		}
 		if (zb0001Mask & 0x8) == 0 {
-			z.LastDay = nil
+			z.UptimeSecs = 0
 		}
 		if (zb0001Mask & 0x10) == 0 {
+			z.UptimeNodes = 0
+		}
+		if (zb0001Mask & 0x20) == 0 {
+			z.LastDay = nil
+		}
+		if (zb0001Mask & 0x40) == 0 {
 			z.LastHour = nil
 		}
 	}
@@ -34243,7 +34333,7 @@ func (z *RuntimeMetrics) Msgsize() (s int) {
 			s += msgp.StringPrefixSize + len(za0005) + (*localF64H)(&za0006).Msgsize()
 		}
 	}
-	s += 2 + msgp.IntSize + 8
+	s += 2 + msgp.IntSize + 11 + msgp.Float64Size + 12 + msgp.IntSize + 8
 	if z.LastDay == nil {
 		s += msgp.NilSize
 	} else {

@@ -28,6 +28,20 @@ import (
 	"github.com/minio/madmin-go/v4"
 )
 
+// lastMinuteSecs is the window the last_minute views cover.
+const lastMinuteSecs = 60
+
+// lastDayWindowSecs is the wall-clock span the last-day segments cover. Every
+// endpoint shares one timeline, so the widest series gives the window.
+func lastDayWindowSecs(day map[string]madmin.SegmentedAPIMetrics) float64 {
+	var interval, segments int
+	for _, s := range day {
+		interval = max(interval, s.Interval)
+		segments = max(segments, len(s.Segments))
+	}
+	return float64(interval * segments)
+}
+
 // formatAPISegmentDesc formats a description for an API endpoint across all segments.
 func formatAPISegmentDesc(stats madmin.APIStats, intervalSecs int, numSegments int) string {
 	totalSecs := float64(intervalSecs * numSegments)
@@ -202,8 +216,9 @@ func (node *APILastMinuteNode) GetChildren() []MetricChild {
 	return children
 }
 
-// generateAPIStatsDisplay creates a consistent API statistics display
-func generateAPIStatsDisplay(stats madmin.APIStats, endpointsCount int, showTopEndpoints bool, endpoints map[string]madmin.APIStats) map[string]string {
+// generateAPIStatsDisplay creates a consistent API statistics display.
+// window is the wall-clock seconds stats covers, 0 if the view does not fix it.
+func generateAPIStatsDisplay(stats madmin.APIStats, window float64, endpointsCount int, showTopEndpoints bool, endpoints map[string]madmin.APIStats) map[string]string {
 	if stats.Requests == 0 {
 		data := make(map[string]string)
 		data["Status"] = "No API requests recorded"
@@ -217,8 +232,8 @@ func generateAPIStatsDisplay(stats madmin.APIStats, endpointsCount int, showTopE
 	entries = append(entries, struct{ key, value string }{"Total Requests", humanize.Comma(stats.Requests)})
 
 	// Calculate RPS if we have wall time
-	if stats.WallTimeSecs > 0 {
-		rps := float64(stats.Requests) / stats.WallTimeSecs
+	if secs := windowSecs(window, stats.WallTimeSecs, stats.Nodes); secs > 0 {
+		rps := float64(stats.Requests) / secs
 		entries = append(entries, struct{ key, value string }{"Request Rate", fmt.Sprintf("%.1f req/sec", rps)})
 	}
 
@@ -435,7 +450,7 @@ func (node *APILastMinuteNode) GetLeafData() map[string]string {
 	}
 
 	total := node.api.LastMinuteTotal()
-	return generateAPIStatsDisplay(total, len(node.api.LastMinuteAPI), true, node.api.LastMinuteAPI)
+	return generateAPIStatsDisplay(total, lastMinuteSecs, len(node.api.LastMinuteAPI), true, node.api.LastMinuteAPI)
 }
 
 func (node *APILastMinuteNode) GetMetricType() madmin.MetricType   { return madmin.MetricsAPI }
@@ -449,10 +464,11 @@ func (node *APILastMinuteNode) GetChild(name string) (MetricNode, error) {
 
 	if stats, exists := node.api.LastMinuteAPI[name]; exists {
 		return &APIEndpointNode{
-			endpoint: name,
-			stats:    stats,
-			parent:   node,
-			path:     node.path + "/" + name,
+			endpoint:   name,
+			stats:      stats,
+			windowSecs: lastMinuteSecs,
+			parent:     node,
+			path:       node.path + "/" + name,
 		}, nil
 	}
 
@@ -473,10 +489,10 @@ func apiView(ops map[string]madmin.SegmentedAPIMetrics) segView[madmin.APIStats,
 			return formatAPISegmentDesc(s, interval, 1)
 		},
 		opLeaf: func(op string, s madmin.APIStats, segTime time.Time, interval int, parent MetricNode, path string) MetricNode {
-			return &APIEndpointNode{endpoint: op, stats: s, segmentTime: segTime, interval: interval, parent: parent, path: path}
+			return &APIEndpointNode{endpoint: op, stats: s, segmentTime: segTime, interval: interval, windowSecs: float64(interval), parent: parent, path: path}
 		},
-		sumLeaf: func(s madmin.APIStats, segTime time.Time, _, _ int, parent MetricNode, path string) MetricNode {
-			return &APITimeSegmentAllNode{segment: s, segmentTime: segTime, parent: parent, path: path}
+		sumLeaf: func(s madmin.APIStats, segTime time.Time, interval, _ int, parent MetricNode, path string) MetricNode {
+			return &APITimeSegmentAllNode{segment: s, segmentTime: segTime, interval: interval, parent: parent, path: path}
 		},
 	}
 }
@@ -540,7 +556,7 @@ func (node *APILastDayNode) GetLeafData() map[string]string {
 	}
 
 	total := node.api.LastDayTotal()
-	return generateAPIStatsDisplay(total, len(node.api.LastDayAPI), false, nil)
+	return generateAPIStatsDisplay(total, lastDayWindowSecs(node.api.LastDayAPI), len(node.api.LastDayAPI), false, nil)
 }
 
 func (node *APILastDayNode) GetMetricType() madmin.MetricType   { return madmin.MetricsAPI }
@@ -649,6 +665,7 @@ func (node *APILastDayAllNode) GetChild(name string) (MetricNode, error) {
 		return &APITimeSegmentAllNode{
 			segment:     segmented.Segments[i],
 			segmentTime: segmentStart(segmented.FirstTime, segmented.Interval, i),
+			interval:    segmented.Interval,
 			parent:      node,
 			path:        node.path + "/" + name,
 		}, nil
@@ -663,7 +680,7 @@ func (node *APILastDayAllNode) GetLeafData() map[string]string {
 	}
 
 	total := node.api.LastDayTotal()
-	return generateAPIStatsDisplay(total, len(node.api.LastDayAPI), false, nil)
+	return generateAPIStatsDisplay(total, lastDayWindowSecs(node.api.LastDayAPI), len(node.api.LastDayAPI), false, nil)
 }
 
 func (node *APILastDayAllNode) GetMetricType() madmin.MetricType   { return madmin.MetricsAPI }
@@ -731,10 +748,11 @@ func (node *APILastDayEndpointNode) GetChild(name string) (MetricNode, error) {
 		total := madmin.SegmentedAPITotal(node.segmented)
 
 		return &APIEndpointNode{
-			endpoint: node.apiName,
-			stats:    total,
-			parent:   node,
-			path:     node.path + "/" + name,
+			endpoint:   node.apiName,
+			stats:      total,
+			windowSecs: segmentedWindowSecs(&node.segmented),
+			parent:     node,
+			path:       node.path + "/" + name,
 		}, nil
 	}
 
@@ -746,6 +764,7 @@ func (node *APILastDayEndpointNode) GetChild(name string) (MetricNode, error) {
 			stats:       node.segmented.Segments[i],
 			segmentTime: segmentStart(node.segmented.FirstTime, node.segmented.Interval, i),
 			interval:    node.segmented.Interval,
+			windowSecs:  float64(node.segmented.Interval),
 			parent:      node,
 			path:        node.path + "/" + name,
 		}, nil
@@ -761,7 +780,7 @@ func (node *APILastDayEndpointNode) GetLeafData() map[string]string {
 
 	// Calculate total stats for this endpoint
 	total := madmin.SegmentedAPITotal(node.segmented)
-	return generateAPIStatsDisplay(total, 1, false, nil)
+	return generateAPIStatsDisplay(total, segmentedWindowSecs(&node.segmented), 1, false, nil)
 }
 
 func (node *APILastDayEndpointNode) GetMetricType() madmin.MetricType { return madmin.MetricsAPI }
@@ -794,7 +813,8 @@ func (node *APISinceStartNode) GetLeafData() map[string]string {
 		return map[string]string{"Status": "No API metrics available"}
 	}
 
-	return generateAPIStatsDisplay(node.api.SinceStart, 0, false, nil)
+	// No window is known for since-start: the nodes' uptimes are all it covers.
+	return generateAPIStatsDisplay(node.api.SinceStart, 0, 0, false, nil)
 }
 
 func (node *APISinceStartNode) GetMetricType() madmin.MetricType   { return madmin.MetricsAPI }
@@ -831,7 +851,7 @@ func (node *APILastDayTotalNode) GetLeafData() map[string]string {
 	}
 
 	total := node.api.LastDayTotal()
-	return generateAPIStatsDisplay(total, len(node.api.LastDayAPI), false, nil)
+	return generateAPIStatsDisplay(total, lastDayWindowSecs(node.api.LastDayAPI), len(node.api.LastDayAPI), false, nil)
 }
 
 func (node *APILastDayTotalNode) GetMetricType() madmin.MetricType   { return madmin.MetricsAPI }
@@ -851,6 +871,7 @@ func (node *APILastDayTotalNode) GetChild(_ string) (MetricNode, error) {
 type APITimeSegmentAllNode struct {
 	segment     madmin.APIStats
 	segmentTime time.Time
+	interval    int
 	parent      MetricNode
 	path        string
 }
@@ -868,7 +889,7 @@ func (node *APITimeSegmentAllNode) GetChild(_ string) (MetricNode, error) {
 }
 
 func (node *APITimeSegmentAllNode) GetLeafData() map[string]string {
-	return generateAPIStatsDisplay(node.segment, 1, false, nil)
+	return generateAPIStatsDisplay(node.segment, float64(node.interval), 1, false, nil)
 }
 
 func (node *APITimeSegmentAllNode) GetMetricType() madmin.MetricType   { return madmin.MetricsAPI }
@@ -880,66 +901,13 @@ func (node *APITimeSegmentAllNode) ShouldPauseRefresh() bool {
 	return true
 }
 
-type APITimeSegmentNode struct {
-	segment     madmin.APIStats
-	segmentTime time.Time
-	parent      MetricNode
-	path        string
-}
-
-func (node *APITimeSegmentNode) GetOpts() madmin.MetricsOptions {
-	return getNodeOpts(node)
-}
-
-func (node *APITimeSegmentNode) ShouldPauseRefresh() bool {
-	return true
-}
-
-func (node *APITimeSegmentNode) GetChildren() []MetricChild {
-	// Check if we have individual API data for this time segment
-	// For now, we'll show "All" as the only option since we have aggregated data
-	return []MetricChild{
-		{
-			Name:        "All",
-			Description: fmt.Sprintf("All API endpoints combined for %s time segment", node.segmentTime.Local().Format("15:04")),
-		},
-	}
-}
-
-func (node *APITimeSegmentNode) GetLeafData() map[string]string {
-	// This node now has children, so it should just show navigation info
-	data := make(map[string]string)
-	endTime := node.segmentTime.Add(time.Duration(15) * time.Minute) // Assume 15-minute intervals for now
-	data["Time Range"] = fmt.Sprintf("%s -> %s",
-		node.segmentTime.Local().Format("15:04"),
-		endTime.Local().Format("15:04"))
-	data["Total Requests"] = humanize.Comma(node.segment.Requests)
-	data["Available APIs"] = "Select 'All' to view combined statistics"
-	return data
-}
-
-func (node *APITimeSegmentNode) GetMetricType() madmin.MetricType   { return madmin.MetricsAPI }
-func (node *APITimeSegmentNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
-func (node *APITimeSegmentNode) GetParent() MetricNode              { return node.parent }
-func (node *APITimeSegmentNode) GetPath() string                    { return node.path }
-func (node *APITimeSegmentNode) GetChild(name string) (MetricNode, error) {
-	if name == "All" {
-		return &APITimeSegmentAllNode{
-			segment:     node.segment,
-			segmentTime: node.segmentTime,
-			parent:      node,
-			path:        node.path + "/" + name,
-		}, nil
-	}
-	return nil, fmt.Errorf("API selection not found: %s", name)
-}
-
 // APIEndpointNode shows detailed statistics for a specific endpoint
 type APIEndpointNode struct {
 	endpoint    string
 	stats       madmin.APIStats
 	segmentTime time.Time
 	interval    int
+	windowSecs  float64 // wall-clock seconds stats covers
 	parent      MetricNode
 	path        string
 }
@@ -982,8 +950,8 @@ func (node *APIEndpointNode) GetLeafData() map[string]string {
 	entries = append(entries, struct{ key, value string }{"Total Requests", humanize.Comma(node.stats.Requests)})
 
 	// Calculate RPS if we have wall time
-	if node.stats.WallTimeSecs > 0 {
-		rps := float64(node.stats.Requests) / node.stats.WallTimeSecs
+	if secs := windowSecs(node.windowSecs, node.stats.WallTimeSecs, node.stats.Nodes); secs > 0 {
+		rps := float64(node.stats.Requests) / secs
 		entries = append(entries, struct{ key, value string }{"Request Rate", fmt.Sprintf("%.1f req/sec", rps)})
 	}
 
@@ -1152,82 +1120,6 @@ func (node *APIEndpointNode) GetParent() MetricNode              { return node.p
 func (node *APIEndpointNode) GetPath() string                    { return node.path }
 func (node *APIEndpointNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("no children available for endpoint node")
-}
-
-// APISegmentedNode shows segmented statistics for a specific endpoint over the last day
-type APISegmentedNode struct {
-	segmented madmin.SegmentedAPIMetrics
-	parent    MetricNode
-	path      string
-}
-
-func (node *APISegmentedNode) GetOpts() madmin.MetricsOptions {
-	return getNodeOpts(node)
-}
-
-func (node *APISegmentedNode) GetChildren() []MetricChild {
-	children := make([]MetricChild, 0, len(node.segmented.Segments))
-	for i := range node.segmented.Segments {
-		children = append(children, MetricChild{
-			Name:        fmt.Sprintf("segment_%d", i),
-			Description: fmt.Sprintf("Time segment %d statistics", i),
-		})
-	}
-	return children
-}
-
-func (node *APISegmentedNode) GetLeafData() map[string]string {
-	data := make(map[string]string)
-
-	data["Segment Count"] = fmt.Sprintf("%d segments", len(node.segmented.Segments))
-	data["Interval"] = fmt.Sprintf("%d seconds", node.segmented.Interval)
-
-	// Aggregate statistics
-	var totalRequests int64
-	var totalErrors int
-	var totalBytes int64
-	var totalLatency float64
-
-	for _, segment := range node.segmented.Segments {
-		totalRequests += segment.Requests
-		totalErrors += segment.Errors4xx + segment.Errors5xx
-		totalBytes += segment.IncomingBytes + segment.OutgoingBytes
-		totalLatency += segment.RequestTimeSecs
-	}
-
-	if totalRequests > 0 {
-		avgLatency := (totalLatency / float64(totalRequests)) * 1000
-		data["Total Requests"] = humanize.Comma(totalRequests)
-		data["Average Latency"] = fmt.Sprintf("%.1f ms", avgLatency)
-
-		if totalErrors > 0 {
-			errorRate := float64(totalErrors) / float64(totalRequests) * 100
-			data["Error Rate"] = fmt.Sprintf("%.2f%% (%d errors)", errorRate, totalErrors)
-		}
-
-		if totalBytes > 0 {
-			data["Total Throughput"] = humanize.Bytes(uint64(totalBytes))
-		}
-
-		// Calculate request rate per segment
-		avgReqPerSegment := float64(totalRequests) / float64(len(node.segmented.Segments))
-		data["Avg Requests/Segment"] = fmt.Sprintf("%.1f", avgReqPerSegment)
-	}
-
-	return data
-}
-
-func (node *APISegmentedNode) GetMetricType() madmin.MetricType   { return madmin.MetricsAPI }
-func (node *APISegmentedNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
-func (node *APISegmentedNode) GetParent() MetricNode              { return node.parent }
-func (node *APISegmentedNode) GetPath() string                    { return node.path }
-
-func (node *APISegmentedNode) ShouldPauseRefresh() bool {
-	return true
-}
-
-func (node *APISegmentedNode) GetChild(name string) (MetricNode, error) {
-	return nil, fmt.Errorf("segmented endpoint children not yet implemented: %s", name)
 }
 
 // generateAPIOverviewDashboard creates a clean API performance dashboard
