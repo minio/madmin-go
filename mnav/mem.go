@@ -444,8 +444,10 @@ var memWindowRows = []memWindowRow{
 // Every field is summed over the samples folded in -- N of them, one per node per
 // segment -- so the quotient is a mean per sample and one sample covers one
 // interval. That makes interval the divisor for every rate here even when the
-// whole window is rendered; segments is what turns N back into a node count and
-// scales a counter's total to one node's share of the window.
+// whole window is rendered; segments is how many slots carried a sample -- not
+// how many the window holds, since nothing accrued in the empty ones -- and is
+// what turns N back into a node count and scales a counter's total to one node's
+// share.
 func memSegmentRows(seg madmin.MemSegment, interval, segments int, coverage string) map[string]string {
 	if seg.N == 0 {
 		return map[string]string{"Status": "no node reported this time segment"}
@@ -545,6 +547,19 @@ func (node *MemLastDayNode) hasSegments() bool {
 	return node.segmented != nil && node.segmented.Interval > 0 && len(node.segmented.Segments) > 0
 }
 
+// reportedSegments counts the slots that carry a sample. A window's slots are not
+// all populated -- a restart, a startup or a node joining late leaves gaps -- and
+// nothing accrued in those.
+func (node *MemLastDayNode) reportedSegments() int {
+	var n int
+	for i := range node.segmented.Segments {
+		if node.segmented.Segments[i].N > 0 {
+			n++
+		}
+	}
+	return n
+}
+
 func (node *MemLastDayNode) wholeSecs() int {
 	return node.segmented.Interval * len(node.segmented.Segments)
 }
@@ -587,7 +602,7 @@ func (node *MemLastDayNode) GetChild(name string) (MetricNode, error) {
 		return &MemTimeSegmentNode{
 			segment:  node.segmented.Total(),
 			interval: node.segmented.Interval,
-			segments: len(node.segmented.Segments),
+			segments: node.reportedSegments(),
 			coverage: windowCoverage(node.segmented.FirstTime, node.wholeSecs()),
 			flags:    node.flags, parent: node, path: node.path + "/" + name,
 		}, nil
@@ -613,7 +628,7 @@ func (node *MemLastDayNode) GetLeafData() map[string]string {
 	// The aggregate only: each segment states its own figures in the description
 	// of the child that opens it.
 	return memSegmentRows(node.segmented.Total(), node.segmented.Interval,
-		len(node.segmented.Segments), windowCoverage(node.segmented.FirstTime, node.wholeSecs()))
+		node.reportedSegments(), windowCoverage(node.segmented.FirstTime, node.wholeSecs()))
 }
 
 // MemTimeSegmentNode is one segment of a memory window, or the whole window.

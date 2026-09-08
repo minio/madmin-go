@@ -731,7 +731,7 @@ func (node *ProcessLastDayNode) GetLeafData() map[string]string {
 	// The aggregate only: each segment states its own figures in the
 	// description of the child that opens it.
 	return processSegmentRows(node.segmented.Total(), node.segmented.Interval,
-		len(node.segmented.Segments), windowCoverage(node.segmented.FirstTime, node.wholeSecs()))
+		reportedProcessSegments(node.segmented), windowCoverage(node.segmented.FirstTime, node.wholeSecs()))
 }
 
 func (node *ProcessLastDayNode) GetChildren() []MetricChild {
@@ -806,6 +806,19 @@ func describeProcessSegment(seg madmin.ProcessSegment, interval int) string {
 	return strings.Join(parts, ", ") + " per process"
 }
 
+// reportedProcessSegments counts the slots that carry a sample. A window's slots
+// are not all populated -- a restart, a startup or a node joining late leaves
+// gaps -- and nothing accrued in those.
+func reportedProcessSegments(s *madmin.SegmentedProcessMetrics) int {
+	var n int
+	for i := range s.Segments {
+		if s.Segments[i].N > 0 {
+			n++
+		}
+	}
+	return n
+}
+
 // processSegmentRows renders one segment, or a whole window, as leaf data.
 //
 // Every field is summed over the samples folded in -- N of them, one per process
@@ -817,8 +830,10 @@ func describeProcessSegment(seg madmin.ProcessSegment, interval int) string {
 // day's CPU and I/O by the number of segments in it: a 14-segment window read
 // 136% of a core where the segments it was built from each read ~1900%.
 //
-// segments is how many were folded in, so N can be turned back into a count of
-// the processes reporting rather than a count of samples.
+// segments is how many of them carried a sample, not how many slots the window
+// holds: counters only accrue where something reported, so scaling by the empty
+// slots too would invent activity for a restart or a startup gap. It is also what
+// turns N back into a count of the processes reporting rather than of samples.
 func processSegmentRows(seg madmin.ProcessSegment, interval, segments int, coverage string) map[string]string {
 	if seg.N == 0 {
 		return map[string]string{"Status": "no process reported this time segment"}
@@ -952,7 +967,7 @@ func (node *ProcessSegmentTotalNode) GetLeafData() map[string]string {
 	}
 	secs := node.segmented.Interval * len(node.segmented.Segments)
 	return processSegmentRows(node.segmented.Total(), node.segmented.Interval,
-		len(node.segmented.Segments), windowCoverage(node.segmented.FirstTime, secs))
+		reportedProcessSegments(node.segmented), windowCoverage(node.segmented.FirstTime, secs))
 }
 
 // ProcessTimeSegmentNode is one time segment of the window.

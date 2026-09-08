@@ -438,3 +438,66 @@ func TestMemSubsectionsRenderDerivedRows(t *testing.T) {
 		}
 	}
 }
+
+// A window's slots are not all populated -- a restart, a startup or a node
+// joining late leaves gaps -- and nothing accrued in the empty ones. Scaling the
+// combined average by every slot invents activity that was never observed, and
+// dividing N by every slot under-reports who was there.
+func TestWindowTotalsSkipUnreportedSegments(t *testing.T) {
+	const nodes = 2
+
+	t.Run("process", func(t *testing.T) {
+		// Two slots, one sample: 900 MB read and 200 CPU-seconds per process.
+		segs := []madmin.ProcessSegment{
+			{N: nodes, CPUPercent: nodes * 25, CPUUser: nodes * 200, ReadBytes: nodes * 900_000_000},
+			{},
+		}
+		nav := NewRealtimeMetricsNavigator(&madmin.RealtimeMetrics{
+			Aggregated: madmin.Metrics{Process: &madmin.ProcessMetrics{
+				Nodes: nodes, Count: nodes,
+				LastDay: &madmin.SegmentedProcessMetrics{
+					Interval: 900, FirstTime: dupFirstTime, Segments: segs,
+				},
+			}},
+		})
+		all, err := nav.Navigate("process/last_day/_ALL")
+		if err != nil {
+			t.Fatalf("navigate _ALL: %v", err)
+		}
+		data := all.GetLeafData()
+		for _, w := range []struct{ label, want string }{
+			{"Read", "900 MB per process, 1.0 MB/s"},
+			{"CPU User", "3m20s (22.2% of one core)"},
+			{"Processes", "2 node(s) reporting"},
+		} {
+			if got := leafValue(data, w.label); got != w.want {
+				t.Errorf("%s = %q, want %q: only one of the two slots reported",
+					w.label, got, w.want)
+			}
+		}
+	})
+
+	t.Run("mem", func(t *testing.T) {
+		segs := []madmin.MemSegment{
+			{N: nodes, Used: nodes * (90 << 30), Free: nodes * (10 << 30), MajorFaults: nodes * 1800},
+			{},
+		}
+		nav := memNav(nodes, madmin.MemInfo{Total: 100 << 30}, &madmin.SegmentedMemMetrics{
+			Interval: 900, FirstTime: dupFirstTime, Segments: segs,
+		})
+		all, err := nav.Navigate("mem/last_day/_ALL")
+		if err != nil {
+			t.Fatalf("navigate _ALL: %v", err)
+		}
+		data := all.GetLeafData()
+		for _, w := range []struct{ label, want string }{
+			{"Major Faults", "1,800 per node, 2.0/s"},
+			{"Nodes", "2 node(s) reporting"},
+		} {
+			if got := leafValue(data, w.label); got != w.want {
+				t.Errorf("%s = %q, want %q: only one of the two slots reported",
+					w.label, got, w.want)
+			}
+		}
+	})
+}
