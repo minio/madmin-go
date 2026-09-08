@@ -107,7 +107,11 @@ func (v goVals) node(key string) (float64, bool) {
 // instead of showing up on its own, which is why every rate taken from it is
 // labelled per node rather than presented as a fleet fact.
 func (v goVals) uptime() (d time.Duration, reported, ok bool) {
-	if v.upNodes > 0 && v.up > 0 {
+	// Only when every node reporting a counter also reported an uptime. Mid
+	// rollout the maps still hold all N nodes' counters while the uptime covers
+	// the upgraded subset, and rating one against the other inflates the result
+	// by however much longer the old nodes have been up.
+	if v.upNodes >= v.nodes && v.up > 0 {
 		return v.up, true, true
 	}
 	cpu, okCPU := v.get(mCPUTotal)
@@ -127,14 +131,15 @@ func (v goVals) uptimeRow() (string, bool) {
 		return "", false
 	}
 	switch {
-	case !reported:
-		return coverDuration(d) + " (derived, mean per node)", true
-	case v.upNodes < v.nodes:
-		return fmt.Sprintf("%s (mean of %d of %d nodes)", coverDuration(d), v.upNodes, v.nodes), true
-	case v.nodes > 1:
+	case reported && v.nodes > 1:
 		return coverDuration(d) + " (mean per node)", true
+	case reported:
+		return coverDuration(d), true
+	case v.upNodes > 0:
+		return fmt.Sprintf("%s (derived; %d of %d nodes report one)",
+			coverDuration(d), v.upNodes, v.nodes), true
 	}
-	return coverDuration(d), true
+	return coverDuration(d) + " (derived, mean per node)", true
 }
 
 // runtimeRows builds leaf data in display order. The leaf renderer sorts on the
@@ -262,13 +267,16 @@ func histLine(h metrics.Float64Histogram, nodes int) (string, bool) {
 			continue
 		}
 		count += c
-		lo, hi := h.Buckets[i], h.Buckets[i+1]
-		// The outermost buckets are unbounded; the finite edge is the only
-		// estimate either of them offers.
-		if math.IsInf(lo, -1) {
+		lo, loOK := histEdge(h.Buckets[i])
+		hi, hiOK := histEdge(h.Buckets[i+1])
+		// An unbounded outer edge has no value to average; the finite side is
+		// the only estimate the bucket offers.
+		switch {
+		case !loOK && !hiOK:
+			continue
+		case !loOK:
 			lo = hi
-		}
-		if math.IsInf(hi, 1) {
+		case !hiOK:
 			hi = lo
 		}
 		weighted += (lo + hi) / 2 * float64(c)
@@ -297,10 +305,26 @@ func histLine(h metrics.Float64Histogram, nodes int) (string, bool) {
 	return out, true
 }
 
+// histEdge reports a bucket boundary and whether it is bounded.
+//
+// The wire carries no infinities: the producer substitutes -math.MaxFloat64 and
+// math.MaxFloat64 for the runtime's open outer edges because JSON cannot encode
+// Inf. Testing for Inf here therefore never fires, and averaging in a sentinel
+// overflows the duration it is rendered as.
+func histEdge(v float64) (float64, bool) {
+	if math.IsInf(v, 0) || v <= -math.MaxFloat64 || v >= math.MaxFloat64 {
+		return 0, false
+	}
+	return v, true
+}
+
 // histQuantile returns the bucket edge the qth sample falls in. bounded is false
-// in the open-ended top bucket, where the edge is a lower bound.
+// in the open outer bucket, where the edge is a lower bound.
 func histQuantile(h metrics.Float64Histogram, count uint64, q float64) (edge float64, bounded, ok bool) {
-	want := uint64(float64(count) * q)
+	// Ceiling rank: flooring puts p99 of two samples at rank 1, which answers
+	// with the first bucket instead of the second sample.
+	want := uint64(math.Ceil(float64(count) * q))
+	want = min(max(want, 1), count)
 	var seen uint64
 	for i, c := range h.Counts {
 		if c == 0 {
@@ -308,10 +332,11 @@ func histQuantile(h metrics.Float64Histogram, count uint64, q float64) (edge flo
 		}
 		seen += c
 		if seen >= want {
-			if hi := h.Buckets[i+1]; !math.IsInf(hi, 1) {
+			if hi, ok := histEdge(h.Buckets[i+1]); ok {
 				return hi, true, true
 			}
-			return h.Buckets[i], false, true
+			lo, ok := histEdge(h.Buckets[i])
+			return lo, false, ok
 		}
 	}
 	return 0, false, false
@@ -609,8 +634,12 @@ func (node *runtimeSectionNode) syncRows(v goVals, r *runtimeRows) {
 }
 
 // runtimeWindowRow is a value worth a row in a window. A gauge reads as a level;
-// a counter is cumulative on the wire and only means anything once differenced
-// against the previous segment. brief marks the few that fit a one-line summary.
+// a counter arrives already differenced -- the producer stores each segment's own
+// increase -- so it is summed, never differenced again. brief marks the few that
+// fit a one-line summary.
+//
+// Only what the producer actually puts in a RuntimeSegment; the live sample's
+// wider metric set is not in the window.
 type runtimeWindowRow struct {
 	label   string
 	key     string
@@ -623,67 +652,54 @@ type runtimeWindowRow struct {
 var runtimeWindowRows = []runtimeWindowRow{
 	{"Goroutines", mGoroutines, false, true, "", fmtCount},
 	{"Heap In Use", mHeapInUse, false, true, "", fmtBytes},
-	{"Heap Objects", mHeapObjects, false, false, "", fmtCount},
-	{"Memory Total", mMemTotal, false, false, "", fmtBytes},
+	{"Goroutine Stacks", "/memory/classes/heap/stacks:bytes", false, false, "", fmtBytes},
 	{"GC Cycles", mGCCycles, true, true, "cycles", fmtCount},
-	{"Allocated", mAllocBytes, true, true, "", fmtBytes},
-	{"GC CPU", mCPUGC, true, false, "", fmtSecs},
-	{"User CPU", mCPUUser, true, false, "", fmtSecs},
-	{"Mutex Wait", mMutexWait, true, true, "", fmtSecs},
-}
-
-// segDelta is how far a counter advanced into one segment, and over how much wall
-// clock. The two are separate because a segment nobody reported widens the span
-// the next increase covers without widening the segment.
-type segDelta struct {
-	value float64
-	secs  int
+	// Counted, not timed: the producer stores how many pauses the segment saw,
+	// under the histogram's own name.
+	{"GC Pauses", "/gc/pauses:seconds", true, true, "pauses", fmtCount},
 }
 
 // windowStat is one row aggregated over a whole window: the range a gauge moved
-// through, or the total a counter advanced by and the span that took.
+// through, or the total a counter advanced by.
 type windowStat struct {
 	min, max, sum, delta float64
-	samples, deltaSecs   int
+	samples, segments    int
 }
 
-// runtimeWindow is a window prepared for display: each segment's per-node
-// increase of every counter row, and the whole-window aggregate of every row.
+// runtimeWindow is a window prepared for display: the whole-window aggregate of
+// every row.
 //
-// Counters arrive cumulative since process start, so a window is only a rate once
-// differenced. A drop means a node restarted inside the window, or that the set
-// of nodes reporting changed and moved the per-node mean; neither can be
-// recovered from the sample, so that segment is left without a rate rather than
-// shown a negative one.
+// A counter is already a per-segment delta on the wire -- the producer stores
+// each segment's own increase -- so the window total is their sum. Differencing
+// adjacent segments again would measure the change in the rate rather than the
+// activity, and would read three equal segments as no activity at all.
 type runtimeWindow struct {
-	seg    *madmin.SegmentedRuntimeMetrics
-	deltas []map[string]segDelta
-	stats  map[string]windowStat
+	seg   *madmin.SegmentedRuntimeMetrics
+	stats map[string]windowStat
 }
 
 func newRuntimeWindow(seg *madmin.SegmentedRuntimeMetrics) *runtimeWindow {
 	w := &runtimeWindow{
-		seg:    seg,
-		deltas: make([]map[string]segDelta, len(seg.Segments)),
-		stats:  make(map[string]windowStat, len(runtimeWindowRows)),
+		seg:   seg,
+		stats: make(map[string]windowStat, len(runtimeWindowRows)),
 	}
-	type sample struct {
-		value float64
-		index int
-	}
-	prev := make(map[string]sample, len(runtimeWindowRows))
 	for i := range seg.Segments {
 		if seg.Segments[i].N == 0 {
 			continue
 		}
 		v := segmentVals(seg.Segments[i])
-		w.deltas[i] = make(map[string]segDelta, len(runtimeWindowRows))
 		for _, row := range runtimeWindowRows {
 			cur, ok := v.node(row.key)
 			if !ok {
 				continue
 			}
 			s := w.stats[row.key]
+			if row.counter {
+				s.delta += cur
+				s.segments++
+				w.stats[row.key] = s
+				continue
+			}
 			if s.samples == 0 || cur < s.min {
 				s.min = cur
 			}
@@ -692,18 +708,6 @@ func newRuntimeWindow(seg *madmin.SegmentedRuntimeMetrics) *runtimeWindow {
 			}
 			s.sum += cur
 			s.samples++
-			if row.counter {
-				// The span is measured from the segment that last reported,
-				// not from the one before this in the slice: a gap of three
-				// quarter hours means the increase took forty-five minutes.
-				if before, seen := prev[row.key]; seen && cur >= before.value {
-					d := segDelta{cur - before.value, (i - before.index) * seg.Interval}
-					w.deltas[i][row.key] = d
-					s.delta += d.value
-					s.deltaSecs += d.secs
-				}
-				prev[row.key] = sample{cur, i}
-			}
 			w.stats[row.key] = s
 		}
 	}
@@ -731,7 +735,7 @@ func (w *runtimeWindow) wholeSecs() int {
 // through, or how far a counter advanced and how fast.
 func (w *runtimeWindow) summarize(row runtimeWindowRow) (string, bool) {
 	s, ok := w.stats[row.key]
-	if !ok || s.samples == 0 {
+	if !ok {
 		return "", false
 	}
 	if row.counter {
@@ -739,12 +743,15 @@ func (w *runtimeWindow) summarize(row runtimeWindowRow) (string, bool) {
 			return "", false
 		}
 		out := "+" + row.render(s.delta) + "/node over the window"
-		// Over the span the increases were actually observed across, which is
-		// short of the window when the oldest segments went unreported.
-		if s.deltaSecs > 0 {
-			out += ", " + fmtRate(s.delta/float64(s.deltaSecs), row.render, row.unit)
+		// Over the segments that reported, not the window, so a gap does not
+		// dilute the rate.
+		if secs := s.segments * w.seg.Interval; secs > 0 {
+			out += ", " + fmtRate(s.delta/float64(secs), row.render, row.unit)
 		}
 		return out, true
+	}
+	if s.samples == 0 {
+		return "", false
 	}
 	out := row.render(s.sum/float64(s.samples)) + "/node avg"
 	if s.min != s.max {
@@ -778,15 +785,17 @@ func describeRuntimeSegment(w *runtimeWindow, i int) string {
 		if !row.brief {
 			continue
 		}
+		value, ok := v.node(row.key)
+		if !ok {
+			continue
+		}
 		if row.counter {
-			if d, ok := w.deltas[i][row.key]; ok && d.value > 0 {
-				parts = append(parts, row.label+" +"+row.render(d.value))
+			if value > 0 {
+				parts = append(parts, row.label+" +"+row.render(value))
 			}
 			continue
 		}
-		if value, ok := v.node(row.key); ok {
-			parts = append(parts, row.label+" "+row.render(value))
-		}
+		parts = append(parts, row.label+" "+row.render(value))
 	}
 	if len(parts) == 0 {
 		return formatNodeCount(w.seg.Segments[i].N, 1) + ", no runtime values recorded"
@@ -919,26 +928,21 @@ func (node *runtimeSegmentNode) GetLeafData() map[string]string {
 	r.add("Time Segment", windowCoverage(segmentStart(w.seg.FirstTime, interval, node.index), interval))
 	r.add("Nodes", formatNodeCount(seg.N, 1))
 	for _, row := range runtimeWindowRows {
-		before := r.n
-		r.total(v, row.label, row.key, row.render)
-		if r.n == before {
+		perNode, ok := v.node(row.key)
+		if !ok {
 			continue
 		}
-		// A counter's level is the process lifetime's; what happened inside the
-		// segment is the increase over the one before it.
-		d, moved := w.deltas[node.index][row.key]
-		if !moved || d.value <= 0 {
+		if !row.counter {
+			r.total(v, row.label, row.key, row.render)
 			continue
 		}
-		key := fmt.Sprintf("%02d:%s", before, row.label)
-		value := r.data[key] + fmt.Sprintf(", +%s/node", row.render(d.value))
-		if d.secs > 0 {
-			value += " (" + fmtRate(d.value/float64(d.secs), row.render, row.unit) + ")"
-			if d.secs > interval {
-				value += " since " + segmentKey(segmentStart(w.seg.FirstTime, interval, node.index-d.secs/interval))
-			}
+		// Already this segment's own increase, so it is stated as such rather
+		// than as a level.
+		value := "+" + row.render(perNode) + "/node"
+		if interval > 0 {
+			value += " (" + fmtRate(perNode/float64(interval), row.render, row.unit) + ")"
 		}
-		r.data[key] = value
+		r.add(row.label, value)
 	}
 	return r.data
 }

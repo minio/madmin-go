@@ -836,12 +836,16 @@ func processSegmentRows(seg madmin.ProcessSegment, interval, segments int, cover
 		if v <= 0 {
 			return
 		}
+		// v/n is one process's figure for one segment; the window's is that
+		// times the segments folded in. The share is the same either way, since
+		// both sides scale together.
 		perProc := v / n
 		if interval > 0 {
-			r.add(label, fmt.Sprintf("%s (%s of one core)", fmtSecs(perProc), fmtPct(perProc, float64(interval))))
+			r.add(label, fmt.Sprintf("%s (%s of one core)",
+				fmtSecs(perProc*float64(segments)), fmtPct(perProc, float64(interval))))
 			return
 		}
-		r.add(label, fmtSecs(perProc))
+		r.add(label, fmtSecs(perProc*float64(segments)))
 	}
 	for _, row := range []struct {
 		label string
@@ -879,7 +883,7 @@ func processSegmentRows(seg madmin.ProcessSegment, interval, segments int, cover
 			return
 		}
 		perProc := v / n
-		value := render(perProc) + " per process"
+		value := render(perProc*float64(segments)) + " per process"
 		if interval > 0 {
 			value += ", " + fmtRate(perProc/float64(interval), render, unit)
 		}

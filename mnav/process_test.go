@@ -188,13 +188,14 @@ func TestProcessWindowNavigation(t *testing.T) {
 	}
 }
 
-// Every value here is a mean over samples, and one sample covers one interval,
-// so a window summary must land on the same figures as the segments it was built
-// from -- not on those divided by the number of segments.
+// A gauge is a level, so a window summary equals the segments it folded. A
+// counter is each segment's own increase, so its window total is their sum while
+// its rate stays the segments' own -- one sample covers one interval however many
+// were folded in.
 //
-// The window used to be handed its whole span as the divisor, which read a
+// The window used to be handed its whole span as the rate divisor, reading a
 // 14-segment day at 136% of a core where every segment in it read 1900%.
-func TestProcessWindowAgreesWithItsSegments(t *testing.T) {
+func TestProcessWindowFoldsGaugesAndCountersApart(t *testing.T) {
 	const nodes, count = 17, 14
 	segs := make([]madmin.ProcessSegment, count)
 	for i := range segs {
@@ -221,21 +222,32 @@ func TestProcessWindowAgreesWithItsSegments(t *testing.T) {
 		t.Fatalf("navigate segment: %v", err)
 	}
 	allData, oneData := all.GetLeafData(), one.GetLeafData()
-	for _, label := range []string{"CPU", "CPU User", "Resident", "Read"} {
+
+	for _, label := range []string{"CPU", "Resident", "Threads"} {
 		got, want := leafValue(allData, label), leafValue(oneData, label)
 		if want == "" {
 			t.Fatalf("segment has no %s row to compare against", label)
 		}
 		if got != want {
-			t.Errorf("_ALL %s = %q, want %q -- the same as every segment it folded",
-				label, got, want)
+			t.Errorf("_ALL %s = %q, want %q -- a level, not a sum", label, got, want)
 		}
 	}
-	// 200 CPU-seconds of a 900-second interval is 22.22% of one core, and the
-	// window covers the same ground however many segments it holds.
-	if got, want := leafValue(allData, "CPU User"), "3m20s (22.2% of one core)"; got != want {
-		t.Errorf("CPU User = %q, want %q", got, want)
+
+	// 200 CPU-seconds of a 900-second interval is 22.2% of one core, and
+	// fourteen of them are 46m40s across the window.
+	for _, w := range []struct{ label, seg, all string }{
+		{"CPU User", "3m20s (22.2% of one core)", "46m40s (22.2% of one core)"},
+		{"Read", "900 MB per process, 1.0 MB/s", "13 GB per process, 1.0 MB/s"},
+	} {
+		if got := leafValue(oneData, w.label); got != w.seg {
+			t.Errorf("segment %s = %q, want %q", w.label, got, w.seg)
+		}
+		if got := leafValue(allData, w.label); got != w.all {
+			t.Errorf("_ALL %s = %q, want %q -- the sum of %d segments at the segments' own rate",
+				w.label, got, w.all, count)
+		}
 	}
+
 	// N counts samples, so the whole window carries one per process per segment;
 	// only dividing that back down gives a process count.
 	if got, want := leafValue(allData, "Processes"), "17 node(s) reporting"; got != want {
@@ -347,5 +359,82 @@ func TestMemWindowNavigation(t *testing.T) {
 	}
 	if got, want := leafValue(allData, "Major Faults"), "5,400 per node, 2.0/s"; got != want {
 		t.Errorf("_ALL Major Faults = %q, want %q: three segments of 1,800 at the same rate", got, want)
+	}
+}
+
+// The five process subsections and the four memory ones that no test reached.
+// The CPU busy share, the mapped-memory breakdown, the voluntary/involuntary
+// split, the swap ratio and the cgroup headroom are all derived here and nowhere
+// else.
+func TestProcessSubsectionsRenderDerivedRows(t *testing.T) {
+	const n = 4
+	nav := NewRealtimeMetricsNavigator(&madmin.RealtimeMetrics{
+		Aggregated: madmin.Metrics{Process: &madmin.ProcessMetrics{
+			Nodes: n, Count: n, TotalRunningSecs: 3600 * n,
+			CPUTimes: madmin.ProcessCPUTimes{
+				Count: n, User: 720 * n, System: 180 * n, Idle: 100 * n,
+			},
+			MemInfo: madmin.ProcessMemoryInfo{
+				Count: n, RSS: 2 << 30 * n, VMS: 8 << 30 * n, HWM: 3 << 30 * n,
+			},
+			NumCtxSwitches: madmin.ProcessCtxSwitches{
+				Count: n, Voluntary: 7500 * n, Involuntary: 2500 * n,
+			},
+			PageFaults: madmin.ProcessPageFaults{
+				Count: n, MinorFaults: 99000 * n, MajorFaults: 1000 * n,
+			},
+			MemMaps: madmin.ProcessMemoryMaps{
+				Count: n, TotalSize: 10 << 30 * n, TotalRSS: 2 << 30 * n,
+				TotalPrivateDirty: 1 << 30 * n,
+			},
+		}},
+	})
+	for _, tc := range []struct{ path, label, want string }{
+		// 900 CPU-seconds of the 3600 the process has been up, per process.
+		{"process/cpu", "Busy", "25.0% of one core, per process"},
+		{"process/cpu", "User", "48m0s (12m0s/process, 72.0%)"},
+		{"process/memory", "Resident", "8.6 GB (2.1 GB/process)"},
+		{"process/memory", "Peak Resident", "13 GB (3.2 GB/process)"},
+		{"process/context_switches", "Voluntary", "30,000 (7,500/process, 75.0%)"},
+		{"process/context_switches", "Involuntary", "10,000 (2,500/process, 25.0%)"},
+		{"process/page_faults", "Minor", "396,000 (99,000/process, 99.0%)"},
+		{"process/page_faults", "Major", "4,000 (1,000/process), 16/min"},
+		{"process/mem_maps", "Mapped", "43 GB (11 GB/process)"},
+		{"process/mem_maps", "Resident", "8.6 GB (2.1 GB/process, 20.0%)"},
+		{"process/mem_maps", "Private Dirty", "4.3 GB (1.1 GB/process, 10.0%)"},
+	} {
+		node, err := nav.Navigate(tc.path)
+		if err != nil {
+			t.Fatalf("navigate %s: %v", tc.path, err)
+		}
+		if got := leafValue(node.GetLeafData(), tc.label); got != tc.want {
+			t.Errorf("%s %s = %q, want %q", tc.path, tc.label, got, tc.want)
+		}
+	}
+}
+
+func TestMemSubsectionsRenderDerivedRows(t *testing.T) {
+	nav := memNav(8, madmin.MemInfo{
+		Total: 100 << 30, Used: 70 << 30, Free: 10 << 30, Available: 30 << 30,
+		Cache: 18 << 30, Buffers: 2 << 30, Shared: 1 << 30,
+		Limit: 80 << 30, SwapSpaceTotal: 50 << 30, SwapSpaceFree: 40 << 30,
+	}, nil)
+	for _, tc := range []struct{ path, label, want string }{
+		{"mem/usage", "Available", "258 GB (32 GB/node, 30.0%)"},
+		{"mem/usage", "Cache", "155 GB (19 GB/node, 18.0%)"},
+		// Cache plus buffers is what the kernel hands back under pressure.
+		{"mem/system", "Reclaimable", "172 GB (22 GB/node, 20.0%)"},
+		{"mem/swap", "Used", "86 GB (11 GB/node, 20.0%)"},
+		{"mem/swap", "Swap : RAM", "0.50 : 1"},
+		{"mem/limits", "Limit", "687 GB (86 GB/node, 80.0%)"},
+		{"mem/limits", "Headroom", "86 GB (11 GB/node, 12.5%)"},
+	} {
+		node, err := nav.Navigate(tc.path)
+		if err != nil {
+			t.Fatalf("navigate %s: %v", tc.path, err)
+		}
+		if got := leafValue(node.GetLeafData(), tc.label); got != tc.want {
+			t.Errorf("%s %s = %q, want %q", tc.path, tc.label, got, tc.want)
+		}
 	}
 }

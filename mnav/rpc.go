@@ -710,59 +710,6 @@ func (node *RPCLastDayHandlerNode) GetChild(name string) (MetricNode, error) {
 	return nil, fmt.Errorf("time segment not found: %s", name)
 }
 
-// RPCConnectionSummaryNode shows connection summary details
-type RPCConnectionSummaryNode struct {
-	rpc    *madmin.RPCMetrics
-	parent MetricNode
-	path   string
-}
-
-func (node *RPCConnectionSummaryNode) GetOpts() madmin.MetricsOptions {
-	return getNodeOpts(node)
-}
-
-func (node *RPCConnectionSummaryNode) ShouldPauseRefresh() bool   { return false }
-func (node *RPCConnectionSummaryNode) GetChildren() []MetricChild { return []MetricChild{} }
-
-func (node *RPCConnectionSummaryNode) GetLeafData() map[string]string {
-	if node.rpc == nil {
-		return map[string]string{"Status": "No RPC connection data available"}
-	}
-
-	data := make(map[string]string)
-
-	data["Cluster Nodes"] = fmt.Sprintf("%d nodes configured", node.rpc.Nodes)
-	data["Connected Nodes"] = fmt.Sprintf("%d online", node.rpc.Connected)
-	if node.rpc.Disconnected > 0 {
-		data["Disconnected Nodes"] = fmt.Sprintf("%d offline", node.rpc.Disconnected)
-	}
-
-	if node.rpc.Nodes > 0 {
-		data["Connections"] = fmt.Sprintf("%.1f per node", float64(node.rpc.Connected)/float64(node.rpc.Nodes))
-	}
-
-	// Add activity summary
-	totalActivity := int64(0)
-	for _, stats := range node.rpc.LastMinute {
-		totalActivity += stats.Requests
-	}
-	if totalActivity > 0 {
-		data["Recent Activity"] = fmt.Sprintf("%s requests (last minute)", humanize.Comma(totalActivity))
-	} else {
-		data["Recent Activity"] = "No recent RPC activity"
-	}
-
-	return data
-}
-
-func (node *RPCConnectionSummaryNode) GetMetricType() madmin.MetricType   { return madmin.MetricsRPC }
-func (node *RPCConnectionSummaryNode) GetMetricFlags() madmin.MetricFlags { return 0 }
-func (node *RPCConnectionSummaryNode) GetParent() MetricNode              { return node.parent }
-func (node *RPCConnectionSummaryNode) GetPath() string                    { return node.path }
-func (node *RPCConnectionSummaryNode) GetChild(_ string) (MetricNode, error) {
-	return nil, fmt.Errorf("no children available for connection summary")
-}
-
 // RPCByDestinationNode groups RPC statistics by destination
 type RPCByDestinationNode struct {
 	rpc    *madmin.RPCMetrics

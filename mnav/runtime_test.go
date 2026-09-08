@@ -18,6 +18,7 @@
 package mnav
 
 import (
+	"math"
 	"reflect"
 	"runtime/metrics"
 	"strings"
@@ -95,8 +96,12 @@ func TestRuntimeValuesCarryPerNodeMean(t *testing.T) {
 
 // A reported uptime beats the one derived from the CPU accounting, and says so.
 // Until the servers carry the field nothing reports one, so the derived value has
-// to keep working -- and a partial rollout must divide by the nodes that answered
-// rather than by the cluster, or the mean drops with the share still silent.
+// to keep working.
+//
+// A partial rollout falls back to the derived value: the metric maps still hold
+// every node's counters while the reported uptime covers only the upgraded ones,
+// and rating all-node counters against a subset's uptime inflates them by however
+// much longer the rest have been up.
 func TestRuntimeUptimePrefersReported(t *testing.T) {
 	uptimeOf := func(reportedBy int, secs float64) string {
 		nav := NewRealtimeMetricsNavigator(&madmin.RealtimeMetrics{
@@ -123,7 +128,7 @@ func TestRuntimeUptimePrefersReported(t *testing.T) {
 	}{
 		{"nobody reports one", 0, 0, "2h (derived, mean per node)"},
 		{"whole fleet reports", 10, 3600 * 10, "1h (mean per node)"},
-		{"half the fleet reports", 4, 3600 * 4, "1h (mean of 4 of 10 nodes)"},
+		{"half the fleet reports", 4, 3600 * 4, "2h (derived; 4 of 10 nodes report one)"},
 	} {
 		if got := uptimeOf(tc.reportedBy, tc.secs); got != tc.want {
 			t.Errorf("%s: Uptime = %q, want %q", tc.name, got, tc.want)
@@ -228,8 +233,9 @@ func runtimeWindowNav(t *testing.T) MetricNavigator {
 			UintMetrics: map[string]uint64{
 				mGoroutines: uint64(500+i*100) * nodes,
 				mHeapInUse:  uint64(1<<30) * nodes,
-				mGCCycles:   uint64(1000+i*10) * nodes,
-				mAllocBytes: uint64(i+1) * (1 << 30) * nodes,
+				// Already this segment's own increase, the way the producer
+				// stores it.
+				mGCCycles: 10 * nodes,
 			},
 		}
 	}
@@ -271,10 +277,8 @@ func TestRuntimeWindowNavigation(t *testing.T) {
 		}
 	}
 
-	// _ALL ranges the gauges and totals the counters: three steps of ten cycles
-	// across four samples. The rate is over the 45 minutes those three increases
-	// were observed across, not the hour the window spans -- the first sample only
-	// establishes a baseline, and nothing is attributable to it.
+	// _ALL ranges the gauges and sums the counters: four segments of ten cycles
+	// are forty, over the hour they were measured across.
 	all, err := nav.Navigate("go/last_day/_ALL")
 	if err != nil {
 		t.Fatalf("navigate _ALL: %v", err)
@@ -285,8 +289,7 @@ func TestRuntimeWindowNavigation(t *testing.T) {
 		{"Nodes", "3 node(s)"},
 		{"Goroutines", "650/node avg (min 500, max 800)"},
 		{"Heap In Use", "1.1 GB/node avg"},
-		{"GC Cycles", "+30/node over the window, 0.7 cycles/min"},
-		{"Allocated", "+3.2 GB/node over the window, 1.2 MB/s"},
+		{"GC Cycles", "+40/node over the window, 0.7 cycles/min"},
 	} {
 		if got := leafValue(data, w.label); got != w.value {
 			t.Errorf("_ALL %s = %q, want %q", w.label, got, w.value)
@@ -303,7 +306,7 @@ func TestRuntimeWindowNavigation(t *testing.T) {
 	for _, w := range []struct{ label, value string }{
 		{"Nodes", "3 node(s)"},
 		{"Goroutines", "2,100 (700/node)"},
-		{"GC Cycles", "3,060 (1,020/node), +10/node (0.7 cycles/min)"},
+		{"GC Cycles", "+10/node (0.7 cycles/min)"},
 	} {
 		if got := leafValue(data, w.label); got != w.value {
 			t.Errorf("segment %s = %q, want %q", w.label, got, w.value)
@@ -314,37 +317,74 @@ func TestRuntimeWindowNavigation(t *testing.T) {
 	}
 }
 
-// A node that restarted inside the window resets its cumulative counters, and the
-// per-node mean drops with it. There is no way to recover the missing span from
-// the sample, so that segment carries no rate rather than a negative one.
-func TestRuntimeWindowSkipsCounterResets(t *testing.T) {
+// The producer stores each segment's own increase, so a window sums them.
+// Differencing adjacent segments again measures the change in the rate instead
+// of the activity: three equal segments would come back as no activity at all,
+// and [10, 12, 8] would report +2 and discard the last eight as a reset.
+func TestRuntimeWindowSumsSegmentDeltas(t *testing.T) {
 	const nodes = 2
-	cycles := []uint64{1000, 1010, 4, 14}
-	segs := make([]madmin.RuntimeSegment, len(cycles))
-	for i, c := range cycles {
-		segs[i] = madmin.RuntimeSegment{
-			N:           nodes,
-			UintMetrics: map[string]uint64{mGCCycles: c * nodes},
+	for _, tc := range []struct {
+		name   string
+		cycles []uint64
+		want   float64
+	}{
+		{"steady", []uint64{10, 10, 10}, 30},
+		{"varying", []uint64{10, 12, 8}, 30},
+	} {
+		segs := make([]madmin.RuntimeSegment, len(tc.cycles))
+		for i, c := range tc.cycles {
+			segs[i] = madmin.RuntimeSegment{
+				N: nodes, UintMetrics: map[string]uint64{mGCCycles: c * nodes},
+			}
+		}
+		w := newRuntimeWindow(&madmin.SegmentedRuntimeMetrics{
+			Interval: 900, FirstTime: dupFirstTime, Segments: segs,
+		})
+		if got := w.stats[mGCCycles].delta; got != tc.want {
+			t.Errorf("%s: window total = %v, want %v", tc.name, got, tc.want)
 		}
 	}
-	w := newRuntimeWindow(&madmin.SegmentedRuntimeMetrics{
-		Interval: 900, FirstTime: dupFirstTime, Segments: segs,
-	})
-	if got, ok := w.deltas[2][mGCCycles]; ok {
-		t.Errorf("reset segment carries delta %v, want none", got)
+}
+
+// The wire carries no infinities -- the producer swaps the runtime's open outer
+// edges for +/-math.MaxFloat64, since JSON cannot encode Inf -- so a populated
+// outer bucket used to average a sentinel into the mean and overflow the duration
+// it renders as.
+func TestRuntimeHistogramHandlesFiniteSentinels(t *testing.T) {
+	h := metrics.Float64Histogram{
+		Buckets: []float64{-math.MaxFloat64, 0, 1e-3, math.MaxFloat64},
+		Counts:  []uint64{1, 96, 3},
 	}
-	// The span the surviving delta covers is measured from the segment that
-	// last reported, so a gap does not inflate the rate derived from it.
-	if got, want := w.deltas[3][mGCCycles].secs, 900; got != want {
-		t.Errorf("delta span = %v, want %v", got, want)
+	line, ok := histLine(h, 1)
+	if !ok {
+		t.Fatal("histLine returned no summary")
 	}
-	if got, want := w.deltas[3][mGCCycles].value, 10.0; got != want {
-		t.Errorf("delta after the reset = %v, want %v", got, want)
+	if strings.Contains(line, "e+") || strings.Contains(line, "2562047h") {
+		t.Errorf("histLine = %q, want the sentinel left out of the mean", line)
 	}
-	// The window total is the sum of the deltas it could trust, not last minus
-	// first -- which would be negative here.
-	if got, want := w.stats[mGCCycles].delta, 20.0; got != want {
-		t.Errorf("window delta = %v, want %v", got, want)
+	// The top bucket is open, so its edge is only a lower bound.
+	if !strings.Contains(line, "p99 >1ms") {
+		t.Errorf("histLine = %q, want p99 reported as a lower bound", line)
+	}
+}
+
+// Flooring the rank puts p99 of two samples at rank 1, answering with the first
+// bucket rather than the second sample.
+func TestRuntimeHistogramPercentileRankCeils(t *testing.T) {
+	h := metrics.Float64Histogram{
+		Buckets: []float64{0, 1e-6, 1e-3},
+		Counts:  []uint64{1, 1},
+	}
+	edge, bounded, ok := histQuantile(h, 2, 0.99)
+	if !ok || !bounded {
+		t.Fatalf("histQuantile ok=%v bounded=%v, want a bounded edge", ok, bounded)
+	}
+	if edge != 1e-3 {
+		t.Errorf("p99 edge = %v, want %v: the second sample's bucket", edge, 1e-3)
+	}
+	// p50 of two samples is the first.
+	if edge, _, _ := histQuantile(h, 2, 0.5); edge != 1e-6 {
+		t.Errorf("p50 edge = %v, want %v", edge, 1e-6)
 	}
 }
 
@@ -407,4 +447,53 @@ func childDesc(children []MetricChild, name string) string {
 		}
 	}
 	return ""
+}
+
+// The three sections that no test reached: their derived rows -- the queue
+// backlogs, the goroutines-per-thread ratio and the blocked rate -- exist only
+// here, so nothing else would catch them going wrong.
+func TestRuntimeSectionsRenderDerivedRows(t *testing.T) {
+	const nodes = 4
+	nav := goNav(nodes, map[string]uint64{
+		mGomaxprocs:                             32,
+		mGoroutines:                             640,
+		mGCCycles:                               500,
+		mHeapInUse:                              2 << 30,
+		mHeapObjects:                            1_000_000,
+		"/gc/heap/goal:bytes":                   3 << 30,
+		"/gc/gogc:percent":                      100,
+		"/gc/finalizers/queued:finalizers":      900,
+		"/gc/finalizers/executed:finalizers":    875,
+		"/sched/threads/total:threads":          40,
+		"/sched/goroutines/runnable:goroutines": 12,
+		"/cgo/go-to-c-calls:calls":              360_000,
+	}, map[string]float64{
+		mCPUTotal:  3600 * 32,
+		mCPUUser:   3600 * 32 * 0.25,
+		mCPUGC:     3600 * 32 * 0.01,
+		mMutexWait: 36,
+	})
+
+	for _, tc := range []struct{ path, label, want string }{
+		{"go/gc", "Cycles", "2,000 (500/node), 8.3 cycles/min"},
+		{"go/gc", "GOGC", "100%"},
+		// Queued minus run is the backlog; a queue outrunning its runs is a
+		// leak in the making.
+		{"go/gc", "Finalizers", "3,600 queued, 3,500 run, 100 pending"},
+		{"go/scheduler", "Goroutines", "2,560 (640/node)"},
+		{"go/scheduler", "↳ Runnable", "48 (12/node)"},
+		{"go/scheduler", "OS Threads", "160 (40/node)"},
+		{"go/scheduler", "Per Thread", "20.0 goroutines"},
+		{"go/scheduler", "Cgo Calls", "1,440,000 (360,000/node), 100 calls/s"},
+		{"go/sync", "Mutex Wait", "2m24s (36s/node)"},
+		{"go/sync", "Blocked Rate", "0.60 goroutine-s/min per node"},
+	} {
+		node, err := nav.Navigate(tc.path)
+		if err != nil {
+			t.Fatalf("navigate %s: %v", tc.path, err)
+		}
+		if got := leafValue(node.GetLeafData(), tc.label); got != tc.want {
+			t.Errorf("%s %s = %q, want %q", tc.path, tc.label, got, tc.want)
+		}
+	}
 }
