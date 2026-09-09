@@ -87,8 +87,12 @@ func prependEntry(data map[string]string, key, value string) {
 	data[fmt.Sprintf("00:%s", key)] = value
 }
 
-// generateReplicationStatsDisplay formats ReplicationStats for display
-func generateReplicationStatsDisplay(stats madmin.ReplicationStats, includeTimeInfo bool) map[string]string {
+// lastHourSecs is the window the last_hour views cover.
+const lastHourSecs = 3600
+
+// generateReplicationStatsDisplay formats ReplicationStats for display.
+// window is the wall-clock seconds stats covers, 0 if the view does not fix it.
+func generateReplicationStatsDisplay(stats madmin.ReplicationStats, window float64, includeTimeInfo bool) map[string]string {
 	data := make(map[string]string)
 
 	if stats.Nodes == 0 && stats.Events == 0 {
@@ -96,6 +100,7 @@ func generateReplicationStatsDisplay(stats madmin.ReplicationStats, includeTimeI
 		return data
 	}
 
+	covered := windowSecs(window, stats.WallTimeSecs, stats.Nodes)
 	idx := 0
 	add := func(key, value string) {
 		data[fmt.Sprintf("%02d:%s", idx, key)] = value
@@ -107,8 +112,8 @@ func generateReplicationStatsDisplay(stats madmin.ReplicationStats, includeTimeI
 		add("Time Range", fmt.Sprintf("%s → %s",
 			stats.StartTime.Local().Format("15:04:05"),
 			stats.EndTime.Local().Format("15:04:05")))
-		if stats.WallTimeSecs > 0 {
-			add("Duration", fmt.Sprintf("%.1f seconds", stats.WallTimeSecs))
+		if covered > 0 {
+			add("Duration", fmt.Sprintf("%.1f seconds", covered))
 		}
 	}
 
@@ -121,8 +126,8 @@ func generateReplicationStatsDisplay(stats madmin.ReplicationStats, includeTimeI
 	if stats.EventTimeSecs > 0 {
 		add("Event Rate", fmt.Sprintf("%.1f events/s", float64(stats.Events)/stats.EventTimeSecs))
 	}
-	if stats.WallTimeSecs > 0 {
-		add("Throughput", fmt.Sprintf("%s/s", humanize.Bytes(uint64(float64(stats.Bytes)/stats.WallTimeSecs))))
+	if covered > 0 {
+		add("Throughput", fmt.Sprintf("%s/s", humanize.Bytes(uint64(float64(stats.Bytes)/covered))))
 	}
 
 	// Latency metrics
@@ -381,7 +386,7 @@ func (node *ReplicationLastHourNode) GetLeafData() map[string]string {
 	// Aggregate last hour stats across all targets
 	allTargets := node.replication.AllTargets()
 
-	data := generateReplicationStatsDisplay(allTargets.LastHour, true)
+	data := generateReplicationStatsDisplay(allTargets.LastHour, lastHourSecs, true)
 	targetCount := len(node.replication.Targets)
 	if targetCount > 0 {
 		prependEntry(data, "Aggregation", fmt.Sprintf("Combined from %d targets", targetCount))
@@ -513,7 +518,7 @@ func (node *ReplicationTargetLastHourNode) GetLeafData() map[string]string {
 		return map[string]string{"Status": "No target data available"}
 	}
 
-	data := generateReplicationStatsDisplay(node.target.LastHour, true)
+	data := generateReplicationStatsDisplay(node.target.LastHour, lastHourSecs, true)
 	prependEntry(data, "Target", shortARN(node.targetName))
 	return data
 }
@@ -558,7 +563,8 @@ func (node *ReplicationSinceStartNode) GetLeafData() map[string]string {
 		return map[string]string{"Status": "No target data available"}
 	}
 
-	data := generateReplicationStatsDisplay(node.target.SinceStart, true)
+	// No window is known for since-start: the nodes' uptimes are all it covers.
+	data := generateReplicationStatsDisplay(node.target.SinceStart, 0, true)
 	prependEntry(data, "Target", shortARN(node.targetName))
 	return data
 }
@@ -729,6 +735,7 @@ func (node *ReplicationLastDayNode) GetChild(name string) (MetricNode, error) {
 		return &ReplicationLastDayTotalNode{
 			targetName: node.targetName,
 			total:      total,
+			windowSecs: segmentedWindowSecs(node.segmented),
 			parent:     node,
 			path:       node.path + "/" + name,
 		}, nil
@@ -766,6 +773,7 @@ func (node *ReplicationLastDayNode) GetPath() string       { return node.path }
 type ReplicationLastDayTotalNode struct {
 	targetName string
 	total      madmin.ReplicationStats
+	windowSecs float64 // wall-clock seconds total covers
 	parent     MetricNode
 	path       string
 }
@@ -783,7 +791,7 @@ func (node *ReplicationLastDayTotalNode) GetChildren() []MetricChild {
 }
 
 func (node *ReplicationLastDayTotalNode) GetLeafData() map[string]string {
-	data := generateReplicationStatsDisplay(node.total, true)
+	data := generateReplicationStatsDisplay(node.total, node.windowSecs, true)
 	prependEntry(data, "Target", shortARN(node.targetName))
 	return data
 }
@@ -825,7 +833,7 @@ func (node *ReplicationTimeSegmentNode) GetChildren() []MetricChild {
 }
 
 func (node *ReplicationTimeSegmentNode) GetLeafData() map[string]string {
-	data := generateReplicationStatsDisplay(node.segment, false)
+	data := generateReplicationStatsDisplay(node.segment, float64(node.interval), false)
 	endTime := node.segmentTime.Add(time.Duration(node.interval) * time.Second)
 	prependEntry(data, "Time Range", fmt.Sprintf("%s → %s",
 		node.segmentTime.Local().Format("15:04:05"),
@@ -966,6 +974,7 @@ func (node *ReplicationLastDayAggregatedNode) GetChild(name string) (MetricNode,
 		return &ReplicationLastDayTotalNode{
 			targetName: "all targets",
 			total:      total,
+			windowSecs: segmentedWindowSecs(seg),
 			parent:     node,
 			path:       node.path + "/Total",
 		}, nil

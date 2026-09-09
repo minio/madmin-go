@@ -21,8 +21,10 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
 	"time"
 
+	"github.com/dustin/go-humanize"
 	"github.com/minio/madmin-go/v4"
 )
 
@@ -217,4 +219,131 @@ func formatNodeCount(n, segments int) string {
 		return fmt.Sprintf("%d node(s)", int(avg))
 	}
 	return fmt.Sprintf("%.1f node(s) avg", avg)
+}
+
+// windowSecs returns the wall-clock seconds a stat covers, for use as the
+// denominator of a rate.
+//
+// A WallTimeSecs field is accumulated from every source folded in: each node,
+// operation and time segment merged contributes its own window, so a minute of
+// twenty operations on sixteen nodes carries 19200 seconds. Reading that raw
+// reports a rate hundreds of times below the real one, so it is only usable when
+// the number of merged sources is known.
+//
+// known is that window when the view fixes it (60 for a last minute, the interval
+// times the segment count for a day). Zero means it does not, and the node count
+// is divided out instead -- exact only where nodes were the sole axis merged,
+// which is the case for since-start totals.
+func windowSecs(known, wallTimeSecs float64, nodes int) float64 {
+	if known > 0 {
+		return known
+	}
+	if nodes <= 0 {
+		return 0
+	}
+	return wallTimeSecs / float64(nodes)
+}
+
+// segmentedWindowSecs is the wall-clock span a segmented series covers, the known
+// window for anything folded out of it.
+func segmentedWindowSecs[T any, PT segPtr[T]](s *madmin.Segmented[T, PT]) float64 {
+	if s == nil {
+		return 0
+	}
+	return float64(s.Interval * len(s.Segments))
+}
+
+func fmtBytes(v float64) string { return humanize.Bytes(uint64(max(v, 0))) }
+func fmtCount(v float64) string { return humanize.Comma(int64(v)) }
+
+// fmtSecs renders a float count of seconds at a precision its magnitude justifies.
+//
+// Scheduler and GC pauses run into the tens of nanoseconds -- half of one
+// cluster's GC pauses landed under 64ns -- which roundDuration, sized for lock
+// waits, floors to "0s". Below a microsecond the nanoseconds are the measurement.
+func fmtSecs(v float64) string {
+	d := time.Duration(v * float64(time.Second))
+	if d.Abs() < time.Microsecond {
+		return d.String()
+	}
+	return roundDuration(d).String()
+}
+
+// fmtRate renders a per-node rate with the row's own renderer, so a byte counter
+// reads as "4.6 MB/s".
+//
+// Below one per second it switches to the minute, which is where the slow
+// counters live: a collector running every 54 seconds is "1.1 cycles/min", not
+// "0.0187 cycles/s". It stops there rather than reaching for the hour, because
+// the shortest thing a rate is taken over here is a 15-minute segment and an
+// hourly figure would extrapolate past the measurement.
+func fmtRate(perSec float64, render func(float64) string, unit string) string {
+	value, per := perSec, "/s"
+	if perSec > 0 && perSec < 1 {
+		value, per = perSec*60, "/min"
+	}
+	out := render(value)
+	// A count renderer floors, so a scaled rate of 1.9 would print as "1", and a
+	// slower one as "0". Bare digits is what tells that renderer apart from the
+	// ones carrying a unit, which never need the correction.
+	if value < 10 && isBareCount(out) {
+		out = strconv.FormatFloat(value, 'f', 1, 64)
+	}
+	if unit != "" {
+		out += " " + unit
+	}
+	return out + per
+}
+
+// isBareCount reports a rendering that is only digits and thousand separators,
+// and so has no unit to lose if it is reformatted.
+func isBareCount(s string) bool {
+	if s == "" {
+		return false
+	}
+	for _, r := range s {
+		if r != ',' && (r < '0' || r > '9') {
+			return false
+		}
+	}
+	return true
+}
+
+// fmtPct renders a share. Two digits below ten percent, because the GC classes run
+// to hundredths of a percent of a busy process and "0.0%" would round several
+// distinct rows to the same nothing.
+func fmtPct(part, whole float64) string {
+	switch p := part / whole * 100; {
+	case p >= 10:
+		return fmt.Sprintf("%.1f%%", p)
+	case p >= 0.01:
+		return fmt.Sprintf("%.2f%%", p)
+	case p > 0:
+		// Scientific notation for a percentage reads worse than the answer it
+		// encodes, and the absolute value is on the same row for comparison.
+		return "<0.01%"
+	}
+	return "0%"
+}
+
+// qualify is the parenthesised tail a value carries: its mean over the things
+// that reported it, and its share of a whole where there is one. Either may be
+// absent -- a single reporter has no mean worth repeating -- and with neither the
+// value stands alone.
+//
+// unit names what reporters counts, because the families do not agree: memory and
+// the Go runtime divide by nodes, while the process family divides by processes
+// and says so, since a host may run more than one.
+func qualify(reporters int, unit string, part, whole float64, render func(float64) string) string {
+	var parts []string
+	if reporters > 1 {
+		parts = append(parts, render(part/float64(reporters))+"/"+unit)
+	}
+	if whole > 0 {
+		parts = append(parts, fmtPct(part, whole))
+	}
+	if len(parts) == 0 {
+		return ""
+	}
+	return " (" + strings.Join(parts, ", ") + ")"
 }

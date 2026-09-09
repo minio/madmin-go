@@ -153,41 +153,6 @@ func (node *OSMetricsNavigator) GetChild(name string) (MetricNode, error) {
 	}
 }
 
-type OSMetricsNode struct {
-	parent MetricNode
-	path   string
-}
-
-func (node *OSMetricsNode) GetOpts() madmin.MetricsOptions {
-	return getNodeOpts(node)
-}
-
-func (node *OSMetricsNode) ShouldPauseUpdates() bool {
-	// Legacy method - not used in interface, return false for default behavior
-	return false
-}
-
-func (node *OSMetricsNode) GetChildren() []MetricChild {
-	return []MetricChild{
-		{Name: "lifetime_ops", Description: "Accumulated operations since server start"},
-		{Name: "last_minute", Description: "Last minute operation statistics"},
-		{Name: "sensors", Description: "Temperature sensor metrics"},
-	}
-}
-func (node *OSMetricsNode) GetLeafData() map[string]string     { return nil }
-func (node *OSMetricsNode) GetMetricType() madmin.MetricType   { return madmin.MetricsOS }
-func (node *OSMetricsNode) GetMetricFlags() madmin.MetricFlags { return 0 }
-func (node *OSMetricsNode) GetParent() MetricNode              { return node.parent }
-func (node *OSMetricsNode) GetPath() string                    { return node.path }
-
-func (node *OSMetricsNode) ShouldPauseRefresh() bool {
-	return false
-}
-
-func (node *OSMetricsNode) GetChild(name string) (MetricNode, error) {
-	return nil, fmt.Errorf("os metric sub-navigation not yet implemented for: %s", name)
-}
-
 // OSLifetimeOpsNode handles navigation for OS lifetime operations
 type OSLifetimeOpsNode struct {
 	ops    map[string]uint64

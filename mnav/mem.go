@@ -20,7 +20,7 @@ package mnav
 import (
 	"fmt"
 	"strconv"
-	"time"
+	"strings"
 
 	"github.com/dustin/go-humanize"
 	"github.com/minio/madmin-go/v4"
@@ -66,7 +66,8 @@ func (node *MemMetricsNavigator) GetChildren() []MetricChild {
 		MetricChild{Name: "system", Description: "System memory details (cache, buffers, shared)"},
 		MetricChild{Name: "swap", Description: "Swap space information and utilization"},
 		MetricChild{Name: "limits", Description: "Memory limits and cgroup configuration"},
-		MetricChild{Name: "last_day", Description: "Last 24h memory statistics"},
+		MetricChild{Name: "last_hour", Description: "Memory levels and kernel reclaim over the last hour, by time segment"},
+		MetricChild{Name: "last_day", Description: "Memory levels and kernel reclaim over the last day, by time segment"},
 	)
 	if node.mem.VMStat != nil {
 		children = append(children,
@@ -87,56 +88,60 @@ func (node *MemMetricsNavigator) GetChildren() []MetricChild {
 	return children
 }
 
+// memRows builds leaf data in display order, dividing every summed value back
+// down to one node.
+//
+// MemInfo.Merge sums every field, so a 17-node cluster reports 2.2 TB of RAM and
+// nothing an operator can compare against a machine. nodes is what makes a row
+// per-node; the share of the cluster total is the same number either way, so both
+// are stated.
+type memRows struct {
+	data  map[string]string
+	n     int
+	nodes int
+}
+
+func newMemRows(nodes int) *memRows {
+	return &memRows{data: make(map[string]string), nodes: max(nodes, 1)}
+}
+
+func (r *memRows) add(label, value string) {
+	r.data[fmt.Sprintf("%02d:%s", r.n, label)] = value
+	r.n++
+}
+
+// total states a summed value as the cluster figure with the per-node mean, and
+// its share of whole where there is one. A value nobody reported is skipped
+// rather than rendered as a measured zero.
+func (r *memRows) total(label string, v, whole uint64) {
+	if v == 0 {
+		return
+	}
+	r.add(label, fmtBytes(float64(v))+qualify(r.nodes, "node", float64(v), float64(whole), fmtBytes))
+}
+
 func (node *MemMetricsNavigator) GetLeafData() map[string]string {
 	if node.mem == nil {
 		return map[string]string{"Status": "Memory metrics not available"}
 	}
-
-	data := map[string]string{
-		"Collected At": node.mem.CollectedAt.Format("2006-01-02 15:04:05"),
-	}
+	info := node.mem.Info
+	r := newMemRows(node.mem.Nodes)
+	r.add("Collected At", node.mem.CollectedAt.Format("2006-01-02 15:04:05"))
 	if node.mem.Nodes > 0 {
-		data["Nodes"] = strconv.Itoa(node.mem.Nodes)
+		r.add("Nodes", formatNodeCount(node.mem.Nodes, 1))
 	}
-	// Add high-level memory summary with averages
-	if node.mem.Info.Total > 0 {
-		data["Total Memory"] = fmt.Sprintf("%s across %d nodes",
-			formatMemoryBytes(node.mem.Info.Total), node.mem.Nodes)
-
-		if node.mem.Nodes > 0 {
-			avgTotal := node.mem.Info.Total / uint64(node.mem.Nodes)
-			data["Avg per Node"] = formatMemoryBytes(avgTotal)
-
-			if node.mem.Info.Used > 0 {
-				avgUsed := node.mem.Info.Used / uint64(node.mem.Nodes)
-				data["Avg Used"] = fmt.Sprintf("%s (%s)",
-					formatMemoryBytes(avgUsed),
-					calculatePercentage(node.mem.Info.Used, node.mem.Info.Total))
-			}
-
-			if node.mem.Info.Available > 0 {
-				avgAvailable := node.mem.Info.Available / uint64(node.mem.Nodes)
-				data["Avg Available"] = fmt.Sprintf("%s (%s)",
-					formatMemoryBytes(avgAvailable),
-					calculatePercentage(node.mem.Info.Available, node.mem.Info.Total))
-			}
-		} else {
-			// Fallback if node count is not available
-			if node.mem.Info.Used > 0 {
-				data["Used"] = fmt.Sprintf("%s (%s)",
-					formatMemoryBytes(node.mem.Info.Used),
-					calculatePercentage(node.mem.Info.Used, node.mem.Info.Total))
-			}
-
-			if node.mem.Info.Available > 0 {
-				data["Available"] = fmt.Sprintf("%s (%s)",
-					formatMemoryBytes(node.mem.Info.Available),
-					calculatePercentage(node.mem.Info.Available, node.mem.Info.Total))
-			}
-		}
+	r.total("Total", info.Total, 0)
+	// Available, not Free, is the number that says whether a host is about to
+	// run out: Linux lends everything it is not using to the page cache, so Free
+	// reads alarmingly low on a perfectly healthy machine.
+	r.total("Used", info.Used, info.Total)
+	r.total("Available", info.Available, info.Total)
+	r.total("Free", info.Free, info.Total)
+	r.total("Cache", info.Cache, info.Total)
+	if info.SwapSpaceTotal > 0 {
+		r.total("Swap Used", info.SwapSpaceTotal-info.SwapSpaceFree, info.SwapSpaceTotal)
 	}
-
-	return data
+	return r.data
 }
 
 func (node *MemMetricsNavigator) GetMetricType() madmin.MetricType {
@@ -173,6 +178,11 @@ func (node *MemMetricsNavigator) GetChild(name string) (MetricNode, error) {
 		return NewMemSwapNode(node.mem, node, fmt.Sprintf("%s/swap", node.path)), nil
 	case "limits":
 		return NewMemLimitsNode(node.mem, node, fmt.Sprintf("%s/limits", node.path)), nil
+	case "last_hour":
+		return &MemLastDayNode{
+			segmented: node.mem.LastHour, flags: madmin.MetricsHourStats, window: "hour",
+			parent: node, path: fmt.Sprintf("%s/last_hour", node.path),
+		}, nil
 	case "last_day":
 		return NewMemLastDayNode(node.mem.LastDay, node, fmt.Sprintf("%s/last_day", node.path)), nil
 	case "vmstat":
@@ -211,61 +221,21 @@ func (node *MemUsageNode) GetLeafData() map[string]string {
 	if node.mem == nil {
 		return map[string]string{"Status": "Memory usage metrics not available"}
 	}
-
-	data := map[string]string{}
 	info := node.mem.Info
-
-	if info.Total > 0 {
-		data["Total"] = fmt.Sprintf("%s across cluster", formatMemoryBytes(info.Total))
-
-		if node.mem.Nodes > 0 {
-			avgPerNode := info.Total / uint64(node.mem.Nodes)
-			data["Avg per Node"] = fmt.Sprintf("%s per node", formatMemoryBytes(avgPerNode))
-		}
+	if info.Total == 0 {
+		return map[string]string{"Status": "No memory usage reported"}
 	}
-
-	if info.Used > 0 {
-		usedPercent := calculatePercentage(info.Used, info.Total)
-		data["Used"] = fmt.Sprintf("%s (%s)", formatMemoryBytes(info.Used), usedPercent)
-	}
-
-	if info.Free > 0 {
-		freePercent := calculatePercentage(info.Free, info.Total)
-		data["Free"] = fmt.Sprintf("%s (%s)", formatMemoryBytes(info.Free), freePercent)
-	}
-
-	if info.Available > 0 {
-		availPercent := calculatePercentage(info.Available, info.Total)
-		data["Available"] = fmt.Sprintf("%s (%s)", formatMemoryBytes(info.Available), availPercent)
-
-		if info.Total > 0 {
-			availableRatio := float64(info.Available) / float64(info.Total)
-			var pressureStatus string
-			if availableRatio > 0.5 {
-				pressureStatus = "Low pressure"
-			} else if availableRatio > 0.2 {
-				pressureStatus = "Moderate pressure"
-			} else {
-				pressureStatus = "High pressure"
-			}
-			data["Pressure"] = pressureStatus
-		}
-	}
-
-	if info.Used > 0 && info.Total > 0 {
-		utilizationRatio := float64(info.Used) / float64(info.Total)
-		var efficiencyNote string
-		if utilizationRatio > 0.8 {
-			efficiencyNote = "High utilization"
-		} else if utilizationRatio > 0.6 {
-			efficiencyNote = "Good utilization"
-		} else {
-			efficiencyNote = "Low utilization"
-		}
-		data["Efficiency"] = efficiencyNote
-	}
-
-	return data
+	r := newMemRows(node.mem.Nodes)
+	r.total("Total", info.Total, 0)
+	r.total("Used", info.Used, info.Total)
+	// Available is what an allocation can actually get: it counts the reclaimable
+	// page cache that Free does not.
+	r.total("Available", info.Available, info.Total)
+	r.total("Free", info.Free, info.Total)
+	r.total("Cache", info.Cache, info.Total)
+	r.total("Buffers", info.Buffers, info.Total)
+	r.total("Shared", info.Shared, info.Total)
+	return r.data
 }
 
 func (node *MemUsageNode) GetMetricType() madmin.MetricType   { return madmin.MetricsMem }
@@ -304,64 +274,18 @@ func (node *MemSystemNode) GetLeafData() map[string]string {
 	if node.mem == nil {
 		return map[string]string{"Status": "System memory metrics not available"}
 	}
-
-	data := map[string]string{}
 	info := node.mem.Info
-
-	// Cache memory
-	if info.Cache > 0 {
-		cachePercent := calculatePercentage(info.Cache, info.Total)
-		data["Cache"] = fmt.Sprintf("%s (%s)",
-			formatMemoryBytes(info.Cache), cachePercent)
+	if info.Cache == 0 && info.Buffers == 0 && info.Shared == 0 {
+		return map[string]string{"Status": "No cache, buffer or shared memory reported"}
 	}
-
-	// Buffer memory
-	if info.Buffers > 0 {
-		bufferPercent := calculatePercentage(info.Buffers, info.Total)
-		data["Buffers"] = fmt.Sprintf("%s (%s)",
-			formatMemoryBytes(info.Buffers), bufferPercent)
-	}
-
-	// Shared memory
-	if info.Shared > 0 {
-		sharedPercent := calculatePercentage(info.Shared, info.Total)
-		data["Shared"] = fmt.Sprintf("%s (%s)",
-			formatMemoryBytes(info.Shared), sharedPercent)
-	}
-
-	// System memory efficiency
-	if info.Cache > 0 || info.Buffers > 0 {
-		systemMemory := info.Cache + info.Buffers
-		if info.Total > 0 {
-			systemPercent := calculatePercentage(systemMemory, info.Total)
-			data["System Total"] = fmt.Sprintf("%s (%s)",
-				formatMemoryBytes(systemMemory), systemPercent)
-
-			if info.Cache > 0 && info.Buffers > 0 {
-				cacheRatio := float64(info.Cache) / float64(systemMemory) * 100
-				data["Cache/Buffer"] = fmt.Sprintf("%.1f%% / %.1f%%",
-					cacheRatio, 100-cacheRatio)
-			}
-		}
-	}
-
-	// Analysis of system memory health
-	if info.Total > 0 && (info.Cache > 0 || info.Buffers > 0) {
-		systemTotal := info.Cache + info.Buffers
-		systemRatio := float64(systemTotal) / float64(info.Total)
-
-		var healthNote string
-		if systemRatio > 0.3 {
-			healthNote = "High usage - good I/O performance"
-		} else if systemRatio > 0.1 {
-			healthNote = "Moderate usage - balanced"
-		} else {
-			healthNote = "Low usage - cache available"
-		}
-		data["Health"] = healthNote
-	}
-
-	return data
+	r := newMemRows(node.mem.Nodes)
+	r.total("Cache", info.Cache, info.Total)
+	r.total("Buffers", info.Buffers, info.Total)
+	r.total("Shared", info.Shared, info.Total)
+	// Cache plus buffers is the memory the kernel will hand back under pressure,
+	// which is why it is worth a line of its own next to the total.
+	r.total("Reclaimable", info.Cache+info.Buffers, info.Total)
+	return r.data
 }
 
 func (node *MemSystemNode) GetMetricType() madmin.MetricType   { return madmin.MetricsMem }
@@ -400,76 +324,21 @@ func (node *MemSwapNode) GetLeafData() map[string]string {
 	if node.mem == nil {
 		return map[string]string{"Status": "Swap space metrics not available"}
 	}
-
-	data := map[string]string{}
 	info := node.mem.Info
-
-	// Total swap space
-	if info.SwapSpaceTotal > 0 {
-		data["Total Swap"] = fmt.Sprintf("%s across cluster",
-			formatMemoryBytes(info.SwapSpaceTotal))
-
-		if node.mem.Nodes > 0 {
-			avgSwapPerNode := info.SwapSpaceTotal / uint64(node.mem.Nodes)
-			data["Avg per Node"] = fmt.Sprintf("%s per node",
-				formatMemoryBytes(avgSwapPerNode))
-		}
+	if info.SwapSpaceTotal == 0 {
+		return map[string]string{"Status": "no swap configured on any node"}
 	}
-
-	// Free swap space
-	if info.SwapSpaceFree > 0 {
-		freeSwapPercent := calculatePercentage(info.SwapSpaceFree, info.SwapSpaceTotal)
-		data["Free Swap"] = fmt.Sprintf("%s (%s)",
-			formatMemoryBytes(info.SwapSpaceFree), freeSwapPercent)
+	r := newMemRows(node.mem.Nodes)
+	r.total("Total", info.SwapSpaceTotal, 0)
+	// Rendered even at zero: "none in use" is the reassurance being looked for,
+	// and hiding it makes a healthy cluster look unreported.
+	used := info.SwapSpaceTotal - info.SwapSpaceFree
+	r.add("Used", fmtBytes(float64(used))+qualify(r.nodes, "node", float64(used), float64(info.SwapSpaceTotal), fmtBytes))
+	r.total("Free", info.SwapSpaceFree, info.SwapSpaceTotal)
+	if info.Total > 0 {
+		r.add("Swap : RAM", fmt.Sprintf("%.2f : 1", float64(info.SwapSpaceTotal)/float64(info.Total)))
 	}
-
-	// Used swap calculation and analysis
-	if info.SwapSpaceTotal > 0 && info.SwapSpaceFree > 0 {
-		swapUsed := info.SwapSpaceTotal - info.SwapSpaceFree
-		if swapUsed > 0 {
-			usedSwapPercent := calculatePercentage(swapUsed, info.SwapSpaceTotal)
-			data["Used Swap"] = fmt.Sprintf("%s (%s)",
-				formatMemoryBytes(swapUsed), usedSwapPercent)
-
-			// Swap usage health indicator
-			swapUsageRatio := float64(swapUsed) / float64(info.SwapSpaceTotal)
-			var swapHealth string
-			if swapUsageRatio < 0.1 {
-				swapHealth = "Minimal usage - sufficient RAM"
-			} else if swapUsageRatio < 0.5 {
-				swapHealth = "Moderate usage - monitor pressure"
-			} else {
-				swapHealth = "High usage - consider more RAM"
-			}
-			data["Health"] = swapHealth
-		} else {
-			data["Used Swap"] = "0 bytes - no swap in use"
-			data["Health"] = "Optimal - all in RAM"
-		}
-	} else if info.SwapSpaceTotal == 0 {
-		data["Config"] = "No swap configured"
-		data["Note"] = "Consider swap for overflow protection"
-	}
-
-	// Memory vs Swap ratio analysis
-	if info.Total > 0 && info.SwapSpaceTotal > 0 {
-		swapRatio := float64(info.SwapSpaceTotal) / float64(info.Total)
-		data["Swap:RAM"] = fmt.Sprintf("%.1f:1", swapRatio)
-
-		var ratioAnalysis string
-		if swapRatio > 2.0 {
-			ratioAnalysis = "Excellent protection"
-		} else if swapRatio > 1.0 {
-			ratioAnalysis = "Good protection"
-		} else if swapRatio > 0.5 {
-			ratioAnalysis = "Basic protection"
-		} else {
-			ratioAnalysis = "Limited protection"
-		}
-		data["Protection"] = ratioAnalysis
-	}
-
-	return data
+	return r.data
 }
 
 func (node *MemSwapNode) GetMetricType() madmin.MetricType   { return madmin.MetricsMem }
@@ -508,73 +377,27 @@ func (node *MemLimitsNode) GetLeafData() map[string]string {
 	if node.mem == nil {
 		return map[string]string{"Status": "Memory limits metrics not available"}
 	}
-
-	data := map[string]string{}
 	info := node.mem.Info
-
-	// Cgroup memory limit analysis
-	if info.Limit > 0 {
-		data["Limit"] = formatMemoryBytes(info.Limit)
-
-		// Compare limit to physical memory
-		if info.Total > 0 {
-			if info.Limit == info.Total {
-				data["Type"] = "No cgroup limit - full memory"
-			} else if info.Limit < info.Total {
-				limitPercent := calculatePercentage(info.Limit, info.Total)
-				data["Type"] = fmt.Sprintf("Limited to %s of physical", limitPercent)
-
-				// Headroom analysis
-				if info.Used > 0 {
-					limitHeadroom := info.Limit - info.Used
-					headroomPercent := calculatePercentage(limitHeadroom, info.Limit)
-					data["Headroom"] = fmt.Sprintf("%s (%s)",
-						formatMemoryBytes(limitHeadroom), headroomPercent)
-
-					// Limit pressure indicator
-					usageRatio := float64(info.Used) / float64(info.Limit)
-					var pressureStatus string
-					if usageRatio > 0.9 {
-						pressureStatus = "Critical - very close to limit"
-					} else if usageRatio > 0.8 {
-						pressureStatus = "High - approaching limit"
-					} else if usageRatio > 0.6 {
-						pressureStatus = "Moderate - comfortable distance"
-					} else {
-						pressureStatus = "Low - plenty of headroom"
-					}
-					data["Pressure"] = pressureStatus
-				}
-			} else {
-				data["Type"] = "Limit exceeds physical memory (misconfigured)"
-			}
-		}
-	} else if info.Total > 0 {
-		data["Limit"] = "No cgroup limit configured"
-		data["Type"] = "Full memory without restrictions"
-		data["Note"] = "Consider limits for resource management"
+	// Limit is set to Total where no cgroup limit applies, so the two being equal
+	// is how "unlimited" arrives on the wire rather than a zero.
+	if info.Limit == 0 || info.Limit == info.Total {
+		return map[string]string{"Status": "no cgroup memory limit configured"}
 	}
-
-	// Memory governance analysis
-	if info.Limit > 0 && info.Total > 0 && info.Used > 0 {
-		effectiveLimit := info.Limit
-		if info.Limit > info.Total {
-			effectiveLimit = info.Total
-		}
-
-		utilizationAgainstLimit := float64(info.Used) / float64(effectiveLimit)
-		var governanceNote string
-		if utilizationAgainstLimit < 0.5 {
-			governanceNote = "Conservative - good margin"
-		} else if utilizationAgainstLimit < 0.8 {
-			governanceNote = "Healthy - approaching optimal"
+	r := newMemRows(node.mem.Nodes)
+	r.total("Limit", info.Limit, info.Total)
+	r.total("Physical", info.Total, 0)
+	if info.Used > 0 {
+		r.total("Used", info.Used, info.Limit)
+		if info.Limit > info.Used {
+			r.total("Headroom", info.Limit-info.Used, info.Limit)
 		} else {
-			governanceNote = "High - monitor for violations"
+			r.add("Headroom", "none: usage is at or above the limit")
 		}
-		data["Status"] = governanceNote
 	}
-
-	return data
+	if info.Limit > info.Total {
+		r.add("Note", "the limit exceeds physical memory, so it cannot bind")
+	}
+	return r.data
 }
 
 func (node *MemLimitsNode) GetMetricType() madmin.MetricType   { return madmin.MetricsMem }
@@ -590,61 +413,249 @@ func (node *MemLimitsNode) GetChild(_ string) (MetricNode, error) {
 	return nil, fmt.Errorf("memory limits node has no children")
 }
 
-// MemLastDayNode shows last 24h memory statistics
+// memWindowRow is a value worth a row in a memory window. A gauge reads as a
+// level; a counter is a per-segment delta on the wire and earns a rate.
+type memWindowRow struct {
+	label   string
+	counter bool
+	brief   bool
+	unit    string
+	render  func(float64) string
+	value   func(madmin.MemSegment) uint64
+}
+
+var memWindowRows = []memWindowRow{
+	{"Used", false, true, "", fmtBytes, func(m madmin.MemSegment) uint64 { return m.Used }},
+	{"Available", false, true, "", fmtBytes, func(m madmin.MemSegment) uint64 { return m.Available }},
+	{"Free", false, false, "", fmtBytes, func(m madmin.MemSegment) uint64 { return m.Free }},
+	{"Limit", false, false, "", fmtBytes, func(m madmin.MemSegment) uint64 { return m.Limit }},
+	// The kernel's own account of what the pressure cost. Every one of these is
+	// a delta over the segment, so a segment is comparable to its neighbours.
+	{"Swap In", true, true, "", fmtBytes, func(m madmin.MemSegment) uint64 { return m.SwapInBytes }},
+	{"Swap Out", true, true, "", fmtBytes, func(m madmin.MemSegment) uint64 { return m.SwapOutBytes }},
+	{"Major Faults", true, true, "", fmtCount, func(m madmin.MemSegment) uint64 { return m.MajorFaults }},
+	{"Workingset Refault", true, false, "", fmtCount, func(m madmin.MemSegment) uint64 { return m.WorkingsetRefault }},
+	{"Compaction Stalls", true, false, "", fmtCount, func(m madmin.MemSegment) uint64 { return m.CompactStall }},
+	{"OOM Kills", true, true, "", fmtCount, func(m madmin.MemSegment) uint64 { return m.OOMKill }},
+}
+
+// memSegmentRows renders one segment, or a whole window, as leaf data.
+//
+// Every field is summed over the samples folded in -- N of them, one per node per
+// segment -- so the quotient is a mean per sample and one sample covers one
+// interval. That makes interval the divisor for every rate here even when the
+// whole window is rendered; segments is how many slots carried a sample -- not
+// how many the window holds, since nothing accrued in the empty ones -- and is
+// what turns N back into a node count and scales a counter's total to one node's
+// share.
+func memSegmentRows(seg madmin.MemSegment, interval, segments int, coverage string) map[string]string {
+	if seg.N == 0 {
+		return map[string]string{"Status": "no node reported this time segment"}
+	}
+	n := float64(seg.N)
+	r := newMemRows(1)
+	r.add("Coverage", coverage)
+	r.add("Nodes", formatNodeCount(seg.N, segments)+" reporting")
+
+	total := float64(seg.Used+seg.Free) / n
+	for _, row := range memWindowRows {
+		v := float64(row.value(seg))
+		if v == 0 {
+			continue
+		}
+		if !row.counter {
+			r.add(row.label, fmtBytes(v/n)+" per node"+percentOf(v/n, total))
+			continue
+		}
+		// A counter's window total is one node's share of every segment folded
+		// in; its rate is that spread over the segments it accrued across.
+		value := row.render(v*float64(max(segments, 1))/n) + " per node"
+		if interval > 0 {
+			value += ", " + fmtRate(v/n/float64(interval), row.render, row.unit)
+		}
+		r.add(row.label, value)
+	}
+
+	// Fragmentation carries its own divisor: buddyinfo can be unreadable on a
+	// host whose meminfo is fine, so dividing by N would under-report by the
+	// share of hosts without it.
+	if seg.FragN > 0 && seg.FragFreeBytes > 0 {
+		f := float64(seg.FragN)
+		r.add("Free (Fragmented)", fmtBytes(float64(seg.FragFreeBytes)/f)+" per node, "+
+			fmtPct(float64(seg.FragFreeBytes-seg.FragFreeBytesLarge), float64(seg.FragFreeBytes))+" unusable")
+	}
+	return r.data
+}
+
+// percentOf is the parenthesised share a level carries next to its value.
+func percentOf(v, whole float64) string {
+	if whole <= 0 {
+		return ""
+	}
+	return " (" + fmtPct(v, whole) + ")"
+}
+
+// describeMemSegment renders one segment on a single line, per node.
+func describeMemSegment(seg madmin.MemSegment) string {
+	n := float64(seg.N)
+	var parts []string
+	for _, row := range memWindowRows {
+		v := float64(row.value(seg))
+		if !row.brief || v == 0 {
+			continue
+		}
+		if row.counter {
+			parts = append(parts, row.label+" +"+row.render(v/n))
+			continue
+		}
+		parts = append(parts, row.label+" "+row.render(v/n))
+	}
+	if len(parts) == 0 {
+		return formatNodeCount(seg.N, 1) + ", nothing recorded"
+	}
+	return strings.Join(parts, ", ") + " per node"
+}
+
+// MemLastDayNode is one persisted memory window -- the hour or the day -- as a
+// navigable child per time segment plus an _ALL entry over the whole span.
 type MemLastDayNode struct {
 	segmented *madmin.SegmentedMemMetrics
+	flags     madmin.MetricFlags
+	window    string
 	parent    MetricNode
 	path      string
 }
 
+// NewMemLastDayNode creates a navigator for the last-day memory window.
 func NewMemLastDayNode(segmented *madmin.SegmentedMemMetrics, parent MetricNode, path string) *MemLastDayNode {
-	return &MemLastDayNode{segmented: segmented, parent: parent, path: path}
+	return &MemLastDayNode{
+		segmented: segmented, flags: madmin.MetricsDayStats, window: "day",
+		parent: parent, path: path,
+	}
 }
 
 func (node *MemLastDayNode) GetOpts() madmin.MetricsOptions     { return getNodeOpts(node) }
 func (node *MemLastDayNode) GetPath() string                    { return node.path }
 func (node *MemLastDayNode) GetParent() MetricNode              { return node.parent }
 func (node *MemLastDayNode) GetMetricType() madmin.MetricType   { return madmin.MetricsMem }
-func (node *MemLastDayNode) GetMetricFlags() madmin.MetricFlags { return madmin.MetricsDayStats }
+func (node *MemLastDayNode) GetMetricFlags() madmin.MetricFlags { return node.flags }
 func (node *MemLastDayNode) ShouldPauseRefresh() bool           { return true }
-func (node *MemLastDayNode) GetChildren() []MetricChild         { return nil }
 
-func (node *MemLastDayNode) GetChild(_ string) (MetricNode, error) {
-	return nil, fmt.Errorf("no children")
+// hasSegments reports whether the window can be placed on a timeline at all. An
+// interval of zero would stamp every segment with the same time.
+func (node *MemLastDayNode) hasSegments() bool {
+	return node.segmented != nil && node.segmented.Interval > 0 && len(node.segmented.Segments) > 0
 }
 
-func (node *MemLastDayNode) GetLeafData() map[string]string {
-	if node.segmented == nil || len(node.segmented.Segments) == 0 {
-		return nil
+// reportedSegments counts the slots that carry a sample. A window's slots are not
+// all populated -- a restart, a startup or a node joining late leaves gaps -- and
+// nothing accrued in those.
+func (node *MemLastDayNode) reportedSegments() int {
+	var n int
+	for i := range node.segmented.Segments {
+		if node.segmented.Segments[i].N > 0 {
+			n++
+		}
 	}
-	data := make(map[string]string)
-	idx := 0
+	return n
+}
+
+func (node *MemLastDayNode) wholeSecs() int {
+	return node.segmented.Interval * len(node.segmented.Segments)
+}
+
+func (node *MemLastDayNode) GetChildren() []MetricChild {
+	if !node.hasSegments() {
+		return []MetricChild{}
+	}
+	children := []MetricChild{{
+		Name: "_ALL",
+		Description: "Every segment in the window combined. " +
+			windowCoverage(node.segmented.FirstTime, node.wholeSecs()),
+	}}
+	owners := segmentSecOwners(node.segmented.FirstTime, node.segmented.Interval, len(node.segmented.Segments))
+	withDate := windowCrossesDay(node.segmented.FirstTime, node.segmented.Interval, len(node.segmented.Segments))
+	// Newest first, as every other family lists a window.
 	for i := len(node.segmented.Segments) - 1; i >= 0; i-- {
 		seg := node.segmented.Segments[i]
 		if seg.N == 0 {
 			continue
 		}
-		idx++
-		startTime := node.segmented.FirstTime.Add(time.Duration(i*node.segmented.Interval) * time.Second)
-		endTime := startTime.Add(time.Duration(node.segmented.Interval) * time.Second)
-		name := segmentRowKey(idx, startTime, endTime)
-
-		n := uint64(seg.N)
-		perNodeUsed := seg.Used / n
-		perNodeFree := seg.Free / n
-		perNodeTotal := perNodeUsed + perNodeFree
-		pct := float64(0)
-		if perNodeTotal > 0 {
-			pct = float64(perNodeUsed) / float64(perNodeTotal) * 100
+		start := segmentStart(node.segmented.FirstTime, node.segmented.Interval, i)
+		name := segmentKey(start)
+		if owners[name] != i {
+			continue
 		}
-
-		data[name] = fmt.Sprintf("%s, %d nodes, Used: %s (%.1f%%), Free: %s/node",
-			startTime.Local().Format("15:04"),
-			seg.N,
-			formatMemoryBytes(perNodeUsed), pct,
-			formatMemoryBytes(perNodeFree))
+		children = append(children, MetricChild{
+			Name:        name,
+			Description: segmentDescTime(start, withDate) + ", " + describeMemSegment(seg),
+		})
 	}
-	return data
+	return children
+}
+
+func (node *MemLastDayNode) GetChild(name string) (MetricNode, error) {
+	if !node.hasSegments() {
+		return nil, fmt.Errorf("no last-%s memory segments available", node.window)
+	}
+	if name == "_ALL" {
+		return &MemTimeSegmentNode{
+			segment:  node.segmented.Total(),
+			interval: node.segmented.Interval,
+			segments: node.reportedSegments(),
+			coverage: windowCoverage(node.segmented.FirstTime, node.wholeSecs()),
+			flags:    node.flags, parent: node, path: node.path + "/" + name,
+		}, nil
+	}
+	owners := segmentSecOwners(node.segmented.FirstTime, node.segmented.Interval, len(node.segmented.Segments))
+	if i, ok := owners[name]; ok {
+		start := segmentStart(node.segmented.FirstTime, node.segmented.Interval, i)
+		return &MemTimeSegmentNode{
+			segment:  node.segmented.Segments[i],
+			interval: node.segmented.Interval,
+			segments: 1,
+			coverage: windowCoverage(start, node.segmented.Interval),
+			flags:    node.flags, parent: node, path: node.path + "/" + name,
+		}, nil
+	}
+	return nil, fmt.Errorf("time segment not found: %s", name)
+}
+
+func (node *MemLastDayNode) GetLeafData() map[string]string {
+	if status := windowStatus(node.segmented, node.window); status != "" {
+		return map[string]string{"Status": status}
+	}
+	// The aggregate only: each segment states its own figures in the description
+	// of the child that opens it.
+	return memSegmentRows(node.segmented.Total(), node.segmented.Interval,
+		node.reportedSegments(), windowCoverage(node.segmented.FirstTime, node.wholeSecs()))
+}
+
+// MemTimeSegmentNode is one segment of a memory window, or the whole window.
+type MemTimeSegmentNode struct {
+	segment  madmin.MemSegment
+	interval int
+	segments int
+	coverage string
+	flags    madmin.MetricFlags
+	parent   MetricNode
+	path     string
+}
+
+func (node *MemTimeSegmentNode) GetOpts() madmin.MetricsOptions     { return getNodeOpts(node) }
+func (node *MemTimeSegmentNode) GetPath() string                    { return node.path }
+func (node *MemTimeSegmentNode) GetParent() MetricNode              { return node.parent }
+func (node *MemTimeSegmentNode) GetMetricType() madmin.MetricType   { return madmin.MetricsMem }
+func (node *MemTimeSegmentNode) GetMetricFlags() madmin.MetricFlags { return node.flags }
+func (node *MemTimeSegmentNode) ShouldPauseRefresh() bool           { return true }
+func (node *MemTimeSegmentNode) GetChildren() []MetricChild         { return []MetricChild{} }
+
+func (node *MemTimeSegmentNode) GetChild(_ string) (MetricNode, error) {
+	return nil, fmt.Errorf("no children")
+}
+
+func (node *MemTimeSegmentNode) GetLeafData() map[string]string {
+	return memSegmentRows(node.segment, node.interval, node.segments, node.coverage)
 }
 
 // MemVMStatNode shows the kernel memory-management counters.
