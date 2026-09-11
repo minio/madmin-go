@@ -136,6 +136,12 @@ func (node *IAMMetricsNode) GetLeafData() map[string]string {
 		}
 	}
 
+	// Resolution is the cost of turning a credential into its effective policies,
+	// which is a part of the authorization above rather than a separate path.
+	if r := m.Resolve; r != nil && r.Count > 0 {
+		data["Credential Resolve"] = formatTimedAction(*r)
+	}
+
 	// Persistence latency: the refresh and admin path, not the request path.
 	for _, op := range sortedKeys(m.Store) {
 		a := m.Store[op]
@@ -217,7 +223,8 @@ func formatIAMWindow(w *madmin.SegmentedIAMMetrics) string {
 // test: a node that authorized nothing still reports itself in every slot, so an
 // idle cluster would come back as a wall of zeros.
 func iamSegmentEmpty(s *madmin.IAMSegment) bool {
-	return s.AuthCount() == 0 && s.StoreCount() == 0 && s.Errors == 0 && s.StoreErrors == 0
+	return s.AuthCount() == 0 && s.StoreCount() == 0 && s.ResolveCount == 0 &&
+		s.Errors == 0 && s.StoreErrors == 0
 }
 
 // describeIAMSegment renders one segment on a single line, kept short enough to
@@ -244,6 +251,10 @@ func describeIAMSegment(s madmin.IAMSegment, interval int) string {
 	}
 	if s.Errors > 0 {
 		out += fmt.Sprintf(", %d unresolved", s.Errors)
+	}
+	if s.ResolveCount > 0 {
+		out += fmt.Sprintf(", %d resolve (avg %s)", s.ResolveCount,
+			durationOf(s.ResolveNanos, s.ResolveCount))
 	}
 	if store := s.StoreCount(); store > 0 {
 		out += fmt.Sprintf(", %d store (avg %s)", store,
@@ -462,6 +473,12 @@ func (node *iamSegmentLeafNode) GetLeafData() map[string]string {
 	}
 	if s.CacheMiss > 0 {
 		add("Policy Cache Miss", fmt.Sprintf("%d of %d user authz", s.CacheMiss, s.UserCount))
+	}
+	// Resolution happens within an authorization rather than beside it, so its
+	// count is not compared against the authorization total.
+	if s.ResolveCount > 0 {
+		add("Credential Resolve", fmt.Sprintf("%d, avg %s", s.ResolveCount,
+			durationOf(s.ResolveNanos, s.ResolveCount)))
 	}
 
 	// Persistence is the refresh and admin path, and infrequent enough that these
