@@ -44,6 +44,10 @@ type IAMMetrics struct {
 	// request path.
 	Auth *IAMAuthStats `json:"auth,omitempty"`
 
+	// Resolve is the time spent resolving a credential to its effective
+	// policies over the last minute.
+	Resolve *TimedAction `json:"resolve,omitempty"`
+
 	// Store is IAM persistence latency over the last minute by operation: "save",
 	// "load", "delete", "list". Node-local and summing.
 	//
@@ -79,6 +83,13 @@ func (m *IAMMetrics) Merge(other *IAMMetrics) {
 			m.Auth = &IAMAuthStats{}
 		}
 		m.Auth.Merge(other.Auth)
+	}
+
+	if other.Resolve != nil {
+		if m.Resolve == nil {
+			m.Resolve = &TimedAction{}
+		}
+		m.Resolve.Add(other.Resolve)
 	}
 
 	// A requested-but-empty window is non-nil with no segments, so presence is
@@ -143,8 +154,8 @@ type IAMAuthStats struct {
 	// or policy change, not a server fault.
 	Denied uint64 `json:"denied,omitempty"`
 
-	// Errors is authorizations that could not be resolved at all, which are refused
-	// without a policy decision having been reached.
+	// Errors is authorizations that reached no policy decision, such as a
+	// policy that failed to load.
 	Errors uint64 `json:"errors,omitempty"`
 
 	// CacheMiss is regular-user authorizations that had to build their merged policy
@@ -203,6 +214,10 @@ type IAMSegment struct {
 	Errors    uint64 `json:"errors,omitempty"`
 	CacheMiss uint64 `json:"cache_miss,omitempty"`
 
+	// Credential resolution count and its summed latency.
+	ResolveCount uint64 `json:"resolve_count,omitempty"`
+	ResolveNanos uint64 `json:"resolve_ns,omitempty"`
+
 	// Persistence counts and their summed latency. This is the refresh and admin
 	// path, and it is infrequent enough that the segments are the only place it can
 	// be seen at all.
@@ -242,6 +257,8 @@ func (s *IAMSegment) Add(other *IAMSegment) {
 	s.Denied += other.Denied
 	s.Errors += other.Errors
 	s.CacheMiss += other.CacheMiss
+	s.ResolveCount += other.ResolveCount
+	s.ResolveNanos += other.ResolveNanos
 	s.SaveCount += other.SaveCount
 	s.SaveNanos += other.SaveNanos
 	s.LoadCount += other.LoadCount
