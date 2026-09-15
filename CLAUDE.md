@@ -23,7 +23,7 @@ This is the MinIO Admin Golang Client SDK (`github.com/minio/madmin-go/v4`), whi
 
 ### Code Generation
 
-- **Install code generation tools**: `go install -v tool` (installs `msgp` and `stringer`)
+- **Code generation tools**: invoked as `go tool msgp` and `go tool stringer`, pinned by the `tool` block in `go.mod` (never bare `msgp`, which CI cannot find)
 - **Generate all**: `go generate ./...` (generates `*_gen.go` files using msgp and stringer)
 - **Check generated files**: After generation, ensure no uncommitted `*_gen.go` files exist
 
@@ -82,6 +82,20 @@ The codebase is organized into logical command groups, each in separate `*-comma
 - Never manually edit `*_gen.go` files
 - After modifying structs with `msgp` tags, run `go generate ./...`
 - CI ensures generated files are up-to-date before merging
+
+### Wire Type Conventions
+
+For exported structs with `msg` tags. Changing any of these after a type ships is a
+breaking wire change.
+
+- **No sentinel values.** A pointer whose nil means "absent" beats a constant such as
+  `^uint64(0)` that every caller must know.
+- **Absolute times, not relative ages.** `LastRenew *time.Time`, not
+  `RenewAgeSecs uint64`. An age is stale as soon as it is serialized.
+- **`time.Time`, not Unix `int64`.** msgp encodes it directly, and `-d "timezone utc"`
+  returns UTC.
+- **`omitempty` on every field, or none.** `-d clearomitted` restores zeros on read, so
+  omitting is lossless. Mixed use within one type is what reviewers flag.
 
 ### Testing Approach
 
