@@ -290,3 +290,64 @@ func TestTableMaintenanceMergeClonesWork(t *testing.T) {
 		t.Errorf("source Work mutated through the aggregate: %d, want 5", got)
 	}
 }
+
+// CatalogScanner is leader-owned exactly like a Maintenance job: a demoted
+// leader's higher lifetime totals must not win over the live leader's fresher,
+// smaller report.
+func TestCatalogScannerMergeSelectsLiveLeader(t *testing.T) {
+	t0 := time.Date(2026, 8, 12, 10, 0, 0, 0, time.UTC)
+
+	demoted := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
+		Cycles: 500, LastRun: t0, Running: false, Created: 5000,
+	}}
+	current := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
+		Cycles: 3, LastRun: t0.Add(-time.Hour), Running: true, Created: 30,
+	}}
+
+	got := mergeTables(demoted, current).CatalogScanner
+	if got == nil || !got.Running || got.Cycles != 3 {
+		t.Errorf("got %+v, want the running leader's report (cycles 3), not the "+
+			"demoted node's higher lifetime totals", got)
+	}
+
+	rev := mergeTables(current, demoted).CatalogScanner
+	if !reflect.DeepEqual(rev, got) {
+		t.Errorf("order dependent: %+v vs %+v", rev, got)
+	}
+}
+
+// With neither node running a cycle, the most recently completed one wins,
+// never summed.
+func TestCatalogScannerMergeSelectsMostRecent(t *testing.T) {
+	t0 := time.Date(2026, 8, 12, 10, 0, 0, 0, time.UTC)
+
+	stale := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
+		Cycles: 90, LastRun: t0.Add(-time.Hour),
+	}}
+	fresh := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
+		Cycles: 4, LastRun: t0,
+	}}
+
+	got := mergeTables(stale, fresh).CatalogScanner
+	if got == nil || got.Cycles != 4 {
+		t.Errorf("Cycles = %+v, want 4 (the most recent cycle)", got)
+	}
+
+	rev := mergeTables(fresh, stale).CatalogScanner
+	if !reflect.DeepEqual(rev, got) {
+		t.Errorf("order dependent: %+v vs %+v", rev, got)
+	}
+}
+
+// A node that has not sampled the scanner reports nothing and must not blank
+// a real sample.
+func TestCatalogScannerMergeSkipsAbsent(t *testing.T) {
+	full := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
+		Cycles: 7, LastRun: time.Date(2026, 8, 12, 10, 0, 0, 0, time.UTC),
+	}}
+
+	got := mergeTables(full, &TableAPIMetrics{}).CatalogScanner
+	if got == nil || got.Cycles != 7 {
+		t.Errorf("CatalogScanner = %+v, want preserved", got)
+	}
+}
