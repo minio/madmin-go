@@ -50,6 +50,7 @@ const (
 	APITypeAdmin  APIType = "admin"
 	APITypeAuth   APIType = "auth"
 	APITypeTable  APIType = "table"
+	APITypeMemory APIType = "memory"
 )
 
 // API represents the api event
