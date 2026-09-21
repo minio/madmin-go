@@ -188,10 +188,12 @@ type CatalogScannerCycle struct {
 	Updated    uint64 `json:"updated,omitempty"`
 	Tombstoned uint64 `json:"tombstoned,omitempty"`
 
-	// Failed reports that this cycle ended in an aborted scan rather than
-	// completing -- a cycle is either a completion or a failure, never
-	// both, so a failed cycle's other counts are not populated.
-	Failed bool `json:"failed,omitempty"`
+	// Failed counts failures recorded during this cycle. A cycle that
+	// aborted outright rather than completing reports a nonzero Failed with
+	// its other counts left unpopulated. A count rather than a bool so a
+	// future per-item tally -- one bad table logged and skipped rather than
+	// aborting the whole cycle -- can populate it without a type change.
+	Failed uint64 `json:"failed,omitempty"`
 }
 
 // timeCompare returns -1, 0 or 1 as a is before, equal to, or after b.
@@ -271,10 +273,11 @@ func cycleCompare(a, b *CatalogScannerCycle) int {
 			return 1
 		}
 		return -1
-	// A completed cycle outranks a failed one when every other field ties,
-	// since it is the more informative report.
+	// Fewer failures outranks more when every other field ties -- a
+	// completed cycle (Failed == 0) outranks a failed one, and this still
+	// resolves correctly if Failed later becomes a real per-item tally.
 	case a.Failed != b.Failed:
-		if !a.Failed {
+		if a.Failed < b.Failed {
 			return 1
 		}
 		return -1
@@ -286,15 +289,15 @@ func cycleCompare(a, b *CatalogScannerCycle) int {
 // replication process, not a per-warehouse maintenance job, so it is its
 // own field rather than a TableMaintenanceJob/Maintenance entry.
 //
-// Cycles and Errors are counts of whole cycles, not per-item errors within
-// one: a cycle either completes or aborts outright (Errors), never both,
-// and a partial per-item failure inside an otherwise-completed cycle is not
-// reflected here at all -- see Previous.Failed for the outcome of the most
-// recent attempt specifically. Both are lifetime counts since this leader
-// started (they reset on failover); Previous and Current carry the
-// per-cycle detail a lifetime total can't: Created/Updated/Tombstoned
-// "since the leader started" has no baseline to be actionable against, so
-// Previous scopes them to one completed cycle instead.
+// Cycles and Errors are counts of whole cycles: a cycle either completes or
+// aborts outright (Errors), never both. Neither reflects a per-item failure
+// recorded inside an otherwise-completed cycle -- see Previous.Failed for
+// that, scoped to the most recent attempt specifically. Cycles/Errors are
+// lifetime counts since this leader started (they reset on failover);
+// Previous and Current carry the per-cycle detail a lifetime total can't:
+// Created/Updated/Tombstoned "since the leader started" has no baseline to
+// be actionable against, so Previous scopes them to one completed cycle
+// instead.
 type CatalogScannerMetrics struct {
 	Cycles  uint64 `json:"cycles,omitempty"`
 	Errors  uint64 `json:"errors,omitempty"`

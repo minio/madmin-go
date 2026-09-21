@@ -97,7 +97,7 @@ func (z *CatalogScannerCycle) DecodeMsg(dc *msgp.Reader) (err error) {
 			}
 			zb0001Mask |= 0x80
 		case "failed":
-			z.Failed, err = dc.ReadBool()
+			z.Failed, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "Failed")
 				return
@@ -138,7 +138,7 @@ func (z *CatalogScannerCycle) DecodeMsg(dc *msgp.Reader) (err error) {
 			z.Tombstoned = 0
 		}
 		if (zb0001Mask & 0x100) == 0 {
-			z.Failed = false
+			z.Failed = 0
 		}
 	}
 	return
@@ -182,7 +182,7 @@ func (z *CatalogScannerCycle) EncodeMsg(en *msgp.Writer) (err error) {
 		zb0001Len--
 		zb0001Mask |= 0x80
 	}
-	if z.Failed == false {
+	if z.Failed == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x100
 	}
@@ -303,7 +303,7 @@ func (z *CatalogScannerCycle) EncodeMsg(en *msgp.Writer) (err error) {
 			if err != nil {
 				return
 			}
-			err = en.WriteBool(z.Failed)
+			err = en.WriteUint64(z.Failed)
 			if err != nil {
 				err = msgp.WrapError(err, "Failed")
 				return
@@ -352,7 +352,7 @@ func (z *CatalogScannerCycle) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x80
 	}
-	if z.Failed == false {
+	if z.Failed == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x100
 	}
@@ -408,7 +408,7 @@ func (z *CatalogScannerCycle) MarshalMsg(b []byte) (o []byte, err error) {
 		if (zb0001Mask & 0x100) == 0 { // if not omitted
 			// string "failed"
 			o = append(o, 0xa6, 0x66, 0x61, 0x69, 0x6c, 0x65, 0x64)
-			o = msgp.AppendBool(o, z.Failed)
+			o = msgp.AppendUint64(o, z.Failed)
 		}
 	}
 	return
@@ -502,7 +502,7 @@ func (z *CatalogScannerCycle) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			}
 			zb0001Mask |= 0x80
 		case "failed":
-			z.Failed, bts, err = msgp.ReadBoolBytes(bts)
+			z.Failed, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "Failed")
 				return
@@ -543,7 +543,7 @@ func (z *CatalogScannerCycle) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.Tombstoned = 0
 		}
 		if (zb0001Mask & 0x100) == 0 {
-			z.Failed = false
+			z.Failed = 0
 		}
 	}
 	o = bts
@@ -558,7 +558,7 @@ func (z *CatalogScannerCycle) Msgsize() (s int) {
 	} else {
 		s += msgp.TimeSize
 	}
-	s += 14 + msgp.Float64Size + 11 + msgp.Int64Size + 7 + msgp.Int64Size + 8 + msgp.Uint64Size + 8 + msgp.Uint64Size + 11 + msgp.Uint64Size + 7 + msgp.BoolSize
+	s += 14 + msgp.Float64Size + 11 + msgp.Int64Size + 7 + msgp.Int64Size + 8 + msgp.Uint64Size + 8 + msgp.Uint64Size + 11 + msgp.Uint64Size + 7 + msgp.Uint64Size
 	return
 }
 

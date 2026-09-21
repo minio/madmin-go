@@ -99,6 +99,10 @@ func (node *TableMetricsNode) GetLeafData() map[string]string {
 		}
 	}
 
+	if cs := node.tables.CatalogScanner; cs != nil {
+		add("Catalog Scanner", describeCatalogScanner(cs))
+	}
+
 	for _, name := range tableMaintenanceOrder {
 		job, ok := node.tables.Maintenance[name]
 		if !ok {
@@ -149,6 +153,45 @@ func describeMaintenanceJob(job madmin.TableMaintenanceJob) string {
 	}
 	if len(job.Work) > 0 {
 		parts = append(parts, formatCountMap(job.Work, 3))
+	}
+	return strings.Join(parts, ", ")
+}
+
+// describeCatalogScanner renders the catalog scanner's health on a single
+// line, mirroring describeMaintenanceJob.
+//
+// Cycles/Errors reset when the scanner's leader lock moves to another node,
+// so the cycle count is the current leader's, not the cluster's lifetime
+// total -- same convention as describeMaintenanceJob.
+func describeCatalogScanner(cs *madmin.CatalogScannerMetrics) string {
+	parts := make([]string, 0, 6)
+	prev := cs.Previous
+	switch {
+	case cs.Running:
+		parts = append(parts, "running")
+	case prev == nil:
+		parts = append(parts, "never run")
+	case prev.FinishedAt != nil:
+		parts = append(parts, "last "+prev.FinishedAt.Format("15:04:05"))
+	}
+	parts = append(parts, fmt.Sprintf("%s cycles", humanize.Comma(int64(cs.Cycles))))
+	if cs.Errors > 0 {
+		parts = append(parts, fmt.Sprintf("%s errors", humanize.Comma(int64(cs.Errors))))
+	}
+	if prev != nil {
+		if prev.Failed > 0 {
+			parts = append(parts, fmt.Sprintf("last cycle failed (%s)", humanize.Comma(int64(prev.Failed))))
+		} else {
+			if prev.DurationSecs > 0 {
+				parts = append(parts, fmt.Sprintf("%.1fs/cycle", prev.DurationSecs))
+			}
+			if prev.Warehouses > 0 {
+				parts = append(parts, fmt.Sprintf("%s warehouses", humanize.Comma(prev.Warehouses)))
+			}
+			if prev.Tables > 0 {
+				parts = append(parts, fmt.Sprintf("%s tables", humanize.Comma(prev.Tables)))
+			}
+		}
 	}
 	return strings.Join(parts, ", ")
 }

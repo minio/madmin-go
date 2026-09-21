@@ -480,7 +480,7 @@ func TestCatalogScannerMergeCompletedOutranksFailedOnTie(t *testing.T) {
 		Previous: &CatalogScannerCycle{FinishedAt: timePtr(finishedAt)},
 	}}
 	failed := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
-		Previous: &CatalogScannerCycle{FinishedAt: timePtr(finishedAt), Failed: true},
+		Previous: &CatalogScannerCycle{FinishedAt: timePtr(finishedAt), Failed: 1},
 	}}
 
 	got := mergeTables(completed, failed).CatalogScanner
@@ -488,7 +488,31 @@ func TestCatalogScannerMergeCompletedOutranksFailedOnTie(t *testing.T) {
 	if !reflect.DeepEqual(got, rev) {
 		t.Errorf("order dependent: %+v vs %+v", got, rev)
 	}
-	if got.Previous.Failed {
+	if got.Previous.Failed != 0 {
 		t.Errorf("Previous = %+v, want the completed report to win the tie", got.Previous)
+	}
+}
+
+// A tie on every other field must still resolve by the size of Failed, not
+// just its presence -- fewer failures outranks more, so a future per-item
+// tally keeps resolving correctly rather than only distinguishing zero from
+// nonzero.
+func TestCatalogScannerMergeFewerFailuresOutranksMoreOnTie(t *testing.T) {
+	finishedAt := time.Date(2026, 8, 12, 10, 0, 0, 0, time.UTC)
+
+	fewer := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
+		Previous: &CatalogScannerCycle{FinishedAt: timePtr(finishedAt), Failed: 1},
+	}}
+	more := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
+		Previous: &CatalogScannerCycle{FinishedAt: timePtr(finishedAt), Failed: 4},
+	}}
+
+	got := mergeTables(fewer, more).CatalogScanner
+	rev := mergeTables(more, fewer).CatalogScanner
+	if !reflect.DeepEqual(got, rev) {
+		t.Errorf("order dependent: %+v vs %+v", got, rev)
+	}
+	if got.Previous.Failed != 1 {
+		t.Errorf("Previous.Failed = %d, want 1 (the tie-break winner)", got.Previous.Failed)
 	}
 }
