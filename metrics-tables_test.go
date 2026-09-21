@@ -26,6 +26,10 @@ import (
 	"time"
 )
 
+func timePtr(t time.Time) *time.Time {
+	return &t
+}
+
 func mergeTables(parts ...*TableAPIMetrics) *TableAPIMetrics {
 	var out TableAPIMetrics
 	for _, p := range parts {
@@ -296,7 +300,7 @@ func TestCatalogScannerMergeSelectsLiveLeader(t *testing.T) {
 
 	demoted := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
 		Cycles: 500, Running: false,
-		Previous: &CatalogScannerCycle{FinishedAt: t0, Created: 5000},
+		Previous: &CatalogScannerCycle{FinishedAt: timePtr(t0), Created: 5000},
 	}}
 	current := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
 		Cycles: 3, Running: true,
@@ -319,10 +323,10 @@ func TestCatalogScannerMergeSelectsMostRecent(t *testing.T) {
 	t0 := time.Date(2026, 8, 12, 10, 0, 0, 0, time.UTC)
 
 	stale := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
-		Cycles: 90, Previous: &CatalogScannerCycle{FinishedAt: t0.Add(-time.Hour)},
+		Cycles: 90, Previous: &CatalogScannerCycle{FinishedAt: timePtr(t0.Add(-time.Hour))},
 	}}
 	fresh := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
-		Cycles: 4, Previous: &CatalogScannerCycle{FinishedAt: t0},
+		Cycles: 4, Previous: &CatalogScannerCycle{FinishedAt: timePtr(t0)},
 	}}
 
 	got := mergeTables(stale, fresh).CatalogScanner
@@ -340,7 +344,7 @@ func TestCatalogScannerMergeSkipsAbsent(t *testing.T) {
 	full := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
 		Cycles: 7,
 		Previous: &CatalogScannerCycle{
-			FinishedAt: time.Date(2026, 8, 12, 10, 0, 0, 0, time.UTC),
+			FinishedAt: timePtr(time.Date(2026, 8, 12, 10, 0, 0, 0, time.UTC)),
 		},
 	}}
 
@@ -358,13 +362,13 @@ func TestCatalogScannerMergeTieIsDeterministic(t *testing.T) {
 
 	a := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
 		Cycles: 5, Previous: &CatalogScannerCycle{
-			FinishedAt: t0, DurationSecs: 1, Warehouses: 2, Tables: 3,
+			FinishedAt: timePtr(t0), DurationSecs: 1, Warehouses: 2, Tables: 3,
 			Created: 4, Updated: 5, Tombstoned: 6,
 		},
 	}}
 	b := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
 		Cycles: 5, Previous: &CatalogScannerCycle{
-			FinishedAt: t0, DurationSecs: 1, Warehouses: 2, Tables: 3,
+			FinishedAt: timePtr(t0), DurationSecs: 1, Warehouses: 2, Tables: 3,
 			Created: 4, Updated: 5, Tombstoned: 9,
 		},
 	}}
@@ -421,12 +425,12 @@ func TestCatalogScannerMergeTiesOnFinishedAtBreakOnStartedAt(t *testing.T) {
 
 	a := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
 		Previous: &CatalogScannerCycle{
-			FinishedAt: finishedAt, StartedAt: finishedAt.Add(-time.Minute), DurationSecs: 60,
+			FinishedAt: timePtr(finishedAt), StartedAt: finishedAt.Add(-time.Minute), DurationSecs: 60,
 		},
 	}}
 	b := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
 		Previous: &CatalogScannerCycle{
-			FinishedAt: finishedAt, StartedAt: finishedAt.Add(-2 * time.Minute), DurationSecs: 60,
+			FinishedAt: timePtr(finishedAt), StartedAt: finishedAt.Add(-2 * time.Minute), DurationSecs: 60,
 		},
 	}}
 
@@ -462,5 +466,29 @@ func TestCatalogScannerMergeRunningTiesOnCurrentBreakOnPrevious(t *testing.T) {
 	}
 	if got.Previous.Tombstoned != 9 {
 		t.Errorf("Previous.Tombstoned = %d, want 9 (the tie-break winner)", got.Previous.Tombstoned)
+	}
+}
+
+// A completed cycle and a failed one can otherwise tie (same FinishedAt,
+// same everything else a failure leaves zeroed) -- Merge must still prefer
+// the completed report deterministically rather than whichever arrived
+// first.
+func TestCatalogScannerMergeCompletedOutranksFailedOnTie(t *testing.T) {
+	finishedAt := time.Date(2026, 8, 12, 10, 0, 0, 0, time.UTC)
+
+	completed := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
+		Previous: &CatalogScannerCycle{FinishedAt: timePtr(finishedAt)},
+	}}
+	failed := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
+		Previous: &CatalogScannerCycle{FinishedAt: timePtr(finishedAt), Failed: true},
+	}}
+
+	got := mergeTables(completed, failed).CatalogScanner
+	rev := mergeTables(failed, completed).CatalogScanner
+	if !reflect.DeepEqual(got, rev) {
+		t.Errorf("order dependent: %+v vs %+v", got, rev)
+	}
+	if got.Previous.Failed {
+		t.Errorf("Previous = %+v, want the completed report to win the tie", got.Previous)
 	}
 }

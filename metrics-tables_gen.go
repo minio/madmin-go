@@ -18,7 +18,7 @@ func (z *CatalogScannerCycle) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 8 bits */
+	var zb0001Mask uint16 /* 9 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -36,10 +36,22 @@ func (z *CatalogScannerCycle) DecodeMsg(dc *msgp.Reader) (err error) {
 			}
 			zb0001Mask |= 0x1
 		case "finished_at":
-			z.FinishedAt, err = dc.ReadTimeUTC()
-			if err != nil {
-				err = msgp.WrapError(err, "FinishedAt")
-				return
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "FinishedAt")
+					return
+				}
+				z.FinishedAt = nil
+			} else {
+				if z.FinishedAt == nil {
+					z.FinishedAt = new(time.Time)
+				}
+				*z.FinishedAt, err = dc.ReadTimeUTC()
+				if err != nil {
+					err = msgp.WrapError(err, "FinishedAt")
+					return
+				}
 			}
 			zb0001Mask |= 0x2
 		case "duration_secs":
@@ -84,6 +96,13 @@ func (z *CatalogScannerCycle) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 			zb0001Mask |= 0x80
+		case "failed":
+			z.Failed, err = dc.ReadBool()
+			if err != nil {
+				err = msgp.WrapError(err, "Failed")
+				return
+			}
+			zb0001Mask |= 0x100
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -93,12 +112,12 @@ func (z *CatalogScannerCycle) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xff {
+	if zb0001Mask != 0x1ff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.StartedAt = (time.Time{})
 		}
 		if (zb0001Mask & 0x2) == 0 {
-			z.FinishedAt = (time.Time{})
+			z.FinishedAt = nil
 		}
 		if (zb0001Mask & 0x4) == 0 {
 			z.DurationSecs = 0
@@ -118,6 +137,9 @@ func (z *CatalogScannerCycle) DecodeMsg(dc *msgp.Reader) (err error) {
 		if (zb0001Mask & 0x80) == 0 {
 			z.Tombstoned = 0
 		}
+		if (zb0001Mask & 0x100) == 0 {
+			z.Failed = false
+		}
 	}
 	return
 }
@@ -125,14 +147,14 @@ func (z *CatalogScannerCycle) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *CatalogScannerCycle) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(8)
-	var zb0001Mask uint8 /* 8 bits */
+	zb0001Len := uint32(9)
+	var zb0001Mask uint16 /* 9 bits */
 	_ = zb0001Mask
 	if z.StartedAt.IsZero() {
 		zb0001Len--
 		zb0001Mask |= 0x1
 	}
-	if z.FinishedAt.IsZero() {
+	if z.FinishedAt == nil {
 		zb0001Len--
 		zb0001Mask |= 0x2
 	}
@@ -160,6 +182,10 @@ func (z *CatalogScannerCycle) EncodeMsg(en *msgp.Writer) (err error) {
 		zb0001Len--
 		zb0001Mask |= 0x80
 	}
+	if z.Failed == false {
+		zb0001Len--
+		zb0001Mask |= 0x100
+	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
 	if err != nil {
@@ -186,10 +212,17 @@ func (z *CatalogScannerCycle) EncodeMsg(en *msgp.Writer) (err error) {
 			if err != nil {
 				return
 			}
-			err = en.WriteTime(z.FinishedAt)
-			if err != nil {
-				err = msgp.WrapError(err, "FinishedAt")
-				return
+			if z.FinishedAt == nil {
+				err = en.WriteNil()
+				if err != nil {
+					return
+				}
+			} else {
+				err = en.WriteTime(*z.FinishedAt)
+				if err != nil {
+					err = msgp.WrapError(err, "FinishedAt")
+					return
+				}
 			}
 		}
 		if (zb0001Mask & 0x4) == 0 { // if not omitted
@@ -264,6 +297,18 @@ func (z *CatalogScannerCycle) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
+			// write "failed"
+			err = en.Append(0xa6, 0x66, 0x61, 0x69, 0x6c, 0x65, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteBool(z.Failed)
+			if err != nil {
+				err = msgp.WrapError(err, "Failed")
+				return
+			}
+		}
 	}
 	return
 }
@@ -272,14 +317,14 @@ func (z *CatalogScannerCycle) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *CatalogScannerCycle) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(8)
-	var zb0001Mask uint8 /* 8 bits */
+	zb0001Len := uint32(9)
+	var zb0001Mask uint16 /* 9 bits */
 	_ = zb0001Mask
 	if z.StartedAt.IsZero() {
 		zb0001Len--
 		zb0001Mask |= 0x1
 	}
-	if z.FinishedAt.IsZero() {
+	if z.FinishedAt == nil {
 		zb0001Len--
 		zb0001Mask |= 0x2
 	}
@@ -307,6 +352,10 @@ func (z *CatalogScannerCycle) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x80
 	}
+	if z.Failed == false {
+		zb0001Len--
+		zb0001Mask |= 0x100
+	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
 
@@ -320,7 +369,11 @@ func (z *CatalogScannerCycle) MarshalMsg(b []byte) (o []byte, err error) {
 		if (zb0001Mask & 0x2) == 0 { // if not omitted
 			// string "finished_at"
 			o = append(o, 0xab, 0x66, 0x69, 0x6e, 0x69, 0x73, 0x68, 0x65, 0x64, 0x5f, 0x61, 0x74)
-			o = msgp.AppendTime(o, z.FinishedAt)
+			if z.FinishedAt == nil {
+				o = msgp.AppendNil(o)
+			} else {
+				o = msgp.AppendTime(o, *z.FinishedAt)
+			}
 		}
 		if (zb0001Mask & 0x4) == 0 { // if not omitted
 			// string "duration_secs"
@@ -352,6 +405,11 @@ func (z *CatalogScannerCycle) MarshalMsg(b []byte) (o []byte, err error) {
 			o = append(o, 0xaa, 0x74, 0x6f, 0x6d, 0x62, 0x73, 0x74, 0x6f, 0x6e, 0x65, 0x64)
 			o = msgp.AppendUint64(o, z.Tombstoned)
 		}
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
+			// string "failed"
+			o = append(o, 0xa6, 0x66, 0x61, 0x69, 0x6c, 0x65, 0x64)
+			o = msgp.AppendBool(o, z.Failed)
+		}
 	}
 	return
 }
@@ -366,7 +424,7 @@ func (z *CatalogScannerCycle) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 8 bits */
+	var zb0001Mask uint16 /* 9 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -384,10 +442,21 @@ func (z *CatalogScannerCycle) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			}
 			zb0001Mask |= 0x1
 		case "finished_at":
-			z.FinishedAt, bts, err = msgp.ReadTimeUTCBytes(bts)
-			if err != nil {
-				err = msgp.WrapError(err, "FinishedAt")
-				return
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.FinishedAt = nil
+			} else {
+				if z.FinishedAt == nil {
+					z.FinishedAt = new(time.Time)
+				}
+				*z.FinishedAt, bts, err = msgp.ReadTimeUTCBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "FinishedAt")
+					return
+				}
 			}
 			zb0001Mask |= 0x2
 		case "duration_secs":
@@ -432,6 +501,13 @@ func (z *CatalogScannerCycle) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 			zb0001Mask |= 0x80
+		case "failed":
+			z.Failed, bts, err = msgp.ReadBoolBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Failed")
+				return
+			}
+			zb0001Mask |= 0x100
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -441,12 +517,12 @@ func (z *CatalogScannerCycle) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0xff {
+	if zb0001Mask != 0x1ff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.StartedAt = (time.Time{})
 		}
 		if (zb0001Mask & 0x2) == 0 {
-			z.FinishedAt = (time.Time{})
+			z.FinishedAt = nil
 		}
 		if (zb0001Mask & 0x4) == 0 {
 			z.DurationSecs = 0
@@ -466,6 +542,9 @@ func (z *CatalogScannerCycle) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		if (zb0001Mask & 0x80) == 0 {
 			z.Tombstoned = 0
 		}
+		if (zb0001Mask & 0x100) == 0 {
+			z.Failed = false
+		}
 	}
 	o = bts
 	return
@@ -473,7 +552,13 @@ func (z *CatalogScannerCycle) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *CatalogScannerCycle) Msgsize() (s int) {
-	s = 1 + 11 + msgp.TimeSize + 12 + msgp.TimeSize + 14 + msgp.Float64Size + 11 + msgp.Int64Size + 7 + msgp.Int64Size + 8 + msgp.Uint64Size + 8 + msgp.Uint64Size + 11 + msgp.Uint64Size
+	s = 1 + 11 + msgp.TimeSize + 12
+	if z.FinishedAt == nil {
+		s += msgp.NilSize
+	} else {
+		s += msgp.TimeSize
+	}
+	s += 14 + msgp.Float64Size + 11 + msgp.Int64Size + 7 + msgp.Int64Size + 8 + msgp.Uint64Size + 8 + msgp.Uint64Size + 11 + msgp.Uint64Size + 7 + msgp.BoolSize
 	return
 }
 

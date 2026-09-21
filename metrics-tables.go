@@ -176,9 +176,9 @@ func (j TableMaintenanceJob) fresherThan(k TableMaintenanceJob) bool {
 // or "how much did the last cycle actually do"; this can.
 type CatalogScannerCycle struct {
 	StartedAt time.Time `json:"started_at,omitzero"`
-	// FinishedAt is zero while the cycle is still running.
-	FinishedAt   time.Time `json:"finished_at,omitzero"`
-	DurationSecs float64   `json:"duration_secs,omitempty"`
+	// FinishedAt is nil while the cycle is still running.
+	FinishedAt   *time.Time `json:"finished_at,omitempty"`
+	DurationSecs float64    `json:"duration_secs,omitempty"`
 
 	// Buckets scanned this cycle; each tables warehouse is one bucket.
 	Warehouses int64 `json:"warehouses,omitempty"`
@@ -187,6 +187,11 @@ type CatalogScannerCycle struct {
 	Created    uint64 `json:"created,omitempty"`
 	Updated    uint64 `json:"updated,omitempty"`
 	Tombstoned uint64 `json:"tombstoned,omitempty"`
+
+	// Failed reports that this cycle ended in an aborted scan rather than
+	// completing -- a cycle is either a completion or a failure, never
+	// both, so a failed cycle's other counts are not populated.
+	Failed bool `json:"failed,omitempty"`
 }
 
 // timeCompare returns -1, 0 or 1 as a is before, equal to, or after b.
@@ -198,6 +203,21 @@ func timeCompare(a, b time.Time) int {
 		return 1
 	}
 	return -1
+}
+
+// timePtrCompare orders two possibly-nil timestamps: present beats absent,
+// otherwise timeCompare decides.
+func timePtrCompare(a, b *time.Time) int {
+	if (a == nil) != (b == nil) {
+		if a == nil {
+			return -1
+		}
+		return 1
+	}
+	if a == nil {
+		return 0
+	}
+	return timeCompare(*a, *b)
 }
 
 // cycleCompare orders two cycles, either of which may be nil: a present
@@ -214,7 +234,7 @@ func cycleCompare(a, b *CatalogScannerCycle) int {
 	if a == nil {
 		return 0
 	}
-	if c := timeCompare(a.FinishedAt, b.FinishedAt); c != 0 {
+	if c := timePtrCompare(a.FinishedAt, b.FinishedAt); c != 0 {
 		return c
 	}
 	if c := timeCompare(a.StartedAt, b.StartedAt); c != 0 {
@@ -251,6 +271,13 @@ func cycleCompare(a, b *CatalogScannerCycle) int {
 			return 1
 		}
 		return -1
+	// A completed cycle outranks a failed one when every other field ties,
+	// since it is the more informative report.
+	case a.Failed != b.Failed:
+		if !a.Failed {
+			return 1
+		}
+		return -1
 	}
 	return 0
 }
@@ -259,20 +286,22 @@ func cycleCompare(a, b *CatalogScannerCycle) int {
 // replication process, not a per-warehouse maintenance job, so it is its
 // own field rather than a TableMaintenanceJob/Maintenance entry.
 //
-// Cycles and Errors are lifetime counts since this leader started (they
-// reset on failover); Previous and Current carry the per-cycle detail a
-// lifetime total can't: Created/Updated/Tombstoned "since the leader
-// started" has no baseline to be actionable against, so Previous scopes
-// them to one completed cycle instead.
+// Cycles and Errors are counts of whole cycles, not per-item errors within
+// one: a cycle either completes or aborts outright (Errors), never both,
+// and a partial per-item failure inside an otherwise-completed cycle is not
+// reflected here at all -- see Previous.Failed for the outcome of the most
+// recent attempt specifically. Both are lifetime counts since this leader
+// started (they reset on failover); Previous and Current carry the
+// per-cycle detail a lifetime total can't: Created/Updated/Tombstoned
+// "since the leader started" has no baseline to be actionable against, so
+// Previous scopes them to one completed cycle instead.
 type CatalogScannerMetrics struct {
 	Cycles  uint64 `json:"cycles,omitempty"`
 	Errors  uint64 `json:"errors,omitempty"`
 	Running bool   `json:"running,omitempty"`
 
 	Previous *CatalogScannerCycle `json:"previous,omitempty"`
-	// Current is set only while Running; its counts are unknown until the
-	// cycle completes and it becomes the next Previous.
-	Current *CatalogScannerCycle `json:"current,omitempty"`
+	Current  *CatalogScannerCycle `json:"current,omitempty"`
 }
 
 // activeCycle is whichever cycle freshness is judged by: Current while
