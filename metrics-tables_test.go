@@ -291,17 +291,16 @@ func TestTableMaintenanceMergeClonesWork(t *testing.T) {
 	}
 }
 
-// CatalogScanner is leader-owned exactly like a Maintenance job: a demoted
-// leader's higher lifetime totals must not win over the live leader's fresher,
-// smaller report.
 func TestCatalogScannerMergeSelectsLiveLeader(t *testing.T) {
 	t0 := time.Date(2026, 8, 12, 10, 0, 0, 0, time.UTC)
 
 	demoted := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
-		Cycles: 500, LastRun: t0, Running: false, Created: 5000,
+		Cycles: 500, Running: false,
+		Previous: &CatalogScannerCycle{FinishedAt: t0, Created: 5000},
 	}}
 	current := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
-		Cycles: 3, LastRun: t0.Add(-time.Hour), Running: true, Created: 30,
+		Cycles: 3, Running: true,
+		Current: &CatalogScannerCycle{StartedAt: t0.Add(-time.Hour), Created: 30},
 	}}
 
 	got := mergeTables(demoted, current).CatalogScanner
@@ -316,16 +315,14 @@ func TestCatalogScannerMergeSelectsLiveLeader(t *testing.T) {
 	}
 }
 
-// With neither node running a cycle, the most recently completed one wins,
-// never summed.
 func TestCatalogScannerMergeSelectsMostRecent(t *testing.T) {
 	t0 := time.Date(2026, 8, 12, 10, 0, 0, 0, time.UTC)
 
 	stale := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
-		Cycles: 90, LastRun: t0.Add(-time.Hour),
+		Cycles: 90, Previous: &CatalogScannerCycle{FinishedAt: t0.Add(-time.Hour)},
 	}}
 	fresh := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
-		Cycles: 4, LastRun: t0,
+		Cycles: 4, Previous: &CatalogScannerCycle{FinishedAt: t0},
 	}}
 
 	got := mergeTables(stale, fresh).CatalogScanner
@@ -339,15 +336,66 @@ func TestCatalogScannerMergeSelectsMostRecent(t *testing.T) {
 	}
 }
 
-// A node that has not sampled the scanner reports nothing and must not blank
-// a real sample.
 func TestCatalogScannerMergeSkipsAbsent(t *testing.T) {
 	full := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
-		Cycles: 7, LastRun: time.Date(2026, 8, 12, 10, 0, 0, 0, time.UTC),
+		Cycles: 7,
+		Previous: &CatalogScannerCycle{
+			FinishedAt: time.Date(2026, 8, 12, 10, 0, 0, 0, time.UTC),
+		},
 	}}
 
 	got := mergeTables(full, &TableAPIMetrics{}).CatalogScanner
 	if got == nil || got.Cycles != 7 {
 		t.Errorf("CatalogScanner = %+v, want preserved", got)
+	}
+}
+
+// Two reports can tie on Running/freshAt/Cycles/Errors yet differ in every
+// other transmitted field -- Merge must still pick the same one regardless
+// of which side it sees first, rather than keeping whichever arrived first.
+func TestCatalogScannerMergeTieIsDeterministic(t *testing.T) {
+	t0 := time.Date(2026, 8, 12, 10, 0, 0, 0, time.UTC)
+
+	a := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
+		Cycles: 5, Previous: &CatalogScannerCycle{
+			FinishedAt: t0, DurationSecs: 1, Warehouses: 2, Tables: 3,
+			Created: 4, Updated: 5, Tombstoned: 6,
+		},
+	}}
+	b := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
+		Cycles: 5, Previous: &CatalogScannerCycle{
+			FinishedAt: t0, DurationSecs: 1, Warehouses: 2, Tables: 3,
+			Created: 4, Updated: 5, Tombstoned: 9,
+		},
+	}}
+
+	got := mergeTables(a, b).CatalogScanner
+	rev := mergeTables(b, a).CatalogScanner
+	if !reflect.DeepEqual(got, rev) {
+		t.Errorf("order dependent: %+v vs %+v", got, rev)
+	}
+	if got.Previous.Tombstoned != 9 {
+		t.Errorf("Tombstoned = %d, want 9 (the tie-break winner)", got.Previous.Tombstoned)
+	}
+}
+
+// A cycle in progress has no FinishedAt yet; freshness for it must fall
+// back to StartedAt rather than treating two running cycles as equally
+// fresh.
+func TestCatalogScannerMergeRunningUsesStartedAt(t *testing.T) {
+	t0 := time.Date(2026, 8, 12, 10, 0, 0, 0, time.UTC)
+
+	older := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
+		Running: true, Cycles: 1,
+		Current: &CatalogScannerCycle{StartedAt: t0},
+	}}
+	newer := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
+		Running: true, Cycles: 1,
+		Current: &CatalogScannerCycle{StartedAt: t0.Add(time.Minute)},
+	}}
+
+	got := mergeTables(older, newer).CatalogScanner
+	if !got.Current.StartedAt.Equal(t0.Add(time.Minute)) {
+		t.Errorf("StartedAt = %v, want the newer cycle's", got.Current.StartedAt)
 	}
 }

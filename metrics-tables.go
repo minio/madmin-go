@@ -170,54 +170,103 @@ func (j TableMaintenanceJob) fresherThan(k TableMaintenanceJob) bool {
 	return j.Errors > k.Errors
 }
 
-// CatalogScannerMetrics is the tables catalog scanner's own health: the
-// leader-owned background loop that discovers replicated tables and
-// verifies their files for site replication.
-//
-// Distinct from TableMaintenanceJob: the scanner is a singleton replication
-// process, not a per-warehouse-configurable Iceberg maintenance action, so it
-// carries no TablesProcessed/ConfigsEnabled/ConfigsTotal dimension and gets
-// its own field on TableAPIMetrics rather than a Maintenance map entry.
-//
-// Leader-owned and failover-proof the same way TableMaintenanceJob is: every
-// node collects (these are atomic loads), and Merge selects the freshest
-// report rather than summing, so a demoted leader's stale totals cannot pin
-// the aggregate. Counters reset on failover; state that in UI copy.
-type CatalogScannerMetrics struct {
-	Cycles        uint64    `json:"cycles,omitempty"`
-	Errors        uint64    `json:"errors,omitempty"`
-	Running       bool      `json:"running,omitempty"`
-	LastRun       time.Time `json:"last_run,omitzero"`
-	LastCycleSecs float64   `json:"last_cycle_secs,omitempty"`
+// CatalogScannerCycle is one catalog scanner cycle's own timing and counts --
+// either the most recently completed cycle, or the one in progress right
+// now. A lifetime total can't answer "how long has this cycle been running"
+// or "how much did the last cycle actually do"; this can.
+type CatalogScannerCycle struct {
+	StartedAt time.Time `json:"started_at,omitzero"`
+	// FinishedAt is zero while the cycle is still running.
+	FinishedAt   time.Time `json:"finished_at,omitzero"`
+	DurationSecs float64   `json:"duration_secs,omitempty"`
 
-	// Created, Updated and Tombstoned are cumulative catalog mutations this
-	// leader has applied since it started.
+	// Buckets scanned this cycle; each tables warehouse is one bucket.
+	Warehouses int64 `json:"warehouses,omitempty"`
+	Tables     int64 `json:"tables,omitempty"`
+
 	Created    uint64 `json:"created,omitempty"`
 	Updated    uint64 `json:"updated,omitempty"`
 	Tombstoned uint64 `json:"tombstoned,omitempty"`
-
-	// WarehousesLastCycle is a per-cycle sample, not a cumulative count like
-	// the fields above: how many warehouse buckets the last completed cycle
-	// scanned.
-	WarehousesLastCycle int64 `json:"warehouses_last_cycle,omitempty"`
 }
 
-// fresherThan reports whether j is the more authoritative report of the
-// catalog scanner than k. Mirrors TableMaintenanceJob.fresherThan: a node
-// currently running wins, then the most recently completed cycle, then the
-// highest cycle count, then error count -- purely to make the selection a
-// strict total order so Merge is independent of merge order.
+// freshAt is the timestamp fresherThan orders by: FinishedAt once a cycle
+// has completed, otherwise StartedAt for one still running.
+func (c *CatalogScannerCycle) freshAt() time.Time {
+	if c == nil {
+		return time.Time{}
+	}
+	if !c.FinishedAt.IsZero() {
+		return c.FinishedAt
+	}
+	return c.StartedAt
+}
+
+// CatalogScannerMetrics is the tables catalog scanner's health: a singleton
+// replication process, not a per-warehouse maintenance job, so it is its
+// own field rather than a TableMaintenanceJob/Maintenance entry.
+//
+// Cycles and Errors are lifetime counts since this leader started (they
+// reset on failover); Previous and Current carry the per-cycle detail a
+// lifetime total can't: Created/Updated/Tombstoned "since the leader
+// started" has no baseline to be actionable against, so Previous scopes
+// them to one completed cycle instead.
+type CatalogScannerMetrics struct {
+	Cycles  uint64 `json:"cycles,omitempty"`
+	Errors  uint64 `json:"errors,omitempty"`
+	Running bool   `json:"running,omitempty"`
+
+	Previous *CatalogScannerCycle `json:"previous,omitempty"`
+	// Current is set only while Running; its counts are unknown until the
+	// cycle completes and it becomes the next Previous.
+	Current *CatalogScannerCycle `json:"current,omitempty"`
+}
+
+// activeCycle is whichever cycle freshness is judged by: Current while
+// running, Previous otherwise. Never nil.
+func (m CatalogScannerMetrics) activeCycle() *CatalogScannerCycle {
+	if m.Running && m.Current != nil {
+		return m.Current
+	}
+	if m.Previous != nil {
+		return m.Previous
+	}
+	return &CatalogScannerCycle{}
+}
+
+// fresherThan reports whether j is the more authoritative report than k.
+// Mirrors TableMaintenanceJob.fresherThan, then breaks a remaining tie
+// lexicographically over every other transmitted field so Merge selects the
+// same report regardless of merge order.
 func (j CatalogScannerMetrics) fresherThan(k CatalogScannerMetrics) bool {
 	if j.Running != k.Running {
 		return j.Running
 	}
-	if !j.LastRun.Equal(k.LastRun) {
-		return j.LastRun.After(k.LastRun)
+	jc, kc := j.activeCycle(), k.activeCycle()
+	if jAt, kAt := jc.freshAt(), kc.freshAt(); !jAt.Equal(kAt) {
+		return jAt.After(kAt)
 	}
 	if j.Cycles != k.Cycles {
 		return j.Cycles > k.Cycles
 	}
-	return j.Errors > k.Errors
+	if j.Errors != k.Errors {
+		return j.Errors > k.Errors
+	}
+	if jc.DurationSecs != kc.DurationSecs {
+		return jc.DurationSecs > kc.DurationSecs
+	}
+	if jc.Warehouses != kc.Warehouses {
+		return jc.Warehouses > kc.Warehouses
+	}
+	if jc.Tables != kc.Tables {
+		return jc.Tables > kc.Tables
+	}
+	if jc.Created != kc.Created {
+		return jc.Created > kc.Created
+	}
+	if jc.Updated != kc.Updated {
+		return jc.Updated > kc.Updated
+	}
+	return jc.Tombstoned > kc.Tombstoned
 }
 
 // TableAPIMetrics holds traffic for all active tables aggregated across nodes.
@@ -261,9 +310,7 @@ type TableAPIMetrics struct {
 	// its state. Leader-owned: selected between, never summed.
 	Maintenance map[string]TableMaintenanceJob `json:"maintenance,omitempty"`
 
-	// CatalogScanner is the tables catalog scanner's own health. Leader-owned:
-	// selected between, never summed -- but not a per-warehouse-configurable
-	// maintenance job, so it is its own field rather than a Maintenance entry.
+	// CatalogScanner is leader-owned: selected between, never summed.
 	CatalogScanner *CatalogScannerMetrics `json:"catalog_scanner,omitempty"`
 }
 
@@ -325,9 +372,19 @@ func (t *TableAPIMetrics) Merge(other *TableAPIMetrics) {
 			t.Maintenance[k] = o
 		}
 	}
-	// Leader-owned singleton: select the authoritative report, never sum.
 	if other.CatalogScanner != nil && (t.CatalogScanner == nil || other.CatalogScanner.fresherThan(*t.CatalogScanner)) {
 		c := *other.CatalogScanner
+		// Clone Previous/Current: storing c wholesale would share the source
+		// report's pointers, so a caller mutating the aggregate would reach
+		// back into it.
+		if c.Previous != nil {
+			p := *c.Previous
+			c.Previous = &p
+		}
+		if c.Current != nil {
+			cur := *c.Current
+			c.Current = &cur
+		}
 		t.CatalogScanner = &c
 	}
 }
