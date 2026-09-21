@@ -223,12 +223,12 @@ type CatalogScannerMetrics struct {
 
 // activeCycle is whichever cycle freshness is judged by: Current while
 // running, Previous otherwise. Never nil.
-func (m CatalogScannerMetrics) activeCycle() *CatalogScannerCycle {
-	if m.Running && m.Current != nil {
-		return m.Current
+func (j CatalogScannerMetrics) activeCycle() *CatalogScannerCycle {
+	if j.Running && j.Current != nil {
+		return j.Current
 	}
-	if m.Previous != nil {
-		return m.Previous
+	if j.Previous != nil {
+		return j.Previous
 	}
 	return &CatalogScannerCycle{}
 }
