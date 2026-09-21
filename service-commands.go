@@ -289,6 +289,7 @@ func (t *ServiceTraceOpts) ParseParams(r *http.Request) error {
 		t.ThresholdTTFB = d
 	}
 
+	t.Types = 0
 	if types := r.Form.Get("types"); types != "" {
 		v, err := strconv.ParseUint(types, 10, 64)
 		if err != nil {
