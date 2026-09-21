@@ -26,6 +26,7 @@ const (
 	MaintenanceTypeIcebergSnapshotManagement      = "icebergSnapshotManagement"
 	MaintenanceTypeIcebergCompaction              = "icebergCompaction"
 	MaintenanceTypeIcebergUnreferencedFileRemoval = "icebergUnreferencedFileRemoval"
+	MaintenanceTypeIcebergRecordExpiration        = "icebergRecordExpiration"
 )
 
 // IcebergSnapshotManagementSettings contains settings for Iceberg snapshot management.
@@ -70,12 +71,35 @@ type IcebergUnreferencedFileRemovalSettings struct {
 	Interval *int `json:"interval,omitempty"`
 }
 
+// IcebergRecordExpirationSettings contains settings for Iceberg record expiration:
+// a data retention period that removes rows, not files. A run commits a snapshot
+// without the rows whose Column value is older than Days; snapshot expiration and
+// unreferenced file removal then reclaim the bytes.
+//
+// Unlike the other maintenance types this one is table-scoped only. It names a
+// column of one table's schema, so it is rejected at the warehouse level.
+type IcebergRecordExpirationSettings struct {
+	// Days is the retention period. A row is eligible once its Column value is
+	// more than Days old. Must be >= 1.
+	Days *int `json:"days,omitempty"`
+	// Column is the clock: a top-level timestamp, timestamptz or date field of
+	// the table's current schema. AWS selects this itself because it only
+	// expires records on tables whose schema it owns; on user tables it has to
+	// be named.
+	Column string `json:"column,omitempty"`
+	// Interval overrides how often this runs, in minutes.
+	// Inherits: table -> warehouse -> server if nil.
+	// Must be >= 1.
+	Interval *int `json:"interval,omitempty"`
+}
+
 // TableMaintenanceSettings is a union type containing maintenance settings.
 // Only one of the fields should be set at a time based on the maintenance type.
 type TableMaintenanceSettings struct {
 	IcebergSnapshotManagement      *IcebergSnapshotManagementSettings      `json:"icebergSnapshotManagement,omitempty"`
 	IcebergCompaction              *IcebergCompactionSettings              `json:"icebergCompaction,omitempty"`
 	IcebergUnreferencedFileRemoval *IcebergUnreferencedFileRemovalSettings `json:"icebergUnreferencedFileRemoval,omitempty"`
+	IcebergRecordExpiration        *IcebergRecordExpirationSettings        `json:"icebergRecordExpiration,omitempty"`
 }
 
 // TableMaintenanceConfigurationValue represents a maintenance configuration with status.
@@ -113,6 +137,15 @@ type TableMaintenanceJobTypeStatus struct {
 	Status           MaintenanceJobStatus `json:"status"`
 	LastRunTimestamp *string              `json:"lastRunTimestamp,omitempty"`
 	FailureMessage   string               `json:"failureMessage,omitempty"`
+
+	// RecordsDeleted, DataFilesRewritten and BytesRemoved report what the last
+	// run removed. Only record expiration reports them, because it is the only
+	// maintenance type that ends the life of data rather than of files or
+	// history, and a retention period has to be auditable to be evidence of
+	// disposal.
+	RecordsDeleted     *int64 `json:"recordsDeleted,omitempty"`
+	DataFilesRewritten *int64 `json:"dataFilesRewritten,omitempty"`
+	BytesRemoved       *int64 `json:"bytesRemoved,omitempty"`
 }
 
 // GetTableMaintenanceJobStatusResponse is the response for GetTableMaintenanceJobStatus.
