@@ -350,8 +350,8 @@ func TestCatalogScannerMergeSkipsAbsent(t *testing.T) {
 	}
 }
 
-// Two reports can tie on Running/freshAt/Cycles/Errors yet differ in every
-// other transmitted field -- Merge must still pick the same one regardless
+// Two reports can tie on Running/FinishedAt/Cycles/Errors yet differ in
+// every other transmitted field -- Merge must still pick the same one regardless
 // of which side it sees first, rather than keeping whichever arrived first.
 func TestCatalogScannerMergeTieIsDeterministic(t *testing.T) {
 	t0 := time.Date(2026, 8, 12, 10, 0, 0, 0, time.UTC)
@@ -397,5 +397,70 @@ func TestCatalogScannerMergeRunningUsesStartedAt(t *testing.T) {
 	got := mergeTables(older, newer).CatalogScanner
 	if !got.Current.StartedAt.Equal(t0.Add(time.Minute)) {
 		t.Errorf("StartedAt = %v, want the newer cycle's", got.Current.StartedAt)
+	}
+}
+
+// A running report with Running true but no Current must not fall back to
+// its Previous for freshness purposes -- that would compare the cycle
+// before this one as if it were the report's current activity.
+func TestCatalogScannerActiveCycleRunningWithoutCurrentIgnoresPrevious(t *testing.T) {
+	m := CatalogScannerMetrics{
+		Running:  true,
+		Previous: &CatalogScannerCycle{Tombstoned: 999},
+	}
+	if got := m.activeCycle(); got != nil {
+		t.Errorf("activeCycle() = %+v, want nil (must not borrow Previous)", got)
+	}
+}
+
+// Two completed cycles can share a FinishedAt but differ only in StartedAt
+// (e.g. one ran longer) -- fresherThan must compare StartedAt as its own
+// field rather than relying on DurationSecs happening to differ too.
+func TestCatalogScannerMergeTiesOnFinishedAtBreakOnStartedAt(t *testing.T) {
+	finishedAt := time.Date(2026, 8, 12, 10, 0, 0, 0, time.UTC)
+
+	a := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
+		Previous: &CatalogScannerCycle{
+			FinishedAt: finishedAt, StartedAt: finishedAt.Add(-time.Minute), DurationSecs: 60,
+		},
+	}}
+	b := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
+		Previous: &CatalogScannerCycle{
+			FinishedAt: finishedAt, StartedAt: finishedAt.Add(-2 * time.Minute), DurationSecs: 60,
+		},
+	}}
+
+	got := mergeTables(a, b).CatalogScanner
+	rev := mergeTables(b, a).CatalogScanner
+	if !reflect.DeepEqual(got, rev) {
+		t.Errorf("order dependent: %+v vs %+v", got, rev)
+	}
+	if !got.Previous.StartedAt.Equal(finishedAt.Add(-time.Minute)) {
+		t.Errorf("StartedAt = %v, want the later-started (fresher) cycle's", got.Previous.StartedAt)
+	}
+}
+
+// Two running reports can share an identical Current yet carry a different
+// Previous (the cycle before the one now running) -- Merge must not treat
+// them as equal just because the field it checks first happens to match.
+func TestCatalogScannerMergeRunningTiesOnCurrentBreakOnPrevious(t *testing.T) {
+	current := &CatalogScannerCycle{StartedAt: time.Date(2026, 8, 12, 10, 0, 0, 0, time.UTC)}
+
+	a := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
+		Running: true, Current: current,
+		Previous: &CatalogScannerCycle{Tombstoned: 1},
+	}}
+	b := &TableAPIMetrics{CatalogScanner: &CatalogScannerMetrics{
+		Running: true, Current: current,
+		Previous: &CatalogScannerCycle{Tombstoned: 9},
+	}}
+
+	got := mergeTables(a, b).CatalogScanner
+	rev := mergeTables(b, a).CatalogScanner
+	if !reflect.DeepEqual(got, rev) {
+		t.Errorf("order dependent: %+v vs %+v", got, rev)
+	}
+	if got.Previous.Tombstoned != 9 {
+		t.Errorf("Previous.Tombstoned = %d, want 9 (the tie-break winner)", got.Previous.Tombstoned)
 	}
 }

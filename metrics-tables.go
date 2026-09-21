@@ -189,16 +189,70 @@ type CatalogScannerCycle struct {
 	Tombstoned uint64 `json:"tombstoned,omitempty"`
 }
 
-// freshAt is the timestamp fresherThan orders by: FinishedAt once a cycle
-// has completed, otherwise StartedAt for one still running.
-func (c *CatalogScannerCycle) freshAt() time.Time {
-	if c == nil {
-		return time.Time{}
+// timeCompare returns -1, 0 or 1 as a is before, equal to, or after b.
+func timeCompare(a, b time.Time) int {
+	if a.Equal(b) {
+		return 0
 	}
-	if !c.FinishedAt.IsZero() {
-		return c.FinishedAt
+	if a.After(b) {
+		return 1
 	}
-	return c.StartedAt
+	return -1
+}
+
+// cycleCompare orders two cycles, either of which may be nil: a present
+// cycle always outranks an absent one, then every field is compared in a
+// fixed order so two cycles either compare equal or resolve to a strict
+// total order -- never a silent tie that leaves a caller to pick arbitrarily.
+func cycleCompare(a, b *CatalogScannerCycle) int {
+	if (a == nil) != (b == nil) {
+		if a == nil {
+			return -1
+		}
+		return 1
+	}
+	if a == nil {
+		return 0
+	}
+	if c := timeCompare(a.FinishedAt, b.FinishedAt); c != 0 {
+		return c
+	}
+	if c := timeCompare(a.StartedAt, b.StartedAt); c != 0 {
+		return c
+	}
+	switch {
+	case a.DurationSecs != b.DurationSecs:
+		if a.DurationSecs > b.DurationSecs {
+			return 1
+		}
+		return -1
+	case a.Warehouses != b.Warehouses:
+		if a.Warehouses > b.Warehouses {
+			return 1
+		}
+		return -1
+	case a.Tables != b.Tables:
+		if a.Tables > b.Tables {
+			return 1
+		}
+		return -1
+	case a.Created != b.Created:
+		if a.Created > b.Created {
+			return 1
+		}
+		return -1
+	case a.Updated != b.Updated:
+		if a.Updated > b.Updated {
+			return 1
+		}
+		return -1
+	case a.Tombstoned != b.Tombstoned:
+		if a.Tombstoned > b.Tombstoned {
+			return 1
+		}
+		return -1
+	}
+	return 0
 }
 
 // CatalogScannerMetrics is the tables catalog scanner's health: a singleton
@@ -222,28 +276,29 @@ type CatalogScannerMetrics struct {
 }
 
 // activeCycle is whichever cycle freshness is judged by: Current while
-// running, Previous otherwise. Never nil.
+// running, Previous otherwise. A running report never falls back to
+// Previous even when Current is absent -- that would compare the cycle
+// before this one as if it were this report's current activity, which is
+// exactly backwards for a report that claims to be running.
 func (j CatalogScannerMetrics) activeCycle() *CatalogScannerCycle {
-	if j.Running && j.Current != nil {
+	if j.Running {
 		return j.Current
 	}
-	if j.Previous != nil {
-		return j.Previous
-	}
-	return &CatalogScannerCycle{}
+	return j.Previous
 }
 
 // fresherThan reports whether j is the more authoritative report than k.
-// Mirrors TableMaintenanceJob.fresherThan, then breaks a remaining tie
-// lexicographically over every other transmitted field so Merge selects the
-// same report regardless of merge order.
+// Mirrors TableMaintenanceJob.fresherThan for Running/Cycles/Errors, then
+// breaks a remaining tie by comparing first the active cycle (Current while
+// running, Previous otherwise) and finally Previous outright -- two running
+// reports with an identical Current but a different Previous must not
+// compare equal, since Merge would then keep whichever arrived first.
 func (j CatalogScannerMetrics) fresherThan(k CatalogScannerMetrics) bool {
 	if j.Running != k.Running {
 		return j.Running
 	}
-	jc, kc := j.activeCycle(), k.activeCycle()
-	if jAt, kAt := jc.freshAt(), kc.freshAt(); !jAt.Equal(kAt) {
-		return jAt.After(kAt)
+	if c := cycleCompare(j.activeCycle(), k.activeCycle()); c != 0 {
+		return c > 0
 	}
 	if j.Cycles != k.Cycles {
 		return j.Cycles > k.Cycles
@@ -251,22 +306,7 @@ func (j CatalogScannerMetrics) fresherThan(k CatalogScannerMetrics) bool {
 	if j.Errors != k.Errors {
 		return j.Errors > k.Errors
 	}
-	if jc.DurationSecs != kc.DurationSecs {
-		return jc.DurationSecs > kc.DurationSecs
-	}
-	if jc.Warehouses != kc.Warehouses {
-		return jc.Warehouses > kc.Warehouses
-	}
-	if jc.Tables != kc.Tables {
-		return jc.Tables > kc.Tables
-	}
-	if jc.Created != kc.Created {
-		return jc.Created > kc.Created
-	}
-	if jc.Updated != kc.Updated {
-		return jc.Updated > kc.Updated
-	}
-	return jc.Tombstoned > kc.Tombstoned
+	return cycleCompare(j.Previous, k.Previous) > 0
 }
 
 // TableAPIMetrics holds traffic for all active tables aggregated across nodes.
