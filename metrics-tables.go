@@ -170,6 +170,177 @@ func (j TableMaintenanceJob) fresherThan(k TableMaintenanceJob) bool {
 	return j.Errors > k.Errors
 }
 
+// CatalogScannerCycle is one catalog scanner cycle's own timing and counts --
+// either the most recently completed cycle, or the one in progress right
+// now. A lifetime total can't answer "how long has this cycle been running"
+// or "how much did the last cycle actually do"; this can.
+type CatalogScannerCycle struct {
+	StartedAt time.Time `json:"started_at,omitzero"`
+	// FinishedAt is nil while the cycle is still running.
+	FinishedAt   *time.Time `json:"finished_at,omitempty"`
+	DurationSecs float64    `json:"duration_secs,omitempty"`
+
+	// Buckets scanned this cycle; each tables warehouse is one bucket.
+	Warehouses int64 `json:"warehouses,omitempty"`
+	Tables     int64 `json:"tables,omitempty"`
+
+	Created    uint64 `json:"created,omitempty"`
+	Updated    uint64 `json:"updated,omitempty"`
+	Tombstoned uint64 `json:"tombstoned,omitempty"`
+
+	// Failed counts failures recorded during this cycle. A cycle that
+	// aborted outright rather than completing reports a nonzero Failed with
+	// its other counts left unpopulated. A count rather than a bool so a
+	// future per-item tally -- one bad table logged and skipped rather than
+	// aborting the whole cycle -- can populate it without a type change.
+	Failed uint64 `json:"failed,omitempty"`
+}
+
+// timeCompare returns -1, 0 or 1 as a is before, equal to, or after b.
+func timeCompare(a, b time.Time) int {
+	if a.Equal(b) {
+		return 0
+	}
+	if a.After(b) {
+		return 1
+	}
+	return -1
+}
+
+// timePtrCompare orders two possibly-nil timestamps: present beats absent,
+// otherwise timeCompare decides.
+func timePtrCompare(a, b *time.Time) int {
+	if (a == nil) != (b == nil) {
+		if a == nil {
+			return -1
+		}
+		return 1
+	}
+	if a == nil {
+		return 0
+	}
+	return timeCompare(*a, *b)
+}
+
+// cycleCompare orders two cycles, either of which may be nil: a present
+// cycle always outranks an absent one, then every field is compared in a
+// fixed order so two cycles either compare equal or resolve to a strict
+// total order -- never a silent tie that leaves a caller to pick arbitrarily.
+func cycleCompare(a, b *CatalogScannerCycle) int {
+	if (a == nil) != (b == nil) {
+		if a == nil {
+			return -1
+		}
+		return 1
+	}
+	if a == nil {
+		return 0
+	}
+	if c := timePtrCompare(a.FinishedAt, b.FinishedAt); c != 0 {
+		return c
+	}
+	if c := timeCompare(a.StartedAt, b.StartedAt); c != 0 {
+		return c
+	}
+	switch {
+	case a.DurationSecs != b.DurationSecs:
+		if a.DurationSecs > b.DurationSecs {
+			return 1
+		}
+		return -1
+	case a.Warehouses != b.Warehouses:
+		if a.Warehouses > b.Warehouses {
+			return 1
+		}
+		return -1
+	case a.Tables != b.Tables:
+		if a.Tables > b.Tables {
+			return 1
+		}
+		return -1
+	case a.Created != b.Created:
+		if a.Created > b.Created {
+			return 1
+		}
+		return -1
+	case a.Updated != b.Updated:
+		if a.Updated > b.Updated {
+			return 1
+		}
+		return -1
+	case a.Tombstoned != b.Tombstoned:
+		if a.Tombstoned > b.Tombstoned {
+			return 1
+		}
+		return -1
+	// Fewer failures outranks more when every other field ties -- a
+	// completed cycle (Failed == 0) outranks a failed one, and this still
+	// resolves correctly if Failed later becomes a real per-item tally.
+	case a.Failed != b.Failed:
+		if a.Failed < b.Failed {
+			return 1
+		}
+		return -1
+	}
+	return 0
+}
+
+// CatalogScannerMetrics is the tables catalog scanner's health: a singleton
+// replication process, not a per-warehouse maintenance job, so it is its
+// own field rather than a TableMaintenanceJob/Maintenance entry.
+//
+// Cycles and Errors are counts of whole cycles: a cycle either completes or
+// aborts outright (Errors), never both. Neither reflects a per-item failure
+// recorded inside an otherwise-completed cycle -- see Previous.Failed for
+// that, scoped to the most recent attempt specifically. Cycles/Errors are
+// lifetime counts since this leader started (they reset on failover);
+// Previous and Current carry the per-cycle detail a lifetime total can't:
+// Created/Updated/Tombstoned "since the leader started" has no baseline to
+// be actionable against, so Previous scopes them to one completed cycle
+// instead.
+type CatalogScannerMetrics struct {
+	Cycles  uint64 `json:"cycles,omitempty"`
+	Errors  uint64 `json:"errors,omitempty"`
+	Running bool   `json:"running,omitempty"`
+
+	Previous *CatalogScannerCycle `json:"previous,omitempty"`
+	Current  *CatalogScannerCycle `json:"current,omitempty"`
+}
+
+// activeCycle is whichever cycle freshness is judged by: Current while
+// running, Previous otherwise. A running report never falls back to
+// Previous even when Current is absent -- that would compare the cycle
+// before this one as if it were this report's current activity, which is
+// exactly backwards for a report that claims to be running.
+func (j CatalogScannerMetrics) activeCycle() *CatalogScannerCycle {
+	if j.Running {
+		return j.Current
+	}
+	return j.Previous
+}
+
+// fresherThan reports whether j is the more authoritative report than k.
+// Mirrors TableMaintenanceJob.fresherThan for Running/Cycles/Errors, then
+// breaks a remaining tie by comparing first the active cycle (Current while
+// running, Previous otherwise) and finally Previous outright -- two running
+// reports with an identical Current but a different Previous must not
+// compare equal, since Merge would then keep whichever arrived first.
+func (j CatalogScannerMetrics) fresherThan(k CatalogScannerMetrics) bool {
+	if j.Running != k.Running {
+		return j.Running
+	}
+	if c := cycleCompare(j.activeCycle(), k.activeCycle()); c != 0 {
+		return c > 0
+	}
+	if j.Cycles != k.Cycles {
+		return j.Cycles > k.Cycles
+	}
+	if j.Errors != k.Errors {
+		return j.Errors > k.Errors
+	}
+	return cycleCompare(j.Previous, k.Previous) > 0
+}
+
 // TableAPIMetrics holds traffic for all active tables aggregated across nodes.
 type TableAPIMetrics struct {
 	// Time these metrics were collected
@@ -210,6 +381,9 @@ type TableAPIMetrics struct {
 	// ("snapshot_expiration", "unreferenced_file_removal", "compaction") to
 	// its state. Leader-owned: selected between, never summed.
 	Maintenance map[string]TableMaintenanceJob `json:"maintenance,omitempty"`
+
+	// CatalogScanner is leader-owned: selected between, never summed.
+	CatalogScanner *CatalogScannerMetrics `json:"catalog_scanner,omitempty"`
 }
 
 // Merge folds other into t. CollectedAt takes the later timestamp;
@@ -269,6 +443,21 @@ func (t *TableAPIMetrics) Merge(other *TableAPIMetrics) {
 			o.Work = maps.Clone(o.Work)
 			t.Maintenance[k] = o
 		}
+	}
+	if other.CatalogScanner != nil && (t.CatalogScanner == nil || other.CatalogScanner.fresherThan(*t.CatalogScanner)) {
+		c := *other.CatalogScanner
+		// Clone Previous/Current: storing c wholesale would share the source
+		// report's pointers, so a caller mutating the aggregate would reach
+		// back into it.
+		if c.Previous != nil {
+			p := *c.Previous
+			c.Previous = &p
+		}
+		if c.Current != nil {
+			cur := *c.Current
+			c.Current = &cur
+		}
+		t.CatalogScanner = &c
 	}
 }
 

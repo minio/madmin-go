@@ -50,7 +50,7 @@ func (node *TableMetricsNode) GetChildren() []MetricChild {
 	if node.tables == nil {
 		return []MetricChild{}
 	}
-	return []MetricChild{
+	children := []MetricChild{
 		{Name: "last_minute", Description: "Cluster table API totals over the last minute"},
 		{Name: "last_hour", Description: "Per-minute segments over the last hour"},
 		{Name: "last_day", Description: "15-minute segments over the last day"},
@@ -58,6 +58,15 @@ func (node *TableMetricsNode) GetChildren() []MetricChild {
 		{Name: "top_namespaces", Description: "Top namespaces by requests and throughput"},
 		{Name: "top_tables", Description: "Top tables by requests and throughput"},
 	}
+	// Only the catalog-scanner leader ever populates this -- every other
+	// node in the cluster reports nil, so listing it unconditionally would
+	// clutter most nodes' navigation with a permanent "no data" entry. The
+	// description is the live summary, not static text, so a reader sees
+	// the scanner's actual state before ever navigating into it.
+	if cs := node.tables.CatalogScanner; cs != nil {
+		children = append(children, MetricChild{Name: "catalog_scanner", Description: describeCatalogScanner(cs)})
+	}
+	return children
 }
 
 func (node *TableMetricsNode) GetLeafData() map[string]string {
@@ -97,6 +106,10 @@ func (node *TableMetricsNode) GetLeafData() map[string]string {
 		if len(h.VendedCreds) > 0 {
 			add("Vended Credentials", formatCountMap(h.VendedCreds, 6))
 		}
+	}
+
+	if cs := node.tables.CatalogScanner; cs != nil {
+		add("Catalog Scanner", describeCatalogScanner(cs))
 	}
 
 	for _, name := range tableMaintenanceOrder {
@@ -153,6 +166,45 @@ func describeMaintenanceJob(job madmin.TableMaintenanceJob) string {
 	return strings.Join(parts, ", ")
 }
 
+// describeCatalogScanner renders the catalog scanner's health on a single
+// line, mirroring describeMaintenanceJob.
+//
+// Cycles/Errors reset when the scanner's leader lock moves to another node,
+// so the cycle count is the current leader's, not the cluster's lifetime
+// total -- same convention as describeMaintenanceJob.
+func describeCatalogScanner(cs *madmin.CatalogScannerMetrics) string {
+	parts := make([]string, 0, 6)
+	prev := cs.Previous
+	switch {
+	case cs.Running:
+		parts = append(parts, "running")
+	case prev == nil:
+		parts = append(parts, "never run")
+	case prev.FinishedAt != nil:
+		parts = append(parts, "last "+prev.FinishedAt.Local().Format("15:04 MST"))
+	}
+	parts = append(parts, fmt.Sprintf("%s cycles", humanize.Comma(int64(cs.Cycles))))
+	if cs.Errors > 0 {
+		parts = append(parts, fmt.Sprintf("%s errors", humanize.Comma(int64(cs.Errors))))
+	}
+	if prev != nil {
+		if prev.Failed > 0 {
+			parts = append(parts, fmt.Sprintf("last cycle failed (%s)", humanize.Comma(int64(prev.Failed))))
+		} else {
+			if prev.DurationSecs > 0 {
+				parts = append(parts, fmt.Sprintf("%.1fs/cycle", prev.DurationSecs))
+			}
+			if prev.Warehouses > 0 {
+				parts = append(parts, fmt.Sprintf("%s warehouses", humanize.Comma(prev.Warehouses)))
+			}
+			if prev.Tables > 0 {
+				parts = append(parts, fmt.Sprintf("%s tables", humanize.Comma(prev.Tables)))
+			}
+		}
+	}
+	return strings.Join(parts, ", ")
+}
+
 func (node *TableMetricsNode) GetChild(name string) (MetricNode, error) {
 	if node.tables == nil {
 		return nil, fmt.Errorf("no table metrics available")
@@ -184,6 +236,10 @@ func (node *TableMetricsNode) GetChild(name string) (MetricNode, error) {
 		return &tableTopGroupNode{
 			top: node.tables.TopTables, label: "table",
 			flag: madmin.MetricsTopTables, parent: node, path: node.path + "/top_tables",
+		}, nil
+	case "catalog_scanner":
+		return &catalogScannerNode{
+			scanner: node.tables.CatalogScanner, parent: node, path: node.path + "/catalog_scanner",
 		}, nil
 	}
 	return nil, fmt.Errorf("unknown table child: %s", name)
@@ -619,4 +675,113 @@ func addTableStatData(s *madmin.TableAPIStat, windowSecs float64, add func(k, v 
 	if total > 0 && s.RespTTFBSecs > 0 {
 		add("Avg TTFB", fmt.Sprintf("%.1fms", (s.RespTTFBSecs/float64(total))*1000))
 	}
+}
+
+// catalogScannerNode is the full subsection for the tables catalog scanner --
+// a singleton replication process, not a per-warehouse maintenance job, so
+// it lives here rather than folded into a Maintenance entry. GetLeafData
+// reports every active field (a field with nothing to say is omitted rather
+// than printed as a zero) plus rates derived from the last completed cycle,
+// since a raw count/duration pair does not answer "how fast is this."
+type catalogScannerNode struct {
+	scanner *madmin.CatalogScannerMetrics
+	parent  MetricNode
+	path    string
+}
+
+func (node *catalogScannerNode) GetOpts() madmin.MetricsOptions     { return getNodeOpts(node) }
+func (node *catalogScannerNode) GetMetricType() madmin.MetricType   { return madmin.MetricsTablesAPI }
+func (node *catalogScannerNode) GetMetricFlags() madmin.MetricFlags { return 0 }
+func (node *catalogScannerNode) GetParent() MetricNode              { return node.parent }
+func (node *catalogScannerNode) GetPath() string                    { return node.path }
+func (node *catalogScannerNode) ShouldPauseRefresh() bool           { return false }
+func (node *catalogScannerNode) GetChildren() []MetricChild         { return []MetricChild{} }
+func (node *catalogScannerNode) GetChild(_ string) (MetricNode, error) {
+	return nil, fmt.Errorf("no children")
+}
+
+func (node *catalogScannerNode) GetLeafData() map[string]string {
+	if node.scanner == nil {
+		return map[string]string{"Status": "No catalog scanner data available"}
+	}
+	cs := node.scanner
+
+	data := map[string]string{}
+	idx := 0
+	add := func(k, v string) {
+		data[fmt.Sprintf("%02d:%s", idx, k)] = v
+		idx++
+	}
+
+	if cs.Running {
+		add("Status", "Running")
+	} else {
+		add("Status", "Idle")
+	}
+	add("Lifetime Cycles", humanize.Comma(int64(cs.Cycles)))
+	if cs.Errors > 0 {
+		add("Lifetime Errors", humanize.Comma(int64(cs.Errors)))
+		// Attempts, not completions: a cycle is either one or the other, so
+		// the denominator is every attempt this leader has made, not just
+		// the ones that finished.
+		attempts := cs.Cycles + cs.Errors
+		add("Lifetime Error Rate", fmt.Sprintf("%.1f%%", float64(cs.Errors)/float64(attempts)*100))
+	}
+
+	if cur := cs.Current; cs.Running && cur != nil && !cur.StartedAt.IsZero() {
+		add("Current Cycle Started", cur.StartedAt.Local().Format("15:04 MST"))
+		add("Current Cycle Running For", time.Since(cur.StartedAt).Round(time.Second).String())
+	}
+
+	switch prev := cs.Previous; {
+	case prev == nil:
+		add("Last Cycle", "Never run")
+	case prev.Failed > 0:
+		add("Last Cycle", fmt.Sprintf("Failed (%s)", humanize.Comma(int64(prev.Failed))))
+		if prev.FinishedAt != nil {
+			add("Last Cycle Finished", prev.FinishedAt.Local().Format("15:04 MST"))
+		}
+		if prev.DurationSecs > 0 {
+			add("Last Cycle Ran For", fmt.Sprintf("%.1fs", prev.DurationSecs))
+		}
+	default:
+		add("Last Cycle", "Completed")
+		if prev.FinishedAt != nil {
+			add("Last Cycle Finished", prev.FinishedAt.Local().Format("15:04 MST"))
+		}
+		if prev.DurationSecs > 0 {
+			add("Last Cycle Duration", fmt.Sprintf("%.1fs", prev.DurationSecs))
+		}
+		if prev.Warehouses > 0 {
+			add("Last Cycle Warehouses", humanize.Comma(prev.Warehouses))
+		}
+		if prev.Tables > 0 {
+			add("Last Cycle Tables", humanize.Comma(prev.Tables))
+		}
+		if prev.Created > 0 {
+			add("Last Cycle Created", humanize.Comma(int64(prev.Created)))
+		}
+		if prev.Updated > 0 {
+			add("Last Cycle Updated", humanize.Comma(int64(prev.Updated)))
+		}
+		if prev.Tombstoned > 0 {
+			add("Last Cycle Tombstoned", humanize.Comma(int64(prev.Tombstoned)))
+		}
+
+		// Rates derived from the completed cycle -- a raw count/duration pair
+		// does not answer "how fast," and this is the only place that does.
+		if prev.DurationSecs > 0 {
+			if prev.Warehouses > 0 {
+				add("Warehouses/sec", fmt.Sprintf("%.1f", float64(prev.Warehouses)/prev.DurationSecs))
+			}
+			if prev.Tables > 0 {
+				add("Tables/sec", fmt.Sprintf("%.1f", float64(prev.Tables)/prev.DurationSecs))
+			}
+			if mutations := prev.Created + prev.Updated + prev.Tombstoned; mutations > 0 {
+				add("Mutations/sec", fmt.Sprintf("%.1f", float64(mutations)/prev.DurationSecs))
+			}
+		}
+	}
+
+	return data
 }
