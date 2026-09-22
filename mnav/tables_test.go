@@ -120,29 +120,43 @@ func TestTableMetricsNodeLeafDataOmitsCatalogScannerWhenAbsent(t *testing.T) {
 // same convention top_warehouses etc. already follow: always listed, the
 // child itself reports "no data" when there is none).
 func TestTableMetricsNodeChildrenIncludesCatalogScanner(t *testing.T) {
-	node := NewTableMetricsNode(&madmin.TableAPIMetrics{
-		CatalogScanner: &madmin.CatalogScannerMetrics{Cycles: 5},
-	}, nil, "tables")
+	cs := &madmin.CatalogScannerMetrics{Cycles: 5}
+	node := NewTableMetricsNode(&madmin.TableAPIMetrics{CatalogScanner: cs}, nil, "tables")
 
-	var found bool
+	var child *MetricChild
 	for _, c := range node.GetChildren() {
 		if c.Name == "catalog_scanner" {
-			found = true
-			if c.Description == "" {
-				t.Error("catalog_scanner child has no description")
-			}
+			child = &c
 		}
 	}
-	if !found {
-		t.Errorf("GetChildren() = %v, want a catalog_scanner entry", node.GetChildren())
+	if child == nil {
+		t.Fatalf("GetChildren() = %v, want a catalog_scanner entry", node.GetChildren())
+	}
+	// The description is the scanner's live summary, not static boilerplate
+	// -- describeCatalogScanner is the single source of truth for that text.
+	if want := describeCatalogScanner(cs); child.Description != want {
+		t.Errorf("catalog_scanner description = %q, want %q", child.Description, want)
 	}
 
-	child, err := node.GetChild("catalog_scanner")
+	navChild, err := node.GetChild("catalog_scanner")
 	if err != nil {
 		t.Fatalf("GetChild(catalog_scanner): %v", err)
 	}
-	if _, ok := child.(*catalogScannerNode); !ok {
-		t.Errorf("GetChild(catalog_scanner) = %T, want *catalogScannerNode", child)
+	if _, ok := navChild.(*catalogScannerNode); !ok {
+		t.Errorf("GetChild(catalog_scanner) = %T, want *catalogScannerNode", navChild)
+	}
+}
+
+// Only the catalog-scanner leader ever populates CatalogScanner -- every
+// other node in the cluster reports nil, and listing the child anyway would
+// clutter most nodes' navigation with a permanent "no data" entry.
+func TestTableMetricsNodeChildrenOmitsCatalogScannerWhenAbsent(t *testing.T) {
+	node := NewTableMetricsNode(&madmin.TableAPIMetrics{}, nil, "tables")
+
+	for _, c := range node.GetChildren() {
+		if c.Name == "catalog_scanner" {
+			t.Errorf("GetChildren() = %v, want no catalog_scanner entry when absent", node.GetChildren())
+		}
 	}
 }
 
@@ -165,10 +179,10 @@ func TestCatalogScannerNodeRunning(t *testing.T) {
 	}}
 	data := node.GetLeafData()
 
-	if !valueContains(data, "Status", "Running") {
+	if !valueEquals(data, "Status", "Running") {
 		t.Errorf("GetLeafData() = %v, want Status = Running", data)
 	}
-	if !valueContains(data, "Current Cycle Running For", "") {
+	if !valueEquals(data, "Current Cycle Running For", "") {
 		t.Errorf("GetLeafData() = %v, want a Current Cycle Running For entry", data)
 	}
 }
@@ -184,10 +198,10 @@ func TestCatalogScannerNodeRunningWithZeroStartedAt(t *testing.T) {
 	}}
 	data := node.GetLeafData()
 
-	if valueContains(data, "Current Cycle Started", "") {
+	if valueEquals(data, "Current Cycle Started", "") {
 		t.Errorf("GetLeafData() = %v, must not report Current Cycle Started for a zero StartedAt", data)
 	}
-	if valueContains(data, "Current Cycle Running For", "") {
+	if valueEquals(data, "Current Cycle Running For", "") {
 		t.Errorf("GetLeafData() = %v, must not report Current Cycle Running For a zero StartedAt", data)
 	}
 }
@@ -207,14 +221,14 @@ func TestCatalogScannerNodeCompletedCycleDerivesRates(t *testing.T) {
 	}}
 	data := node.GetLeafData()
 
-	if !valueContains(data, "Warehouses/sec", "0.4") {
+	if !valueEquals(data, "Warehouses/sec", "0.4") {
 		t.Errorf("GetLeafData() = %v, want Warehouses/sec = 0.4 (4 warehouses / 10s)", data)
 	}
-	if !valueContains(data, "Tables/sec", "10.0") {
+	if !valueEquals(data, "Tables/sec", "10.0") {
 		t.Errorf("GetLeafData() = %v, want Tables/sec = 10.0 (100 tables / 10s)", data)
 	}
 	// 20 created + 30 updated + 0 tombstoned = 50 mutations / 10s.
-	if !valueContains(data, "Mutations/sec", "5.0") {
+	if !valueEquals(data, "Mutations/sec", "5.0") {
 		t.Errorf("GetLeafData() = %v, want Mutations/sec = 5.0", data)
 	}
 }
@@ -232,25 +246,27 @@ func TestCatalogScannerNodeFailedCycleReportsNoRates(t *testing.T) {
 	}}
 	data := node.GetLeafData()
 
-	if !valueContains(data, "Last Cycle", "Failed (1)") {
+	if !valueEquals(data, "Last Cycle", "Failed (1)") {
 		t.Errorf("GetLeafData() = %v, want Last Cycle = Failed (1)", data)
 	}
-	if !valueContains(data, "Lifetime Error Rate", "100.0%") {
+	if !valueEquals(data, "Lifetime Error Rate", "100.0%") {
 		t.Errorf("GetLeafData() = %v, want Lifetime Error Rate = 100.0%%", data)
 	}
 	for _, key := range []string{"Warehouses/sec", "Tables/sec", "Mutations/sec", "Last Cycle Warehouses", "Last Cycle Tables"} {
-		if valueContains(data, key, "") {
+		if valueEquals(data, key, "") {
 			t.Errorf("GetLeafData() = %v, must not report %q for a failed cycle with no counts", data, key)
 		}
 	}
 }
 
-// valueContains reports whether data has a key ending in ":suffix" whose
-// value contains want ("" matches any value, i.e. "does the key exist").
-func valueContains(data map[string]string, suffix, want string) bool {
+// valueEquals reports whether data has a key ending in ":suffix" whose
+// value equals want exactly ("" matches any value, i.e. "does the key
+// exist" -- but a substring match on a non-empty want would let, say,
+// "5.0" match "15.0", so anything else must match completely).
+func valueEquals(data map[string]string, suffix, want string) bool {
 	for k, v := range data {
 		if strings.HasSuffix(k, ":"+suffix) {
-			return want == "" || strings.Contains(v, want)
+			return want == "" || v == want
 		}
 	}
 	return false

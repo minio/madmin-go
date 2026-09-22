@@ -50,15 +50,23 @@ func (node *TableMetricsNode) GetChildren() []MetricChild {
 	if node.tables == nil {
 		return []MetricChild{}
 	}
-	return []MetricChild{
+	children := []MetricChild{
 		{Name: "last_minute", Description: "Cluster table API totals over the last minute"},
 		{Name: "last_hour", Description: "Per-minute segments over the last hour"},
 		{Name: "last_day", Description: "15-minute segments over the last day"},
 		{Name: "top_warehouses", Description: "Top warehouses by requests and throughput"},
 		{Name: "top_namespaces", Description: "Top namespaces by requests and throughput"},
 		{Name: "top_tables", Description: "Top tables by requests and throughput"},
-		{Name: "catalog_scanner", Description: "Catalog scanner health: cycle timing, throughput, and failure history for the process that discovers and verifies replicated tables"},
 	}
+	// Only the catalog-scanner leader ever populates this -- every other
+	// node in the cluster reports nil, so listing it unconditionally would
+	// clutter most nodes' navigation with a permanent "no data" entry. The
+	// description is the live summary, not static text, so a reader sees
+	// the scanner's actual state before ever navigating into it.
+	if cs := node.tables.CatalogScanner; cs != nil {
+		children = append(children, MetricChild{Name: "catalog_scanner", Description: describeCatalogScanner(cs)})
+	}
+	return children
 }
 
 func (node *TableMetricsNode) GetLeafData() map[string]string {
