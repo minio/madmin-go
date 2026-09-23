@@ -130,6 +130,11 @@ const (
 	MaintenanceJobStatusFailed     MaintenanceJobStatus = "Failed"
 	MaintenanceJobStatusDisabled   MaintenanceJobStatus = "Disabled"
 	MaintenanceJobStatusNotYetRun  MaintenanceJobStatus = "Not_Yet_Run"
+	// MaintenanceJobStatusHeld reports a table whose maintenance is suspended
+	// by a legal hold. It describes the state of the table rather than the
+	// outcome of a run, so it appears in place of one on a table that has
+	// never run as well as on one that has.
+	MaintenanceJobStatusHeld MaintenanceJobStatus = "Held"
 )
 
 // TableMaintenanceJobTypeStatus is the per-type status entry in GetTableMaintenanceJobStatusResponse.
@@ -146,6 +151,20 @@ type TableMaintenanceJobTypeStatus struct {
 	RecordsDeleted     *int64 `json:"recordsDeleted,omitempty"`
 	DataFilesRewritten *int64 `json:"dataFilesRewritten,omitempty"`
 	BytesRemoved       *int64 `json:"bytesRemoved,omitempty"`
+
+	// TotalRecordsDeleted, TotalBytesRemoved, TotalRuns and FirstRunTimestamp
+	// accumulate across runs, where the three above describe only the last
+	// one.
+	//
+	// The last run cannot evidence a retention period: the run after one that
+	// deleted rows overwrites its counts with zeros, so a table that disposed
+	// of millions of rows reports 0 for the rest of the interval. These are
+	// monotonic, so "what has this retention period removed" always has an
+	// answer.
+	TotalRecordsDeleted *int64  `json:"totalRecordsDeleted,omitempty"`
+	TotalBytesRemoved   *int64  `json:"totalBytesRemoved,omitempty"`
+	TotalRuns           *int64  `json:"totalRuns,omitempty"`
+	FirstRunTimestamp   *string `json:"firstRunTimestamp,omitempty"`
 }
 
 // GetTableMaintenanceJobStatusResponse is the response for GetTableMaintenanceJobStatus.
