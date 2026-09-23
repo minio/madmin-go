@@ -110,6 +110,45 @@ func (adm *AdminClient) TablesReplicationStatus(ctx context.Context, opts Tables
 	return status, nil
 }
 
+// TablesReplicationLagVersions resolves the current MetadataVersion, against
+// this site's own catalog, for each of the given tracker keys
+// ("<warehouse>/<tableUUID>"). Called site to site by a replica comparing its
+// tracker against the primary's catalog; a key the queried site cannot
+// resolve is simply absent from the result, not an error.
+func (adm *AdminClient) TablesReplicationLagVersions(ctx context.Context, keys []string) (map[string]int, error) {
+	body, err := json.Marshal(keys)
+	if err != nil {
+		return nil, err
+	}
+
+	reqData := requestData{
+		relPath: adminAPIPrefix + "/tables/replication-lag/versions",
+		content: body,
+	}
+
+	resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+
+	b, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var versions map[string]int
+	if err = json.Unmarshal(b, &versions); err != nil {
+		return nil, err
+	}
+
+	return versions, nil
+}
+
 // TablesStartReplicaFailover signals the replica site to begin the failover
 // and promotion process. This disables replication and completes the catalog
 // scan so the replica can accept write traffic.
