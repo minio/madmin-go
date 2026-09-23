@@ -117,8 +117,21 @@ func (adm *AdminClient) ListCannedPolicies(ctx context.Context) (map[string]json
 
 // RemoveCannedPolicy - remove a policy for a canned.
 func (adm *AdminClient) RemoveCannedPolicy(ctx context.Context, policyName string) error {
+	return adm.removeCannedPolicy(ctx, policyName, false)
+}
+
+// ResetCannedPolicy restores a built-in policy to its default definition,
+// keeping its user, group and access key mappings.
+func (adm *AdminClient) ResetCannedPolicy(ctx context.Context, policyName string) error {
+	return adm.removeCannedPolicy(ctx, policyName, true)
+}
+
+func (adm *AdminClient) removeCannedPolicy(ctx context.Context, policyName string, reset bool) error {
 	queryValues := url.Values{}
 	queryValues.Set("name", policyName)
+	if reset {
+		queryValues.Set("reset", "true")
+	}
 
 	reqData := requestData{
 		relPath:     adminAPIPrefix + "/remove-canned-policy",
@@ -140,14 +153,28 @@ func (adm *AdminClient) RemoveCannedPolicy(ctx context.Context, policyName strin
 	return nil
 }
 
+// AddCannedPolicyOpts configures AddCannedPolicyWithOpts.
+type AddCannedPolicyOpts struct {
+	// OverrideBuiltin must be set to replace the definition of a built-in policy.
+	OverrideBuiltin bool
+}
+
 // AddCannedPolicy - adds a policy for a canned.
 func (adm *AdminClient) AddCannedPolicy(ctx context.Context, policyName string, policy []byte) error {
+	return adm.AddCannedPolicyWithOpts(ctx, policyName, policy, AddCannedPolicyOpts{})
+}
+
+// AddCannedPolicyWithOpts adds a canned policy, or replaces an existing one.
+func (adm *AdminClient) AddCannedPolicyWithOpts(ctx context.Context, policyName string, policy []byte, opts AddCannedPolicyOpts) error {
 	if len(policy) == 0 {
 		return ErrInvalidArgument("policy input cannot be empty")
 	}
 
 	queryValues := url.Values{}
 	queryValues.Set("name", policyName)
+	if opts.OverrideBuiltin {
+		queryValues.Set("overrideBuiltin", "true")
+	}
 
 	reqData := requestData{
 		relPath:     adminAPIPrefix + "/add-canned-policy",
