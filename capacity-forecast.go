@@ -85,7 +85,7 @@ type CapacityHistoryPoint struct {
 	TotalBytes uint64 `json:"totalBytes"`
 }
 
-// CapacityForecastOpts requests the history and fits the forecast to the last Window days.
+// CapacityForecastOpts requests the history and fits the forecast to the last Window days; a zero Window fits every sample.
 type CapacityForecastOpts struct {
 	History bool
 	Window  int
@@ -103,7 +103,7 @@ func (adm *AdminClient) CapacityForecastWithOpts(ctx context.Context, opts Capac
 	if opts.History {
 		queryValues.Set("history", "true")
 	}
-	if opts.Window > 0 {
+	if opts.Window != 0 {
 		queryValues.Set("window", strconv.Itoa(opts.Window))
 	}
 	resp, err := adm.executeMethod(ctx,

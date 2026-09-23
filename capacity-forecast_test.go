@@ -79,6 +79,7 @@ func TestCapacityForecastWithOpts(t *testing.T) {
 		{CapacityForecastOpts{History: true}, "history=true"},
 		{CapacityForecastOpts{Window: 30}, "window=30"},
 		{CapacityForecastOpts{History: true, Window: 7}, "history=true&window=7"},
+		{CapacityForecastOpts{Window: -1}, "window=-1"},
 	}
 	for _, tc := range cases {
 		var query string
