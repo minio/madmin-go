@@ -23,6 +23,7 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -39,11 +40,12 @@ func newCapacityForecastTestClient(t *testing.T, serverURL string) *AdminClient 
 // TestCapacityForecastRequest verifies the client issues GET against the
 // capacity-forecast admin path.
 func TestCapacityForecastRequest(t *testing.T) {
-	var capturedMethod, capturedPath string
+	var capturedMethod, capturedPath, capturedQuery string
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		capturedMethod = r.Method
 		capturedPath = r.URL.Path
+		capturedQuery = r.URL.RawQuery
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{}`))
 	}))
@@ -61,6 +63,40 @@ func TestCapacityForecastRequest(t *testing.T) {
 	}
 	if !strings.HasSuffix(capturedPath, "/capacity-forecast") {
 		t.Errorf("path missing /capacity-forecast suffix: %s", capturedPath)
+	}
+	if capturedQuery != "" {
+		t.Errorf("expected no query, got %q", capturedQuery)
+	}
+}
+
+// TestCapacityForecastWithOpts verifies each option becomes its query
+// parameter and that the history decodes.
+func TestCapacityForecastWithOpts(t *testing.T) {
+	cases := []struct {
+		opts CapacityForecastOpts
+		want string
+	}{
+		{CapacityForecastOpts{History: true}, "history=true"},
+		{CapacityForecastOpts{Window: 30}, "window=30"},
+		{CapacityForecastOpts{History: true, Window: 7}, "history=true&window=7"},
+	}
+	for _, tc := range cases {
+		var query string
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			query = r.URL.RawQuery
+			w.Write([]byte(`{"history":[{"timestamp":1767225600,"usedBytes":100,"totalBytes":1000}]}`))
+		}))
+		f, err := newCapacityForecastTestClient(t, server.URL).CapacityForecastWithOpts(context.Background(), tc.opts)
+		server.Close()
+		if err != nil {
+			t.Fatalf("%+v: %v", tc.opts, err)
+		}
+		if query != tc.want {
+			t.Errorf("%+v: query %q, want %q", tc.opts, query, tc.want)
+		}
+		if want := []CapacityHistoryPoint{{Timestamp: 1767225600, UsedBytes: 100, TotalBytes: 1000}}; !slices.Equal(f.History, want) {
+			t.Errorf("%+v: history %+v, want %+v", tc.opts, f.History, want)
+		}
 	}
 }
 
