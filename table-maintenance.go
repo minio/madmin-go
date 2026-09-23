@@ -152,7 +152,7 @@ type TableMaintenanceJobTypeStatus struct {
 	DataFilesRewritten *int64 `json:"dataFilesRewritten,omitempty"`
 	BytesRemoved       *int64 `json:"bytesRemoved,omitempty"`
 
-	// TotalRecordsDeleted, TotalBytesRemoved, TotalRuns and FirstRunAt
+	// TotalRecordsDeleted, TotalBytesRemoved, TotalRuns and FirstRunTimestamp
 	// accumulate across runs, where the three above describe only the last
 	// one.
 	//

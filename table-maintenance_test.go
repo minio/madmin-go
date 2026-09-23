@@ -127,3 +127,49 @@ func TestMaintenanceTypeIcebergRecordExpirationValue(t *testing.T) {
 			MaintenanceTypeIcebergRecordExpiration, "icebergRecordExpiration")
 	}
 }
+
+// The cumulative counters are the disposal record a retention period is
+// evidenced by, so their wire names are part of the exported contract: a
+// client reading them by name breaks silently if one is renamed. Nothing else
+// pins them, because the struct's other tests only assert omission.
+func TestTableMaintenanceJobTypeStatusCumulativeCounters(t *testing.T) {
+	total, bytes, runs := int64(9000), int64(65536), int64(12)
+	first := "2026-03-01T00:00:00Z"
+	got, err := json.Marshal(TableMaintenanceJobTypeStatus{
+		Status:              MaintenanceJobStatusSuccessful,
+		TotalRecordsDeleted: &total,
+		TotalBytesRemoved:   &bytes,
+		TotalRuns:           &runs,
+		FirstRunTimestamp:   &first,
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	const want = `{"status":"Successful","totalRecordsDeleted":9000,` +
+		`"totalBytesRemoved":65536,"totalRuns":12,"firstRunTimestamp":"2026-03-01T00:00:00Z"}`
+	if string(got) != want {
+		t.Errorf("a cumulative status encoded as\n %s\nwant\n %s", got, want)
+	}
+
+	// A run that removed nothing still counts as a run, so zero must survive
+	// the round trip rather than vanishing with omitempty.
+	zero := int64(0)
+	got, err = json.Marshal(TableMaintenanceJobTypeStatus{
+		Status:              MaintenanceJobStatusSuccessful,
+		TotalRecordsDeleted: &zero,
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	const wantZero = `{"status":"Successful","totalRecordsDeleted":0}`
+	if string(got) != wantZero {
+		t.Errorf("a zero total encoded as\n %s\nwant\n %s", got, wantZero)
+	}
+}
+
+// A held table reports the hold in place of a run's outcome.
+func TestMaintenanceJobStatusHeldValue(t *testing.T) {
+	if MaintenanceJobStatusHeld != "Held" {
+		t.Errorf("MaintenanceJobStatusHeld is %q, want %q", MaintenanceJobStatusHeld, "Held")
+	}
+}
