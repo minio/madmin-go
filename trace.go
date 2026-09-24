@@ -84,6 +84,8 @@ const (
 	TraceSystemInventory
 	// TraceTablesCompaction will trace table compaction operations.
 	TraceTablesCompaction
+	// TraceMemory will trace the AIStor Memory API functions.
+	TraceMemory
 	// Add more here...
 
 	// TraceAll contains all valid trace modes.
