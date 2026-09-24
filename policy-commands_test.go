@@ -21,7 +21,12 @@ package madmin
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"testing"
 	"time"
 )
@@ -63,6 +68,95 @@ func TestPolicyInfo(t *testing.T) {
 			}
 			if !bytes.Equal(buf, testCase.expectedBuf) {
 				t.Errorf("expected %s, got %s", string(testCase.expectedBuf), string(buf))
+			}
+		})
+	}
+}
+
+// TestCannedPolicyRequests verifies the query parameters that add, override
+// and reset requests send to the add-canned-policy endpoint.
+func TestCannedPolicyRequests(t *testing.T) {
+	policy := []byte(`{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["s3:*"],"Resource":["arn:aws:s3:::*"]}]}`)
+
+	type request struct {
+		method string
+		path   string
+		query  url.Values
+		body   []byte
+	}
+
+	testCases := []struct {
+		name     string
+		call     func(ctx context.Context, adm *AdminClient) error
+		want     url.Values
+		wantBody []byte
+	}{
+		{
+			name: "add",
+			call: func(ctx context.Context, adm *AdminClient) error {
+				return adm.AddCannedPolicy(ctx, "readwrite", policy)
+			},
+			want:     url.Values{"name": {"readwrite"}},
+			wantBody: policy,
+		},
+		{
+			name: "add-without-override",
+			call: func(ctx context.Context, adm *AdminClient) error {
+				return adm.AddCannedPolicyWithOpts(ctx, "readwrite", policy, AddCannedPolicyOpts{})
+			},
+			want:     url.Values{"name": {"readwrite"}},
+			wantBody: policy,
+		},
+		{
+			name: "add-with-override",
+			call: func(ctx context.Context, adm *AdminClient) error {
+				return adm.AddCannedPolicyWithOpts(ctx, "readwrite", policy, AddCannedPolicyOpts{OverrideBuiltin: true})
+			},
+			want:     url.Values{"name": {"readwrite"}, "overrideBuiltin": {"true"}},
+			wantBody: policy,
+		},
+		{
+			name: "reset",
+			call: func(ctx context.Context, adm *AdminClient) error {
+				return adm.ResetCannedPolicy(ctx, "readwrite")
+			},
+			want: url.Values{"name": {"readwrite"}, "resetBuiltin": {"true"}},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			// Hand the captured request back over a buffered channel so the
+			// read below does not race with the server goroutine.
+			capturedCh := make(chan request, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				body, _ := io.ReadAll(r.Body)
+				capturedCh <- request{method: r.Method, path: r.URL.Path, query: r.URL.Query(), body: body}
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer server.Close()
+
+			adm, err := New(mustParseHost(t, server.URL), "access", "secret", false)
+			if err != nil {
+				t.Fatalf("New: %v", err)
+			}
+
+			if err := tc.call(context.Background(), adm); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			got := <-capturedCh
+			if got.method != http.MethodPut {
+				t.Errorf("method: expected %s, got %s", http.MethodPut, got.method)
+			}
+			if wantPath := "/minio/admin/v4/add-canned-policy"; got.path != wantPath {
+				t.Errorf("path: expected %s, got %s", wantPath, got.path)
+			}
+			if got.query.Encode() != tc.want.Encode() {
+				t.Errorf("query: expected %s, got %s", tc.want.Encode(), got.query.Encode())
+			}
+			if !bytes.Equal(got.body, tc.wantBody) {
+				t.Errorf("body: expected %q, got %q", tc.wantBody, got.body)
 			}
 		})
 	}
