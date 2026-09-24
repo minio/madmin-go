@@ -32,14 +32,15 @@ import (
 type Origin string
 
 const (
-	OriginClient          Origin = "client"
-	OriginSiteReplication Origin = "site-replication"
-	OriginILM             Origin = "ilm"
-	OriginBatch           Origin = "batch"
-	OriginRebalance       Origin = "rebalance"
-	OriginReplicate       Origin = "replicate"
-	OriginDecommission    Origin = "decommission"
-	OriginHeal            Origin = "heal"
+	OriginClient            Origin = "client"
+	OriginSiteReplication   Origin = "site-replication"
+	OriginILM               Origin = "ilm"
+	OriginBatch             Origin = "batch"
+	OriginRebalance         Origin = "rebalance"
+	OriginReplicate         Origin = "replicate"
+	OriginDecommission      Origin = "decommission"
+	OriginHeal              Origin = "heal"
+	OriginTablesMaintenance Origin = "tables-maintenance"
 )
 
 type APIType string
