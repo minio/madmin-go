@@ -117,21 +117,8 @@ func (adm *AdminClient) ListCannedPolicies(ctx context.Context) (map[string]json
 
 // RemoveCannedPolicy - remove a policy for a canned.
 func (adm *AdminClient) RemoveCannedPolicy(ctx context.Context, policyName string) error {
-	return adm.removeCannedPolicy(ctx, policyName, false)
-}
-
-// ResetCannedPolicy restores a built-in policy to its default definition,
-// keeping its user, group and access key mappings.
-func (adm *AdminClient) ResetCannedPolicy(ctx context.Context, policyName string) error {
-	return adm.removeCannedPolicy(ctx, policyName, true)
-}
-
-func (adm *AdminClient) removeCannedPolicy(ctx context.Context, policyName string, reset bool) error {
 	queryValues := url.Values{}
 	queryValues.Set("name", policyName)
-	if reset {
-		queryValues.Set("reset", "true")
-	}
 
 	reqData := requestData{
 		relPath:     adminAPIPrefix + "/remove-canned-policy",
@@ -183,6 +170,33 @@ func (adm *AdminClient) AddCannedPolicyWithOpts(ctx context.Context, policyName 
 	}
 
 	// Execute PUT on /minio/admin/v4/add-canned-policy to set policy.
+	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
+
+	defer closeResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+
+	return nil
+}
+
+// ResetCannedPolicy restores a built-in policy to its default definition,
+// keeping its user, group and access key mappings.
+func (adm *AdminClient) ResetCannedPolicy(ctx context.Context, policyName string) error {
+	queryValues := url.Values{}
+	queryValues.Set("name", policyName)
+	queryValues.Set("resetBuiltin", "true")
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/add-canned-policy",
+		queryValues: queryValues,
+	}
+
+	// Execute PUT on /minio/admin/v4/add-canned-policy to reset policy.
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
 
 	defer closeResponse(resp)
