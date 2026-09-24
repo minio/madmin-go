@@ -22,6 +22,8 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/url"
+	"strconv"
 )
 
 // CapacityForecast contains storage capacity predictions based on
@@ -51,10 +53,11 @@ type CapacityForecast struct {
 	// slow, sub-byte-per-day slope is not truncated to zero.
 	GrowthBytesPerDay float64 `json:"growthBytesPerDay"`
 
-	// DailySnapshotCount is the number of valid daily snapshots currently
-	// held in the year-long circular buffer (range 0..365). The forecast
-	// fields above are only populated when this count reaches the
-	// minimum required for the filter to produce stable estimates.
+	// DailySnapshotCount is the number of valid daily snapshots the
+	// forecast used: the year-long buffer (range 0..365), or only the
+	// requested window. The forecast fields above are only populated when
+	// this count reaches the minimum required for the filter to produce
+	// stable estimates.
 	DailySnapshotCount int `json:"dailySnapshotCount"`
 
 	// Worst-case prediction based on the largest single-day growth
@@ -70,15 +73,44 @@ type CapacityForecast struct {
 	// freed between those two days.
 	DayMinDeltaBytes int64 `json:"dayMinDeltaBytes"`
 	DayMaxDeltaBytes int64 `json:"dayMaxDeltaBytes"`
+
+	// History holds the daily snapshots the forecast used, oldest first, when requested.
+	History []CapacityHistoryPoint `json:"history,omitempty"`
+}
+
+// CapacityHistoryPoint is one daily capacity snapshot, with Timestamp in Unix seconds.
+type CapacityHistoryPoint struct {
+	Timestamp  int64  `json:"timestamp"`
+	UsedBytes  uint64 `json:"usedBytes"`
+	TotalBytes uint64 `json:"totalBytes"`
+}
+
+// CapacityForecastOpts requests the history and fits the forecast to the last Window days; a zero Window fits every sample.
+type CapacityForecastOpts struct {
+	History bool
+	Window  int
 }
 
 // CapacityForecast returns a storage capacity forecast based on
 // historical daily snapshots.
 func (adm *AdminClient) CapacityForecast(ctx context.Context) (CapacityForecast, error) {
+	return adm.CapacityForecastWithOpts(ctx, CapacityForecastOpts{})
+}
+
+// CapacityForecastWithOpts returns a storage capacity forecast with the given options.
+func (adm *AdminClient) CapacityForecastWithOpts(ctx context.Context, opts CapacityForecastOpts) (CapacityForecast, error) {
+	queryValues := url.Values{}
+	if opts.History {
+		queryValues.Set("history", "true")
+	}
+	if opts.Window != 0 {
+		queryValues.Set("window", strconv.Itoa(opts.Window))
+	}
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
-			relPath: adminAPIPrefix + "/capacity-forecast",
+			relPath:     adminAPIPrefix + "/capacity-forecast",
+			queryValues: queryValues,
 		})
 	defer closeResponse(resp)
 	if err != nil {
