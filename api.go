@@ -206,6 +206,10 @@ type requestData struct {
 	endpointOverride *url.URL
 	// isKMS replaces URL prefix with /kms
 	isKMS bool
+	// creds, when set, signs every attempt instead of a fresh lookup. A caller
+	// that encrypted content with a credential sets it, so the body and the
+	// signature always use the same secret.
+	creds *credentials.Value
 }
 
 // Filter out signature value from Authorization header.
@@ -423,9 +427,13 @@ func (adm AdminClient) executeMethod(ctx context.Context, method string, reqData
 			}
 		}
 
+		// Retry on the previous admin API version when an upgrade is requested.
+		// A path with no version to downgrade gets the 426 as its error.
 		if res.StatusCode == http.StatusUpgradeRequired {
-			reqData.relPath = strings.ReplaceAll(reqData.relPath, adminAPIPrefix, adminAPIOldPrefix)
-			continue // Retry when an upgrade is requested.
+			if older := strings.ReplaceAll(reqData.relPath, adminAPIPrefix, adminAPIOldPrefix); older != reqData.relPath {
+				reqData.relPath = older
+				continue
+			}
 		}
 
 		// Read the body to be saved later.
@@ -522,8 +530,10 @@ func (adm AdminClient) newRequest(ctx context.Context, method string, reqData re
 		return nil, err
 	}
 
-	value, err := adm.credsProvider.GetWithContext(adm.CredContext())
-	if err != nil {
+	var value credentials.Value
+	if reqData.creds != nil {
+		value = *reqData.creds
+	} else if value, err = adm.credsProvider.GetWithContext(adm.CredContext()); err != nil {
 		return nil, err
 	}
 
