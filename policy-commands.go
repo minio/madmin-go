@@ -140,14 +140,28 @@ func (adm *AdminClient) RemoveCannedPolicy(ctx context.Context, policyName strin
 	return nil
 }
 
+// AddCannedPolicyOpts configures AddCannedPolicyWithOpts.
+type AddCannedPolicyOpts struct {
+	// OverrideBuiltin must be set to replace the definition of a built-in policy.
+	OverrideBuiltin bool
+}
+
 // AddCannedPolicy - adds a policy for a canned.
 func (adm *AdminClient) AddCannedPolicy(ctx context.Context, policyName string, policy []byte) error {
+	return adm.AddCannedPolicyWithOpts(ctx, policyName, policy, AddCannedPolicyOpts{})
+}
+
+// AddCannedPolicyWithOpts adds a canned policy, or replaces an existing one.
+func (adm *AdminClient) AddCannedPolicyWithOpts(ctx context.Context, policyName string, policy []byte, opts AddCannedPolicyOpts) error {
 	if len(policy) == 0 {
 		return ErrInvalidArgument("policy input cannot be empty")
 	}
 
 	queryValues := url.Values{}
 	queryValues.Set("name", policyName)
+	if opts.OverrideBuiltin {
+		queryValues.Set("overrideBuiltin", "true")
+	}
 
 	reqData := requestData{
 		relPath:     adminAPIPrefix + "/add-canned-policy",
@@ -156,6 +170,33 @@ func (adm *AdminClient) AddCannedPolicy(ctx context.Context, policyName string, 
 	}
 
 	// Execute PUT on /minio/admin/v4/add-canned-policy to set policy.
+	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
+
+	defer closeResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+
+	return nil
+}
+
+// ResetCannedPolicy restores a built-in policy to its default definition,
+// keeping its user, group and access key mappings.
+func (adm *AdminClient) ResetCannedPolicy(ctx context.Context, policyName string) error {
+	queryValues := url.Values{}
+	queryValues.Set("name", policyName)
+	queryValues.Set("resetBuiltin", "true")
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/add-canned-policy",
+		queryValues: queryValues,
+	}
+
+	// Execute PUT on /minio/admin/v4/add-canned-policy to reset policy.
 	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
 
 	defer closeResponse(resp)
