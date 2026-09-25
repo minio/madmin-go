@@ -52,6 +52,7 @@ const (
 	BatchJobStatusCanceled   BatchJobStatusType = "canceled"
 	BatchJobStatusInProgress BatchJobStatusType = "in-progress"
 	BatchJobStatusUnknown    BatchJobStatusType = "unknown"
+	BatchJobStatusWaiting    BatchJobStatusType = "waiting"
 )
 
 // SupportedJobTypes supported job types
