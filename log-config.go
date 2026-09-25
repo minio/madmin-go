@@ -31,9 +31,6 @@ import (
 // Log recorder config key constants (server-side keys are snake_case)
 const (
 	logKeyEnable           = "enable"
-	logKeyDriveLimit       = "drive_limit"
-	logKeyFlushCount       = "flush_count"
-	logKeyFlushInterval    = "flush_interval"
 	logKeyEndpoint         = "endpoint"
 	logKeyAuthToken        = "auth_token"
 	logKeyClientCert       = "client_cert"
@@ -63,7 +60,7 @@ const (
 	logKeySASLKrbPrincipal = "sasl_krb_principal"
 	logKeyName             = "name"
 
-	// Internal API recorder config keys
+	// Internal recorder config keys
 	logKeyRetention           = "retention"
 	logKeyMaintenanceInterval = "maintenance_interval"
 	logKeyOrphanGracePeriod   = "orphan_grace_period"
@@ -136,31 +133,23 @@ func getLogField(sc SubsysConfig, help Help, key string) LogField {
 	}
 }
 
-// InternalRecorder represents common internal recorder config fields
+// InternalRecorder is the internal recorder config of a log: the server
+// records it to its aistor._system Iceberg table and keeps it for Retention.
 type InternalRecorder struct {
-	Enable        LogField `json:"enable" yaml:"enable"`
-	DriveLimit    LogField `json:"driveLimit" yaml:"driveLimit"`
-	FlushCount    LogField `json:"flushCount" yaml:"flushCount"`
-	FlushInterval LogField `json:"flushInterval" yaml:"flushInterval"`
-}
-
-// InternalAPIRecorder represents internal recorder config for API logs
-type InternalAPIRecorder struct {
 	Enable              LogField `json:"enable" yaml:"enable"`
 	Retention           LogField `json:"retention" yaml:"retention"`
 	MaintenanceInterval LogField `json:"maintenanceInterval" yaml:"maintenanceInterval"`
 	OrphanGracePeriod   LogField `json:"orphanGracePeriod" yaml:"orphanGracePeriod"`
 }
 
-// InternalErrorRecorder represents internal recorder config for Error logs
-type InternalErrorRecorder struct {
-	InternalRecorder `json:",inline" yaml:",inline"`
-}
+// InternalAPIRecorder is the internal recorder config for API logs.
+type InternalAPIRecorder = InternalRecorder
 
-// InternalAuditRecorder represents internal recorder config for Audit logs
-type InternalAuditRecorder struct {
-	Enable LogField `json:"enable" yaml:"enable"`
-}
+// InternalErrorRecorder is the internal recorder config for error logs.
+type InternalErrorRecorder = InternalRecorder
+
+// InternalAuditRecorder is the internal recorder config for audit logs.
+type InternalAuditRecorder = InternalRecorder
 
 // WebhookConfig represents base configuration for a Webhook target
 type WebhookConfig struct {
@@ -272,32 +261,10 @@ func (b *kvBuilder) String() string {
 // parseInternalRecorder parses SubsysConfig into InternalRecorder with descriptions from Help
 func parseInternalRecorder(sc SubsysConfig, help Help) InternalRecorder {
 	return InternalRecorder{
-		Enable:        getLogField(sc, help, logKeyEnable),
-		DriveLimit:    getLogField(sc, help, logKeyDriveLimit),
-		FlushCount:    getLogField(sc, help, logKeyFlushCount),
-		FlushInterval: getLogField(sc, help, logKeyFlushInterval),
-	}
-}
-
-// parseInternalAPIRecorder parses SubsysConfig into InternalAPIRecorder with descriptions from Help
-func parseInternalAPIRecorder(sc SubsysConfig, help Help) InternalAPIRecorder {
-	return InternalAPIRecorder{
 		Enable:              getLogField(sc, help, logKeyEnable),
 		Retention:           getLogField(sc, help, logKeyRetention),
 		MaintenanceInterval: getLogField(sc, help, logKeyMaintenanceInterval),
 		OrphanGracePeriod:   getLogField(sc, help, logKeyOrphanGracePeriod),
-	}
-}
-
-// parseInternalErrorRecorder parses SubsysConfig into InternalErrorRecorder with descriptions from Help
-func parseInternalErrorRecorder(sc SubsysConfig, help Help) InternalErrorRecorder {
-	return InternalErrorRecorder{InternalRecorder: parseInternalRecorder(sc, help)}
-}
-
-// parseInternalAuditRecorder parses SubsysConfig into InternalAuditRecorder with descriptions from Help
-func parseInternalAuditRecorder(sc SubsysConfig, help Help) InternalAuditRecorder {
-	return InternalAuditRecorder{
-		Enable: getLogField(sc, help, logKeyEnable),
 	}
 }
 
@@ -397,7 +364,7 @@ func (adm *AdminClient) GetAPILogConfig(ctx context.Context) (LogRecorderAPIConf
 		return cfg, fmt.Errorf("failed to get %s config: %w", LogAPIInternalSubSys, err)
 	}
 	if len(internalConfigs) > 0 {
-		cfg.Internal = parseInternalAPIRecorder(internalConfigs[0], internalHelp)
+		cfg.Internal = parseInternalRecorder(internalConfigs[0], internalHelp)
 		cfg.EnvOverrides = append(cfg.EnvOverrides, internalConfigs[0].GetEnvOverrides()...)
 	}
 
@@ -468,7 +435,7 @@ func (adm *AdminClient) GetErrorLogConfig(ctx context.Context) (LogRecorderError
 		return cfg, fmt.Errorf("failed to get %s config: %w", LogErrorInternalSubSys, err)
 	}
 	if len(internalConfigs) > 0 {
-		cfg.Internal = parseInternalErrorRecorder(internalConfigs[0], internalHelp)
+		cfg.Internal = parseInternalRecorder(internalConfigs[0], internalHelp)
 		cfg.EnvOverrides = append(cfg.EnvOverrides, internalConfigs[0].GetEnvOverrides()...)
 	}
 
@@ -539,7 +506,7 @@ func (adm *AdminClient) GetAuditLogConfig(ctx context.Context) (LogRecorderAudit
 		return cfg, fmt.Errorf("failed to get %s config: %w", LogAuditInternalSubSys, err)
 	}
 	if len(internalConfigs) > 0 {
-		cfg.Internal = parseInternalAuditRecorder(internalConfigs[0], internalHelp)
+		cfg.Internal = parseInternalRecorder(internalConfigs[0], internalHelp)
 		cfg.EnvOverrides = append(cfg.EnvOverrides, internalConfigs[0].GetEnvOverrides()...)
 	}
 
@@ -594,18 +561,9 @@ func (adm *AdminClient) GetAuditLogConfig(ctx context.Context) (LogRecorderAudit
 	return cfg, nil
 }
 
-// buildInternalRecorderKV builds the KV string for internal recorder config
+// buildInternalRecorderKV builds the KV string for the internal recorder
+// config of subSys. Unset durations are left out so the server keeps its own.
 func buildInternalRecorderKV(cfg InternalRecorder, subSys string) string {
-	var kv kvBuilder
-	kv.add(logKeyEnable, cfg.Enable.Value)
-	kv.add(logKeyDriveLimit, cfg.DriveLimit.Value)
-	kv.add(logKeyFlushCount, cfg.FlushCount.Value)
-	kv.add(logKeyFlushInterval, cfg.FlushInterval.Value)
-	return subSys + " " + kv.String()
-}
-
-// buildInternalAPIKV builds the KV string for internal API recorder config
-func buildInternalAPIKV(cfg InternalAPIRecorder) string {
 	var kv kvBuilder
 	kv.add(logKeyEnable, cfg.Enable.Value)
 	if cfg.Retention.Value != "" {
@@ -617,19 +575,7 @@ func buildInternalAPIKV(cfg InternalAPIRecorder) string {
 	if cfg.OrphanGracePeriod.Value != "" {
 		kv.add(logKeyOrphanGracePeriod, cfg.OrphanGracePeriod.Value)
 	}
-	return LogAPIInternalSubSys + " " + kv.String()
-}
-
-// buildInternalErrorKV builds the KV string for internal Error recorder config
-func buildInternalErrorKV(cfg InternalErrorRecorder) string {
-	return buildInternalRecorderKV(cfg.InternalRecorder, LogErrorInternalSubSys)
-}
-
-// buildInternalAuditKV builds the KV string for internal Audit recorder config
-func buildInternalAuditKV(cfg InternalAuditRecorder) string {
-	var kv kvBuilder
-	kv.add(logKeyEnable, cfg.Enable.Value)
-	return LogAuditInternalSubSys + " " + kv.String()
+	return subSys + " " + kv.String()
 }
 
 // buildQueueKV builds the KV string for queue config
@@ -771,7 +717,7 @@ func (adm *AdminClient) SetAPILogConfig(ctx context.Context, cfg LogRecorderAPIC
 	}
 
 	// Set internal config
-	if _, err := adm.SetConfigKV(ctx, buildInternalAPIKV(cfg.Internal)); err != nil {
+	if _, err := adm.SetConfigKV(ctx, buildInternalRecorderKV(cfg.Internal, LogAPIInternalSubSys)); err != nil {
 		return fmt.Errorf("failed to set %s config: %w", LogAPIInternalSubSys, err)
 	}
 
@@ -837,7 +783,7 @@ func (adm *AdminClient) SetErrorLogConfig(ctx context.Context, cfg LogRecorderEr
 	}
 
 	// Set internal config
-	if _, err := adm.SetConfigKV(ctx, buildInternalErrorKV(cfg.Internal)); err != nil {
+	if _, err := adm.SetConfigKV(ctx, buildInternalRecorderKV(cfg.Internal, LogErrorInternalSubSys)); err != nil {
 		return fmt.Errorf("failed to set %s config: %w", LogErrorInternalSubSys, err)
 	}
 
@@ -903,7 +849,7 @@ func (adm *AdminClient) SetAuditLogConfig(ctx context.Context, cfg LogRecorderAu
 	}
 
 	// Set internal config
-	if _, err := adm.SetConfigKV(ctx, buildInternalAuditKV(cfg.Internal)); err != nil {
+	if _, err := adm.SetConfigKV(ctx, buildInternalRecorderKV(cfg.Internal, LogAuditInternalSubSys)); err != nil {
 		return fmt.Errorf("failed to set %s config: %w", LogAuditInternalSubSys, err)
 	}
 
@@ -1128,17 +1074,21 @@ func writeExternalYAML(sb *strings.Builder, ext ExternalConfig) {
 	}
 }
 
+func writeInternalRecorderYAML(sb *strings.Builder, r InternalRecorder) {
+	sb.WriteString("internal:\n")
+	writeLogField(sb, "  ", "enable", r.Enable)
+	writeLogField(sb, "  ", "retention", r.Retention)
+	writeLogField(sb, "  ", "maintenanceInterval", r.MaintenanceInterval)
+	writeLogField(sb, "  ", "orphanGracePeriod", r.OrphanGracePeriod)
+}
+
 // YAML returns the configuration as YAML with field descriptions as comments
 func (c LogRecorderAPIConfig) YAML() string {
 	var sb strings.Builder
 
 	writeEnvOverrides(&sb, c.EnvOverrides)
 
-	sb.WriteString("internal:\n")
-	writeLogField(&sb, "  ", "enable", c.Internal.Enable)
-	writeLogField(&sb, "  ", "retention", c.Internal.Retention)
-	writeLogField(&sb, "  ", "maintenanceInterval", c.Internal.MaintenanceInterval)
-	writeLogField(&sb, "  ", "orphanGracePeriod", c.Internal.OrphanGracePeriod)
+	writeInternalRecorderYAML(&sb, c.Internal)
 
 	writeExternalYAML(&sb, c.External)
 
@@ -1151,11 +1101,7 @@ func (c LogRecorderErrorConfig) YAML() string {
 
 	writeEnvOverrides(&sb, c.EnvOverrides)
 
-	sb.WriteString("internal:\n")
-	writeLogField(&sb, "  ", "enable", c.Internal.Enable)
-	writeLogField(&sb, "  ", "driveLimit", c.Internal.DriveLimit)
-	writeLogField(&sb, "  ", "flushCount", c.Internal.FlushCount)
-	writeLogField(&sb, "  ", "flushInterval", c.Internal.FlushInterval)
+	writeInternalRecorderYAML(&sb, c.Internal)
 
 	writeExternalYAML(&sb, c.External)
 
@@ -1168,8 +1114,7 @@ func (c LogRecorderAuditConfig) YAML() string {
 
 	writeEnvOverrides(&sb, c.EnvOverrides)
 
-	sb.WriteString("internal:\n")
-	writeLogField(&sb, "  ", "enable", c.Internal.Enable)
+	writeInternalRecorderYAML(&sb, c.Internal)
 
 	writeExternalYAML(&sb, c.External)
 
