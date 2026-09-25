@@ -52,10 +52,7 @@ const (
 	BatchJobStatusCanceled   BatchJobStatusType = "canceled"
 	BatchJobStatusInProgress BatchJobStatusType = "in-progress"
 	BatchJobStatusUnknown    BatchJobStatusType = "unknown"
-	// BatchJobStatusWaiting is an AIStor extension: the job has not finished,
-	// but the node that owns it is offline, so it makes no progress until that
-	// node is back online.
-	BatchJobStatusWaiting BatchJobStatusType = "waiting"
+	BatchJobStatusWaiting    BatchJobStatusType = "waiting"
 )
 
 // SupportedJobTypes supported job types
