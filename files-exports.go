@@ -19,6 +19,7 @@ package madmin
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -26,11 +27,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-
-	"github.com/tinylib/msgp/msgp"
 )
-
-//go:generate go tool msgp -d clearomitted -d "timezone utc" -file $GOFILE
 
 // MaxFilesExportIDsPerQuery is the number of export ids one FilesExportsQuery
 // may name. The server applies the same bound and counts every id named, so
@@ -69,122 +66,125 @@ const (
 // gateway daemon holding it reported.
 type FilesExportStatus struct {
 	// ExportID is the Ganesha Export_Id.
-	ExportID uint64 `json:"exportID" msg:"id,omitempty"`
+	ExportID uint64 `json:"exportId"`
 
 	// Leasing reports whether ownership leasing is configured for this export.
 	// When it is false the other lease fields are zero and only the capacity
 	// fields carry meaning.
-	Leasing bool `json:"leasing" msg:"l,omitempty"`
+	Leasing bool `json:"leasing"`
 
 	// Held reports whether this daemon currently holds the ownership lease.
-	Held bool `json:"held" msg:"h,omitempty"`
+	Held bool `json:"held"`
 
 	// Fenced reports whether the engine has fenced itself and is refusing
 	// mutations.
-	Fenced bool `json:"fenced" msg:"f,omitempty"`
+	Fenced bool `json:"fenced"`
 
 	// Epoch is the ownership epoch this daemon is serving under.
-	Epoch uint64 `json:"epoch" msg:"e,omitempty"`
+	Epoch uint64 `json:"epoch"`
 
 	// OwnerID is an opaque per-process owner identity, for diagnostics only.
-	OwnerID string `json:"ownerID" msg:"o,omitempty"`
+	OwnerID string `json:"ownerId"`
 
 	// LastRenew is the time of the last successful lease renewal. It is nil
 	// when the lease has never been renewed. Its age measured against TTLSecs
 	// says whether ownership is at risk.
-	LastRenew *time.Time `json:"lastRenew,omitempty" msg:"lr,omitempty"`
+	LastRenew *time.Time `json:"lastRenew,omitempty"`
 
 	// TTLSecs is the lease TTL.
-	TTLSecs uint64 `json:"ttlSecs" msg:"ttl,omitempty"`
+	TTLSecs uint64 `json:"ttlSecs"`
 
 	// UsedBytes and LimitBytes are the quota usage and limit. A limit of zero
 	// means unlimited.
-	UsedBytes  uint64 `json:"usedBytes" msg:"ub,omitempty"`
-	LimitBytes uint64 `json:"limitBytes" msg:"lb,omitempty"`
+	UsedBytes  uint64 `json:"usedBytes"`
+	LimitBytes uint64 `json:"limitBytes"`
 
 	// UsedInodes and LimitInodes are the same, for inodes.
-	UsedInodes  uint64 `json:"usedInodes" msg:"ui,omitempty"`
-	LimitInodes uint64 `json:"limitInodes" msg:"li,omitempty"`
+	UsedInodes  uint64 `json:"usedInodes"`
+	LimitInodes uint64 `json:"limitInodes"`
 
 	// TS is the time at which the document was taken.
-	TS time.Time `json:"ts" msg:"ts,omitempty"`
+	TS time.Time `json:"ts"`
 }
 
 // FilesExportResult is one export's outcome as one node reported it. At most
 // one of Status, NotHeld and Error carries it.
 type FilesExportResult struct {
 	// ExportID is the export the node was asked about.
-	ExportID uint64 `json:"exportID" msg:"id,omitempty"`
+	ExportID uint64 `json:"exportId"`
 
 	// Status is the export's lease and capacity document, when the node holds
 	// the export.
-	Status *FilesExportStatus `json:"status,omitempty" msg:"s,omitempty"`
+	Status *FilesExportStatus `json:"status,omitempty"`
 
 	// NotHeld reports that the daemon answered and holds no such export. It is
 	// an ordinary answer, not a failure.
-	NotHeld bool `json:"notHeld,omitempty" msg:"nh,omitempty"`
+	NotHeld bool `json:"notHeld,omitempty"`
 
 	// Error is set when this one export could not be read for any other reason.
 	// It does not invalidate the rest of the node's answer.
-	Error string `json:"error,omitempty" msg:"err,omitempty"`
+	Error string `json:"error,omitempty"`
 }
 
 // FilesNodeStatus is one node's whole answer.
 type FilesNodeStatus struct {
 	// Node is the host this answer came from, in host:port form.
-	Node string `json:"node,omitempty" msg:"n,omitempty"`
+	Node string `json:"node,omitempty"`
 
 	// Reach is what the admin socket showed.
-	Reach FilesNodeReach `json:"reach" msg:"r,omitempty"`
+	Reach FilesNodeReach `json:"reach"`
 
 	// Detail explains a Reach other than FilesNodeServing, or a read that
 	// stopped before every export was tried.
-	Detail string `json:"detail,omitempty" msg:"d,omitempty"`
+	Detail string `json:"detail,omitempty"`
 
 	// SocketPath is the path that was dialed, for diagnosing a path mismatch
 	// between the gateway and the server.
-	SocketPath string `json:"socketPath,omitempty" msg:"sp,omitempty"`
+	SocketPath string `json:"socketPath,omitempty"`
 
 	// Truncated says the read stopped before every export named was tried, so
 	// Exports is shorter than the list asked for and the missing ids are neither
 	// held nor unheld. Detail says why the read stopped.
-	Truncated bool `json:"truncated,omitempty" msg:"t,omitempty"`
+	Truncated bool `json:"truncated,omitempty"`
 
 	// Exports carries one entry per export read, in the order asked.
-	Exports []FilesExportResult `json:"exports,omitempty" msg:"e,omitempty"`
+	Exports []FilesExportResult `json:"exports,omitempty"`
 }
 
-// FilesUnreachableNode is one node the cluster could not reach.
+// FilesUnreachableNode is a node a cluster-wide read could not ask. The read
+// still succeeds and names the node here.
 type FilesUnreachableNode struct {
-	Node  string `json:"node" msg:"n,omitempty"`
-	Error string `json:"error" msg:"err,omitempty"`
+	Node string `json:"node"`
+
+	// Detail says why the node did not answer.
+	Detail string `json:"detail,omitempty"`
 }
 
 // FilesExportsQueryResponse is the reply of FilesExportsQuery.
 //
-// Count and Total follow the v4 query convention: Count is what Results holds
-// and Total is every node the query covered. The endpoint does not paginate, so
-// they differ only by the nodes that could not be asked.
+// Count is what Results holds and Total is every node the query covered. The
+// endpoint does not paginate, so they differ only by the nodes that could not be
+// asked.
 type FilesExportsQueryResponse struct {
 	// Results holds one entry per node that answered, including the node that
 	// served the request.
-	Results []FilesNodeStatus `json:"results" msg:"r,omitempty"`
+	Results []FilesNodeStatus `json:"results"`
 
 	// Count is the number of entries in Results.
-	Count int `json:"count" msg:"c,omitempty"`
+	Count int `json:"count"`
 
 	// Total is the number of nodes the query covered.
-	Total int `json:"total" msg:"t,omitempty"`
+	Total int `json:"total"`
 
-	// Unreachable names the nodes the peer call established no state for. They
-	// appear here rather than in Results because nothing is known about them
-	// beyond the fact that they did not report.
-	Unreachable []FilesUnreachableNode `json:"unreachable,omitempty" msg:"u,omitempty"`
+	// UnreachableNodes names the nodes the peer call established no state for.
+	// They appear here rather than in Results because nothing is known about
+	// them beyond the fact that they did not report.
+	UnreachableNodes []FilesUnreachableNode `json:"unreachableNodes,omitempty"`
 
 	// PeersNotQueried explains why no peer was asked, and is empty when they
 	// were. It carries the cluster-wide condition that stopped the peer read,
 	// not the state of any one node.
-	PeersNotQueried string `json:"peersNotQueried,omitempty" msg:"pnq,omitempty"`
+	PeersNotQueried string `json:"peersNotQueried,omitempty"`
 }
 
 // FilesExportsQuery returns the status of the named AIStor Files gateway
@@ -196,7 +196,11 @@ type FilesExportsQueryResponse struct {
 // error before the request is sent.
 //
 // A node the cluster cannot reach is reported in
-// FilesExportsQueryResponse.Unreachable and does not fail the call.
+// FilesExportsQueryResponse.UnreachableNodes and does not fail the call.
+//
+// The query reads each node's gateway directly, so it is served under
+// /gateway. The /exports routes belong to the export management API, which
+// reads the segment after /exports as an export name or id.
 func (adm *AdminClient) FilesExportsQuery(ctx context.Context, exportIDs []uint64) (FilesExportsQueryResponse, error) {
 	if len(exportIDs) == 0 {
 		return FilesExportsQueryResponse{}, errors.New("at least one export id is required")
@@ -211,12 +215,12 @@ func (adm *AdminClient) FilesExportsQuery(ctx context.Context, exportIDs []uint6
 		fields[idx] = strconv.FormatUint(exportID, 10)
 	}
 	values := make(url.Values)
-	values.Set("exportID", strings.Join(fields, ","))
+	values.Set("exportId", strings.Join(fields, ","))
 
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
-			relPath:     adminAPIPrefix + "/query/files-exports",
+			relPath:     filesAPIPrefix + "/gateway/exports",
 			queryValues: values,
 		})
 	defer closeResponse(resp)
@@ -229,7 +233,7 @@ func (adm *AdminClient) FilesExportsQuery(ctx context.Context, exportIDs []uint6
 	}
 
 	var info FilesExportsQueryResponse
-	if err = info.DecodeMsg(msgp.NewReader(resp.Body)); err != nil {
+	if err = json.NewDecoder(resp.Body).Decode(&info); err != nil {
 		return FilesExportsQueryResponse{}, err
 	}
 

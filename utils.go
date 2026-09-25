@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2024 MinIO, Inc.
+// Copyright (c) 2015-2026 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -53,6 +53,10 @@ var (
 
 	// Admin API version prefix for previous version.
 	adminAPIOldPrefix = "/v3"
+
+	// filesAPIPrefix is the route group of the AIStor Files admin API, served at
+	// /minio/admin/files/v1 and versioned independently of the MinIO admin API.
+	filesAPIPrefix = "/files/v1"
 
 	// kmsAPIVersion - is the latest KMS API version, for KMS requests.
 	// NOTE: MinIO only supports last two versions
