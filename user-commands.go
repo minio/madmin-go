@@ -1014,12 +1014,15 @@ func (r *RevokeTokensReq) Validate() error {
 	return nil
 }
 
-func (adm *AdminClient) revokeTokens(ctx context.Context, opts RevokeTokensReq, provider string) error {
+func (adm *AdminClient) revokeTokens(ctx context.Context, opts RevokeTokensReq, provider, issuer string) error {
 	queryValues := url.Values{}
 	queryValues.Set("user", opts.User)
 	queryValues.Set("tokenRevokeType", opts.TokenRevokeType)
 	if opts.FullRevoke {
 		queryValues.Set("fullRevoke", "true")
+	}
+	if issuer != "" {
+		queryValues.Set("issuer", issuer)
 	}
 
 	reqData := requestData{
@@ -1044,12 +1047,19 @@ func (adm *AdminClient) revokeTokens(ctx context.Context, opts RevokeTokensReq, 
 // RevokeTokens - revokes tokens for the specified builtin user, or
 // for an external (LDAP, OpenID, etc.) user being sent by one of its STS credentials.
 func (adm *AdminClient) RevokeTokens(ctx context.Context, opts RevokeTokensReq) error {
-	return adm.revokeTokens(ctx, opts, BuiltinProvider)
+	return adm.revokeTokens(ctx, opts, BuiltinProvider, "")
 }
 
 // RevokeTokensLDAP - revokes tokens for the specified LDAP user.
 func (adm *AdminClient) RevokeTokensLDAP(ctx context.Context, opts RevokeTokensReq) error {
-	return adm.revokeTokens(ctx, opts, LDAPProvider)
+	return adm.revokeTokens(ctx, opts, LDAPProvider, "")
+}
+
+// RevokeTokensOpenID revokes tokens for the OpenID subject in opts.User.
+// issuer names the OpenID provider; it may be empty when the server has only
+// one.
+func (adm *AdminClient) RevokeTokensOpenID(ctx context.Context, opts RevokeTokensReq, issuer string) error {
+	return adm.revokeTokens(ctx, opts, OpenIDProvider, issuer)
 }
 
 type LDAPSpecificAccessKeyInfo struct {
