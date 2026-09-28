@@ -241,10 +241,7 @@ func (adm *AdminClient) FilesExportsQuery(ctx context.Context, exportIDs []uint6
 }
 
 // The types below belong to the AIStor Files management API, served under
-// /minio/admin/files/v1 (miniohq/files docs/MANAGEMENT-API.md). Its bodies are
-// camelCase JSON, so they carry no MessagePack encoding.
-//
-//msgp:ignore FilesExportState FilesAccessType FilesSquash FilesAccessRule FilesExport FilesUnansweredNode FilesListOptions FilesExportList FilesStatsOptions FilesExportCapacity FilesStatsList
+// /minio/admin/files/v1 (miniohq/files docs/MANAGEMENT-API.md).
 
 // The error codes the Files management API answers with. A caller switches on
 // ErrorResponse.Code, which ToErrorResponse returns; the message is for a human
@@ -281,30 +278,31 @@ const (
 	FilesErrInternalError = "InternalError"
 )
 
-// FilesExportState is where an export's desired state, held by AIStor, meets
-// what its assigned node reports.
-type FilesExportState string
+// FilesExportPhase is where an export's desired state, held by AIStor, meets
+// what its assigned node reports. It is the status field of an export, and is
+// unrelated to FilesExportStatus, the lease document a gateway reports.
+type FilesExportPhase string
 
-// The states an export can be in.
+// The phases an export can be in.
 const (
 	// FilesExportServing means the assigned node is answering for the export.
-	FilesExportServing FilesExportState = "serving"
+	FilesExportServing FilesExportPhase = "serving"
 
 	// FilesExportPending means AIStor holds the export and no node reports
 	// holding it yet.
-	FilesExportPending FilesExportState = "pending"
+	FilesExportPending FilesExportPhase = "pending"
 
 	// FilesExportMissing means the assigned node answers and does not hold the
 	// export: an apply that did not take.
-	FilesExportMissing FilesExportState = "missing"
+	FilesExportMissing FilesExportPhase = "missing"
 
 	// FilesExportFenced means the assigned node holds the export and refuses
 	// mutations.
-	FilesExportFenced FilesExportState = "fenced"
+	FilesExportFenced FilesExportPhase = "fenced"
 
 	// FilesExportUnreachable means the assigned node did not answer: a node
 	// problem, kept apart from FilesExportMissing.
-	FilesExportUnreachable FilesExportState = "unreachable"
+	FilesExportUnreachable FilesExportPhase = "unreachable"
 )
 
 // FilesAccessType is the access a client of an export gets.
@@ -361,7 +359,7 @@ type FilesExport struct {
 	// Node is the node the export is assigned to.
 	Node string `json:"node"`
 
-	Status FilesExportState `json:"status"`
+	Status FilesExportPhase `json:"status"`
 
 	// AccessType is the default access for an export with no access rules.
 	AccessType FilesAccessType `json:"accessType,omitempty"`
@@ -380,19 +378,10 @@ type FilesExport struct {
 	UsedBytes *uint64 `json:"usedBytes,omitempty"`
 }
 
-// FilesUnansweredNode is a node a fleet read could not ask. The read still
-// succeeds; the node's exports read FilesExportUnreachable and carry no usage.
-type FilesUnansweredNode struct {
-	Node string `json:"node"`
-
-	// Detail says why the node did not answer.
-	Detail string `json:"detail,omitempty"`
-}
-
 // FilesListOptions narrows ListFilesExports. An empty field does not narrow.
 type FilesListOptions struct {
 	Node   string
-	Status FilesExportState
+	Status FilesExportPhase
 }
 
 // FilesExportList is the reply of ListFilesExports.
@@ -401,8 +390,9 @@ type FilesExportList struct {
 	// including one on a node that did not answer.
 	Exports []FilesExport `json:"exports"`
 
-	// UnreachableNodes names the nodes that did not answer.
-	UnreachableNodes []FilesUnansweredNode `json:"unreachableNodes,omitempty"`
+	// UnreachableNodes names the nodes that did not answer. Their exports read
+	// FilesExportUnreachable and carry no usage.
+	UnreachableNodes []FilesUnreachableNode `json:"unreachableNodes,omitempty"`
 }
 
 // FilesStatsOptions narrows the fleet form of FilesExportStats.
@@ -417,7 +407,7 @@ type FilesExportCapacity struct {
 	Name     string           `json:"name"`
 	ExportID uint64           `json:"exportId"`
 	Node     string           `json:"node"`
-	Status   FilesExportState `json:"status"`
+	Status   FilesExportPhase `json:"status"`
 
 	// UsedBytes is nil when the assigned node could not be reached.
 	UsedBytes *uint64 `json:"usedBytes,omitempty"`
@@ -431,8 +421,9 @@ type FilesStatsList struct {
 	// Stats holds one entry per export reported.
 	Stats []FilesExportCapacity `json:"stats"`
 
-	// UnreachableNodes names the nodes that did not answer.
-	UnreachableNodes []FilesUnansweredNode `json:"unreachableNodes,omitempty"`
+	// UnreachableNodes names the nodes that did not answer. Their exports read
+	// FilesExportUnreachable and carry no usage.
+	UnreachableNodes []FilesUnreachableNode `json:"unreachableNodes,omitempty"`
 }
 
 // filesStatsSegment is the path segment of the fleet stats endpoint. It is

@@ -304,7 +304,14 @@ func TestFilesWireKeys(t *testing.T) {
 			walk(field.Type)
 		}
 	}
-	for _, root := range []any{FilesExportsQueryResponse{}, FilesAuthResponse{}, FilesAuthSetRequest{}} {
+	for _, root := range []any{
+		FilesExportsQueryResponse{},
+		FilesAuthResponse{},
+		FilesAuthSetRequest{},
+		FilesExportList{},
+		FilesExport{},
+		FilesStatsList{},
+	} {
 		walk(reflect.TypeOf(root))
 	}
 }
@@ -568,10 +575,14 @@ func TestFilesRead426IsNotRetried(t *testing.T) {
 }
 
 // closeTracker is a RoundTripper that records whether each response body it
-// returns was closed.
+// returns was closed, and whether the earlier ones were closed by the time the
+// next request was sent.
 type closeTracker struct {
 	next   http.RoundTripper
 	bodies []*trackedBody
+	// openAtRetry is set when a request is sent while an earlier response
+	// body is still open.
+	openAtRetry bool
 }
 
 type trackedBody struct {
@@ -585,6 +596,11 @@ func (b *trackedBody) Close() error {
 }
 
 func (c *closeTracker) RoundTrip(r *http.Request) (*http.Response, error) {
+	for _, body := range c.bodies {
+		if !body.closed {
+			c.openAtRetry = true
+		}
+	}
 	resp, err := c.next.RoundTrip(r)
 	if err != nil {
 		return nil, err
@@ -630,7 +646,7 @@ func TestAdmin426RetriesOnOldPrefix(t *testing.T) {
 	if len(tracker.bodies) != 2 {
 		t.Fatalf("the transport returned %d responses, want 2", len(tracker.bodies))
 	}
-	if !tracker.bodies[0].closed {
+	if tracker.openAtRetry {
 		t.Error("the 426 response was not closed before the retry")
 	}
 	closeResponse(resp)
