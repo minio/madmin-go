@@ -32,6 +32,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -374,10 +375,12 @@ func TestFilesWireKeys(t *testing.T) {
 
 // filesRequest is what a test server saw of one request.
 type filesRequest struct {
-	method  string
-	path    string
-	rawPath string
-	query   url.Values
+	method      string
+	path        string
+	rawPath     string
+	query       url.Values
+	contentType string
+	body        []byte
 }
 
 // newFilesJSONServer answers every request with status and body, and records
@@ -386,7 +389,11 @@ func newFilesJSONServer(t *testing.T, status int, body string) (*httptest.Server
 	t.Helper()
 	var seen []filesRequest
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		seen = append(seen, filesRequest{r.Method, r.URL.Path, r.URL.EscapedPath(), r.URL.Query()})
+		sent, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Errorf("read body: %v", err)
+		}
+		seen = append(seen, filesRequest{r.Method, r.URL.Path, r.URL.EscapedPath(), r.URL.Query(), r.Header.Get("Content-Type"), sent})
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(status)
 		if _, err := io.WriteString(w, body); err != nil {
@@ -878,5 +885,276 @@ func TestFilesExportStatsPages(t *testing.T) {
 	want := url.Values{"node": {"node03"}, "limit": {"1"}, "continuation-token": {"p1"}}
 	if q := (*seen)[1]; !reflect.DeepEqual(q, want) {
 		t.Errorf("page 2 sent %v, want %v", q, want)
+	}
+}
+
+// jsonKeys returns the top-level keys of a JSON object.
+func jsonKeys(t *testing.T, body []byte) []string {
+	t.Helper()
+	var m map[string]json.RawMessage
+	if err := json.Unmarshal(body, &m); err != nil {
+		t.Fatalf("decode body %q: %v", body, err)
+	}
+	keys := make([]string, 0, len(m))
+	for k := range m {
+		keys = append(keys, k)
+	}
+	slices.Sort(keys)
+	return keys
+}
+
+// TestAddFilesExportRequest verifies that AddFilesExport sends a PUT carrying
+// only the fields MANAGEMENT-API.md §1 lists, since the server refuses an
+// unknown one, and leaves a default out rather than sending a zero. It decodes
+// the 202 sample reply.
+func TestAddFilesExportRequest(t *testing.T) {
+	server, seen := newFilesJSONServer(t, http.StatusAccepted, `{
+  "name": "carol", "exportID": 104, "pseudo": "/home/carol", "node": "node03.example.com",
+  "status": "pending", "accessType": "rw", "squash": "root", "quotaBytes": 10737418240
+}`)
+	client := newFilesExportsTestClient(t, server.URL)
+
+	id := uint64(104)
+	got, err := client.AddFilesExport(context.Background(), FilesExportSpec{
+		Name: "carol", Pseudo: "/home/carol", AccessType: FilesAccessRW, Squash: FilesSquashRoot,
+		QuotaBytes: 10737418240, Node: "node03.example.com", ExportID: &id,
+	})
+	if err != nil {
+		t.Fatalf("AddFilesExport: %v", err)
+	}
+	req := (*seen)[0]
+	if want := "/minio/admin/files/v1/exports"; req.method != http.MethodPut || req.path != want {
+		t.Errorf("sent %s %s, want PUT %s", req.method, req.path, want)
+	}
+	if req.contentType != "application/json" {
+		t.Errorf("content type = %q, want application/json", req.contentType)
+	}
+	if keys, want := jsonKeys(t, req.body), []string{"accessType", "exportID", "name", "node", "pseudo", "quotaBytes", "squash"}; !slices.Equal(keys, want) {
+		t.Errorf("body keys = %v, want %v", keys, want)
+	}
+	want := FilesExport{
+		Name: "carol", ExportID: 104, Pseudo: "/home/carol", Node: "node03.example.com", Status: FilesExportPending,
+		AccessType: FilesAccessRW, Squash: FilesSquashRoot, QuotaBytes: 10737418240,
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("reply = %+v, want %+v", got, want)
+	}
+
+	if _, err := client.AddFilesExport(context.Background(), FilesExportSpec{Name: "dave", Pseudo: "/home/dave"}); err != nil {
+		t.Fatalf("AddFilesExport: %v", err)
+	}
+	if keys, want := jsonKeys(t, (*seen)[1].body), []string{"name", "pseudo"}; !slices.Equal(keys, want) {
+		t.Errorf("body keys = %v, want %v: a default is left to the server", keys, want)
+	}
+}
+
+// TestAddFilesExportIsNotRetried verifies that AddFilesExport is sent once, on
+// a retryable status and on a dropped connection alike, since a retry after an
+// attempt that created the export would answer ExportAlreadyExists.
+func TestAddFilesExportIsNotRetried(t *testing.T) {
+	t.Run("retryable_status", func(t *testing.T) {
+		server, seen := newFilesJSONServer(t, http.StatusServiceUnavailable,
+			`{"code": "NodeUnreachable", "message": "node03 did not answer"}`)
+
+		_, err := newFilesExportsTestClient(t, server.URL).AddFilesExport(context.Background(),
+			FilesExportSpec{Name: "carol", Pseudo: "/home/carol", Node: "node03"})
+		if code := ToErrorResponse(err).Code; code != FilesErrNodeUnreachable {
+			t.Errorf("err = %v, want code %s", err, FilesErrNodeUnreachable)
+		}
+		if len(*seen) != 1 {
+			t.Errorf("the server received %d requests, want 1", len(*seen))
+		}
+	})
+
+	t.Run("dropped_connection", func(t *testing.T) {
+		var requests atomic.Int32
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			requests.Add(1)
+			conn, _, err := w.(http.Hijacker).Hijack()
+			if err != nil {
+				t.Errorf("hijack: %v", err)
+				return
+			}
+			conn.Close()
+		}))
+		defer server.Close()
+
+		_, err := newFilesExportsTestClient(t, server.URL).AddFilesExport(context.Background(),
+			FilesExportSpec{Name: "carol", Pseudo: "/home/carol"})
+		if err == nil {
+			t.Error("AddFilesExport should fail when the connection drops")
+		}
+		if n := requests.Load(); n != 1 {
+			t.Errorf("the server received %d requests, want 1", n)
+		}
+	})
+}
+
+// TestSetFilesExportQuotaRequest verifies that a quota of zero, which clears
+// the limit, is sent rather than omitted, and that the §4 sample reply decodes.
+func TestSetFilesExportQuotaRequest(t *testing.T) {
+	server, seen := newFilesJSONServer(t, http.StatusOK,
+		`{"name": "carol", "exportID": 104, "previousBytes": 10737418240, "currentBytes": 0, "usedBytes": 1288490188}`)
+
+	got, err := newFilesExportsTestClient(t, server.URL).SetFilesExportQuota(context.Background(), "carol", 0)
+	if err != nil {
+		t.Fatalf("SetFilesExportQuota: %v", err)
+	}
+	req := (*seen)[0]
+	if want := "/minio/admin/files/v1/exports/carol/quota"; req.method != http.MethodPut || req.path != want {
+		t.Errorf("sent %s %s, want PUT %s", req.method, req.path, want)
+	}
+	if string(req.body) != `{"quotaBytes":0}` {
+		t.Errorf("body = %s, want {\"quotaBytes\":0}", req.body)
+	}
+	if got.ExportID != 104 || got.PreviousBytes != 10737418240 || got.CurrentBytes != 0 ||
+		got.UsedBytes == nil || *got.UsedBytes != 1288490188 {
+		t.Errorf("reply = %+v", got)
+	}
+}
+
+// TestSetFilesExportAccessRequest verifies that the rule list reaches the
+// server exactly as given, in order and with a duplicate kept, since the order
+// is the policy.
+func TestSetFilesExportAccessRequest(t *testing.T) {
+	server, seen := newFilesJSONServer(t, http.StatusOK,
+		`{"name": "carol", "exportID": 104, "previousRuleCount": 0, "ruleCount": 4}`)
+	client := newFilesExportsTestClient(t, server.URL)
+
+	rules := []FilesAccessRule{
+		{Clients: []string{"10.20.9.0/24"}, AccessType: FilesAccessNone},
+		{Clients: []string{"10.20.4.8", "10.20.4.7"}, AccessType: FilesAccessRW},
+		{Clients: []string{"10.20.9.0/24"}, AccessType: FilesAccessNone},
+		{Clients: []string{"*"}, AccessType: FilesAccessRO},
+	}
+	got, err := client.SetFilesExportAccess(context.Background(), "104", rules)
+	if err != nil {
+		t.Fatalf("SetFilesExportAccess: %v", err)
+	}
+	req := (*seen)[0]
+	if want := "/minio/admin/files/v1/exports/104/access"; req.method != http.MethodPut || req.path != want {
+		t.Errorf("sent %s %s, want PUT %s", req.method, req.path, want)
+	}
+	if keys := jsonKeys(t, req.body); !slices.Equal(keys, []string{"rules"}) {
+		t.Errorf("body keys = %v, want [rules]", keys)
+	}
+	var sent filesAccessBody
+	if err := json.Unmarshal(req.body, &sent); err != nil {
+		t.Fatalf("decode body: %v", err)
+	}
+	if !reflect.DeepEqual(sent.Rules, rules) {
+		t.Errorf("the server received %+v, want %+v", sent.Rules, rules)
+	}
+	if got.PreviousRuleCount != 0 || got.RuleCount != 4 {
+		t.Errorf("reply = %+v", got)
+	}
+
+	// An empty list is not a way to clear: ClearFilesExportAccess is.
+	for _, empty := range [][]FilesAccessRule{nil, {}} {
+		if _, err := client.SetFilesExportAccess(context.Background(), "carol", empty); err == nil {
+			t.Errorf("SetFilesExportAccess(%#v) should fail", empty)
+		}
+	}
+	if len(*seen) != 1 {
+		t.Errorf("the server received %d requests, want 1", len(*seen))
+	}
+}
+
+// TestClearFilesExportAccessRequest verifies that clearing sends a DELETE with
+// no body.
+func TestClearFilesExportAccessRequest(t *testing.T) {
+	server, seen := newFilesJSONServer(t, http.StatusOK,
+		`{"name": "carol", "exportID": 104, "previousRuleCount": 3, "ruleCount": 0}`)
+
+	got, err := newFilesExportsTestClient(t, server.URL).ClearFilesExportAccess(context.Background(), "carol")
+	if err != nil {
+		t.Fatalf("ClearFilesExportAccess: %v", err)
+	}
+	req := (*seen)[0]
+	if want := "/minio/admin/files/v1/exports/carol/access"; req.method != http.MethodDelete || req.path != want || len(req.body) != 0 {
+		t.Errorf("sent %s %s with body %q, want DELETE %s with none", req.method, req.path, req.body, want)
+	}
+	if got.PreviousRuleCount != 3 || got.RuleCount != 0 {
+		t.Errorf("reply = %+v", got)
+	}
+}
+
+// TestRemoveFilesExportRequest verifies that force and purge are sent only
+// when asked for.
+func TestRemoveFilesExportRequest(t *testing.T) {
+	server, seen := newFilesJSONServer(t, http.StatusOK, `{"name": "carol", "exportID": 104}`)
+	client := newFilesExportsTestClient(t, server.URL)
+
+	for _, tc := range []struct {
+		opts  FilesRemoveOptions
+		query url.Values
+	}{
+		{FilesRemoveOptions{}, url.Values{}},
+		{FilesRemoveOptions{Force: true}, url.Values{"force": {"true"}}},
+		{FilesRemoveOptions{Force: true, Purge: true}, url.Values{"force": {"true"}, "purge": {"true"}}},
+	} {
+		got, err := client.RemoveFilesExport(context.Background(), "carol", tc.opts)
+		if err != nil {
+			t.Fatalf("RemoveFilesExport(%+v): %v", tc.opts, err)
+		}
+		req := (*seen)[len(*seen)-1]
+		if want := "/minio/admin/files/v1/exports/carol"; req.method != http.MethodDelete || req.path != want {
+			t.Errorf("sent %s %s, want DELETE %s", req.method, req.path, want)
+		}
+		if !reflect.DeepEqual(req.query, tc.query) {
+			t.Errorf("RemoveFilesExport(%+v) query = %v, want %v", tc.opts, req.query, tc.query)
+		}
+		if got.Name != "carol" || got.ExportID != 104 {
+			t.Errorf("reply = %+v", got)
+		}
+	}
+}
+
+// TestFilesWriteRefusesLocally verifies that no write reaches the server for a
+// token that names no export.
+func TestFilesWriteRefusesLocally(t *testing.T) {
+	server, seen := newFilesJSONServer(t, http.StatusOK, `{}`)
+	client := newFilesExportsTestClient(t, server.URL)
+	ctx := context.Background()
+	rules := []FilesAccessRule{{Clients: []string{"*"}, AccessType: FilesAccessRW}}
+
+	for _, export := range []string{"", "stats"} {
+		for name, call := range map[string]func() error{
+			"quota":  func() error { _, err := client.SetFilesExportQuota(ctx, export, 1); return err },
+			"access": func() error { _, err := client.SetFilesExportAccess(ctx, export, rules); return err },
+			"clear":  func() error { _, err := client.ClearFilesExportAccess(ctx, export); return err },
+			"remove": func() error { _, err := client.RemoveFilesExport(ctx, export, FilesRemoveOptions{}); return err },
+		} {
+			if err := call(); err == nil {
+				t.Errorf("%s(%q) should fail", name, export)
+			}
+		}
+	}
+	if len(*seen) != 0 {
+		t.Errorf("the server received %d requests, want 0", len(*seen))
+	}
+}
+
+// TestFilesWriteErrorCode verifies that a refused write reaches the caller
+// with the server's code.
+func TestFilesWriteErrorCode(t *testing.T) {
+	ctx := context.Background()
+	for _, tc := range []struct {
+		code string
+		call func(*AdminClient) error
+	}{
+		{FilesErrExportAlreadyExists, func(c *AdminClient) error {
+			_, err := c.AddFilesExport(ctx, FilesExportSpec{Name: "carol", Pseudo: "/home/carol"})
+			return err
+		}},
+		{FilesErrExportInUse, func(c *AdminClient) error {
+			_, err := c.RemoveFilesExport(ctx, "carol", FilesRemoveOptions{})
+			return err
+		}},
+	} {
+		server, _ := newFilesJSONServer(t, http.StatusConflict, `{"code": "`+tc.code+`", "message": "refused"}`)
+		if err := tc.call(newFilesExportsTestClient(t, server.URL)); ToErrorResponse(err).Code != tc.code {
+			t.Errorf("err = %v, want code %s", err, tc.code)
+		}
 	}
 }
