@@ -463,13 +463,26 @@ func (adm *AdminClient) GetFilesExport(ctx context.Context, export string) (File
 	if export == "" {
 		return FilesExport{}, errors.New("an export name or id is required")
 	}
-	if export == filesStatsSegment {
-		return FilesExport{}, fmt.Errorf("%q is reserved and names no export", export)
+	segment, err := filesExportSegment(export)
+	if err != nil {
+		return FilesExport{}, err
 	}
 
 	var info FilesExport
-	err := adm.getFilesJSON(ctx, filesAPIPrefix+"/exports/"+url.PathEscape(export), nil, &info)
+	err = adm.getFilesJSON(ctx, filesAPIPrefix+"/exports/"+segment, nil, &info)
 	return info, err
+}
+
+// filesExportSegment returns export escaped as one path segment. It refuses
+// the names that would reach a route other than the export's: the reserved
+// stats segment, and "." and "..", which url.PathEscape leaves as they are and
+// a router that cleans paths resolves.
+func filesExportSegment(export string) (string, error) {
+	switch export {
+	case filesStatsSegment, ".", "..":
+		return "", fmt.Errorf("%q is reserved and names no export", export)
+	}
+	return url.PathEscape(export), nil
 }
 
 // FilesExportStats returns the capacity of one export, or of every export when
@@ -479,7 +492,11 @@ func (adm *AdminClient) GetFilesExport(ctx context.Context, export string) (File
 func (adm *AdminClient) FilesExportStats(ctx context.Context, export string, opts FilesStatsOptions) (FilesStatsList, error) {
 	relPath := filesAPIPrefix + "/exports/" + filesStatsSegment
 	if export != "" {
-		relPath = filesAPIPrefix + "/exports/" + url.PathEscape(export) + "/" + filesStatsSegment
+		segment, err := filesExportSegment(export)
+		if err != nil {
+			return FilesStatsList{}, err
+		}
+		relPath = filesAPIPrefix + "/exports/" + segment + "/" + filesStatsSegment
 	}
 	values := make(url.Values)
 	if opts.Node != "" {

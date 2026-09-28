@@ -29,6 +29,7 @@ import (
 	"net/url"
 	"reflect"
 	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -524,20 +525,115 @@ func TestFilesReadErrorCode(t *testing.T) {
 	}
 }
 
+// TestFilesReservedExportNames verifies that a name that would reach a route
+// other than the export's is refused before a request is sent, by both methods
+// that take an export.
+func TestFilesReservedExportNames(t *testing.T) {
+	server, seen := newFilesJSONServer(t, http.StatusOK, `{}`)
+	client := newFilesExportsTestClient(t, server.URL)
+
+	for _, name := range []string{"stats", ".", ".."} {
+		if _, err := client.GetFilesExport(context.Background(), name); err == nil {
+			t.Errorf("GetFilesExport(%q) succeeded, want an error", name)
+		}
+		if _, err := client.FilesExportStats(context.Background(), name, FilesStatsOptions{}); err == nil {
+			t.Errorf("FilesExportStats(%q) succeeded, want an error", name)
+		}
+	}
+	if len(*seen) != 0 {
+		t.Errorf("the server received %d requests, want 0", len(*seen))
+	}
+}
+
 // TestFilesRead426IsNotRetried verifies that a 426 on a Files path, which has
 // no admin API version to downgrade, is returned after one request. A server
-// with no Files routes answers so.
+// with no Files routes answers so. An export name holding the admin API
+// version, such as v4home, is not rewritten either.
 func TestFilesRead426IsNotRetried(t *testing.T) {
-	server, seen := newFilesJSONServer(t, http.StatusUpgradeRequired,
-		`{"Code": "XMinioAdminVersionMismatch", "Message": "upgrade"}`)
+	for _, name := range []string{"carol", "v4home"} {
+		server, seen := newFilesJSONServer(t, http.StatusUpgradeRequired,
+			`{"Code": "XMinioAdminVersionMismatch", "Message": "upgrade"}`)
 
-	_, err := newFilesExportsTestClient(t, server.URL).GetFilesExport(context.Background(), "carol")
-	if ToErrorResponse(err).Code != "XMinioAdminVersionMismatch" {
-		t.Errorf("err = %v, want XMinioAdminVersionMismatch", err)
+		_, err := newFilesExportsTestClient(t, server.URL).GetFilesExport(context.Background(), name)
+		if ToErrorResponse(err).Code != "XMinioAdminVersionMismatch" {
+			t.Errorf("%s: err = %v, want XMinioAdminVersionMismatch", name, err)
+		}
+		if len(*seen) != 1 {
+			t.Errorf("%s: the server received %d requests, want 1", name, len(*seen))
+		}
+		if want := "/minio/admin/files/v1/exports/" + name; (*seen)[0].path != want {
+			t.Errorf("%s: path = %s, want %s", name, (*seen)[0].path, want)
+		}
 	}
-	if len(*seen) != 1 {
-		t.Errorf("the server received %d requests, want 1", len(*seen))
+}
+
+// closeTracker is a RoundTripper that records whether each response body it
+// returns was closed.
+type closeTracker struct {
+	next   http.RoundTripper
+	bodies []*trackedBody
+}
+
+type trackedBody struct {
+	io.ReadCloser
+	closed bool
+}
+
+func (b *trackedBody) Close() error {
+	b.closed = true
+	return b.ReadCloser.Close()
+}
+
+func (c *closeTracker) RoundTrip(r *http.Request) (*http.Response, error) {
+	resp, err := c.next.RoundTrip(r)
+	if err != nil {
+		return nil, err
 	}
+	body := &trackedBody{ReadCloser: resp.Body}
+	c.bodies = append(c.bodies, body)
+	resp.Body = body
+	return resp, nil
+}
+
+// TestAdmin426RetriesOnOldPrefix verifies that a 426 on an admin API path is
+// retried once on the old version, that only the leading version is rewritten,
+// not one later in the path, and that the 426 response is closed before the
+// retry so its connection is not leaked.
+func TestAdmin426RetriesOnOldPrefix(t *testing.T) {
+	var seen []string
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen = append(seen, r.URL.Path)
+		if strings.HasPrefix(r.URL.Path, "/minio/admin"+adminAPIPrefix) {
+			w.WriteHeader(http.StatusUpgradeRequired)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(server.Close)
+
+	client := newFilesExportsTestClient(t, server.URL)
+	tracker := &closeTracker{next: client.httpClient.Transport}
+	client.httpClient.Transport = tracker
+
+	resp, err := client.executeMethod(context.Background(),
+		http.MethodGet, requestData{relPath: adminAPIPrefix + "/probe" + adminAPIPrefix})
+	if err != nil {
+		t.Fatalf("executeMethod: %v", err)
+	}
+	want := []string{
+		"/minio/admin" + adminAPIPrefix + "/probe" + adminAPIPrefix,
+		"/minio/admin" + adminAPIOldPrefix + "/probe" + adminAPIPrefix,
+	}
+	if !slices.Equal(seen, want) {
+		t.Errorf("paths = %v, want %v", seen, want)
+	}
+	if len(tracker.bodies) != 2 {
+		t.Fatalf("the transport returned %d responses, want 2", len(tracker.bodies))
+	}
+	if !tracker.bodies[0].closed {
+		t.Error("the 426 response was not closed before the retry")
+	}
+	closeResponse(resp)
 }
 
 // TestFilesExportUsedBytesOnTheWire verifies what the server encodes: usage
