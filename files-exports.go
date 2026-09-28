@@ -363,7 +363,7 @@ type FilesExport struct {
 
 	Status FilesExportState `json:"status"`
 
-	// AccessType is what a client gets when no access rule matches it.
+	// AccessType is the default access for an export with no access rules.
 	AccessType FilesAccessType `json:"accessType,omitempty"`
 
 	Squash FilesSquash `json:"squash,omitempty"`
