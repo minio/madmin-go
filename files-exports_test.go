@@ -21,14 +21,15 @@ package madmin
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/tinylib/msgp/msgp"
 )
 
 func newFilesExportsTestClient(t *testing.T, serverURL string) *AdminClient {
@@ -41,41 +42,43 @@ func newFilesExportsTestClient(t *testing.T, serverURL string) *AdminClient {
 }
 
 // TestFilesExportsQueryRequest verifies the method, path and query the client
-// sends, and that it decodes the MessagePack reply the server writes.
+// sends, and that it decodes a JSON reply in the Files admin API's format.
 //
-// The ids travel as one comma-separated exportID value, and the order asked for
+// The ids travel as one comma-separated exportId value, and the order asked for
 // is the order the reply documents, so both are asserted rather than the fact
 // that a request arrived.
+//
+// The reply is a literal in the Files API's keys rather than one encoded from
+// the Go types, so a renamed key fails here. Decoding ignores the case of a key,
+// so TestFilesWireKeys checks the casing.
 func TestFilesExportsQueryRequest(t *testing.T) {
+	const reply = `{
+		"results": [
+			{
+				"node": "10.0.0.1:9000",
+				"reach": "serving",
+				"socketPath": "/run/aistor-files.sock",
+				"exports": [
+					{"exportId": 9, "status": {"exportId": 9, "held": true, "epoch": 7, "ownerId": "o1", "usedBytes": 1024}},
+					{"exportId": 4, "notHeld": true}
+				]
+			},
+			{"node": "10.0.0.2:9000", "reach": "no-daemon", "detail": "no daemon"}
+		],
+		"count": 2,
+		"total": 3,
+		"unreachableNodes": [{"node": "10.0.0.3:9000", "detail": "context deadline exceeded"}]
+	}`
+
 	var (
 		method string
 		path   string
 		query  url.Values
 	)
-	want := FilesExportsQueryResponse{
-		Results: []FilesNodeStatus{
-			{
-				Node:       "10.0.0.1:9000",
-				Reach:      FilesNodeServing,
-				SocketPath: "/run/aistor-files.sock",
-				Exports: []FilesExportResult{
-					{ExportID: 9, Status: &FilesExportStatus{ExportID: 9, Held: true, Epoch: 7, UsedBytes: 1024}},
-					{ExportID: 4, NotHeld: true},
-				},
-			},
-			{Node: "10.0.0.2:9000", Reach: FilesNodeNoDaemon, Detail: "no daemon"},
-		},
-		Count:       2,
-		Total:       3,
-		Unreachable: []FilesUnreachableNode{{Node: "10.0.0.3:9000", Error: "context deadline exceeded"}},
-	}
-
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		method, path, query = r.Method, r.URL.Path, r.URL.Query()
 		w.WriteHeader(http.StatusOK)
-		if err := msgp.Encode(w, &want); err != nil {
-			t.Errorf("encode reply: %v", err)
-		}
+		_, _ = w.Write([]byte(reply))
 	}))
 	defer server.Close()
 
@@ -87,18 +90,18 @@ func TestFilesExportsQueryRequest(t *testing.T) {
 	if method != http.MethodGet {
 		t.Errorf("method = %s, want GET", method)
 	}
-	if wantPath := libraryAdminURLPrefix + adminAPIPrefix + "/query/files-exports"; path != wantPath {
+	if wantPath := "/minio/admin/files/v1/gateway/exports"; path != wantPath {
 		t.Errorf("path = %s, want %s", path, wantPath)
 	}
-	if ids := query.Get("exportID"); ids != "9,4" {
-		t.Errorf("exportID = %q, want %q", ids, "9,4")
+	if ids := query.Get("exportId"); ids != "9,4" {
+		t.Errorf("exportId = %q, want %q", ids, "9,4")
 	}
 
-	if got.Count != want.Count || got.Total != want.Total {
-		t.Errorf("count/total = %d/%d, want %d/%d", got.Count, got.Total, want.Count, want.Total)
+	if got.Count != 2 || got.Total != 3 {
+		t.Errorf("count/total = %d/%d, want 2/3", got.Count, got.Total)
 	}
-	if len(got.Results) != len(want.Results) {
-		t.Fatalf("results = %d, want %d", len(got.Results), len(want.Results))
+	if len(got.Results) != 2 {
+		t.Fatalf("results = %d, want 2", len(got.Results))
 	}
 	if got.Results[0].Reach != FilesNodeServing || got.Results[1].Reach != FilesNodeNoDaemon {
 		t.Errorf("reach = %q/%q, want %q/%q",
@@ -108,18 +111,22 @@ func TestFilesExportsQueryRequest(t *testing.T) {
 	if len(exports) != 2 {
 		t.Fatalf("exports = %d, want 2", len(exports))
 	}
+	if exports[0].ExportID != 9 || exports[1].ExportID != 4 {
+		t.Errorf("export ids = %d/%d, want 9/4", exports[0].ExportID, exports[1].ExportID)
+	}
 	if exports[0].Status == nil {
 		t.Fatal("the held export must carry a status document")
 	}
-	if exports[0].Status.Epoch != 7 || exports[0].Status.UsedBytes != 1024 {
-		t.Errorf("status epoch/usedBytes = %d/%d, want 7/1024",
-			exports[0].Status.Epoch, exports[0].Status.UsedBytes)
+	if status := exports[0].Status; status.ExportID != 9 || status.OwnerID != "o1" ||
+		status.Epoch != 7 || status.UsedBytes != 1024 {
+		t.Errorf("status = %+v, want export 9 owned by o1 at epoch 7 with 1024 bytes used", status)
 	}
 	if exports[1].Status != nil || !exports[1].NotHeld {
 		t.Errorf("unheld export = %+v, want a NotHeld entry with no status document", exports[1])
 	}
-	if len(got.Unreachable) != 1 || got.Unreachable[0].Node != "10.0.0.3:9000" {
-		t.Errorf("unreachable = %+v, want one entry for 10.0.0.3:9000", got.Unreachable)
+	if len(got.UnreachableNodes) != 1 || got.UnreachableNodes[0].Node != "10.0.0.3:9000" ||
+		got.UnreachableNodes[0].Detail != "context deadline exceeded" {
+		t.Errorf("unreachableNodes = %+v, want one entry for 10.0.0.3:9000 with its detail", got.UnreachableNodes)
 	}
 }
 
@@ -166,9 +173,9 @@ func TestFilesExportsQueryRejectsIDCountsLocally(t *testing.T) {
 func TestFilesExportsQueryAtTheCap(t *testing.T) {
 	var ids string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ids = r.URL.Query().Get("exportID")
+		ids = r.URL.Query().Get("exportId")
 		w.WriteHeader(http.StatusOK)
-		if err := msgp.Encode(w, &FilesExportsQueryResponse{}); err != nil {
+		if err := json.NewEncoder(w).Encode(&FilesExportsQueryResponse{}); err != nil {
 			t.Errorf("encode reply: %v", err)
 		}
 	}))
@@ -189,8 +196,7 @@ func TestFilesExportsQueryAtTheCap(t *testing.T) {
 
 // TestFilesExportsQueryLeaseTimes verifies what a nil LastRenew means on the
 // wire: a daemon that has never renewed a lease is distinguishable from one
-// that renewed at an unknown time, without a sentinel age. It also pins TS and
-// LastRenew to UTC, which the generator's timezone directive imposes.
+// that renewed at an unknown time, without a sentinel age.
 func TestFilesExportsQueryLeaseTimes(t *testing.T) {
 	renewed := time.Date(2026, 9, 16, 10, 30, 0, 0, time.UTC)
 	taken := time.Date(2026, 9, 16, 10, 30, 5, 0, time.UTC)
@@ -215,7 +221,7 @@ func TestFilesExportsQueryLeaseTimes(t *testing.T) {
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
-		if err := msgp.Encode(w, &want); err != nil {
+		if err := json.NewEncoder(w).Encode(&want); err != nil {
 			t.Errorf("encode reply: %v", err)
 		}
 	}))
@@ -240,9 +246,6 @@ func TestFilesExportsQueryLeaseTimes(t *testing.T) {
 	if !renewedStatus.TS.Equal(taken) {
 		t.Errorf("ts = %s, want %s", renewedStatus.TS, taken)
 	}
-	if loc := renewedStatus.TS.Location(); loc != time.UTC {
-		t.Errorf("ts location = %s, want UTC", loc)
-	}
 
 	neverRenewed := exports[1].Status
 	if neverRenewed == nil {
@@ -253,5 +256,52 @@ func TestFilesExportsQueryLeaseTimes(t *testing.T) {
 	}
 	if !neverRenewed.Leasing {
 		t.Error("leasing must survive the round trip, so a never-renewed lease is not read as an unleased export")
+	}
+}
+
+// filesWireKey matches a camelCase JSON key in which every capital starts a
+// word, so "exportId" passes and "exportID" does not.
+var filesWireKey = regexp.MustCompile(`^[a-z][a-z0-9]*([A-Z][a-z0-9]+)*$`)
+
+// TestFilesWireKeys verifies that every JSON key of the Files admin API types
+// is camelCase, and that each cluster-wide reply names the nodes it missed in
+// unreachableNodes. The server is expected to encode these types, so their keys
+// are the API's wire format.
+func TestFilesWireKeys(t *testing.T) {
+	unreachableType := reflect.TypeOf(FilesUnreachableNode{})
+	seen := make(map[reflect.Type]bool)
+
+	var walk func(typ reflect.Type)
+	walk = func(typ reflect.Type) {
+		for typ.Kind() == reflect.Pointer || typ.Kind() == reflect.Slice || typ.Kind() == reflect.Array {
+			typ = typ.Elem()
+		}
+		if typ.Kind() != reflect.Struct || typ == reflect.TypeOf(time.Time{}) || seen[typ] {
+			return
+		}
+		seen[typ] = true
+		for idx := range typ.NumField() {
+			field := typ.Field(idx)
+			if !field.IsExported() {
+				continue
+			}
+			key, _, _ := strings.Cut(field.Tag.Get("json"), ",")
+			if key == "-" {
+				continue
+			}
+			if key == "" {
+				key = field.Name
+			}
+			if !filesWireKey.MatchString(key) {
+				t.Errorf("%s.%s is encoded as %q, which is not camelCase", typ.Name(), field.Name, key)
+			}
+			if field.Type.Kind() == reflect.Slice && field.Type.Elem() == unreachableType && key != "unreachableNodes" {
+				t.Errorf("%s.%s names missed nodes as %q, want unreachableNodes", typ.Name(), field.Name, key)
+			}
+			walk(field.Type)
+		}
+	}
+	for _, root := range []any{FilesExportsQueryResponse{}, FilesAuthResponse{}, FilesAuthSetRequest{}} {
+		walk(reflect.TypeOf(root))
 	}
 }
