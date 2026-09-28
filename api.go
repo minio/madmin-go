@@ -210,6 +210,9 @@ type requestData struct {
 	// that encrypted content with a credential sets it, so the body and the
 	// signature always use the same secret.
 	creds *credentials.Value
+	// noRetry sends the request once, for a call that is not safe to repeat
+	// after an attempt whose outcome is unknown.
+	noRetry bool
 }
 
 // Filter out signature value from Authorization header.
@@ -416,6 +419,9 @@ func (adm AdminClient) executeMethod(ctx context.Context, method string, reqData
 			if ctx.Err() != nil {
 				return nil, ctx.Err()
 			}
+			if reqData.noRetry {
+				return nil, err
+			}
 			// retry all network errors.
 			continue
 		}
@@ -460,6 +466,10 @@ func (adm AdminClient) executeMethod(ctx context.Context, method string, reqData
 		// Save the body back again.
 		errBodySeeker.Seek(0, 0) // Seek back to starting point.
 		res.Body = io.NopCloser(errBodySeeker)
+
+		if reqData.noRetry {
+			break
+		}
 
 		// Verify if error response code is retryable.
 		if isAdminErrCodeRetryable(errResponse.Code) {
