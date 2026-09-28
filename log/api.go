@@ -93,6 +93,7 @@ type CallInfo struct {
 	RespHeader        map[string]string `json:"responseHeader,omitempty" parquet:"respHeader,optional"`
 	AccessKey         string            `json:"accessKey,omitempty" parquet:"accessKey,optional"`
 	ParentUser        string            `json:"parentUser,omitempty" parquet:"parentUser,optional"`
+	SourceIdentity    string            `json:"sourceIdentity,omitempty" parquet:"sourceIdentity,optional"`
 }
 
 // String provides a canonical representation for API
@@ -141,6 +142,7 @@ func (c CallInfo) String() string {
 		toMap("responseHeader", c.RespHeader),
 		toString("accessKey", c.AccessKey),
 		toString("parentUser", c.ParentUser),
+		toString("sourceIdentity", c.SourceIdentity),
 	}
 	values = filterAndSort(values)
 	return strings.Join(values, ",")
