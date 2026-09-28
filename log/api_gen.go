@@ -758,7 +758,7 @@ func (z *CallInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint32 /* 22 bits */
+	var zb0001Mask uint32 /* 23 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -1010,6 +1010,13 @@ func (z *CallInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 			zb0001Mask |= 0x200000
+		case "sourceIdentity":
+			z.SourceIdentity, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "SourceIdentity")
+				return
+			}
+			zb0001Mask |= 0x400000
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -1019,7 +1026,7 @@ func (z *CallInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3fffff {
+	if zb0001Mask != 0x7fffff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.HTTPStatusCode = 0
 		}
@@ -1086,6 +1093,9 @@ func (z *CallInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 		if (zb0001Mask & 0x200000) == 0 {
 			z.ParentUser = ""
 		}
+		if (zb0001Mask & 0x400000) == 0 {
+			z.SourceIdentity = ""
+		}
 	}
 	return
 }
@@ -1093,8 +1103,8 @@ func (z *CallInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *CallInfo) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(22)
-	var zb0001Mask uint32 /* 22 bits */
+	zb0001Len := uint32(23)
+	var zb0001Mask uint32 /* 23 bits */
 	_ = zb0001Mask
 	if z.HTTPStatusCode == 0 {
 		zb0001Len--
@@ -1183,6 +1193,10 @@ func (z *CallInfo) EncodeMsg(en *msgp.Writer) (err error) {
 	if z.ParentUser == "" {
 		zb0001Len--
 		zb0001Mask |= 0x200000
+	}
+	if z.SourceIdentity == "" {
+		zb0001Len--
+		zb0001Mask |= 0x400000
 	}
 	// variable map header, size zb0001Len
 	err = en.WriteMapHeader(zb0001Len)
@@ -1504,6 +1518,18 @@ func (z *CallInfo) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
+		if (zb0001Mask & 0x400000) == 0 { // if not omitted
+			// write "sourceIdentity"
+			err = en.Append(0xae, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x49, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x79)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.SourceIdentity)
+			if err != nil {
+				err = msgp.WrapError(err, "SourceIdentity")
+				return
+			}
+		}
 	}
 	return
 }
@@ -1512,8 +1538,8 @@ func (z *CallInfo) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *CallInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(22)
-	var zb0001Mask uint32 /* 22 bits */
+	zb0001Len := uint32(23)
+	var zb0001Mask uint32 /* 23 bits */
 	_ = zb0001Mask
 	if z.HTTPStatusCode == 0 {
 		zb0001Len--
@@ -1602,6 +1628,10 @@ func (z *CallInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	if z.ParentUser == "" {
 		zb0001Len--
 		zb0001Mask |= 0x200000
+	}
+	if z.SourceIdentity == "" {
+		zb0001Len--
+		zb0001Mask |= 0x400000
 	}
 	// variable map header, size zb0001Len
 	o = msgp.AppendMapHeader(o, zb0001Len)
@@ -1734,6 +1764,11 @@ func (z *CallInfo) MarshalMsg(b []byte) (o []byte, err error) {
 			o = append(o, 0xaa, 0x70, 0x61, 0x72, 0x65, 0x6e, 0x74, 0x55, 0x73, 0x65, 0x72)
 			o = msgp.AppendString(o, z.ParentUser)
 		}
+		if (zb0001Mask & 0x400000) == 0 { // if not omitted
+			// string "sourceIdentity"
+			o = append(o, 0xae, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x49, 0x64, 0x65, 0x6e, 0x74, 0x69, 0x74, 0x79)
+			o = msgp.AppendString(o, z.SourceIdentity)
+		}
 	}
 	return
 }
@@ -1748,7 +1783,7 @@ func (z *CallInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint32 /* 22 bits */
+	var zb0001Mask uint32 /* 23 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -2000,6 +2035,13 @@ func (z *CallInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 			zb0001Mask |= 0x200000
+		case "sourceIdentity":
+			z.SourceIdentity, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "SourceIdentity")
+				return
+			}
+			zb0001Mask |= 0x400000
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -2009,7 +2051,7 @@ func (z *CallInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3fffff {
+	if zb0001Mask != 0x7fffff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.HTTPStatusCode = 0
 		}
@@ -2076,6 +2118,9 @@ func (z *CallInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		if (zb0001Mask & 0x200000) == 0 {
 			z.ParentUser = ""
 		}
+		if (zb0001Mask & 0x400000) == 0 {
+			z.SourceIdentity = ""
+		}
 	}
 	o = bts
 	return
@@ -2111,7 +2156,7 @@ func (z *CallInfo) Msgsize() (s int) {
 			s += msgp.StringPrefixSize + len(za0007) + msgp.StringPrefixSize + len(za0008)
 		}
 	}
-	s += 10 + msgp.StringPrefixSize + len(z.AccessKey) + 11 + msgp.StringPrefixSize + len(z.ParentUser)
+	s += 10 + msgp.StringPrefixSize + len(z.AccessKey) + 11 + msgp.StringPrefixSize + len(z.ParentUser) + 15 + msgp.StringPrefixSize + len(z.SourceIdentity)
 	return
 }
 
