@@ -1,5 +1,5 @@
 //
-// Copyright (c) 2015-2024 MinIO, Inc.
+// Copyright (c) 2015-2026 MinIO, Inc.
 //
 // This file is part of MinIO Object Storage stack
 //
@@ -206,6 +206,10 @@ type requestData struct {
 	endpointOverride *url.URL
 	// isKMS replaces URL prefix with /kms
 	isKMS bool
+	// creds, when set, signs every attempt instead of a fresh lookup. A caller
+	// that encrypted content with a credential sets it, so the body and the
+	// signature always use the same secret.
+	creds *credentials.Value
 }
 
 // Filter out signature value from Authorization header.
@@ -423,9 +427,19 @@ func (adm AdminClient) executeMethod(ctx context.Context, method string, reqData
 			}
 		}
 
-		if res.StatusCode == http.StatusUpgradeRequired {
-			reqData.relPath = strings.ReplaceAll(reqData.relPath, adminAPIPrefix, adminAPIOldPrefix)
-			continue // Retry when an upgrade is requested.
+		// Retry on the previous admin API version when an upgrade is requested.
+		// Only a path that starts with the current version is rewritten, and
+		// only when an older version exists. Any other path gets the 426 as its
+		// error. The body stays readable, because this can be the last attempt,
+		// and the caller then decodes the 426 error from it.
+		if res.StatusCode == http.StatusUpgradeRequired && adminAPIPrefix != adminAPIOldPrefix {
+			if rest, ok := strings.CutPrefix(reqData.relPath, adminAPIPrefix); ok {
+				body, _ := io.ReadAll(res.Body)
+				closeResponse(res)
+				res.Body = io.NopCloser(bytes.NewReader(body))
+				reqData.relPath = adminAPIOldPrefix + rest
+				continue
+			}
 		}
 
 		// Read the body to be saved later.
@@ -522,8 +536,10 @@ func (adm AdminClient) newRequest(ctx context.Context, method string, reqData re
 		return nil, err
 	}
 
-	value, err := adm.credsProvider.GetWithContext(adm.CredContext())
-	if err != nil {
+	var value credentials.Value
+	if reqData.creds != nil {
+		value = *reqData.creds
+	} else if value, err = adm.credsProvider.GetWithContext(adm.CredContext()); err != nil {
 		return nil, err
 	}
 
