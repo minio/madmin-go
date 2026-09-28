@@ -395,9 +395,20 @@ type FilesExportList struct {
 	UnreachableNodes []FilesUnreachableNode `json:"unreachableNodes,omitempty"`
 }
 
+// MarshalJSON encodes a nil Exports as [], so a server that lists no export
+// replies with an empty list rather than null.
+func (l FilesExportList) MarshalJSON() ([]byte, error) {
+	type list FilesExportList
+	if l.Exports == nil {
+		l.Exports = []FilesExport{}
+	}
+	return json.Marshal(list(l))
+}
+
 // FilesStatsOptions narrows the fleet form of FilesExportStats.
 type FilesStatsOptions struct {
-	// Node, when set, reports only the exports assigned to that node.
+	// Node, when set, reports only the exports assigned to that node. The
+	// per-export form takes no node, and FilesExportStats refuses one there.
 	Node string
 }
 
@@ -424,6 +435,16 @@ type FilesStatsList struct {
 	// UnreachableNodes names the nodes that did not answer. Their exports read
 	// FilesExportUnreachable and carry no usage.
 	UnreachableNodes []FilesUnreachableNode `json:"unreachableNodes,omitempty"`
+}
+
+// MarshalJSON encodes a nil Stats as [], so a server that reports no export
+// replies with an empty list rather than null.
+func (l FilesStatsList) MarshalJSON() ([]byte, error) {
+	type list FilesStatsList
+	if l.Stats == nil {
+		l.Stats = []FilesExportCapacity{}
+	}
+	return json.Marshal(list(l))
 }
 
 // filesStatsSegment is the path segment of the fleet stats endpoint. It is
@@ -479,10 +500,14 @@ func filesExportSegment(export string) (string, error) {
 // FilesExportStats returns the capacity of one export, or of every export when
 // export is empty. export is a name or a numeric export id, sent as given. A
 // node that did not answer is named in FilesStatsList.UnreachableNodes and
-// does not fail the call.
+// does not fail the call. opts.Node narrows only the fleet form, so it is
+// refused with an export.
 func (adm *AdminClient) FilesExportStats(ctx context.Context, export string, opts FilesStatsOptions) (FilesStatsList, error) {
 	relPath := filesAPIPrefix + "/exports/" + filesStatsSegment
 	if export != "" {
+		if opts.Node != "" {
+			return FilesStatsList{}, errors.New("a node narrows only the stats of every export, not of one")
+		}
 		segment, err := filesExportSegment(export)
 		if err != nil {
 			return FilesStatsList{}, err

@@ -418,6 +418,8 @@ func TestGetFilesExportRequest(t *testing.T) {
 		{"carol", "/minio/admin/files/v1/exports/carol"},
 		{"104", "/minio/admin/files/v1/exports/104"},
 		{"a b?", "/minio/admin/files/v1/exports/a%20b%3F"},
+		// An unescaped / would route to another path.
+		{"a/b", "/minio/admin/files/v1/exports/a%2Fb"},
 	} {
 		got, err := client.GetFilesExport(context.Background(), tc.export)
 		if err != nil {
@@ -502,6 +504,37 @@ func TestFilesExportStatsRequest(t *testing.T) {
 	req = (*seen)[1]
 	if want := "/minio/admin/files/v1/exports/104/stats"; req.path != want || len(req.query) != 0 {
 		t.Errorf("per-export stats sent %s?%v, want %s", req.path, req.query, want)
+	}
+
+	// The per-export form takes no node, so one is refused before a request
+	// is sent.
+	if _, err := client.FilesExportStats(context.Background(), "104", FilesStatsOptions{Node: "node03"}); err == nil {
+		t.Error("FilesExportStats with an export and a node succeeded, want an error")
+	}
+	if len(*seen) != 2 {
+		t.Errorf("the server received %d requests, want 2", len(*seen))
+	}
+}
+
+// TestFilesListsEncodeEmptyAsArray verifies that a server listing nothing
+// replies with [], as the samples of MANAGEMENT-API.md show, rather than null.
+func TestFilesListsEncodeEmptyAsArray(t *testing.T) {
+	for _, tc := range []struct {
+		v   any
+		key string
+	}{
+		{FilesExportList{}, `"exports":[]`},
+		{&FilesExportList{}, `"exports":[]`},
+		{FilesStatsList{}, `"stats":[]`},
+		{&FilesStatsList{}, `"stats":[]`},
+	} {
+		body, err := json.Marshal(tc.v)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(body), tc.key) {
+			t.Errorf("%T encodes as %s, want %s", tc.v, body, tc.key)
+		}
 	}
 }
 
@@ -614,8 +647,10 @@ func (c *closeTracker) RoundTrip(r *http.Request) (*http.Response, error) {
 // TestAdmin426RetriesOnOldPrefix verifies that a 426 on an admin API path is
 // retried once on the old version, that only the leading version is rewritten,
 // not one later in the path, and that the 426 response is closed before the
-// retry so its connection is not leaked.
+// retry so its connection is not leaked. The prefixes are pinned, because
+// MADMIN_API_VERSION=v3 leaves no older version to retry on.
 func TestAdmin426RetriesOnOldPrefix(t *testing.T) {
+	setAdminAPIPrefixes(t, "/v4", "/v3")
 	var seen []string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		seen = append(seen, r.URL.Path)
