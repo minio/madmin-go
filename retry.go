@@ -163,7 +163,7 @@ func isRetryableUnacted(httpStatusCode int, code string) bool {
 		return true
 	}
 	switch httpStatusCode {
-	case http.StatusRequestTimeout, http.StatusTooManyRequests, http.StatusServiceUnavailable:
+	case http.StatusRequestTimeout, http.StatusTooManyRequests:
 		return true
 	}
 	return false
