@@ -261,21 +261,30 @@ func (r *rotatingCreds) RetrieveWithCredContext(*credentials.CredContext) (crede
 
 func (r *rotatingCreds) IsExpired() bool { return true }
 
-// SetFilesAuth signs with the credential that encrypted the body, even when the
-// provider hands out a new one between the two, so the server can decrypt the
-// body with the secret of the signing key.
+// SetFilesAuth signs every attempt with the credential that encrypted the body,
+// even when the provider hands out a new one on each lookup, so the server can
+// decrypt the body with the secret of the signing key. The first attempt is
+// answered with a retryable 503, so the retry is covered too.
 func TestSetFilesAuthSignsWithTheEncryptingCredential(t *testing.T) {
-	var got FilesAuthSetRequest
+	var (
+		got     FilesAuthSetRequest
+		signers []string
+	)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		auth := r.Header.Get("Authorization")
 		_, rest, _ := strings.Cut(auth, "Credential=ak")
 		n, _, _ := strings.Cut(rest, "/")
+		signers = append(signers, n)
 		body, _ := io.ReadAll(r.Body)
 		plain, err := DecryptData("sk"+n, bytes.NewReader(body))
 		if err != nil {
-			t.Errorf("the body does not decrypt with the signing key's secret: %v (%s)", err, auth)
+			t.Errorf("attempt %d: the body does not decrypt with the signing key's secret: %v (%s)", len(signers), err, auth)
 		} else if err := json.Unmarshal(plain, &got); err != nil {
-			t.Errorf("decode body: %v", err)
+			t.Errorf("attempt %d: decode body: %v", len(signers), err)
+		}
+		if len(signers) == 1 {
+			w.WriteHeader(http.StatusServiceUnavailable)
+			return
 		}
 		_, _ = w.Write([]byte(`{}`))
 	}))
@@ -291,5 +300,9 @@ func TestSetFilesAuthSignsWithTheEncryptingCredential(t *testing.T) {
 	}
 	if len(got.Assets) != 1 || got.Assets[0].Kind != FilesAuthKrb5Keytab {
 		t.Errorf("the server received %+v", got.Assets)
+	}
+	// The body is encrypted on the first lookup, so both attempts sign as ak1.
+	if want := []string{"1", "1"}; !reflect.DeepEqual(signers, want) {
+		t.Errorf("the attempts were signed by ak%q, want ak%q", signers, want)
 	}
 }

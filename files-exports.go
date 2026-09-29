@@ -239,3 +239,309 @@ func (adm *AdminClient) FilesExportsQuery(ctx context.Context, exportIDs []uint6
 
 	return info, nil
 }
+
+// The types below belong to the AIStor Files management API, served under
+// /minio/admin/files/v1 (miniohq/files docs/MANAGEMENT-API.md).
+
+// The error codes the Files management API answers with. A caller switches on
+// ErrorResponse.Code, which ToErrorResponse returns; the message is for a human
+// and may change.
+const (
+	// FilesErrInvalidRequest is a malformed body, an unknown field, or a value
+	// out of range. HTTP 400.
+	FilesErrInvalidRequest = "InvalidRequest"
+
+	// FilesErrAccessDenied means the credential lacks the action. The message
+	// names it. HTTP 403.
+	FilesErrAccessDenied = "AccessDenied"
+
+	// FilesErrExportNotFound means no export has that name or id. HTTP 404.
+	FilesErrExportNotFound = "ExportNotFound"
+
+	// FilesErrExportAlreadyExists means the name, the pseudo path or a pinned
+	// id is taken. HTTP 409.
+	FilesErrExportAlreadyExists = "ExportAlreadyExists"
+
+	// FilesErrExportInUse means a removal was refused: the export is serving,
+	// or has children. HTTP 409.
+	FilesErrExportInUse = "ExportInUse"
+
+	// FilesErrNodeUnreachable means the owning node did not answer a write.
+	// HTTP 503.
+	FilesErrNodeUnreachable = "NodeUnreachable"
+
+	// FilesErrNotImplemented means the owning node is older than the control
+	// plane. HTTP 501.
+	FilesErrNotImplemented = "NotImplemented"
+
+	// FilesErrInternalError is a fault in AIStor. HTTP 500.
+	FilesErrInternalError = "InternalError"
+)
+
+// FilesExportPhase is where an export's desired state, held by AIStor, meets
+// what its assigned node reports. It is the status field of an export, and is
+// unrelated to FilesExportStatus, the lease document a gateway reports.
+type FilesExportPhase string
+
+// The phases an export can be in.
+const (
+	// FilesExportServing means the assigned node is answering for the export.
+	FilesExportServing FilesExportPhase = "serving"
+
+	// FilesExportPending means AIStor holds the export and no node reports
+	// holding it yet.
+	FilesExportPending FilesExportPhase = "pending"
+
+	// FilesExportMissing means the assigned node answers and does not hold the
+	// export: an apply that did not take.
+	FilesExportMissing FilesExportPhase = "missing"
+
+	// FilesExportFenced means the assigned node holds the export and refuses
+	// mutations.
+	FilesExportFenced FilesExportPhase = "fenced"
+
+	// FilesExportUnreachable means the assigned node did not answer: a node
+	// problem, kept apart from FilesExportMissing.
+	FilesExportUnreachable FilesExportPhase = "unreachable"
+)
+
+// FilesAccessType is the access a client of an export gets.
+type FilesAccessType string
+
+// The access types an export or an access rule grants.
+const (
+	FilesAccessRW   FilesAccessType = "rw"
+	FilesAccessRO   FilesAccessType = "ro"
+	FilesAccessNone FilesAccessType = "none"
+)
+
+// FilesSquash says which client users an export maps to the anonymous user. It
+// applies to every client of the export.
+type FilesSquash string
+
+// The squash modes.
+const (
+	// FilesSquashRoot maps root.
+	FilesSquashRoot FilesSquash = "root"
+
+	// FilesSquashNone maps no one.
+	FilesSquashNone FilesSquash = "none"
+
+	// FilesSquashAll maps everyone.
+	FilesSquashAll FilesSquash = "all"
+)
+
+// FilesAccessRule grants AccessType to the clients it names. Rules are
+// evaluated in order and the first match wins, so the order of a rule list is
+// the policy: never sort one or remove duplicates from it.
+type FilesAccessRule struct {
+	// Clients holds IPs, CIDRs, hostnames, wildcards such as
+	// "*.corp.example.com", @netgroups, or "*".
+	Clients []string `json:"clients"`
+
+	AccessType FilesAccessType `json:"accessType"`
+}
+
+// FilesExport is one export: its configuration, with Status for where it is
+// running and UsedBytes for how full it is. GetFilesExport fills every field,
+// and a ListFilesExports entry may leave the configuration-only fields
+// AccessType, Squash and AccessRules empty.
+type FilesExport struct {
+	// Name is the export's key in this API. It is never all digits.
+	Name string `json:"name"`
+
+	// ExportID is the Ganesha Export_Id AIStor allocated.
+	ExportID uint64 `json:"exportId"`
+
+	// Pseudo is the path clients mount. It cannot change.
+	Pseudo string `json:"pseudo"`
+
+	// Node is the node the export is assigned to.
+	Node string `json:"node"`
+
+	Status FilesExportPhase `json:"status"`
+
+	// AccessType is the default access for an export with no access rules.
+	AccessType FilesAccessType `json:"accessType,omitempty"`
+
+	Squash FilesSquash `json:"squash,omitempty"`
+
+	// QuotaBytes is the byte limit. Zero is unlimited.
+	QuotaBytes uint64 `json:"quotaBytes"`
+
+	// AccessRules are in evaluation order. An export with any rule refuses a
+	// client none of them matches.
+	AccessRules []FilesAccessRule `json:"accessRules,omitempty"`
+
+	// UsedBytes is nil when the assigned node could not be reached. Status
+	// says so.
+	UsedBytes *uint64 `json:"usedBytes,omitempty"`
+}
+
+// FilesListOptions narrows ListFilesExports. An empty field does not narrow.
+type FilesListOptions struct {
+	Node   string
+	Status FilesExportPhase
+}
+
+// FilesExportList is the reply of ListFilesExports.
+type FilesExportList struct {
+	// Exports holds every export AIStor knows that the options admit,
+	// including one on a node that did not answer.
+	Exports []FilesExport `json:"exports"`
+
+	// UnreachableNodes names the nodes that did not answer. Their exports read
+	// FilesExportUnreachable and carry no usage.
+	UnreachableNodes []FilesUnreachableNode `json:"unreachableNodes,omitempty"`
+}
+
+// MarshalJSON encodes a nil Exports as [], so a server that lists no export
+// replies with an empty list rather than null.
+func (l FilesExportList) MarshalJSON() ([]byte, error) {
+	type list FilesExportList
+	if l.Exports == nil {
+		l.Exports = []FilesExport{}
+	}
+	return json.Marshal(list(l))
+}
+
+// FilesStatsOptions narrows the fleet form of FilesExportStats.
+type FilesStatsOptions struct {
+	// Node, when set, reports only the exports assigned to that node. The
+	// per-export form takes no node, and FilesExportStats refuses one there.
+	Node string
+}
+
+// FilesExportCapacity is one export's capacity. It carries no throughput
+// counters.
+type FilesExportCapacity struct {
+	Name     string           `json:"name"`
+	ExportID uint64           `json:"exportId"`
+	Node     string           `json:"node"`
+	Status   FilesExportPhase `json:"status"`
+
+	// UsedBytes is nil when the assigned node could not be reached.
+	UsedBytes *uint64 `json:"usedBytes,omitempty"`
+
+	// LimitBytes is the limit in force. Zero is unlimited.
+	LimitBytes uint64 `json:"limitBytes"`
+}
+
+// FilesStatsList is the reply of FilesExportStats.
+type FilesStatsList struct {
+	// Stats holds one entry per export reported.
+	Stats []FilesExportCapacity `json:"stats"`
+
+	// UnreachableNodes names the nodes that did not answer. Their exports read
+	// FilesExportUnreachable and carry no usage.
+	UnreachableNodes []FilesUnreachableNode `json:"unreachableNodes,omitempty"`
+}
+
+// MarshalJSON encodes a nil Stats as [], so a server that reports no export
+// replies with an empty list rather than null.
+func (l FilesStatsList) MarshalJSON() ([]byte, error) {
+	type list FilesStatsList
+	if l.Stats == nil {
+		l.Stats = []FilesExportCapacity{}
+	}
+	return json.Marshal(list(l))
+}
+
+// filesStatsSegment is the path segment of the fleet stats endpoint. It is
+// routed ahead of an export, so it is a reserved export name.
+const filesStatsSegment = "stats"
+
+// ListFilesExports lists every export AIStor holds, with the live status and
+// usage of each. A node that did not answer is named in
+// FilesExportList.UnreachableNodes and does not fail the call.
+func (adm *AdminClient) ListFilesExports(ctx context.Context, opts FilesListOptions) (FilesExportList, error) {
+	values := make(url.Values)
+	if opts.Node != "" {
+		values.Set("node", opts.Node)
+	}
+	if opts.Status != "" {
+		values.Set("status", string(opts.Status))
+	}
+
+	var list FilesExportList
+	err := adm.getFilesJSON(ctx, filesAPIPrefix+"/exports", values, &list)
+	return list, err
+}
+
+// GetFilesExport returns the configuration and live state of one export.
+// export is a name or a numeric export id, sent as given: the client does not
+// resolve it.
+func (adm *AdminClient) GetFilesExport(ctx context.Context, export string) (FilesExport, error) {
+	if export == "" {
+		return FilesExport{}, errors.New("an export name or id is required")
+	}
+	segment, err := filesExportSegment(export)
+	if err != nil {
+		return FilesExport{}, err
+	}
+
+	var info FilesExport
+	err = adm.getFilesJSON(ctx, filesAPIPrefix+"/exports/"+segment, nil, &info)
+	return info, err
+}
+
+// filesExportSegment returns export escaped as one path segment. It refuses
+// the names that would reach a route other than the export's: the reserved
+// stats segment, and "." and "..", which url.PathEscape leaves as they are and
+// a router that cleans paths resolves.
+func filesExportSegment(export string) (string, error) {
+	switch export {
+	case filesStatsSegment, ".", "..":
+		return "", fmt.Errorf("%q is reserved and names no export", export)
+	}
+	return url.PathEscape(export), nil
+}
+
+// FilesExportStats returns the capacity of one export, or of every export when
+// export is empty. export is a name or a numeric export id, sent as given. A
+// node that did not answer is named in FilesStatsList.UnreachableNodes and
+// does not fail the call. opts.Node narrows only the fleet form, so it is
+// refused with an export.
+func (adm *AdminClient) FilesExportStats(ctx context.Context, export string, opts FilesStatsOptions) (FilesStatsList, error) {
+	relPath := filesAPIPrefix + "/exports/" + filesStatsSegment
+	if export != "" {
+		if opts.Node != "" {
+			return FilesStatsList{}, errors.New("a node narrows only the stats of every export, not of one")
+		}
+		segment, err := filesExportSegment(export)
+		if err != nil {
+			return FilesStatsList{}, err
+		}
+		relPath = filesAPIPrefix + "/exports/" + segment + "/" + filesStatsSegment
+	}
+	values := make(url.Values)
+	if opts.Node != "" {
+		values.Set("node", opts.Node)
+	}
+
+	var stats FilesStatsList
+	err := adm.getFilesJSON(ctx, relPath, values, &stats)
+	return stats, err
+}
+
+// getFilesJSON sends a GET to a Files management API path and decodes its JSON
+// reply into v. Any status other than 200 is returned as an ErrorResponse
+// carrying the server's code.
+func (adm *AdminClient) getFilesJSON(ctx context.Context, relPath string, values url.Values, v any) error {
+	resp, err := adm.executeMethod(ctx,
+		http.MethodGet,
+		requestData{
+			relPath:     relPath,
+			queryValues: values,
+		})
+	defer closeResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+
+	return json.NewDecoder(resp.Body).Decode(v)
+}
