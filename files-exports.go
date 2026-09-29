@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -815,8 +816,8 @@ func filesExportPath(export, suffix string) (string, error) {
 
 // filesJSON sends one Files management API request and decodes its JSON reply
 // into out. in, when not nil, is sent as the JSON body. Any 2xx status is
-// success, and any other is returned as an ErrorResponse carrying the server's
-// code. A write is repeated only when the server answered that it did not act
+// success, and a 2xx reply without a body leaves out unchanged. Any other
+// status is returned as an ErrorResponse carrying the server's code. A write is repeated only when the server answered that it did not act
 // on it.
 func (adm *AdminClient) filesJSON(ctx context.Context, method string, reqData requestData, in any, out any) error {
 	reqData.retryUnacted = method != http.MethodGet
@@ -839,5 +840,13 @@ func (adm *AdminClient) filesJSON(ctx context.Context, method string, reqData re
 		return httpRespToErrorResponse(resp)
 	}
 
-	return json.NewDecoder(resp.Body).Decode(out)
+	// A 204, or any 2xx without a body, is a success with nothing to decode.
+	// A body cut short still fails, with io.ErrUnexpectedEOF.
+	if resp.StatusCode == http.StatusNoContent {
+		return nil
+	}
+	if err := json.NewDecoder(resp.Body).Decode(out); err != nil && !errors.Is(err, io.EOF) {
+		return err
+	}
+	return nil
 }

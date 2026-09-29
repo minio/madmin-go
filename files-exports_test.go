@@ -1058,7 +1058,7 @@ func TestIsRetryableUnacted(t *testing.T) {
 	}{
 		{http.StatusTooManyRequests, "", true},
 		{http.StatusServiceUnavailable, "SlowDown", true},
-		{http.StatusServiceUnavailable, "", true},
+		{http.StatusServiceUnavailable, "", false},
 		{http.StatusRequestTimeout, "", true},
 		{http.StatusBadRequest, "RequestTimeout", true},
 		{http.StatusServiceUnavailable, FilesErrNodeUnreachable, false},
@@ -1086,6 +1086,23 @@ func TestAddFilesExportAcceptsAny2xx(t *testing.T) {
 		if len(*seen) != 1 {
 			t.Errorf("status %d: the server received %d requests, want 1", status, len(*seen))
 		}
+	}
+}
+
+// TestFilesWriteAcceptsBodylessSuccess verifies that a 2xx reply without a
+// body, such as a 204, is a success rather than a decode error, and that a body
+// cut short still fails.
+func TestFilesWriteAcceptsBodylessSuccess(t *testing.T) {
+	for _, status := range []int{http.StatusNoContent, http.StatusOK, http.StatusAccepted} {
+		server, _ := newFilesJSONServer(t, status, ``)
+		if _, err := newFilesExportsTestClient(t, server.URL).ClearFilesExportAccess(context.Background(), "carol"); err != nil {
+			t.Errorf("status %d without a body: %v", status, err)
+		}
+	}
+
+	server, _ := newFilesJSONServer(t, http.StatusOK, `{"name": "carol"`)
+	if _, err := newFilesExportsTestClient(t, server.URL).ClearFilesExportAccess(context.Background(), "carol"); err == nil {
+		t.Error("a truncated body should fail")
 	}
 }
 
