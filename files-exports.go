@@ -464,7 +464,7 @@ func (adm *AdminClient) ListFilesExports(ctx context.Context, opts FilesListOpti
 	}
 
 	var list FilesExportList
-	err := adm.filesJSON(ctx, http.MethodGet, requestData{relPath: filesAPIPrefix + "/exports", queryValues: values}, nil, http.StatusOK, &list)
+	err := adm.filesJSON(ctx, http.MethodGet, requestData{relPath: filesAPIPrefix + "/exports", queryValues: values}, nil, &list)
 	return list, err
 }
 
@@ -478,7 +478,7 @@ func (adm *AdminClient) GetFilesExport(ctx context.Context, export string) (File
 	}
 
 	var info FilesExport
-	err = adm.filesJSON(ctx, http.MethodGet, requestData{relPath: relPath}, nil, http.StatusOK, &info)
+	err = adm.filesJSON(ctx, http.MethodGet, requestData{relPath: relPath}, nil, &info)
 	return info, err
 }
 
@@ -516,7 +516,7 @@ func (adm *AdminClient) FilesExportStats(ctx context.Context, export string, opt
 	}
 
 	var stats FilesStatsList
-	err := adm.filesJSON(ctx, http.MethodGet, requestData{relPath: relPath, queryValues: values}, nil, http.StatusOK, &stats)
+	err := adm.filesJSON(ctx, http.MethodGet, requestData{relPath: relPath, queryValues: values}, nil, &stats)
 	return stats, err
 }
 
@@ -524,7 +524,7 @@ func (adm *AdminClient) FilesExportStats(ctx context.Context, export string, opt
 // default AIStor documents for it.
 type FilesExportSpec struct {
 	// Name is required and unique. It may not be all digits, and may not
-	// contain / ; = " a newline or "..".
+	// contain / ; = " a newline or "..", and may not be "stats" or ".".
 	Name string `json:"name"`
 
 	// Pseudo is required: the absolute path clients mount. It cannot change.
@@ -605,23 +605,32 @@ type filesAccessBody struct {
 // FilesExportPending until its node reports holding it; ListFilesExports shows
 // it reach FilesExportServing.
 //
-// The request is sent once and never retried, since a retry after an attempt
-// whose outcome is unknown can answer FilesErrExportAlreadyExists for the
-// export that attempt created. For the same reason, a caller that sees an error
-// after a timeout, or FilesErrExportAlreadyExists after repeating the call
-// itself, should read the export with GetFilesExport before assuming the add
-// failed.
+// The name is refused locally when it is one no other method can reach an
+// export by: "stats", "." or "..".
+//
+// Like every Files write, the request is repeated only when the server
+// answered that it did not act on it. A retry after an attempt whose outcome is
+// unknown could answer FilesErrExportAlreadyExists for the export that attempt
+// created. For the same reason, a caller that sees an error after a timeout, or
+// FilesErrExportAlreadyExists after repeating the call itself, should read the
+// export with GetFilesExport before assuming the add failed.
 func (adm *AdminClient) AddFilesExport(ctx context.Context, spec FilesExportSpec) (FilesExport, error) {
+	if _, err := filesExportSegment(spec.Name); err != nil {
+		return FilesExport{}, err
+	}
+
 	var info FilesExport
-	err := adm.filesJSON(ctx, http.MethodPut, requestData{relPath: filesAPIPrefix + "/exports", noRetry: true}, spec, http.StatusAccepted, &info)
+	err := adm.filesJSON(ctx, http.MethodPut, requestData{relPath: filesAPIPrefix + "/exports"}, spec, &info)
 	return info, err
 }
 
 // SetFilesExportQuota sets an export's byte limit, and quotaBytes zero clears
 // it. export is a name or a numeric export id, sent as given.
 //
-// The call is retried on a transient failure. A retry after an attempt that
-// took effect reports the limit it set as PreviousBytes.
+// The request is repeated only when the server answered that it did not act on
+// it, so a late retry cannot overwrite a limit another caller set in the
+// meantime. After an error whose outcome is unknown, read the export with
+// GetFilesExport.
 func (adm *AdminClient) SetFilesExportQuota(ctx context.Context, export string, quotaBytes uint64) (FilesQuotaChange, error) {
 	relPath, err := filesExportPath(export, "/quota")
 	if err != nil {
@@ -629,7 +638,7 @@ func (adm *AdminClient) SetFilesExportQuota(ctx context.Context, export string, 
 	}
 
 	var change FilesQuotaChange
-	err = adm.filesJSON(ctx, http.MethodPut, requestData{relPath: relPath}, filesQuotaBody{QuotaBytes: quotaBytes}, http.StatusOK, &change)
+	err = adm.filesJSON(ctx, http.MethodPut, requestData{relPath: relPath}, filesQuotaBody{QuotaBytes: quotaBytes}, &change)
 	return change, err
 }
 
@@ -642,8 +651,10 @@ func (adm *AdminClient) SetFilesExportQuota(ctx context.Context, export string, 
 //
 // An empty rules is refused: ClearFilesExportAccess removes every rule.
 //
-// The call is retried on a transient failure. A retry after an attempt that
-// took effect reports that attempt's rules in PreviousRuleCount.
+// The request is repeated only when the server answered that it did not act on
+// it, so a late retry cannot overwrite rules another caller set in the
+// meantime. After an error whose outcome is unknown, read the export with
+// GetFilesExport.
 func (adm *AdminClient) SetFilesExportAccess(ctx context.Context, export string, rules []FilesAccessRule) (FilesAccessChange, error) {
 	if len(rules) == 0 {
 		return FilesAccessChange{}, errors.New("at least one access rule is required; ClearFilesExportAccess removes every rule")
@@ -654,13 +665,16 @@ func (adm *AdminClient) SetFilesExportAccess(ctx context.Context, export string,
 	}
 
 	var change FilesAccessChange
-	err = adm.filesJSON(ctx, http.MethodPut, requestData{relPath: relPath}, filesAccessBody{Rules: rules}, http.StatusOK, &change)
+	err = adm.filesJSON(ctx, http.MethodPut, requestData{relPath: relPath}, filesAccessBody{Rules: rules}, &change)
 	return change, err
 }
 
 // ClearFilesExportAccess removes every access rule of an export, so every
 // client gets the export's own access type. export is a name or a numeric
 // export id, sent as given.
+//
+// The request is repeated only when the server answered that it did not act on
+// it, so a late retry cannot clear rules another caller set in the meantime.
 func (adm *AdminClient) ClearFilesExportAccess(ctx context.Context, export string) (FilesAccessChange, error) {
 	relPath, err := filesExportPath(export, "/access")
 	if err != nil {
@@ -668,18 +682,22 @@ func (adm *AdminClient) ClearFilesExportAccess(ctx context.Context, export strin
 	}
 
 	var change FilesAccessChange
-	err = adm.filesJSON(ctx, http.MethodDelete, requestData{relPath: relPath}, nil, http.StatusOK, &change)
+	err = adm.filesJSON(ctx, http.MethodDelete, requestData{relPath: relPath}, nil, &change)
 	return change, err
 }
 
 // RemoveFilesExport stops serving an export. Its data and metadata remain
 // unless opts.Purge is set. A serving export is refused with
-// FilesErrExportInUse unless opts.Force is set, and so is an export with
-// another export mounted beneath it. export is a name or a numeric export id,
+// FilesErrExportInUse unless opts.Force is set. An export with another export
+// mounted beneath it is refused with FilesErrExportInUse even with opts.Force:
+// its children must be removed first. export is a name or a numeric export id,
 // sent as given.
 //
-// The call is retried on a transient failure. A retry after an attempt that
-// took effect answers FilesErrExportNotFound.
+// The request is repeated only when the server answered that it did not act on
+// it. A retry after an attempt that took effect would answer
+// FilesErrExportNotFound for a removal that worked, and with opts.Purge and a
+// name, could purge an export added again under that name. After an error
+// whose outcome is unknown, read the export with GetFilesExport.
 func (adm *AdminClient) RemoveFilesExport(ctx context.Context, export string, opts FilesRemoveOptions) (FilesRemoveResult, error) {
 	relPath, err := filesExportPath(export, "")
 	if err != nil {
@@ -694,7 +712,7 @@ func (adm *AdminClient) RemoveFilesExport(ctx context.Context, export string, op
 	}
 
 	var result FilesRemoveResult
-	err = adm.filesJSON(ctx, http.MethodDelete, requestData{relPath: relPath, queryValues: values}, nil, http.StatusOK, &result)
+	err = adm.filesJSON(ctx, http.MethodDelete, requestData{relPath: relPath, queryValues: values}, nil, &result)
 	return result, err
 }
 
@@ -713,9 +731,12 @@ func filesExportPath(export, suffix string) (string, error) {
 }
 
 // filesJSON sends one Files management API request and decodes its JSON reply
-// into out. in, when not nil, is sent as the JSON body. A status other than
-// want is returned as an ErrorResponse carrying the server's code.
-func (adm *AdminClient) filesJSON(ctx context.Context, method string, reqData requestData, in any, want int, out any) error {
+// into out. in, when not nil, is sent as the JSON body. Any 2xx status is
+// success, and any other is returned as an ErrorResponse carrying the server's
+// code. A write is repeated only when the server answered that it did not act
+// on it.
+func (adm *AdminClient) filesJSON(ctx context.Context, method string, reqData requestData, in any, out any) error {
+	reqData.retryUnacted = method != http.MethodGet
 	if in != nil {
 		body, err := json.Marshal(in)
 		if err != nil {
@@ -731,7 +752,7 @@ func (adm *AdminClient) filesJSON(ctx context.Context, method string, reqData re
 		return err
 	}
 
-	if resp.StatusCode != want {
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
 		return httpRespToErrorResponse(resp)
 	}
 
