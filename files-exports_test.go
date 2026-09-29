@@ -948,23 +948,57 @@ func TestAddFilesExportRequest(t *testing.T) {
 	}
 }
 
-// TestAddFilesExportIsNotRetried verifies that AddFilesExport is sent once, on
-// a retryable status and on a dropped connection alike, since a retry after an
-// attempt that created the export would answer ExportAlreadyExists.
-func TestAddFilesExportIsNotRetried(t *testing.T) {
-	t.Run("retryable_status", func(t *testing.T) {
-		server, seen := newFilesJSONServer(t, http.StatusServiceUnavailable,
-			`{"code": "NodeUnreachable", "message": "node03 did not answer"}`)
+// filesWrites calls each Files write once against client.
+func filesWrites(ctx context.Context, client *AdminClient) map[string]func() error {
+	rules := []FilesAccessRule{{Clients: []string{"*"}, AccessType: FilesAccessRW}}
+	return map[string]func() error{
+		"add": func() error {
+			_, err := client.AddFilesExport(ctx, FilesExportSpec{Name: "carol", Pseudo: "/home/carol"})
+			return err
+		},
+		"quota":  func() error { _, err := client.SetFilesExportQuota(ctx, "carol", 1); return err },
+		"access": func() error { _, err := client.SetFilesExportAccess(ctx, "carol", rules); return err },
+		"clear":  func() error { _, err := client.ClearFilesExportAccess(ctx, "carol"); return err },
+		"remove": func() error {
+			_, err := client.RemoveFilesExport(ctx, "carol", FilesRemoveOptions{Purge: true})
+			return err
+		},
+	}
+}
 
-		_, err := newFilesExportsTestClient(t, server.URL).AddFilesExport(context.Background(),
-			FilesExportSpec{Name: "carol", Pseudo: "/home/carol", Node: "node03"})
-		if code := ToErrorResponse(err).Code; code != FilesErrNodeUnreachable {
-			t.Errorf("err = %v, want code %s", err, FilesErrNodeUnreachable)
-		}
-		if len(*seen) != 1 {
-			t.Errorf("the server received %d requests, want 1", len(*seen))
-		}
-	})
+// TestFilesWriteIsNotRepeatedOnUnknownOutcome verifies that no write is sent
+// twice after an answer that leaves its outcome unknown, or that is final: a
+// repeated add would answer ExportAlreadyExists for the export it created, a
+// repeated remove ExportNotFound for a removal that worked, and a late quota or
+// access retry would overwrite a change made in the meantime.
+func TestFilesWriteIsNotRepeatedOnUnknownOutcome(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		status int
+		body   string
+		code   string
+	}{
+		{"node_unreachable", http.StatusServiceUnavailable, `{"code": "NodeUnreachable", "message": "node03 did not answer"}`, FilesErrNodeUnreachable},
+		{"bad_gateway", http.StatusBadGateway, `bad gateway`, ""},
+		{"gateway_timeout", http.StatusGatewayTimeout, `gateway timeout`, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			server, seen := newFilesJSONServer(t, tc.status, tc.body)
+			for name, call := range filesWrites(context.Background(), newFilesExportsTestClient(t, server.URL)) {
+				before := len(*seen)
+				err := call()
+				if err == nil {
+					t.Errorf("%s should fail", name)
+				}
+				if tc.code != "" && ToErrorResponse(err).Code != tc.code {
+					t.Errorf("%s: err = %v, want code %s", name, err, tc.code)
+				}
+				if n := len(*seen) - before; n != 1 {
+					t.Errorf("%s: the server received %d requests, want 1", name, n)
+				}
+			}
+		})
+	}
 
 	t.Run("dropped_connection", func(t *testing.T) {
 		var requests atomic.Int32
@@ -979,15 +1013,95 @@ func TestAddFilesExportIsNotRetried(t *testing.T) {
 		}))
 		defer server.Close()
 
-		_, err := newFilesExportsTestClient(t, server.URL).AddFilesExport(context.Background(),
-			FilesExportSpec{Name: "carol", Pseudo: "/home/carol"})
-		if err == nil {
-			t.Error("AddFilesExport should fail when the connection drops")
-		}
-		if n := requests.Load(); n != 1 {
-			t.Errorf("the server received %d requests, want 1", n)
+		for name, call := range filesWrites(context.Background(), newFilesExportsTestClient(t, server.URL)) {
+			requests.Store(0)
+			if err := call(); err == nil {
+				t.Errorf("%s should fail when the connection drops", name)
+			}
+			if n := requests.Load(); n != 1 {
+				t.Errorf("%s: the server received %d requests, want 1", name, n)
+			}
 		}
 	})
+}
+
+// TestFilesWriteRetriesWhenUnacted verifies that a write is repeated after an
+// answer showing the server did nothing, here a SlowDown 429.
+func TestFilesWriteRetriesWhenUnacted(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		if requests.Add(1) == 1 {
+			w.WriteHeader(http.StatusTooManyRequests)
+			io.WriteString(w, `{"code": "SlowDown", "message": "slow down"}`)
+			return
+		}
+		io.WriteString(w, `{"name": "carol", "exportId": 104}`)
+	}))
+	defer server.Close()
+
+	got, err := newFilesExportsTestClient(t, server.URL).RemoveFilesExport(context.Background(), "carol", FilesRemoveOptions{})
+	if err != nil {
+		t.Fatalf("RemoveFilesExport: %v", err)
+	}
+	if n := requests.Load(); n != 2 || got.ExportID != 104 {
+		t.Errorf("the server received %d requests and the reply is %+v, want 2 and export 104", n, got)
+	}
+}
+
+// TestIsRetryableUnacted verifies which error answers let a write be repeated.
+func TestIsRetryableUnacted(t *testing.T) {
+	for _, tc := range []struct {
+		status int
+		code   string
+		want   bool
+	}{
+		{http.StatusTooManyRequests, "", true},
+		{http.StatusServiceUnavailable, "SlowDown", true},
+		{http.StatusServiceUnavailable, "", true},
+		{http.StatusRequestTimeout, "", true},
+		{http.StatusBadRequest, "RequestTimeout", true},
+		{http.StatusServiceUnavailable, FilesErrNodeUnreachable, false},
+		{http.StatusBadGateway, "", false},
+		{http.StatusGatewayTimeout, "", false},
+		{http.StatusInternalServerError, FilesErrInternalError, false},
+		{http.StatusConflict, FilesErrExportAlreadyExists, false},
+	} {
+		if got := isRetryableUnacted(tc.status, tc.code); got != tc.want {
+			t.Errorf("isRetryableUnacted(%d, %q) = %v, want %v", tc.status, tc.code, got, tc.want)
+		}
+	}
+}
+
+// TestAddFilesExportAcceptsAny2xx verifies that an add answered with any 2xx
+// status is reported as the success it is.
+func TestAddFilesExportAcceptsAny2xx(t *testing.T) {
+	for _, status := range []int{http.StatusOK, http.StatusCreated, http.StatusAccepted} {
+		server, seen := newFilesJSONServer(t, status, `{"name": "carol", "exportId": 104, "status": "pending"}`)
+		got, err := newFilesExportsTestClient(t, server.URL).AddFilesExport(context.Background(),
+			FilesExportSpec{Name: "carol", Pseudo: "/home/carol"})
+		if err != nil || got.ExportID != 104 {
+			t.Errorf("status %d: reply = %+v, err = %v", status, got, err)
+		}
+		if len(*seen) != 1 {
+			t.Errorf("status %d: the server received %d requests, want 1", status, len(*seen))
+		}
+	}
+}
+
+// TestAddFilesExportRefusesReservedNames verifies that an export is never
+// created under a name no other method can reach it by.
+func TestAddFilesExportRefusesReservedNames(t *testing.T) {
+	server, seen := newFilesJSONServer(t, http.StatusAccepted, `{}`)
+	client := newFilesExportsTestClient(t, server.URL)
+	for _, name := range []string{"stats", ".", ".."} {
+		if _, err := client.AddFilesExport(context.Background(), FilesExportSpec{Name: name, Pseudo: "/home/carol"}); err == nil {
+			t.Errorf("AddFilesExport(%q) should fail", name)
+		}
+	}
+	if len(*seen) != 0 {
+		t.Errorf("the server received %d requests, want 0", len(*seen))
+	}
 }
 
 // TestSetFilesExportQuotaRequest verifies that a quota of zero, which clears

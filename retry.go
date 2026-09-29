@@ -146,3 +146,25 @@ func isHTTPStatusRetryable(httpStatusCode int) (ok bool) {
 	_, ok = retryableHTTPStatusCodes[httpStatusCode]
 	return ok
 }
+
+// isRetryableUnacted reports whether an error reply is retryable and shows
+// that the server did not act on the request, so repeating it cannot apply it
+// twice. A throttled or timed-out request qualifies. A 502 or 504 does not: a
+// proxy answers one after the request may have reached the server. Nor does
+// the Files API's NodeUnreachable 503, which is a final answer that retrying
+// would only delay.
+func isRetryableUnacted(httpStatusCode int, code string) bool {
+	if code == "NodeUnreachable" {
+		return false
+	}
+	switch code {
+	case "RequestTimeout", "Throttling", "ThrottlingException",
+		"RequestLimitExceeded", "RequestThrottled", "SlowDown":
+		return true
+	}
+	switch httpStatusCode {
+	case http.StatusRequestTimeout, http.StatusTooManyRequests, http.StatusServiceUnavailable:
+		return true
+	}
+	return false
+}
