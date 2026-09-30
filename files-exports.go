@@ -18,6 +18,7 @@
 package madmin
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -25,8 +26,11 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path"
+	"slices"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -254,7 +258,7 @@ func (adm *AdminClient) FilesExportsQuery(ctx context.Context, exportIDs []uint6
 	values.Set("exportID", strings.Join(fields, ","))
 
 	var info FilesExportsQueryResponse
-	if err := adm.filesJSON(ctx, http.MethodGet, requestData{relPath: filesGatewayExportsPath, queryValues: values}, nil, http.StatusOK, &info); err != nil {
+	if err := adm.filesJSON(ctx, requestData{relPath: filesGatewayExportsPath, queryValues: values}, &info); err != nil {
 		return FilesExportsQueryResponse{}, err
 	}
 	return info, nil
@@ -271,7 +275,7 @@ func (adm *AdminClient) FilesExportsQuery(ctx context.Context, exportIDs []uint6
 // FilesExportsQuery with an ErrorResponse carrying FilesErrInvalidRequest.
 func (adm *AdminClient) FilesGatewayExports(ctx context.Context) (FilesExportsQueryResponse, error) {
 	var info FilesExportsQueryResponse
-	if err := adm.filesJSON(ctx, http.MethodGet, requestData{relPath: filesGatewayExportsPath}, nil, http.StatusOK, &info); err != nil {
+	if err := adm.filesJSON(ctx, requestData{relPath: filesGatewayExportsPath}, &info); err != nil {
 		return FilesExportsQueryResponse{}, err
 	}
 	return info, nil
@@ -302,6 +306,15 @@ const (
 	// FilesErrExportInUse means a removal was refused: the export is serving,
 	// or has children. HTTP 409.
 	FilesErrExportInUse = "ExportInUse"
+
+	// FilesErrExportModified means a per-export write named a generation the
+	// export is no longer at: another write changed it since it was read. Read
+	// the export again and decide whether to repeat the change. HTTP 412.
+	FilesErrExportModified = "ExportModified"
+
+	// FilesErrPreconditionRequired means a per-export write named no
+	// generation. HTTP 428.
+	FilesErrPreconditionRequired = "PreconditionRequired"
 
 	// FilesErrNodeUnreachable means the owning node did not answer a write.
 	// HTTP 503.
@@ -389,6 +402,12 @@ type FilesExport struct {
 
 	// ExportID is the Ganesha Export_Id AIStor allocated.
 	ExportID uint64 `json:"exportID"`
+
+	// Generation changes on every write to the export and is never reused,
+	// not even by an export added again under the same name. A per-export
+	// write names the generation it was decided on, and is refused with
+	// FilesErrExportModified when the export has moved on.
+	Generation uint64 `json:"generation"`
 
 	// Pseudo is the path clients mount. It cannot change.
 	Pseudo string `json:"pseudo"`
@@ -534,7 +553,7 @@ func (adm *AdminClient) ListFilesExports(ctx context.Context, opts FilesListOpti
 	setFilesPage(values, opts.Limit, opts.ContinuationToken)
 
 	var list FilesExportList
-	err := adm.filesJSON(ctx, http.MethodGet, requestData{relPath: filesAPIPrefix + "/exports", queryValues: values}, nil, &list)
+	err := adm.filesJSON(ctx, requestData{relPath: filesAPIPrefix + "/exports", queryValues: values}, &list)
 	return list, err
 }
 
@@ -548,7 +567,7 @@ func (adm *AdminClient) GetFilesExport(ctx context.Context, export string) (File
 	}
 
 	var info FilesExport
-	err = adm.filesJSON(ctx, http.MethodGet, requestData{relPath: relPath}, nil, &info)
+	err = adm.filesJSON(ctx, requestData{relPath: relPath}, &info)
 	return info, err
 }
 
@@ -589,7 +608,7 @@ func (adm *AdminClient) FilesExportStats(ctx context.Context, export string, opt
 	setFilesPage(values, opts.Limit, opts.ContinuationToken)
 
 	var stats FilesStatsList
-	err := adm.filesJSON(ctx, http.MethodGet, requestData{relPath: relPath, queryValues: values}, nil, &stats)
+	err := adm.filesJSON(ctx, requestData{relPath: relPath, queryValues: values}, &stats)
 	return stats, err
 }
 
@@ -635,10 +654,16 @@ type FilesExportSpec struct {
 // FilesQuotaChange is the reply of SetFilesExportQuota. It carries the limit
 // before and after the call, so a caller reports both without a second read.
 type FilesQuotaChange struct {
-	Name          string `json:"name"`
-	ExportID      uint64 `json:"exportID"`
-	PreviousBytes uint64 `json:"previousBytes"`
-	CurrentBytes  uint64 `json:"currentBytes"`
+	Name     string `json:"name"`
+	ExportID uint64 `json:"exportID"`
+
+	// Generation is the export's generation after the change.
+	Generation uint64 `json:"generation"`
+
+	// PreviousBytes is nil when it is not known: a repeated request found the
+	// limit already set, so the earlier attempt's reply was lost.
+	PreviousBytes *uint64 `json:"previousBytes,omitempty"`
+	CurrentBytes  uint64  `json:"currentBytes"`
 
 	// UsedBytes is the usage when the limit was set, nil when it is not
 	// known. A limit below it frees nothing and stops the export growing.
@@ -649,10 +674,16 @@ type FilesQuotaChange struct {
 // ClearFilesExportAccess: how many rules the call replaced, and how many are in
 // force now.
 type FilesAccessChange struct {
-	Name              string `json:"name"`
-	ExportID          uint64 `json:"exportID"`
-	PreviousRuleCount int    `json:"previousRuleCount"`
-	RuleCount         int    `json:"ruleCount"`
+	Name     string `json:"name"`
+	ExportID uint64 `json:"exportID"`
+
+	// Generation is the export's generation after the change.
+	Generation uint64 `json:"generation"`
+
+	// PreviousRuleCount is nil when it is not known: a repeated request found
+	// the rules already in force, so the earlier attempt's reply was lost.
+	PreviousRuleCount *int `json:"previousRuleCount,omitempty"`
+	RuleCount         int  `json:"ruleCount"`
 }
 
 // FilesRemoveOptions qualifies RemoveFilesExport.
@@ -670,6 +701,12 @@ type FilesRemoveOptions struct {
 type FilesRemoveResult struct {
 	Name     string `json:"name"`
 	ExportID uint64 `json:"exportID"`
+
+	// AlreadyRemoved is set by the client, not the server, when a repeated
+	// request found the export gone: an earlier attempt removed it, or another
+	// caller did. Name and ExportID are then empty, and with
+	// FilesRemoveOptions.Purge, whether the data was purged is unknown.
+	AlreadyRemoved bool `json:"-"`
 }
 
 // filesQuotaBody is the body of SetFilesExportQuota. QuotaBytes carries no
@@ -689,40 +726,82 @@ type filesAccessBody struct {
 // FilesExportPending until its node reports holding it; ListFilesExports shows
 // it reach FilesExportServing.
 //
-// The name is refused locally when it is one no other method can reach an
-// export by: "stats", "." or "..".
+// The name is refused locally when it is empty, or one no other method can
+// reach an export by: "stats", "." or "..".
 //
-// Like every Files write, the request is repeated only when the server
-// answered that it did not act on it. A retry after an attempt whose outcome is
-// unknown could answer FilesErrExportAlreadyExists for the export that attempt
-// created. For the same reason, a caller that sees an error after a timeout, or
-// FilesErrExportAlreadyExists after repeating the call itself, should read the
-// export with GetFilesExport before assuming the add failed.
+// A request whose outcome is unknown is repeated. When the repeat answers
+// FilesErrExportAlreadyExists, the export is read, and the add succeeds with it
+// when it holds what spec asked for.
 func (adm *AdminClient) AddFilesExport(ctx context.Context, spec FilesExportSpec) (FilesExport, error) {
+	if spec.Name == "" {
+		return FilesExport{}, errors.New("an export name is required")
+	}
 	if _, err := filesExportSegment(spec.Name); err != nil {
 		return FilesExport{}, err
 	}
 
 	var info FilesExport
-	err := adm.filesJSON(ctx, http.MethodPut, requestData{relPath: filesAPIPrefix + "/exports"}, spec, &info)
+	reconcile := func(ctx context.Context, code string) (bool, error) {
+		if code != FilesErrExportAlreadyExists {
+			return false, nil
+		}
+		cur, err := adm.GetFilesExport(ctx, spec.Name)
+		if err != nil {
+			if ToErrorResponse(err).Code == FilesErrExportNotFound {
+				return false, nil
+			}
+			return false, err
+		}
+		if !spec.heldBy(cur) {
+			return false, nil
+		}
+		info = cur
+		return true, nil
+	}
+	err := adm.filesWrite(ctx, http.MethodPut, requestData{relPath: filesAPIPrefix + "/exports"}, spec, &info, reconcile)
 	return info, err
 }
 
+// heldBy reports whether export holds what spec asked for, with a field spec
+// left empty taking its documented default.
+func (spec FilesExportSpec) heldBy(export FilesExport) bool {
+	accessType := cmp.Or(spec.AccessType, FilesAccessRW)
+	squash := cmp.Or(spec.Squash, FilesSquashRoot)
+	return export.Name == spec.Name &&
+		path.Clean(export.Pseudo) == path.Clean(spec.Pseudo) &&
+		export.AccessType == accessType &&
+		export.Squash == squash &&
+		export.QuotaBytes == spec.QuotaBytes &&
+		(spec.Node == "" || export.Node == spec.Node) &&
+		(spec.ExportID == nil || export.ExportID == *spec.ExportID)
+}
+
 // SetFilesExportQuota sets an export's byte limit, and quotaBytes zero clears
-// it. export is a name or a numeric export id, sent as given.
+// it. export is a name or a numeric export id, sent as given. generation is the
+// export's FilesExport.Generation the change was decided on; when the export
+// has moved on, the call fails with FilesErrExportModified.
 //
-// The request is repeated only when the server answered that it did not act on
-// it, so a late retry cannot overwrite a limit another caller set in the
-// meantime. After an error whose outcome is unknown, read the export with
-// GetFilesExport.
-func (adm *AdminClient) SetFilesExportQuota(ctx context.Context, export string, quotaBytes uint64) (FilesQuotaChange, error) {
-	relPath, err := filesExportPath(export, "/quota")
+// A request whose outcome is unknown is repeated. When the repeat answers
+// FilesErrExportModified, the export is read, and the call succeeds when the
+// limit is already quotaBytes, with PreviousBytes nil.
+func (adm *AdminClient) SetFilesExportQuota(ctx context.Context, export string, generation, quotaBytes uint64) (FilesQuotaChange, error) {
+	reqData, err := filesExportWriteRequest(export, "/quota", generation)
 	if err != nil {
 		return FilesQuotaChange{}, err
 	}
 
 	var change FilesQuotaChange
-	err = adm.filesJSON(ctx, http.MethodPut, requestData{relPath: relPath}, filesQuotaBody{QuotaBytes: quotaBytes}, &change)
+	reconcile := adm.filesReconcileModified(export, func(cur FilesExport) bool {
+		if cur.QuotaBytes != quotaBytes {
+			return false
+		}
+		change = FilesQuotaChange{
+			Name: cur.Name, ExportID: cur.ExportID, Generation: cur.Generation,
+			CurrentBytes: cur.QuotaBytes, UsedBytes: cur.UsedBytes,
+		}
+		return true
+	})
+	err = adm.filesWrite(ctx, http.MethodPut, reqData, filesQuotaBody{QuotaBytes: quotaBytes}, &change, reconcile)
 	return change, err
 }
 
@@ -731,42 +810,60 @@ func (adm *AdminClient) SetFilesExportQuota(ctx context.Context, export string, 
 // policy, and it is sent unchanged: never sorted, and with duplicates kept. An
 // export with any rule refuses a client none of them matches; end the list with
 // a rule for "*" to only narrow access. export is a name or a numeric export
-// id, sent as given.
+// id, sent as given. generation is the export's FilesExport.Generation the
+// change was decided on; when the export has moved on, the call fails with
+// FilesErrExportModified.
 //
 // An empty rules is refused: ClearFilesExportAccess removes every rule.
 //
-// The request is repeated only when the server answered that it did not act on
-// it, so a late retry cannot overwrite rules another caller set in the
-// meantime. After an error whose outcome is unknown, read the export with
-// GetFilesExport.
-func (adm *AdminClient) SetFilesExportAccess(ctx context.Context, export string, rules []FilesAccessRule) (FilesAccessChange, error) {
+// A request whose outcome is unknown is repeated. When the repeat answers
+// FilesErrExportModified, the export is read, and the call succeeds when rules
+// are already in force, with PreviousRuleCount nil.
+func (adm *AdminClient) SetFilesExportAccess(ctx context.Context, export string, generation uint64, rules []FilesAccessRule) (FilesAccessChange, error) {
 	if len(rules) == 0 {
 		return FilesAccessChange{}, errors.New("at least one access rule is required; ClearFilesExportAccess removes every rule")
 	}
-	relPath, err := filesExportPath(export, "/access")
+	reqData, err := filesExportWriteRequest(export, "/access", generation)
 	if err != nil {
 		return FilesAccessChange{}, err
 	}
 
 	var change FilesAccessChange
-	err = adm.filesJSON(ctx, http.MethodPut, requestData{relPath: relPath}, filesAccessBody{Rules: rules}, &change)
+	reconcile := adm.filesReconcileModified(export, func(cur FilesExport) bool {
+		if !slices.EqualFunc(cur.AccessRules, rules, filesAccessRuleEqual) {
+			return false
+		}
+		change = FilesAccessChange{Name: cur.Name, ExportID: cur.ExportID, Generation: cur.Generation, RuleCount: len(cur.AccessRules)}
+		return true
+	})
+	err = adm.filesWrite(ctx, http.MethodPut, reqData, filesAccessBody{Rules: rules}, &change, reconcile)
 	return change, err
 }
 
 // ClearFilesExportAccess removes every access rule of an export, so every
 // client gets the export's own access type. export is a name or a numeric
-// export id, sent as given.
+// export id, sent as given. generation is the export's FilesExport.Generation
+// the change was decided on; when the export has moved on, the call fails with
+// FilesErrExportModified.
 //
-// The request is repeated only when the server answered that it did not act on
-// it, so a late retry cannot clear rules another caller set in the meantime.
-func (adm *AdminClient) ClearFilesExportAccess(ctx context.Context, export string) (FilesAccessChange, error) {
-	relPath, err := filesExportPath(export, "/access")
+// A request whose outcome is unknown is repeated. When the repeat answers
+// FilesErrExportModified, the export is read, and the call succeeds when it has
+// no rules, with PreviousRuleCount nil.
+func (adm *AdminClient) ClearFilesExportAccess(ctx context.Context, export string, generation uint64) (FilesAccessChange, error) {
+	reqData, err := filesExportWriteRequest(export, "/access", generation)
 	if err != nil {
 		return FilesAccessChange{}, err
 	}
 
 	var change FilesAccessChange
-	err = adm.filesJSON(ctx, http.MethodDelete, requestData{relPath: relPath}, nil, &change)
+	reconcile := adm.filesReconcileModified(export, func(cur FilesExport) bool {
+		if len(cur.AccessRules) != 0 {
+			return false
+		}
+		change = FilesAccessChange{Name: cur.Name, ExportID: cur.ExportID, Generation: cur.Generation}
+		return true
+	})
+	err = adm.filesWrite(ctx, http.MethodDelete, reqData, nil, &change, reconcile)
 	return change, err
 }
 
@@ -775,29 +872,43 @@ func (adm *AdminClient) ClearFilesExportAccess(ctx context.Context, export strin
 // FilesErrExportInUse unless opts.Force is set. An export with another export
 // mounted beneath it is refused with FilesErrExportInUse even with opts.Force:
 // its children must be removed first. export is a name or a numeric export id,
-// sent as given.
+// sent as given. generation is the export's FilesExport.Generation the removal
+// was decided on; when the export has moved on, the call fails with
+// FilesErrExportModified. Generations are never reused, so a late request never
+// removes or purges an export added again under the same name.
 //
-// The request is repeated only when the server answered that it did not act on
-// it. A retry after an attempt that took effect would answer
-// FilesErrExportNotFound for a removal that worked, and with opts.Purge and a
-// name, could purge an export added again under that name. After an error
-// whose outcome is unknown, read the export with GetFilesExport.
-func (adm *AdminClient) RemoveFilesExport(ctx context.Context, export string, opts FilesRemoveOptions) (FilesRemoveResult, error) {
-	relPath, err := filesExportPath(export, "")
+// A request whose outcome is unknown is repeated. When the repeat answers
+// FilesErrExportNotFound, the call succeeds with
+// FilesRemoveResult.AlreadyRemoved set.
+func (adm *AdminClient) RemoveFilesExport(ctx context.Context, export string, generation uint64, opts FilesRemoveOptions) (FilesRemoveResult, error) {
+	reqData, err := filesExportWriteRequest(export, "", generation)
 	if err != nil {
 		return FilesRemoveResult{}, err
 	}
-	values := make(url.Values)
+	reqData.queryValues = make(url.Values)
 	if opts.Force {
-		values.Set("force", "true")
+		reqData.queryValues.Set("force", "true")
 	}
 	if opts.Purge {
-		values.Set("purge", "true")
+		reqData.queryValues.Set("purge", "true")
 	}
 
 	var result FilesRemoveResult
-	err = adm.filesJSON(ctx, http.MethodDelete, requestData{relPath: relPath, queryValues: values}, nil, &result)
+	reconcile := func(_ context.Context, code string) (bool, error) {
+		if code != FilesErrExportNotFound {
+			return false, nil
+		}
+		result = FilesRemoveResult{AlreadyRemoved: true}
+		return true, nil
+	}
+	err = adm.filesWrite(ctx, http.MethodDelete, reqData, nil, &result, reconcile)
 	return result, err
+}
+
+// filesAccessRuleEqual reports whether a and b grant the same access to the
+// same clients, listed in the same order.
+func filesAccessRuleEqual(a, b FilesAccessRule) bool {
+	return a.AccessType == b.AccessType && slices.Equal(a.Clients, b.Clients)
 }
 
 // filesExportPath returns the path of one export, followed by suffix. It
@@ -814,34 +925,138 @@ func filesExportPath(export, suffix string) (string, error) {
 	return filesAPIPrefix + "/exports/" + segment + suffix, nil
 }
 
-// filesJSON sends one Files management API request and decodes its JSON reply
-// into out. in, when not nil, is sent as the JSON body. Any 2xx status is
-// success, and a 2xx reply without a body leaves out unchanged. Any other
-// status is returned as an ErrorResponse carrying the server's code. A write is repeated only when the server answered that it did not act
-// on it.
-func (adm *AdminClient) filesJSON(ctx context.Context, method string, reqData requestData, in any, out any) error {
-	reqData.retryUnacted = method != http.MethodGet
+// filesExportWriteRequest returns a per-export write to the path of export
+// followed by suffix, naming generation in If-Match. Generations start at 1,
+// so zero is refused.
+func filesExportWriteRequest(export, suffix string, generation uint64) (requestData, error) {
+	relPath, err := filesExportPath(export, suffix)
+	if err != nil {
+		return requestData{}, err
+	}
+	if generation == 0 {
+		return requestData{}, errors.New("the export's generation is required; read it with GetFilesExport")
+	}
+	return requestData{
+		relPath:       relPath,
+		customHeaders: http.Header{"If-Match": []string{strconv.Quote(strconv.FormatUint(generation, 10))}},
+	}, nil
+}
+
+// filesReconciler decides, on a repeated write, whether an error code the
+// earlier attempt could have caused means the write already took effect. It
+// fills the write's reply when it did.
+type filesReconciler func(ctx context.Context, code string) (bool, error)
+
+// filesReconcileModified returns the reconciler of a per-export write: on
+// FilesErrExportModified it reads export, and held reports whether the export
+// already holds what the write asked for.
+func (adm *AdminClient) filesReconcileModified(export string, held func(FilesExport) bool) filesReconciler {
+	return func(ctx context.Context, code string) (bool, error) {
+		if code != FilesErrExportModified {
+			return false, nil
+		}
+		cur, err := adm.GetFilesExport(ctx, export)
+		if err != nil {
+			return false, err
+		}
+		return held(cur), nil
+	}
+}
+
+// filesJSON sends one Files management API read and decodes its JSON reply
+// into out. Any status other than 200 is returned as an ErrorResponse carrying
+// the server's code.
+func (adm *AdminClient) filesJSON(ctx context.Context, reqData requestData, out any) error {
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+	return json.NewDecoder(resp.Body).Decode(out)
+}
+
+// filesWrite sends one Files management API write, with in, when not nil, as
+// its JSON body, and decodes its JSON reply into out. Any 2xx status is
+// success, and a 2xx reply without a body leaves out unchanged.
+//
+// A write is repeated on the same errors executeMethod repeats a request on.
+// Every write is safe to repeat: a per-export write names the generation it was
+// decided on, so a repeat after an attempt that took effect is refused rather
+// than applied twice. The refusal, or the conflict a repeated add meets, is
+// then passed to reconcile, which reads the export to learn whether the write
+// took effect. On the first attempt an error means what it says, and is
+// returned as it is.
+func (adm *AdminClient) filesWrite(ctx context.Context, method string, reqData requestData, in, out any, reconcile filesReconciler) (err error) {
 	if in != nil {
 		body, err := json.Marshal(in)
 		if err != nil {
 			return err
 		}
 		reqData.content = body
-		reqData.customHeaders = http.Header{"Content-Type": []string{"application/json"}}
+		if reqData.customHeaders == nil {
+			reqData.customHeaders = make(http.Header)
+		}
+		reqData.customHeaders.Set("Content-Type", "application/json")
 	}
+	defer func() {
+		if err != nil {
+			adm.httpClient.CloseIdleConnections()
+		}
+	}()
 
-	resp, err := adm.executeMethod(ctx, method, reqData)
-	defer closeResponse(resp)
-	if err != nil {
+	retryCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	var lastErr error
+	for attempt := range adm.newRetryTimer(retryCtx, MaxRetry, DefaultRetryUnit, DefaultRetryCap, MaxJitter) {
+		req, err := adm.newRequest(ctx, method, reqData)
+		if err != nil {
+			return err
+		}
+		resp, err := adm.do(req)
+		if err != nil {
+			if errors.Is(err, syscall.ECONNREFUSED) {
+				return err
+			}
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			lastErr = err
+			continue
+		}
+
+		if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
+			err = filesDecode(resp, out)
+			closeResponse(resp)
+			return err
+		}
+		err = httpRespToErrorResponse(resp)
+		closeResponse(resp)
+		code := ToErrorResponse(err).Code
+
+		if attempt > 0 && reconcile != nil {
+			if done, rerr := reconcile(ctx, code); rerr != nil || done {
+				return rerr
+			}
+		}
+		if !isAdminErrCodeRetryable(code) && !isHTTPStatusRetryable(resp.StatusCode) {
+			return err
+		}
+		lastErr = err
+	}
+	if err := retryCtx.Err(); err != nil {
 		return err
 	}
+	return lastErr
+}
 
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return httpRespToErrorResponse(resp)
-	}
-
-	// A 204, or any 2xx without a body, is a success with nothing to decode.
-	// A body cut short still fails, with io.ErrUnexpectedEOF.
+// filesDecode decodes a 2xx reply into out. A 204, or any 2xx without a body,
+// is a success with nothing to decode. A body cut short still fails, with
+// io.ErrUnexpectedEOF.
+func filesDecode(resp *http.Response, out any) error {
 	if resp.StatusCode == http.StatusNoContent {
 		return nil
 	}
