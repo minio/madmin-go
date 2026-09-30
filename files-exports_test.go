@@ -23,6 +23,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -506,10 +507,12 @@ func TestFilesExportStatsRequest(t *testing.T) {
 		t.Errorf("per-export stats sent %s?%v, want %s", req.path, req.query, want)
 	}
 
-	// The per-export form takes no node, so one is refused before a request
-	// is sent.
-	if _, err := client.FilesExportStats(context.Background(), "104", FilesStatsOptions{Node: "node03"}); err == nil {
-		t.Error("FilesExportStats with an export and a node succeeded, want an error")
+	// The per-export form is neither narrowed nor paged, so each option is
+	// refused before a request is sent.
+	for _, opts := range []FilesStatsOptions{{Node: "node03"}, {Limit: 10}, {ContinuationToken: "t"}} {
+		if _, err := client.FilesExportStats(context.Background(), "104", opts); err == nil {
+			t.Errorf("FilesExportStats with an export and %+v succeeded, want an error", opts)
+		}
 	}
 	if len(*seen) != 2 {
 		t.Errorf("the server received %d requests, want 2", len(*seen))
@@ -703,5 +706,115 @@ func TestFilesExportUsedBytesOnTheWire(t *testing.T) {
 		if got := strings.Contains(string(body), `"usedBytes"`); got != tc.present {
 			t.Errorf("%s: usedBytes present = %v, want %v", body, got, tc.present)
 		}
+	}
+}
+
+// newFilesPagedServer serves pages of a fleet read at path, one per
+// continuation token: pages[0] answers a request without one, and pages[i]
+// the token "p<i>". Each page but the last carries the token of the next. It
+// records the query of each request.
+func newFilesPagedServer(t *testing.T, path, key string, pages [][]string) (*httptest.Server, *[]url.Values) {
+	t.Helper()
+	var seen []url.Values
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != path {
+			http.Error(w, `{"code": "NotFound"}`, http.StatusNotFound)
+			return
+		}
+		seen = append(seen, r.URL.Query())
+		idx := 0
+		if token := r.URL.Query().Get("continuation-token"); token != "" {
+			if _, err := fmt.Sscanf(token, "p%d", &idx); err != nil || idx < 1 || idx >= len(pages) {
+				http.Error(w, `{"code": "InvalidRequest"}`, http.StatusBadRequest)
+				return
+			}
+		}
+		entries := make([]string, len(pages[idx]))
+		for i, name := range pages[idx] {
+			entries[i] = fmt.Sprintf(`{"name": %q}`, name)
+		}
+		body := fmt.Sprintf(`{%q: [%s]`, key, strings.Join(entries, ","))
+		if idx+1 < len(pages) {
+			body += fmt.Sprintf(`, "nextContinuationToken": "p%d"`, idx+1)
+		}
+		w.Header().Set("Content-Type", "application/json")
+		io.WriteString(w, body+"}")
+	}))
+	t.Cleanup(server.Close)
+	return server, &seen
+}
+
+// TestListFilesExportsPages verifies that the limit and the token are sent,
+// that a limit of zero or less is left to the server, and that a caller
+// following NextContinuationToken reads every page, including an empty one a
+// status filter leaves, and stops only when it is empty.
+func TestListFilesExportsPages(t *testing.T) {
+	server, seen := newFilesPagedServer(t, "/minio/admin/files/v1/exports", "exports",
+		[][]string{{"carol", "dave"}, {}, {"gina"}})
+	client := newFilesExportsTestClient(t, server.URL)
+
+	var names []string
+	opts := FilesListOptions{Status: FilesExportServing, Limit: 2}
+	for {
+		page, err := client.ListFilesExports(context.Background(), opts)
+		if err != nil {
+			t.Fatalf("ListFilesExports(%+v): %v", opts, err)
+		}
+		for _, e := range page.Exports {
+			names = append(names, e.Name)
+		}
+		if page.NextContinuationToken == "" {
+			break
+		}
+		opts.ContinuationToken = page.NextContinuationToken
+	}
+	if !slices.Equal(names, []string{"carol", "dave", "gina"}) || len(*seen) != 3 {
+		t.Fatalf("%d pages listed %v, want 3 pages of carol, dave, gina", len(*seen), names)
+	}
+	for idx, q := range *seen {
+		want := url.Values{"status": {"serving"}, "limit": {"2"}}
+		if idx > 0 {
+			want.Set("continuation-token", fmt.Sprintf("p%d", idx))
+		}
+		if !reflect.DeepEqual(q, want) {
+			t.Errorf("page %d sent %v, want %v", idx+1, q, want)
+		}
+	}
+
+	for _, limit := range []int{0, -5} {
+		if _, err := client.ListFilesExports(context.Background(), FilesListOptions{Limit: limit}); err != nil {
+			t.Fatalf("ListFilesExports(limit %d): %v", limit, err)
+		}
+		if q := (*seen)[len(*seen)-1]; q.Has("limit") {
+			t.Errorf("limit %d sent %v, want it left to the server", limit, q)
+		}
+	}
+}
+
+// TestFilesExportStatsPages verifies that the fleet stats page as the list
+// does.
+func TestFilesExportStatsPages(t *testing.T) {
+	server, seen := newFilesPagedServer(t, "/minio/admin/files/v1/exports/stats", "stats",
+		[][]string{{"carol"}, {"frank"}})
+	client := newFilesExportsTestClient(t, server.URL)
+
+	first, err := client.FilesExportStats(context.Background(), "", FilesStatsOptions{Node: "node03", Limit: 1})
+	if err != nil {
+		t.Fatalf("FilesExportStats: %v", err)
+	}
+	if len(first.Stats) != 1 || first.Stats[0].Name != "carol" || first.NextContinuationToken != "p1" {
+		t.Fatalf("page 1 = %+v, want carol and a token", first)
+	}
+	last, err := client.FilesExportStats(context.Background(), "",
+		FilesStatsOptions{Node: "node03", Limit: 1, ContinuationToken: first.NextContinuationToken})
+	if err != nil {
+		t.Fatalf("FilesExportStats: %v", err)
+	}
+	if len(last.Stats) != 1 || last.Stats[0].Name != "frank" || last.NextContinuationToken != "" {
+		t.Fatalf("page 2 = %+v, want frank and no token", last)
+	}
+	want := url.Values{"node": {"node03"}, "limit": {"1"}, "continuation-token": {"p1"}}
+	if q := (*seen)[1]; !reflect.DeepEqual(q, want) {
+		t.Errorf("page 2 sent %v, want %v", q, want)
 	}
 }
