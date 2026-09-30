@@ -210,10 +210,6 @@ type requestData struct {
 	// that encrypted content with a credential sets it, so the body and the
 	// signature always use the same secret.
 	creds *credentials.Value
-	// retryUnacted repeats an attempt only when its answer shows the server
-	// did not act on it, for a call that is not safe to repeat after an
-	// attempt whose outcome is unknown. See isRetryableUnacted.
-	retryUnacted bool
 }
 
 // Filter out signature value from Authorization header.
@@ -358,8 +354,6 @@ func (adm AdminClient) do(req *http.Request) (*http.Response, error) {
 // List of success status.
 var successStatus = []int{
 	http.StatusOK,
-	http.StatusCreated,
-	http.StatusAccepted,
 	http.StatusNoContent,
 	http.StatusPartialContent,
 }
@@ -422,10 +416,6 @@ func (adm AdminClient) executeMethod(ctx context.Context, method string, reqData
 			if ctx.Err() != nil {
 				return nil, ctx.Err()
 			}
-			// The request may have reached the server.
-			if reqData.retryUnacted {
-				return nil, err
-			}
 			// retry all network errors.
 			continue
 		}
@@ -470,13 +460,6 @@ func (adm AdminClient) executeMethod(ctx context.Context, method string, reqData
 		// Save the body back again.
 		errBodySeeker.Seek(0, 0) // Seek back to starting point.
 		res.Body = io.NopCloser(errBodySeeker)
-
-		if reqData.retryUnacted {
-			if isRetryableUnacted(res.StatusCode, errResponse.Code) {
-				continue // Retry.
-			}
-			break
-		}
 
 		// Verify if error response code is retryable.
 		if isAdminErrCodeRetryable(errResponse.Code) {
