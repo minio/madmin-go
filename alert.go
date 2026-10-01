@@ -81,11 +81,23 @@ type AlertLogOpts struct {
 	Types      []string      `json:"types,omitempty"`
 	Interval   time.Duration `json:"interval,omitempty"`
 	MaxPerNode int           `json:"maxPerNode,omitempty"`
+
+	// OnInMemoryOnly, if set, is called once before any alert is yielded when
+	// the server could not read its on-disk alert history and is returning only
+	// alerts still buffered in memory, so the result may be incomplete.
+	// Client-side only; never sent to the server.
+	OnInMemoryOnly func() `json:"-"`
 }
+
+// AlertsInMemoryOnlyHeader is set to "true" on an alert-history response when
+// no on-disk history could be read and only alerts still buffered in the
+// server's memory are returned.
+const AlertsInMemoryOnlyHeader = "x-minio-alerts-inmemory-only"
 
 // GetAlerts returns alerts stored in the system as a streaming msgpack response
 // via POST /admin/alerts. Use AlertLogOpts.Interval to control the server-side
-// check interval.
+// check interval, and AlertLogOpts.OnInMemoryOnly to learn whether the server
+// could only return its in-memory alerts.
 func (adm AdminClient) GetAlerts(ctx context.Context, opts AlertLogOpts) iter.Seq2[*Alert, error] {
 	return func(yield func(*Alert, error) bool) {
 		alertOpts, err := json.Marshal(opts)
@@ -106,6 +118,9 @@ func (adm AdminClient) GetAlerts(ctx context.Context, opts AlertLogOpts) iter.Se
 		if resp.StatusCode != http.StatusOK {
 			yield(nil, httpRespToErrorResponse(resp))
 			return
+		}
+		if opts.OnInMemoryOnly != nil && resp.Header.Get(AlertsInMemoryOnlyHeader) == "true" {
+			opts.OnInMemoryOnly()
 		}
 		dec := msgp.NewReader(resp.Body)
 		for {
