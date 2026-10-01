@@ -82,10 +82,11 @@ type AlertLogOpts struct {
 	Interval   time.Duration `json:"interval,omitempty"`
 	MaxPerNode int           `json:"maxPerNode,omitempty"`
 
-	// ReportInMemoryOnly makes GetAlerts yield ErrAlertsInMemoryOnly once,
-	// before any alert, when the server could only serve its in-memory buffer.
+	// OnInMemoryOnly, if set, is called once before any alert is yielded when
+	// the server could not read its on-disk alert history and is returning only
+	// alerts still buffered in memory, so the result may be incomplete.
 	// Client-side only; never sent to the server.
-	ReportInMemoryOnly bool `json:"-"`
+	OnInMemoryOnly func() `json:"-"`
 }
 
 // AlertsInMemoryOnlyHeader is set to "true" on an alert-history response when
@@ -93,16 +94,10 @@ type AlertLogOpts struct {
 // server's memory are returned.
 const AlertsInMemoryOnlyHeader = "x-minio-alerts-inmemory-only"
 
-// ErrAlertsInMemoryOnly is yielded by GetAlerts when AlertLogOpts.ReportInMemoryOnly
-// is set and the read was degraded: the alerts that follow may be incomplete
-// rather than the full history for the requested window. It is not fatal;
-// iteration continues with the alerts the server returned.
-var ErrAlertsInMemoryOnly = errors.New("alert history is incomplete: only in-memory alerts were returned")
-
 // GetAlerts returns alerts stored in the system as a streaming msgpack response
 // via POST /admin/alerts. Use AlertLogOpts.Interval to control the server-side
-// check interval, and AlertLogOpts.ReportInMemoryOnly to learn whether the read
-// was degraded.
+// check interval, and AlertLogOpts.OnInMemoryOnly to learn whether the server
+// could only return its in-memory alerts.
 func (adm AdminClient) GetAlerts(ctx context.Context, opts AlertLogOpts) iter.Seq2[*Alert, error] {
 	return func(yield func(*Alert, error) bool) {
 		alertOpts, err := json.Marshal(opts)
@@ -124,10 +119,8 @@ func (adm AdminClient) GetAlerts(ctx context.Context, opts AlertLogOpts) iter.Se
 			yield(nil, httpRespToErrorResponse(resp))
 			return
 		}
-		if opts.ReportInMemoryOnly && resp.Header.Get(AlertsInMemoryOnlyHeader) == "true" {
-			if !yield(nil, ErrAlertsInMemoryOnly) {
-				return
-			}
+		if opts.OnInMemoryOnly != nil && resp.Header.Get(AlertsInMemoryOnlyHeader) == "true" {
+			opts.OnInMemoryOnly()
 		}
 		dec := msgp.NewReader(resp.Body)
 		for {

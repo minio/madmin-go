@@ -65,47 +65,48 @@ func newAlertsTestServer(t *testing.T, header string, status int, body []byte) *
 	return client
 }
 
-// collectAlerts drains GetAlerts, stopping at the first error other than
-// ErrAlertsInMemoryOnly.
+// collectAlerts drains GetAlerts, stopping at the first error. It counts
+// OnInMemoryOnly calls and fails if one arrives after an alert.
 func collectAlerts(client *AdminClient, opts AlertLogOpts) (titles []string, inMemoryOnly int, err error) {
-	for alert, err := range client.GetAlerts(context.Background(), opts) {
-		if errors.Is(err, ErrAlertsInMemoryOnly) {
-			if len(titles) > 0 {
-				return titles, inMemoryOnly, errors.New("ErrAlertsInMemoryOnly yielded after an alert")
-			}
-			inMemoryOnly++
-			continue
+	var lateCallback bool
+	opts.OnInMemoryOnly = func() {
+		if len(titles) > 0 {
+			lateCallback = true
 		}
+		inMemoryOnly++
+	}
+	for alert, err := range client.GetAlerts(context.Background(), opts) {
 		if err != nil {
 			return titles, inMemoryOnly, err
 		}
 		titles = append(titles, alert.Title)
 	}
+	if lateCallback {
+		return titles, inMemoryOnly, errors.New("OnInMemoryOnly called after an alert")
+	}
 	return titles, inMemoryOnly, nil
 }
 
-func TestGetAlertsReportInMemoryOnly(t *testing.T) {
+func TestGetAlertsOnInMemoryOnly(t *testing.T) {
 	body := encodeAlerts(t, Alert{Title: "a", DedupKey: "1"}, Alert{Title: "b", DedupKey: "2"})
 	cases := []struct {
 		name   string
 		header string
-		report bool
 		want   int
 	}{
-		{"header true", "true", true, 1},
-		{"header absent", "", true, 0},
-		{"header other value", "false", true, 0},
-		{"header true, not requested", "true", false, 0},
+		{"header true", "true", 1},
+		{"header absent", "", 0},
+		{"header other value", "false", 0},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			client := newAlertsTestServer(t, tc.header, http.StatusOK, body)
-			titles, inMemoryOnly, err := collectAlerts(client, AlertLogOpts{ReportInMemoryOnly: tc.report})
+			titles, inMemoryOnly, err := collectAlerts(client, AlertLogOpts{})
 			if err != nil {
 				t.Fatalf("GetAlerts: %v", err)
 			}
 			if inMemoryOnly != tc.want {
-				t.Errorf("ErrAlertsInMemoryOnly yielded %d times, want %d", inMemoryOnly, tc.want)
+				t.Errorf("OnInMemoryOnly called %d times, want %d", inMemoryOnly, tc.want)
 			}
 			if strings.Join(titles, ",") != "a,b" {
 				t.Errorf("titles = %v, want [a b]", titles)
@@ -116,35 +117,34 @@ func TestGetAlertsReportInMemoryOnly(t *testing.T) {
 
 func TestGetAlertsInMemoryOnlyEmpty(t *testing.T) {
 	client := newAlertsTestServer(t, "true", http.StatusOK, nil)
-	titles, inMemoryOnly, err := collectAlerts(client, AlertLogOpts{ReportInMemoryOnly: true})
+	titles, inMemoryOnly, err := collectAlerts(client, AlertLogOpts{})
 	if err != nil {
 		t.Fatalf("GetAlerts: %v", err)
 	}
 	if inMemoryOnly != 1 {
-		t.Errorf("ErrAlertsInMemoryOnly yielded %d times, want 1", inMemoryOnly)
+		t.Errorf("OnInMemoryOnly called %d times, want 1", inMemoryOnly)
 	}
 	if len(titles) != 0 {
 		t.Errorf("expected no alerts, got %v", titles)
 	}
 }
 
-func TestGetAlertsInMemoryOnlyStopEarly(t *testing.T) {
-	client := newAlertsTestServer(t, "true", http.StatusOK, encodeAlerts(t, Alert{Title: "a"}))
-	var calls int
-	for range client.GetAlerts(context.Background(), AlertLogOpts{ReportInMemoryOnly: true}) {
-		calls++
-		break
+func TestGetAlertsInMemoryOnlyErrorStatus(t *testing.T) {
+	client := newAlertsTestServer(t, "true", http.StatusForbidden, []byte(`{"Code":"AccessDenied","Message":"denied"}`))
+	_, inMemoryOnly, err := collectAlerts(client, AlertLogOpts{})
+	if err == nil {
+		t.Fatal("expected an error")
 	}
-	if calls != 1 {
-		t.Errorf("expected iteration to stop after the first yield, got %d", calls)
+	if inMemoryOnly != 0 {
+		t.Errorf("OnInMemoryOnly called %d times on a failed request, want 0", inMemoryOnly)
 	}
 }
 
-func TestGetAlertsReportInMemoryOnlyNotSent(t *testing.T) {
+func TestGetAlertsOnInMemoryOnlyNotSent(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
 		if bytes.Contains(bytes.ToLower(body), []byte("inmemory")) {
-			t.Errorf("ReportInMemoryOnly leaked into the request body: %s", body)
+			t.Errorf("OnInMemoryOnly leaked into the request body: %s", body)
 		}
 	}))
 	t.Cleanup(server.Close)
@@ -152,7 +152,7 @@ func TestGetAlertsReportInMemoryOnlyNotSent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
-	if _, _, err := collectAlerts(client, AlertLogOpts{ReportInMemoryOnly: true}); err != nil {
+	if _, _, err := collectAlerts(client, AlertLogOpts{}); err != nil {
 		t.Fatalf("GetAlerts: %v", err)
 	}
 }
