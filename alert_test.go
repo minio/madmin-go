@@ -20,6 +20,8 @@ package madmin
 import (
 	"bytes"
 	"context"
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -63,72 +65,95 @@ func newAlertsTestServer(t *testing.T, header string, status int, body []byte) *
 	return client
 }
 
-func TestListAlertsInMemoryOnly(t *testing.T) {
+// collectAlerts drains GetAlerts, stopping at the first error other than
+// ErrAlertsInMemoryOnly.
+func collectAlerts(client *AdminClient, opts AlertLogOpts) (titles []string, inMemoryOnly int, err error) {
+	for alert, err := range client.GetAlerts(context.Background(), opts) {
+		if errors.Is(err, ErrAlertsInMemoryOnly) {
+			if len(titles) > 0 {
+				return titles, inMemoryOnly, errors.New("ErrAlertsInMemoryOnly yielded after an alert")
+			}
+			inMemoryOnly++
+			continue
+		}
+		if err != nil {
+			return titles, inMemoryOnly, err
+		}
+		titles = append(titles, alert.Title)
+	}
+	return titles, inMemoryOnly, nil
+}
+
+func TestGetAlertsReportInMemoryOnly(t *testing.T) {
 	body := encodeAlerts(t, Alert{Title: "a", DedupKey: "1"}, Alert{Title: "b", DedupKey: "2"})
 	cases := []struct {
 		name   string
 		header string
-		want   bool
+		report bool
+		want   int
 	}{
-		{"header true", "true", true},
-		{"header absent", "", false},
-		{"header other value", "false", false},
+		{"header true", "true", true, 1},
+		{"header absent", "", true, 0},
+		{"header other value", "false", true, 0},
+		{"header true, not requested", "true", false, 0},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			client := newAlertsTestServer(t, tc.header, http.StatusOK, body)
-			res, err := client.ListAlerts(context.Background(), AlertLogOpts{})
+			titles, inMemoryOnly, err := collectAlerts(client, AlertLogOpts{ReportInMemoryOnly: tc.report})
 			if err != nil {
-				t.Fatalf("ListAlerts: %v", err)
+				t.Fatalf("GetAlerts: %v", err)
 			}
-			if res.InMemoryOnly != tc.want {
-				t.Errorf("InMemoryOnly = %v, want %v", res.InMemoryOnly, tc.want)
+			if inMemoryOnly != tc.want {
+				t.Errorf("ErrAlertsInMemoryOnly yielded %d times, want %d", inMemoryOnly, tc.want)
 			}
-			if len(res.Alerts) != 2 || res.Alerts[0].Title != "a" || res.Alerts[1].Title != "b" {
-				t.Errorf("unexpected alerts: %+v", res.Alerts)
+			if strings.Join(titles, ",") != "a,b" {
+				t.Errorf("titles = %v, want [a b]", titles)
 			}
 		})
 	}
 }
 
-func TestListAlertsEmpty(t *testing.T) {
+func TestGetAlertsInMemoryOnlyEmpty(t *testing.T) {
 	client := newAlertsTestServer(t, "true", http.StatusOK, nil)
-	res, err := client.ListAlerts(context.Background(), AlertLogOpts{})
+	titles, inMemoryOnly, err := collectAlerts(client, AlertLogOpts{ReportInMemoryOnly: true})
 	if err != nil {
-		t.Fatalf("ListAlerts: %v", err)
+		t.Fatalf("GetAlerts: %v", err)
 	}
-	if !res.InMemoryOnly {
-		t.Error("InMemoryOnly = false, want true")
+	if inMemoryOnly != 1 {
+		t.Errorf("ErrAlertsInMemoryOnly yielded %d times, want 1", inMemoryOnly)
 	}
-	if len(res.Alerts) != 0 {
-		t.Errorf("expected no alerts, got %d", len(res.Alerts))
-	}
-}
-
-func TestListAlertsErrorStatus(t *testing.T) {
-	client := newAlertsTestServer(t, "", http.StatusForbidden, []byte(`{"Code":"AccessDenied","Message":"denied"}`))
-	res, err := client.ListAlerts(context.Background(), AlertLogOpts{})
-	if err == nil {
-		t.Fatal("expected error for non-200 response")
-	}
-	if len(res.Alerts) != 0 || res.InMemoryOnly {
-		t.Errorf("expected zero result on error, got %+v", res)
+	if len(titles) != 0 {
+		t.Errorf("expected no alerts, got %v", titles)
 	}
 }
 
-func TestListAlertsTruncatedStream(t *testing.T) {
-	full := encodeAlerts(t, Alert{Title: "a", DedupKey: "1"}, Alert{Title: "b", DedupKey: "2"})
-	first := encodeAlerts(t, Alert{Title: "a", DedupKey: "1"})
-	client := newAlertsTestServer(t, "true", http.StatusOK, full[:len(first)+(len(full)-len(first))/2])
-	res, err := client.ListAlerts(context.Background(), AlertLogOpts{})
-	if err == nil {
-		t.Fatal("expected decode error for truncated stream")
+func TestGetAlertsInMemoryOnlyStopEarly(t *testing.T) {
+	client := newAlertsTestServer(t, "true", http.StatusOK, encodeAlerts(t, Alert{Title: "a"}))
+	var calls int
+	for range client.GetAlerts(context.Background(), AlertLogOpts{ReportInMemoryOnly: true}) {
+		calls++
+		break
 	}
-	if len(res.Alerts) != 1 || res.Alerts[0].Title != "a" {
-		t.Errorf("expected the one fully decoded alert, got %+v", res.Alerts)
+	if calls != 1 {
+		t.Errorf("expected iteration to stop after the first yield, got %d", calls)
 	}
-	if !res.InMemoryOnly {
-		t.Error("InMemoryOnly = false, want true")
+}
+
+func TestGetAlertsReportInMemoryOnlyNotSent(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		if bytes.Contains(bytes.ToLower(body), []byte("inmemory")) {
+			t.Errorf("ReportInMemoryOnly leaked into the request body: %s", body)
+		}
+	}))
+	t.Cleanup(server.Close)
+	client, err := New(mustParseHost(t, server.URL), "ak", "sk", false)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	if _, _, err := collectAlerts(client, AlertLogOpts{ReportInMemoryOnly: true}); err != nil {
+		t.Fatalf("GetAlerts: %v", err)
 	}
 }
 

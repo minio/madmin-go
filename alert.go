@@ -81,6 +81,11 @@ type AlertLogOpts struct {
 	Types      []string      `json:"types,omitempty"`
 	Interval   time.Duration `json:"interval,omitempty"`
 	MaxPerNode int           `json:"maxPerNode,omitempty"`
+
+	// ReportInMemoryOnly makes GetAlerts yield ErrAlertsInMemoryOnly once,
+	// before any alert, when the server could only serve its in-memory buffer.
+	// Client-side only; never sent to the server.
+	ReportInMemoryOnly bool `json:"-"`
 }
 
 // AlertsInMemoryOnlyHeader is set to "true" on an alert-history response when
@@ -88,47 +93,42 @@ type AlertLogOpts struct {
 // server's memory are returned.
 const AlertsInMemoryOnlyHeader = "x-minio-alerts-inmemory-only"
 
-// AlertsResult is the outcome of ListAlerts.
-//
-//msgp:ignore AlertsResult
-type AlertsResult struct {
-	Alerts []Alert
-	// InMemoryOnly reports a degraded read: Alerts may be incomplete rather
-	// than the full history for the requested window.
-	InMemoryOnly bool
-}
-
-func (adm AdminClient) openAlerts(ctx context.Context, opts AlertLogOpts) (*http.Response, error) {
-	alertOpts, err := json.Marshal(opts)
-	if err != nil {
-		return nil, err
-	}
-	reqData := requestData{
-		relPath: adminAPIPrefix + "/alerts",
-		content: alertOpts,
-	}
-	resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		defer closeResponse(resp)
-		return nil, httpRespToErrorResponse(resp)
-	}
-	return resp, nil
-}
+// ErrAlertsInMemoryOnly is yielded by GetAlerts when AlertLogOpts.ReportInMemoryOnly
+// is set and the read was degraded: the alerts that follow may be incomplete
+// rather than the full history for the requested window. It is not fatal;
+// iteration continues with the alerts the server returned.
+var ErrAlertsInMemoryOnly = errors.New("alert history is incomplete: only in-memory alerts were returned")
 
 // GetAlerts returns alerts stored in the system as a streaming msgpack response
 // via POST /admin/alerts. Use AlertLogOpts.Interval to control the server-side
-// check interval. Use ListAlerts to also learn whether the read was degraded.
+// check interval, and AlertLogOpts.ReportInMemoryOnly to learn whether the read
+// was degraded.
 func (adm AdminClient) GetAlerts(ctx context.Context, opts AlertLogOpts) iter.Seq2[*Alert, error] {
 	return func(yield func(*Alert, error) bool) {
-		resp, err := adm.openAlerts(ctx, opts)
+		alertOpts, err := json.Marshal(opts)
+		if err != nil {
+			yield(nil, err)
+			return
+		}
+		reqData := requestData{
+			relPath: adminAPIPrefix + "/alerts",
+			content: alertOpts,
+		}
+		resp, err := adm.executeMethod(ctx, http.MethodPost, reqData)
 		if err != nil {
 			yield(nil, err)
 			return
 		}
 		defer closeResponse(resp)
+		if resp.StatusCode != http.StatusOK {
+			yield(nil, httpRespToErrorResponse(resp))
+			return
+		}
+		if opts.ReportInMemoryOnly && resp.Header.Get(AlertsInMemoryOnlyHeader) == "true" {
+			if !yield(nil, ErrAlertsInMemoryOnly) {
+				return
+			}
+		}
 		dec := msgp.NewReader(resp.Body)
 		for {
 			var alert Alert
@@ -150,29 +150,5 @@ func (adm AdminClient) GetAlerts(ctx context.Context, opts AlertLogOpts) iter.Se
 				}
 			}
 		}
-	}
-}
-
-// ListAlerts reads alerts stored in the system via POST /admin/alerts and
-// reports whether the server could only serve its in-memory buffer. On a
-// decode error mid-stream it returns the alerts decoded so far with the error.
-func (adm AdminClient) ListAlerts(ctx context.Context, opts AlertLogOpts) (AlertsResult, error) {
-	resp, err := adm.openAlerts(ctx, opts)
-	if err != nil {
-		return AlertsResult{}, err
-	}
-	defer closeResponse(resp)
-
-	result := AlertsResult{InMemoryOnly: resp.Header.Get(AlertsInMemoryOnlyHeader) == "true"}
-	dec := msgp.NewReader(resp.Body)
-	for {
-		var alert Alert
-		if err := alert.DecodeMsg(dec); err != nil {
-			if errors.Is(err, io.EOF) {
-				return result, nil
-			}
-			return result, err
-		}
-		result.Alerts = append(result.Alerts, alert)
 	}
 }
