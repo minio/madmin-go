@@ -47,7 +47,7 @@ func newFilesExportsTestClient(t *testing.T, serverURL string) *AdminClient {
 // TestFilesExportsQueryRequest verifies the method, path and query the client
 // sends, and that it decodes a JSON reply in the Files admin API's format.
 //
-// The ids travel as one comma-separated exportId value, and the order asked for
+// The ids travel as one comma-separated exportID value, and the order asked for
 // is the order the reply documents, so both are asserted rather than the fact
 // that a request arrived.
 //
@@ -96,8 +96,8 @@ func TestFilesExportsQueryRequest(t *testing.T) {
 	if wantPath := "/minio/admin/files/v1/gateway/exports"; path != wantPath {
 		t.Errorf("path = %s, want %s", path, wantPath)
 	}
-	if ids := query.Get("exportId"); ids != "9,4" {
-		t.Errorf("exportId = %q, want %q", ids, "9,4")
+	if ids := query.Get("exportID"); ids != "9,4" {
+		t.Errorf("exportID = %q, want %q", ids, "9,4")
 	}
 
 	if got.Count != 2 || got.Total != 3 {
@@ -171,12 +171,66 @@ func TestFilesExportsQueryRejectsIDCountsLocally(t *testing.T) {
 	}
 }
 
+// TestFilesGatewayExportsRequest verifies that the listing sends no query at
+// all, and that each node's listing decodes. A node with no daemon carries no
+// listing, and a listing without a time carries no TS.
+func TestFilesGatewayExportsRequest(t *testing.T) {
+	const reply = `{
+		"results": [
+			{
+				"node": "10.0.0.1:9000",
+				"reach": "serving",
+				"daemon": {"exports": [1, 4], "bootId": "3f9c", "ts": "2026-10-03T10:00:00Z"}
+			},
+			{"node": "10.0.0.2:9000", "reach": "no-daemon", "detail": "no daemon"},
+			{"node": "10.0.0.3:9000", "reach": "serving", "daemon": {"exports": []}},
+			{"node": "10.0.0.4:9000", "reach": "serving", "daemon": {"exports": [1, 4], "truncated": true}}
+		],
+		"count": 4,
+		"total": 4
+	}`
+
+	server, seen := newFilesJSONServer(t, http.StatusOK, reply)
+
+	got, err := newFilesExportsTestClient(t, server.URL).FilesGatewayExports(context.Background())
+	if err != nil {
+		t.Fatalf("FilesGatewayExports: %v", err)
+	}
+
+	if len(*seen) != 1 {
+		t.Fatalf("the server saw %d requests, want 1", len(*seen))
+	}
+	if req := (*seen)[0]; req.method != http.MethodGet || req.path != "/minio/admin/files/v1/gateway/exports" || len(req.query) != 0 {
+		t.Errorf("request = %s %s %v, want GET on the gateway exports path with no query", req.method, req.path, req.query)
+	}
+
+	if len(got.Results) != 4 {
+		t.Fatalf("results = %d, want 4", len(got.Results))
+	}
+	daemon := got.Results[0].Daemon
+	if daemon == nil || !slices.Equal(daemon.Exports, []uint64{1, 4}) || daemon.BootID != "3f9c" ||
+		daemon.TS == nil || !daemon.TS.Equal(time.Date(2026, 10, 3, 10, 0, 0, 0, time.UTC)) {
+		t.Errorf("daemon = %+v, want exports [1 4] under boot id 3f9c at 10:00 UTC", daemon)
+	}
+	if got.Results[1].Daemon != nil {
+		t.Errorf("a node with no daemon carried a listing: %+v", got.Results[1].Daemon)
+	}
+	// A gateway serving nothing still answered, which is what separates it from
+	// a node with no daemon.
+	if empty := got.Results[2].Daemon; empty == nil || len(empty.Exports) != 0 || empty.TS != nil {
+		t.Errorf("empty listing = %+v, want a listing with no exports and no time", empty)
+	}
+	if cut := got.Results[3].Daemon; cut == nil || !cut.Truncated {
+		t.Errorf("truncated listing = %+v, want Truncated", cut)
+	}
+}
+
 // TestFilesExportsQueryAtTheCap verifies the boundary is inclusive: exactly
 // MaxFilesExportIDsPerQuery ids is a request the client sends.
 func TestFilesExportsQueryAtTheCap(t *testing.T) {
 	var ids string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ids = r.URL.Query().Get("exportId")
+		ids = r.URL.Query().Get("exportID")
 		w.WriteHeader(http.StatusOK)
 		if err := json.NewEncoder(w).Encode(&FilesExportsQueryResponse{}); err != nil {
 			t.Errorf("encode reply: %v", err)
@@ -527,6 +581,8 @@ func TestFilesListsEncodeEmptyAsArray(t *testing.T) {
 		{&FilesExportList{}, `"exports":[]`},
 		{FilesStatsList{}, `"stats":[]`},
 		{&FilesStatsList{}, `"stats":[]`},
+		{FilesDaemonExports{}, `"exports":[]`},
+		{&FilesNodeStatus{Daemon: &FilesDaemonExports{}}, `"exports":[]`},
 	} {
 		body, err := json.Marshal(tc.v)
 		if err != nil {
@@ -553,6 +609,11 @@ func TestFilesReadErrorCode(t *testing.T) {
 			_, err := client.FilesExportStats(context.Background(), "carol", FilesStatsOptions{})
 			return err
 		},
+		"query": func() error {
+			_, err := client.FilesExportsQuery(context.Background(), []uint64{4})
+			return err
+		},
+		"gateway listing": func() error { _, err := client.FilesGatewayExports(context.Background()); return err },
 	} {
 		err := call()
 		var errResp ErrorResponse
