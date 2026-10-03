@@ -34,6 +34,8 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/minio/madmin-go/v4/filesaccess"
 )
 
 func newFilesExportsTestClient(t *testing.T, serverURL string) *AdminClient {
@@ -283,6 +285,11 @@ func TestFilesWireKeys(t *testing.T) {
 		if typ.Kind() != reflect.Struct || typ == reflect.TypeOf(time.Time{}) || seen[typ] {
 			return
 		}
+		// A type that encodes itself, such as filesaccess.Rule, owns its
+		// wire form, and its own tests check it.
+		if reflect.PointerTo(typ).Implements(reflect.TypeFor[json.Marshaler]()) {
+			return
+		}
 		seen[typ] = true
 		for idx := range typ.NumField() {
 			field := typ.Field(idx)
@@ -441,11 +448,9 @@ func TestGetFilesExportRequest(t *testing.T) {
 		want := FilesExport{
 			Name: "carol", ExportID: 104, Pseudo: "/home/carol", Node: "node03.example.com",
 			Status: FilesExportServing, AccessType: FilesAccessRW, Squash: FilesSquashRoot, QuotaBytes: 21474836480,
-			AccessRules: []FilesAccessRule{
-				{Clients: []string{"10.20.9.0/24"}, AccessType: FilesAccessNone},
-				{Clients: []string{"10.20.4.7", "10.20.4.8"}, AccessType: FilesAccessRW},
-				{Clients: []string{"*.corp.example.com", "10.20.0.0/16"}, AccessType: FilesAccessRO},
-			},
+			AccessRules: mustFilesRules("10.20.9.0/24 none\n" +
+				"10.20.4.7,10.20.4.8 rw\n" +
+				"*.corp.example.com,10.20.0.0/16 ro\n").All(),
 		}
 		used := got.UsedBytes
 		got.UsedBytes = nil
@@ -774,9 +779,19 @@ func TestAddFilesExportRequest(t *testing.T) {
 	}
 }
 
+// mustFilesRules parses a rules file, and panics on an error: the tests pass
+// only valid ones.
+func mustFilesRules(file string) filesaccess.Rules {
+	rules, err := filesaccess.Parse(strings.NewReader(file), "test")
+	if err != nil {
+		panic(err)
+	}
+	return rules
+}
+
 // filesWrites calls each Files write once against client.
 func filesWrites(ctx context.Context, client *AdminClient) map[string]func() error {
-	rules := []FilesAccessRule{{Clients: []string{"*"}, AccessType: FilesAccessRW}}
+	rules := mustFilesRules("* rw")
 	return map[string]func() error{
 		"add": func() error {
 			_, err := client.AddFilesExport(ctx, FilesExportSpec{Name: "carol", Pseudo: "/home/carol"})
@@ -818,7 +833,7 @@ func TestFilesWriteRefusesZeroGeneration(t *testing.T) {
 	server, seen := newFilesJSONServer(t, http.StatusOK, `{}`)
 	client := newFilesExportsTestClient(t, server.URL)
 	ctx := context.Background()
-	rules := []FilesAccessRule{{Clients: []string{"*"}, AccessType: FilesAccessRW}}
+	rules := mustFilesRules("* rw")
 
 	for name, call := range map[string]func() error{
 		"quota":  func() error { _, err := client.SetFilesExportQuota(ctx, "carol", 0, 1); return err },
@@ -939,7 +954,7 @@ func TestFilesWriteFirstAnswerIsFinal(t *testing.T) {
 // cannot know. When the export holds something else, the answer is returned.
 func TestFilesWriteReconciles(t *testing.T) {
 	ctx := context.Background()
-	rules := []FilesAccessRule{{Clients: []string{"*"}, AccessType: FilesAccessRW}}
+	rules := mustFilesRules("* rw")
 	for _, tc := range []struct {
 		name   string
 		read   filesScriptedReply
@@ -1110,19 +1125,16 @@ func TestSetFilesExportQuotaRequest(t *testing.T) {
 }
 
 // TestSetFilesExportAccessRequest verifies that the rule list reaches the
-// server exactly as given, in order and with a duplicate kept, since the order
-// is the policy.
+// server exactly as given, in order and never sorted, since the order is the
+// policy.
 func TestSetFilesExportAccessRequest(t *testing.T) {
 	server, seen := newFilesJSONServer(t, http.StatusOK,
-		`{"name": "carol", "exportId": 104, "previousRuleCount": 0, "ruleCount": 4}`)
+		`{"name": "carol", "exportId": 104, "previousRuleCount": 0, "ruleCount": 3}`)
 	client := newFilesExportsTestClient(t, server.URL)
 
-	rules := []FilesAccessRule{
-		{Clients: []string{"10.20.9.0/24"}, AccessType: FilesAccessNone},
-		{Clients: []string{"10.20.4.8", "10.20.4.7"}, AccessType: FilesAccessRW},
-		{Clients: []string{"10.20.9.0/24"}, AccessType: FilesAccessNone},
-		{Clients: []string{"*"}, AccessType: FilesAccessRO},
-	}
+	rules := mustFilesRules("10.20.9.0/24 none\n" +
+		"10.20.4.8,10.20.4.7 rw\n" +
+		"* ro\n")
 	got, err := client.SetFilesExportAccess(context.Background(), "104", 7, rules)
 	if err != nil {
 		t.Fatalf("SetFilesExportAccess: %v", err)
@@ -1138,18 +1150,16 @@ func TestSetFilesExportAccessRequest(t *testing.T) {
 	if err := json.Unmarshal(req.body, &sent); err != nil {
 		t.Fatalf("decode body: %v", err)
 	}
-	if !reflect.DeepEqual(sent.Rules, rules) {
-		t.Errorf("the server received %+v, want %+v", sent.Rules, rules)
+	if !slices.EqualFunc(sent.Rules.All(), rules.All(), FilesAccessRule.Equal) {
+		t.Errorf("the server received %+v, want %+v", sent.Rules.All(), rules.All())
 	}
-	if got.PreviousRuleCount == nil || *got.PreviousRuleCount != 0 || got.RuleCount != 4 {
+	if got.PreviousRuleCount == nil || *got.PreviousRuleCount != 0 || got.RuleCount != 3 {
 		t.Errorf("reply = %+v", got)
 	}
 
 	// An empty list is not a way to clear: ClearFilesExportAccess is.
-	for _, empty := range [][]FilesAccessRule{nil, {}} {
-		if _, err := client.SetFilesExportAccess(context.Background(), "carol", 7, empty); err == nil {
-			t.Errorf("SetFilesExportAccess(%#v) should fail", empty)
-		}
+	if _, err := client.SetFilesExportAccess(context.Background(), "carol", 7, filesaccess.Rules{}); err == nil {
+		t.Error("SetFilesExportAccess with no rules should fail")
 	}
 	if len(*seen) != 1 {
 		t.Errorf("the server received %d requests, want 1", len(*seen))
@@ -1212,7 +1222,7 @@ func TestFilesWriteRefusesLocally(t *testing.T) {
 	server, seen := newFilesJSONServer(t, http.StatusOK, `{}`)
 	client := newFilesExportsTestClient(t, server.URL)
 	ctx := context.Background()
-	rules := []FilesAccessRule{{Clients: []string{"*"}, AccessType: FilesAccessRW}}
+	rules := mustFilesRules("* rw")
 
 	for _, export := range []string{"", "stats"} {
 		for name, call := range map[string]func() error{
