@@ -62,8 +62,8 @@ func TestFilesExportsQueryRequest(t *testing.T) {
 				"reach": "serving",
 				"socketPath": "/run/aistor-files.sock",
 				"exports": [
-					{"exportId": 9, "status": {"exportId": 9, "held": true, "epoch": 7, "ownerId": "o1", "usedBytes": 1024}},
-					{"exportId": 4, "notHeld": true}
+					{"exportID": 9, "status": {"exportID": 9, "held": true, "epoch": 7, "ownerId": "o1", "usedBytes": 1024}},
+					{"exportID": 4, "notHeld": true}
 				]
 			},
 			{"node": "10.0.0.2:9000", "reach": "no-daemon", "detail": "no daemon"}
@@ -317,8 +317,9 @@ func TestFilesExportsQueryLeaseTimes(t *testing.T) {
 }
 
 // filesWireKey matches a camelCase JSON key in which every capital starts a
-// word, so "exportId" passes and "exportID" does not.
-var filesWireKey = regexp.MustCompile(`^[a-z][a-z0-9]*([A-Z][a-z0-9]+)*$`)
+// word or belongs to the initialism ID, so "exportID" passes and "ExportID"
+// and "export_id" do not.
+var filesWireKey = regexp.MustCompile(`^[a-z][a-z0-9]*([A-Z][a-z0-9]+|ID)*$`)
 
 // TestFilesWireKeys verifies that every JSON key of the Files admin API types
 // is camelCase, and that each cluster-wide reply names the nodes it missed in
@@ -401,9 +402,9 @@ func newFilesJSONServer(t *testing.T, status int, body string) (*httptest.Server
 func TestListFilesExportsRequest(t *testing.T) {
 	server, seen := newFilesJSONServer(t, http.StatusOK, `{
   "exports": [
-    {"name": "carol", "exportId": 104, "pseudo": "/home/carol", "node": "node03.example.com",
+    {"name": "carol", "exportID": 104, "pseudo": "/home/carol", "node": "node03.example.com",
      "status": "serving", "usedBytes": 1288490188, "quotaBytes": 21474836480},
-    {"name": "frank", "exportId": 107, "pseudo": "/home/frank", "node": "node02.example.com",
+    {"name": "frank", "exportID": 107, "pseudo": "/home/frank", "node": "node02.example.com",
      "status": "unreachable", "quotaBytes": 10737418240}
   ],
   "unreachableNodes": [
@@ -457,7 +458,7 @@ func TestListFilesExportsRequest(t *testing.T) {
 // access rules in evaluation order.
 func TestGetFilesExportRequest(t *testing.T) {
 	server, seen := newFilesJSONServer(t, http.StatusOK, `{
-  "name": "carol", "exportId": 104, "pseudo": "/home/carol", "node": "node03.example.com",
+  "name": "carol", "exportID": 104, "pseudo": "/home/carol", "node": "node03.example.com",
   "accessType": "rw", "squash": "root", "quotaBytes": 21474836480,
   "accessRules": [
     {"clients": ["10.20.9.0/24"], "accessType": "none"},
@@ -526,9 +527,9 @@ func TestGetFilesExportRefusesLocally(t *testing.T) {
 func TestFilesExportStatsRequest(t *testing.T) {
 	server, seen := newFilesJSONServer(t, http.StatusOK, `{
   "stats": [
-    {"name": "carol", "exportId": 104, "node": "node03.example.com", "status": "serving",
+    {"name": "carol", "exportID": 104, "node": "node03.example.com", "status": "serving",
      "usedBytes": 1288490188, "limitBytes": 21474836480},
-    {"name": "frank", "exportId": 107, "node": "node02.example.com", "status": "unreachable",
+    {"name": "frank", "exportID": 107, "node": "node02.example.com", "status": "unreachable",
      "limitBytes": 10737418240}
   ],
   "unreachableNodes": [{"node": "node02.example.com", "detail": "down"}]

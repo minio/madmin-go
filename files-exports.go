@@ -66,7 +66,7 @@ const (
 // gateway daemon holding it reported.
 type FilesExportStatus struct {
 	// ExportID is the Ganesha Export_Id.
-	ExportID uint64 `json:"exportId"`
+	ExportID uint64 `json:"exportID"`
 
 	// Leasing reports whether ownership leasing is configured for this export.
 	// When it is false the other lease fields are zero and only the capacity
@@ -111,7 +111,7 @@ type FilesExportStatus struct {
 // one of Status, NotHeld and Error carries it.
 type FilesExportResult struct {
 	// ExportID is the export the node was asked about.
-	ExportID uint64 `json:"exportId"`
+	ExportID uint64 `json:"exportID"`
 
 	// Status is the export's lease and capacity document, when the node holds
 	// the export.
@@ -387,7 +387,7 @@ type FilesExport struct {
 	Name string `json:"name"`
 
 	// ExportID is the Ganesha Export_Id AIStor allocated.
-	ExportID uint64 `json:"exportId"`
+	ExportID uint64 `json:"exportID"`
 
 	// Pseudo is the path clients mount. It cannot change.
 	Pseudo string `json:"pseudo"`
@@ -452,7 +452,7 @@ type FilesStatsOptions struct {
 // counters.
 type FilesExportCapacity struct {
 	Name     string           `json:"name"`
-	ExportID uint64           `json:"exportId"`
+	ExportID uint64           `json:"exportID"`
 	Node     string           `json:"node"`
 	Status   FilesExportPhase `json:"status"`
 
