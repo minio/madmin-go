@@ -32,6 +32,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/minio/madmin-go/v4/filesaccess"
 )
 
 // MaxFilesExportIDsPerQuery is the number of export ids one FilesExportsQuery
@@ -381,16 +383,11 @@ const (
 	FilesSquashAll FilesSquash = "all"
 )
 
-// FilesAccessRule grants AccessType to the clients it names. Rules are
-// evaluated in order and the first match wins, so the order of a rule list is
-// the policy: never sort one or remove duplicates from it.
-type FilesAccessRule struct {
-	// Clients holds IPs, CIDRs, hostnames, wildcards such as
-	// "*.corp.example.com", @netgroups, or "*".
-	Clients []string `json:"clients"`
-
-	AccessType FilesAccessType `json:"accessType"`
-}
+// FilesAccessRule grants access to the clients it names. Rules are evaluated
+// in order and the first match wins, so the order of a rule list is the
+// policy: never sort one or remove duplicates from it. The filesaccess package
+// defines it, and checks every rule and client specification as it decodes.
+type FilesAccessRule = filesaccess.Rule
 
 // FilesExport is one export: its configuration, with Status for where it is
 // running and UsedBytes for how full it is. GetFilesExport fills every field,
@@ -717,7 +714,7 @@ type filesQuotaBody struct {
 
 // filesAccessBody is the body of SetFilesExportAccess.
 type filesAccessBody struct {
-	Rules []FilesAccessRule `json:"rules"`
+	Rules filesaccess.Rules `json:"rules"`
 }
 
 // AddFilesExport creates an export. AIStor allocates its id, selects its node
@@ -807,20 +804,22 @@ func (adm *AdminClient) SetFilesExportQuota(ctx context.Context, export string, 
 
 // SetFilesExportAccess replaces an export's whole access rule list with rules.
 // The first rule that matches a client decides, so the order of rules is the
-// policy, and it is sent unchanged: never sorted, and with duplicates kept. An
-// export with any rule refuses a client none of them matches; end the list with
-// a rule for "*" to only narrow access. export is a name or a numeric export
-// id, sent as given. generation is the export's FilesExport.Generation the
-// change was decided on; when the export has moved on, the call fails with
-// FilesErrExportModified.
+// policy, and it is sent unchanged, never sorted. rules comes from
+// filesaccess.Parse, filesaccess.NewRules or decoding, so it has already
+// passed the checks AIStor makes: 1 to 1,000 rules, naming no client
+// specification twice. An export with any rule refuses a client none of them
+// matches; end the list with a rule for "*" to only narrow access. export is
+// a name or a numeric export id, sent as given. generation is the export's
+// FilesExport.Generation the change was decided on; when the export has moved
+// on, the call fails with FilesErrExportModified.
 //
-// An empty rules is refused: ClearFilesExportAccess removes every rule.
+// The zero Rules is refused: ClearFilesExportAccess removes every rule.
 //
 // A request whose outcome is unknown is repeated. When the repeat answers
 // FilesErrExportModified, the export is read, and the call succeeds when rules
 // are already in force, with PreviousRuleCount nil.
-func (adm *AdminClient) SetFilesExportAccess(ctx context.Context, export string, generation uint64, rules []FilesAccessRule) (FilesAccessChange, error) {
-	if len(rules) == 0 {
+func (adm *AdminClient) SetFilesExportAccess(ctx context.Context, export string, generation uint64, rules filesaccess.Rules) (FilesAccessChange, error) {
+	if rules.Len() == 0 {
 		return FilesAccessChange{}, errors.New("at least one access rule is required; ClearFilesExportAccess removes every rule")
 	}
 	reqData, err := filesExportWriteRequest(export, "/access", generation)
@@ -830,7 +829,7 @@ func (adm *AdminClient) SetFilesExportAccess(ctx context.Context, export string,
 
 	var change FilesAccessChange
 	reconcile := adm.filesReconcileModified(export, func(cur FilesExport) bool {
-		if !slices.EqualFunc(cur.AccessRules, rules, filesAccessRuleEqual) {
+		if !slices.EqualFunc(cur.AccessRules, rules.All(), FilesAccessRule.Equal) {
 			return false
 		}
 		change = FilesAccessChange{Name: cur.Name, ExportID: cur.ExportID, Generation: cur.Generation, RuleCount: len(cur.AccessRules)}
@@ -903,12 +902,6 @@ func (adm *AdminClient) RemoveFilesExport(ctx context.Context, export string, ge
 	}
 	err = adm.filesWrite(ctx, http.MethodDelete, reqData, nil, &result, reconcile)
 	return result, err
-}
-
-// filesAccessRuleEqual reports whether a and b grant the same access to the
-// same clients, listed in the same order.
-func filesAccessRuleEqual(a, b FilesAccessRule) bool {
-	return a.AccessType == b.AccessType && slices.Equal(a.Clients, b.Clients)
 }
 
 // filesExportPath returns the path of one export, followed by suffix. It
