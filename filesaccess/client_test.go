@@ -53,6 +53,10 @@ func TestParseClientAccepts(t *testing.T) {
 		{"Build01.Example.COM", Hostname, "build01.example.com"},
 		{"localhost", Hostname, "localhost"},
 		{"a-b.c-d", Hostname, "a-b.c-d"},
+		// A boolean word is refused only as the whole name.
+		{"no.example.com", Hostname, "no.example.com"},
+		{"online", Hostname, "online"},
+		{"offx", Hostname, "offx"},
 
 		{"*.lab.example.com", HostPattern, "*.lab.example.com"},
 		{"*.Lab.Example.com", HostPattern, "*.Lab.Example.com"},
@@ -60,6 +64,12 @@ func TestParseClientAccepts(t *testing.T) {
 		{"node[0-9].example.com", HostPattern, "node[0-9].example.com"},
 		{"node[!a].example_x.com", HostPattern, "node[!a].example_x.com"},
 		{"10.1.*", HostPattern, "10.1.*"},
+		// A leading '?' is a pattern when another wildcard follows.
+		{"?uild0?.example.com", HostPattern, "?uild0?.example.com"},
+		{"?uild*.example.com", HostPattern, "?uild*.example.com"},
+		{"?uild[0-9].example.com", HostPattern, "?uild[0-9].example.com"},
+		{"??", HostPattern, "??"},
+		{"b?ild01.example.com", HostPattern, "b?ild01.example.com"},
 
 		{"@contractors", Netgroup, "@contractors"},
 		{"@_ops.team-1", Netgroup, "@_ops.team-1"},
@@ -110,6 +120,14 @@ func TestParseClientRefuses(t *testing.T) {
 		{"fe80::1%eth0", "zone"},
 		{"fd00:::7", "not an IPv6 address"},
 		{"1.2.3.4:80", "not an IPv6 address"},
+		{"yes", "reads it as a boolean"},
+		{"true", "reads it as a boolean"},
+		{"on", "reads it as a boolean"},
+		{"no", "reads it as a boolean"},
+		{"FALSE", "reads it as a boolean"},
+		{"Off", "reads it as a boolean"},
+		{"?uild01.example.com", "only wildcard is a leading '?'"},
+		{"?", "only wildcard is a leading '?'"},
 		{"-host", "starts with a letter"},
 		{"host_name", "holds \"_\""},
 		{"host.", "label is empty"},

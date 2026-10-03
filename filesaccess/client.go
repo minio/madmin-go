@@ -153,7 +153,11 @@ func (c *Client) UnmarshalJSON(b []byte) error {
 //   - a network with host bits set;
 //   - an IPv4 octet with a leading zero, which some parsers read as octal;
 //   - a hostname that starts with a digit, which Ganesha's config lexer
-//     reads as a number.
+//     reads as a number;
+//   - a hostname that is yes, true, on, no, false or off, in any case,
+//     which Ganesha's config lexer reads as a boolean;
+//   - a hostname pattern whose only wildcard is a leading '?', which
+//     Ganesha's config lexer reads as a plain hostname.
 //
 // A hostname is checked for syntax only. Nothing here resolves it.
 func ParseClient(s string) (Client, error) {
@@ -301,6 +305,10 @@ func parseHostname(s string) (Client, error) {
 	if !isLetter(s[0]) {
 		return Client{}, fmt.Errorf("%q is not a client specification: a hostname starts with a letter", s)
 	}
+	switch strings.ToLower(s) {
+	case "yes", "true", "on", "no", "false", "off":
+		return Client{}, fmt.Errorf("%q is not a client specification: Ganesha's config lexer reads it as a boolean; write the host's full name", s)
+	}
 	if len(s) > maxHostnameLen {
 		return Client{}, fmt.Errorf("hostname %q is longer than %d characters", s, maxHostnameLen)
 	}
@@ -362,6 +370,12 @@ func parsePattern(s string) (Client, error) {
 			return Client{}, fmt.Errorf("hostname pattern %q holds %q; a pattern holds letters, digits, '.', '-', '_', '*', '?' and [...]",
 				s, string(c))
 		}
+	}
+	// Ganesha's lexer reads a leading '?' as the start of a plain token, and
+	// prefers that token to a pattern of the same length, so a pattern needs
+	// a wildcard after the first byte.
+	if s[0] == '?' && !strings.ContainsAny(s[1:], "*?[") {
+		return Client{}, fmt.Errorf("hostname pattern %q is read by Ganesha's config lexer as a plain hostname, because its only wildcard is a leading '?'", s)
 	}
 	return Client{kind: HostPattern, norm: s}, nil
 }

@@ -19,6 +19,8 @@ package filesaccess
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -68,6 +70,14 @@ func (e LineErrors) Error() string {
 // Parse reads a rules file and checks the whole of it. name labels the
 // errors, typically the file's path, or "-" for standard input.
 //
+// The file is either the text form below or JSON. JSON is either an array of
+// rules, as Rules.UnmarshalJSON reads, or an object whose "rules" member is
+// that array; its other members are ignored, so the JSON mc prints for an
+// export's rules can be edited and read back. JSON is told from text by its
+// first byte other than white space: '{', or '[' followed by '{' or ']'. A
+// text rule may start with '[', as a hostname pattern does, but no pattern
+// class starts with '{' or ']'.
+//
 // A rule line holds two fields separated by spaces or tabs: CLIENTS, one or
 // more client specifications joined by commas, then ACCESS, which is rw, ro
 // or none. '#' starts a comment that runs to the end of the line. Blank lines
@@ -81,14 +91,87 @@ func (e LineErrors) Error() string {
 // is what a wrong path or a truncated file looks like.
 //
 // On failure the error is a LineErrors holding every error found, and the
-// Rules is the zero value. An error reading r is returned as it is.
+// Rules is the zero value. An error in a JSON file carries no line; it names
+// the rule by its 1-based position instead. An error reading r is returned as
+// it is.
 func Parse(r io.Reader, name string) (Rules, error) {
-	br := bufio.NewReader(io.LimitReader(r, MaxFileBytes+1))
+	b, err := io.ReadAll(io.LimitReader(r, MaxFileBytes+1))
+	if err != nil {
+		return Rules{}, err
+	}
+	if len(b) > MaxFileBytes {
+		return Rules{}, LineErrors{{File: name, Msg: fmt.Sprintf("the file is larger than %s bytes", thousands(MaxFileBytes))}}
+	}
+	if isJSON(b) {
+		return parseJSON(b, name)
+	}
+	return parseText(b, name)
+}
+
+// isJSON reports whether a rules file is JSON rather than text: its first
+// byte other than white space is '{', or '[' followed by '{' or ']'.
+func isJSON(b []byte) bool {
+	b = bytes.TrimLeft(b, " \t\r\n")
+	if len(b) == 0 {
+		return false
+	}
+	switch b[0] {
+	case '{':
+		return true
+	case '[':
+		b = bytes.TrimLeft(b[1:], " \t\r\n")
+		return len(b) > 0 && (b[0] == '{' || b[0] == ']')
+	}
+	return false
+}
+
+// parseJSON reads a JSON rules file: an array of rules, or an object whose
+// "rules" member is one.
+func parseJSON(b []byte, name string) (Rules, error) {
+	fail := func(err error) (Rules, error) {
+		flat := flatten(err)
+		errs := make(LineErrors, len(flat))
+		for i, e := range flat {
+			errs[i] = LineError{File: name, Msg: e.Error()}
+		}
+		return Rules{}, errs
+	}
+
+	dec := json.NewDecoder(bytes.NewReader(b))
+	var v json.RawMessage
+	if err := dec.Decode(&v); err != nil {
+		return fail(fmt.Errorf("the file is not valid JSON: %w", err))
+	}
+	if _, err := dec.Token(); !errors.Is(err, io.EOF) {
+		return fail(errors.New("the file holds more than one JSON value"))
+	}
+
+	if v[0] == '{' {
+		var obj struct {
+			Rules json.RawMessage `json:"rules"`
+		}
+		if err := json.Unmarshal(v, &obj); err != nil {
+			return fail(fmt.Errorf("the file is not valid JSON: %w", err))
+		}
+		if len(obj.Rules) == 0 || string(obj.Rules) == "null" {
+			return fail(errors.New(`a JSON rules file is an array of rules, or an object with a "rules" member holding one`))
+		}
+		v = obj.Rules
+	}
+	var rules Rules
+	if err := rules.UnmarshalJSON(v); err != nil {
+		return fail(err)
+	}
+	return rules, nil
+}
+
+// parseText reads a rules file in the text form.
+func parseText(b []byte, name string) (Rules, error) {
+	br := bufio.NewReader(bytes.NewReader(b))
 	var (
 		errs  LineErrors
 		rules []Rule
 		seen  = make(map[Client]int)
-		total int
 		line  int
 	)
 	fail := func(format string, args ...any) {
@@ -96,15 +179,8 @@ func Parse(r io.Reader, name string) (Rules, error) {
 	}
 	for {
 		text, err := br.ReadString('\n')
-		if err != nil && !errors.Is(err, io.EOF) {
-			return Rules{}, err
-		}
 		if text == "" && errors.Is(err, io.EOF) {
 			break
-		}
-		total += len(text)
-		if total > MaxFileBytes {
-			return Rules{}, LineErrors{{File: name, Msg: fmt.Sprintf("the file is larger than %s bytes", thousands(MaxFileBytes))}}
 		}
 		line++
 
@@ -208,15 +284,19 @@ func describe(spec string, c Client) string {
 // rules file.
 const ruleGap = 4
 
-// Format prints rules as a rules file that Parse reads back as the same
-// rules. header, when not empty, is printed first as a comment, one comment
-// line per line of header; a byte a rules file may not hold is printed as
-// '?'. Each rule follows on its own line, in evaluation order, with every
-// specification in normalized form and the CLIENTS column aligned.
+// Format prints rules as a rules file. header, when not empty, is printed
+// first as a comment, one comment line per line of header; a byte a rules
+// file may not hold is printed as '?'. Each rule follows on its own line, in
+// evaluation order, with every specification in normalized form and the
+// CLIENTS column aligned.
 //
 // Format takes a []Rule rather than Rules so it prints any list, including
-// an empty one, which yields the header alone. A rule that would not pass its
-// own checks is an error, and nothing is written.
+// an empty one, which yields the header alone. It checks each rule on its
+// own: a rule that would not pass its own checks is an error, and nothing is
+// written. It does not check the list as a whole, so Parse reads the output
+// back as the same rules only when the list is one NewRules accepts: 1 to
+// MaxRules rules, naming no client specification twice. Parse refuses the
+// header alone that an empty list prints.
 func Format(w io.Writer, header string, rules []Rule) error {
 	clients := make([]string, len(rules))
 	width := 0

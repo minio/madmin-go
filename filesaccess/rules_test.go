@@ -151,6 +151,96 @@ func TestParseTooLarge(t *testing.T) {
 	}
 }
 
+// TestParseJSON checks that Parse reads a JSON array of rules, and the object
+// mc prints for an export's rules, ignoring its other members.
+func TestParseJSON(t *testing.T) {
+	for _, tc := range []struct{ name, file string }{
+		{"array", specJSON},
+		{"array after white space", "\n \t\r\n" + specJSON + "\n"},
+		{"mc object", `{"status": "success", "name": "carol", "exportId": 104, "rules": ` + specJSON + `}`},
+	} {
+		rules, err := Parse(strings.NewReader(tc.file), "rules.json")
+		if err != nil {
+			t.Errorf("%s: Parse: %v", tc.name, err)
+			continue
+		}
+		if !slices.EqualFunc(rules.All(), specRules(t), Rule.Equal) {
+			t.Errorf("%s: Parse = %v, want %v", tc.name, rules.All(), specRules(t))
+		}
+	}
+}
+
+// TestParseJSONRoundTrip checks that Parse reads back what Rules.MarshalJSON
+// writes.
+func TestParseJSONRoundTrip(t *testing.T) {
+	rules, err := NewRules(specRules(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := json.MarshalIndent(map[string]any{"name": "carol", "rules": rules}, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	again, err := Parse(bytes.NewReader(b), "-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.EqualFunc(again.All(), rules.All(), Rule.Equal) {
+		t.Fatalf("Parse = %v, want %v", again.All(), rules.All())
+	}
+}
+
+// TestParseJSONErrors checks that a JSON file's errors are LineErrors with no
+// line, one per error, each naming its rule.
+func TestParseJSONErrors(t *testing.T) {
+	for _, tc := range []struct {
+		name, file string
+		want       []string
+	}{
+		{"empty array", "[]", []string{"f: no rules; a rule list holds at least one rule"}},
+		{"mc object with no rules", `{"name": "carol", "rules": []}`, []string{"f: no rules; a rule list holds at least one rule"}},
+		{"object without rules", `{"name": "carol"}`, []string{`f: a JSON rules file is an array of rules, or an object with a "rules" member holding one`}},
+		{"null rules", `{"rules": null}`, []string{`f: a JSON rules file is an array of rules, or an object with a "rules" member holding one`}},
+		{"two values", specJSON + specJSON, []string{"f: the file holds more than one JSON value"}},
+		{"truncated", `[{"clients": ["a"]`, []string{"f: the file is not valid JSON: unexpected EOF"}},
+		{
+			"bad rules",
+			`[{"clients": ["10.1.2.3/16", "a.example.com"], "accessType": "RW"}, {"clients": ["a.example.com"], "accessType": "ro"}]`,
+			[]string{
+				`f: rule 1: "10.1.2.3/16" has host bits set; did you mean "10.1.0.0/16"?`,
+				`f: rule 1: "RW" is not an access type; want rw, ro or none`,
+			},
+		},
+		{
+			"duplicate",
+			`[{"clients": ["a.example.com"], "accessType": "rw"}, {"clients": ["A.example.com"], "accessType": "ro"}]`,
+			[]string{`f: rule 2: "a.example.com" already appears in rule 1; this rule can never match it`},
+		},
+	} {
+		_, err := Parse(strings.NewReader(tc.file), "f")
+		var errs LineErrors
+		if !errors.As(err, &errs) {
+			t.Errorf("%s: Parse error = %v (%T), want LineErrors", tc.name, err, err)
+			continue
+		}
+		if got := strings.Split(err.Error(), "\n"); !slices.Equal(got, tc.want) {
+			t.Errorf("%s: Parse errors:\n%s\nwant:\n%s", tc.name, strings.Join(got, "\n"), strings.Join(tc.want, "\n"))
+		}
+	}
+}
+
+// TestParseTextStartingWithBracket checks that a text rule starting with a
+// hostname pattern class is not taken for JSON.
+func TestParseTextStartingWithBracket(t *testing.T) {
+	rules, err := Parse(strings.NewReader("[ab]*.corp.example.com rw\n"), "rules.txt")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := mustClients(t, "[ab]*.corp.example.com"); rules.Len() != 1 || !slices.Equal(rules.All()[0].Clients, want) {
+		t.Fatalf("Parse = %v", rules.All())
+	}
+}
+
 // errReader fails every read.
 type errReader struct{}
 
@@ -345,6 +435,35 @@ func TestRulesJSONErrors(t *testing.T) {
 		if rules.Len() != 0 {
 			t.Errorf("%s: a failed decode left %d rules", tc.name, rules.Len())
 		}
+	}
+}
+
+// TestRulesJSONDuplicateBesideBadRule checks that a rule that fails to decode
+// does not hide a duplicate among the others, and that every error comes in
+// rule order.
+func TestRulesJSONDuplicateBesideBadRule(t *testing.T) {
+	const in = `[
+		{"clients":["10.1.2.7"],"accessType":"none"},
+		{"clients":["a.example.com"],"accessType":"RW"},
+		{"clients":["10.1.2.7/32"],"accessType":"rw"},
+		{"clients":["b.example.com","0.0.0.0"],"accessType":"ro"},
+		{"clients":["B.example.com"],"accessType":"ro"}
+	]`
+	var rules Rules
+	err := json.Unmarshal([]byte(in), &rules)
+	if err == nil {
+		t.Fatalf("Unmarshal succeeded with %v", rules.All())
+	}
+	want := []string{
+		`rule 2: "RW" is not an access type; want rw, ro or none`,
+		`rule 3: "10.1.2.7" already appears in rule 1; this rule can never match it`,
+		`rule 4: "0.0.0.0" is read by Ganesha as every client; write "*"`,
+	}
+	if got := strings.Split(err.Error(), "\n"); !slices.Equal(got, want) {
+		t.Fatalf("errors:\n%s\nwant:\n%s", strings.Join(got, "\n"), strings.Join(want, "\n"))
+	}
+	if rules.Len() != 0 {
+		t.Fatalf("a failed decode left %d rules", rules.Len())
 	}
 }
 

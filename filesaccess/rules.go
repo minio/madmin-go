@@ -138,13 +138,7 @@ func NewRules(rules []Rule) (Rules, error) {
 			errs = append(errs, fmt.Errorf("rule %d: %w", i+1, err))
 			continue
 		}
-		for _, c := range rule.Clients {
-			if first, dup := seen[c]; dup {
-				errs = append(errs, fmt.Errorf("rule %d: %q already appears in rule %d; this rule can never match it", i+1, c.String(), first))
-				continue
-			}
-			seen[c] = i + 1
-		}
+		errs = append(errs, checkDuplicates(rule, i+1, seen)...)
 	}
 	if err := checkCount(len(rules)); err != nil {
 		errs = append(errs, err)
@@ -153,6 +147,22 @@ func NewRules(rules []Rule) (Rules, error) {
 		return Rules{}, errors.Join(errs...)
 	}
 	return Rules{rules: cloneRules(rules)}, nil
+}
+
+// checkDuplicates reports each client of rule, the rule at 1-based position
+// pos, that an earlier rule or an earlier entry of this one already names.
+// seen maps each specification already read to its rule's position, and gains
+// this rule's.
+func checkDuplicates(rule Rule, pos int, seen map[Client]int) []error {
+	var errs []error
+	for _, c := range rule.Clients {
+		if first, dup := seen[c]; dup {
+			errs = append(errs, fmt.Errorf("rule %d: %q already appears in rule %d; this rule can never match it", pos, c.String(), first))
+			continue
+		}
+		seen[c] = pos
+	}
+	return errs
 }
 
 // checkCount checks the number of rules in a list.
@@ -185,8 +195,9 @@ func (r Rules) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON decodes a JSON array of rules with the checks of NewRules,
-// and the per-entry checks of Rule. It reports every error, each naming the
-// rule by its 1-based position.
+// and the per-entry checks of Rule. It reports every error in rule order,
+// each naming the rule by its 1-based position. A rule that does not decode
+// still leaves the others checked for duplicates among themselves.
 func (r *Rules) UnmarshalJSON(b []byte) error {
 	var raws []json.RawMessage
 	if err := json.Unmarshal(b, &raws); err != nil {
@@ -194,38 +205,46 @@ func (r *Rules) UnmarshalJSON(b []byte) error {
 	}
 	var errs []error
 	rules := make([]Rule, 0, len(raws))
+	seen := make(map[Client]int)
 	for i, raw := range raws {
 		var rule Rule
 		if err := rule.UnmarshalJSON(raw); err != nil {
 			errs = append(errs, prefixEach(fmt.Sprintf("rule %d", i+1), err)...)
 			continue
 		}
+		errs = append(errs, checkDuplicates(rule, i+1, seen)...)
 		rules = append(rules, rule)
 	}
+	if err := checkCount(len(raws)); err != nil {
+		errs = append(errs, err)
+	}
 	if len(errs) > 0 {
-		if err := checkCount(len(raws)); err != nil {
-			errs = append(errs, err)
-		}
 		return errors.Join(errs...)
 	}
-	v, err := NewRules(rules)
-	if err != nil {
-		return err
-	}
-	*r = v
+	*r = Rules{rules: rules}
 	return nil
 }
 
 // prefixEach labels err with prefix, and each error inside it separately when
 // it joins several, so every line of the message names where it comes from.
 func prefixEach(prefix string, err error) []error {
+	out := flatten(err)
+	for i, e := range out {
+		out[i] = fmt.Errorf("%s: %w", prefix, e)
+	}
+	return out
+}
+
+// flatten returns the errors err joins, each of them flattened in turn, or
+// err alone when it joins none.
+func flatten(err error) []error {
 	joined, ok := err.(interface{ Unwrap() []error })
 	if !ok {
-		return []error{fmt.Errorf("%s: %w", prefix, err)}
+		return []error{err}
 	}
 	var out []error
 	for _, e := range joined.Unwrap() {
-		out = append(out, prefixEach(prefix, e)...)
+		out = append(out, flatten(e)...)
 	}
 	return out
 }
