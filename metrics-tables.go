@@ -119,7 +119,9 @@ type TableMaintenanceJob struct {
 	Errors          uint64 `json:"errors,omitempty"`
 	Retries         uint64 `json:"retries,omitempty"`
 
-	// ConfigsEnabled of ConfigsTotal warehouses have this job turned on.
+	// ConfigsTotal is the number of tables the job considered in its last
+	// completed cycle, and ConfigsEnabled is how many of them have the job
+	// enabled by their effective configuration.
 	ConfigsEnabled int64 `json:"configs_enabled,omitempty"`
 	ConfigsTotal   int64 `json:"configs_total,omitempty"`
 
