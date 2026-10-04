@@ -56,9 +56,9 @@ const (
 	// process. It is always a misconfiguration, never a normal state.
 	FilesNodeRefused FilesNodeReach = "refused"
 
-	// FilesNodeUnknown means no state was established: nothing was dialed, or
-	// the daemon rejected the request itself and so said nothing about any
-	// export.
+	// FilesNodeUnknown means no state was established: nothing was dialed, the
+	// daemon rejected the request itself and so said nothing about any export,
+	// or, for a query naming no export, the list could not be read.
 	FilesNodeUnknown FilesNodeReach = "unknown"
 )
 
@@ -66,7 +66,7 @@ const (
 // gateway daemon holding it reported.
 type FilesExportStatus struct {
 	// ExportID is the Ganesha Export_Id.
-	ExportID uint64 `json:"exportId"`
+	ExportID uint64 `json:"exportID"`
 
 	// Leasing reports whether ownership leasing is configured for this export.
 	// When it is false the other lease fields are zero and only the capacity
@@ -111,7 +111,7 @@ type FilesExportStatus struct {
 // one of Status, NotHeld and Error carries it.
 type FilesExportResult struct {
 	// ExportID is the export the node was asked about.
-	ExportID uint64 `json:"exportId"`
+	ExportID uint64 `json:"exportID"`
 
 	// Status is the export's lease and capacity document, when the node holds
 	// the export.
@@ -149,6 +149,39 @@ type FilesNodeStatus struct {
 
 	// Exports carries one entry per export read, in the order asked.
 	Exports []FilesExportResult `json:"exports,omitempty"`
+
+	// Daemon lists the exports the node's gateway serves. It is set only when
+	// the query named no export and the daemon answered.
+	Daemon *FilesDaemonExports `json:"daemon,omitempty"`
+}
+
+// FilesDaemonExports is the exports one node's gateway daemon serves.
+type FilesDaemonExports struct {
+	// Exports is the Export_Id of every export the daemon serves, sorted. It is
+	// empty when the daemon serves none.
+	Exports []uint64 `json:"exports"`
+
+	// Truncated reports that the daemon serves more than the 4096 exports one
+	// reply lists. Exports then holds the lowest 4096 ids, and there is no way
+	// to read the rest.
+	Truncated bool `json:"truncated,omitempty"`
+
+	// BootID changes each time the gateway daemon restarts.
+	BootID string `json:"bootId"`
+
+	// TS is the time at which the list was taken. It is nil when the daemon sent
+	// no time.
+	TS *time.Time `json:"ts,omitempty"`
+}
+
+// MarshalJSON encodes an empty Exports as [] rather than null, so a daemon
+// serving nothing reads the same on every node.
+func (d FilesDaemonExports) MarshalJSON() ([]byte, error) {
+	type daemon FilesDaemonExports
+	if d.Exports == nil {
+		d.Exports = []uint64{}
+	}
+	return json.Marshal(daemon(d))
 }
 
 // FilesUnreachableNode is a node a cluster-wide read could not ask. The read
@@ -187,20 +220,22 @@ type FilesExportsQueryResponse struct {
 	PeersNotQueried string `json:"peersNotQueried,omitempty"`
 }
 
+// filesGatewayExportsPath is the route of both gateway reads. They read each
+// node's gateway directly, so they are served under /gateway. The /exports
+// routes belong to the export management API, which reads the segment after
+// /exports as an export name or id.
+var filesGatewayExportsPath = filesAPIPrefix + "/gateway/exports"
+
 // FilesExportsQuery returns the status of the named AIStor Files gateway
 // exports on every node the cluster can reach, labeled by node.
 //
-// At least one export id is required, because version 1 of the gateway's
-// admin-socket protocol reads one named export at a time and cannot enumerate
-// what a daemon holds. Naming more than MaxFilesExportIDsPerQuery ids returns an
-// error before the request is sent.
+// At least one export id is required, so a caller whose filter matched nothing
+// gets an error rather than the listing FilesGatewayExports returns. Naming more
+// than MaxFilesExportIDsPerQuery ids also returns an error before the request is
+// sent.
 //
 // A node the cluster cannot reach is reported in
 // FilesExportsQueryResponse.UnreachableNodes and does not fail the call.
-//
-// The query reads each node's gateway directly, so it is served under
-// /gateway. The /exports routes belong to the export management API, which
-// reads the segment after /exports as an export name or id.
 func (adm *AdminClient) FilesExportsQuery(ctx context.Context, exportIDs []uint64) (FilesExportsQueryResponse, error) {
 	if len(exportIDs) == 0 {
 		return FilesExportsQueryResponse{}, errors.New("at least one export id is required")
@@ -215,28 +250,29 @@ func (adm *AdminClient) FilesExportsQuery(ctx context.Context, exportIDs []uint6
 		fields[idx] = strconv.FormatUint(exportID, 10)
 	}
 	values := make(url.Values)
-	values.Set("exportId", strings.Join(fields, ","))
-
-	resp, err := adm.executeMethod(ctx,
-		http.MethodGet,
-		requestData{
-			relPath:     filesAPIPrefix + "/gateway/exports",
-			queryValues: values,
-		})
-	defer closeResponse(resp)
-	if err != nil {
-		return FilesExportsQueryResponse{}, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return FilesExportsQueryResponse{}, httpRespToErrorResponse(resp)
-	}
+	values.Set("exportID", strings.Join(fields, ","))
 
 	var info FilesExportsQueryResponse
-	if err = json.NewDecoder(resp.Body).Decode(&info); err != nil {
+	if err := adm.getFilesJSON(ctx, filesGatewayExportsPath, values, &info); err != nil {
 		return FilesExportsQueryResponse{}, err
 	}
+	return info, nil
+}
 
+// FilesGatewayExports returns what the AIStor Files gateway on every node the
+// cluster can reach serves, labeled by node, in FilesNodeStatus.Daemon. A node
+// whose gateway predates the listing reports FilesNodeUnknown and no Daemon.
+//
+// A node the cluster cannot reach is reported in
+// FilesExportsQueryResponse.UnreachableNodes and does not fail the call.
+//
+// A server that predates the exportID parameter refuses both this call and
+// FilesExportsQuery with an ErrorResponse carrying FilesErrInvalidRequest.
+func (adm *AdminClient) FilesGatewayExports(ctx context.Context) (FilesExportsQueryResponse, error) {
+	var info FilesExportsQueryResponse
+	if err := adm.getFilesJSON(ctx, filesGatewayExportsPath, nil, &info); err != nil {
+		return FilesExportsQueryResponse{}, err
+	}
 	return info, nil
 }
 
@@ -351,7 +387,7 @@ type FilesExport struct {
 	Name string `json:"name"`
 
 	// ExportID is the Ganesha Export_Id AIStor allocated.
-	ExportID uint64 `json:"exportId"`
+	ExportID uint64 `json:"exportID"`
 
 	// Pseudo is the path clients mount. It cannot change.
 	Pseudo string `json:"pseudo"`
@@ -442,7 +478,7 @@ type FilesStatsOptions struct {
 // counters.
 type FilesExportCapacity struct {
 	Name     string           `json:"name"`
-	ExportID uint64           `json:"exportId"`
+	ExportID uint64           `json:"exportID"`
 	Node     string           `json:"node"`
 	Status   FilesExportPhase `json:"status"`
 
