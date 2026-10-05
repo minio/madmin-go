@@ -58,6 +58,22 @@ func TestIsAdminSelfLockout(t *testing.T) {
 	if IsAdminSelfLockout(nilResp) {
 		t.Fatal("expected nil *ErrorResponse to not be self-lockout")
 	}
+
+	if !IsAdminSelfLockout(errors.Join(other, lockout)) {
+		t.Fatal("expected joined ErrorResponse after a non-matching one to be self-lockout")
+	}
+	if !IsAdminSelfLockout(errors.Join(&other, &lockout)) {
+		t.Fatal("expected joined pointer ErrorResponse after a non-matching one to be self-lockout")
+	}
+	if !IsAdminSelfLockout(fmt.Errorf("outer: %w", errors.Join(other, fmt.Errorf("inner: %w", &lockout)))) {
+		t.Fatal("expected self-lockout nested under wrapped and joined errors to match")
+	}
+	if !IsAdminSelfLockout(fmt.Errorf("multi: %w, %w", other, lockout)) {
+		t.Fatal("expected self-lockout in a multi-%w error to match")
+	}
+	if IsAdminSelfLockout(errors.Join(other, nilResp, errors.New("plain error"))) {
+		t.Fatal("expected joined errors without self-lockout to not match")
+	}
 }
 
 func TestAdminSelfLockoutConstants(t *testing.T) {

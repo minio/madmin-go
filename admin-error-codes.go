@@ -17,8 +17,6 @@
 
 package madmin
 
-import "errors"
-
 // AdminSelfLockoutErrorCode is returned when an IAM admin mutation would remove
 // the caller's own access (HTTP 403 Forbidden).
 const AdminSelfLockoutErrorCode = "XMinioAdminSelfLockout"
@@ -26,12 +24,30 @@ const AdminSelfLockoutErrorCode = "XMinioAdminSelfLockout"
 // AdminSelfLockoutMessage is the default Description for AdminSelfLockoutErrorCode.
 const AdminSelfLockoutMessage = "This operation would remove your own access"
 
-// IsAdminSelfLockout reports whether err is an admin API self-lockout refusal.
+// IsAdminSelfLockout reports whether err, or any error it wraps or joins, is
+// an admin API self-lockout refusal.
 func IsAdminSelfLockout(err error) bool {
-	var resp ErrorResponse
-	if errors.As(err, &resp) {
-		return resp.Code == AdminSelfLockoutErrorCode
+	switch e := err.(type) {
+	case nil:
+		return false
+	case ErrorResponse:
+		if e.Code == AdminSelfLockoutErrorCode {
+			return true
+		}
+	case *ErrorResponse:
+		if e != nil && e.Code == AdminSelfLockoutErrorCode {
+			return true
+		}
 	}
-	var respPtr *ErrorResponse
-	return errors.As(err, &respPtr) && respPtr != nil && respPtr.Code == AdminSelfLockoutErrorCode
+	switch e := err.(type) {
+	case interface{ Unwrap() []error }:
+		for _, child := range e.Unwrap() {
+			if IsAdminSelfLockout(child) {
+				return true
+			}
+		}
+	case interface{ Unwrap() error }:
+		return IsAdminSelfLockout(e.Unwrap())
+	}
+	return false
 }
