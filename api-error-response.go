@@ -23,7 +23,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -125,15 +124,43 @@ func httpRespToErrorResponse(resp *http.Response) error {
 // The first ErrorResponse, or non-nil *ErrorResponse, in err's tree is
 // returned, so a wrapped or joined error still yields the server's response.
 func ToErrorResponse(err error) ErrorResponse {
-	var resp ErrorResponse
-	if errors.As(err, &resp) {
-		return resp
+	resp, _ := findErrorResponse(err)
+	return resp
+}
+
+// findErrorResponse walks err's tree in the order errors.As does, checking
+// each error for both a value and a pointer before moving on. Two errors.As
+// passes, one per type, would let a later value win over an earlier pointer.
+func findErrorResponse(err error) (ErrorResponse, bool) {
+	switch e := err.(type) {
+	case ErrorResponse:
+		return e, true
+	case *ErrorResponse:
+		if e != nil {
+			return *e, true
+		}
 	}
-	var ptr *ErrorResponse
-	if errors.As(err, &ptr) && ptr != nil {
-		return *ptr
+	if x, ok := err.(interface{ As(any) bool }); ok {
+		var resp ErrorResponse
+		if x.As(&resp) {
+			return resp, true
+		}
+		var ptr *ErrorResponse
+		if x.As(&ptr) && ptr != nil {
+			return *ptr, true
+		}
 	}
-	return ErrorResponse{}
+	switch x := err.(type) {
+	case interface{ Unwrap() error }:
+		return findErrorResponse(x.Unwrap())
+	case interface{ Unwrap() []error }:
+		for _, child := range x.Unwrap() {
+			if resp, ok := findErrorResponse(child); ok {
+				return resp, true
+			}
+		}
+	}
+	return ErrorResponse{}, false
 }
 
 // IsErrorCode reports whether the ErrorResponse that ToErrorResponse finds in

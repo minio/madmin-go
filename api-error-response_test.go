@@ -63,6 +63,9 @@ func TestToErrorResponse(t *testing.T) {
 		{"custom As", asErrorResponse{lockout}, lockout},
 		{"joined", errors.Join(errors.New("plain error"), lockout), lockout},
 		{"joined takes the first", errors.Join(other, lockout), other},
+		{"joined pointer before value", errors.Join(&other, lockout), other},
+		{"joined value before pointer", errors.Join(other, &lockout), other},
+		{"joined after a nil pointer", errors.Join(nilResp, &lockout), lockout},
 		{"nested", fmt.Errorf("outer: %w", errors.Join(errors.New("plain"), fmt.Errorf("inner: %w", &lockout))), lockout},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -95,6 +98,8 @@ func TestIsAdminSelfLockout(t *testing.T) {
 		{"custom As", asErrorResponse{lockout}, true},
 		{"joined after a plain error", errors.Join(errors.New("plain error"), nilResp, lockout), true},
 		{"joined after another code", errors.Join(other, lockout), false},
+		{"joined after another code pointer", errors.Join(&other, lockout), false},
+		{"joined pointer first", errors.Join(&lockout, other), true},
 		{"nested", fmt.Errorf("outer: %w", errors.Join(errors.New("plain"), fmt.Errorf("inner: %w", &lockout))), true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
