@@ -74,16 +74,28 @@ func (r Rule) MarshalJSON() ([]byte, error) {
 
 // UnmarshalJSON decodes one rule with the per-entry checks: every client
 // specification must parse, and the access type must be valid. It reports
-// every client that does not parse. An unknown member is refused, because a
-// policy field this version does not know would otherwise be dropped
-// silently.
+// every client that does not parse.
+//
+// An unknown member is ignored, because a Rule is what a reply carries, and a
+// field a newer server adds must not make the export unreadable. A rule read
+// this way may therefore lack a field it has on the server. Rules.UnmarshalJSON
+// refuses an unknown member, since a Rules is a policy about to be sent.
 func (r *Rule) UnmarshalJSON(b []byte) error {
+	return r.decode(b, false)
+}
+
+// decode decodes one rule as UnmarshalJSON does. strict refuses an unknown
+// member, because a policy field this version does not know would otherwise
+// be dropped silently.
+func (r *Rule) decode(b []byte, strict bool) error {
 	var raw struct {
 		Clients    []string         `json:"clients"`
 		AccessType *json.RawMessage `json:"accessType"`
 	}
 	dec := json.NewDecoder(bytes.NewReader(b))
-	dec.DisallowUnknownFields()
+	if strict {
+		dec.DisallowUnknownFields()
+	}
 	if err := dec.Decode(&raw); err != nil {
 		return fmt.Errorf("a rule is {\"clients\": [...], \"accessType\": ...}: %w", err)
 	}
@@ -195,9 +207,11 @@ func (r Rules) MarshalJSON() ([]byte, error) {
 }
 
 // UnmarshalJSON decodes a JSON array of rules with the checks of NewRules,
-// and the per-entry checks of Rule. It reports every error in rule order,
-// each naming the rule by its 1-based position. A rule that does not decode
-// still leaves the others checked for duplicates among themselves.
+// and the per-entry checks of Rule. Unlike Rule.UnmarshalJSON, it refuses an
+// unknown member, because the list is a policy to send and dropping a field
+// would change it. It reports every error in rule order, each naming the rule
+// by its 1-based position. A rule that does not decode still leaves the others
+// checked for duplicates among themselves.
 func (r *Rules) UnmarshalJSON(b []byte) error {
 	var raws []json.RawMessage
 	if err := json.Unmarshal(b, &raws); err != nil {
@@ -208,7 +222,7 @@ func (r *Rules) UnmarshalJSON(b []byte) error {
 	seen := make(map[Client]int)
 	for i, raw := range raws {
 		var rule Rule
-		if err := rule.UnmarshalJSON(raw); err != nil {
+		if err := rule.decode(raw, true); err != nil {
 			errs = append(errs, prefixEach(fmt.Sprintf("rule %d", i+1), err)...)
 			continue
 		}

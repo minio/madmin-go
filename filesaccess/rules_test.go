@@ -495,6 +495,25 @@ func TestRuleJSON(t *testing.T) {
 	}
 }
 
+// TestRuleJSONIgnoresUnknownMember checks that one Rule, which is what a
+// reply carries, decodes past a member a newer server adds, while a Rules,
+// which is a policy to send, still refuses it.
+func TestRuleJSONIgnoresUnknownMember(t *testing.T) {
+	const rule = `{"clients":["10.1.2.0/24"],"accessType":"ro","squash":"all"}`
+	var got Rule
+	if err := json.Unmarshal([]byte(rule), &got); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+	if len(got.Clients) != 1 || got.Access != RO {
+		t.Fatalf("Unmarshal = %v", got)
+	}
+
+	var rules Rules
+	if err := json.Unmarshal([]byte("["+rule+"]"), &rules); err == nil {
+		t.Fatal("a Rules with an unknown member decoded")
+	}
+}
+
 // TestNewRules checks the list checks on rules built in code, and that the
 // result does not share the caller's slices.
 func TestNewRules(t *testing.T) {

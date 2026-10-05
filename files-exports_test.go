@@ -20,14 +20,17 @@
 package madmin
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"os"
 	"reflect"
 	"regexp"
 	"slices"
@@ -1083,31 +1086,160 @@ var (
 		"pseudo": "/home/carol", "accessType": "rw", "squash": "root", "quotaBytes": 1}`}
 )
 
-// TestFilesWriteRetriesOnUnknownOutcome verifies that every write is repeated
-// after an answer that leaves its outcome unknown, since a repeat cannot apply
-// it twice.
+// TestFilesWriteRetriesOnUnknownOutcome verifies that every per-export write
+// is repeated after an answer that leaves its outcome unknown, since a repeat
+// cannot apply it twice, and that an add, which a repeat could apply twice, is
+// repeated only after an answer the server sends before acting.
 func TestFilesWriteRetriesOnUnknownOutcome(t *testing.T) {
 	for _, tc := range []struct {
-		name  string
-		first filesScriptedReply
+		name      string
+		first     filesScriptedReply
+		addRepeat bool
 	}{
-		{"dropped_connection", filesDropped},
-		{"bad_gateway", filesScriptedReply{http.StatusBadGateway, `bad gateway`}},
-		{"slow_down", filesScriptedReply{http.StatusServiceUnavailable, `{"code": "SlowDown", "message": "slow down"}`}},
+		{"dropped_connection", filesDropped, false},
+		{"bad_gateway", filesScriptedReply{http.StatusBadGateway, `bad gateway`}, false},
+		{"gateway_timeout", filesScriptedReply{http.StatusGatewayTimeout, `gateway timeout`}, false},
+		{"unavailable", filesScriptedReply{http.StatusServiceUnavailable, `unavailable`}, false},
+		{"slow_down", filesScriptedReply{http.StatusServiceUnavailable, `{"code": "SlowDown", "message": "slow down"}`}, true},
+		{"throttled", filesScriptedReply{http.StatusTooManyRequests, `too many requests`}, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			server, writes, _ := newFilesScriptedServer(t, filesCarol, tc.first, filesScriptedReply{http.StatusOK, `{}`})
 			for name, call := range filesWrites(context.Background(), newFilesExportsTestClient(t, server.URL)) {
 				writes.Store(0)
-				if err := call(); err != nil {
+				err := call()
+				want := int32(2)
+				if name == "add" && !tc.addRepeat {
+					want = 1
+					if err == nil {
+						t.Errorf("%s: an add whose outcome is unknown should fail", name)
+					}
+				} else if err != nil {
 					t.Errorf("%s: %v", name, err)
 				}
-				if n := writes.Load(); n != 2 {
-					t.Errorf("%s: the server received %d writes, want 2", name, n)
+				if n := writes.Load(); n != want {
+					t.Errorf("%s: the server received %d writes, want %d", name, n, want)
 				}
 			}
 		})
+	}
+}
+
+// TestFilesWriteNodeUnreachableIsFinal verifies that a 503 carrying
+// NodeUnreachable is returned without a repeat. The change is recorded, so a
+// repeat would only wait, with backoff, for the node to answer.
+func TestFilesWriteNodeUnreachableIsFinal(t *testing.T) {
+	nodeUnreachable := filesScriptedReply{http.StatusServiceUnavailable, `{"code": "NodeUnreachable", "message": "node03 did not answer"}`}
+	server, writes, _ := newFilesScriptedServer(t, filesCarol, nodeUnreachable, filesScriptedReply{http.StatusOK, `{}`})
+	for name, call := range filesWrites(context.Background(), newFilesExportsTestClient(t, server.URL)) {
+		writes.Store(0)
+		if err := call(); ToErrorResponse(err).Code != FilesErrNodeUnreachable {
+			t.Errorf("%s: err = %v, want code %s", name, err, FilesErrNodeUnreachable)
+		}
+		if n := writes.Load(); n != 1 {
+			t.Errorf("%s: the server received %d writes, want 1", name, n)
+		}
+	}
+}
+
+// TestFilesWriteSendsWithoutRetries verifies that a MaxRetry of zero still
+// sends a write once, and reports the answer rather than a success nothing
+// was sent for.
+func TestFilesWriteSendsWithoutRetries(t *testing.T) {
+	saved := MaxRetry
+	MaxRetry = 0
+	t.Cleanup(func() { MaxRetry = saved })
+
+	server, writes, _ := newFilesScriptedServer(t, filesCarol, filesScriptedReply{http.StatusBadGateway, `bad gateway`})
+	for name, call := range filesWrites(context.Background(), newFilesExportsTestClient(t, server.URL)) {
+		writes.Store(0)
+		if err := call(); err == nil {
+			t.Errorf("%s: a 502 should fail", name)
+		}
+		if n := writes.Load(); n != 1 {
+			t.Errorf("%s: the server received %d writes, want 1", name, n)
+		}
+	}
+}
+
+// filesDialFailure fails its first round trip as a refused dial that timed
+// out, before any byte is sent, and passes every later one on.
+type filesDialFailure struct {
+	failed atomic.Bool
+}
+
+func (f *filesDialFailure) RoundTrip(req *http.Request) (*http.Response, error) {
+	if !f.failed.Swap(true) {
+		return nil, &net.OpError{Op: "dial", Net: "tcp", Err: os.ErrDeadlineExceeded}
+	}
+	return http.DefaultTransport.RoundTrip(req)
+}
+
+// TestFilesWriteDialFailureSentNothing verifies that a connection that was
+// never made leaves the outcome known: the write is repeated, an add
+// included, and a 404 after it is the error it says, not an earlier remove.
+func TestFilesWriteDialFailureSentNothing(t *testing.T) {
+	server, writes, _ := newFilesScriptedServer(t, filesCarol, filesNotFound)
+	client := newFilesExportsTestClient(t, server.URL)
+	client.httpClient.Transport = &filesDialFailure{}
+	got, err := client.RemoveFilesExport(context.Background(), "carol", "5f2a91", FilesRemoveOptions{})
+	if ToErrorResponse(err).Code != FilesErrExportNotFound || got.AlreadyRemoved {
+		t.Errorf("reply = %+v, err = %v, want %s", got, err, FilesErrExportNotFound)
+	}
+	if n := writes.Load(); n != 1 {
+		t.Errorf("the server received %d writes, want 1", n)
+	}
+
+	server, writes, _ = newFilesScriptedServer(t, filesCarol, filesScriptedReply{http.StatusAccepted, `{"name": "carol"}`})
+	client = newFilesExportsTestClient(t, server.URL)
+	client.httpClient.Transport = &filesDialFailure{}
+	if _, err := client.AddFilesExport(context.Background(), FilesExportSpec{Name: "carol", Pseudo: "/home/carol"}); err != nil {
+		t.Errorf("AddFilesExport: %v", err)
+	}
+	if n := writes.Load(); n != 1 {
+		t.Errorf("the server received %d adds, want 1", n)
+	}
+}
+
+// filesCancelAfter reads each answer whole, then calls cancel, so the context
+// ends while the client waits to repeat the request.
+type filesCancelAfter struct {
+	cancel context.CancelFunc
+}
+
+func (f filesCancelAfter) RoundTrip(req *http.Request) (*http.Response, error) {
+	resp, err := http.DefaultTransport.RoundTrip(req)
+	if err != nil {
+		return nil, err
+	}
+	body, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		return nil, err
+	}
+	resp.Body = io.NopCloser(bytes.NewReader(body))
+	f.cancel()
+	return resp, nil
+}
+
+// TestFilesWriteCanceledKeepsLastAnswer verifies that a context ending while
+// a write waits to be repeated returns the server's last answer with the
+// context's error, rather than the context's error alone.
+func TestFilesWriteCanceledKeepsLastAnswer(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	server, _, _ := newFilesScriptedServer(t, filesCarol, filesScriptedReply{http.StatusBadGateway, `bad gateway`})
+	client := newFilesExportsTestClient(t, server.URL)
+	client.httpClient.Transport = filesCancelAfter{cancel}
+
+	_, err := client.SetFilesExportQuota(ctx, "carol", "5f2a91", 1)
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("err = %v, want context.Canceled", err)
+	}
+	var errResp ErrorResponse
+	if !errors.As(err, &errResp) || !strings.Contains(errResp.Code, "502") {
+		t.Errorf("err = %v, want the 502 answer", err)
 	}
 }
 
@@ -1132,15 +1264,13 @@ func TestFilesWriteFirstAnswerIsFinal(t *testing.T) {
 }
 
 // TestFilesWriteRepeatReturnsConflict verifies that a repeat answered with a
-// conflict returns it as it is, without reading the export. A 409 on an add
-// may be this call's own earlier attempt, and a 412 may follow its own change,
-// but the client cannot tell either from another caller's write.
+// conflict returns it as it is, without reading the export. A 412 may follow
+// its own change, but the client cannot tell it from another caller's write.
 func TestFilesWriteRepeatReturnsConflict(t *testing.T) {
 	for name, tc := range map[string]struct {
 		answer filesScriptedReply
 		code   string
 	}{
-		"add":    {filesExists, FilesErrExportAlreadyExists},
 		"quota":  {filesModified, FilesErrExportModified},
 		"access": {filesModified, FilesErrExportModified},
 		"clear":  {filesModified, FilesErrExportModified},
@@ -1198,34 +1328,54 @@ func TestRemoveFilesExportAlreadyRemoved(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
 		replies []filesScriptedReply
-		removed bool
+		// code is the error the call ends in, and empty when it reports the
+		// export already removed.
+		code   string
+		writes int
 	}{
-		{"dropped", []filesScriptedReply{filesDropped, filesNotFound}, true},
-		{"bad_gateway", []filesScriptedReply{{http.StatusBadGateway, `bad gateway`}, filesNotFound}, true},
-		// The remove is recorded, and the reconciler may complete it before
-		// the repeat arrives.
-		{"node_unreachable", []filesScriptedReply{nodeUnreachable, filesNotFound}, true},
-		{"dropped_then_slow_down", []filesScriptedReply{filesDropped, slowDown, filesNotFound}, true},
-		{"slow_down", []filesScriptedReply{slowDown, filesNotFound}, false},
-		{"throttled", []filesScriptedReply{throttled, filesNotFound}, false},
-		{"first_attempt", []filesScriptedReply{filesNotFound}, false},
+		{"dropped", []filesScriptedReply{filesDropped, filesNotFound}, "", 2},
+		{"bad_gateway", []filesScriptedReply{{http.StatusBadGateway, `bad gateway`}, filesNotFound}, "", 2},
+		// A gateway gave up waiting, and the remove may have landed.
+		{"gateway_timeout", []filesScriptedReply{{http.StatusGatewayTimeout, `gateway timeout`}, filesNotFound}, "", 2},
+		{"dropped_then_slow_down", []filesScriptedReply{filesDropped, slowDown, filesNotFound}, "", 3},
+		// The remove is recorded, and completes when the node answers, so it
+		// is not repeated.
+		{"node_unreachable", []filesScriptedReply{nodeUnreachable, filesNotFound}, FilesErrNodeUnreachable, 1},
+		{"slow_down", []filesScriptedReply{slowDown, filesNotFound}, FilesErrExportNotFound, 2},
+		{"throttled", []filesScriptedReply{throttled, filesNotFound}, FilesErrExportNotFound, 2},
+		{"first_attempt", []filesScriptedReply{filesNotFound}, FilesErrExportNotFound, 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
 			server, writes, _ := newFilesScriptedServer(t, filesCarol, tc.replies...)
 			got, err := newFilesExportsTestClient(t, server.URL).RemoveFilesExport(context.Background(),
 				"carol", "5f2a91", FilesRemoveOptions{Purge: true})
-			if tc.removed {
+			if tc.code == "" {
 				if err != nil || !got.AlreadyRemoved {
 					t.Errorf("reply = %+v, err = %v, want AlreadyRemoved", got, err)
 				}
-			} else if ToErrorResponse(err).Code != FilesErrExportNotFound || got.AlreadyRemoved {
-				t.Errorf("reply = %+v, err = %v, want %s", got, err, FilesErrExportNotFound)
+			} else if ToErrorResponse(err).Code != tc.code || got.AlreadyRemoved {
+				t.Errorf("reply = %+v, err = %v, want %s", got, err, tc.code)
 			}
-			if n := int(writes.Load()); n != len(tc.replies) {
-				t.Errorf("the server received %d writes, want %d", n, len(tc.replies))
+			if n := int(writes.Load()); n != tc.writes {
+				t.Errorf("the server received %d writes, want %d", n, tc.writes)
 			}
 		})
+	}
+}
+
+// TestGetFilesExportIgnoresUnknownRuleMember verifies that a rule member a
+// newer server adds does not fail the read, which would leave the caller
+// without the generation every write needs.
+func TestGetFilesExportIgnoresUnknownRuleMember(t *testing.T) {
+	server, _ := newFilesJSONServer(t, http.StatusOK, `{"name": "carol", "exportID": 104, "generation": "5f2c44",
+  "accessRules": [{"clients": ["10.1.2.0/24"], "accessType": "ro", "squash": "all"}]}`)
+	got, err := newFilesExportsTestClient(t, server.URL).GetFilesExport(context.Background(), "carol")
+	if err != nil {
+		t.Fatalf("GetFilesExport: %v", err)
+	}
+	if got.Generation != "5f2c44" || len(got.AccessRules) != 1 || got.AccessRules[0].Access != filesaccess.RO {
+		t.Errorf("reply = %+v", got)
 	}
 }
 

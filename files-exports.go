@@ -24,11 +24,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/minio/madmin-go/v4/filesaccess"
@@ -323,8 +323,11 @@ const (
 	FilesErrExportModified = "ExportModified"
 
 	// FilesErrNodeRefused means the owning node answered and refused the
-	// change, and nothing was recorded. The message carries the node's reason.
-	// HTTP 422.
+	// change. AIStor puts the export's record back as it was before this
+	// request, so the request records nothing. A replay, the repeat of a
+	// change an earlier attempt recorded, leaves that change recorded: it
+	// stays the desired state, and the export reads Applied false. The
+	// message carries the node's reason. HTTP 422.
 	FilesErrNodeRefused = "NodeRefused"
 
 	// FilesErrPreconditionRequired means a per-export write named no
@@ -333,7 +336,8 @@ const (
 
 	// FilesErrNodeUnreachable means the owning node did not answer a write.
 	// A quota, access or remove write is still recorded, and reaches the node
-	// when it answers again. HTTP 503.
+	// when it answers again, so the client returns it without a repeat.
+	// HTTP 503.
 	FilesErrNodeUnreachable = "NodeUnreachable"
 
 	// FilesErrNotImplemented means the owning node is older than the control
@@ -426,8 +430,11 @@ const (
 
 // FilesAccessRule grants access to the clients it names. Rules are evaluated
 // in order and the first match wins, so the order of a rule list is the
-// policy: never sort one or remove duplicates from it. The filesaccess package
-// defines it, and checks every rule and client specification as it decodes.
+// policy: never sort one. A list naming a client specification twice is
+// refused, by filesaccess.NewRules and by AIStor, not deduplicated. The
+// filesaccess package defines it, and checks every client specification and
+// access type as it decodes. A member it does not know is ignored, so a field
+// a newer server adds does not make the export unreadable.
 type FilesAccessRule = filesaccess.Rule
 
 // FilesExport is one export: its configuration, with Status for where it is
@@ -469,7 +476,9 @@ type FilesExport struct {
 	QuotaBytes uint64 `json:"quotaBytes"`
 
 	// AccessRules are in evaluation order. An export with any rule refuses a
-	// client none of them matches.
+	// client none of them matches. A rule member this version does not know
+	// is dropped, so rules read from a newer server and sent back unchanged
+	// may lose it.
 	AccessRules []FilesAccessRule `json:"accessRules,omitempty"`
 
 	// UsedBytes is nil when the assigned node could not be reached. Status
@@ -764,19 +773,22 @@ type filesAccessBody struct {
 // AddFilesExport creates an export. AIStor allocates its id, selects its node
 // and persists it before it replies, so the reply carries the export's real
 // identity and every value the spec left to a default. The export's Status is
-// FilesExportPending until its node reports holding it; ListFilesExports shows
-// it reach FilesExportServing.
+// FilesExportPending until AIStor sends its node the export's configuration.
+// ListFilesExports then shows it reach FilesExportServing once the node holds
+// it, or FilesExportMissing when the apply did not take.
 //
 // The name is refused locally when it is empty, or one no other method can
 // reach an export by: "stats", "." or "..".
 //
-// A request whose outcome is unknown is repeated, and an add takes no key, so
-// the server cannot tell a repeat from a second add. A repeat that finds the
-// name, the pseudo path or a pinned id taken is refused with
-// FilesErrExportAlreadyExists, which is returned as it is: the export may
-// come from an earlier attempt of this call, or from another caller. A repeat
-// that arrives after another caller removed the export creates it again under
-// a new id, which undoes the remove.
+// An add takes no key, so the server cannot tell a repeat from a second add: a
+// repeat after an earlier attempt created the export would be refused with
+// FilesErrExportAlreadyExists, and one arriving after another caller removed
+// the export would create it again. So an add is repeated only after an answer
+// the server sends before acting, such as a request to slow down, or when the
+// connection could not be made. Any other attempt whose outcome is unknown
+// ends the call with its error: a transport error once the request was sent,
+// a 502 or 504, or a 503 without a Files API code. The export may then exist,
+// so read it by name before adding it again.
 func (adm *AdminClient) AddFilesExport(ctx context.Context, spec FilesExportSpec) (FilesExport, error) {
 	if spec.Name == "" {
 		return FilesExport{}, errors.New("an export name is required")
@@ -786,7 +798,7 @@ func (adm *AdminClient) AddFilesExport(ctx context.Context, spec FilesExportSpec
 	}
 
 	var info FilesExport
-	err := adm.filesWrite(ctx, http.MethodPut, requestData{relPath: filesAPIPrefix + "/exports"}, spec, &info, nil)
+	err := adm.filesWrite(ctx, http.MethodPut, requestData{relPath: filesAPIPrefix + "/exports"}, spec, &info, false, nil)
 	return info, err
 }
 
@@ -795,11 +807,15 @@ func (adm *AdminClient) AddFilesExport(ctx context.Context, spec FilesExportSpec
 // export's FilesExport.Generation the change was decided on; when the export
 // has moved on, the call fails with a FilesExportModifiedError.
 //
-// A request whose outcome is unknown is repeated. The server answers a repeat
-// of a change it already applied with that change's reply, as long as no
-// other write landed in between. After one did, the repeat fails with
-// FilesErrExportModified although its own change may have been applied, so
-// read the export before reporting a conflict.
+// A request whose outcome is unknown is repeated: a transport error once the
+// request was sent, a 502 or 504, or a 503 without a Files API code. The
+// server answers a repeat of a change it already applied with that change's
+// reply, as long as no other write landed in between. After one did, the
+// repeat fails with FilesErrExportModified although its own change may have
+// been applied, so read the export before reporting a conflict.
+//
+// A FilesErrNodeUnreachable is returned without a repeat: the change is
+// recorded, and AIStor sends it when the node answers again.
 func (adm *AdminClient) SetFilesExportQuota(ctx context.Context, export string, generation FilesGeneration, quotaBytes uint64) (FilesQuotaChange, error) {
 	reqData, err := filesExportWriteRequest(export, "/quota", generation)
 	if err != nil {
@@ -807,7 +823,7 @@ func (adm *AdminClient) SetFilesExportQuota(ctx context.Context, export string, 
 	}
 
 	var change FilesQuotaChange
-	err = adm.filesWrite(ctx, http.MethodPut, reqData, filesQuotaBody{QuotaBytes: quotaBytes}, &change, nil)
+	err = adm.filesWrite(ctx, http.MethodPut, reqData, filesQuotaBody{QuotaBytes: quotaBytes}, &change, true, nil)
 	return change, err
 }
 
@@ -835,7 +851,7 @@ func (adm *AdminClient) SetFilesExportAccess(ctx context.Context, export string,
 	}
 
 	var change FilesAccessChange
-	err = adm.filesWrite(ctx, http.MethodPut, reqData, filesAccessBody{Rules: rules}, &change, nil)
+	err = adm.filesWrite(ctx, http.MethodPut, reqData, filesAccessBody{Rules: rules}, &change, true, nil)
 	return change, err
 }
 
@@ -853,7 +869,7 @@ func (adm *AdminClient) ClearFilesExportAccess(ctx context.Context, export strin
 	}
 
 	var change FilesAccessChange
-	err = adm.filesWrite(ctx, http.MethodDelete, reqData, nil, &change, nil)
+	err = adm.filesWrite(ctx, http.MethodDelete, reqData, nil, &change, true, nil)
 	return change, err
 }
 
@@ -867,14 +883,15 @@ func (adm *AdminClient) ClearFilesExportAccess(ctx context.Context, export strin
 // FilesExportModifiedError. Generations are never reused, so a late request
 // never removes or purges an export added again under the same name.
 //
-// When the node does not answer, the call fails with FilesErrNodeUnreachable
-// and the export reads FilesExportRemoving until the node takes the remove.
+// When the node does not answer, the call fails with FilesErrNodeUnreachable,
+// without a repeat, and the export reads FilesExportRemoving until the node
+// takes the remove.
 //
-// A request whose outcome is unknown is repeated. When a repeat after such an
-// attempt answers FilesErrExportNotFound, the call succeeds with
-// FilesRemoveResult.AlreadyRemoved set. A FilesErrExportNotFound on the first
-// attempt, or after attempts the server refused without acting, stays an
-// error.
+// A request whose outcome is unknown is repeated, as for SetFilesExportQuota.
+// When a repeat after such an attempt answers FilesErrExportNotFound, the call
+// succeeds with FilesRemoveResult.AlreadyRemoved set. A FilesErrExportNotFound
+// on the first attempt, or after attempts the server refused without acting or
+// that never reached it, stays an error.
 func (adm *AdminClient) RemoveFilesExport(ctx context.Context, export string, generation FilesGeneration, opts FilesRemoveOptions) (FilesRemoveResult, error) {
 	reqData, err := filesExportWriteRequest(export, "", generation)
 	if err != nil {
@@ -896,7 +913,7 @@ func (adm *AdminClient) RemoveFilesExport(ctx context.Context, export string, ge
 		result = FilesRemoveResult{AlreadyRemoved: true}
 		return true
 	}
-	err = adm.filesWrite(ctx, http.MethodDelete, reqData, nil, &result, reconcile)
+	err = adm.filesWrite(ctx, http.MethodDelete, reqData, nil, &result, true, reconcile)
 	return result, err
 }
 
@@ -955,16 +972,19 @@ func (adm *AdminClient) filesJSON(ctx context.Context, reqData requestData, out 
 // its JSON body, and decodes its JSON reply into out. Any 2xx status is
 // success, and a 2xx reply without a body leaves out unchanged.
 //
-// A write is repeated on the same errors executeMethod repeats a request on.
-// Every per-export write is safe to repeat: it names the generation it was
-// decided on, and the server answers a repeat of a change it already applied
-// rather than applying it twice. Once an attempt's outcome is unknown, the
-// error a later attempt meets is passed to reconcile, when not nil, to learn
-// whether the write took effect. An outcome is unknown when no answer came, or
-// when the server answered anything but a request to slow down, which it sends
-// before acting. On the first attempt an error means what it says, and is
-// returned as it is.
-func (adm *AdminClient) filesWrite(ctx context.Context, method string, reqData requestData, in, out any, reconcile filesReconciler) (err error) {
+// executeMethod sends the write, and filesRetry decides after each attempt
+// whether to repeat it. repeatUnknown says whether the write is safe to repeat
+// after an attempt that may have taken effect. Every per-export write is: it
+// names the generation it was decided on, and the server answers a repeat of
+// a change it already applied rather than applying it twice. An add is not.
+//
+// Once an attempt's outcome is unknown, the error a later attempt meets is
+// passed to reconcile, when not nil, to learn whether the write took effect.
+// On the first attempt an error means what it says, and is returned as it is.
+//
+// When ctx ends while the write is being repeated, the error carries both the
+// context's error and the last attempt's.
+func (adm *AdminClient) filesWrite(ctx context.Context, method string, reqData requestData, in, out any, repeatUnknown bool, reconcile filesReconciler) error {
 	if in != nil {
 		body, err := json.Marshal(in)
 		if err != nil {
@@ -976,61 +996,85 @@ func (adm *AdminClient) filesWrite(ctx context.Context, method string, reqData r
 		}
 		reqData.customHeaders.Set("Content-Type", "application/json")
 	}
-	defer func() {
-		if err != nil {
-			adm.httpClient.CloseIdleConnections()
-		}
-	}()
 
-	retryCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-
-	var (
-		lastErr error
-		unknown bool
-	)
-	for range adm.newRetryTimer(retryCtx, MaxRetry, DefaultRetryUnit, DefaultRetryCap, MaxJitter) {
-		req, err := adm.newRequest(ctx, method, reqData)
-		if err != nil {
-			return err
+	retry := filesRetry{repeatUnknown: repeatUnknown}
+	reqData.retry = retry.next
+	resp, err := adm.executeMethod(ctx, method, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		if ctx.Err() != nil && retry.lastErr != nil {
+			return fmt.Errorf("%w; the last attempt failed: %w", err, retry.lastErr)
 		}
-		resp, err := adm.do(req)
-		if err != nil {
-			if errors.Is(err, syscall.ECONNREFUSED) {
-				return err
-			}
-			if ctx.Err() != nil {
-				return ctx.Err()
-			}
-			lastErr = err
-			unknown = true
-			continue
-		}
-
-		if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
-			err = filesDecode(resp, out)
-			closeResponse(resp)
-			return err
-		}
-		err = filesErrorResponse(resp)
-		closeResponse(resp)
-		code := ToErrorResponse(err).Code
-
-		if unknown && reconcile != nil && reconcile(code) {
-			return nil
-		}
-		if !isAdminErrCodeRetryable(code) && !isHTTPStatusRetryable(resp.StatusCode) {
-			return err
-		}
-		if !isAdminErrCodeRetryable(code) && resp.StatusCode != http.StatusTooManyRequests {
-			unknown = true
-		}
-		lastErr = err
-	}
-	if err := retryCtx.Err(); err != nil {
 		return err
 	}
-	return lastErr
+
+	if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
+		return filesDecode(resp, out)
+	}
+	err = filesErrorResponse(resp)
+	if retry.reconcilable && reconcile != nil && reconcile(ToErrorResponse(err).Code) {
+		return nil
+	}
+	return err
+}
+
+// filesRetry is the retry policy of one Files write. It tells an answer that
+// came before the server acted, which is always safe to repeat, from one that
+// may come after: no answer once the request was sent, or a gateway's 502 or
+// 504, or a 503 without the Files API's code.
+type filesRetry struct {
+	// repeatUnknown repeats the write after an attempt that may have taken
+	// effect. Without it, such an attempt ends the call.
+	repeatUnknown bool
+
+	// unknown is set once an attempt may have taken effect.
+	unknown bool
+
+	// reconcilable says that an attempt before the last one answered may have
+	// taken effect, so the last answer may be the result of it.
+	reconcilable bool
+
+	// lastErr is the error of the last attempt that failed.
+	lastErr error
+}
+
+// next records one attempt that did not succeed and reports whether to send
+// the write again. It has the signature of requestData.retry.
+func (r *filesRetry) next(status int, errResp ErrorResponse, err error) bool {
+	r.reconcilable = r.unknown
+	if err != nil {
+		r.lastErr = err
+		if filesNotSent(err) {
+			return true
+		}
+		r.unknown = true
+		return r.repeatUnknown
+	}
+	if status >= 200 && status <= 299 {
+		return false
+	}
+
+	r.lastErr = errResp
+	switch {
+	case isAdminErrCodeRetryable(errResp.Code), status == http.StatusTooManyRequests, status == http.StatusRequestTimeout:
+		// The server asked for the request again before acting on it.
+		return true
+	case errResp.Code == FilesErrNodeUnreachable:
+		// The change is recorded, and AIStor sends it when the node answers
+		// again. A repeat would only wait for the node.
+		return false
+	case status == http.StatusBadGateway, status == http.StatusServiceUnavailable, status == http.StatusGatewayTimeout:
+		r.unknown = true
+		return r.repeatUnknown
+	}
+	return false
+}
+
+// filesNotSent reports whether a transport error came before the connection
+// was made, so no byte of the request reached the server.
+func filesNotSent(err error) bool {
+	var opErr *net.OpError
+	return errors.As(err, &opErr) && opErr.Op == "dial"
 }
 
 // filesErrorResponse returns the error a Files management API write was
@@ -1044,8 +1088,10 @@ func filesErrorResponse(resp *http.Response) error {
 	if err != nil {
 		return httpRespToErrorResponse(resp)
 	}
-	resp.Body = io.NopCloser(bytes.NewReader(body))
-	errResp := ToErrorResponse(httpRespToErrorResponse(resp))
+	// Decode from a copy, so resp.Body stays the body for closeResponse.
+	answer := *resp
+	answer.Body = io.NopCloser(bytes.NewReader(body))
+	errResp := ToErrorResponse(httpRespToErrorResponse(&answer))
 	if errResp.Code != FilesErrExportModified {
 		return errResp
 	}
