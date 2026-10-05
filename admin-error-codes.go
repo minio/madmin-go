@@ -32,5 +32,6 @@ func IsAdminSelfLockout(err error) bool {
 	if errors.As(err, &resp) {
 		return resp.Code == AdminSelfLockoutErrorCode
 	}
-	return false
+	var respPtr *ErrorResponse
+	return errors.As(err, &respPtr) && respPtr != nil && respPtr.Code == AdminSelfLockoutErrorCode
 }

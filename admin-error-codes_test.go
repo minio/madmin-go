@@ -34,16 +34,29 @@ func TestIsAdminSelfLockout(t *testing.T) {
 	if !IsAdminSelfLockout(fmt.Errorf("wrapped: %w", lockout)) {
 		t.Fatal("expected wrapped ErrorResponse to be self-lockout")
 	}
+	if !IsAdminSelfLockout(&lockout) {
+		t.Fatal("expected pointer ErrorResponse to be self-lockout")
+	}
+	if !IsAdminSelfLockout(fmt.Errorf("wrapped: %w", &lockout)) {
+		t.Fatal("expected wrapped pointer ErrorResponse to be self-lockout")
+	}
 
 	other := ErrorResponse{Code: "XMinioAdminNoSuchUser", Message: "no user"}
 	if IsAdminSelfLockout(other) {
 		t.Fatal("expected other admin code to not be self-lockout")
+	}
+	if IsAdminSelfLockout(&other) {
+		t.Fatal("expected other pointer admin code to not be self-lockout")
 	}
 	if IsAdminSelfLockout(errors.New("plain error")) {
 		t.Fatal("expected non-ErrorResponse to not be self-lockout")
 	}
 	if IsAdminSelfLockout(nil) {
 		t.Fatal("expected nil to not be self-lockout")
+	}
+	var nilResp *ErrorResponse
+	if IsAdminSelfLockout(nilResp) {
+		t.Fatal("expected nil *ErrorResponse to not be self-lockout")
 	}
 }
 
