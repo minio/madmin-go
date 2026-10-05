@@ -340,8 +340,8 @@ const (
 	// FilesExportServing means the assigned node is answering for the export.
 	FilesExportServing FilesExportPhase = "serving"
 
-	// FilesExportPending means AIStor holds the export and no node reports
-	// holding it yet.
+	// FilesExportPending means the assigned node does not hold the export, and
+	// AIStor has not yet sent it the export's configuration.
 	FilesExportPending FilesExportPhase = "pending"
 
 	// FilesExportMissing means the assigned node answers and does not hold the
