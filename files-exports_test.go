@@ -341,9 +341,9 @@ func TestFilesWireKeys(t *testing.T) {
 		if typ.Kind() != reflect.Struct || typ == reflect.TypeOf(time.Time{}) || seen[typ] {
 			return
 		}
-		// A type that encodes itself, such as filesaccess.Rule, owns its
-		// wire form, and its own tests check it.
-		if reflect.PointerTo(typ).Implements(reflect.TypeFor[json.Marshaler]()) {
+		// A type of another package, such as filesaccess.Rule, owns its wire
+		// form, and its own tests check it.
+		if typ.PkgPath() != reflect.TypeFor[FilesExport]().PkgPath() {
 			return
 		}
 		seen[typ] = true
@@ -375,6 +375,12 @@ func TestFilesWireKeys(t *testing.T) {
 		FilesExportList{},
 		FilesExport{},
 		FilesStatsList{},
+		FilesExportSpec{},
+		FilesQuotaChange{},
+		FilesAccessChange{},
+		FilesRemoveResult{},
+		filesQuotaBody{},
+		filesAccessBody{},
 	} {
 		walk(reflect.TypeOf(root))
 	}
@@ -421,7 +427,9 @@ func TestListFilesExportsRequest(t *testing.T) {
     {"name": "carol", "exportID": 104, "pseudo": "/home/carol", "node": "node03.example.com",
      "status": "serving", "usedBytes": 1288490188, "quotaBytes": 21474836480},
     {"name": "frank", "exportID": 107, "pseudo": "/home/frank", "node": "node02.example.com",
-     "status": "unreachable", "quotaBytes": 10737418240}
+     "status": "unreachable", "quotaBytes": 10737418240},
+    {"name": "gina", "exportID": 108, "generation": "5e9d31", "pseudo": "/home/gina", "node": "node03.example.com",
+     "status": "removing", "applied": false, "quotaBytes": 0}
   ],
   "unreachableNodes": [
     {"node": "node02.example.com", "detail": "filesgw: no gateway daemon on this node"}
@@ -444,8 +452,11 @@ func TestListFilesExportsRequest(t *testing.T) {
 		t.Errorf("node/status = %q/%q, want node03/serving", n, s)
 	}
 
-	if len(got.Exports) != 2 {
-		t.Fatalf("exports = %+v, want 2", got.Exports)
+	if len(got.Exports) != 3 {
+		t.Fatalf("exports = %+v, want 3", got.Exports)
+	}
+	if gina := got.Exports[2]; gina.Status != FilesExportRemoving || gina.Generation != "5e9d31" || gina.Applied {
+		t.Errorf("gina = %+v, want a removing export at generation 5e9d31 not yet applied", gina)
 	}
 	carol, frank := got.Exports[0], got.Exports[1]
 	if carol.Name != "carol" || carol.ExportID != 104 || carol.Status != FilesExportServing ||
@@ -474,14 +485,14 @@ func TestListFilesExportsRequest(t *testing.T) {
 // access rules in evaluation order.
 func TestGetFilesExportRequest(t *testing.T) {
 	server, seen := newFilesJSONServer(t, http.StatusOK, `{
-  "name": "carol", "exportID": 104, "pseudo": "/home/carol", "node": "node03.example.com",
+  "name": "carol", "exportID": 104, "generation": "5f2c44", "pseudo": "/home/carol", "node": "node03.example.com",
   "accessType": "rw", "squash": "root", "quotaBytes": 21474836480,
   "accessRules": [
     {"clients": ["10.20.9.0/24"], "accessType": "none"},
     {"clients": ["10.20.4.7", "10.20.4.8"], "accessType": "rw"},
     {"clients": ["*.corp.example.com", "10.20.0.0/16"], "accessType": "ro"}
   ],
-  "status": "serving", "usedBytes": 1288490188
+  "status": "serving", "applied": true, "usedBytes": 1288490188
 }`)
 	client := newFilesExportsTestClient(t, server.URL)
 
@@ -502,8 +513,8 @@ func TestGetFilesExportRequest(t *testing.T) {
 		}
 
 		want := FilesExport{
-			Name: "carol", ExportID: 104, Pseudo: "/home/carol", Node: "node03.example.com",
-			Status: FilesExportServing, AccessType: FilesAccessRW, Squash: FilesSquashRoot, QuotaBytes: 21474836480,
+			Name: "carol", ExportID: 104, Generation: "5f2c44", Pseudo: "/home/carol", Node: "node03.example.com",
+			Status: FilesExportServing, Applied: true, AccessType: FilesAccessRW, Squash: FilesSquashRoot, QuotaBytes: 21474836480,
 			AccessRules: mustFilesRules("10.20.9.0/24 none\n" +
 				"10.20.4.7,10.20.4.8 rw\n" +
 				"*.corp.example.com,10.20.0.0/16 ro\n").All(),
@@ -915,7 +926,7 @@ func jsonKeys(t *testing.T, body []byte) []string {
 // the 202 sample reply.
 func TestAddFilesExportRequest(t *testing.T) {
 	server, seen := newFilesJSONServer(t, http.StatusAccepted, `{
-  "name": "carol", "exportID": 104, "pseudo": "/home/carol", "node": "node03.example.com",
+  "name": "carol", "exportID": 104, "generation": "5f2a91", "pseudo": "/home/carol", "node": "node03.example.com",
   "status": "pending", "accessType": "rw", "squash": "root", "quotaBytes": 10737418240
 }`)
 	client := newFilesExportsTestClient(t, server.URL)
@@ -939,7 +950,7 @@ func TestAddFilesExportRequest(t *testing.T) {
 		t.Errorf("body keys = %v, want %v", keys, want)
 	}
 	want := FilesExport{
-		Name: "carol", ExportID: 104, Pseudo: "/home/carol", Node: "node03.example.com", Status: FilesExportPending,
+		Name: "carol", ExportID: 104, Generation: "5f2a91", Pseudo: "/home/carol", Node: "node03.example.com", Status: FilesExportPending,
 		AccessType: FilesAccessRW, Squash: FilesSquashRoot, QuotaBytes: 10737418240,
 	}
 	if !reflect.DeepEqual(got, want) {
@@ -972,11 +983,11 @@ func filesWrites(ctx context.Context, client *AdminClient) map[string]func() err
 			_, err := client.AddFilesExport(ctx, FilesExportSpec{Name: "carol", Pseudo: "/home/carol"})
 			return err
 		},
-		"quota":  func() error { _, err := client.SetFilesExportQuota(ctx, "carol", 7, 1); return err },
-		"access": func() error { _, err := client.SetFilesExportAccess(ctx, "carol", 7, rules); return err },
-		"clear":  func() error { _, err := client.ClearFilesExportAccess(ctx, "carol", 7); return err },
+		"quota":  func() error { _, err := client.SetFilesExportQuota(ctx, "carol", "5f2a91", 1); return err },
+		"access": func() error { _, err := client.SetFilesExportAccess(ctx, "carol", "5f2a91", rules); return err },
+		"clear":  func() error { _, err := client.ClearFilesExportAccess(ctx, "carol", "5f2a91"); return err },
 		"remove": func() error {
-			_, err := client.RemoveFilesExport(ctx, "carol", 7, FilesRemoveOptions{Purge: true})
+			_, err := client.RemoveFilesExport(ctx, "carol", "5f2a91", FilesRemoveOptions{Purge: true})
 			return err
 		},
 	}
@@ -992,7 +1003,7 @@ func TestFilesWriteSendsIfMatch(t *testing.T) {
 		if err := call(); err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
-		want := `"7"`
+		want := `"5f2a91"`
 		if name == "add" {
 			want = ""
 		}
@@ -1002,22 +1013,22 @@ func TestFilesWriteSendsIfMatch(t *testing.T) {
 	}
 }
 
-// TestFilesWriteRefusesZeroGeneration verifies that a per-export write without
-// a generation is refused before it is sent, since generations start at 1.
-func TestFilesWriteRefusesZeroGeneration(t *testing.T) {
+// TestFilesWriteRefusesEmptyGeneration verifies that a per-export write
+// without a generation is refused before it is sent.
+func TestFilesWriteRefusesEmptyGeneration(t *testing.T) {
 	server, seen := newFilesJSONServer(t, http.StatusOK, `{}`)
 	client := newFilesExportsTestClient(t, server.URL)
 	ctx := context.Background()
 	rules := mustFilesRules("* rw")
 
 	for name, call := range map[string]func() error{
-		"quota":  func() error { _, err := client.SetFilesExportQuota(ctx, "carol", 0, 1); return err },
-		"access": func() error { _, err := client.SetFilesExportAccess(ctx, "carol", 0, rules); return err },
-		"clear":  func() error { _, err := client.ClearFilesExportAccess(ctx, "carol", 0); return err },
-		"remove": func() error { _, err := client.RemoveFilesExport(ctx, "carol", 0, FilesRemoveOptions{}); return err },
+		"quota":  func() error { _, err := client.SetFilesExportQuota(ctx, "carol", "", 1); return err },
+		"access": func() error { _, err := client.SetFilesExportAccess(ctx, "carol", "", rules); return err },
+		"clear":  func() error { _, err := client.ClearFilesExportAccess(ctx, "carol", ""); return err },
+		"remove": func() error { _, err := client.RemoveFilesExport(ctx, "carol", "", FilesRemoveOptions{}); return err },
 	} {
 		if err := call(); err == nil {
-			t.Errorf("%s with generation 0 should fail", name)
+			t.Errorf("%s without a generation should fail", name)
 		}
 	}
 	if len(*seen) != 0 {
@@ -1068,11 +1079,8 @@ var (
 	filesModified = filesScriptedReply{http.StatusPreconditionFailed, `{"code": "ExportModified", "message": "changed"}`}
 	filesExists   = filesScriptedReply{http.StatusConflict, `{"code": "ExportAlreadyExists", "message": "taken"}`}
 	filesNotFound = filesScriptedReply{http.StatusNotFound, `{"code": "ExportNotFound", "message": "gone"}`}
-	filesCarol    = filesScriptedReply{http.StatusOK, `{"name": "carol", "exportID": 104, "generation": 9,
-		"pseudo": "/home/carol", "accessType": "rw", "squash": "root", "quotaBytes": 1,
-		"accessRules": [{"clients": ["*"], "accessType": "rw"}]}`}
-	filesCarolOther = filesScriptedReply{http.StatusOK, `{"name": "carol", "exportID": 104, "generation": 9,
-		"pseudo": "/home/other", "accessType": "ro", "squash": "root", "quotaBytes": 2}`}
+	filesCarol    = filesScriptedReply{http.StatusOK, `{"name": "carol", "exportID": 104, "generation": "5f2c44",
+		"pseudo": "/home/carol", "accessType": "rw", "squash": "root", "quotaBytes": 1}`}
 )
 
 // TestFilesWriteRetriesOnUnknownOutcome verifies that every write is repeated
@@ -1123,106 +1131,99 @@ func TestFilesWriteFirstAnswerIsFinal(t *testing.T) {
 	}
 }
 
-// TestFilesWriteReconciles verifies what a repeat does with the answer the
-// earlier attempt could have caused: it reads the export, and succeeds when the
-// export already holds what the write asked for, without the previous value it
-// cannot know. When the export holds something else, the answer is returned.
-func TestFilesWriteReconciles(t *testing.T) {
-	ctx := context.Background()
-	rules := mustFilesRules("* rw")
-	for _, tc := range []struct {
-		name   string
-		read   filesScriptedReply
+// TestFilesWriteRepeatReturnsConflict verifies that a repeat answered with a
+// conflict returns it as it is, without reading the export. A 409 on an add
+// may be this call's own earlier attempt, and a 412 may follow its own change,
+// but the client cannot tell either from another caller's write.
+func TestFilesWriteRepeatReturnsConflict(t *testing.T) {
+	for name, tc := range map[string]struct {
 		answer filesScriptedReply
-		call   func(*AdminClient) error
+		code   string
 	}{
-		{"quota", filesCarol, filesModified, func(c *AdminClient) error {
-			got, err := c.SetFilesExportQuota(ctx, "carol", 7, 1)
-			if err == nil && (got.PreviousBytes != nil || got.CurrentBytes != 1 || got.Generation != 9 || got.ExportID != 104) {
-				t.Errorf("quota: reply = %+v", got)
-			}
-			return err
-		}},
-		{"access", filesCarol, filesModified, func(c *AdminClient) error {
-			got, err := c.SetFilesExportAccess(ctx, "carol", 7, rules)
-			if err == nil && (got.PreviousRuleCount != nil || got.RuleCount != 1 || got.Generation != 9) {
-				t.Errorf("access: reply = %+v", got)
-			}
-			return err
-		}},
-		{"clear", filesCarolOther, filesModified, func(c *AdminClient) error {
-			got, err := c.ClearFilesExportAccess(ctx, "carol", 7)
-			if err == nil && (got.PreviousRuleCount != nil || got.RuleCount != 0 || got.Generation != 9) {
-				t.Errorf("clear: reply = %+v", got)
-			}
-			return err
-		}},
-		{"add", filesCarol, filesExists, func(c *AdminClient) error {
-			got, err := c.AddFilesExport(ctx, FilesExportSpec{Name: "carol", Pseudo: "/home/carol", QuotaBytes: 1})
-			if err == nil && (got.ExportID != 104 || got.Generation != 9) {
-				t.Errorf("add: reply = %+v", got)
-			}
-			return err
-		}},
-		{"remove", filesCarol, filesNotFound, func(c *AdminClient) error {
-			got, err := c.RemoveFilesExport(ctx, "carol", 7, FilesRemoveOptions{Purge: true})
-			if err == nil && !got.AlreadyRemoved {
-				t.Errorf("remove: reply = %+v, want AlreadyRemoved", got)
-			}
-			return err
-		}},
+		"add":    {filesExists, FilesErrExportAlreadyExists},
+		"quota":  {filesModified, FilesErrExportModified},
+		"access": {filesModified, FilesErrExportModified},
+		"clear":  {filesModified, FilesErrExportModified},
 	} {
-		t.Run(tc.name, func(t *testing.T) {
+		t.Run(name, func(t *testing.T) {
 			t.Parallel()
-			server, writes, _ := newFilesScriptedServer(t, tc.read, filesDropped, tc.answer)
-			if err := tc.call(newFilesExportsTestClient(t, server.URL)); err != nil {
-				t.Fatalf("err = %v, want the write reconciled", err)
+			server, writes, reads := newFilesScriptedServer(t, filesCarol, filesDropped, tc.answer)
+			call := filesWrites(context.Background(), newFilesExportsTestClient(t, server.URL))[name]
+			if err := call(); ToErrorResponse(err).Code != tc.code {
+				t.Errorf("err = %v, want code %s", err, tc.code)
 			}
 			if n := writes.Load(); n != 2 {
 				t.Errorf("the server received %d writes, want 2", n)
 			}
+			if n := reads.Load(); n != 0 {
+				t.Errorf("the client read the export %d times, want 0", n)
+			}
 		})
 	}
+}
+
+// TestFilesWriteModifiedCarriesGeneration verifies that a 412 reaches the
+// caller as a FilesExportModifiedError carrying the export's current
+// generation, and that a caller switching on the code still finds it.
+func TestFilesWriteModifiedCarriesGeneration(t *testing.T) {
+	server, _ := newFilesJSONServer(t, http.StatusPreconditionFailed,
+		`{"code": "ExportModified", "message": "changed", "requestId": "18B3", "generation": "5f2c44"}`)
+	_, err := newFilesExportsTestClient(t, server.URL).SetFilesExportQuota(context.Background(), "carol", "5f2a91", 1)
+
+	var modified FilesExportModifiedError
+	if !errors.As(err, &modified) {
+		t.Fatalf("err = %v (%T), want a FilesExportModifiedError", err, err)
+	}
+	if modified.Generation != "5f2c44" || modified.RequestID != "18B3" {
+		t.Errorf("error = %+v, want generation 5f2c44 and request id 18B3", modified)
+	}
+	if code := ToErrorResponse(err).Code; code != FilesErrExportModified {
+		t.Errorf("code = %q, want %s", code, FilesErrExportModified)
+	}
+	var errResp ErrorResponse
+	if !errors.As(err, &errResp) || errResp.Code != FilesErrExportModified {
+		t.Errorf("errors.As found %+v, want the ErrorResponse", errResp)
+	}
+}
+
+// TestRemoveFilesExportAlreadyRemoved verifies that a 404 is read as an
+// earlier attempt's remove only when an earlier attempt's outcome is unknown.
+// A server asking the client to slow down acted on nothing, so a 404 after it
+// is the error it says: a mistyped export is not reported as removed.
+func TestRemoveFilesExportAlreadyRemoved(t *testing.T) {
+	slowDown := filesScriptedReply{http.StatusServiceUnavailable, `{"code": "SlowDown", "message": "slow down"}`}
+	throttled := filesScriptedReply{http.StatusTooManyRequests, `too many requests`}
+	nodeUnreachable := filesScriptedReply{http.StatusServiceUnavailable, `{"code": "NodeUnreachable", "message": "node03 did not answer"}`}
 
 	for _, tc := range []struct {
-		name string
-		code string
-		call func(*AdminClient) error
+		name    string
+		replies []filesScriptedReply
+		removed bool
 	}{
-		{"quota", FilesErrExportModified, func(c *AdminClient) error {
-			_, err := c.SetFilesExportQuota(ctx, "carol", 7, 1)
-			return err
-		}},
-		{"access", FilesErrExportModified, func(c *AdminClient) error {
-			_, err := c.SetFilesExportAccess(ctx, "carol", 7, rules)
-			return err
-		}},
-		{"clear", FilesErrExportModified, func(c *AdminClient) error {
-			_, err := c.ClearFilesExportAccess(ctx, "carol", 7)
-			return err
-		}},
-		{"add", FilesErrExportAlreadyExists, func(c *AdminClient) error {
-			_, err := c.AddFilesExport(ctx, FilesExportSpec{Name: "carol", Pseudo: "/home/carol", QuotaBytes: 1})
-			return err
-		}},
+		{"dropped", []filesScriptedReply{filesDropped, filesNotFound}, true},
+		{"bad_gateway", []filesScriptedReply{{http.StatusBadGateway, `bad gateway`}, filesNotFound}, true},
+		// The remove is recorded, and the reconciler may complete it before
+		// the repeat arrives.
+		{"node_unreachable", []filesScriptedReply{nodeUnreachable, filesNotFound}, true},
+		{"dropped_then_slow_down", []filesScriptedReply{filesDropped, slowDown, filesNotFound}, true},
+		{"slow_down", []filesScriptedReply{slowDown, filesNotFound}, false},
+		{"throttled", []filesScriptedReply{throttled, filesNotFound}, false},
+		{"first_attempt", []filesScriptedReply{filesNotFound}, false},
 	} {
-		t.Run(tc.name+"_held_by_another", func(t *testing.T) {
+		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			answer := filesModified
-			if tc.code == FilesErrExportAlreadyExists {
-				answer = filesExists
+			server, writes, _ := newFilesScriptedServer(t, filesCarol, tc.replies...)
+			got, err := newFilesExportsTestClient(t, server.URL).RemoveFilesExport(context.Background(),
+				"carol", "5f2a91", FilesRemoveOptions{Purge: true})
+			if tc.removed {
+				if err != nil || !got.AlreadyRemoved {
+					t.Errorf("reply = %+v, err = %v, want AlreadyRemoved", got, err)
+				}
+			} else if ToErrorResponse(err).Code != FilesErrExportNotFound || got.AlreadyRemoved {
+				t.Errorf("reply = %+v, err = %v, want %s", got, err, FilesErrExportNotFound)
 			}
-			// The quota and access cases read an export another caller changed.
-			read := filesCarolOther
-			if tc.name == "clear" {
-				read = filesCarol
-			}
-			server, _, reads := newFilesScriptedServer(t, read, filesDropped, answer)
-			if err := tc.call(newFilesExportsTestClient(t, server.URL)); ToErrorResponse(err).Code != tc.code {
-				t.Errorf("err = %v, want code %s", err, tc.code)
-			}
-			if n := reads.Load(); n != 1 {
-				t.Errorf("the client read the export %d times, want 1", n)
+			if n := int(writes.Load()); n != len(tc.replies) {
+				t.Errorf("the server received %d writes, want %d", n, len(tc.replies))
 			}
 		})
 	}
@@ -1250,13 +1251,13 @@ func TestAddFilesExportAcceptsAny2xx(t *testing.T) {
 func TestFilesWriteAcceptsBodylessSuccess(t *testing.T) {
 	for _, status := range []int{http.StatusNoContent, http.StatusOK, http.StatusAccepted} {
 		server, _ := newFilesJSONServer(t, status, ``)
-		if _, err := newFilesExportsTestClient(t, server.URL).ClearFilesExportAccess(context.Background(), "carol", 7); err != nil {
+		if _, err := newFilesExportsTestClient(t, server.URL).ClearFilesExportAccess(context.Background(), "carol", "5f2a91"); err != nil {
 			t.Errorf("status %d without a body: %v", status, err)
 		}
 	}
 
 	server, _ := newFilesJSONServer(t, http.StatusOK, `{"name": "carol"`)
-	if _, err := newFilesExportsTestClient(t, server.URL).ClearFilesExportAccess(context.Background(), "carol", 7); err == nil {
+	if _, err := newFilesExportsTestClient(t, server.URL).ClearFilesExportAccess(context.Background(), "carol", "5f2a91"); err == nil {
 		t.Error("a truncated body should fail")
 	}
 }
@@ -1280,9 +1281,9 @@ func TestAddFilesExportRefusesReservedNames(t *testing.T) {
 // the limit, is sent rather than omitted, and that the §4 sample reply decodes.
 func TestSetFilesExportQuotaRequest(t *testing.T) {
 	server, seen := newFilesJSONServer(t, http.StatusOK,
-		`{"name": "carol", "exportID": 104, "previousBytes": 10737418240, "currentBytes": 0, "usedBytes": 1288490188}`)
+		`{"name": "carol", "exportID": 104, "generation": "5f2b07", "previousBytes": 10737418240, "currentBytes": 0, "usedBytes": 1288490188}`)
 
-	got, err := newFilesExportsTestClient(t, server.URL).SetFilesExportQuota(context.Background(), "carol", 7, 0)
+	got, err := newFilesExportsTestClient(t, server.URL).SetFilesExportQuota(context.Background(), "carol", "5f2a91", 0)
 	if err != nil {
 		t.Fatalf("SetFilesExportQuota: %v", err)
 	}
@@ -1293,7 +1294,7 @@ func TestSetFilesExportQuotaRequest(t *testing.T) {
 	if string(req.body) != `{"quotaBytes":0}` {
 		t.Errorf("body = %s, want {\"quotaBytes\":0}", req.body)
 	}
-	if got.ExportID != 104 || got.PreviousBytes == nil || *got.PreviousBytes != 10737418240 || got.CurrentBytes != 0 ||
+	if got.ExportID != 104 || got.Generation != "5f2b07" || got.PreviousBytes != 10737418240 || got.CurrentBytes != 0 ||
 		got.UsedBytes == nil || *got.UsedBytes != 1288490188 {
 		t.Errorf("reply = %+v", got)
 	}
@@ -1310,7 +1311,7 @@ func TestSetFilesExportAccessRequest(t *testing.T) {
 	rules := mustFilesRules("10.20.9.0/24 none\n" +
 		"10.20.4.8,10.20.4.7 rw\n" +
 		"* ro\n")
-	got, err := client.SetFilesExportAccess(context.Background(), "104", 7, rules)
+	got, err := client.SetFilesExportAccess(context.Background(), "104", "5f2a91", rules)
 	if err != nil {
 		t.Fatalf("SetFilesExportAccess: %v", err)
 	}
@@ -1328,12 +1329,12 @@ func TestSetFilesExportAccessRequest(t *testing.T) {
 	if !slices.EqualFunc(sent.Rules.All(), rules.All(), FilesAccessRule.Equal) {
 		t.Errorf("the server received %+v, want %+v", sent.Rules.All(), rules.All())
 	}
-	if got.PreviousRuleCount == nil || *got.PreviousRuleCount != 0 || got.RuleCount != 3 {
+	if got.PreviousRuleCount != 0 || got.RuleCount != 3 {
 		t.Errorf("reply = %+v", got)
 	}
 
 	// An empty list is not a way to clear: ClearFilesExportAccess is.
-	if _, err := client.SetFilesExportAccess(context.Background(), "carol", 7, filesaccess.Rules{}); err == nil {
+	if _, err := client.SetFilesExportAccess(context.Background(), "carol", "5f2a91", filesaccess.Rules{}); err == nil {
 		t.Error("SetFilesExportAccess with no rules should fail")
 	}
 	if len(*seen) != 1 {
@@ -1347,7 +1348,7 @@ func TestClearFilesExportAccessRequest(t *testing.T) {
 	server, seen := newFilesJSONServer(t, http.StatusOK,
 		`{"name": "carol", "exportID": 104, "previousRuleCount": 3, "ruleCount": 0}`)
 
-	got, err := newFilesExportsTestClient(t, server.URL).ClearFilesExportAccess(context.Background(), "carol", 7)
+	got, err := newFilesExportsTestClient(t, server.URL).ClearFilesExportAccess(context.Background(), "carol", "5f2a91")
 	if err != nil {
 		t.Fatalf("ClearFilesExportAccess: %v", err)
 	}
@@ -1355,7 +1356,7 @@ func TestClearFilesExportAccessRequest(t *testing.T) {
 	if want := "/minio/admin/files/v1/exports/carol/access"; req.method != http.MethodDelete || req.path != want || len(req.body) != 0 {
 		t.Errorf("sent %s %s with body %q, want DELETE %s with none", req.method, req.path, req.body, want)
 	}
-	if got.PreviousRuleCount == nil || *got.PreviousRuleCount != 3 || got.RuleCount != 0 {
+	if got.PreviousRuleCount != 3 || got.RuleCount != 0 {
 		t.Errorf("reply = %+v", got)
 	}
 }
@@ -1374,7 +1375,7 @@ func TestRemoveFilesExportRequest(t *testing.T) {
 		{FilesRemoveOptions{Force: true}, url.Values{"force": {"true"}}},
 		{FilesRemoveOptions{Force: true, Purge: true}, url.Values{"force": {"true"}, "purge": {"true"}}},
 	} {
-		got, err := client.RemoveFilesExport(context.Background(), "carol", 7, tc.opts)
+		got, err := client.RemoveFilesExport(context.Background(), "carol", "5f2a91", tc.opts)
 		if err != nil {
 			t.Fatalf("RemoveFilesExport(%+v): %v", tc.opts, err)
 		}
@@ -1401,10 +1402,13 @@ func TestFilesWriteRefusesLocally(t *testing.T) {
 
 	for _, export := range []string{"", "stats"} {
 		for name, call := range map[string]func() error{
-			"quota":  func() error { _, err := client.SetFilesExportQuota(ctx, export, 7, 1); return err },
-			"access": func() error { _, err := client.SetFilesExportAccess(ctx, export, 7, rules); return err },
-			"clear":  func() error { _, err := client.ClearFilesExportAccess(ctx, export, 7); return err },
-			"remove": func() error { _, err := client.RemoveFilesExport(ctx, export, 7, FilesRemoveOptions{}); return err },
+			"quota":  func() error { _, err := client.SetFilesExportQuota(ctx, export, "5f2a91", 1); return err },
+			"access": func() error { _, err := client.SetFilesExportAccess(ctx, export, "5f2a91", rules); return err },
+			"clear":  func() error { _, err := client.ClearFilesExportAccess(ctx, export, "5f2a91"); return err },
+			"remove": func() error {
+				_, err := client.RemoveFilesExport(ctx, export, "5f2a91", FilesRemoveOptions{})
+				return err
+			},
 		} {
 			if err := call(); err == nil {
 				t.Errorf("%s(%q) should fail", name, export)
@@ -1420,22 +1424,35 @@ func TestFilesWriteRefusesLocally(t *testing.T) {
 // with the server's code.
 func TestFilesWriteErrorCode(t *testing.T) {
 	ctx := context.Background()
+	add := func(c *AdminClient) error {
+		_, err := c.AddFilesExport(ctx, FilesExportSpec{Name: "carol", Pseudo: "/home/carol"})
+		return err
+	}
+	remove := func(c *AdminClient) error {
+		_, err := c.RemoveFilesExport(ctx, "carol", "5f2a91", FilesRemoveOptions{})
+		return err
+	}
+	quota := func(c *AdminClient) error {
+		_, err := c.SetFilesExportQuota(ctx, "carol", "5f2a91", 1)
+		return err
+	}
 	for _, tc := range []struct {
-		code string
-		call func(*AdminClient) error
+		status int
+		code   string
+		call   func(*AdminClient) error
 	}{
-		{FilesErrExportAlreadyExists, func(c *AdminClient) error {
-			_, err := c.AddFilesExport(ctx, FilesExportSpec{Name: "carol", Pseudo: "/home/carol"})
-			return err
-		}},
-		{FilesErrExportInUse, func(c *AdminClient) error {
-			_, err := c.RemoveFilesExport(ctx, "carol", 7, FilesRemoveOptions{})
-			return err
-		}},
+		{http.StatusConflict, FilesErrExportAlreadyExists, add},
+		{http.StatusConflict, FilesErrExportIDsExhausted, add},
+		{http.StatusConflict, FilesErrExportInUse, remove},
+		{http.StatusConflict, FilesErrExportRemoving, quota},
+		{http.StatusUnprocessableEntity, FilesErrNodeRefused, quota},
 	} {
-		server, _ := newFilesJSONServer(t, http.StatusConflict, `{"code": "`+tc.code+`", "message": "refused"}`)
+		server, seen := newFilesJSONServer(t, tc.status, `{"code": "`+tc.code+`", "message": "refused"}`)
 		if err := tc.call(newFilesExportsTestClient(t, server.URL)); ToErrorResponse(err).Code != tc.code {
 			t.Errorf("err = %v, want code %s", err, tc.code)
+		}
+		if len(*seen) != 1 {
+			t.Errorf("%s: the server received %d requests, want 1", tc.code, len(*seen))
 		}
 	}
 }

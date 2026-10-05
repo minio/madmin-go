@@ -124,6 +124,8 @@ func ToErrorResponse(err error) ErrorResponse {
 	switch err := err.(type) {
 	case ErrorResponse:
 		return err
+	case FilesExportModifiedError:
+		return err.ErrorResponse
 	default:
 		return ErrorResponse{}
 	}
