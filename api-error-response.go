@@ -23,6 +23,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -120,15 +121,44 @@ func httpRespToErrorResponse(resp *http.Response) error {
 //	   resp := admin.ToErrorResponse(err)
 //	}
 //	...
+//
+// The first ErrorResponse, or non-nil *ErrorResponse, in err's tree is
+// returned, so a wrapped or joined error still yields the server's response.
 func ToErrorResponse(err error) ErrorResponse {
-	switch err := err.(type) {
-	case ErrorResponse:
-		return err
-	case FilesExportModifiedError:
-		return err.ErrorResponse
-	default:
-		return ErrorResponse{}
+	var resp ErrorResponse
+	if errors.As(err, &resp) {
+		return resp
 	}
+	var ptr *ErrorResponse
+	if errors.As(err, &ptr) && ptr != nil {
+		return *ptr
+	}
+	return ErrorResponse{}
+}
+
+// IsErrorCode reports whether the ErrorResponse that ToErrorResponse finds in
+// err carries code.
+func IsErrorCode(err error, code string) bool {
+	return code != "" && ToErrorResponse(err).Code == code
+}
+
+// The error codes and messages the admin API answers with, for a caller that
+// switches on ErrorResponse.Code.
+const (
+	// AdminSelfLockoutErrorCode is the ErrorResponse.Code that the server
+	// sends, with HTTP 403, when an IAM change would remove the caller's own
+	// IAM admin access.
+	AdminSelfLockoutErrorCode = "XMinioAdminSelfLockout"
+
+	// AdminSelfLockoutMessage is the message the server sends with
+	// AdminSelfLockoutErrorCode. A caller can show it when
+	// ErrorResponse.Message is empty.
+	AdminSelfLockoutMessage = "This operation would remove your own access"
+)
+
+// IsAdminSelfLockout reports whether err carries AdminSelfLockoutErrorCode.
+func IsAdminSelfLockout(err error) bool {
+	return IsErrorCode(err, AdminSelfLockoutErrorCode)
 }
 
 // ErrInvalidArgument - Invalid argument response.
