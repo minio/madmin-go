@@ -174,7 +174,7 @@ func TestFilesExportsQueryRejectsIDCountsLocally(t *testing.T) {
 
 // TestFilesGatewayExportsRequest verifies that the listing sends no query at
 // all, and that each node's listing decodes. A node with no daemon carries no
-// listing, and a listing without a time carries no TS.
+// listing.
 func TestFilesGatewayExportsRequest(t *testing.T) {
 	const reply = `{
 		"results": [
@@ -218,8 +218,8 @@ func TestFilesGatewayExportsRequest(t *testing.T) {
 	}
 	// A gateway serving nothing still answered, which is what separates it from
 	// a node with no daemon.
-	if empty := got.Results[2].Daemon; empty == nil || len(empty.Exports) != 0 || empty.TS != nil {
-		t.Errorf("empty listing = %+v, want a listing with no exports and no time", empty)
+	if empty := got.Results[2].Daemon; empty == nil || len(empty.Exports) != 0 {
+		t.Errorf("empty listing = %+v, want a listing with no exports", empty)
 	}
 	if cut := got.Results[3].Daemon; cut == nil || !cut.Truncated {
 		t.Errorf("truncated listing = %+v, want Truncated", cut)

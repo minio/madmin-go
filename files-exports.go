@@ -34,6 +34,11 @@ import (
 // repeating an id does not buy a longer list.
 const MaxFilesExportIDsPerQuery = 512
 
+// MaxFilesDaemonExports is the most exports one node's gateway lists in a
+// FilesGatewayExports reply. A gateway serving more lists its lowest ids and
+// sets FilesDaemonExports.Truncated.
+const MaxFilesDaemonExports = 4096
+
 // FilesNodeReach says what one node's AIStor Files gateway admin socket showed.
 // A node running no gateway is an ordinary state, while a socket that will not
 // admit the server process is a deployment fault.
@@ -58,7 +63,7 @@ const (
 
 	// FilesNodeUnknown means no state was established: nothing was dialed, the
 	// daemon rejected the request itself and so said nothing about any export,
-	// or, for a query naming no export, the list could not be read.
+	// or, for FilesGatewayExports, the list could not be read.
 	FilesNodeUnknown FilesNodeReach = "unknown"
 )
 
@@ -144,14 +149,15 @@ type FilesNodeStatus struct {
 
 	// Truncated says the read stopped before every export named was tried, so
 	// Exports is shorter than the list asked for and the missing ids are neither
-	// held nor unheld. Detail says why the read stopped.
+	// held nor unheld. Detail says why the read stopped. A FilesGatewayExports
+	// reply never sets it; a cut listing sets Daemon.Truncated instead.
 	Truncated bool `json:"truncated,omitempty"`
 
 	// Exports carries one entry per export read, in the order asked.
 	Exports []FilesExportResult `json:"exports,omitempty"`
 
-	// Daemon lists the exports the node's gateway serves. It is set only when
-	// the query named no export and the daemon answered.
+	// Daemon lists the exports the node's gateway serves. It is set only in a
+	// FilesGatewayExports reply, when the daemon answered.
 	Daemon *FilesDaemonExports `json:"daemon,omitempty"`
 }
 
@@ -161,9 +167,9 @@ type FilesDaemonExports struct {
 	// empty when the daemon serves none.
 	Exports []uint64 `json:"exports"`
 
-	// Truncated reports that the daemon serves more than the 4096 exports one
-	// reply lists. Exports then holds the lowest 4096 ids, and there is no way
-	// to read the rest.
+	// Truncated reports that the daemon serves more than the
+	// MaxFilesDaemonExports exports one reply lists. Exports then holds the
+	// lowest MaxFilesDaemonExports ids, and there is no way to read the rest.
 	Truncated bool `json:"truncated,omitempty"`
 
 	// BootID changes each time the gateway daemon restarts.
@@ -193,7 +199,8 @@ type FilesUnreachableNode struct {
 	Detail string `json:"detail,omitempty"`
 }
 
-// FilesExportsQueryResponse is the reply of FilesExportsQuery.
+// FilesExportsQueryResponse is the reply of FilesExportsQuery and of
+// FilesGatewayExports.
 //
 // Count is what Results holds and Total is every node the query covered. The
 // endpoint does not paginate, so they differ only by the nodes that could not be
@@ -224,7 +231,7 @@ type FilesExportsQueryResponse struct {
 // node's gateway directly, so they are served under /gateway. The /exports
 // routes belong to the export management API, which reads the segment after
 // /exports as an export name or id.
-var filesGatewayExportsPath = filesAPIPrefix + "/gateway/exports"
+const filesGatewayExportsPath = filesAPIPrefix + "/gateway/exports"
 
 // FilesExportsQuery returns the status of the named AIStor Files gateway
 // exports on every node the cluster can reach, labeled by node.

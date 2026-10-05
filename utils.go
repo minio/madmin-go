@@ -34,6 +34,10 @@ import (
 //msgp:tag json
 //go:generate go tool msgp -d clearomitted -d "timezone utc" -file $GOFILE
 
+// filesAPIPrefix is the route group of the AIStor Files admin API, served at
+// /minio/admin/files/v1 and versioned independently of the MinIO admin API.
+const filesAPIPrefix = "/files/v1"
+
 var (
 	// MinIO only supports last two versions
 	// you can force an application by setting env MADMIN_API_VERSION=v3 if you want the
@@ -53,10 +57,6 @@ var (
 
 	// Admin API version prefix for previous version.
 	adminAPIOldPrefix = "/v3"
-
-	// filesAPIPrefix is the route group of the AIStor Files admin API, served at
-	// /minio/admin/files/v1 and versioned independently of the MinIO admin API.
-	filesAPIPrefix = "/files/v1"
 
 	// kmsAPIVersion - is the latest KMS API version, for KMS requests.
 	// NOTE: MinIO only supports last two versions
