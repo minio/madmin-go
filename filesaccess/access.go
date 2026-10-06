@@ -24,68 +24,75 @@
 // client specification twice is refused instead, because the second
 // appearance can never match.
 //
-// The same checks run wherever rules enter: Parse reads a rules file,
-// Rules.UnmarshalJSON reads a request or a reply, and NewRules takes rules
-// built in code. So a file mc accepts is a request AIStor accepts.
+// The same checks run wherever a policy is written: Parse reads a rules file,
+// and Rules.UnmarshalJSON a request. So a file mc accepts is a request AIStor
+// accepts.
+//
+// A reply is read with Rule.UnmarshalJSON instead, which never refuses a value
+// for being one this version does not know. A newer server may add an access
+// type, a client form or a rule member, and an export holding one must still
+// be readable, and writable without losing it. Such a value is kept as it was
+// sent: an access type for which Access.Known is false, a Client of kind
+// Unrecognized, or a member kept with its rule. Encoding the rule sends each
+// back unchanged, and NewRules lets them through, leaving their check to
+// AIStor.
 package filesaccess
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 )
 
-// Access is the access a rule grants to the clients it matches. The zero
-// value is no access type at all, and is refused wherever one is required.
-type Access uint8
+// Access is the access a rule grants to the clients it matches, as it is
+// written in a rules file and on the wire. RW, RO and None are the values this
+// version knows. A rule decoded from a reply keeps any other value as it was
+// sent, so a value a newer server adds is written back unchanged; Known tells
+// the two apart. The empty value is no access type at all, and is refused
+// wherever one is required.
+type Access string
 
 // The access types a rule can grant.
 const (
 	// RW grants read and write access.
-	RW Access = iota + 1
+	RW Access = "rw"
 
 	// RO grants read-only access.
-	RO
+	RO Access = "ro"
 
 	// None grants no access: a client it matches cannot mount the export.
-	None
+	None Access = "none"
 )
 
-// String returns the access type as it is written in a rules file and on the
-// wire: "rw", "ro" or "none". An invalid value returns "".
-func (a Access) String() string {
+// String returns the access type as it is written.
+func (a Access) String() string { return string(a) }
+
+// Known reports whether a is RW, RO or None.
+func (a Access) Known() bool {
 	switch a {
-	case RW:
-		return "rw"
-	case RO:
-		return "ro"
-	case None:
-		return "none"
+	case RW, RO, None:
+		return true
 	}
-	return ""
+	return false
 }
 
-// ParseAccess reads an access type. Only the lower-case spellings are
-// accepted.
+// ParseAccess reads an access type. Only the lower-case spellings of RW, RO
+// and None are accepted.
 func ParseAccess(s string) (Access, error) {
-	switch s {
-	case "rw":
-		return RW, nil
-	case "ro":
-		return RO, nil
-	case "none":
-		return None, nil
+	if a := Access(s); a.Known() {
+		return a, nil
 	}
-	return 0, fmt.Errorf("%q is not an access type; want rw, ro or none", s)
+	return "", fmt.Errorf("%q is not an access type; want rw, ro or none", s)
 }
 
-// MarshalJSON encodes the access type as its string. An invalid value is an
-// error rather than an empty string, so a zero Access is never sent.
+// MarshalJSON encodes the access type as its string. The empty value is an
+// error rather than an empty string, so a rule without an access type is never
+// sent. A value this version does not know is encoded as it is.
 func (a Access) MarshalJSON() ([]byte, error) {
-	s := a.String()
-	if s == "" {
-		return nil, fmt.Errorf("invalid access type %d", uint8(a))
+	if a == "" {
+		return nil, errors.New("a rule needs an access type")
 	}
-	return json.Marshal(s)
+	return json.Marshal(string(a))
 }
 
 // UnmarshalJSON decodes an access type with the checks of ParseAccess.

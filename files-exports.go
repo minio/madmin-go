@@ -432,9 +432,9 @@ const (
 // in order and the first match wins, so the order of a rule list is the
 // policy: never sort one. A list naming a client specification twice is
 // refused, by filesaccess.NewRules and by AIStor, not deduplicated. The
-// filesaccess package defines it, and checks every client specification and
-// access type as it decodes. A member it does not know is ignored, so a field
-// a newer server adds does not make the export unreadable.
+// filesaccess package defines it. A value a newer server adds, whether an
+// access type, a client form or a rule member, does not make the export
+// unreadable: the rule keeps it as it was sent, and sends it back unchanged.
 type FilesAccessRule = filesaccess.Rule
 
 // FilesExport is one export: its configuration, with Status for where it is
@@ -476,9 +476,9 @@ type FilesExport struct {
 	QuotaBytes uint64 `json:"quotaBytes"`
 
 	// AccessRules are in evaluation order. An export with any rule refuses a
-	// client none of them matches. A rule member this version does not know
-	// is dropped, so rules read from a newer server and sent back unchanged
-	// may lose it.
+	// client none of them matches. A value this version does not know is
+	// kept, so rules read from a newer server, edited and passed to
+	// SetFilesExportAccess through filesaccess.NewRules keep it.
 	AccessRules []FilesAccessRule `json:"accessRules,omitempty"`
 
 	// UsedBytes is nil when the assigned node could not be reached. Status
@@ -784,11 +784,12 @@ type filesAccessBody struct {
 // repeat after an earlier attempt created the export would be refused with
 // FilesErrExportAlreadyExists, and one arriving after another caller removed
 // the export would create it again. So an add is repeated only after an answer
-// the server sends before acting, such as a request to slow down, or when the
-// connection could not be made. Any other attempt whose outcome is unknown
-// ends the call with its error: a transport error once the request was sent,
-// a 502 or 504, or a 503 without a Files API code. The export may then exist,
-// so read it by name before adding it again.
+// the server sends before acting, a 429 or a 408, or when the connection could
+// not be made. Any other attempt whose outcome is unknown ends the call with
+// its error: a transport error once the request was sent, a 502 or 504, or a
+// 503 other than FilesErrNodeUnreachable, SlowDown included, since AIStor
+// sends that after acting too. The export may then exist, so read it by name
+// before adding it again.
 func (adm *AdminClient) AddFilesExport(ctx context.Context, spec FilesExportSpec) (FilesExport, error) {
 	if spec.Name == "" {
 		return FilesExport{}, errors.New("an export name is required")
@@ -808,7 +809,8 @@ func (adm *AdminClient) AddFilesExport(ctx context.Context, spec FilesExportSpec
 // has moved on, the call fails with a FilesExportModifiedError.
 //
 // A request whose outcome is unknown is repeated: a transport error once the
-// request was sent, a 502 or 504, or a 503 without a Files API code. The
+// request was sent, a 502 or 504, or a 503 other than FilesErrNodeUnreachable,
+// SlowDown and RequestTimeout included. The
 // server answers a repeat of a change it already applied with that change's
 // reply, as long as no other write landed in between. After one did, the
 // repeat fails with FilesErrExportModified although its own change may have
@@ -1020,8 +1022,8 @@ func (adm *AdminClient) filesWrite(ctx context.Context, method string, reqData r
 
 // filesRetry is the retry policy of one Files write. It tells an answer that
 // came before the server acted, which is always safe to repeat, from one that
-// may come after: no answer once the request was sent, or a gateway's 502 or
-// 504, or a 503 without the Files API's code.
+// may come after: no answer once the request was sent, a 502, 503 or 504
+// other than FilesErrNodeUnreachable, or any 5xx with a retryable code.
 type filesRetry struct {
 	// repeatUnknown repeats the write after an attempt that may have taken
 	// effect. Without it, such an attempt ends the call.
@@ -1056,16 +1058,20 @@ func (r *filesRetry) next(status int, errResp ErrorResponse, err error) bool {
 
 	r.lastErr = errResp
 	switch {
-	case isAdminErrCodeRetryable(errResp.Code), status == http.StatusTooManyRequests, status == http.StatusRequestTimeout:
-		// The server asked for the request again before acting on it.
-		return true
 	case errResp.Code == FilesErrNodeUnreachable:
 		// The change is recorded, and AIStor sends it when the node answers
 		// again. A repeat would only wait for the node.
 		return false
-	case status == http.StatusBadGateway, status == http.StatusServiceUnavailable, status == http.StatusGatewayTimeout:
+	case status == http.StatusBadGateway, status == http.StatusServiceUnavailable, status == http.StatusGatewayTimeout,
+		status >= 500 && isAdminErrCodeRetryable(errResp.Code):
+		// AIStor sends a 503 SlowDown or RequestTimeout after it has acted
+		// too, when write quorum fails or a deadline passes, so a retryable
+		// code on a 5xx says nothing about whether the write landed.
 		r.unknown = true
 		return r.repeatUnknown
+	case status == http.StatusTooManyRequests, status == http.StatusRequestTimeout, isAdminErrCodeRetryable(errResp.Code):
+		// The server asked for the request again before acting on it.
+		return true
 	}
 	return false
 }

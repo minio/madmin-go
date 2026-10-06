@@ -293,7 +293,9 @@ const ruleGap = 4
 // Format takes a []Rule rather than Rules so it prints any list, including
 // an empty one, which yields the header alone. It checks each rule on its
 // own: a rule that would not pass its own checks is an error, and nothing is
-// written. It does not check the list as a whole, so Parse reads the output
+// written. So is a rule carrying a value this version does not know, which
+// only a reply holds: a rules file cannot express it, and printing the rule
+// without it would drop it. It does not check the list as a whole, so Parse reads the output
 // back as the same rules only when the list is one NewRules accepts: 1 to
 // MaxRules rules, naming no client specification twice. Parse refuses the
 // header alone that an empty list prints.
@@ -302,6 +304,9 @@ func Format(w io.Writer, header string, rules []Rule) error {
 	width := 0
 	for i, rule := range rules {
 		if err := rule.check(); err != nil {
+			return fmt.Errorf("rule %d: %w", i+1, err)
+		}
+		if err := rule.checkKnown(); err != nil {
 			return fmt.Errorf("rule %d: %w", i+1, err)
 		}
 		names := make([]string, len(rule.Clients))

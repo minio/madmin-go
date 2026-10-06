@@ -1100,7 +1100,10 @@ func TestFilesWriteRetriesOnUnknownOutcome(t *testing.T) {
 		{"bad_gateway", filesScriptedReply{http.StatusBadGateway, `bad gateway`}, false},
 		{"gateway_timeout", filesScriptedReply{http.StatusGatewayTimeout, `gateway timeout`}, false},
 		{"unavailable", filesScriptedReply{http.StatusServiceUnavailable, `unavailable`}, false},
-		{"slow_down", filesScriptedReply{http.StatusServiceUnavailable, `{"code": "SlowDown", "message": "slow down"}`}, true},
+		// AIStor sends both after it has acted too: write quorum failed, or a
+		// deadline passed.
+		{"slow_down", filesScriptedReply{http.StatusServiceUnavailable, `{"code": "SlowDown", "message": "slow down"}`}, false},
+		{"request_timeout", filesScriptedReply{http.StatusServiceUnavailable, `{"code": "RequestTimeout", "message": "timed out"}`}, false},
 		{"throttled", filesScriptedReply{http.StatusTooManyRequests, `too many requests`}, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1318,8 +1321,9 @@ func TestFilesWriteModifiedCarriesGeneration(t *testing.T) {
 
 // TestRemoveFilesExportAlreadyRemoved verifies that a 404 is read as an
 // earlier attempt's remove only when an earlier attempt's outcome is unknown.
-// A server asking the client to slow down acted on nothing, so a 404 after it
-// is the error it says: a mistyped export is not reported as removed.
+// A 429 comes before the server acts, so a 404 after it is the error it says:
+// a mistyped export is not reported as removed. A 503 SlowDown may come after
+// the remove landed, so it leaves the outcome unknown.
 func TestRemoveFilesExportAlreadyRemoved(t *testing.T) {
 	slowDown := filesScriptedReply{http.StatusServiceUnavailable, `{"code": "SlowDown", "message": "slow down"}`}
 	throttled := filesScriptedReply{http.StatusTooManyRequests, `too many requests`}
@@ -1341,7 +1345,7 @@ func TestRemoveFilesExportAlreadyRemoved(t *testing.T) {
 		// The remove is recorded, and completes when the node answers, so it
 		// is not repeated.
 		{"node_unreachable", []filesScriptedReply{nodeUnreachable, filesNotFound}, FilesErrNodeUnreachable, 1},
-		{"slow_down", []filesScriptedReply{slowDown, filesNotFound}, FilesErrExportNotFound, 2},
+		{"slow_down", []filesScriptedReply{slowDown, filesNotFound}, "", 2},
 		{"throttled", []filesScriptedReply{throttled, filesNotFound}, FilesErrExportNotFound, 2},
 		{"first_attempt", []filesScriptedReply{filesNotFound}, FilesErrExportNotFound, 1},
 	} {
@@ -1364,18 +1368,49 @@ func TestRemoveFilesExportAlreadyRemoved(t *testing.T) {
 	}
 }
 
-// TestGetFilesExportIgnoresUnknownRuleMember verifies that a rule member a
-// newer server adds does not fail the read, which would leave the caller
-// without the generation every write needs.
-func TestGetFilesExportIgnoresUnknownRuleMember(t *testing.T) {
+// TestFilesExportKeepsUnknownRuleValues verifies that a value a newer server
+// adds to a rule, whether an access type, a client form or a member, fails no
+// read, which would leave the caller without the generation every write
+// needs. A read, edit and write cycle sends each back unchanged.
+func TestFilesExportKeepsUnknownRuleValues(t *testing.T) {
+	const rules = `[{"clients": ["10.1.2.0/24"], "accessType": "ro", "squash": "all"},
+    {"clients": ["~ldap:ops"], "accessType": "rwx"}]`
 	server, _ := newFilesJSONServer(t, http.StatusOK, `{"name": "carol", "exportID": 104, "generation": "5f2c44",
-  "accessRules": [{"clients": ["10.1.2.0/24"], "accessType": "ro", "squash": "all"}]}`)
-	got, err := newFilesExportsTestClient(t, server.URL).GetFilesExport(context.Background(), "carol")
+  "accessRules": `+rules+`}`)
+	client := newFilesExportsTestClient(t, server.URL)
+	got, err := client.GetFilesExport(context.Background(), "carol")
 	if err != nil {
 		t.Fatalf("GetFilesExport: %v", err)
 	}
-	if got.Generation != "5f2c44" || len(got.AccessRules) != 1 || got.AccessRules[0].Access != filesaccess.RO {
+	if got.Generation != "5f2c44" || len(got.AccessRules) != 2 || got.AccessRules[0].Access != filesaccess.RO ||
+		got.AccessRules[1].Access != "rwx" || got.AccessRules[1].Clients[0].Kind() != filesaccess.Unrecognized {
 		t.Errorf("reply = %+v", got)
+	}
+
+	list, _ := newFilesJSONServer(t, http.StatusOK, `{"exports": [{"name": "carol", "accessRules": `+rules+`}]}`)
+	if l, err := newFilesExportsTestClient(t, list.URL).ListFilesExports(context.Background(), FilesListOptions{}); err != nil || len(l.Exports) != 1 {
+		t.Errorf("ListFilesExports = %+v, %v", l, err)
+	}
+
+	// Put a rule ahead of the two read, and send the list back.
+	first, err := filesaccess.ParseClient("10.9.9.9")
+	if err != nil {
+		t.Fatal(err)
+	}
+	edited, err := filesaccess.NewRules(append([]FilesAccessRule{{Clients: []filesaccess.Client{first}, Access: filesaccess.None}},
+		got.AccessRules...))
+	if err != nil {
+		t.Fatalf("NewRules: %v", err)
+	}
+	write, seen := newFilesJSONServer(t, http.StatusOK, `{"name": "carol", "exportID": 104, "ruleCount": 3}`)
+	if _, err := newFilesExportsTestClient(t, write.URL).SetFilesExportAccess(context.Background(), "carol", got.Generation, edited); err != nil {
+		t.Fatalf("SetFilesExportAccess: %v", err)
+	}
+	want := `{"rules":[{"clients":["10.9.9.9"],"accessType":"none"},` +
+		`{"accessType":"ro","clients":["10.1.2.0/24"],"squash":"all"},` +
+		`{"clients":["~ldap:ops"],"accessType":"rwx"}]}`
+	if body := string((*seen)[0].body); body != want {
+		t.Errorf("body = %s, want %s", body, want)
 	}
 }
 
