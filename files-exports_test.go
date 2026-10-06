@@ -35,6 +35,7 @@ import (
 	"regexp"
 	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -1016,26 +1017,68 @@ func TestFilesWriteSendsIfMatch(t *testing.T) {
 	}
 }
 
-// TestFilesWriteRefusesEmptyGeneration verifies that a per-export write
-// without a generation is refused before it is sent.
-func TestFilesWriteRefusesEmptyGeneration(t *testing.T) {
+// TestFilesWriteRefusesInvalidGeneration verifies that a per-export write
+// without a generation, or with one that cannot be sent as an entity tag, is
+// refused before it is sent.
+func TestFilesWriteRefusesInvalidGeneration(t *testing.T) {
 	server, seen := newFilesJSONServer(t, http.StatusOK, `{}`)
 	client := newFilesExportsTestClient(t, server.URL)
 	ctx := context.Background()
 	rules := mustFilesRules("* rw")
 
-	for name, call := range map[string]func() error{
-		"quota":  func() error { _, err := client.SetFilesExportQuota(ctx, "carol", "", 1); return err },
-		"access": func() error { _, err := client.SetFilesExportAccess(ctx, "carol", "", rules); return err },
-		"clear":  func() error { _, err := client.ClearFilesExportAccess(ctx, "carol", ""); return err },
-		"remove": func() error { _, err := client.RemoveFilesExport(ctx, "carol", "", FilesRemoveOptions{}); return err },
-	} {
-		if err := call(); err == nil {
-			t.Errorf("%s without a generation should fail", name)
+	for _, gen := range []FilesGeneration{"", "a\nb", "a\r\nb", `a"b`, "a b", "a\tb", "é", "a\x7fb"} {
+		for name, call := range map[string]func() error{
+			"quota":  func() error { _, err := client.SetFilesExportQuota(ctx, "carol", gen, 1); return err },
+			"access": func() error { _, err := client.SetFilesExportAccess(ctx, "carol", gen, rules); return err },
+			"clear":  func() error { _, err := client.ClearFilesExportAccess(ctx, "carol", gen); return err },
+			"remove": func() error { _, err := client.RemoveFilesExport(ctx, "carol", gen, FilesRemoveOptions{}); return err },
+		} {
+			if err := call(); err == nil {
+				t.Errorf("%s with generation %q should fail", name, gen)
+			}
 		}
 	}
 	if len(*seen) != 0 {
 		t.Errorf("the server received %d requests, want 0", len(*seen))
+	}
+}
+
+// TestFilesWriteRepeatIsExactCopy verifies that a repeated per-export write is
+// the same request as its first attempt: method, path, query, If-Match and
+// body. The server recognizes a replay only by comparing the two.
+func TestFilesWriteRepeatIsExactCopy(t *testing.T) {
+	type attempt struct{ method, path, query, ifMatch, body string }
+	var mu sync.Mutex
+	var seen []attempt
+	var n atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		mu.Lock()
+		seen = append(seen, attempt{r.Method, r.URL.Path, r.URL.RawQuery, r.Header.Get("If-Match"), string(b)})
+		mu.Unlock()
+		if n.Add(1)%2 == 1 {
+			w.WriteHeader(http.StatusBadGateway)
+			return
+		}
+		io.WriteString(w, `{}`)
+	}))
+	t.Cleanup(server.Close)
+
+	for name, call := range filesWrites(context.Background(), newFilesExportsTestClient(t, server.URL)) {
+		if name == "add" {
+			continue // an add is not repeated after a 502
+		}
+		mu.Lock()
+		seen = nil
+		mu.Unlock()
+		if err := call(); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		mu.Lock()
+		if len(seen) != 2 || seen[0] != seen[1] {
+			t.Errorf("%s: the repeat differs from the first attempt: %+v", name, seen)
+		}
+		mu.Unlock()
 	}
 }
 
@@ -1292,6 +1335,25 @@ func TestFilesWriteRepeatReturnsConflict(t *testing.T) {
 				t.Errorf("the client read the export %d times, want 0", n)
 			}
 		})
+	}
+}
+
+// TestRemoveFilesExportRepeatMeetsModified verifies that a repeated remove
+// answered with a 412 stays an error and is never reported as AlreadyRemoved:
+// the export may have been added again under the same name after the first
+// attempt removed it, and a late request must not claim to have removed it.
+func TestRemoveFilesExportRepeatMeetsModified(t *testing.T) {
+	server, writes, reads := newFilesScriptedServer(t, filesCarol, filesDropped, filesModified)
+	got, err := newFilesExportsTestClient(t, server.URL).RemoveFilesExport(context.Background(),
+		"carol", "5f2a91", FilesRemoveOptions{Purge: true})
+	if ToErrorResponse(err).Code != FilesErrExportModified || got.AlreadyRemoved {
+		t.Errorf("reply = %+v, err = %v, want ExportModified", got, err)
+	}
+	if n := writes.Load(); n != 2 {
+		t.Errorf("the server received %d writes, want 2", n)
+	}
+	if n := reads.Load(); n != 0 {
+		t.Errorf("the client read the export %d times, want 0", n)
 	}
 }
 

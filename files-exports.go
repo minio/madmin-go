@@ -935,7 +935,10 @@ func filesExportPath(export, suffix string) (string, error) {
 
 // filesExportWriteRequest returns a per-export write to the path of export
 // followed by suffix, naming generation in If-Match as one quoted strong tag.
-// An empty generation is refused.
+// An empty generation is refused, and so is one that cannot be sent as an
+// entity tag, before anything is sent: Go refuses a header with a control
+// character only once the request is built, which would read as an attempt
+// whose outcome is unknown and be repeated.
 func filesExportWriteRequest(export, suffix string, generation FilesGeneration) (requestData, error) {
 	relPath, err := filesExportPath(export, suffix)
 	if err != nil {
@@ -944,10 +947,28 @@ func filesExportWriteRequest(export, suffix string, generation FilesGeneration) 
 	if generation == "" {
 		return requestData{}, errors.New("the export's generation is required; read it with GetFilesExport")
 	}
+	if !validFilesGeneration(generation) {
+		return requestData{}, fmt.Errorf("invalid export generation %q; read it with GetFilesExport", generation)
+	}
 	return requestData{
 		relPath:       relPath,
 		customHeaders: http.Header{"If-Match": []string{`"` + string(generation) + `"`}},
 	}, nil
+}
+
+// validFilesGeneration reports whether g can be sent as the opaque part of an
+// entity tag (RFC 9110 §8.8.3): one or more visible ASCII characters other
+// than a double quote.
+func validFilesGeneration(g FilesGeneration) bool {
+	if g == "" {
+		return false
+	}
+	for i := 0; i < len(g); i++ {
+		if c := g[i]; c < 0x21 || c == '"' || c > 0x7e {
+			return false
+		}
+	}
+	return true
 }
 
 // filesReconciler decides, on a repeated write after an attempt whose outcome
