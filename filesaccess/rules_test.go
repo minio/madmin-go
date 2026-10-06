@@ -410,7 +410,7 @@ func TestRulesJSONErrors(t *testing.T) {
 			"rule 3: a rule names at least one client",
 			"rule 4: a rule names at least one client",
 			"rule 5: a rule needs an accessType",
-			`rule 6: a rule is {"clients": [...], "accessType": ...}: json: unknown field "squash"`,
+			`rule 6: unknown member "squash"`,
 		}},
 		{"duplicate", `[
 			{"clients":["10.1.2.7"],"accessType":"none"},
@@ -495,6 +495,118 @@ func TestRuleJSON(t *testing.T) {
 	}
 }
 
+// TestRuleJSONKeepsUnknownValues checks that one Rule, which is what a reply
+// carries, decodes past every value a newer server may add: an access type, a
+// client form and a member. Encoding it, alone or through NewRules, sends each
+// back unchanged. A Rules, which is a policy to send, and Format, which writes
+// a rules file, still refuse each.
+func TestRuleJSONKeepsUnknownValues(t *testing.T) {
+	for _, tc := range []struct {
+		name, rule string
+		// want is the rule encoded again, and empty when it is rule itself.
+		want string
+	}{
+		{
+			"member", `{"clients":["10.1.2.0/24"],"accessType":"ro","squash":"all"}`,
+			`{"accessType":"ro","clients":["10.1.2.0/24"],"squash":"all"}`,
+		},
+		{
+			"nested member", `{"clients":["*"],"accessType":"rw","limits":{"ops":[1,2]}}`,
+			`{"accessType":"rw","clients":["*"],"limits":{"ops":[1,2]}}`,
+		},
+		{"access type", `{"clients":["*"],"accessType":"rwx"}`, ""},
+		{"client form", `{"clients":["10.1.2.7","~ldap:ops","0.0.0.0"],"accessType":"rw"}`, ""},
+	} {
+		var rule Rule
+		if err := json.Unmarshal([]byte(tc.rule), &rule); err != nil {
+			t.Errorf("%s: Unmarshal: %v", tc.name, err)
+			continue
+		}
+		want := tc.want
+		if want == "" {
+			want = tc.rule
+		}
+		if b, err := json.Marshal(rule); err != nil || string(b) != want {
+			t.Errorf("%s: Marshal = %s, %v, want %s", tc.name, b, err, want)
+		}
+		rules, err := NewRules([]Rule{rule})
+		if err != nil {
+			t.Errorf("%s: NewRules: %v", tc.name, err)
+		} else if b, err := json.Marshal(rules); err != nil || string(b) != "["+want+"]" {
+			t.Errorf("%s: Marshal(Rules) = %s, %v, want [%s]", tc.name, b, err, want)
+		}
+
+		var strict Rules
+		if err := json.Unmarshal([]byte("["+tc.rule+"]"), &strict); err == nil {
+			t.Errorf("%s: a Rules holding it decoded", tc.name)
+		}
+		var buf bytes.Buffer
+		if err := Format(&buf, "", []Rule{rule}); err == nil || buf.Len() != 0 {
+			t.Errorf("%s: Format = %q, %v, want an error and nothing written", tc.name, buf.String(), err)
+		}
+	}
+
+	var rule Rule
+	if err := json.Unmarshal([]byte(`{"clients":["~ldap:ops","*"],"accessType":"rwx"}`), &rule); err != nil {
+		t.Fatal(err)
+	}
+	if c := rule.Clients[0]; c.Kind() != Unrecognized || c.String() != "~ldap:ops" || rule.Clients[1].Kind() != Every {
+		t.Errorf("Clients = %v", rule.Clients)
+	}
+	if rule.Access.Known() || rule.Access != "rwx" {
+		t.Errorf("Access = %q", rule.Access)
+	}
+}
+
+// TestRuleJSONReplyErrors checks what a reply's rule is still refused for: a
+// missing or empty member it needs, or a member of the wrong JSON type.
+func TestRuleJSONReplyErrors(t *testing.T) {
+	for _, in := range []string{
+		`null`,
+		`[]`,
+		`{"accessType":"rw"}`,
+		`{"clients":[],"accessType":"rw"}`,
+		`{"clients":["*"]}`,
+		`{"clients":["*"],"accessType":""}`,
+		`{"clients":["*"],"accessType":7}`,
+		`{"clients":"*","accessType":"rw"}`,
+		`{"clients":[7],"accessType":"rw"}`,
+	} {
+		var rule Rule
+		if err := json.Unmarshal([]byte(in), &rule); err == nil {
+			t.Errorf("Unmarshal(%s) = %+v, want an error", in, rule)
+		}
+	}
+}
+
+// TestRuleEqualUnknownMembers checks that Equal compares the members a rule
+// keeps, and that NewRules copies them.
+func TestRuleEqualUnknownMembers(t *testing.T) {
+	decode := func(s string) Rule {
+		var rule Rule
+		if err := json.Unmarshal([]byte(s), &rule); err != nil {
+			t.Fatal(err)
+		}
+		return rule
+	}
+	a := decode(`{"clients":["*"],"accessType":"rw","squash":"all"}`)
+	if !a.Equal(decode(`{"squash":"all","accessType":"rw","clients":["*"]}`)) {
+		t.Error("rules differing only in member order are not Equal")
+	}
+	if a.Equal(decode(`{"clients":["*"],"accessType":"rw","squash":"root"}`)) ||
+		a.Equal(decode(`{"clients":["*"],"accessType":"rw"}`)) {
+		t.Error("rules with different unknown members are Equal")
+	}
+	rules, err := NewRules([]Rule{a})
+	if err != nil {
+		t.Fatal(err)
+	}
+	a.extra["squash"] = json.RawMessage(`"none"`)
+	if got := rules.All()[0]; !got.Equal(decode(`{"clients":["*"],"accessType":"rw","squash":"all"}`)) {
+		t.Errorf("NewRules shares the caller's members: %+v", got)
+	}
+}
+
 // TestNewRules checks the list checks on rules built in code, and that the
 // result does not share the caller's slices.
 func TestNewRules(t *testing.T) {
@@ -522,7 +634,7 @@ func TestNewRules(t *testing.T) {
 		{"none", nil, "no rules"},
 		{"no clients", []Rule{{Access: RW}}, "rule 1: a rule names at least one client"},
 		{"zero client", []Rule{{Clients: []Client{{}}, Access: RW}}, "rule 1: a rule names an empty client specification"},
-		{"zero access", []Rule{{Clients: mustClients(t, "*")}}, "rule 1: invalid access type 0"},
+		{"zero access", []Rule{{Clients: mustClients(t, "*")}}, "rule 1: a rule needs an access type"},
 		{"duplicate", []Rule{
 			{Clients: mustClients(t, "@ops"), Access: RW},
 			{Clients: mustClients(t, "@ops"), Access: RO},

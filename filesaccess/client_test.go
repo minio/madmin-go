@@ -208,7 +208,7 @@ func TestAccess(t *testing.T) {
 			t.Errorf("ParseAccess(%q) succeeded", s)
 		}
 	}
-	if _, err := json.Marshal(Access(0)); err == nil {
+	if _, err := json.Marshal(Access("")); err == nil {
 		t.Error("encoding the zero Access succeeded")
 	}
 	var a Access

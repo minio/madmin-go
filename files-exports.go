@@ -18,15 +18,20 @@
 package madmin
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/minio/madmin-go/v4/filesaccess"
 )
 
 // MaxFilesExportIDsPerQuery is the number of export ids one FilesExportsQuery
@@ -253,7 +258,7 @@ func (adm *AdminClient) FilesExportsQuery(ctx context.Context, exportIDs []uint6
 	values.Set("exportID", strings.Join(fields, ","))
 
 	var info FilesExportsQueryResponse
-	if err := adm.getFilesJSON(ctx, filesGatewayExportsPath, values, &info); err != nil {
+	if err := adm.filesJSON(ctx, requestData{relPath: filesGatewayExportsPath, queryValues: values}, &info); err != nil {
 		return FilesExportsQueryResponse{}, err
 	}
 	return info, nil
@@ -270,7 +275,7 @@ func (adm *AdminClient) FilesExportsQuery(ctx context.Context, exportIDs []uint6
 // FilesExportsQuery with an ErrorResponse carrying FilesErrInvalidRequest.
 func (adm *AdminClient) FilesGatewayExports(ctx context.Context) (FilesExportsQueryResponse, error) {
 	var info FilesExportsQueryResponse
-	if err := adm.getFilesJSON(ctx, filesGatewayExportsPath, nil, &info); err != nil {
+	if err := adm.filesJSON(ctx, requestData{relPath: filesGatewayExportsPath}, &info); err != nil {
 		return FilesExportsQueryResponse{}, err
 	}
 	return info, nil
@@ -298,11 +303,40 @@ const (
 	// id is taken. HTTP 409.
 	FilesErrExportAlreadyExists = "ExportAlreadyExists"
 
-	// FilesErrExportInUse means a removal was refused: the export is serving,
-	// or has children. HTTP 409.
+	// FilesErrExportIDsExhausted means an add found every id in the export id
+	// band used. A removed export's id stays taken, so removing exports frees
+	// none. HTTP 409.
+	FilesErrExportIDsExhausted = "ExportIdsExhausted"
+
+	// FilesErrExportInUse means a removal was refused: the export needs
+	// FilesRemoveOptions.Force, or has children. HTTP 409.
 	FilesErrExportInUse = "ExportInUse"
 
+	// FilesErrExportRemoving means the export is being removed and takes no
+	// other write. HTTP 409.
+	FilesErrExportRemoving = "ExportRemoving"
+
+	// FilesErrExportModified means a per-export write named a generation the
+	// export is no longer at: another write changed it since it was read. The
+	// error is a FilesExportModifiedError carrying the current generation.
+	// Read the export again and decide whether to repeat the change. HTTP 412.
+	FilesErrExportModified = "ExportModified"
+
+	// FilesErrNodeRefused means the owning node answered and refused the
+	// change. AIStor puts the export's record back as it was before this
+	// request, so the request records nothing. A replay, the repeat of a
+	// change an earlier attempt recorded, leaves that change recorded: it
+	// stays the desired state, and the export reads Applied false. The
+	// message carries the node's reason. HTTP 422.
+	FilesErrNodeRefused = "NodeRefused"
+
+	// FilesErrPreconditionRequired means a per-export write named no
+	// generation. HTTP 428.
+	FilesErrPreconditionRequired = "PreconditionRequired"
+
 	// FilesErrNodeUnreachable means the owning node did not answer a write.
+	// A quota, access or remove write is still recorded, and reaches the node
+	// when it answers again, so the client returns it without a repeat.
 	// HTTP 503.
 	FilesErrNodeUnreachable = "NodeUnreachable"
 
@@ -324,8 +358,8 @@ const (
 	// FilesExportServing means the assigned node is answering for the export.
 	FilesExportServing FilesExportPhase = "serving"
 
-	// FilesExportPending means AIStor holds the export and no node reports
-	// holding it yet.
+	// FilesExportPending means the assigned node does not hold the export, and
+	// AIStor has not yet sent it the export's configuration.
 	FilesExportPending FilesExportPhase = "pending"
 
 	// FilesExportMissing means the assigned node answers and does not hold the
@@ -339,7 +373,34 @@ const (
 	// FilesExportUnreachable means the assigned node did not answer: a node
 	// problem, kept apart from FilesExportMissing.
 	FilesExportUnreachable FilesExportPhase = "unreachable"
+
+	// FilesExportRemoving means AIStor has recorded a remove that the assigned
+	// node has not taken yet. The export keeps its name and pseudo path, and
+	// every other write to it is refused with FilesErrExportRemoving.
+	FilesExportRemoving FilesExportPhase = "removing"
 )
+
+// FilesGeneration identifies the last change to an export. It is opaque:
+// compare it for equality only, since it is not a revision counter. A
+// per-export write names the generation it was decided on, and is refused with
+// FilesErrExportModified when the export has moved on.
+type FilesGeneration string
+
+// FilesExportModifiedError is the error of a per-export write refused with
+// FilesErrExportModified. ToErrorResponse returns its ErrorResponse, so a
+// caller switching on the code needs no type assertion.
+type FilesExportModifiedError struct {
+	ErrorResponse
+
+	// Generation is the export's current generation. It is empty when the
+	// server sent none.
+	Generation FilesGeneration
+}
+
+// Unwrap returns the ErrorResponse, so errors.As finds it.
+func (e FilesExportModifiedError) Unwrap() error {
+	return e.ErrorResponse
+}
 
 // FilesAccessType is the access a client of an export gets.
 type FilesAccessType string
@@ -367,16 +428,14 @@ const (
 	FilesSquashAll FilesSquash = "all"
 )
 
-// FilesAccessRule grants AccessType to the clients it names. Rules are
-// evaluated in order and the first match wins, so the order of a rule list is
-// the policy: never sort one or remove duplicates from it.
-type FilesAccessRule struct {
-	// Clients holds IPs, CIDRs, hostnames, wildcards such as
-	// "*.corp.example.com", @netgroups, or "*".
-	Clients []string `json:"clients"`
-
-	AccessType FilesAccessType `json:"accessType"`
-}
+// FilesAccessRule grants access to the clients it names. Rules are evaluated
+// in order and the first match wins, so the order of a rule list is the
+// policy: never sort one. A list naming a client specification twice is
+// refused, by filesaccess.NewRules and by AIStor, not deduplicated. The
+// filesaccess package defines it. A value a newer server adds, whether an
+// access type, a client form or a rule member, does not make the export
+// unreadable: the rule keeps it as it was sent, and sends it back unchanged.
+type FilesAccessRule = filesaccess.Rule
 
 // FilesExport is one export: its configuration, with Status for where it is
 // running and UsedBytes for how full it is. GetFilesExport fills every field,
@@ -389,6 +448,11 @@ type FilesExport struct {
 	// ExportID is the Ganesha Export_Id AIStor allocated.
 	ExportID uint64 `json:"exportID"`
 
+	// Generation is set by an add and changed by every quota and access
+	// write. It is never reused, not even by an export added again under the
+	// same name. A remove leaves it as it is.
+	Generation FilesGeneration `json:"generation"`
+
 	// Pseudo is the path clients mount. It cannot change.
 	Pseudo string `json:"pseudo"`
 
@@ -396,6 +460,12 @@ type FilesExport struct {
 	Node string `json:"node"`
 
 	Status FilesExportPhase `json:"status"`
+
+	// Applied is false while the node has not taken the export's last change,
+	// for example after a write answered FilesErrNodeUnreachable. The
+	// configuration shown is then what AIStor will send the node, not what the
+	// node enforces.
+	Applied bool `json:"applied"`
 
 	// AccessType is the default access for an export with no access rules.
 	AccessType FilesAccessType `json:"accessType,omitempty"`
@@ -406,7 +476,9 @@ type FilesExport struct {
 	QuotaBytes uint64 `json:"quotaBytes"`
 
 	// AccessRules are in evaluation order. An export with any rule refuses a
-	// client none of them matches.
+	// client none of them matches. A value this version does not know is
+	// kept, so rules read from a newer server, edited and passed to
+	// SetFilesExportAccess through filesaccess.NewRules keep it.
 	AccessRules []FilesAccessRule `json:"accessRules,omitempty"`
 
 	// UsedBytes is nil when the assigned node could not be reached. Status
@@ -533,7 +605,7 @@ func (adm *AdminClient) ListFilesExports(ctx context.Context, opts FilesListOpti
 	setFilesPage(values, opts.Limit, opts.ContinuationToken)
 
 	var list FilesExportList
-	err := adm.getFilesJSON(ctx, filesAPIPrefix+"/exports", values, &list)
+	err := adm.filesJSON(ctx, requestData{relPath: filesAPIPrefix + "/exports", queryValues: values}, &list)
 	return list, err
 }
 
@@ -541,16 +613,13 @@ func (adm *AdminClient) ListFilesExports(ctx context.Context, opts FilesListOpti
 // export is a name or a numeric export id, sent as given: the client does not
 // resolve it.
 func (adm *AdminClient) GetFilesExport(ctx context.Context, export string) (FilesExport, error) {
-	if export == "" {
-		return FilesExport{}, errors.New("an export name or id is required")
-	}
-	segment, err := filesExportSegment(export)
+	relPath, err := filesExportPath(export, "")
 	if err != nil {
 		return FilesExport{}, err
 	}
 
 	var info FilesExport
-	err = adm.getFilesJSON(ctx, filesAPIPrefix+"/exports/"+segment, nil, &info)
+	err = adm.filesJSON(ctx, requestData{relPath: relPath}, &info)
 	return info, err
 }
 
@@ -579,11 +648,10 @@ func (adm *AdminClient) FilesExportStats(ctx context.Context, export string, opt
 		if opts != (FilesStatsOptions{}) {
 			return FilesStatsList{}, errors.New("a node, a limit and a continuation token apply only to the stats of every export, not of one")
 		}
-		segment, err := filesExportSegment(export)
-		if err != nil {
+		var err error
+		if relPath, err = filesExportPath(export, "/"+filesStatsSegment); err != nil {
 			return FilesStatsList{}, err
 		}
-		relPath = filesAPIPrefix + "/exports/" + segment + "/" + filesStatsSegment
 	}
 	values := make(url.Values)
 	if opts.Node != "" {
@@ -592,7 +660,7 @@ func (adm *AdminClient) FilesExportStats(ctx context.Context, export string, opt
 	setFilesPage(values, opts.Limit, opts.ContinuationToken)
 
 	var stats FilesStatsList
-	err := adm.getFilesJSON(ctx, relPath, values, &stats)
+	err := adm.filesJSON(ctx, requestData{relPath: relPath, queryValues: values}, &stats)
 	return stats, err
 }
 
@@ -607,24 +675,469 @@ func setFilesPage(values url.Values, limit int, token string) {
 	}
 }
 
-// getFilesJSON sends a GET to a Files management API path and decodes its JSON
-// reply into v. Any status other than 200 is returned as an ErrorResponse
-// carrying the server's code.
-func (adm *AdminClient) getFilesJSON(ctx context.Context, relPath string, values url.Values, v any) error {
-	resp, err := adm.executeMethod(ctx,
-		http.MethodGet,
-		requestData{
-			relPath:     relPath,
-			queryValues: values,
-		})
+// FilesExportSpec is the body of AddFilesExport. A field left empty takes the
+// default AIStor documents for it.
+type FilesExportSpec struct {
+	// Name is required and unique. It may not be all digits, and may not
+	// contain / ; = " a newline or "..", and may not be "stats" or ".".
+	Name string `json:"name"`
+
+	// Pseudo is required: the absolute path clients mount. It cannot change.
+	Pseudo string `json:"pseudo"`
+
+	// AccessType defaults to FilesAccessRW.
+	AccessType FilesAccessType `json:"accessType,omitempty"`
+
+	// Squash defaults to FilesSquashRoot.
+	Squash FilesSquash `json:"squash,omitempty"`
+
+	// QuotaBytes is the byte limit. Zero, the default, is unlimited.
+	QuotaBytes uint64 `json:"quotaBytes,omitempty"`
+
+	// Node pins the export to a node. Empty lets AIStor select one. A pinned
+	// node that is unreachable is refused rather than left pending.
+	Node string `json:"node,omitempty"`
+
+	// ExportID pins the export id. Nil lets AIStor allocate one. A pinned id
+	// must be free and below 60000.
+	ExportID *uint64 `json:"exportID,omitempty"`
+}
+
+// FilesQuotaChange is the reply of SetFilesExportQuota. It carries the limit
+// before and after the call, so a caller reports both without a second read.
+type FilesQuotaChange struct {
+	Name     string `json:"name"`
+	ExportID uint64 `json:"exportID"`
+
+	// Generation is the export's generation after the change.
+	Generation FilesGeneration `json:"generation"`
+
+	PreviousBytes uint64 `json:"previousBytes"`
+	CurrentBytes  uint64 `json:"currentBytes"`
+
+	// UsedBytes is the usage when the limit was set, nil when it is not
+	// known. A limit below it frees nothing and stops the export growing.
+	UsedBytes *uint64 `json:"usedBytes,omitempty"`
+}
+
+// FilesAccessChange is the reply of SetFilesExportAccess and
+// ClearFilesExportAccess: how many rules the call replaced, and how many are in
+// force now.
+type FilesAccessChange struct {
+	Name     string `json:"name"`
+	ExportID uint64 `json:"exportID"`
+
+	// Generation is the export's generation after the change.
+	Generation FilesGeneration `json:"generation"`
+
+	PreviousRuleCount int `json:"previousRuleCount"`
+	RuleCount         int `json:"ruleCount"`
+}
+
+// FilesRemoveOptions qualifies RemoveFilesExport.
+type FilesRemoveOptions struct {
+	// Force is required while the export's node may hold it: serving, fenced
+	// or unreachable. Removal tears down client state against it.
+	Force bool
+
+	// Purge also deletes the export's data. It is the only option in this API
+	// that destroys data.
+	Purge bool
+}
+
+// FilesRemoveResult is the reply of RemoveFilesExport.
+type FilesRemoveResult struct {
+	Name     string `json:"name"`
+	ExportID uint64 `json:"exportID"`
+
+	// AlreadyRemoved is set by the client, not the server, when a repeated
+	// request found the export gone: an earlier attempt removed it, or another
+	// caller did. AIStor deletes an export only once its node has taken the
+	// remove, so the node no longer serves it. Name and ExportID are then
+	// empty, and with FilesRemoveOptions.Purge, whether the data was purged is
+	// unknown: another caller may have removed the export without it.
+	AlreadyRemoved bool `json:"-"`
+}
+
+// filesQuotaBody is the body of SetFilesExportQuota. QuotaBytes carries no
+// omitempty: zero clears the limit, and a body without it is refused.
+type filesQuotaBody struct {
+	QuotaBytes uint64 `json:"quotaBytes"`
+}
+
+// filesAccessBody is the body of SetFilesExportAccess.
+type filesAccessBody struct {
+	Rules filesaccess.Rules `json:"rules"`
+}
+
+// AddFilesExport creates an export. AIStor allocates its id, selects its node
+// and persists it before it replies, so the reply carries the export's real
+// identity and every value the spec left to a default. The export's Status is
+// FilesExportPending until AIStor sends its node the export's configuration.
+// ListFilesExports then shows it reach FilesExportServing once the node holds
+// it, or FilesExportMissing when the apply did not take.
+//
+// The name is refused locally when it is empty, or one no other method can
+// reach an export by: "stats", "." or "..".
+//
+// An add takes no key, so the server cannot tell a repeat from a second add: a
+// repeat after an earlier attempt created the export would be refused with
+// FilesErrExportAlreadyExists, and one arriving after another caller removed
+// the export would create it again. So an add is repeated only after an answer
+// the server sends before acting, a 429 or a 408, or when the connection could
+// not be made. Any other attempt whose outcome is unknown ends the call with
+// its error: a transport error once the request was sent, a 502 or 504, or a
+// 503 other than FilesErrNodeUnreachable, SlowDown included, since AIStor
+// sends that after acting too. The export may then exist, so read it by name
+// before adding it again.
+func (adm *AdminClient) AddFilesExport(ctx context.Context, spec FilesExportSpec) (FilesExport, error) {
+	if spec.Name == "" {
+		return FilesExport{}, errors.New("an export name is required")
+	}
+	if _, err := filesExportSegment(spec.Name); err != nil {
+		return FilesExport{}, err
+	}
+
+	var info FilesExport
+	err := adm.filesWrite(ctx, http.MethodPut, requestData{relPath: filesAPIPrefix + "/exports"}, spec, &info, false, nil)
+	return info, err
+}
+
+// SetFilesExportQuota sets an export's byte limit, and quotaBytes zero clears
+// it. export is a name or a numeric export id, sent as given. generation is the
+// export's FilesExport.Generation the change was decided on; when the export
+// has moved on, the call fails with a FilesExportModifiedError.
+//
+// A request whose outcome is unknown is repeated: a transport error once the
+// request was sent, a 502 or 504, or a 503 other than FilesErrNodeUnreachable,
+// SlowDown and RequestTimeout included. The
+// server answers a repeat of a change it already applied with that change's
+// reply, as long as no other write landed in between. After one did, the
+// repeat fails with FilesErrExportModified although its own change may have
+// been applied, so read the export before reporting a conflict.
+//
+// A FilesErrNodeUnreachable is returned without a repeat: the change is
+// recorded, and AIStor sends it when the node answers again.
+func (adm *AdminClient) SetFilesExportQuota(ctx context.Context, export string, generation FilesGeneration, quotaBytes uint64) (FilesQuotaChange, error) {
+	reqData, err := filesExportWriteRequest(export, "/quota", generation)
+	if err != nil {
+		return FilesQuotaChange{}, err
+	}
+
+	var change FilesQuotaChange
+	err = adm.filesWrite(ctx, http.MethodPut, reqData, filesQuotaBody{QuotaBytes: quotaBytes}, &change, true, nil)
+	return change, err
+}
+
+// SetFilesExportAccess replaces an export's whole access rule list with rules.
+// The first rule that matches a client decides, so the order of rules is the
+// policy, and it is sent unchanged, never sorted. rules comes from
+// filesaccess.Parse, filesaccess.NewRules or decoding, so it has already
+// passed the checks AIStor makes: 1 to 1,000 rules, naming no client
+// specification twice. An export with any rule refuses a client none of them
+// matches; end the list with a rule for "*" to only narrow access. export is
+// a name or a numeric export id, sent as given. generation is the export's
+// FilesExport.Generation the change was decided on; when the export has moved
+// on, the call fails with a FilesExportModifiedError.
+//
+// The zero Rules is refused: ClearFilesExportAccess removes every rule.
+//
+// A request whose outcome is unknown is repeated, as for SetFilesExportQuota.
+func (adm *AdminClient) SetFilesExportAccess(ctx context.Context, export string, generation FilesGeneration, rules filesaccess.Rules) (FilesAccessChange, error) {
+	if rules.Len() == 0 {
+		return FilesAccessChange{}, errors.New("at least one access rule is required; ClearFilesExportAccess removes every rule")
+	}
+	reqData, err := filesExportWriteRequest(export, "/access", generation)
+	if err != nil {
+		return FilesAccessChange{}, err
+	}
+
+	var change FilesAccessChange
+	err = adm.filesWrite(ctx, http.MethodPut, reqData, filesAccessBody{Rules: rules}, &change, true, nil)
+	return change, err
+}
+
+// ClearFilesExportAccess removes every access rule of an export, so every
+// client gets the export's own access type. export is a name or a numeric
+// export id, sent as given. generation is the export's FilesExport.Generation
+// the change was decided on; when the export has moved on, the call fails with
+// a FilesExportModifiedError.
+//
+// A request whose outcome is unknown is repeated, as for SetFilesExportQuota.
+func (adm *AdminClient) ClearFilesExportAccess(ctx context.Context, export string, generation FilesGeneration) (FilesAccessChange, error) {
+	reqData, err := filesExportWriteRequest(export, "/access", generation)
+	if err != nil {
+		return FilesAccessChange{}, err
+	}
+
+	var change FilesAccessChange
+	err = adm.filesWrite(ctx, http.MethodDelete, reqData, nil, &change, true, nil)
+	return change, err
+}
+
+// RemoveFilesExport stops serving an export. Its data and metadata remain
+// unless opts.Purge is set. An export its node may hold is refused with
+// FilesErrExportInUse unless opts.Force is set. An export with another export
+// mounted beneath it is refused with FilesErrExportInUse even with opts.Force:
+// its children must be removed first. export is a name or a numeric export id,
+// sent as given. generation is the export's FilesExport.Generation the removal
+// was decided on; when the export has moved on, the call fails with a
+// FilesExportModifiedError. Generations are never reused, so a late request
+// never removes or purges an export added again under the same name.
+//
+// When the node does not answer, the call fails with FilesErrNodeUnreachable,
+// without a repeat, and the export reads FilesExportRemoving until the node
+// takes the remove.
+//
+// A request whose outcome is unknown is repeated, as for SetFilesExportQuota.
+// When a repeat after such an attempt answers FilesErrExportNotFound, the call
+// succeeds with FilesRemoveResult.AlreadyRemoved set. A FilesErrExportNotFound
+// on the first attempt, or after attempts the server refused without acting or
+// that never reached it, stays an error.
+func (adm *AdminClient) RemoveFilesExport(ctx context.Context, export string, generation FilesGeneration, opts FilesRemoveOptions) (FilesRemoveResult, error) {
+	reqData, err := filesExportWriteRequest(export, "", generation)
+	if err != nil {
+		return FilesRemoveResult{}, err
+	}
+	reqData.queryValues = make(url.Values)
+	if opts.Force {
+		reqData.queryValues.Set("force", "true")
+	}
+	if opts.Purge {
+		reqData.queryValues.Set("purge", "true")
+	}
+
+	var result FilesRemoveResult
+	reconcile := func(code string) bool {
+		if code != FilesErrExportNotFound {
+			return false
+		}
+		result = FilesRemoveResult{AlreadyRemoved: true}
+		return true
+	}
+	err = adm.filesWrite(ctx, http.MethodDelete, reqData, nil, &result, true, reconcile)
+	return result, err
+}
+
+// filesExportPath returns the path of one export, followed by suffix. It
+// refuses a token that names no export: an empty one, and the ones
+// filesExportSegment refuses.
+func filesExportPath(export, suffix string) (string, error) {
+	if export == "" {
+		return "", errors.New("an export name or id is required")
+	}
+	segment, err := filesExportSegment(export)
+	if err != nil {
+		return "", err
+	}
+	return filesAPIPrefix + "/exports/" + segment + suffix, nil
+}
+
+// filesExportWriteRequest returns a per-export write to the path of export
+// followed by suffix, naming generation in If-Match as one quoted strong tag.
+// An empty generation is refused, and so is one that cannot be sent as an
+// entity tag, before anything is sent: Go refuses a header with a control
+// character only once the request is built, which would read as an attempt
+// whose outcome is unknown and be repeated.
+func filesExportWriteRequest(export, suffix string, generation FilesGeneration) (requestData, error) {
+	relPath, err := filesExportPath(export, suffix)
+	if err != nil {
+		return requestData{}, err
+	}
+	if generation == "" {
+		return requestData{}, errors.New("the export's generation is required; read it with GetFilesExport")
+	}
+	if !validFilesGeneration(generation) {
+		return requestData{}, fmt.Errorf("invalid export generation %q; read it with GetFilesExport", generation)
+	}
+	return requestData{
+		relPath:       relPath,
+		customHeaders: http.Header{"If-Match": []string{`"` + string(generation) + `"`}},
+	}, nil
+}
+
+// validFilesGeneration reports whether g can be sent as the opaque part of an
+// entity tag (RFC 9110 §8.8.3): one or more visible ASCII characters other
+// than a double quote.
+func validFilesGeneration(g FilesGeneration) bool {
+	if g == "" {
+		return false
+	}
+	for i := 0; i < len(g); i++ {
+		if c := g[i]; c < 0x21 || c == '"' || c > 0x7e {
+			return false
+		}
+	}
+	return true
+}
+
+// filesReconciler decides, on a repeated write after an attempt whose outcome
+// is unknown, whether an error code means the write already took effect. It
+// fills the write's reply when it did.
+type filesReconciler func(code string) bool
+
+// filesJSON sends one Files management API read and decodes its JSON reply
+// into out. Any status other than 200 is returned as an ErrorResponse carrying
+// the server's code.
+func (adm *AdminClient) filesJSON(ctx context.Context, reqData requestData, out any) error {
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
 	defer closeResponse(resp)
 	if err != nil {
 		return err
 	}
-
 	if resp.StatusCode != http.StatusOK {
 		return httpRespToErrorResponse(resp)
 	}
+	return json.NewDecoder(resp.Body).Decode(out)
+}
 
-	return json.NewDecoder(resp.Body).Decode(v)
+// filesWrite sends one Files management API write, with in, when not nil, as
+// its JSON body, and decodes its JSON reply into out. Any 2xx status is
+// success, and a 2xx reply without a body leaves out unchanged.
+//
+// executeMethod sends the write, and filesRetry decides after each attempt
+// whether to repeat it. repeatUnknown says whether the write is safe to repeat
+// after an attempt that may have taken effect. Every per-export write is: it
+// names the generation it was decided on, and the server answers a repeat of
+// a change it already applied rather than applying it twice. An add is not.
+//
+// Once an attempt's outcome is unknown, the error a later attempt meets is
+// passed to reconcile, when not nil, to learn whether the write took effect.
+// On the first attempt an error means what it says, and is returned as it is.
+//
+// When ctx ends while the write is being repeated, the error carries both the
+// context's error and the last attempt's.
+func (adm *AdminClient) filesWrite(ctx context.Context, method string, reqData requestData, in, out any, repeatUnknown bool, reconcile filesReconciler) error {
+	if in != nil {
+		body, err := json.Marshal(in)
+		if err != nil {
+			return err
+		}
+		reqData.content = body
+		if reqData.customHeaders == nil {
+			reqData.customHeaders = make(http.Header)
+		}
+		reqData.customHeaders.Set("Content-Type", "application/json")
+	}
+
+	retry := filesRetry{repeatUnknown: repeatUnknown}
+	reqData.retry = retry.next
+	resp, err := adm.executeMethod(ctx, method, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		if ctx.Err() != nil && retry.lastErr != nil {
+			return fmt.Errorf("%w; the last attempt failed: %w", err, retry.lastErr)
+		}
+		return err
+	}
+
+	if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
+		return filesDecode(resp, out)
+	}
+	err = filesErrorResponse(resp)
+	if retry.reconcilable && reconcile != nil && reconcile(ToErrorResponse(err).Code) {
+		return nil
+	}
+	return err
+}
+
+// filesRetry is the retry policy of one Files write. It tells an answer that
+// came before the server acted, which is always safe to repeat, from one that
+// may come after: no answer once the request was sent, a 502, 503 or 504
+// other than FilesErrNodeUnreachable, or any 5xx with a retryable code.
+type filesRetry struct {
+	// repeatUnknown repeats the write after an attempt that may have taken
+	// effect. Without it, such an attempt ends the call.
+	repeatUnknown bool
+
+	// unknown is set once an attempt may have taken effect.
+	unknown bool
+
+	// reconcilable says that an attempt before the last one answered may have
+	// taken effect, so the last answer may be the result of it.
+	reconcilable bool
+
+	// lastErr is the error of the last attempt that failed.
+	lastErr error
+}
+
+// next records one attempt that did not succeed and reports whether to send
+// the write again. It has the signature of requestData.retry.
+func (r *filesRetry) next(status int, errResp ErrorResponse, err error) bool {
+	r.reconcilable = r.unknown
+	if err != nil {
+		r.lastErr = err
+		if filesNotSent(err) {
+			return true
+		}
+		r.unknown = true
+		return r.repeatUnknown
+	}
+	if status >= 200 && status <= 299 {
+		return false
+	}
+
+	r.lastErr = errResp
+	switch {
+	case errResp.Code == FilesErrNodeUnreachable:
+		// The change is recorded, and AIStor sends it when the node answers
+		// again. A repeat would only wait for the node.
+		return false
+	case status == http.StatusBadGateway, status == http.StatusServiceUnavailable, status == http.StatusGatewayTimeout,
+		status >= 500 && isAdminErrCodeRetryable(errResp.Code):
+		// AIStor sends a 503 SlowDown or RequestTimeout after it has acted
+		// too, when write quorum fails or a deadline passes, so a retryable
+		// code on a 5xx says nothing about whether the write landed.
+		r.unknown = true
+		return r.repeatUnknown
+	case status == http.StatusTooManyRequests, status == http.StatusRequestTimeout, isAdminErrCodeRetryable(errResp.Code):
+		// The server asked for the request again before acting on it.
+		return true
+	}
+	return false
+}
+
+// filesNotSent reports whether a transport error came before the connection
+// was made, so no byte of the request reached the server.
+func filesNotSent(err error) bool {
+	var opErr *net.OpError
+	return errors.As(err, &opErr) && opErr.Op == "dial"
+}
+
+// filesErrorResponse returns the error a Files management API write was
+// answered with. A FilesErrExportModified is a FilesExportModifiedError
+// carrying the export's current generation.
+func filesErrorResponse(resp *http.Response) error {
+	if resp == nil || resp.Body == nil {
+		return httpRespToErrorResponse(resp)
+	}
+	body, err := io.ReadAll(io.LimitReader(resp.Body, 100<<10))
+	if err != nil {
+		return httpRespToErrorResponse(resp)
+	}
+	// Decode from a copy, so resp.Body stays the body for closeResponse.
+	answer := *resp
+	answer.Body = io.NopCloser(bytes.NewReader(body))
+	errResp := ToErrorResponse(httpRespToErrorResponse(&answer))
+	if errResp.Code != FilesErrExportModified {
+		return errResp
+	}
+	var current struct {
+		Generation FilesGeneration `json:"generation"`
+	}
+	_ = json.Unmarshal(body, &current)
+	return FilesExportModifiedError{ErrorResponse: errResp, Generation: current.Generation}
+}
+
+// filesDecode decodes a 2xx reply into out. A 204, or any 2xx without a body,
+// is a success with nothing to decode. A body cut short still fails, with
+// io.ErrUnexpectedEOF.
+func filesDecode(resp *http.Response, out any) error {
+	if resp.StatusCode == http.StatusNoContent {
+		return nil
+	}
+	if err := json.NewDecoder(resp.Body).Decode(out); err != nil && !errors.Is(err, io.EOF) {
+		return err
+	}
+	return nil
 }

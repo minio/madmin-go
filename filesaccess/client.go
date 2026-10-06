@@ -58,6 +58,11 @@ const (
 
 	// Netgroup is a netgroup, such as @contractors.
 	Netgroup
+
+	// Unrecognized is a specification ParseClient refuses, read from a
+	// reply: a form a newer server accepts that this version does not know.
+	// It is kept as it was sent, and only Rule.UnmarshalJSON builds one.
+	Unrecognized
 )
 
 // String names the form, for messages.
@@ -79,6 +84,8 @@ func (k Kind) String() string {
 		return "hostname pattern"
 	case Netgroup:
 		return "netgroup"
+	case Unrecognized:
+		return "unrecognized"
 	}
 	return "invalid"
 }
@@ -93,8 +100,8 @@ const (
 
 // Client is one client specification, held in its normalized form. Only
 // ParseClient, and the decoders that call it, build one, so a Client other
-// than the zero value is always valid. Two Clients are the same specification
-// exactly when they compare equal with ==.
+// than the zero value is valid, or of kind Unrecognized. Two Clients are the
+// same specification exactly when they compare equal with ==.
 type Client struct {
 	kind Kind
 	norm string
@@ -111,7 +118,8 @@ func (c Client) Kind() Kind { return c.kind }
 //   - an IPv6 address or network in RFC 5952 text, with a /128 network
 //     written as its address;
 //   - a hostname in lower case;
-//   - a hostname pattern or a netgroup as written.
+//   - a hostname pattern or a netgroup as written;
+//   - an Unrecognized specification as it was sent.
 //
 // The zero Client returns "".
 func (c Client) String() string { return c.norm }
@@ -119,8 +127,9 @@ func (c Client) String() string { return c.norm }
 // IsZero reports whether c is the zero Client, which names no client.
 func (c Client) IsZero() bool { return c.kind == 0 }
 
-// MarshalJSON encodes the normalized form. The zero Client is an error, so a
-// rule naming no client is never sent.
+// MarshalJSON encodes the normalized form, and an Unrecognized specification as
+// it was sent. The zero Client is an error, so a rule naming no client is never
+// sent.
 func (c Client) MarshalJSON() ([]byte, error) {
 	if c.IsZero() {
 		return nil, errors.New("an empty client specification cannot be encoded")
