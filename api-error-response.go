@@ -122,15 +122,14 @@ func httpRespToErrorResponse(resp *http.Response) error {
 //	...
 //
 // The first ErrorResponse, or non-nil *ErrorResponse, in err's tree is
-// returned, so a wrapped or joined error still yields the server's response.
+// returned.
 func ToErrorResponse(err error) ErrorResponse {
 	resp, _ := findErrorResponse(err)
 	return resp
 }
 
-// findErrorResponse walks err's tree in the order errors.As does, checking
-// each error for both a value and a pointer before moving on. Two errors.As
-// passes, one per type, would let a later value win over an earlier pointer.
+// findErrorResponse returns the first ErrorResponse or non-nil *ErrorResponse
+// in err's tree, walked in the order errors.As uses.
 func findErrorResponse(err error) (ErrorResponse, bool) {
 	switch e := err.(type) {
 	case ErrorResponse:
@@ -169,8 +168,7 @@ func IsErrorCode(err error, code string) bool {
 	return code != "" && ToErrorResponse(err).Code == code
 }
 
-// The error codes and messages the admin API answers with, for a caller that
-// switches on ErrorResponse.Code.
+// The error codes and messages the admin API answers with.
 const (
 	// AdminSelfLockoutErrorCode is the ErrorResponse.Code that the server
 	// sends, with HTTP 403, when an IAM change would remove the caller's own
