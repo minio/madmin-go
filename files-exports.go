@@ -328,9 +328,10 @@ const (
 	// request, so the request records nothing. A replay, the repeat of a
 	// change an earlier attempt recorded, leaves that change recorded: it
 	// stays the desired state, and the export reads Applied false with the
-	// node's reason in Refusal. A repeated write that meets this is read
-	// again, and returns a FilesNotAppliedError when the change is recorded.
-	// The message carries the node's reason. HTTP 422.
+	// node's reason in Refusal. The client returns it as it is, without a
+	// read, whether or not an earlier attempt's outcome was unknown: after
+	// such an attempt the change may be recorded, and a read of the export
+	// tells. The message carries the node's reason. HTTP 422.
 	FilesErrNodeRefused = "NodeRefused"
 
 	// FilesErrPreconditionRequired means a per-export write named no
@@ -760,7 +761,8 @@ type FilesQuotaChange struct {
 	Name     string `json:"name"`
 	ExportID uint64 `json:"exportID"`
 
-	// Generation is the export's generation after the change.
+	// Generation is the export's generation after the change. It is empty
+	// when Reconciled is set.
 	Generation FilesGeneration `json:"generation"`
 
 	PreviousBytes uint64 `json:"previousBytes"`
@@ -773,7 +775,10 @@ type FilesQuotaChange struct {
 	// Reconciled is set by the client, not the server, when the reply of an
 	// attempt that applied the change was lost, and a read of the export
 	// showed the limit in force. The other fields then come from that read,
-	// and PreviousBytes is unknown and zero.
+	// and PreviousBytes is unknown and zero. Generation is left empty: the
+	// read may include another caller's later write, and a next write named
+	// at its generation would overwrite that write unseen. Read the export
+	// before the next write.
 	Reconciled bool `json:"-"`
 }
 
@@ -784,7 +789,8 @@ type FilesAccessChange struct {
 	Name     string `json:"name"`
 	ExportID uint64 `json:"exportID"`
 
-	// Generation is the export's generation after the change.
+	// Generation is the export's generation after the change. It is empty
+	// when Reconciled is set.
 	Generation FilesGeneration `json:"generation"`
 
 	PreviousRuleCount int `json:"previousRuleCount"`
@@ -793,7 +799,8 @@ type FilesAccessChange struct {
 	// Reconciled is set by the client, not the server, when the reply of an
 	// attempt that applied the change was lost, and a read of the export
 	// showed the rules in force. The other fields then come from that read,
-	// and PreviousRuleCount is unknown and zero.
+	// and PreviousRuleCount is unknown and zero. Generation is left empty, as
+	// for FilesQuotaChange.Reconciled. Read the export before the next write.
 	Reconciled bool `json:"-"`
 }
 
@@ -879,17 +886,22 @@ func (adm *AdminClient) AddFilesExport(ctx context.Context, spec FilesExportSpec
 //
 // When the call still fails after such an attempt, the write may have taken
 // effect: a repeat met FilesErrExportModified because another write landed
-// after it, or FilesErrNodeRefused while the record kept it, or the repeats
-// ran out without an answer. When export is the numeric export id, the
-// client then reads the export. When the export holds the limit and its node
-// has taken it, the call succeeds with FilesQuotaChange.Reconciled set. When
-// its node has not, the call fails with a FilesNotAppliedError. Otherwise the
-// call fails with its own error. A name is not read again: an export added
-// again under the same name could hold the same limit by chance, and ids are
-// never reused.
+// after it, or a 5xx, or the repeats ran out without an answer. When export
+// is the numeric export id, the client then reads the export. When the export
+// holds the limit and its node has taken it, the call succeeds with
+// FilesQuotaChange.Reconciled set and no Generation: the read may include
+// another caller's later write, so read the export before the next write. When
+// its node has not, the call fails with a FilesNotAppliedError, except after
+// FilesErrExportModified: the change its node has not taken may then be the
+// other write's, and the call fails with the FilesExportModifiedError.
+// Otherwise the call fails with its own error. A name is not read again: an
+// export added again under the same name could hold the same limit by chance,
+// and ids are never reused.
 //
 // A FilesErrNodeUnreachable is returned without a repeat: the change is
-// recorded, and AIStor sends it when the node answers again.
+// recorded, and AIStor sends it when the node answers again. A
+// FilesErrNodeRefused is returned as it is, without a read: it is the
+// server's answer for this change, whose node refused it.
 func (adm *AdminClient) SetFilesExportQuota(ctx context.Context, export string, generation FilesGeneration, quotaBytes uint64) (FilesQuotaChange, error) {
 	reqData, err := filesExportWriteRequest(export, "/quota", generation)
 	if err != nil {
@@ -905,7 +917,7 @@ func (adm *AdminClient) SetFilesExportQuota(ctx context.Context, export string, 
 			return err
 		}
 		change = FilesQuotaChange{
-			Name: after.Name, ExportID: after.ExportID, Generation: after.Generation,
+			Name: after.Name, ExportID: after.ExportID,
 			CurrentBytes: after.QuotaBytes, UsedBytes: after.UsedBytes, Reconciled: true,
 		}
 		return nil
@@ -977,7 +989,7 @@ func (adm *AdminClient) filesAccessReconciler(export string, rules filesaccess.R
 			return err
 		}
 		*change = FilesAccessChange{
-			Name: after.Name, ExportID: after.ExportID, Generation: after.Generation,
+			Name: after.Name, ExportID: after.ExportID,
 			RuleCount: len(after.AccessRules), Reconciled: true,
 		}
 		return nil
@@ -1004,6 +1016,7 @@ func (adm *AdminClient) filesAccessReconciler(export string, rules filesaccess.R
 // on the first attempt, or after attempts the server refused without acting or
 // that never reached it, stays an error.
 //
+// A FilesErrNodeRefused is returned as it is, as for SetFilesExportQuota.
 // When the call fails otherwise after such an attempt, the client reads the
 // export. When it is gone, the call succeeds with AlreadyRemoved set. When it
 // reads FilesExportRemoving at generation, the remove is recorded and its node
@@ -1107,16 +1120,18 @@ func validFilesGeneration(g FilesGeneration) bool {
 type filesReconciler func(ctx context.Context, err error) error
 
 // filesRefusedBeforeActing reports whether a write's error code is a refusal
-// the server answers before it acts, which leaves the export as it was. Any
-// other failure, a conflict, a node refusal, a 5xx or a transport error, may
-// follow an attempt that took effect. FilesErrNodeUnreachable is here too:
-// the server has said the change is recorded, so a read adds nothing.
+// the server answers before it acts, which leaves the export as it was, or
+// an answer a read adds nothing to. Any other failure, a conflict, a 5xx or a
+// transport error, may follow an attempt that took effect.
+// FilesErrNodeUnreachable is here because the server has said the change is
+// recorded. FilesErrNodeRefused is here because it is the server's answer for
+// this change: a read would only give the same refusal another code.
 func filesRefusedBeforeActing(code string) bool {
 	switch code {
 	case FilesErrInvalidRequest, FilesErrAccessDenied, FilesErrExportNotFound,
 		FilesErrExportAlreadyExists, FilesErrExportIDsExhausted, FilesErrExportInUse,
 		FilesErrExportRemoving, FilesErrPreconditionRequired, FilesErrNotImplemented,
-		FilesErrNodeUnreachable:
+		FilesErrNodeUnreachable, FilesErrNodeRefused:
 		return true
 	}
 	return false
@@ -1128,13 +1143,21 @@ func filesRefusedBeforeActing(code string) bool {
 // FilesNotAppliedError when the node has not, and err otherwise: after a
 // refusal that changed nothing, when export is a name, or when the read fails
 // or shows another state.
+//
+// Applied and Refusal describe the export's latest change. After a
+// FilesErrExportModified another write landed after this one, so an export
+// its node has not taken says nothing about this write, and err is returned:
+// the not taken change, and its refusal, may be the other write's.
 func (adm *AdminClient) filesReconcileChange(ctx context.Context, export string, err error, holds func(FilesExport) bool) (FilesExport, error) {
-	if filesRefusedBeforeActing(ToErrorResponse(err).Code) || strings.Trim(export, "0123456789") != "" {
+	code := ToErrorResponse(err).Code
+	if filesRefusedBeforeActing(code) || strings.Trim(export, "0123456789") != "" {
 		return FilesExport{}, err
 	}
 	after, readErr := adm.GetFilesExport(ctx, export)
 	switch {
 	case readErr != nil || !holds(after):
+		return FilesExport{}, err
+	case !after.Applied && code == FilesErrExportModified:
 		return FilesExport{}, err
 	case !after.Applied:
 		return FilesExport{}, newFilesNotApplied(err, after)

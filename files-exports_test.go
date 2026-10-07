@@ -1720,21 +1720,22 @@ func filesReadAt(quota uint64, rules string, applied bool, refusal string) files
 const filesCatchAllRules = `[{"clients": ["*"], "accessType": "rw"}]`
 
 // filesWritesByID calls the quota and access writes on export 104, by id,
-// asking for a limit of 1 and the rule "* rw".
+// asking for a limit of 1 and the rule "* rw". A reconciled reply carries no
+// generation, though the read has one: it may include another caller's write.
 func filesWritesByID(ctx context.Context, client *AdminClient) map[string]func() (bool, error) {
 	rules := mustFilesRules("* rw")
 	return map[string]func() (bool, error){
 		"quota": func() (bool, error) {
 			change, err := client.SetFilesExportQuota(ctx, "104", "5f2a91", 1)
-			return change.Reconciled && change.CurrentBytes == 1 && change.ExportID == 104, err
+			return change.Reconciled && change.Generation == "" && change.CurrentBytes == 1 && change.ExportID == 104, err
 		},
 		"access": func() (bool, error) {
 			change, err := client.SetFilesExportAccess(ctx, "104", "5f2a91", rules)
-			return change.Reconciled && change.RuleCount == 1 && change.ExportID == 104, err
+			return change.Reconciled && change.Generation == "" && change.RuleCount == 1 && change.ExportID == 104, err
 		},
 		"clear": func() (bool, error) {
 			change, err := client.ClearFilesExportAccess(ctx, "104", "5f2a91")
-			return change.Reconciled && change.RuleCount == 0 && change.ExportID == 104, err
+			return change.Reconciled && change.Generation == "" && change.RuleCount == 0 && change.ExportID == 104, err
 		},
 	}
 }
@@ -1743,9 +1744,10 @@ func filesWritesByID(ctx context.Context, client *AdminClient) map[string]func()
 // fails once an attempt's outcome was unknown reads the export by id: an
 // export holding the change, taken by its node, is a success marked
 // Reconciled; one its node has not taken is a FilesNotAppliedError carrying
-// the node's refusal; any other export leaves the write's own error.
+// the node's refusal, unless the write met a 412, where the change not taken
+// may be another writer's; any other export leaves the write's own error.
 func TestFilesWriteReconcilesByRead(t *testing.T) {
-	nodeRefused := filesScriptedReply{http.StatusUnprocessableEntity, `{"code": "NodeRefused", "message": "unknown host build01"}`}
+	internalError := filesScriptedReply{http.StatusInternalServerError, `{"code": "InternalError", "message": "internal error"}`}
 	for _, tc := range []struct {
 		name string
 		// held says whether the read holds each write's change: a limit of
@@ -1758,8 +1760,12 @@ func TestFilesWriteReconcilesByRead(t *testing.T) {
 		want string
 	}{
 		{"modified_applied", true, true, "", filesModified, ""},
-		{"modified_not_applied", true, false, "", filesModified, FilesErrChangeNotApplied},
-		{"refused_repeat", true, false, "unknown host build01", nodeRefused, FilesErrChangeNotApplied},
+		// After a 412 another write landed after this one, so a change its
+		// node has not taken, and its refusal, may be the other write's.
+		{"modified_not_applied", true, false, "", filesModified, FilesErrExportModified},
+		{"modified_other_refused", true, false, "unknown host build01", filesModified, FilesErrExportModified},
+		{"internal_refused", true, false, "unknown host build01", internalError, FilesErrChangeNotApplied},
+		{"internal_pending", true, false, "", internalError, FilesErrChangeNotApplied},
 		{"modified_elsewhere", false, true, "", filesModified, FilesErrExportModified},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -1779,6 +1785,12 @@ func TestFilesWriteReconcilesByRead(t *testing.T) {
 					t.Errorf("%s: ok = %v, err = %v, want a reconciled success", name, ok, err)
 				case tc.want != "" && ToErrorResponse(err).Code != tc.want:
 					t.Errorf("%s: err = %v, want code %s", name, err, tc.want)
+				}
+				if tc.want == FilesErrExportModified {
+					var modified FilesExportModifiedError
+					if !errors.As(err, &modified) {
+						t.Errorf("%s: err = %#v, want the FilesExportModifiedError", name, err)
+					}
 				}
 				if tc.want == FilesErrChangeNotApplied {
 					var notApplied FilesNotAppliedError
@@ -1826,11 +1838,32 @@ func TestFilesWriteReconcilesLastUnknown(t *testing.T) {
 }
 
 // TestFilesWriteReconcileSkips verifies the cases with no read: a refusal the
-// server answers before acting, an export named by name, whose read could
-// find another export added under that name, and a first attempt.
+// server answers before acting, a node refusal, which is the server's answer
+// for the change, an export named by name, whose read could find another
+// export added under that name, and a first attempt.
 func TestFilesWriteReconcileSkips(t *testing.T) {
 	removing := filesScriptedReply{http.StatusConflict, `{"code": "ExportRemoving", "message": "being removed"}`}
 	read := filesReadAt(1, filesCatchAllRules, true, "")
+
+	// A node refusal after a lost reply keeps the code it has on a first
+	// attempt, though the read would show the change recorded.
+	nodeRefused := filesScriptedReply{http.StatusUnprocessableEntity, `{"code": "NodeRefused", "message": "unknown host build01"}`}
+	for _, name := range []string{"quota", "access", "clear", "remove"} {
+		server, _, reads := newFilesScriptedServer(t, filesReadAt(1, filesCatchAllRules, false, "unknown host build01"), filesDropped, nodeRefused)
+		client := newFilesExportsTestClient(t, server.URL)
+		var err error
+		if name == "remove" {
+			_, err = client.RemoveFilesExport(context.Background(), "104", "5f2a91", FilesRemoveOptions{})
+		} else {
+			_, err = filesWritesByID(context.Background(), client)[name]()
+		}
+		if ToErrorResponse(err).Code != FilesErrNodeRefused {
+			t.Errorf("%s node refusal: err = %v, want code %s", name, err, FilesErrNodeRefused)
+		}
+		if reads.Load() != 0 {
+			t.Errorf("%s node refusal: %d reads, want 0", name, reads.Load())
+		}
+	}
 
 	server, _, reads := newFilesScriptedServer(t, read, filesDropped, removing)
 	if _, err := filesWritesByID(context.Background(), newFilesExportsTestClient(t, server.URL))["quota"](); ToErrorResponse(err).Code != FilesErrExportRemoving {
@@ -1858,7 +1891,7 @@ func TestRemoveFilesExportReconciles(t *testing.T) {
 	MaxRetry = 2
 	t.Cleanup(func() { MaxRetry = saved })
 
-	nodeRefused := filesScriptedReply{http.StatusUnprocessableEntity, `{"code": "NodeRefused", "message": "config refused"}`}
+	internalError := filesScriptedReply{http.StatusInternalServerError, `{"code": "InternalError", "message": "internal error"}`}
 	removingAt := func(generation string) filesScriptedReply {
 		return filesScriptedReply{http.StatusOK, `{"name": "carol", "exportID": 104, "generation": "` + generation +
 			`", "node": "node03", "status": "removing", "refusal": "config refused"}`}
@@ -1871,8 +1904,8 @@ func TestRemoveFilesExportReconciles(t *testing.T) {
 		want  string
 		freed bool
 	}{
-		{"refused_repeat_removing", removingAt("5f2a91"), nodeRefused, FilesErrChangeNotApplied, false},
-		{"refused_repeat_other_generation", removingAt("5f2d13"), nodeRefused, FilesErrNodeRefused, false},
+		{"internal_removing", removingAt("5f2a91"), internalError, FilesErrChangeNotApplied, false},
+		{"internal_other_generation", removingAt("5f2d13"), internalError, FilesErrInternalError, false},
 		{"timed_out_gone", filesNotFound, gatewayTimeout, "", true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
