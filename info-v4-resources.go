@@ -239,8 +239,9 @@ type DriveResource struct {
 
 // SMARTInfo contains S.M.A.R.T. health information for a drive
 type SMARTInfo struct {
-	N      int            `json:"n" msg:"n"`       // Number of drives included.
-	Status map[string]int `json:"status" msg:"st"` // healthy, warning, critical, unknown
+	N            int            `json:"n" msg:"n"`                                 // Number of drives included.
+	Status       map[string]int `json:"status" msg:"st"`                           // healthy, warning, critical, unknown
+	StatusReason string         `json:"statusReason,omitempty" msg:"sr,omitempty"` // Reason for status evaluation.
 
 	StatsN       int     `json:"stats_n" msg:"stats_n"`  // Drives with following fields filled.
 	Temperature  float64 `json:"temperature" msg:"t"`    // Accumulated temperature Celsius

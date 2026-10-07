@@ -8608,7 +8608,7 @@ func (z *SMARTInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint16 /* 10 bits */
+	var zb0001Mask uint16 /* 11 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -8652,6 +8652,13 @@ func (z *SMARTInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.Status[za0001] = za0002
 			}
+		case "sr":
+			z.StatusReason, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "StatusReason")
+				return
+			}
+			zb0001Mask |= 0x1
 		case "stats_n":
 			z.StatsN, err = dc.ReadInt()
 			if err != nil {
@@ -8688,56 +8695,56 @@ func (z *SMARTInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "MaxTemperature")
 				return
 			}
-			zb0001Mask |= 0x1
+			zb0001Mask |= 0x2
 		case "mfr":
 			z.MaxFailureRisk, err = dc.ReadFloat64()
 			if err != nil {
 				err = msgp.WrapError(err, "MaxFailureRisk")
 				return
 			}
-			zb0001Mask |= 0x2
+			zb0001Mask |= 0x4
 		case "mpoh":
 			z.MaxPowerOnHours, err = dc.ReadFloat64()
 			if err != nil {
 				err = msgp.WrapError(err, "MaxPowerOnHours")
 				return
 			}
-			zb0001Mask |= 0x4
+			zb0001Mask |= 0x8
 		case "mpc":
 			z.MaxPowerCycles, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "MaxPowerCycles")
 				return
 			}
-			zb0001Mask |= 0x8
+			zb0001Mask |= 0x10
 		case "dt":
 			z.DeviceType, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "DeviceType")
 				return
 			}
-			zb0001Mask |= 0x10
+			zb0001Mask |= 0x20
 		case "mn":
 			z.ModelNumber, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "ModelNumber")
 				return
 			}
-			zb0001Mask |= 0x20
+			zb0001Mask |= 0x40
 		case "sn":
 			z.SerialNumber, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "SerialNumber")
 				return
 			}
-			zb0001Mask |= 0x40
+			zb0001Mask |= 0x80
 		case "fwr":
 			z.FirmwareRev, err = dc.ReadString()
 			if err != nil {
 				err = msgp.WrapError(err, "FirmwareRev")
 				return
 			}
-			zb0001Mask |= 0x80
+			zb0001Mask |= 0x100
 		case "nvme":
 			if dc.IsNil() {
 				err = dc.ReadNil()
@@ -8756,7 +8763,7 @@ func (z *SMARTInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x100
+			zb0001Mask |= 0x200
 		case "sata":
 			if dc.IsNil() {
 				err = dc.ReadNil()
@@ -8775,7 +8782,7 @@ func (z *SMARTInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x200
+			zb0001Mask |= 0x400
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -8785,35 +8792,38 @@ func (z *SMARTInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3ff {
+	if zb0001Mask != 0x7ff {
 		if (zb0001Mask & 0x1) == 0 {
-			z.MaxTemperature = 0
+			z.StatusReason = ""
 		}
 		if (zb0001Mask & 0x2) == 0 {
-			z.MaxFailureRisk = 0
+			z.MaxTemperature = 0
 		}
 		if (zb0001Mask & 0x4) == 0 {
-			z.MaxPowerOnHours = 0
+			z.MaxFailureRisk = 0
 		}
 		if (zb0001Mask & 0x8) == 0 {
-			z.MaxPowerCycles = 0
+			z.MaxPowerOnHours = 0
 		}
 		if (zb0001Mask & 0x10) == 0 {
-			z.DeviceType = ""
+			z.MaxPowerCycles = 0
 		}
 		if (zb0001Mask & 0x20) == 0 {
-			z.ModelNumber = ""
+			z.DeviceType = ""
 		}
 		if (zb0001Mask & 0x40) == 0 {
-			z.SerialNumber = ""
+			z.ModelNumber = ""
 		}
 		if (zb0001Mask & 0x80) == 0 {
-			z.FirmwareRev = ""
+			z.SerialNumber = ""
 		}
 		if (zb0001Mask & 0x100) == 0 {
-			z.NVMe = nil
+			z.FirmwareRev = ""
 		}
 		if (zb0001Mask & 0x200) == 0 {
+			z.NVMe = nil
+		}
+		if (zb0001Mask & 0x400) == 0 {
 			z.SATA = nil
 		}
 	}
@@ -8823,48 +8833,52 @@ func (z *SMARTInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *SMARTInfo) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(17)
-	var zb0001Mask uint32 /* 17 bits */
+	zb0001Len := uint32(18)
+	var zb0001Mask uint32 /* 18 bits */
 	_ = zb0001Mask
-	if z.MaxTemperature == 0 {
+	if z.StatusReason == "" {
 		zb0001Len--
-		zb0001Mask |= 0x80
+		zb0001Mask |= 0x4
 	}
-	if z.MaxFailureRisk == 0 {
+	if z.MaxTemperature == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x100
 	}
-	if z.MaxPowerOnHours == 0 {
+	if z.MaxFailureRisk == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x200
 	}
-	if z.MaxPowerCycles == 0 {
+	if z.MaxPowerOnHours == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x400
 	}
-	if z.DeviceType == "" {
+	if z.MaxPowerCycles == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x800
 	}
-	if z.ModelNumber == "" {
+	if z.DeviceType == "" {
 		zb0001Len--
 		zb0001Mask |= 0x1000
 	}
-	if z.SerialNumber == "" {
+	if z.ModelNumber == "" {
 		zb0001Len--
 		zb0001Mask |= 0x2000
 	}
-	if z.FirmwareRev == "" {
+	if z.SerialNumber == "" {
 		zb0001Len--
 		zb0001Mask |= 0x4000
 	}
-	if z.NVMe == nil {
+	if z.FirmwareRev == "" {
 		zb0001Len--
 		zb0001Mask |= 0x8000
 	}
-	if z.SATA == nil {
+	if z.NVMe == nil {
 		zb0001Len--
 		zb0001Mask |= 0x10000
+	}
+	if z.SATA == nil {
+		zb0001Len--
+		zb0001Mask |= 0x20000
 	}
 	// variable map header, size zb0001Len
 	err = en.WriteMapHeader(zb0001Len)
@@ -8903,6 +8917,18 @@ func (z *SMARTInfo) EncodeMsg(en *msgp.Writer) (err error) {
 			err = en.WriteInt(za0002)
 			if err != nil {
 				err = msgp.WrapError(err, "Status", za0001)
+				return
+			}
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// write "sr"
+			err = en.Append(0xa2, 0x73, 0x72)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.StatusReason)
+			if err != nil {
+				err = msgp.WrapError(err, "StatusReason")
 				return
 			}
 		}
@@ -8956,7 +8982,7 @@ func (z *SMARTInfo) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "FailureRisk")
 			return
 		}
-		if (zb0001Mask & 0x80) == 0 { // if not omitted
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
 			// write "mt"
 			err = en.Append(0xa2, 0x6d, 0x74)
 			if err != nil {
@@ -8968,7 +8994,7 @@ func (z *SMARTInfo) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x100) == 0 { // if not omitted
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
 			// write "mfr"
 			err = en.Append(0xa3, 0x6d, 0x66, 0x72)
 			if err != nil {
@@ -8980,7 +9006,7 @@ func (z *SMARTInfo) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x200) == 0 { // if not omitted
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
 			// write "mpoh"
 			err = en.Append(0xa4, 0x6d, 0x70, 0x6f, 0x68)
 			if err != nil {
@@ -8992,7 +9018,7 @@ func (z *SMARTInfo) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x400) == 0 { // if not omitted
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
 			// write "mpc"
 			err = en.Append(0xa3, 0x6d, 0x70, 0x63)
 			if err != nil {
@@ -9004,7 +9030,7 @@ func (z *SMARTInfo) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x800) == 0 { // if not omitted
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
 			// write "dt"
 			err = en.Append(0xa2, 0x64, 0x74)
 			if err != nil {
@@ -9016,7 +9042,7 @@ func (z *SMARTInfo) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x1000) == 0 { // if not omitted
+		if (zb0001Mask & 0x2000) == 0 { // if not omitted
 			// write "mn"
 			err = en.Append(0xa2, 0x6d, 0x6e)
 			if err != nil {
@@ -9028,7 +9054,7 @@ func (z *SMARTInfo) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x2000) == 0 { // if not omitted
+		if (zb0001Mask & 0x4000) == 0 { // if not omitted
 			// write "sn"
 			err = en.Append(0xa2, 0x73, 0x6e)
 			if err != nil {
@@ -9040,7 +9066,7 @@ func (z *SMARTInfo) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x4000) == 0 { // if not omitted
+		if (zb0001Mask & 0x8000) == 0 { // if not omitted
 			// write "fwr"
 			err = en.Append(0xa3, 0x66, 0x77, 0x72)
 			if err != nil {
@@ -9052,7 +9078,7 @@ func (z *SMARTInfo) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x8000) == 0 { // if not omitted
+		if (zb0001Mask & 0x10000) == 0 { // if not omitted
 			// write "nvme"
 			err = en.Append(0xa4, 0x6e, 0x76, 0x6d, 0x65)
 			if err != nil {
@@ -9071,7 +9097,7 @@ func (z *SMARTInfo) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x10000) == 0 { // if not omitted
+		if (zb0001Mask & 0x20000) == 0 { // if not omitted
 			// write "sata"
 			err = en.Append(0xa4, 0x73, 0x61, 0x74, 0x61)
 			if err != nil {
@@ -9098,48 +9124,52 @@ func (z *SMARTInfo) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *SMARTInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(17)
-	var zb0001Mask uint32 /* 17 bits */
+	zb0001Len := uint32(18)
+	var zb0001Mask uint32 /* 18 bits */
 	_ = zb0001Mask
-	if z.MaxTemperature == 0 {
+	if z.StatusReason == "" {
 		zb0001Len--
-		zb0001Mask |= 0x80
+		zb0001Mask |= 0x4
 	}
-	if z.MaxFailureRisk == 0 {
+	if z.MaxTemperature == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x100
 	}
-	if z.MaxPowerOnHours == 0 {
+	if z.MaxFailureRisk == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x200
 	}
-	if z.MaxPowerCycles == 0 {
+	if z.MaxPowerOnHours == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x400
 	}
-	if z.DeviceType == "" {
+	if z.MaxPowerCycles == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x800
 	}
-	if z.ModelNumber == "" {
+	if z.DeviceType == "" {
 		zb0001Len--
 		zb0001Mask |= 0x1000
 	}
-	if z.SerialNumber == "" {
+	if z.ModelNumber == "" {
 		zb0001Len--
 		zb0001Mask |= 0x2000
 	}
-	if z.FirmwareRev == "" {
+	if z.SerialNumber == "" {
 		zb0001Len--
 		zb0001Mask |= 0x4000
 	}
-	if z.NVMe == nil {
+	if z.FirmwareRev == "" {
 		zb0001Len--
 		zb0001Mask |= 0x8000
 	}
-	if z.SATA == nil {
+	if z.NVMe == nil {
 		zb0001Len--
 		zb0001Mask |= 0x10000
+	}
+	if z.SATA == nil {
+		zb0001Len--
+		zb0001Mask |= 0x20000
 	}
 	// variable map header, size zb0001Len
 	o = msgp.AppendMapHeader(o, zb0001Len)
@@ -9156,6 +9186,11 @@ func (z *SMARTInfo) MarshalMsg(b []byte) (o []byte, err error) {
 			o = msgp.AppendString(o, za0001)
 			o = msgp.AppendInt(o, za0002)
 		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// string "sr"
+			o = append(o, 0xa2, 0x73, 0x72)
+			o = msgp.AppendString(o, z.StatusReason)
+		}
 		// string "stats_n"
 		o = append(o, 0xa7, 0x73, 0x74, 0x61, 0x74, 0x73, 0x5f, 0x6e)
 		o = msgp.AppendInt(o, z.StatsN)
@@ -9171,47 +9206,47 @@ func (z *SMARTInfo) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "fr"
 		o = append(o, 0xa2, 0x66, 0x72)
 		o = msgp.AppendFloat64(o, z.FailureRisk)
-		if (zb0001Mask & 0x80) == 0 { // if not omitted
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
 			// string "mt"
 			o = append(o, 0xa2, 0x6d, 0x74)
 			o = msgp.AppendFloat64(o, z.MaxTemperature)
 		}
-		if (zb0001Mask & 0x100) == 0 { // if not omitted
+		if (zb0001Mask & 0x200) == 0 { // if not omitted
 			// string "mfr"
 			o = append(o, 0xa3, 0x6d, 0x66, 0x72)
 			o = msgp.AppendFloat64(o, z.MaxFailureRisk)
 		}
-		if (zb0001Mask & 0x200) == 0 { // if not omitted
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
 			// string "mpoh"
 			o = append(o, 0xa4, 0x6d, 0x70, 0x6f, 0x68)
 			o = msgp.AppendFloat64(o, z.MaxPowerOnHours)
 		}
-		if (zb0001Mask & 0x400) == 0 { // if not omitted
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
 			// string "mpc"
 			o = append(o, 0xa3, 0x6d, 0x70, 0x63)
 			o = msgp.AppendUint64(o, z.MaxPowerCycles)
 		}
-		if (zb0001Mask & 0x800) == 0 { // if not omitted
+		if (zb0001Mask & 0x1000) == 0 { // if not omitted
 			// string "dt"
 			o = append(o, 0xa2, 0x64, 0x74)
 			o = msgp.AppendString(o, z.DeviceType)
 		}
-		if (zb0001Mask & 0x1000) == 0 { // if not omitted
+		if (zb0001Mask & 0x2000) == 0 { // if not omitted
 			// string "mn"
 			o = append(o, 0xa2, 0x6d, 0x6e)
 			o = msgp.AppendString(o, z.ModelNumber)
 		}
-		if (zb0001Mask & 0x2000) == 0 { // if not omitted
+		if (zb0001Mask & 0x4000) == 0 { // if not omitted
 			// string "sn"
 			o = append(o, 0xa2, 0x73, 0x6e)
 			o = msgp.AppendString(o, z.SerialNumber)
 		}
-		if (zb0001Mask & 0x4000) == 0 { // if not omitted
+		if (zb0001Mask & 0x8000) == 0 { // if not omitted
 			// string "fwr"
 			o = append(o, 0xa3, 0x66, 0x77, 0x72)
 			o = msgp.AppendString(o, z.FirmwareRev)
 		}
-		if (zb0001Mask & 0x8000) == 0 { // if not omitted
+		if (zb0001Mask & 0x10000) == 0 { // if not omitted
 			// string "nvme"
 			o = append(o, 0xa4, 0x6e, 0x76, 0x6d, 0x65)
 			if z.NVMe == nil {
@@ -9224,7 +9259,7 @@ func (z *SMARTInfo) MarshalMsg(b []byte) (o []byte, err error) {
 				}
 			}
 		}
-		if (zb0001Mask & 0x10000) == 0 { // if not omitted
+		if (zb0001Mask & 0x20000) == 0 { // if not omitted
 			// string "sata"
 			o = append(o, 0xa4, 0x73, 0x61, 0x74, 0x61)
 			if z.SATA == nil {
@@ -9251,7 +9286,7 @@ func (z *SMARTInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint16 /* 10 bits */
+	var zb0001Mask uint16 /* 11 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -9295,6 +9330,13 @@ func (z *SMARTInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.Status[za0001] = za0002
 			}
+		case "sr":
+			z.StatusReason, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "StatusReason")
+				return
+			}
+			zb0001Mask |= 0x1
 		case "stats_n":
 			z.StatsN, bts, err = msgp.ReadIntBytes(bts)
 			if err != nil {
@@ -9331,56 +9373,56 @@ func (z *SMARTInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				err = msgp.WrapError(err, "MaxTemperature")
 				return
 			}
-			zb0001Mask |= 0x1
+			zb0001Mask |= 0x2
 		case "mfr":
 			z.MaxFailureRisk, bts, err = msgp.ReadFloat64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "MaxFailureRisk")
 				return
 			}
-			zb0001Mask |= 0x2
+			zb0001Mask |= 0x4
 		case "mpoh":
 			z.MaxPowerOnHours, bts, err = msgp.ReadFloat64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "MaxPowerOnHours")
 				return
 			}
-			zb0001Mask |= 0x4
+			zb0001Mask |= 0x8
 		case "mpc":
 			z.MaxPowerCycles, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "MaxPowerCycles")
 				return
 			}
-			zb0001Mask |= 0x8
+			zb0001Mask |= 0x10
 		case "dt":
 			z.DeviceType, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "DeviceType")
 				return
 			}
-			zb0001Mask |= 0x10
+			zb0001Mask |= 0x20
 		case "mn":
 			z.ModelNumber, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ModelNumber")
 				return
 			}
-			zb0001Mask |= 0x20
+			zb0001Mask |= 0x40
 		case "sn":
 			z.SerialNumber, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "SerialNumber")
 				return
 			}
-			zb0001Mask |= 0x40
+			zb0001Mask |= 0x80
 		case "fwr":
 			z.FirmwareRev, bts, err = msgp.ReadStringBytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "FirmwareRev")
 				return
 			}
-			zb0001Mask |= 0x80
+			zb0001Mask |= 0x100
 		case "nvme":
 			if msgp.IsNil(bts) {
 				bts, err = msgp.ReadNilBytes(bts)
@@ -9398,7 +9440,7 @@ func (z *SMARTInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x100
+			zb0001Mask |= 0x200
 		case "sata":
 			if msgp.IsNil(bts) {
 				bts, err = msgp.ReadNilBytes(bts)
@@ -9416,7 +9458,7 @@ func (z *SMARTInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 					return
 				}
 			}
-			zb0001Mask |= 0x200
+			zb0001Mask |= 0x400
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -9426,35 +9468,38 @@ func (z *SMARTInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3ff {
+	if zb0001Mask != 0x7ff {
 		if (zb0001Mask & 0x1) == 0 {
-			z.MaxTemperature = 0
+			z.StatusReason = ""
 		}
 		if (zb0001Mask & 0x2) == 0 {
-			z.MaxFailureRisk = 0
+			z.MaxTemperature = 0
 		}
 		if (zb0001Mask & 0x4) == 0 {
-			z.MaxPowerOnHours = 0
+			z.MaxFailureRisk = 0
 		}
 		if (zb0001Mask & 0x8) == 0 {
-			z.MaxPowerCycles = 0
+			z.MaxPowerOnHours = 0
 		}
 		if (zb0001Mask & 0x10) == 0 {
-			z.DeviceType = ""
+			z.MaxPowerCycles = 0
 		}
 		if (zb0001Mask & 0x20) == 0 {
-			z.ModelNumber = ""
+			z.DeviceType = ""
 		}
 		if (zb0001Mask & 0x40) == 0 {
-			z.SerialNumber = ""
+			z.ModelNumber = ""
 		}
 		if (zb0001Mask & 0x80) == 0 {
-			z.FirmwareRev = ""
+			z.SerialNumber = ""
 		}
 		if (zb0001Mask & 0x100) == 0 {
-			z.NVMe = nil
+			z.FirmwareRev = ""
 		}
 		if (zb0001Mask & 0x200) == 0 {
+			z.NVMe = nil
+		}
+		if (zb0001Mask & 0x400) == 0 {
 			z.SATA = nil
 		}
 	}
@@ -9471,7 +9516,7 @@ func (z *SMARTInfo) Msgsize() (s int) {
 			s += msgp.StringPrefixSize + len(za0001) + msgp.IntSize
 		}
 	}
-	s += 8 + msgp.IntSize + 2 + msgp.Float64Size + 4 + msgp.Float64Size + 3 + msgp.Uint64Size + 3 + msgp.Float64Size + 3 + msgp.Float64Size + 4 + msgp.Float64Size + 5 + msgp.Float64Size + 4 + msgp.Uint64Size + 3 + msgp.StringPrefixSize + len(z.DeviceType) + 3 + msgp.StringPrefixSize + len(z.ModelNumber) + 3 + msgp.StringPrefixSize + len(z.SerialNumber) + 4 + msgp.StringPrefixSize + len(z.FirmwareRev) + 5
+	s += 3 + msgp.StringPrefixSize + len(z.StatusReason) + 8 + msgp.IntSize + 2 + msgp.Float64Size + 4 + msgp.Float64Size + 3 + msgp.Uint64Size + 3 + msgp.Float64Size + 3 + msgp.Float64Size + 4 + msgp.Float64Size + 5 + msgp.Float64Size + 4 + msgp.Uint64Size + 3 + msgp.StringPrefixSize + len(z.DeviceType) + 3 + msgp.StringPrefixSize + len(z.ModelNumber) + 3 + msgp.StringPrefixSize + len(z.SerialNumber) + 4 + msgp.StringPrefixSize + len(z.FirmwareRev) + 5
 	if z.NVMe == nil {
 		s += msgp.NilSize
 	} else {
