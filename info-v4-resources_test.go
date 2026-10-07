@@ -20,10 +20,13 @@
 package madmin
 
 import (
+	"bytes"
 	"reflect"
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/tinylib/msgp/msgp"
 )
 
 type Inner struct {
@@ -1098,4 +1101,120 @@ func TestSortSlice_ConcurrentSorts(t *testing.T) {
 	if items3[0].ID != 5 || items3[4].ID != 1 {
 		t.Errorf("items3 not sorted correctly")
 	}
+}
+
+// smartInfoWithReason returns a fully populated SMARTInfo with a non-empty
+// StatusReason, so a round trip exercises the "sr" key next to its neighbours
+// rather than on its own. The generated tests only cover the zero value, where
+// every omitempty field — StatusReason included — is skipped on the wire.
+func smartInfoWithReason() SMARTInfo {
+	return SMARTInfo{
+		N:               3,
+		Status:          map[string]int{"healthy": 2, "warning": 1},
+		StatusReason:    "1 drive reports elevated media errors",
+		StatsN:          3,
+		Temperature:     111.5,
+		PowerOnHours:    42000,
+		PowerCycles:     57,
+		FailureRisk:     0.25,
+		MaxTemperature:  45.5,
+		MaxFailureRisk:  0.2,
+		MaxPowerOnHours: 15000,
+		MaxPowerCycles:  21,
+		DeviceType:      "nvme",
+		ModelNumber:     "SAMSUNG MZQL23T8HCLS-00A07",
+		SerialNumber:    "S64HNE0R000000",
+		FirmwareRev:     "GDC5902Q",
+	}
+}
+
+func TestSMARTInfoStatusReasonMarshalUnmarshal(t *testing.T) {
+	want := smartInfoWithReason()
+
+	bts, err := want.MarshalMsg(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var got SMARTInfo
+	left, err := got.UnmarshalMsg(bts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(left) > 0 {
+		t.Errorf("%d bytes left over after UnmarshalMsg(): %q", len(left), left)
+	}
+	if got.StatusReason != want.StatusReason {
+		t.Errorf("StatusReason: got %q, want %q", got.StatusReason, want.StatusReason)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("round trip mismatch:\n got %+v\nwant %+v", got, want)
+	}
+}
+
+func TestSMARTInfoStatusReasonEncodeDecode(t *testing.T) {
+	want := smartInfoWithReason()
+
+	var buf bytes.Buffer
+	en := msgp.NewWriter(&buf)
+	if err := want.EncodeMsg(en); err != nil {
+		t.Fatal(err)
+	}
+	if err := en.Flush(); err != nil {
+		t.Fatal(err)
+	}
+
+	var got SMARTInfo
+	if err := got.DecodeMsg(msgp.NewReader(&buf)); err != nil {
+		t.Fatal(err)
+	}
+	if got.StatusReason != want.StatusReason {
+		t.Errorf("StatusReason: got %q, want %q", got.StatusReason, want.StatusReason)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("round trip mismatch:\n got %+v\nwant %+v", got, want)
+	}
+}
+
+// TestSMARTInfoStatusReasonClearedOnReuse pins the clearomitted contract for the
+// "sr" key: StatusReason is omitempty, so an empty one is never written, and
+// both readers must reset it on a reused value rather than leave the previous
+// decode's reason in place.
+func TestSMARTInfoStatusReasonClearedOnReuse(t *testing.T) {
+	src := SMARTInfo{N: 1, Status: map[string]int{"healthy": 1}}
+
+	bts, err := src.MarshalMsg(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	en := msgp.NewWriter(&buf)
+	if err := src.EncodeMsg(en); err != nil {
+		t.Fatal(err)
+	}
+	if err := en.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	encoded := buf.Bytes()
+
+	t.Run("UnmarshalMsg", func(t *testing.T) {
+		reused := smartInfoWithReason()
+		if _, err := reused.UnmarshalMsg(bts); err != nil {
+			t.Fatal(err)
+		}
+		if reused.StatusReason != "" {
+			t.Errorf("StatusReason not cleared on reuse: got %q, want %q", reused.StatusReason, "")
+		}
+	})
+
+	t.Run("DecodeMsg", func(t *testing.T) {
+		reused := smartInfoWithReason()
+		if err := reused.DecodeMsg(msgp.NewReader(bytes.NewReader(encoded))); err != nil {
+			t.Fatal(err)
+		}
+		if reused.StatusReason != "" {
+			t.Errorf("StatusReason not cleared on reuse: got %q, want %q", reused.StatusReason, "")
+		}
+	})
 }
