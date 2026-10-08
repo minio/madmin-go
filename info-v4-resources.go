@@ -295,7 +295,7 @@ func (s *SMARTInfo) Merge(other *SMARTInfo) {
 		}
 		for k, v := range other.LastStatusReason {
 			cur, ok := s.LastStatusReason[k]
-			if !ok || cur.CreatedAt.Before(v.CreatedAt) {
+			if !ok || cur.CreatedAt.Before(v.CreatedAt) || (v.CreatedAt.Equal(cur.CreatedAt) && v.Reason > cur.Reason) {
 				s.LastStatusReason[k] = v
 			}
 		}
