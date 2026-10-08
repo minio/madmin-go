@@ -2019,12 +2019,18 @@ func (node *DiskSMARTNode) GetLeafData() map[string]string {
 			return entries[i].status < entries[j].status // Ascending by name
 		})
 
-		// Build status details
+		// Build status details, naming why a status was last given when the
+		// evaluation recorded a reason for it.
 		statusDetails := make([]string, 0, len(entries))
 		for _, entry := range entries {
-			if entry.count > 0 {
-				statusDetails = append(statusDetails, fmt.Sprintf("%d %s", entry.count, entry.status))
+			if entry.count == 0 {
+				continue
 			}
+			detail := fmt.Sprintf("%d %s", entry.count, entry.status)
+			if reason := node.smart.LastStatusReason[entry.status].Reason; reason != "" {
+				detail += fmt.Sprintf(" (%s)", reason)
+			}
+			statusDetails = append(statusDetails, detail)
 		}
 
 		if len(statusDetails) > 0 {
