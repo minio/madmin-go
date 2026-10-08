@@ -3,6 +3,8 @@
 package madmin
 
 import (
+	"time"
+
 	"github.com/tinylib/msgp/msgp"
 )
 
@@ -8652,11 +8654,75 @@ func (z *SMARTInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				}
 				z.Status[za0001] = za0002
 			}
-		case "sr":
-			z.StatusReason, err = dc.ReadString()
+		case "lsr":
+			var zb0003 uint32
+			zb0003, err = dc.ReadMapHeader()
 			if err != nil {
-				err = msgp.WrapError(err, "StatusReason")
+				err = msgp.WrapError(err, "LastStatusReason")
 				return
+			}
+			if z.LastStatusReason == nil {
+				z.LastStatusReason = make(map[string]StatusReason, zb0003)
+			} else if len(z.LastStatusReason) > 0 {
+				clear(z.LastStatusReason)
+			}
+			for zb0003 > 0 {
+				zb0003--
+				var za0003 string
+				za0003, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "LastStatusReason")
+					return
+				}
+				var za0004 StatusReason
+				var zb0004 uint32
+				zb0004, err = dc.ReadMapHeader()
+				if err != nil {
+					err = msgp.WrapError(err, "LastStatusReason", za0003)
+					return
+				}
+				var zb0004Mask uint8 /* 2 bits */
+				_ = zb0004Mask
+				for zb0004 > 0 {
+					zb0004--
+					field, err = dc.ReadMapKeyPtr()
+					if err != nil {
+						err = msgp.WrapError(err, "LastStatusReason", za0003)
+						return
+					}
+					switch msgp.UnsafeString(field) {
+					case "r":
+						za0004.Reason, err = dc.ReadString()
+						if err != nil {
+							err = msgp.WrapError(err, "LastStatusReason", za0003, "Reason")
+							return
+						}
+						zb0004Mask |= 0x1
+					case "ca":
+						za0004.CreatedAt, err = dc.ReadTimeUTC()
+						if err != nil {
+							err = msgp.WrapError(err, "LastStatusReason", za0003, "CreatedAt")
+							return
+						}
+						zb0004Mask |= 0x2
+					default:
+						err = dc.Skip()
+						if err != nil {
+							err = msgp.WrapError(err, "LastStatusReason", za0003)
+							return
+						}
+					}
+				}
+				// Clear omitted fields.
+				if zb0004Mask != 0x3 {
+					if (zb0004Mask & 0x1) == 0 {
+						za0004.Reason = ""
+					}
+					if (zb0004Mask & 0x2) == 0 {
+						za0004.CreatedAt = (time.Time{})
+					}
+				}
+				z.LastStatusReason[za0003] = za0004
 			}
 			zb0001Mask |= 0x1
 		case "stats_n":
@@ -8794,7 +8860,7 @@ func (z *SMARTInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 	// Clear omitted fields.
 	if zb0001Mask != 0x7ff {
 		if (zb0001Mask & 0x1) == 0 {
-			z.StatusReason = ""
+			z.LastStatusReason = nil
 		}
 		if (zb0001Mask & 0x2) == 0 {
 			z.MaxTemperature = 0
@@ -8836,7 +8902,7 @@ func (z *SMARTInfo) EncodeMsg(en *msgp.Writer) (err error) {
 	zb0001Len := uint32(18)
 	var zb0001Mask uint32 /* 18 bits */
 	_ = zb0001Mask
-	if z.StatusReason == "" {
+	if z.LastStatusReason == nil {
 		zb0001Len--
 		zb0001Mask |= 0x4
 	}
@@ -8921,15 +8987,67 @@ func (z *SMARTInfo) EncodeMsg(en *msgp.Writer) (err error) {
 			}
 		}
 		if (zb0001Mask & 0x4) == 0 { // if not omitted
-			// write "sr"
-			err = en.Append(0xa2, 0x73, 0x72)
+			// write "lsr"
+			err = en.Append(0xa3, 0x6c, 0x73, 0x72)
 			if err != nil {
 				return
 			}
-			err = en.WriteString(z.StatusReason)
+			err = en.WriteMapHeader(uint32(len(z.LastStatusReason)))
 			if err != nil {
-				err = msgp.WrapError(err, "StatusReason")
+				err = msgp.WrapError(err, "LastStatusReason")
 				return
+			}
+			for za0003, za0004 := range z.LastStatusReason {
+				err = en.WriteString(za0003)
+				if err != nil {
+					err = msgp.WrapError(err, "LastStatusReason")
+					return
+				}
+				// check for omitted fields
+				zb0002Len := uint32(2)
+				var zb0002Mask uint8 /* 2 bits */
+				_ = zb0002Mask
+				if za0004.Reason == "" {
+					zb0002Len--
+					zb0002Mask |= 0x1
+				}
+				if za0004.CreatedAt == (time.Time{}) {
+					zb0002Len--
+					zb0002Mask |= 0x2
+				}
+				// variable map header, size zb0002Len
+				err = en.Append(0x80 | uint8(zb0002Len))
+				if err != nil {
+					return
+				}
+
+				// skip if no fields are to be emitted
+				if zb0002Len != 0 {
+					if (zb0002Mask & 0x1) == 0 { // if not omitted
+						// write "r"
+						err = en.Append(0xa1, 0x72)
+						if err != nil {
+							return
+						}
+						err = en.WriteString(za0004.Reason)
+						if err != nil {
+							err = msgp.WrapError(err, "LastStatusReason", za0003, "Reason")
+							return
+						}
+					}
+					if (zb0002Mask & 0x2) == 0 { // if not omitted
+						// write "ca"
+						err = en.Append(0xa2, 0x63, 0x61)
+						if err != nil {
+							return
+						}
+						err = en.WriteTime(za0004.CreatedAt)
+						if err != nil {
+							err = msgp.WrapError(err, "LastStatusReason", za0003, "CreatedAt")
+							return
+						}
+					}
+				}
 			}
 		}
 		// write "stats_n"
@@ -9127,7 +9245,7 @@ func (z *SMARTInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	zb0001Len := uint32(18)
 	var zb0001Mask uint32 /* 18 bits */
 	_ = zb0001Mask
-	if z.StatusReason == "" {
+	if z.LastStatusReason == nil {
 		zb0001Len--
 		zb0001Mask |= 0x4
 	}
@@ -9187,9 +9305,40 @@ func (z *SMARTInfo) MarshalMsg(b []byte) (o []byte, err error) {
 			o = msgp.AppendInt(o, za0002)
 		}
 		if (zb0001Mask & 0x4) == 0 { // if not omitted
-			// string "sr"
-			o = append(o, 0xa2, 0x73, 0x72)
-			o = msgp.AppendString(o, z.StatusReason)
+			// string "lsr"
+			o = append(o, 0xa3, 0x6c, 0x73, 0x72)
+			o = msgp.AppendMapHeader(o, uint32(len(z.LastStatusReason)))
+			for za0003, za0004 := range z.LastStatusReason {
+				o = msgp.AppendString(o, za0003)
+				// check for omitted fields
+				zb0002Len := uint32(2)
+				var zb0002Mask uint8 /* 2 bits */
+				_ = zb0002Mask
+				if za0004.Reason == "" {
+					zb0002Len--
+					zb0002Mask |= 0x1
+				}
+				if za0004.CreatedAt == (time.Time{}) {
+					zb0002Len--
+					zb0002Mask |= 0x2
+				}
+				// variable map header, size zb0002Len
+				o = append(o, 0x80|uint8(zb0002Len))
+
+				// skip if no fields are to be emitted
+				if zb0002Len != 0 {
+					if (zb0002Mask & 0x1) == 0 { // if not omitted
+						// string "r"
+						o = append(o, 0xa1, 0x72)
+						o = msgp.AppendString(o, za0004.Reason)
+					}
+					if (zb0002Mask & 0x2) == 0 { // if not omitted
+						// string "ca"
+						o = append(o, 0xa2, 0x63, 0x61)
+						o = msgp.AppendTime(o, za0004.CreatedAt)
+					}
+				}
+			}
 		}
 		// string "stats_n"
 		o = append(o, 0xa7, 0x73, 0x74, 0x61, 0x74, 0x73, 0x5f, 0x6e)
@@ -9330,11 +9479,75 @@ func (z *SMARTInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				}
 				z.Status[za0001] = za0002
 			}
-		case "sr":
-			z.StatusReason, bts, err = msgp.ReadStringBytes(bts)
+		case "lsr":
+			var zb0003 uint32
+			zb0003, bts, err = msgp.ReadMapHeaderBytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "StatusReason")
+				err = msgp.WrapError(err, "LastStatusReason")
 				return
+			}
+			if z.LastStatusReason == nil {
+				z.LastStatusReason = make(map[string]StatusReason, zb0003)
+			} else if len(z.LastStatusReason) > 0 {
+				clear(z.LastStatusReason)
+			}
+			for zb0003 > 0 {
+				var za0004 StatusReason
+				zb0003--
+				var za0003 string
+				za0003, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "LastStatusReason")
+					return
+				}
+				var zb0004 uint32
+				zb0004, bts, err = msgp.ReadMapHeaderBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "LastStatusReason", za0003)
+					return
+				}
+				var zb0004Mask uint8 /* 2 bits */
+				_ = zb0004Mask
+				for zb0004 > 0 {
+					zb0004--
+					field, bts, err = msgp.ReadMapKeyZC(bts)
+					if err != nil {
+						err = msgp.WrapError(err, "LastStatusReason", za0003)
+						return
+					}
+					switch msgp.UnsafeString(field) {
+					case "r":
+						za0004.Reason, bts, err = msgp.ReadStringBytes(bts)
+						if err != nil {
+							err = msgp.WrapError(err, "LastStatusReason", za0003, "Reason")
+							return
+						}
+						zb0004Mask |= 0x1
+					case "ca":
+						za0004.CreatedAt, bts, err = msgp.ReadTimeUTCBytes(bts)
+						if err != nil {
+							err = msgp.WrapError(err, "LastStatusReason", za0003, "CreatedAt")
+							return
+						}
+						zb0004Mask |= 0x2
+					default:
+						bts, err = msgp.Skip(bts)
+						if err != nil {
+							err = msgp.WrapError(err, "LastStatusReason", za0003)
+							return
+						}
+					}
+				}
+				// Clear omitted fields.
+				if zb0004Mask != 0x3 {
+					if (zb0004Mask & 0x1) == 0 {
+						za0004.Reason = ""
+					}
+					if (zb0004Mask & 0x2) == 0 {
+						za0004.CreatedAt = (time.Time{})
+					}
+				}
+				z.LastStatusReason[za0003] = za0004
 			}
 			zb0001Mask |= 0x1
 		case "stats_n":
@@ -9470,7 +9683,7 @@ func (z *SMARTInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 	// Clear omitted fields.
 	if zb0001Mask != 0x7ff {
 		if (zb0001Mask & 0x1) == 0 {
-			z.StatusReason = ""
+			z.LastStatusReason = nil
 		}
 		if (zb0001Mask & 0x2) == 0 {
 			z.MaxTemperature = 0
@@ -9516,7 +9729,14 @@ func (z *SMARTInfo) Msgsize() (s int) {
 			s += msgp.StringPrefixSize + len(za0001) + msgp.IntSize
 		}
 	}
-	s += 3 + msgp.StringPrefixSize + len(z.StatusReason) + 8 + msgp.IntSize + 2 + msgp.Float64Size + 4 + msgp.Float64Size + 3 + msgp.Uint64Size + 3 + msgp.Float64Size + 3 + msgp.Float64Size + 4 + msgp.Float64Size + 5 + msgp.Float64Size + 4 + msgp.Uint64Size + 3 + msgp.StringPrefixSize + len(z.DeviceType) + 3 + msgp.StringPrefixSize + len(z.ModelNumber) + 3 + msgp.StringPrefixSize + len(z.SerialNumber) + 4 + msgp.StringPrefixSize + len(z.FirmwareRev) + 5
+	s += 4 + msgp.MapHeaderSize
+	if z.LastStatusReason != nil {
+		for za0003, za0004 := range z.LastStatusReason {
+			_ = za0004
+			s += msgp.StringPrefixSize + len(za0003) + 1 + 2 + msgp.StringPrefixSize + len(za0004.Reason) + 3 + msgp.TimeSize
+		}
+	}
+	s += 8 + msgp.IntSize + 2 + msgp.Float64Size + 4 + msgp.Float64Size + 3 + msgp.Uint64Size + 3 + msgp.Float64Size + 3 + msgp.Float64Size + 4 + msgp.Float64Size + 5 + msgp.Float64Size + 4 + msgp.Uint64Size + 3 + msgp.StringPrefixSize + len(z.DeviceType) + 3 + msgp.StringPrefixSize + len(z.ModelNumber) + 3 + msgp.StringPrefixSize + len(z.SerialNumber) + 4 + msgp.StringPrefixSize + len(z.FirmwareRev) + 5
 	if z.NVMe == nil {
 		s += msgp.NilSize
 	} else {
@@ -11717,5 +11937,204 @@ func (z *ServicesResourceInfo) Msgsize() (s int) {
 	for za0007 := range z.KMSStatus {
 		s += z.KMSStatus[za0007].Msgsize()
 	}
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *StatusReason) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 2 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "r":
+			z.Reason, err = dc.ReadString()
+			if err != nil {
+				err = msgp.WrapError(err, "Reason")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "ca":
+			z.CreatedAt, err = dc.ReadTimeUTC()
+			if err != nil {
+				err = msgp.WrapError(err, "CreatedAt")
+				return
+			}
+			zb0001Mask |= 0x2
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x3 {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Reason = ""
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.CreatedAt = (time.Time{})
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z StatusReason) EncodeMsg(en *msgp.Writer) (err error) {
+	// check for omitted fields
+	zb0001Len := uint32(2)
+	var zb0001Mask uint8 /* 2 bits */
+	_ = zb0001Mask
+	if z.Reason == "" {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.CreatedAt == (time.Time{}) {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	// variable map header, size zb0001Len
+	err = en.Append(0x80 | uint8(zb0001Len))
+	if err != nil {
+		return
+	}
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// write "r"
+			err = en.Append(0xa1, 0x72)
+			if err != nil {
+				return
+			}
+			err = en.WriteString(z.Reason)
+			if err != nil {
+				err = msgp.WrapError(err, "Reason")
+				return
+			}
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// write "ca"
+			err = en.Append(0xa2, 0x63, 0x61)
+			if err != nil {
+				return
+			}
+			err = en.WriteTime(z.CreatedAt)
+			if err != nil {
+				err = msgp.WrapError(err, "CreatedAt")
+				return
+			}
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z StatusReason) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// check for omitted fields
+	zb0001Len := uint32(2)
+	var zb0001Mask uint8 /* 2 bits */
+	_ = zb0001Mask
+	if z.Reason == "" {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.CreatedAt == (time.Time{}) {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	// variable map header, size zb0001Len
+	o = append(o, 0x80|uint8(zb0001Len))
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// string "r"
+			o = append(o, 0xa1, 0x72)
+			o = msgp.AppendString(o, z.Reason)
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// string "ca"
+			o = append(o, 0xa2, 0x63, 0x61)
+			o = msgp.AppendTime(o, z.CreatedAt)
+		}
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *StatusReason) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 2 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "r":
+			z.Reason, bts, err = msgp.ReadStringBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Reason")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "ca":
+			z.CreatedAt, bts, err = msgp.ReadTimeUTCBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "CreatedAt")
+				return
+			}
+			zb0001Mask |= 0x2
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x3 {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Reason = ""
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.CreatedAt = (time.Time{})
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z StatusReason) Msgsize() (s int) {
+	s = 1 + 2 + msgp.StringPrefixSize + len(z.Reason) + 3 + msgp.TimeSize
 	return
 }

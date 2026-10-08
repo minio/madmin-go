@@ -25,6 +25,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/tinylib/msgp/msgp"
 )
@@ -239,9 +240,9 @@ type DriveResource struct {
 
 // SMARTInfo contains S.M.A.R.T. health information for a drive
 type SMARTInfo struct {
-	N            int            `json:"n" msg:"n"`                                 // Number of drives included.
-	Status       map[string]int `json:"status" msg:"st"`                           // healthy, warning, critical, unknown
-	StatusReason string         `json:"statusReason,omitempty" msg:"sr,omitempty"` // Reason for status evaluation.
+	N                int                     `json:"n" msg:"n"`                                      // Number of drives included.
+	Status           map[string]int          `json:"status" msg:"st"`                                // healthy, warning, critical, unknown
+	LastStatusReason map[string]StatusReason `json:"lastStatusReason,omitempty" msg:"lsr,omitempty"` // Reason for each status last evaluation.
 
 	StatsN       int     `json:"stats_n" msg:"stats_n"`  // Drives with following fields filled.
 	Temperature  float64 `json:"temperature" msg:"t"`    // Accumulated temperature Celsius
@@ -265,6 +266,12 @@ type SMARTInfo struct {
 	SATA *SMARTSATA `json:"sata,omitempty" msg:"sata,omitempty"`
 }
 
+// StatusReason records why a drive was given a status, and when that was evaluated.
+type StatusReason struct {
+	Reason    string    `json:"reason,omitempty" msg:"r,omitempty"`
+	CreatedAt time.Time `json:"created,omitempty" msg:"ca,omitempty"`
+}
+
 // Merge merges another SMARTInfo into this one.
 func (s *SMARTInfo) Merge(other *SMARTInfo) {
 	if s == nil || other == nil {
@@ -279,6 +286,18 @@ func (s *SMARTInfo) Merge(other *SMARTInfo) {
 		}
 		for k, v := range other.Status {
 			s.Status[k] += v
+		}
+	}
+
+	if other.LastStatusReason != nil {
+		if s.LastStatusReason == nil {
+			s.LastStatusReason = make(map[string]StatusReason, len(other.LastStatusReason))
+		}
+		for k, v := range other.LastStatusReason {
+			cur, ok := s.LastStatusReason[k]
+			if !ok || cur.CreatedAt.Before(v.CreatedAt) {
+				s.LastStatusReason[k] = v
+			}
 		}
 	}
 
