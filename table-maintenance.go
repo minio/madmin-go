@@ -48,6 +48,20 @@ type IcebergSnapshotManagementSettings struct {
 type IcebergCompactionSettings struct {
 	// TargetFileSizeMB is the target file size in MB for compacted files.
 	TargetFileSizeMB *int `json:"targetFileSizeMB,omitempty"`
+	// MinInputFiles, DeleteFileThreshold and DeleteRatioThreshold tune which
+	// files compaction rewrites. Each is a JSON number; omitting a field keeps
+	// its stored value, and JSON null clears it so the table inherits the
+	// warehouse value and the warehouse falls back to the server default.
+	//
+	// MinInputFiles is the minimum number of small files a partition needs
+	// before they are rewritten. Must be an integer >= 2.
+	MinInputFiles json.RawMessage `json:"minInputFiles,omitempty"`
+	// DeleteFileThreshold rewrites a data file of any size once at least this
+	// many delete files apply to it. Must be an integer >= 1.
+	DeleteFileThreshold json.RawMessage `json:"deleteFileThreshold,omitempty"`
+	// DeleteRatioThreshold rewrites a data file of any size once at least this
+	// fraction of its rows is deleted. Range [0, 1]; 0 disables the rule.
+	DeleteRatioThreshold json.RawMessage `json:"deleteRatioThreshold,omitempty"`
 	// Interval overrides how often this runs, in minutes.
 	// Inherits: table -> warehouse -> server if nil.
 	// Must be >= 1.
