@@ -120,15 +120,70 @@ func httpRespToErrorResponse(resp *http.Response) error {
 //	   resp := admin.ToErrorResponse(err)
 //	}
 //	...
+//
+// The first ErrorResponse, or non-nil *ErrorResponse, in err's tree is
+// returned.
 func ToErrorResponse(err error) ErrorResponse {
-	switch err := err.(type) {
+	resp, _ := findErrorResponse(err)
+	return resp
+}
+
+// findErrorResponse returns the first ErrorResponse or non-nil *ErrorResponse
+// in err's tree, walked in the order errors.As uses.
+func findErrorResponse(err error) (ErrorResponse, bool) {
+	switch e := err.(type) {
 	case ErrorResponse:
-		return err
-	case FilesExportModifiedError:
-		return err.ErrorResponse
-	default:
-		return ErrorResponse{}
+		return e, true
+	case *ErrorResponse:
+		if e != nil {
+			return *e, true
+		}
 	}
+	if x, ok := err.(interface{ As(any) bool }); ok {
+		var resp ErrorResponse
+		if x.As(&resp) {
+			return resp, true
+		}
+		var ptr *ErrorResponse
+		if x.As(&ptr) && ptr != nil {
+			return *ptr, true
+		}
+	}
+	switch x := err.(type) {
+	case interface{ Unwrap() error }:
+		return findErrorResponse(x.Unwrap())
+	case interface{ Unwrap() []error }:
+		for _, child := range x.Unwrap() {
+			if resp, ok := findErrorResponse(child); ok {
+				return resp, true
+			}
+		}
+	}
+	return ErrorResponse{}, false
+}
+
+// IsErrorCode reports whether the ErrorResponse that ToErrorResponse finds in
+// err carries code.
+func IsErrorCode(err error, code string) bool {
+	return code != "" && ToErrorResponse(err).Code == code
+}
+
+// The error codes and messages the admin API answers with.
+const (
+	// AdminSelfLockoutErrorCode is the ErrorResponse.Code that the server
+	// sends, with HTTP 403, when an IAM change would remove the caller's own
+	// IAM admin access.
+	AdminSelfLockoutErrorCode = "XMinioAdminSelfLockout"
+
+	// AdminSelfLockoutMessage is the message the server sends with
+	// AdminSelfLockoutErrorCode. A caller can show it when
+	// ErrorResponse.Message is empty.
+	AdminSelfLockoutMessage = "This operation would remove your own access"
+)
+
+// IsAdminSelfLockout reports whether err carries AdminSelfLockoutErrorCode.
+func IsAdminSelfLockout(err error) bool {
+	return IsErrorCode(err, AdminSelfLockoutErrorCode)
 }
 
 // ErrInvalidArgument - Invalid argument response.
