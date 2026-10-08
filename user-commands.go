@@ -615,6 +615,10 @@ type ServiceAccountInfo struct {
 	Name          string     `json:"name,omitempty"`
 	Description   string     `json:"description,omitempty"`
 	Expiration    *time.Time `json:"expiration,omitempty"`
+	// Protected is set when the server manages this account and refuses
+	// to delete it, such as the site replicator while site replication
+	// is enabled.
+	Protected bool `json:"protected,omitempty"`
 }
 
 // ListServiceAccountsResp is the response body of the list service accounts call
