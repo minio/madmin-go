@@ -459,7 +459,7 @@ func TestListFilesExportsRequest(t *testing.T) {
 	if len(got.Exports) != 3 {
 		t.Fatalf("exports = %+v, want 3", got.Exports)
 	}
-	if gina := got.Exports[2]; gina.Status != FilesExportRemoving || gina.Generation != "5e9d31" || gina.Applied {
+	if gina := got.Exports[2]; gina.Status != FilesExportRemoving || gina.Generation != "5e9d31" || gina.Applied == nil || *gina.Applied {
 		t.Errorf("gina = %+v, want a removing export at generation 5e9d31 not yet applied", gina)
 	}
 	carol, frank := got.Exports[0], got.Exports[1]
@@ -518,7 +518,7 @@ func TestGetFilesExportRequest(t *testing.T) {
 
 		want := FilesExport{
 			Name: "carol", ExportID: 104, Generation: "5f2c44", Pseudo: "/home/carol", Node: "node03.example.com",
-			Status: FilesExportServing, Applied: true, AccessType: FilesAccessRW, Squash: FilesSquashRoot, QuotaBytes: 21474836480,
+			Status: FilesExportServing, Applied: filesBool(true), AccessType: FilesAccessRW, Squash: FilesSquashRoot, QuotaBytes: 21474836480,
 			AccessRules: mustFilesRules("10.20.9.0/24 none\n" +
 				"10.20.4.7,10.20.4.8 rw\n" +
 				"*.corp.example.com,10.20.0.0/16 ro\n").All(),
@@ -1339,9 +1339,10 @@ func TestFilesWriteRepeatReturnsConflict(t *testing.T) {
 }
 
 // TestRemoveFilesExportRepeatMeetsModified verifies that a repeated remove
-// answered with a 412 stays an error and is never reported as AlreadyRemoved:
-// the export may have been added again under the same name after the first
-// attempt removed it, and a late request must not claim to have removed it.
+// answered with a 412 stays an error and is never reported as AlreadyRemoved
+// when the export is still there: it may have been added again under the
+// same name after the first attempt removed it, and a late request must not
+// claim to have removed it.
 func TestRemoveFilesExportRepeatMeetsModified(t *testing.T) {
 	server, writes, reads := newFilesScriptedServer(t, filesCarol, filesDropped, filesModified)
 	got, err := newFilesExportsTestClient(t, server.URL).RemoveFilesExport(context.Background(),
@@ -1352,8 +1353,9 @@ func TestRemoveFilesExportRepeatMeetsModified(t *testing.T) {
 	if n := writes.Load(); n != 2 {
 		t.Errorf("the server received %d writes, want 2", n)
 	}
-	if n := reads.Load(); n != 0 {
-		t.Errorf("the client read the export %d times, want 0", n)
+	// The read finds the export at another generation, so the conflict stands.
+	if n := reads.Load(); n != 1 {
+		t.Errorf("the client read the export %d times, want 1", n)
 	}
 }
 
@@ -1695,11 +1697,378 @@ func TestFilesWriteErrorCode(t *testing.T) {
 		{http.StatusUnprocessableEntity, FilesErrNodeRefused, quota},
 	} {
 		server, seen := newFilesJSONServer(t, tc.status, `{"code": "`+tc.code+`", "message": "refused"}`)
-		if err := tc.call(newFilesExportsTestClient(t, server.URL)); ToErrorResponse(err).Code != tc.code {
-			t.Errorf("err = %v, want code %s", err, tc.code)
+		err := tc.call(newFilesExportsTestClient(t, server.URL))
+		if resp := ToErrorResponse(err); resp.Code != tc.code || resp.StatusCode != tc.status {
+			t.Errorf("err = %v, status %d, want code %s, status %d", err, resp.StatusCode, tc.code, tc.status)
 		}
 		if len(*seen) != 1 {
 			t.Errorf("%s: the server received %d requests, want 1", tc.code, len(*seen))
 		}
 	}
+}
+
+// filesReadAt is a read of export 104 holding quota and rules, at applied,
+// with refusal, whose last change was decided at changedAt. A serving export
+// is at generation 5f2c44, and a removing one at changedAt, which a remove
+// keeps.
+func filesReadAt(quota uint64, rules string, applied bool, refusal string, changedAt FilesGeneration, status FilesExportPhase) filesScriptedReply {
+	if rules == "" {
+		rules = "[]"
+	}
+	generation := FilesGeneration("5f2c44")
+	if status == FilesExportRemoving {
+		generation = changedAt
+	}
+	return filesScriptedReply{http.StatusOK, fmt.Sprintf(`{"name": "carol", "exportID": 104, "generation": %q, "changedAt": %q,
+		"node": "node03", "status": %q, "quotaBytes": %d, "accessRules": %s, "applied": %t, "refusal": %q}`,
+		generation, changedAt, status, quota, rules, applied, refusal)}
+}
+
+// filesWrittenAt is the generation filesWritesByID names, and filesOtherAt
+// one another caller's change was decided at.
+const (
+	filesWrittenAt FilesGeneration = "5f2a91"
+	filesOtherAt   FilesGeneration = "5f2b07"
+)
+
+const filesCatchAllRules = `[{"clients": ["*"], "accessType": "rw"}]`
+
+// filesWritesByID calls the quota and access writes on export 104, by id,
+// asking for a limit of 1 and the rule "* rw". A reconciled reply carries no
+// generation, though the read has one: it may include another caller's write.
+func filesWritesByID(ctx context.Context, client *AdminClient) map[string]func() (bool, error) {
+	rules := mustFilesRules("* rw")
+	return map[string]func() (bool, error){
+		"quota": func() (bool, error) {
+			change, err := client.SetFilesExportQuota(ctx, "104", "5f2a91", 1)
+			return change.Reconciled && change.Generation == "" && change.CurrentBytes == 1 && change.ExportID == 104, err
+		},
+		"access": func() (bool, error) {
+			change, err := client.SetFilesExportAccess(ctx, "104", "5f2a91", rules)
+			return change.Reconciled && change.Generation == "" && change.RuleCount == 1 && change.ExportID == 104, err
+		},
+		"clear": func() (bool, error) {
+			change, err := client.ClearFilesExportAccess(ctx, "104", "5f2a91")
+			return change.Reconciled && change.Generation == "" && change.RuleCount == 0 && change.ExportID == 104, err
+		},
+	}
+}
+
+// TestFilesWriteReconcilesByRead verifies that a quota or access write that
+// fails once an attempt's outcome was unknown reads the export by id: an
+// export holding the change, taken by its node, is a success marked
+// Reconciled; one its node has not taken is a FilesNotAppliedError carrying
+// the node's refusal only when its last change was decided at the generation
+// the write named and is not a remove; any other export leaves the write's own
+// error.
+func TestFilesWriteReconcilesByRead(t *testing.T) {
+	internalError := filesScriptedReply{http.StatusInternalServerError, `{"code": "InternalError", "message": "internal error"}`}
+	nodeRefused := filesScriptedReply{http.StatusUnprocessableEntity, `{"code": "NodeRefused", "message": "unknown host build01"}`}
+	for _, tc := range []struct {
+		name string
+		// held says whether the read holds each write's change: a limit of
+		// 1, the rule "* rw", and, for a clear, no rule.
+		held      bool
+		applied   bool
+		refusal   string
+		changedAt FilesGeneration
+		status    FilesExportPhase
+		last      filesScriptedReply
+		// want is the code the call ends in, and empty for a success.
+		want string
+	}{
+		{"modified_applied", true, true, "", filesOtherAt, FilesExportServing, filesModified, ""},
+		// After a 412 the change not taken was decided at the write's
+		// generation, so it is this change, or one identical to it.
+		{"modified_not_applied", true, false, "", filesWrittenAt, FilesExportServing, filesModified, FilesErrChangeNotApplied},
+		// Another write landed after this one: the change not taken, and its
+		// refusal, are that write's.
+		{"modified_other_refused", true, false, "unknown host build01", filesOtherAt, FilesExportServing, filesModified, FilesErrExportModified},
+		{"internal_refused", true, false, "unknown host build01", filesWrittenAt, FilesExportServing, internalError, FilesErrChangeNotApplied},
+		{"internal_pending", true, false, "", filesWrittenAt, FilesExportServing, internalError, FilesErrChangeNotApplied},
+		{"internal_other_pending", true, false, "", filesOtherAt, FilesExportServing, internalError, FilesErrInternalError},
+		// Another caller removed the export at the generation this write
+		// named, which already held its change: the pending change is the
+		// remove.
+		{"internal_other_removing", true, false, "", filesWrittenAt, FilesExportRemoving, internalError, FilesErrInternalError},
+		// A repeat of a recorded change meets the node's refusal too, and the
+		// change stays recorded.
+		{"node_refused_replay", true, false, "unknown host build01", filesWrittenAt, FilesExportServing, nodeRefused, FilesErrChangeNotApplied},
+		// A first request the node refused records nothing.
+		{"node_refused_fresh", false, true, "", filesOtherAt, FilesExportServing, nodeRefused, FilesErrNodeRefused},
+		{"modified_elsewhere", false, true, "", filesOtherAt, FilesExportServing, filesModified, FilesErrExportModified},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Parallel()
+			for _, name := range []string{"quota", "access", "clear"} {
+				quota, rules := uint64(7), `[{"clients": ["10.1.2.9"], "accessType": "ro"}]`
+				if tc.held {
+					quota, rules = 1, filesCatchAllRules
+					if name == "clear" {
+						rules = "[]"
+					}
+				}
+				server, writes, reads := newFilesScriptedServer(t, filesReadAt(quota, rules, tc.applied, tc.refusal, tc.changedAt, tc.status), filesDropped, tc.last)
+				ok, err := filesWritesByID(context.Background(), newFilesExportsTestClient(t, server.URL))[name]()
+				switch {
+				case tc.want == "" && (err != nil || !ok):
+					t.Errorf("%s: ok = %v, err = %v, want a reconciled success", name, ok, err)
+				case tc.want != "" && ToErrorResponse(err).Code != tc.want:
+					t.Errorf("%s: err = %v, want code %s", name, err, tc.want)
+				}
+				if tc.want == FilesErrExportModified {
+					var modified FilesExportModifiedError
+					if !errors.As(err, &modified) {
+						t.Errorf("%s: err = %#v, want the FilesExportModifiedError", name, err)
+					}
+				}
+				if tc.want == FilesErrChangeNotApplied {
+					var notApplied FilesNotAppliedError
+					if !errors.As(err, &notApplied) || notApplied.Export.Node != "node03" || notApplied.Export.Refusal != tc.refusal {
+						t.Errorf("%s: err = %#v, want the export as read", name, err)
+					}
+					if !strings.Contains(err.Error(), "node03") || !strings.Contains(err.Error(), tc.refusal) {
+						t.Errorf("%s: message %q, want the node and its reason", name, err)
+					}
+					if code := ToErrorResponse(notApplied.Cause).Code; code != ToErrorResponse(httpRespToErrorResponseFor(tc.last)).Code {
+						t.Errorf("%s: cause code = %q, want the last answer's", name, code)
+					}
+					var modified FilesExportModifiedError
+					if errors.As(err, &modified) {
+						t.Errorf("%s: err = %#v reads as a FilesExportModifiedError, want only ChangeNotApplied", name, err)
+					}
+				}
+				if writes.Load() != 2 || reads.Load() != 1 {
+					t.Errorf("%s: %d writes and %d reads, want 2 and 1", name, writes.Load(), reads.Load())
+				}
+			}
+		})
+	}
+}
+
+// TestFilesErrorStatusCode verifies that an error carries the status it was
+// answered with, also when the body is not an error document, as a proxy's
+// is not.
+func TestFilesErrorStatusCode(t *testing.T) {
+	for _, reply := range []filesScriptedReply{
+		{http.StatusNotFound, `404 page not found`},
+		{http.StatusBadGateway, `<html>bad gateway</html>`},
+		{http.StatusForbidden, `{"Code": "InvalidAccessKeyId", "Message": "denied"}`},
+	} {
+		if got := ToErrorResponse(httpRespToErrorResponseFor(reply)).StatusCode; got != reply.status {
+			t.Errorf("%s: status = %d, want %d", reply.body, got, reply.status)
+		}
+	}
+	if out, _ := json.Marshal(ErrorResponse{Code: "SlowDown", StatusCode: http.StatusServiceUnavailable}); strings.Contains(string(out), "503") {
+		t.Errorf("the status is encoded: %s", out)
+	}
+}
+
+// httpRespToErrorResponseFor decodes reply as the client decodes an answer.
+func httpRespToErrorResponseFor(reply filesScriptedReply) error {
+	return httpRespToErrorResponse(&http.Response{StatusCode: reply.status, Body: io.NopCloser(strings.NewReader(reply.body))})
+}
+
+// TestFilesWriteReconcilesLastUnknown verifies that a write whose repeats ran
+// out on answers that leave the outcome unknown reads the export too.
+func TestFilesWriteReconcilesLastUnknown(t *testing.T) {
+	saved := MaxRetry
+	MaxRetry = 1
+	t.Cleanup(func() { MaxRetry = saved })
+
+	gatewayTimeout := filesScriptedReply{http.StatusGatewayTimeout, `gateway timeout`}
+	for _, last := range []filesScriptedReply{gatewayTimeout, filesDropped} {
+		server, _, reads := newFilesScriptedServer(t, filesReadAt(1, filesCatchAllRules, true, "", filesWrittenAt, FilesExportServing), last)
+		ok, err := filesWritesByID(context.Background(), newFilesExportsTestClient(t, server.URL))["quota"]()
+		if err != nil || !ok {
+			t.Errorf("%d: ok = %v, err = %v, want a reconciled success", last.status, ok, err)
+		}
+		if reads.Load() != 1 {
+			t.Errorf("%d: %d reads, want 1", last.status, reads.Load())
+		}
+	}
+
+	// A server that does not report applied cannot say the node has not
+	// taken the change, so a read holding it is the write's success.
+	unreported := filesScriptedReply{http.StatusOK, `{"name": "carol", "exportID": 104, "generation": "5f2c44",
+		"changedAt": "` + string(filesWrittenAt) + `", "node": "node03", "status": "serving", "quotaBytes": 1, "accessRules": []}`}
+	server, _, reads := newFilesScriptedServer(t, unreported, gatewayTimeout)
+	ok, err := filesWritesByID(context.Background(), newFilesExportsTestClient(t, server.URL))["quota"]()
+	if err != nil || !ok || reads.Load() != 1 {
+		t.Errorf("applied unreported: ok = %v, err = %v, %d reads, want a reconciled success", ok, err, reads.Load())
+	}
+}
+
+// TestFilesWriteReconcileSkips verifies the cases with no read: a refusal the
+// server answers before acting, an export named by name, whose read could find
+// another export added under that name, and a first attempt.
+func TestFilesWriteReconcileSkips(t *testing.T) {
+	removing := filesScriptedReply{http.StatusConflict, `{"code": "ExportRemoving", "message": "being removed"}`}
+	read := filesReadAt(1, filesCatchAllRules, true, "", filesWrittenAt, FilesExportServing)
+
+	// A node refusal on a first attempt is the server's answer for the
+	// change, which it did not record.
+	nodeRefused := filesScriptedReply{http.StatusUnprocessableEntity, `{"code": "NodeRefused", "message": "unknown host build01"}`}
+	for _, name := range []string{"quota", "access", "clear", "remove"} {
+		server, _, reads := newFilesScriptedServer(t, filesReadAt(1, filesCatchAllRules, false, "unknown host build01", filesWrittenAt, FilesExportServing), nodeRefused)
+		client := newFilesExportsTestClient(t, server.URL)
+		var err error
+		if name == "remove" {
+			_, err = client.RemoveFilesExport(context.Background(), "104", "5f2a91", FilesRemoveOptions{})
+		} else {
+			_, err = filesWritesByID(context.Background(), client)[name]()
+		}
+		if ToErrorResponse(err).Code != FilesErrNodeRefused {
+			t.Errorf("%s node refusal: err = %v, want code %s", name, err, FilesErrNodeRefused)
+		}
+		if reads.Load() != 0 {
+			t.Errorf("%s node refusal: %d reads, want 0", name, reads.Load())
+		}
+	}
+
+	server, _, reads := newFilesScriptedServer(t, read, filesDropped, removing)
+	if _, err := filesWritesByID(context.Background(), newFilesExportsTestClient(t, server.URL))["quota"](); ToErrorResponse(err).Code != FilesErrExportRemoving {
+		t.Errorf("refusal: err = %v", err)
+	}
+	server2, _, reads2 := newFilesScriptedServer(t, read, filesDropped, filesModified)
+	if _, err := newFilesExportsTestClient(t, server2.URL).SetFilesExportQuota(context.Background(), "carol", "5f2a91", 1); ToErrorResponse(err).Code != FilesErrExportModified {
+		t.Errorf("name: err = %v", err)
+	}
+	server3, _, reads3 := newFilesScriptedServer(t, read, filesModified)
+	if _, err := filesWritesByID(context.Background(), newFilesExportsTestClient(t, server3.URL))["quota"](); ToErrorResponse(err).Code != FilesErrExportModified {
+		t.Errorf("first attempt: err = %v", err)
+	}
+	if n := reads.Load() + reads2.Load() + reads3.Load(); n != 0 {
+		t.Errorf("the client read the export %d times, want 0", n)
+	}
+}
+
+// TestRemoveFilesExportReconciles verifies that a remove that fails once an
+// attempt's outcome was unknown reads the export: gone is AlreadyRemoved, and
+// removing at the generation the remove named, with the Purge it asked for, is
+// a FilesNotAppliedError, by name too, while removing at another generation or
+// with another Purge leaves the write's error.
+func TestRemoveFilesExportReconciles(t *testing.T) {
+	saved := MaxRetry
+	MaxRetry = 2
+	t.Cleanup(func() { MaxRetry = saved })
+
+	internalError := filesScriptedReply{http.StatusInternalServerError, `{"code": "InternalError", "message": "internal error"}`}
+	nodeRefused := filesScriptedReply{http.StatusUnprocessableEntity, `{"code": "NodeRefused", "message": "config refused"}`}
+	removingAt := func(generation string, purge bool) filesScriptedReply {
+		return filesScriptedReply{http.StatusOK, fmt.Sprintf(`{"name": "carol", "exportID": 104, "generation": %q, "changedAt": %[1]q,
+			"node": "node03", "status": "removing", "purge": %t, "refusal": "config refused"}`, generation, purge)}
+	}
+	gatewayTimeout := filesScriptedReply{http.StatusGatewayTimeout, `gateway timeout`}
+	for _, tc := range []struct {
+		name  string
+		purge bool
+		read  filesScriptedReply
+		last  filesScriptedReply
+		want  string
+		freed bool
+	}{
+		{"internal_removing", false, removingAt("5f2a91", false), internalError, FilesErrChangeNotApplied, false},
+		{"internal_purging", true, removingAt("5f2a91", true), internalError, FilesErrChangeNotApplied, false},
+		// Another caller removed the export at the same generation without
+		// Purge: no purge is recorded.
+		{"internal_other_purge", true, removingAt("5f2a91", false), internalError, FilesErrInternalError, false},
+		{"internal_other_generation", false, removingAt("5f2d13", false), internalError, FilesErrInternalError, false},
+		// A repeat of a recorded remove meets the node's refusal too, and the
+		// remove stays recorded.
+		{"node_refused_replay", true, removingAt("5f2a91", true), nodeRefused, FilesErrChangeNotApplied, false},
+		{"timed_out_gone", false, filesNotFound, gatewayTimeout, "", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			server, _, reads := newFilesScriptedServer(t, tc.read, filesDropped, tc.last)
+			got, err := newFilesExportsTestClient(t, server.URL).RemoveFilesExport(context.Background(), "carol", "5f2a91", FilesRemoveOptions{Force: true, Purge: tc.purge})
+			if tc.freed {
+				if err != nil || !got.AlreadyRemoved {
+					t.Errorf("reply = %+v, err = %v, want AlreadyRemoved", got, err)
+				}
+			} else if ToErrorResponse(err).Code != tc.want {
+				t.Errorf("err = %v, want code %s", err, tc.want)
+			}
+			if reads.Load() != 1 {
+				t.Errorf("%d reads, want 1", reads.Load())
+			}
+		})
+	}
+}
+
+// TestFilesWriteReconcileReadsOnce verifies that the read after a write whose
+// outcome is unknown is sent once, though GetFilesExport repeats a read after
+// these answers: the write has used up its own repeats, and a failed read
+// leaves the write's error.
+func TestFilesWriteReconcileReadsOnce(t *testing.T) {
+	internalError := filesScriptedReply{http.StatusInternalServerError, `{"code": "InternalError", "message": "internal error"}`}
+	unavailable := filesScriptedReply{http.StatusServiceUnavailable, `{"code": "SlowDown", "message": "slow down"}`}
+	gatewayTimeout := filesScriptedReply{http.StatusGatewayTimeout, `gateway timeout`}
+	for _, read := range []filesScriptedReply{unavailable, gatewayTimeout} {
+		server, writes, reads := newFilesScriptedServer(t, read, filesDropped, internalError)
+		client := newFilesExportsTestClient(t, server.URL)
+		if _, err := filesWritesByID(context.Background(), client)["quota"](); ToErrorResponse(err).Code != FilesErrInternalError {
+			t.Errorf("quota after read %d: err = %v, want code %s", read.status, err, FilesErrInternalError)
+		}
+		writes.Store(0)
+		if _, err := client.RemoveFilesExport(context.Background(), "104", "5f2a91", FilesRemoveOptions{}); ToErrorResponse(err).Code != FilesErrInternalError {
+			t.Errorf("remove after read %d: err = %v, want code %s", read.status, err, FilesErrInternalError)
+		}
+		if n := reads.Load(); n != 2 {
+			t.Errorf("read %d: %d reads, want one per write", read.status, n)
+		}
+	}
+}
+
+// TestFilesRefusedBeforeActing verifies the codes a caller may take as
+// settled: the server answered before acting, or said the change is recorded.
+func TestFilesRefusedBeforeActing(t *testing.T) {
+	for _, code := range []string{FilesErrInvalidRequest, FilesErrExportAlreadyExists, FilesErrNotImplemented, FilesErrNodeUnreachable} {
+		if !FilesRefusedBeforeActing(code) {
+			t.Errorf("%s: not refused before acting", code)
+		}
+	}
+	for _, code := range []string{FilesErrNodeRefused, FilesErrExportModified, FilesErrInternalError, "SlowDown", ""} {
+		if FilesRefusedBeforeActing(code) {
+			t.Errorf("%q: refused before acting, but may follow an attempt that took effect", code)
+		}
+	}
+}
+
+// TestFilesExportRefusal verifies that a read carries the node's refusal.
+func TestFilesExportRefusal(t *testing.T) {
+	var export FilesExport
+	if err := json.Unmarshal([]byte(`{"name": "carol", "applied": false, "refusal": "unknown host build01"}`), &export); err != nil {
+		t.Fatal(err)
+	}
+	if export.Refusal != "unknown host build01" || export.Applied == nil || *export.Applied {
+		t.Errorf("export = %+v", export)
+	}
+	if out, _ := json.Marshal(FilesExport{Applied: filesBool(true)}); strings.Contains(string(out), "refusal") {
+		t.Errorf("an export with no refusal encodes %s", out)
+	}
+}
+
+// TestFilesExportAppliedUnreported verifies that a server that does not report
+// applied leaves it unknown rather than false, and that false is kept apart
+// from unknown when encoding.
+func TestFilesExportAppliedUnreported(t *testing.T) {
+	var export FilesExport
+	if err := json.Unmarshal([]byte(`{"name": "carol", "status": "serving"}`), &export); err != nil {
+		t.Fatal(err)
+	}
+	if export.Applied != nil {
+		t.Errorf("applied = %v, want nil when the server does not report it", *export.Applied)
+	}
+	if out, _ := json.Marshal(FilesExport{}); strings.Contains(string(out), "applied") {
+		t.Errorf("an export with applied unknown encodes %s", out)
+	}
+	if out, _ := json.Marshal(FilesExport{Applied: filesBool(false)}); !strings.Contains(string(out), `"applied":false`) {
+		t.Errorf("an export not applied encodes %s", out)
+	}
+}
+
+// filesBool returns a pointer to b.
+func filesBool(b bool) *bool {
+	return &b
 }
