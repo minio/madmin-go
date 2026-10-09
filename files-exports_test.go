@@ -1833,6 +1833,10 @@ func TestFilesWriteReconcilesByRead(t *testing.T) {
 					if code := ToErrorResponse(notApplied.Cause).Code; code != ToErrorResponse(httpRespToErrorResponseFor(tc.last)).Code {
 						t.Errorf("%s: cause code = %q, want the last answer's", name, code)
 					}
+					var modified FilesExportModifiedError
+					if errors.As(err, &modified) {
+						t.Errorf("%s: err = %#v reads as a FilesExportModifiedError, want only ChangeNotApplied", name, err)
+					}
 				}
 				if writes.Load() != 2 || reads.Load() != 1 {
 					t.Errorf("%s: %d writes and %d reads, want 2 and 1", name, writes.Load(), reads.Load())

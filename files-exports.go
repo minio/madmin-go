@@ -428,14 +428,16 @@ type FilesNotAppliedError struct {
 	// the change, and Refusal carries its reason when it refused it.
 	Export FilesExport
 
-	// Cause is the error the write ended with before the read.
+	// Cause is the error the write ended with before the read. Unwrap does not
+	// return it: a 412 there would make errors.As report a conflict for a
+	// change that is already recorded.
 	Cause error `json:"-"`
 }
 
-// Unwrap returns the ErrorResponse and the write's own error, so errors.As
-// and errors.Is find either.
-func (e FilesNotAppliedError) Unwrap() []error {
-	return []error{e.ErrorResponse, e.Cause}
+// Unwrap returns the ErrorResponse, so errors.As finds it, and agrees with
+// ToErrorResponse. The write's own error is in Cause.
+func (e FilesNotAppliedError) Unwrap() error {
+	return e.ErrorResponse
 }
 
 // newFilesNotApplied builds the error for a change after recorded but not
