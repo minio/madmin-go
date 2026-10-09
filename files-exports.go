@@ -525,8 +525,9 @@ type FilesExport struct {
 	// Applied is false while the node has not taken the export's last change,
 	// for example after a write answered FilesErrNodeUnreachable. The
 	// configuration shown is then what AIStor will send the node, not what the
-	// node enforces.
-	Applied bool `json:"applied"`
+	// node enforces. It is nil when the server does not report it, as one
+	// older than the field does: that is unknown, not false.
+	Applied *bool `json:"applied,omitempty"`
 
 	// Refusal is the node's reason when it refused the config that carries
 	// the export's last change, so Applied stays false until the cause is
@@ -1058,7 +1059,7 @@ func (adm *AdminClient) RemoveFilesExport(ctx context.Context, export string, ge
 			result = FilesRemoveResult{AlreadyRemoved: true}
 			return nil
 		}
-		if filesRefusedBeforeActing(code) {
+		if FilesRefusedBeforeActing(code) {
 			return err
 		}
 		after, readErr := adm.filesReadAfterWrite(ctx, export)
@@ -1134,13 +1135,14 @@ func validFilesGeneration(g FilesGeneration) bool {
 // by its node.
 type filesReconciler func(ctx context.Context, err error) error
 
-// filesRefusedBeforeActing reports whether a write's error code is a refusal
+// FilesRefusedBeforeActing reports whether a write's error code is a refusal
 // the server answers before it acts, which leaves the export as it was, or
 // an answer a read adds nothing to. Any other failure, a conflict, a node
 // refusal, a 5xx or a transport error, may follow an attempt that took effect.
 // FilesErrNodeUnreachable is here because the server has said the change is
-// recorded.
-func filesRefusedBeforeActing(code string) bool {
+// recorded; for an add, which it refuses, that means nothing was created.
+// FilesErrNotImplemented is a 5xx the server sends without acting.
+func FilesRefusedBeforeActing(code string) bool {
 	switch code {
 	case FilesErrInvalidRequest, FilesErrAccessDenied, FilesErrExportNotFound,
 		FilesErrExportAlreadyExists, FilesErrExportIDsExhausted, FilesErrExportInUse,
@@ -1165,14 +1167,16 @@ func filesRefusedBeforeActing(code string) bool {
 // a remove, which keeps its generation and so also reads ChangedAt equal to
 // it.
 func (adm *AdminClient) filesReconcileChange(ctx context.Context, export string, generation FilesGeneration, err error, holds func(FilesExport) bool) (FilesExport, error) {
-	if filesRefusedBeforeActing(ToErrorResponse(err).Code) || strings.Trim(export, "0123456789") != "" {
+	if FilesRefusedBeforeActing(ToErrorResponse(err).Code) || strings.Trim(export, "0123456789") != "" {
 		return FilesExport{}, err
 	}
 	after, readErr := adm.filesReadAfterWrite(ctx, export)
 	switch {
 	case readErr != nil || !holds(after):
 		return FilesExport{}, err
-	case after.Applied:
+	case after.Applied == nil || *after.Applied:
+		// A server that does not report Applied predates a node taking a
+		// change apart from recording it.
 		return after, nil
 	case after.ChangedAt == generation && after.Status != FilesExportRemoving:
 		return FilesExport{}, newFilesNotApplied(err, after)

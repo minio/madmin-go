@@ -459,7 +459,7 @@ func TestListFilesExportsRequest(t *testing.T) {
 	if len(got.Exports) != 3 {
 		t.Fatalf("exports = %+v, want 3", got.Exports)
 	}
-	if gina := got.Exports[2]; gina.Status != FilesExportRemoving || gina.Generation != "5e9d31" || gina.Applied {
+	if gina := got.Exports[2]; gina.Status != FilesExportRemoving || gina.Generation != "5e9d31" || gina.Applied == nil || *gina.Applied {
 		t.Errorf("gina = %+v, want a removing export at generation 5e9d31 not yet applied", gina)
 	}
 	carol, frank := got.Exports[0], got.Exports[1]
@@ -518,7 +518,7 @@ func TestGetFilesExportRequest(t *testing.T) {
 
 		want := FilesExport{
 			Name: "carol", ExportID: 104, Generation: "5f2c44", Pseudo: "/home/carol", Node: "node03.example.com",
-			Status: FilesExportServing, Applied: true, AccessType: FilesAccessRW, Squash: FilesSquashRoot, QuotaBytes: 21474836480,
+			Status: FilesExportServing, Applied: filesBool(true), AccessType: FilesAccessRW, Squash: FilesSquashRoot, QuotaBytes: 21474836480,
 			AccessRules: mustFilesRules("10.20.9.0/24 none\n" +
 				"10.20.4.7,10.20.4.8 rw\n" +
 				"*.corp.example.com,10.20.0.0/16 ro\n").All(),
@@ -1697,8 +1697,9 @@ func TestFilesWriteErrorCode(t *testing.T) {
 		{http.StatusUnprocessableEntity, FilesErrNodeRefused, quota},
 	} {
 		server, seen := newFilesJSONServer(t, tc.status, `{"code": "`+tc.code+`", "message": "refused"}`)
-		if err := tc.call(newFilesExportsTestClient(t, server.URL)); ToErrorResponse(err).Code != tc.code {
-			t.Errorf("err = %v, want code %s", err, tc.code)
+		err := tc.call(newFilesExportsTestClient(t, server.URL))
+		if resp := ToErrorResponse(err); resp.Code != tc.code || resp.StatusCode != tc.status {
+			t.Errorf("err = %v, status %d, want code %s, status %d", err, resp.StatusCode, tc.code, tc.status)
 		}
 		if len(*seen) != 1 {
 			t.Errorf("%s: the server received %d requests, want 1", tc.code, len(*seen))
@@ -1841,6 +1842,24 @@ func TestFilesWriteReconcilesByRead(t *testing.T) {
 	}
 }
 
+// TestFilesErrorStatusCode verifies that an error carries the status it was
+// answered with, also when the body is not an error document, as a proxy's
+// is not.
+func TestFilesErrorStatusCode(t *testing.T) {
+	for _, reply := range []filesScriptedReply{
+		{http.StatusNotFound, `404 page not found`},
+		{http.StatusBadGateway, `<html>bad gateway</html>`},
+		{http.StatusForbidden, `{"Code": "InvalidAccessKeyId", "Message": "denied"}`},
+	} {
+		if got := ToErrorResponse(httpRespToErrorResponseFor(reply)).StatusCode; got != reply.status {
+			t.Errorf("%s: status = %d, want %d", reply.body, got, reply.status)
+		}
+	}
+	if out, _ := json.Marshal(ErrorResponse{Code: "SlowDown", StatusCode: http.StatusServiceUnavailable}); strings.Contains(string(out), "503") {
+		t.Errorf("the status is encoded: %s", out)
+	}
+}
+
 // httpRespToErrorResponseFor decodes reply as the client decodes an answer.
 func httpRespToErrorResponseFor(reply filesScriptedReply) error {
 	return httpRespToErrorResponse(&http.Response{StatusCode: reply.status, Body: io.NopCloser(strings.NewReader(reply.body))})
@@ -1863,6 +1882,16 @@ func TestFilesWriteReconcilesLastUnknown(t *testing.T) {
 		if reads.Load() != 1 {
 			t.Errorf("%d: %d reads, want 1", last.status, reads.Load())
 		}
+	}
+
+	// A server that does not report applied cannot say the node has not
+	// taken the change, so a read holding it is the write's success.
+	unreported := filesScriptedReply{http.StatusOK, `{"name": "carol", "exportID": 104, "generation": "5f2c44",
+		"changedAt": "` + string(filesWrittenAt) + `", "node": "node03", "status": "serving", "quotaBytes": 1, "accessRules": []}`}
+	server, _, reads := newFilesScriptedServer(t, unreported, gatewayTimeout)
+	ok, err := filesWritesByID(context.Background(), newFilesExportsTestClient(t, server.URL))["quota"]()
+	if err != nil || !ok || reads.Load() != 1 {
+		t.Errorf("applied unreported: ok = %v, err = %v, %d reads, want a reconciled success", ok, err, reads.Load())
 	}
 }
 
@@ -1987,16 +2016,55 @@ func TestFilesWriteReconcileReadsOnce(t *testing.T) {
 	}
 }
 
+// TestFilesRefusedBeforeActing verifies the codes a caller may take as
+// settled: the server answered before acting, or said the change is recorded.
+func TestFilesRefusedBeforeActing(t *testing.T) {
+	for _, code := range []string{FilesErrInvalidRequest, FilesErrExportAlreadyExists, FilesErrNotImplemented, FilesErrNodeUnreachable} {
+		if !FilesRefusedBeforeActing(code) {
+			t.Errorf("%s: not refused before acting", code)
+		}
+	}
+	for _, code := range []string{FilesErrNodeRefused, FilesErrExportModified, FilesErrInternalError, "SlowDown", ""} {
+		if FilesRefusedBeforeActing(code) {
+			t.Errorf("%q: refused before acting, but may follow an attempt that took effect", code)
+		}
+	}
+}
+
 // TestFilesExportRefusal verifies that a read carries the node's refusal.
 func TestFilesExportRefusal(t *testing.T) {
 	var export FilesExport
 	if err := json.Unmarshal([]byte(`{"name": "carol", "applied": false, "refusal": "unknown host build01"}`), &export); err != nil {
 		t.Fatal(err)
 	}
-	if export.Refusal != "unknown host build01" || export.Applied {
+	if export.Refusal != "unknown host build01" || export.Applied == nil || *export.Applied {
 		t.Errorf("export = %+v", export)
 	}
-	if out, _ := json.Marshal(FilesExport{Applied: true}); strings.Contains(string(out), "refusal") {
+	if out, _ := json.Marshal(FilesExport{Applied: filesBool(true)}); strings.Contains(string(out), "refusal") {
 		t.Errorf("an export with no refusal encodes %s", out)
 	}
+}
+
+// TestFilesExportAppliedUnreported verifies that a server that does not report
+// applied leaves it unknown rather than false, and that false is kept apart
+// from unknown when encoding.
+func TestFilesExportAppliedUnreported(t *testing.T) {
+	var export FilesExport
+	if err := json.Unmarshal([]byte(`{"name": "carol", "status": "serving"}`), &export); err != nil {
+		t.Fatal(err)
+	}
+	if export.Applied != nil {
+		t.Errorf("applied = %v, want nil when the server does not report it", *export.Applied)
+	}
+	if out, _ := json.Marshal(FilesExport{}); strings.Contains(string(out), "applied") {
+		t.Errorf("an export with applied unknown encodes %s", out)
+	}
+	if out, _ := json.Marshal(FilesExport{Applied: filesBool(false)}); !strings.Contains(string(out), `"applied":false`) {
+		t.Errorf("an export not applied encodes %s", out)
+	}
+}
+
+// filesBool returns a pointer to b.
+func filesBool(b bool) *bool {
+	return &b
 }
