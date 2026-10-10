@@ -20,10 +20,15 @@
 package madmin
 
 import (
+	"bytes"
+	"maps"
 	"reflect"
 	"slices"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/tinylib/msgp/msgp"
 )
 
 type Inner struct {
@@ -1097,5 +1102,210 @@ func TestSortSlice_ConcurrentSorts(t *testing.T) {
 	}
 	if items3[0].ID != 5 || items3[4].ID != 1 {
 		t.Errorf("items3 not sorted correctly")
+	}
+}
+
+// reasonEvalTime is a fixed, UTC, whole-second timestamp. msgp is generated with
+// -d "timezone utc", so decoded times come back in UTC; building the fixtures the
+// same way keeps reflect.DeepEqual comparisons honest rather than location-
+// sensitive, and avoids the monotonic reading time.Now() would carry.
+var reasonEvalTime = time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC)
+
+// smartInfoWithReason returns a fully populated SMARTInfo with a non-empty
+// LastStatusReason, so a round trip exercises the "lsr" key next to its
+// neighbours rather than on its own. The generated tests only cover the zero
+// value, where every omitempty field — LastStatusReason included — is skipped on
+// the wire.
+func smartInfoWithReason() SMARTInfo {
+	return SMARTInfo{
+		N:      3,
+		Status: map[string]int{"healthy": 2, "warning": 1},
+		LastStatusReason: map[string]StatusReason{
+			"warning": {Reason: "elevated media errors", CreatedAt: reasonEvalTime},
+			"healthy": {Reason: "all attributes within threshold", CreatedAt: reasonEvalTime.Add(-time.Hour)},
+		},
+		StatsN:          3,
+		Temperature:     111.5,
+		PowerOnHours:    42000,
+		PowerCycles:     57,
+		FailureRisk:     0.25,
+		MaxTemperature:  45.5,
+		MaxFailureRisk:  0.2,
+		MaxPowerOnHours: 15000,
+		MaxPowerCycles:  21,
+		DeviceType:      "nvme",
+		ModelNumber:     "SAMSUNG MZQL23T8HCLS-00A07",
+		SerialNumber:    "S64HNE0R000000",
+		FirmwareRev:     "GDC5902Q",
+	}
+}
+
+func TestSMARTInfoStatusReasonMarshalUnmarshal(t *testing.T) {
+	want := smartInfoWithReason()
+
+	bts, err := want.MarshalMsg(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var got SMARTInfo
+	left, err := got.UnmarshalMsg(bts)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(left) > 0 {
+		t.Errorf("%d bytes left over after UnmarshalMsg(): %q", len(left), left)
+	}
+	if !reflect.DeepEqual(got.LastStatusReason, want.LastStatusReason) {
+		t.Errorf("LastStatusReason: got %+v, want %+v", got.LastStatusReason, want.LastStatusReason)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("round trip mismatch:\n got %+v\nwant %+v", got, want)
+	}
+}
+
+func TestSMARTInfoStatusReasonEncodeDecode(t *testing.T) {
+	want := smartInfoWithReason()
+
+	var buf bytes.Buffer
+	en := msgp.NewWriter(&buf)
+	if err := want.EncodeMsg(en); err != nil {
+		t.Fatal(err)
+	}
+	if err := en.Flush(); err != nil {
+		t.Fatal(err)
+	}
+
+	var got SMARTInfo
+	if err := got.DecodeMsg(msgp.NewReader(&buf)); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got.LastStatusReason, want.LastStatusReason) {
+		t.Errorf("LastStatusReason: got %+v, want %+v", got.LastStatusReason, want.LastStatusReason)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("round trip mismatch:\n got %+v\nwant %+v", got, want)
+	}
+}
+
+// TestSMARTInfoStatusReasonClearedOnReuse pins the clearomitted contract for the
+// "lsr" key: LastStatusReason is omitempty, so an empty one is never written, and
+// both readers must reset it on a reused value rather than leave the previous
+// decode's reasons in place.
+func TestSMARTInfoStatusReasonClearedOnReuse(t *testing.T) {
+	src := SMARTInfo{N: 1, Status: map[string]int{"healthy": 1}}
+
+	bts, err := src.MarshalMsg(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	var buf bytes.Buffer
+	en := msgp.NewWriter(&buf)
+	if err := src.EncodeMsg(en); err != nil {
+		t.Fatal(err)
+	}
+	if err := en.Flush(); err != nil {
+		t.Fatal(err)
+	}
+	encoded := buf.Bytes()
+
+	t.Run("UnmarshalMsg", func(t *testing.T) {
+		reused := smartInfoWithReason()
+		if _, err := reused.UnmarshalMsg(bts); err != nil {
+			t.Fatal(err)
+		}
+		if len(reused.LastStatusReason) != 0 {
+			t.Errorf("LastStatusReason not cleared on reuse: got %+v, want empty", reused.LastStatusReason)
+		}
+	})
+
+	t.Run("DecodeMsg", func(t *testing.T) {
+		reused := smartInfoWithReason()
+		if err := reused.DecodeMsg(msgp.NewReader(bytes.NewReader(encoded))); err != nil {
+			t.Fatal(err)
+		}
+		if len(reused.LastStatusReason) != 0 {
+			t.Errorf("LastStatusReason not cleared on reuse: got %+v, want empty", reused.LastStatusReason)
+		}
+	})
+}
+
+// TestSMARTInfoMergeLastStatusReason covers the merge rules for the per-status
+// reason map: newest CreatedAt wins, a status absent from the receiver is
+// adopted regardless of its timestamp, and the result does not depend on the
+// order the two sides are merged in.
+func TestSMARTInfoMergeLastStatusReason(t *testing.T) {
+	older := reasonEvalTime.Add(-time.Hour)
+
+	tests := []struct {
+		name string
+		dst  map[string]StatusReason
+		src  map[string]StatusReason
+		want map[string]StatusReason
+	}{
+		{
+			name: "newer reason replaces older",
+			dst:  map[string]StatusReason{"warning": {Reason: "old", CreatedAt: older}},
+			src:  map[string]StatusReason{"warning": {Reason: "new", CreatedAt: reasonEvalTime}},
+			want: map[string]StatusReason{"warning": {Reason: "new", CreatedAt: reasonEvalTime}},
+		},
+		{
+			name: "older reason does not replace newer",
+			dst:  map[string]StatusReason{"warning": {Reason: "new", CreatedAt: reasonEvalTime}},
+			src:  map[string]StatusReason{"warning": {Reason: "old", CreatedAt: older}},
+			want: map[string]StatusReason{"warning": {Reason: "new", CreatedAt: reasonEvalTime}},
+		},
+		{
+			name: "distinct statuses are kept side by side",
+			dst:  map[string]StatusReason{"warning": {Reason: "media errors", CreatedAt: reasonEvalTime}},
+			src:  map[string]StatusReason{"critical": {Reason: "spare exhausted", CreatedAt: older}},
+			want: map[string]StatusReason{
+				"warning":  {Reason: "media errors", CreatedAt: reasonEvalTime},
+				"critical": {Reason: "spare exhausted", CreatedAt: older},
+			},
+		},
+		{
+			// A producer that never fills CreatedAt still has to survive a
+			// merge: a zero time is not a reason to drop the entry.
+			name: "zero CreatedAt is still adopted into an empty receiver",
+			dst:  nil,
+			src:  map[string]StatusReason{"unknown": {Reason: "smartctl unavailable"}},
+			want: map[string]StatusReason{"unknown": {Reason: "smartctl unavailable"}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			dst := &SMARTInfo{N: 1, LastStatusReason: maps.Clone(tt.dst)}
+			src := &SMARTInfo{N: 1, LastStatusReason: maps.Clone(tt.src)}
+			dst.Merge(src)
+			if !reflect.DeepEqual(dst.LastStatusReason, tt.want) {
+				t.Errorf("Merge: got %+v, want %+v", dst.LastStatusReason, tt.want)
+			}
+
+			// Merging the other way around must land on the same map.
+			rev := &SMARTInfo{N: 1, LastStatusReason: maps.Clone(tt.src)}
+			rev.Merge(&SMARTInfo{N: 1, LastStatusReason: maps.Clone(tt.dst)})
+			if !reflect.DeepEqual(rev.LastStatusReason, tt.want) {
+				t.Errorf("Merge is order dependent: reversed got %+v, want %+v", rev.LastStatusReason, tt.want)
+			}
+		})
+	}
+}
+
+// TestSMARTInfoMergeDoesNotAliasSource pins merge rule 4 (only the receiver may
+// be mutated): the receiver must not end up sharing the source's map.
+func TestSMARTInfoMergeDoesNotAliasSource(t *testing.T) {
+	src := &SMARTInfo{
+		N:                1,
+		LastStatusReason: map[string]StatusReason{"warning": {Reason: "media errors", CreatedAt: reasonEvalTime}},
+	}
+	dst := &SMARTInfo{N: 1}
+	dst.Merge(src)
+
+	dst.LastStatusReason["warning"] = StatusReason{Reason: "mutated", CreatedAt: reasonEvalTime}
+	if got := src.LastStatusReason["warning"].Reason; got != "media errors" {
+		t.Errorf("Merge aliased the source map: source reason became %q", got)
 	}
 }
