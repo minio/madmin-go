@@ -93,9 +93,14 @@ type IcebergUnreferencedFileRemovalSettings struct {
 // Unlike the other maintenance types this one is table-scoped only. It names a
 // column of one table's schema, so it is rejected at the warehouse level.
 type IcebergRecordExpirationSettings struct {
-	// Days is the retention period. A row is eligible once its Column value is
-	// more than Days old. Must be >= 1.
+	// Days is the retention period for rows that no rule's filter matches. A
+	// row is eligible once its Column value is more than Days old. Must be >= 1.
 	Days *int `json:"days,omitempty"`
+	// Rules give rows matching a filter their own retention period. A row
+	// matched by several rules expires at the shortest of their periods. A
+	// request that carries Rules replaces the stored list, and an empty list
+	// clears it.
+	Rules []IcebergRecordExpirationRule `json:"rules,omitempty"`
 	// Column is the clock: a top-level timestamp, timestamptz or date field of
 	// the table's current schema. AWS selects this itself because it only
 	// expires records on tables whose schema it owns; on user tables it has to
@@ -105,6 +110,16 @@ type IcebergRecordExpirationSettings struct {
 	// Inherits: table -> warehouse -> server if nil.
 	// Must be >= 1.
 	Interval *int `json:"interval,omitempty"`
+}
+
+// IcebergRecordExpirationRule is one retention period of a record-expiration
+// configuration, scoped to the rows its filter matches.
+type IcebergRecordExpirationRule struct {
+	// Filter is an Iceberg expression, in the REST spec's JSON filter form,
+	// bound against the table's current schema. Required.
+	Filter json.RawMessage `json:"filter"`
+	// Days is the retention period for the matching rows. Must be >= 1.
+	Days int `json:"days"`
 }
 
 // TableMaintenanceSettings is a union type containing maintenance settings.

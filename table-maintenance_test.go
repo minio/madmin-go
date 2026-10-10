@@ -64,6 +64,32 @@ func TestIcebergRecordExpirationSettingsJSON(t *testing.T) {
 	}
 }
 
+func TestIcebergRecordExpirationRulesJSON(t *testing.T) {
+	settings := IcebergRecordExpirationSettings{
+		Column: "time",
+		Rules: []IcebergRecordExpirationRule{
+			{Filter: json.RawMessage(`{"type":"eq","term":"retention_class","value":"operational"}`), Days: 365},
+		},
+	}
+
+	got, err := json.Marshal(settings)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	const want = `{"rules":[{"filter":{"type":"eq","term":"retention_class","value":"operational"},"days":365}],"column":"time"}`
+	if string(got) != want {
+		t.Errorf("settings encoded as\n %s\nwant\n %s", got, want)
+	}
+
+	var back IcebergRecordExpirationSettings
+	if err := json.Unmarshal([]byte(`{"rules":[]}`), &back); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if back.Rules == nil {
+		t.Error(`"rules":[] decoded to nil; the server reads nil as "keep the stored rules", not "clear them"`)
+	}
+}
+
 // An unset clock column must not reach the wire as "column":"". The server
 // rejects an empty column, so encoding one turns a client-side omission into a
 // server-side error the user cannot act on.
