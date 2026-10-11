@@ -363,12 +363,16 @@ func (adm *AdminClient) NodeInfo(ctx context.Context, hostname string, options .
 	for _, o := range options {
 		o(srvOpts)
 	}
+	hostnameSegment, err := adminPathSegment("hostname", hostname)
+	if err != nil {
+		return nil, err
+	}
 
 	values := make(url.Values)
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
 		requestData{
-			relPath:     adminAPIPrefix + "/node/" + hostname,
+			relPath:     adminAPIPrefix + "/node/" + hostnameSegment,
 			queryValues: values,
 		})
 	defer closeResponse(resp)

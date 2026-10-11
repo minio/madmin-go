@@ -44,9 +44,13 @@ type BucketScanInfo struct {
 
 // BucketScanInfo returns information of a bucket scan in all pools/sets
 func (adm *AdminClient) BucketScanInfo(ctx context.Context, bucket string) ([]BucketScanInfo, error) {
+	bucketSegment, err := adminPathSegment("bucket name", bucket)
+	if err != nil {
+		return nil, err
+	}
 	resp, err := adm.executeMethod(ctx,
 		http.MethodGet,
-		requestData{relPath: adminAPIPrefix + "/scanner/status/" + bucket})
+		requestData{relPath: adminAPIPrefix + "/scanner/status/" + bucketSegment})
 	if err != nil {
 		return nil, err
 	}

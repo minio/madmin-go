@@ -607,6 +607,19 @@ func (adm AdminClient) makeTargetURL(r requestData) (*url.URL, error) {
 	return u, nil
 }
 
+// adminPathSegment validates and escapes a caller-provided admin API path
+// segment. Separators and dot segments are rejected because intermediaries may
+// decode or clean them before routing the request.
+func adminPathSegment(name, value string) (string, error) {
+	if value == "" {
+		return "", fmt.Errorf("%s cannot be empty", name)
+	}
+	if value == "." || value == ".." || strings.ContainsAny(value, `/\`) {
+		return "", fmt.Errorf("%s must be a single path segment", name)
+	}
+	return url.PathEscape(value), nil
+}
+
 // CredContext returns the context for fetching credentials
 func (adm AdminClient) CredContext() *credentials.CredContext {
 	return &credentials.CredContext{

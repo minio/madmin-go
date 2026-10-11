@@ -33,6 +33,17 @@ import (
 // tierAPI is API path prefix for tier related admin APIs
 const tierAPI = "tier"
 
+func tierPath(tierName string) (string, error) {
+	if tierName == "" {
+		return "", ErrTierNameEmpty
+	}
+	segment, err := adminPathSegment("tier name", tierName)
+	if err != nil {
+		return "", err
+	}
+	return path.Join(adminAPIPrefix, tierAPI) + "/" + segment, nil
+}
+
 // AddTierIgnoreInUse adds a new remote tier, ignoring if it's being used by another MinIO deployment.
 func (adm *AdminClient) AddTierIgnoreInUse(ctx context.Context, cfg *TierConfig) error {
 	return adm.addTier(ctx, cfg, true)
@@ -123,6 +134,10 @@ type TierCreds struct {
 
 // EditTier supports updating credentials for the remote tier identified by tierName.
 func (adm *AdminClient) EditTier(ctx context.Context, tierName string, creds TierCreds) error {
+	relPath, err := tierPath(tierName)
+	if err != nil {
+		return err
+	}
 	data, err := json.Marshal(creds)
 	if err != nil {
 		return err
@@ -135,7 +150,7 @@ func (adm *AdminClient) EditTier(ctx context.Context, tierName string, creds Tie
 	}
 
 	reqData := requestData{
-		relPath: path.Join(adminAPIPrefix, tierAPI, tierName),
+		relPath: relPath,
 		content: encData,
 	}
 
@@ -156,11 +171,12 @@ func (adm *AdminClient) EditTier(ctx context.Context, tierName string, creds Tie
 
 // RemoveTier removes an empty tier identified by tierName
 func (adm *AdminClient) RemoveTier(ctx context.Context, tierName string) error {
-	if tierName == "" {
-		return ErrTierNameEmpty
+	relPath, err := tierPath(tierName)
+	if err != nil {
+		return err
 	}
 	reqData := requestData{
-		relPath: path.Join(adminAPIPrefix, tierAPI, tierName),
+		relPath: relPath,
 	}
 
 	// Execute DELETE on /minio/admin/v4/tier/tierName to remove an empty tier.
@@ -185,15 +201,16 @@ type RemoveTierOpts struct {
 // RemoveTierV2 removes an empty tier identified by tierName, the tier is not
 // required to be reachable or empty if force flag is set to true.
 func (adm *AdminClient) RemoveTierV2(ctx context.Context, tierName string, opts RemoveTierOpts) error {
-	if tierName == "" {
-		return ErrTierNameEmpty
+	relPath, err := tierPath(tierName)
+	if err != nil {
+		return err
 	}
 
 	queryVals := url.Values{}
 	queryVals.Set("force", strconv.FormatBool(opts.Force))
 
 	reqData := requestData{
-		relPath:     path.Join(adminAPIPrefix, tierAPI, tierName),
+		relPath:     relPath,
 		queryValues: queryVals,
 	}
 
@@ -213,11 +230,12 @@ func (adm *AdminClient) RemoveTierV2(ctx context.Context, tierName string, opts 
 
 // VerifyTier verifies tierName's remote tier config
 func (adm *AdminClient) VerifyTier(ctx context.Context, tierName string) error {
-	if tierName == "" {
-		return ErrTierNameEmpty
+	relPath, err := tierPath(tierName)
+	if err != nil {
+		return err
 	}
 	reqData := requestData{
-		relPath: path.Join(adminAPIPrefix, tierAPI, tierName),
+		relPath: relPath,
 	}
 
 	// Execute GET on /minio/admin/v4/tier/tierName to verify tierName's config.
