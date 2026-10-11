@@ -54,6 +54,11 @@ type ErrorResponse struct {
 	// Region where the bucket is located. This header is returned
 	// only in HEAD bucket and ListObjects response.
 	Region string
+
+	// StatusCode is the HTTP status the error was answered with. It is zero
+	// for an error no response carried. A 4xx says the server did not act on
+	// the request.
+	StatusCode int `xml:"-" json:"-"`
 }
 
 // Error - Returns HTTP error string
@@ -78,8 +83,9 @@ func httpRespToErrorResponse(resp *http.Response) error {
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 100<<10))
 	if err != nil {
 		return ErrorResponse{
-			Code:    resp.Status,
-			Message: fmt.Sprintf("Failed to read server response: %s.", err),
+			Code:       resp.Status,
+			Message:    fmt.Sprintf("Failed to read server response: %s.", err),
+			StatusCode: resp.StatusCode,
 		}
 	}
 
@@ -99,11 +105,13 @@ func httpRespToErrorResponse(resp *http.Response) error {
 				bodyString = bodyString[:1021] + "..."
 			}
 			return ErrorResponse{
-				Code:    resp.Status,
-				Message: fmt.Sprintf("Failed to parse server response (%s): %s", err.Error(), bodyString),
+				Code:       resp.Status,
+				Message:    fmt.Sprintf("Failed to parse server response (%s): %s", err.Error(), bodyString),
+				StatusCode: resp.StatusCode,
 			}
 		}
 	}
+	errResp.StatusCode = resp.StatusCode
 	return errResp
 }
 
