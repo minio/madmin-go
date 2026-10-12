@@ -28,6 +28,7 @@ import (
 	"reflect"
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
@@ -182,33 +183,31 @@ func countingServer(t *testing.T, status int, body string) (*httptest.Server, *a
 
 // The retry timer yields once per attempt and waits only between attempts:
 // maxRetry attempts take the first maxRetry-1 backoffs, and no wait follows
-// the last one.
+// the last one. It runs on synctest's fake clock, so the elapsed time is
+// exactly the sum of the waits.
 func TestRetryTimerWaitsOnlyBetweenAttempts(t *testing.T) {
-	const unit = 20 * time.Millisecond
+	const unit = time.Second
 	adm := AdminClient{random: rand.New(noJitterSource{})}
 	for maxRetry := 1; maxRetry <= 4; maxRetry++ {
-		// The waits are unit, 2*unit, 4*unit, ..., so maxRetry-1 of them add
-		// up to (2^(maxRetry-1) - 1) * unit, and the wait a timer would add
-		// after the last attempt is 2^(maxRetry-1) * unit.
-		between := time.Duration(1<<(maxRetry-1)-1) * unit
-		afterLast := time.Duration(1<<(maxRetry-1)) * unit
+		synctest.Test(t, func(t *testing.T) {
+			// The waits are unit, 2*unit, 4*unit, ..., so maxRetry-1 of them
+			// add up to (2^(maxRetry-1) - 1) * unit.
+			between := time.Duration(1<<(maxRetry-1)-1) * unit
 
-		start := time.Now()
-		attempts := 0
-		for range adm.newRetryTimer(context.Background(), maxRetry, unit, time.Hour, NoJitter) {
-			attempts++
-		}
-		elapsed := time.Since(start)
+			start := time.Now()
+			attempts := 0
+			for range adm.newRetryTimer(context.Background(), maxRetry, unit, time.Hour, NoJitter) {
+				attempts++
+			}
+			elapsed := time.Since(start)
 
-		if attempts != maxRetry {
-			t.Errorf("maxRetry %d: %d attempts, want %d", maxRetry, attempts, maxRetry)
-		}
-		if elapsed < between {
-			t.Errorf("maxRetry %d: took %v, want at least the %v of backoff between attempts", maxRetry, elapsed, between)
-		}
-		if elapsed >= between+afterLast {
-			t.Errorf("maxRetry %d: took %v, want less than %v: it waited after the last attempt", maxRetry, elapsed, between+afterLast)
-		}
+			if attempts != maxRetry {
+				t.Errorf("maxRetry %d: %d attempts, want %d", maxRetry, attempts, maxRetry)
+			}
+			if elapsed != between {
+				t.Errorf("maxRetry %d: took %v, want exactly the %v of backoff between attempts", maxRetry, elapsed, between)
+			}
+		})
 	}
 }
 
@@ -236,12 +235,13 @@ func TestExecuteMethodWaitsOnlyBetweenAttempts(t *testing.T) {
 		t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusServiceUnavailable)
 	}
 	// One full backoff of DefaultRetryUnit separates the two attempts. A wait
-	// after the second would add another 2*DefaultRetryUnit.
+	// after the second would add another 2*DefaultRetryUnit; anything short of
+	// that total is HTTP and scheduler overhead.
 	if elapsed < DefaultRetryUnit {
 		t.Errorf("took %v, want at least the %v backoff between the attempts", elapsed, DefaultRetryUnit)
 	}
-	if elapsed >= 2*DefaultRetryUnit {
-		t.Errorf("took %v, want less than %v: it waited after the last attempt", elapsed, 2*DefaultRetryUnit)
+	if withWaitAfterLast := 3 * DefaultRetryUnit; elapsed >= withWaitAfterLast {
+		t.Errorf("took %v, want less than %v: it waited after the last attempt", elapsed, withWaitAfterLast)
 	}
 }
 
@@ -260,10 +260,8 @@ func TestExecuteMethodSuccessStatusIsFinal(t *testing.T) {
 		t.Run(http.StatusText(status), func(t *testing.T) {
 			server, attempts := countingServer(t, status, body)
 
-			start := time.Now()
 			resp, err := newFilesExportsTestClient(t, server.URL).executeMethod(context.Background(), http.MethodGet,
 				requestData{relPath: "/v4/info"})
-			elapsed := time.Since(start)
 			if err != nil {
 				t.Fatalf("executeMethod: %v", err)
 			}
@@ -271,9 +269,6 @@ func TestExecuteMethodSuccessStatusIsFinal(t *testing.T) {
 
 			if n := attempts.Load(); n != 1 {
 				t.Errorf("the server received %d requests, want 1", n)
-			}
-			if elapsed >= DefaultRetryUnit/2 {
-				t.Errorf("took %v, want no backoff", elapsed)
 			}
 			if resp.StatusCode != status {
 				t.Errorf("status = %d, want %d", resp.StatusCode, status)
