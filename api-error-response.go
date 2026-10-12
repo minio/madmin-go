@@ -22,13 +22,11 @@ package madmin
 import (
 	"bufio"
 	"bytes"
-	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io"
 	"net/http"
-	"unicode/utf8"
 )
 
 /* **** SAMPLE ERROR RESPONSE ****
@@ -80,7 +78,8 @@ func httpRespToErrorResponse(resp *http.Response) error {
 		return ErrInvalidArgument(msg)
 	}
 
-	defer closeResponse(resp)
+	// Close without draining: decodeErrorResponse reads at most errorBodyLimit.
+	defer resp.Body.Close()
 	var errResp ErrorResponse
 	if err := decodeErrorResponse(resp, &errResp, &errResp); err != nil {
 		return err
@@ -94,27 +93,13 @@ const errorBodyLimit = 100 << 10
 
 // decodeErrorResponse decodes the error body of resp as it streams: into
 // jsonV when it is JSON, and into xmlV when it starts with '<', as MinIO's
-// S3 errors do. Only the start of the body is held, to quote in the error
-// returned when the body is neither.
+// S3 errors do. Only the first 1 KiB is held, to quote in the error returned
+// when the body fails to decode.
 func decodeErrorResponse(resp *http.Response, jsonV any, xmlV *ErrorResponse) error {
 	br := bufio.NewReader(io.LimitReader(resp.Body, errorBodyLimit))
-	head, err := br.Peek(1025)
-	if err != nil && err != io.EOF {
-		return ErrorResponse{
-			Code:       resp.Status,
-			Message:    fmt.Sprintf("Failed to read server response: %s.", err),
-			StatusCode: resp.StatusCode,
-		}
-	}
-	// Quote head before decoding, which reuses its bytes.
-	bodyString := string(head)
-	if !utf8.Valid(head) {
-		bodyString = hex.EncodeToString(head)
-	}
-	if len(bodyString) > 1024 {
-		bodyString = bodyString[:1021] + "..."
-	}
-
+	head, _ := br.Peek(1024)
+	quoted := fmt.Sprintf("%q", head) // decoding reuses head's bytes
+	var err error
 	if trimmed := bytes.TrimLeft(head, " \t\r\n"); len(trimmed) > 0 && trimmed[0] == '<' {
 		err = xml.NewDecoder(br).Decode(xmlV)
 	} else {
@@ -123,7 +108,7 @@ func decodeErrorResponse(resp *http.Response, jsonV any, xmlV *ErrorResponse) er
 	if err != nil {
 		return ErrorResponse{
 			Code:       resp.Status,
-			Message:    fmt.Sprintf("Failed to parse server response (%s): %s", err.Error(), bodyString),
+			Message:    fmt.Sprintf("Failed to parse server response (%s): %s", err, quoted),
 			StatusCode: resp.StatusCode,
 		}
 	}

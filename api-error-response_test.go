@@ -28,6 +28,8 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
 // asErrorResponse is an error whose custom As method, not its Unwrap chain,
@@ -163,10 +165,12 @@ func (c *countingReader) Read(p []byte) (int, error) {
 }
 
 // TestHTTPRespToErrorResponse verifies that an error body is decoded as JSON,
-// or as XML when it starts with '<', and that a body that is neither is quoted
-// in the error, cut to 1024 bytes.
+// or as XML when it starts with '<', and that a body that fails to decode is
+// quoted in the error, cut to 1024 bytes, as text even when the cut splits a
+// character.
 func TestHTTPRespToErrorResponse(t *testing.T) {
 	long := strings.Repeat("x", 2000)
+	accented := "x" + strings.Repeat("é", 600) // byte 1024 is inside an é
 	for _, tc := range []struct {
 		body    string
 		code    string
@@ -174,9 +178,10 @@ func TestHTTPRespToErrorResponse(t *testing.T) {
 	}{
 		{`{"Code": "XMinioAdminNoSuchUser", "Message": "no user"}`, "XMinioAdminNoSuchUser", "no user"},
 		{"\n  <?xml version=\"1.0\"?><Error><Code>AccessDenied</Code><Message>denied</Message></Error>", "AccessDenied", "denied"},
-		{`gateway timeout`, "504 Gateway Timeout", "Failed to parse server response (invalid character 'g' looking for beginning of value): gateway timeout"},
-		{``, "504 Gateway Timeout", "Failed to parse server response (EOF): "},
-		{long, "504 Gateway Timeout", "Failed to parse server response (invalid character 'x' looking for beginning of value): " + long[:1021] + "..."},
+		{`gateway timeout`, "504 Gateway Timeout", `Failed to parse server response (invalid character 'g' looking for beginning of value): "gateway timeout"`},
+		{``, "504 Gateway Timeout", `Failed to parse server response (EOF): ""`},
+		{long, "504 Gateway Timeout", "Failed to parse server response (invalid character 'x' looking for beginning of value): " + fmt.Sprintf("%q", long[:1024])},
+		{accented, "504 Gateway Timeout", "Failed to parse server response (invalid character 'x' looking for beginning of value): " + fmt.Sprintf("%q", accented[:1024])},
 	} {
 		resp := &http.Response{
 			Status: "504 Gateway Timeout", StatusCode: http.StatusGatewayTimeout,
@@ -200,5 +205,84 @@ func TestDecodeErrorResponseLimit(t *testing.T) {
 	}
 	if body.n > errorBodyLimit {
 		t.Errorf("read %d bytes, want at most %d", body.n, errorBodyLimit)
+	}
+}
+
+// countedBody is a response body that counts the bytes read from it and
+// records whether it was closed.
+type countedBody struct {
+	*countingReader
+	*trackedBody
+}
+
+func newCountedBody(s string) countedBody {
+	counter := &countingReader{r: strings.NewReader(s)}
+	return countedBody{counter, &trackedBody{ReadCloser: io.NopCloser(counter)}}
+}
+
+// roundTripFunc is an http.RoundTripper made of a function.
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
+
+// TestErrorBodyIsNotDrained verifies that executeMethod and
+// httpRespToErrorResponse read no more than errorBodyLimit of an error body,
+// a 426 one included, and close it without draining the rest.
+func TestErrorBodyIsNotDrained(t *testing.T) {
+	setAdminAPIPrefixes(t, "/v4", "/v3")
+	savedMaxRetry := MaxRetry
+	MaxRetry = 2
+	t.Cleanup(func() { MaxRetry = savedMaxRetry })
+
+	// The error is followed by whitespace well past the limit, so it decodes
+	// only if the read stops at the limit without failing.
+	payload := `{"Code": "XMinioAdminNoSuchUser", "Message": "no user"}` + strings.Repeat(" ", 4*errorBodyLimit)
+	var bodies []countedBody
+	transport := roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		body := newCountedBody(payload)
+		bodies = append(bodies, body)
+		status := http.StatusBadRequest
+		if strings.HasPrefix(req.URL.Path, "/minio/admin/v4/") {
+			status = http.StatusUpgradeRequired
+		}
+		return &http.Response{StatusCode: status, Status: http.StatusText(status), Body: body.trackedBody, Request: req}, nil
+	})
+	client, err := NewWithOptions("localhost:9000", &Options{
+		Creds:     credentials.NewStaticV4("minio", "minio123", ""),
+		Transport: transport,
+	})
+	if err != nil {
+		t.Fatalf("NewWithOptions: %v", err)
+	}
+
+	resp, err := client.executeMethod(context.Background(), http.MethodGet, requestData{relPath: "/v4/info"})
+	if err != nil {
+		t.Fatalf("executeMethod: %v", err)
+	}
+	if code := ToErrorResponse(httpRespToErrorResponse(resp)).Code; code != "XMinioAdminNoSuchUser" {
+		t.Errorf("code = %q, want XMinioAdminNoSuchUser", code)
+	}
+
+	if len(bodies) != 2 {
+		t.Fatalf("sent %d requests, want a 426 and its retry", len(bodies))
+	}
+	for i, body := range bodies {
+		if body.n > errorBodyLimit {
+			t.Errorf("response %d: read %d bytes, want at most %d", i, body.n, errorBodyLimit)
+		}
+		if !body.closed {
+			t.Errorf("response %d: body was not closed", i)
+		}
+	}
+
+	// httpRespToErrorResponse, given a body directly, reads no more of it
+	// either.
+	body := newCountedBody(payload)
+	got := ToErrorResponse(httpRespToErrorResponse(&http.Response{StatusCode: http.StatusBadRequest, Body: body.trackedBody}))
+	if got.Code != "XMinioAdminNoSuchUser" {
+		t.Errorf("code = %q, want XMinioAdminNoSuchUser", got.Code)
+	}
+	if body.n > errorBodyLimit || !body.closed {
+		t.Errorf("read %d bytes, closed %v; want at most %d, closed", body.n, body.closed, errorBodyLimit)
 	}
 }

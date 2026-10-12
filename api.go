@@ -447,8 +447,9 @@ func (adm AdminClient) executeMethod(ctx context.Context, method string, reqData
 		// and the caller then decodes the 426 error from it.
 		if res.StatusCode == http.StatusUpgradeRequired && adminAPIPrefix != adminAPIOldPrefix {
 			if rest, ok := strings.CutPrefix(reqData.relPath, adminAPIPrefix); ok {
-				body, _ := io.ReadAll(res.Body)
-				closeResponse(res)
+				body, _ := io.ReadAll(io.LimitReader(res.Body, errorBodyLimit))
+				// Close without draining: what is past the limit is not read.
+				res.Body.Close()
 				res.Body = io.NopCloser(bytes.NewReader(body))
 				reqData.relPath = adminAPIOldPrefix + rest
 				continue
@@ -457,8 +458,8 @@ func (adm AdminClient) executeMethod(ctx context.Context, method string, reqData
 
 		// Read the body to be saved later.
 		errBodyBytes, err := io.ReadAll(io.LimitReader(res.Body, errorBodyLimit))
-		// res.Body should be closed
-		closeResponse(res)
+		// Close without draining: what is past the limit is not read.
+		res.Body.Close()
 		if err != nil {
 			return nil, err
 		}
