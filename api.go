@@ -360,6 +360,8 @@ func (adm AdminClient) do(req *http.Request) (*http.Response, error) {
 // List of success status.
 var successStatus = []int{
 	http.StatusOK,
+	http.StatusCreated,
+	http.StatusAccepted,
 	http.StatusNoContent,
 	http.StatusPartialContent,
 }
