@@ -1416,24 +1416,32 @@ func TestFilesWriteNodeRefusedCarriesRefusal(t *testing.T) {
 // TestFilesWriteNodeRefusedMaybeReplay verifies that a 422 after an attempt
 // whose outcome was unknown is marked as a possible replay when the write
 // cannot tell by reading the export: the export is named by name, or the read
-// does not show the change.
+// does not show the change at another generation. A read at the generation
+// the write named, without the change, proves nothing was recorded.
 func TestFilesWriteNodeRefusedMaybeReplay(t *testing.T) {
 	nodeRefused := filesScriptedReply{http.StatusUnprocessableEntity, `{"code": "NodeRefused", "message": "unknown host build01"}`}
 	other := filesReadAt(7, filesCatchAllRules, false, "unknown host build01", filesOtherAt, FilesExportServing)
+	// The export read back at the generation the write named, without the
+	// change: the write always moves the generation, so nothing was recorded.
+	unchanged := filesScriptedReply{http.StatusOK, `{"name": "carol", "exportID": 104, "generation": "5f2a91", "changedAt": "5f2a91",
+		"node": "node03", "status": "serving", "quotaBytes": 7, "accessRules": [], "applied": true}`}
 	for _, tc := range []struct {
 		name, export string
+		read         filesScriptedReply
 		reads        int32
+		maybeReplay  bool
 	}{
-		{"by_name", "carol", 0},
-		{"by_id_not_held", "104", 1},
+		{"by_name", "carol", other, 0, true},
+		{"by_id_not_held", "104", other, 1, true},
+		{"by_id_unchanged", "104", unchanged, 1, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			server, _, reads := newFilesScriptedServer(t, other, filesDropped, nodeRefused)
+			server, _, reads := newFilesScriptedServer(t, tc.read, filesDropped, nodeRefused)
 			_, err := newFilesExportsTestClient(t, server.URL).SetFilesExportQuota(context.Background(), tc.export, "5f2a91", 1)
 
 			var refused FilesWriteRefusedError
-			if !errors.As(err, &refused) || !refused.MaybeReplay || refused.Message != "unknown host build01" {
-				t.Errorf("err = %#v, want a FilesWriteRefusedError marked as a possible replay", err)
+			if !errors.As(err, &refused) || refused.MaybeReplay != tc.maybeReplay || refused.Message != "unknown host build01" {
+				t.Errorf("err = %#v, want a FilesWriteRefusedError with MaybeReplay %t", err, tc.maybeReplay)
 			}
 			if n := reads.Load(); n != tc.reads {
 				t.Errorf("the client read the export %d times, want %d", n, tc.reads)

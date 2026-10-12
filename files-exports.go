@@ -444,7 +444,9 @@ type FilesWriteRefusedError struct {
 	// which this call repeats, is not seen. A per-export write that may have taken effect reads
 	// the export before it returns, as its doc comment describes, and returns
 	// a FilesNotAppliedError instead when the read shows the change recorded,
-	// so a caller sees MaybeReplay set only when the write could not tell.
+	// and clears MaybeReplay when the read shows the export still at the
+	// generation the write named without the change, so a caller sees
+	// MaybeReplay set only when the write could not tell.
 	MaybeReplay bool
 }
 
@@ -1202,7 +1204,9 @@ func FilesRefusedBeforeActing(code string) bool {
 // has taken it, a FilesNotAppliedError when the node has not and the read
 // proves the pending change is this write's, and err otherwise: after a
 // refusal that changed nothing, when export is a name, or when the read fails
-// or shows another state.
+// or shows another state. When the read shows the export still at generation
+// without the change, no attempt was recorded, and err's MaybeReplay is
+// cleared.
 //
 // Applied and Refusal describe the export's last change, which may be another
 // caller's: one that landed after this write, a remove among them. The read
@@ -1215,7 +1219,14 @@ func (adm *AdminClient) filesReconcileChange(ctx context.Context, export string,
 	}
 	after, readErr := adm.filesReadAfterWrite(ctx, export)
 	switch {
-	case readErr != nil || !holds(after):
+	case readErr != nil:
+		return FilesExport{}, err
+	case !holds(after):
+		if after.Generation == generation {
+			// A quota or access write always moves the generation, and
+			// generations are never reused, so no attempt was recorded.
+			return FilesExport{}, filesNotReplay(err)
+		}
 		return FilesExport{}, err
 	case after.Applied == nil || *after.Applied:
 		// A server that does not report Applied predates a node taking a
@@ -1225,6 +1236,20 @@ func (adm *AdminClient) filesReconcileChange(ctx context.Context, export string,
 		return FilesExport{}, newFilesNotApplied(err, after)
 	}
 	return FilesExport{}, err
+}
+
+// filesNotReplay returns err with MaybeReplay cleared, for a write a read
+// proved no attempt of took effect.
+func filesNotReplay(err error) error {
+	switch e := err.(type) {
+	case FilesWriteRefusedError:
+		e.MaybeReplay = false
+		return e
+	case FilesExportModifiedError:
+		e.MaybeReplay = false
+		return e
+	}
+	return err
 }
 
 // filesReadAfterWrite reads export once, for a write that ended in doubt. The
