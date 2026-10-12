@@ -26,6 +26,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 )
 
@@ -146,5 +147,58 @@ func TestAdminSelfLockoutResponse(t *testing.T) {
 	resp := ToErrorResponse(err)
 	if resp.Message != AdminSelfLockoutMessage || resp.RequestID != "18B3D491BB8DCD15" {
 		t.Errorf("ToErrorResponse = %+v, want the server's message and request id", resp)
+	}
+}
+
+// countingReader counts the bytes read from it.
+type countingReader struct {
+	r io.Reader
+	n int
+}
+
+func (c *countingReader) Read(p []byte) (int, error) {
+	n, err := c.r.Read(p)
+	c.n += n
+	return n, err
+}
+
+// TestHTTPRespToErrorResponse verifies that an error body is decoded as JSON,
+// or as XML when it starts with '<', and that a body that is neither is quoted
+// in the error, cut to 1024 bytes.
+func TestHTTPRespToErrorResponse(t *testing.T) {
+	long := strings.Repeat("x", 2000)
+	for _, tc := range []struct {
+		body    string
+		code    string
+		message string
+	}{
+		{`{"Code": "XMinioAdminNoSuchUser", "Message": "no user"}`, "XMinioAdminNoSuchUser", "no user"},
+		{"\n  <?xml version=\"1.0\"?><Error><Code>AccessDenied</Code><Message>denied</Message></Error>", "AccessDenied", "denied"},
+		{`gateway timeout`, "504 Gateway Timeout", "Failed to parse server response (invalid character 'g' looking for beginning of value): gateway timeout"},
+		{``, "504 Gateway Timeout", "Failed to parse server response (EOF): "},
+		{long, "504 Gateway Timeout", "Failed to parse server response (invalid character 'x' looking for beginning of value): " + long[:1021] + "..."},
+	} {
+		resp := &http.Response{
+			Status: "504 Gateway Timeout", StatusCode: http.StatusGatewayTimeout,
+			Body: io.NopCloser(strings.NewReader(tc.body)),
+		}
+		got := ToErrorResponse(httpRespToErrorResponse(resp))
+		if got.Code != tc.code || got.Message != tc.message || got.StatusCode != http.StatusGatewayTimeout {
+			t.Errorf("%.40q: got %+v, want code %q, message %q", tc.body, got, tc.code, tc.message)
+		}
+	}
+}
+
+// TestDecodeErrorResponseLimit verifies that no more than errorBodyLimit bytes
+// of an error body are decoded.
+func TestDecodeErrorResponseLimit(t *testing.T) {
+	body := &countingReader{r: strings.NewReader(`{"Message": "` + strings.Repeat("x", 4*errorBodyLimit) + `"}`)}
+	resp := &http.Response{StatusCode: http.StatusInternalServerError, Body: io.NopCloser(body)}
+	var errResp ErrorResponse
+	if err := decodeErrorResponse(resp, &errResp, &errResp); err == nil {
+		t.Fatal("a body cut at the limit should fail to decode")
+	}
+	if body.n > errorBodyLimit {
+		t.Errorf("read %d bytes, want at most %d", body.n, errorBodyLimit)
 	}
 }

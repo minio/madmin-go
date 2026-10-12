@@ -20,6 +20,8 @@
 package madmin
 
 import (
+	"bufio"
+	"bytes"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/xml"
@@ -79,48 +81,53 @@ func httpRespToErrorResponse(resp *http.Response) error {
 	}
 
 	defer closeResponse(resp)
-	// Limit to 100K
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 100<<10))
-	if err != nil {
+	var errResp ErrorResponse
+	if err := decodeErrorResponse(resp, &errResp, &errResp); err != nil {
+		return err
+	}
+	errResp.StatusCode = resp.StatusCode
+	return errResp
+}
+
+// errorBodyLimit is the most of an error body that is decoded.
+const errorBodyLimit = 100 << 10
+
+// decodeErrorResponse decodes the error body of resp as it streams: into
+// jsonV when it is JSON, and into xmlV when it starts with '<', as MinIO's
+// S3 errors do. Only the start of the body is held, to quote in the error
+// returned when the body is neither.
+func decodeErrorResponse(resp *http.Response, jsonV any, xmlV *ErrorResponse) error {
+	br := bufio.NewReader(io.LimitReader(resp.Body, errorBodyLimit))
+	head, err := br.Peek(1025)
+	if err != nil && err != io.EOF {
 		return ErrorResponse{
 			Code:       resp.Status,
 			Message:    fmt.Sprintf("Failed to read server response: %s.", err),
 			StatusCode: resp.StatusCode,
 		}
 	}
-
-	var errResp ErrorResponse
-	// Decode the json error
-	err = json.Unmarshal(body, &errResp)
-	if err != nil {
-		return nonJSONErrorResponse(resp, body, err)
+	// Quote head before decoding, which reuses its bytes.
+	bodyString := string(head)
+	if !utf8.Valid(head) {
+		bodyString = hex.EncodeToString(head)
 	}
-	errResp.StatusCode = resp.StatusCode
-	return errResp
-}
+	if len(bodyString) > 1024 {
+		bodyString = bodyString[:1021] + "..."
+	}
 
-// nonJSONErrorResponse returns the ErrorResponse of resp, whose body failed to
-// decode as JSON with jsonErr: the body decoded as XML, or else one carrying
-// the body itself.
-func nonJSONErrorResponse(resp *http.Response, body []byte, jsonErr error) ErrorResponse {
-	var errResp ErrorResponse
-	// We might get errors as XML, try that.
-	if xmlErr := xml.Unmarshal(body, &errResp); xmlErr != nil {
-		bodyString := string(body)
-		if !utf8.Valid(body) {
-			bodyString = hex.EncodeToString(body)
-		}
-		if len(bodyString) > 1024 {
-			bodyString = bodyString[:1021] + "..."
-		}
+	if trimmed := bytes.TrimLeft(head, " \t\r\n"); len(trimmed) > 0 && trimmed[0] == '<' {
+		err = xml.NewDecoder(br).Decode(xmlV)
+	} else {
+		err = json.NewDecoder(br).Decode(jsonV)
+	}
+	if err != nil {
 		return ErrorResponse{
 			Code:       resp.Status,
-			Message:    fmt.Sprintf("Failed to parse server response (%s): %s", jsonErr.Error(), bodyString),
+			Message:    fmt.Sprintf("Failed to parse server response (%s): %s", err.Error(), bodyString),
 			StatusCode: resp.StatusCode,
 		}
 	}
-	errResp.StatusCode = resp.StatusCode
-	return errResp
+	return nil
 }
 
 // ToErrorResponse - Returns parsed ErrorResponse struct from body and

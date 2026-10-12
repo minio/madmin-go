@@ -18,6 +18,7 @@
 package madmin
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -1454,26 +1455,12 @@ func filesNotSent(err error) bool {
 }
 
 // filesErrorResponse returns the error a Files management API write was
-// answered with, as filesError types it.
+// answered with, decoding its body once as it streams. A
+// FilesErrExportModified is a FilesExportModifiedError carrying the export's
+// current generation, and a FilesErrNodeRefused a FilesWriteRefusedError
+// carrying the node's reason. maybeReplay, set when an earlier attempt of the
+// call may have taken effect, is copied onto either.
 func filesErrorResponse(resp *http.Response, maybeReplay bool) error {
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 100<<10))
-	if err != nil {
-		return ErrorResponse{
-			Code:       resp.Status,
-			Message:    fmt.Sprintf("Failed to read server response: %s.", err),
-			StatusCode: resp.StatusCode,
-		}
-	}
-	return filesError(resp, body, maybeReplay)
-}
-
-// filesError returns the error of a Files management API answer, res, whose
-// body was read into body, decoding the body once. A FilesErrExportModified is
-// a FilesExportModifiedError carrying the export's current generation, and a
-// FilesErrNodeRefused a FilesWriteRefusedError carrying the node's reason.
-// maybeReplay, set when an earlier attempt of the call may have taken effect,
-// is copied onto either.
-func filesError(res *http.Response, body []byte, maybeReplay bool) error {
 	var reply struct {
 		ErrorResponse
 		// Generation and Refusal are kept raw, so a value of another type
@@ -1481,12 +1468,11 @@ func filesError(res *http.Response, body []byte, maybeReplay bool) error {
 		Generation json.RawMessage `json:"generation"`
 		Refusal    json.RawMessage `json:"refusal"`
 	}
-	if err := json.Unmarshal(body, &reply); err != nil {
-		// Not a JSON error document, such as a proxy's page.
-		return nonJSONErrorResponse(res, body, err)
+	if err := decodeErrorResponse(resp, &reply, &reply.ErrorResponse); err != nil {
+		return err
 	}
 	errResp := reply.ErrorResponse
-	errResp.StatusCode = res.StatusCode
+	errResp.StatusCode = resp.StatusCode
 	switch errResp.Code {
 	case FilesErrExportModified:
 		var generation FilesGeneration
@@ -1498,6 +1484,16 @@ func filesError(res *http.Response, body []byte, maybeReplay bool) error {
 		return FilesWriteRefusedError{ErrorResponse: errResp, Refusal: refusal, MaybeReplay: maybeReplay}
 	}
 	return errResp
+}
+
+// filesError returns the error of a Files management API answer, res, whose
+// body executeMethod already read into body, as filesErrorResponse types it.
+// It decodes from a copy, so res.Body stays the body for executeMethod's
+// caller.
+func filesError(res *http.Response, body []byte, maybeReplay bool) error {
+	answer := *res
+	answer.Body = io.NopCloser(bytes.NewReader(body))
+	return filesErrorResponse(&answer, maybeReplay)
 }
 
 // filesDecode decodes a 2xx reply into out. A 204, or any 2xx without a body,

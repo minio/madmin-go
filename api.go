@@ -456,7 +456,7 @@ func (adm AdminClient) executeMethod(ctx context.Context, method string, reqData
 		}
 
 		// Read the body to be saved later.
-		errBodyBytes, err := io.ReadAll(res.Body)
+		errBodyBytes, err := io.ReadAll(io.LimitReader(res.Body, errorBodyLimit))
 		// res.Body should be closed
 		closeResponse(res)
 		if err != nil {
