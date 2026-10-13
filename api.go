@@ -212,9 +212,10 @@ type requestData struct {
 	creds *credentials.Value
 	// retry, when set, decides whether executeMethod repeats the request after
 	// an attempt that did not succeed. It is called with the attempt's
-	// transport error, or with its response and the body read from it. A
-	// refused connection and a canceled context end the call before it is
-	// asked.
+	// transport error, or with its response and the body read from it, which
+	// leaves the response's own body unread. When the hook declines a
+	// response, executeMethod returns that same response. A refused connection
+	// and a canceled context end the call before it is asked.
 	retry func(res *http.Response, body []byte, err error) bool
 }
 

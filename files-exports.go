@@ -930,6 +930,9 @@ type filesAccessBody struct {
 // too. The export may then exist, so read it by name
 // before adding it again.
 func (adm *AdminClient) AddFilesExport(ctx context.Context, spec FilesExportSpec) (FilesExport, error) {
+	if spec.Name == "" {
+		return FilesExport{}, errors.New("an export name is required")
+	}
 	if _, err := filesExportSegment(spec.Name); err != nil {
 		return FilesExport{}, err
 	}
@@ -1461,6 +1464,9 @@ func filesNotSent(err error) bool {
 // carrying the node's reason. maybeReplay, set when an earlier attempt of the
 // call may have taken effect, is copied onto either.
 func filesErrorResponse(resp *http.Response, maybeReplay bool) error {
+	if resp == nil || resp.Body == nil {
+		return ErrInvalidArgument("Response is empty. " + reportIssue)
+	}
 	var reply struct {
 		ErrorResponse
 		// Generation and Refusal are kept raw, so a value of another type
