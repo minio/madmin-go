@@ -1390,8 +1390,8 @@ func TestFilesWriteModifiedCarriesGeneration(t *testing.T) {
 	if !errors.As(err, &modified) {
 		t.Fatalf("err = %v (%T), want a FilesExportModifiedError", err, err)
 	}
-	if modified.Generation != "5f2c44" || modified.RequestID != "18B3" {
-		t.Errorf("error = %+v, want generation 5f2c44 and request id 18B3", modified)
+	if modified.Generation != "5f2c44" || modified.RequestID != "18B3" || modified.MaybeReplay {
+		t.Errorf("error = %+v, want generation 5f2c44, request id 18B3 and no replay", modified)
 	}
 	if code := ToErrorResponse(err).Code; code != FilesErrExportModified {
 		t.Errorf("code = %q, want %s", code, FilesErrExportModified)
@@ -1399,6 +1399,106 @@ func TestFilesWriteModifiedCarriesGeneration(t *testing.T) {
 	var errResp ErrorResponse
 	if !errors.As(err, &errResp) || errResp.Code != FilesErrExportModified {
 		t.Errorf("errors.As found %+v, want the ErrorResponse", errResp)
+	}
+}
+
+// TestFilesWriteNodeRefusedCarriesRefusal verifies that a 422 reaches the
+// caller as a FilesWriteRefusedError carrying the node's reason from the
+// refusal field, and none when the server sent none, that a caller switching
+// on the code still finds it, and that a first attempt is not taken for a
+// replay.
+func TestFilesWriteNodeRefusedCarriesRefusal(t *testing.T) {
+	for _, tc := range []struct {
+		name, body, want string
+	}{
+		{"refusal_field", `{"code": "NodeRefused", "message": "node node03 refused the config", "requestId": "18B3", "refusal": "unknown host build01"}`, "unknown host build01"},
+		{"message_only", `{"code": "NodeRefused", "message": "unknown host build01", "requestId": "18B3"}`, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			server, _ := newFilesJSONServer(t, http.StatusUnprocessableEntity, tc.body)
+			_, err := newFilesExportsTestClient(t, server.URL).SetFilesExportQuota(context.Background(), "carol", "5f2a91", 1)
+
+			var refused FilesWriteRefusedError
+			if !errors.As(err, &refused) {
+				t.Fatalf("err = %v (%T), want a FilesWriteRefusedError", err, err)
+			}
+			if refused.Refusal != tc.want || refused.RequestID != "18B3" || refused.MaybeReplay {
+				t.Errorf("error = %+v, want refusal %q, request id 18B3 and no replay", refused, tc.want)
+			}
+			if code := ToErrorResponse(err).Code; code != FilesErrNodeRefused {
+				t.Errorf("code = %q, want %s", code, FilesErrNodeRefused)
+			}
+		})
+	}
+}
+
+// TestFilesWriteNodeRefusedMaybeReplay verifies that a 422 after an attempt
+// whose outcome was unknown is marked as a possible replay when the write
+// cannot tell by reading the export: the export is named by name, or the read
+// does not show the change at another generation. A read at the generation
+// the write named, without the change, proves nothing was recorded.
+func TestFilesWriteNodeRefusedMaybeReplay(t *testing.T) {
+	nodeRefused := filesScriptedReply{http.StatusUnprocessableEntity, `{"code": "NodeRefused", "message": "unknown host build01"}`}
+	other := filesReadAt(7, filesCatchAllRules, false, "unknown host build01", filesOtherAt, FilesExportServing)
+	// The export read back at the generation the write named, without the
+	// change: the write always moves the generation, so nothing was recorded.
+	unchanged := filesScriptedReply{http.StatusOK, `{"name": "carol", "exportID": 104, "generation": "5f2a91", "changedAt": "5f2a91",
+		"node": "node03", "status": "serving", "quotaBytes": 7, "accessRules": [], "applied": true}`}
+	for _, tc := range []struct {
+		name, export string
+		read         filesScriptedReply
+		reads        int32
+		maybeReplay  bool
+	}{
+		{"by_name", "carol", other, 0, true},
+		{"by_id_not_held", "104", other, 1, true},
+		{"by_id_unchanged", "104", unchanged, 1, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			server, _, reads := newFilesScriptedServer(t, tc.read, filesDropped, nodeRefused)
+			_, err := newFilesExportsTestClient(t, server.URL).SetFilesExportQuota(context.Background(), tc.export, "5f2a91", 1)
+
+			var refused FilesWriteRefusedError
+			if !errors.As(err, &refused) || refused.MaybeReplay != tc.maybeReplay || refused.Message != "unknown host build01" {
+				t.Errorf("err = %#v, want a FilesWriteRefusedError with MaybeReplay %t", err, tc.maybeReplay)
+			}
+			if n := reads.Load(); n != tc.reads {
+				t.Errorf("the client read the export %d times, want %d", n, tc.reads)
+			}
+		})
+	}
+}
+
+// TestFilesWriteModifiedMaybeReplay verifies that a 412 after an attempt
+// whose outcome was unknown is marked as a possible replay: the generation
+// may have moved on through that attempt's own change.
+func TestFilesWriteModifiedMaybeReplay(t *testing.T) {
+	server, _, reads := newFilesScriptedServer(t, filesCarol, filesDropped, filesModified)
+	_, err := newFilesExportsTestClient(t, server.URL).SetFilesExportQuota(context.Background(), "carol", "5f2a91", 1)
+
+	var modified FilesExportModifiedError
+	if !errors.As(err, &modified) || !modified.MaybeReplay {
+		t.Errorf("err = %#v, want a FilesExportModifiedError marked as a possible replay", err)
+	}
+	if n := reads.Load(); n != 0 {
+		t.Errorf("the client read the export %d times, want 0", n)
+	}
+}
+
+// TestFilesRetryKeepsTypedError verifies that the last failed attempt is kept
+// as filesError types it, so a call whose context ends after a 412 or 422
+// still carries the generation, the refusal and whether it may be a replay.
+func TestFilesRetryKeepsTypedError(t *testing.T) {
+	retry := filesRetry{repeatUnknown: true}
+	if !retry.next(nil, nil, io.ErrUnexpectedEOF) {
+		t.Fatal("a dropped attempt was not repeated")
+	}
+	if retry.next(&http.Response{StatusCode: http.StatusUnprocessableEntity}, []byte(`{"code": "NodeRefused", "message": "refused", "refusal": "unknown host build01"}`), nil) {
+		t.Fatal("a 422 was repeated")
+	}
+	var refused FilesWriteRefusedError
+	if !errors.As(retry.lastErr, &refused) || refused.Refusal != "unknown host build01" || !refused.MaybeReplay || refused.StatusCode != http.StatusUnprocessableEntity {
+		t.Errorf("lastErr = %#v, want a FilesWriteRefusedError marked as a possible replay", retry.lastErr)
 	}
 }
 
@@ -1854,6 +1954,12 @@ func TestFilesWriteReconcilesByRead(t *testing.T) {
 					}
 					if code := ToErrorResponse(notApplied.Cause).Code; code != ToErrorResponse(httpRespToErrorResponseFor(tc.last)).Code {
 						t.Errorf("%s: cause code = %q, want the last answer's", name, code)
+					}
+					if tc.last == nodeRefused {
+						var refused FilesWriteRefusedError
+						if !errors.As(notApplied.Cause, &refused) || !refused.MaybeReplay {
+							t.Errorf("%s: cause = %#v, want a FilesWriteRefusedError marked as a possible replay", name, notApplied.Cause)
+						}
 					}
 					var modified FilesExportModifiedError
 					if errors.As(err, &modified) {

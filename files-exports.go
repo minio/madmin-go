@@ -320,7 +320,9 @@ const (
 	// FilesErrExportModified means a per-export write named a generation the
 	// export is no longer at: another write changed it since it was read. The
 	// error is a FilesExportModifiedError carrying the current generation.
-	// Read the export again and decide whether to repeat the change. HTTP 412.
+	// Read the export again and decide whether to repeat the change. After
+	// an earlier attempt whose outcome was unknown, the generation may have
+	// moved on through that attempt itself, which MaybeReplay marks. HTTP 412.
 	FilesErrExportModified = "ExportModified"
 
 	// FilesErrNodeRefused means the owning node answered and refused the
@@ -328,10 +330,12 @@ const (
 	// request, so the request records nothing. A replay, the repeat of a
 	// change an earlier attempt recorded, leaves that change recorded: it
 	// stays the desired state, and the export reads Applied false with the
-	// node's reason in Refusal. The client cannot tell a replay from a first
-	// request, so after an earlier attempt whose outcome was unknown it reads
-	// the export, as for any other failure such an attempt leaves unclear.
-	// The message carries the node's reason. HTTP 422.
+	// node's reason in Refusal. The server does not say which it was, so
+	// after an earlier attempt whose outcome was unknown the client reads the
+	// export, as for any other failure such an attempt leaves unclear. The
+	// error is a FilesWriteRefusedError carrying the node's reason, when the
+	// server sent one, and whether the request may have been a replay.
+	// HTTP 422.
 	FilesErrNodeRefused = "NodeRefused"
 
 	// FilesErrPreconditionRequired means a per-export write named no
@@ -411,10 +415,49 @@ type FilesExportModifiedError struct {
 	// Generation is the export's current generation. It is empty when the
 	// server sent none.
 	Generation FilesGeneration
+
+	// MaybeReplay is set when an earlier attempt of this call may have taken
+	// effect, so the generation may have moved on through this call's own
+	// change. When it is false, no attempt of this call may have taken
+	// effect.
+	MaybeReplay bool
 }
 
 // Unwrap returns the ErrorResponse, so errors.As finds it.
 func (e FilesExportModifiedError) Unwrap() error {
+	return e.ErrorResponse
+}
+
+// FilesWriteRefusedError is the error of a write the owning node refused,
+// with FilesErrNodeRefused. ToErrorResponse returns its ErrorResponse, so a
+// caller switching on the code needs no type assertion.
+//
+// Before this type, such a refusal was a plain ErrorResponse: a caller that
+// type-asserts err.(ErrorResponse) no longer matches it, and should use
+// ToErrorResponse or errors.As instead.
+type FilesWriteRefusedError struct {
+	ErrorResponse
+
+	// Refusal is the node's reason, from the refusal field of the reply. It
+	// is empty when the server sent none, as current servers do, which put
+	// the reason in Message.
+	Refusal string
+
+	// MaybeReplay is set when an earlier attempt of this call may have taken
+	// effect, so this refusal may answer a repeat of a change that attempt
+	// recorded, which stays the desired state. When it is false, no attempt
+	// of this call may have taken effect; a change an earlier call recorded,
+	// which this call repeats, is not seen. A per-export write that may have taken effect reads
+	// the export before it returns, as its doc comment describes, and returns
+	// a FilesNotAppliedError instead when the read shows the change recorded,
+	// and clears MaybeReplay when the read shows the export still at the
+	// generation the write named without the change, so a caller sees
+	// MaybeReplay set only when the write could not tell.
+	MaybeReplay bool
+}
+
+// Unwrap returns the ErrorResponse, so errors.As finds it.
+func (e FilesWriteRefusedError) Unwrap() error {
 	return e.ErrorResponse
 }
 
@@ -1169,7 +1212,9 @@ func FilesRefusedBeforeActing(code string) bool {
 // has taken it, a FilesNotAppliedError when the node has not and the read
 // proves the pending change is this write's, and err otherwise: after a
 // refusal that changed nothing, when export is a name, or when the read fails
-// or shows another state.
+// or shows another state. When the read shows the export still at generation
+// without the change, no attempt was recorded, and err's MaybeReplay is
+// cleared.
 //
 // Applied and Refusal describe the export's last change, which may be another
 // caller's: one that landed after this write, a remove among them. The read
@@ -1182,7 +1227,14 @@ func (adm *AdminClient) filesReconcileChange(ctx context.Context, export string,
 	}
 	after, readErr := adm.filesReadAfterWrite(ctx, export)
 	switch {
-	case readErr != nil || !holds(after):
+	case readErr != nil:
+		return FilesExport{}, err
+	case !holds(after):
+		if after.Generation == generation {
+			// A quota or access write always moves the generation, and
+			// generations are never reused, so no attempt was recorded.
+			return FilesExport{}, filesNotReplay(err)
+		}
 		return FilesExport{}, err
 	case after.Applied == nil || *after.Applied:
 		// A server that does not report Applied predates a node taking a
@@ -1192,6 +1244,20 @@ func (adm *AdminClient) filesReconcileChange(ctx context.Context, export string,
 		return FilesExport{}, newFilesNotApplied(err, after)
 	}
 	return FilesExport{}, err
+}
+
+// filesNotReplay returns err with MaybeReplay cleared, for a write a read
+// proved no attempt of took effect.
+func filesNotReplay(err error) error {
+	switch e := err.(type) {
+	case FilesWriteRefusedError:
+		e.MaybeReplay = false
+		return e
+	case FilesExportModifiedError:
+		e.MaybeReplay = false
+		return e
+	}
+	return err
 }
 
 // filesReadAfterWrite reads export once, for a write that ended in doubt. The
@@ -1204,7 +1270,7 @@ func (adm *AdminClient) filesReadAfterWrite(ctx context.Context, export string) 
 	}
 
 	var info FilesExport
-	reqData := requestData{relPath: relPath, retry: func(int, ErrorResponse, error) bool { return false }}
+	reqData := requestData{relPath: relPath, retry: func(*http.Response, []byte, error) bool { return false }}
 	err = adm.filesJSON(ctx, reqData, &info)
 	return info, err
 }
@@ -1268,7 +1334,7 @@ func (adm *AdminClient) filesWrite(ctx context.Context, method string, reqData r
 	} else if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
 		return filesDecode(resp, out)
 	} else {
-		err = filesErrorResponse(resp)
+		err = filesErrorResponse(resp, retry.unknown)
 	}
 	if retry.unknown && reconcile != nil {
 		return reconcile(ctx, err)
@@ -1290,7 +1356,8 @@ type filesRetry struct {
 	// included.
 	unknown bool
 
-	// lastErr is the error of the last attempt that failed.
+	// lastErr is the error of the last attempt that failed, typed as
+	// filesError returns it.
 	lastErr error
 
 	// busy counts the attempts that answered FilesErrNodeBusy.
@@ -1305,7 +1372,7 @@ const filesBusyRepeats = 1
 
 // next records one attempt that did not succeed and reports whether to send
 // the write again. It has the signature of requestData.retry.
-func (r *filesRetry) next(status int, errResp ErrorResponse, err error) bool {
+func (r *filesRetry) next(res *http.Response, body []byte, err error) bool {
 	if err != nil {
 		r.lastErr = err
 		if filesNotSent(err) {
@@ -1314,11 +1381,13 @@ func (r *filesRetry) next(status int, errResp ErrorResponse, err error) bool {
 		r.unknown = true
 		return r.repeatUnknown
 	}
+	status := res.StatusCode
 	if status >= 200 && status <= 299 {
 		return false
 	}
 
-	r.lastErr = errResp
+	r.lastErr = filesError(res, body, r.unknown)
+	errResp := ToErrorResponse(r.lastErr)
 	switch {
 	case errResp.Code == FilesErrNodeUnreachable:
 		// The change is recorded, and AIStor sends it when the node answers
@@ -1351,9 +1420,8 @@ func filesNotSent(err error) bool {
 }
 
 // filesErrorResponse returns the error a Files management API write was
-// answered with. A FilesErrExportModified is a FilesExportModifiedError
-// carrying the export's current generation.
-func filesErrorResponse(resp *http.Response) error {
+// answered with, as filesError types it.
+func filesErrorResponse(resp *http.Response, maybeReplay bool) error {
 	if resp == nil || resp.Body == nil {
 		return httpRespToErrorResponse(resp)
 	}
@@ -1361,18 +1429,38 @@ func filesErrorResponse(resp *http.Response) error {
 	if err != nil {
 		return httpRespToErrorResponse(resp)
 	}
-	// Decode from a copy, so resp.Body stays the body for closeResponse.
-	answer := *resp
-	answer.Body = io.NopCloser(bytes.NewReader(body))
-	errResp := ToErrorResponse(httpRespToErrorResponse(&answer))
-	if errResp.Code != FilesErrExportModified {
-		return errResp
-	}
-	var current struct {
+	return filesError(resp, body, maybeReplay)
+}
+
+// filesError returns the error of a Files management API answer, res, whose
+// body was read into body. A FilesErrExportModified is a
+// FilesExportModifiedError carrying the export's current generation, and a
+// FilesErrNodeRefused a FilesWriteRefusedError carrying the node's reason.
+// maybeReplay, set when an earlier attempt of the call may have taken effect,
+// is copied onto either.
+func filesError(res *http.Response, body []byte, maybeReplay bool) error {
+	var reply struct {
+		ErrorResponse
 		Generation FilesGeneration `json:"generation"`
+		Refusal    string          `json:"refusal"`
 	}
-	_ = json.Unmarshal(body, &current)
-	return FilesExportModifiedError{ErrorResponse: errResp, Generation: current.Generation}
+	if err := json.Unmarshal(body, &reply); err != nil {
+		// Not a JSON error document, such as a proxy's page: decode it as
+		// any other admin API error, from a copy, so res.Body stays the body
+		// for closeResponse.
+		answer := *res
+		answer.Body = io.NopCloser(bytes.NewReader(body))
+		return httpRespToErrorResponse(&answer)
+	}
+	errResp := reply.ErrorResponse
+	errResp.StatusCode = res.StatusCode
+	switch errResp.Code {
+	case FilesErrExportModified:
+		return FilesExportModifiedError{ErrorResponse: errResp, Generation: reply.Generation, MaybeReplay: maybeReplay}
+	case FilesErrNodeRefused:
+		return FilesWriteRefusedError{ErrorResponse: errResp, Refusal: reply.Refusal, MaybeReplay: maybeReplay}
+	}
+	return errResp
 }
 
 // filesDecode decodes a 2xx reply into out. A 204, or any 2xx without a body,

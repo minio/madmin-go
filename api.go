@@ -212,10 +212,10 @@ type requestData struct {
 	creds *credentials.Value
 	// retry, when set, decides whether executeMethod repeats the request after
 	// an attempt that did not succeed. It is called with the attempt's
-	// transport error, or with its status and the error response decoded from
-	// its body. A refused connection and a canceled context end the call before
-	// it is asked.
-	retry func(status int, errResp ErrorResponse, err error) bool
+	// transport error, or with its response and the body read from it. A
+	// refused connection and a canceled context end the call before it is
+	// asked.
+	retry func(res *http.Response, body []byte, err error) bool
 }
 
 // Filter out signature value from Authorization header.
@@ -426,7 +426,7 @@ func (adm AdminClient) executeMethod(ctx context.Context, method string, reqData
 			if ctx.Err() != nil {
 				return nil, ctx.Err()
 			}
-			if reqData.retry != nil && !reqData.retry(0, ErrorResponse{}, err) {
+			if reqData.retry != nil && !reqData.retry(nil, nil, err) {
 				return nil, err
 			}
 			// retry all network errors.
@@ -467,19 +467,19 @@ func (adm AdminClient) executeMethod(ctx context.Context, method string, reqData
 		errBodySeeker := bytes.NewReader(errBodyBytes)
 		res.Body = io.NopCloser(errBodySeeker)
 
+		if reqData.retry != nil {
+			if reqData.retry(res, errBodyBytes, nil) {
+				continue
+			}
+			break
+		}
+
 		// For errors verify if its retryable otherwise fail quickly.
 		errResponse := ToErrorResponse(httpRespToErrorResponse(res))
 
 		// Save the body back again.
 		errBodySeeker.Seek(0, 0) // Seek back to starting point.
 		res.Body = io.NopCloser(errBodySeeker)
-
-		if reqData.retry != nil {
-			if reqData.retry(res.StatusCode, errResponse, nil) {
-				continue
-			}
-			break
-		}
 
 		// Verify if error response code is retryable.
 		if isAdminErrCodeRetryable(errResponse.Code) {
