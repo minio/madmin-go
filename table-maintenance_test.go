@@ -64,6 +64,34 @@ func TestIcebergRecordExpirationSettingsJSON(t *testing.T) {
 	}
 }
 
+func TestIcebergRecordExpirationRulesJSON(t *testing.T) {
+	settings := IcebergRecordExpirationSettings{
+		Column: "time",
+		Rules: []IcebergRecordExpirationRule{
+			{Filter: json.RawMessage(`{"type":"eq","term":"retention_class","value":"operational"}`), Days: 365},
+		},
+	}
+
+	got, err := json.Marshal(settings)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	const want = `{"rules":[{"filter":{"type":"eq","term":"retention_class","value":"operational"},"days":365}],"column":"time"}`
+	if string(got) != want {
+		t.Errorf("settings encoded as\n %s\nwant\n %s", got, want)
+	}
+
+	// The server reads an absent rules field as "keep the stored rules", so an
+	// empty list must reach the wire for a client to clear them.
+	cleared, err := json.Marshal(IcebergRecordExpirationSettings{Rules: []IcebergRecordExpirationRule{}})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if string(cleared) != `{"rules":[]}` {
+		t.Errorf("an empty rule list encoded as %s, want {\"rules\":[]}", cleared)
+	}
+}
+
 // An unset clock column must not reach the wire as "column":"". The server
 // rejects an empty column, so encoding one turns a client-side omission into a
 // server-side error the user cannot act on.
