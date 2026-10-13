@@ -347,7 +347,7 @@ const (
 	// FilesErrNodeBusy means the write could not take its node's config lock
 	// in time, because another write to the node held it or too few lock
 	// servers answered. The server answers it before acting, so nothing is
-	// recorded and the client repeats the write. HTTP 503.
+	// recorded and the client repeats the write once. HTTP 503.
 	FilesErrNodeBusy = "NodeBusy"
 
 	// FilesErrNotImplemented means the owning node is older than the control
@@ -904,10 +904,10 @@ func (adm *AdminClient) AddFilesExport(ctx context.Context, spec FilesExportSpec
 //
 // A request whose outcome is unknown is repeated: a transport error once the
 // request was sent, a 502 or 504, or a 503 other than FilesErrNodeUnreachable
-// and FilesErrNodeBusy, SlowDown and RequestTimeout included. A
-// FilesErrNodeBusy came before the server acted, and is repeated once. The server answers a repeat of a
-// change it already applied with that change's reply, as long as no other
-// write landed in between.
+// and FilesErrNodeBusy, SlowDown and RequestTimeout included. The server
+// answers FilesErrNodeBusy before acting, and the client repeats it once. The
+// server answers a repeat of a change it already applied with that change's
+// reply, as long as no other write landed in between.
 //
 // When the call still fails after such an attempt, the write may have taken
 // effect: a repeat met FilesErrExportModified because another write landed
@@ -1299,8 +1299,8 @@ type filesRetry struct {
 
 // filesBusyRepeats is how many times a write that answered FilesErrNodeBusy
 // is repeated. The server waits for the node's config lock up to 2 minutes on
-// each attempt, so the backoff of MaxRetry repeats would hold the call for
-// 20 minutes and more.
+// each attempt, so MaxRetry repeats would hold the call for 20 minutes and
+// more.
 const filesBusyRepeats = 1
 
 // next records one attempt that did not succeed and reports whether to send
