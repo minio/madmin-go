@@ -903,8 +903,9 @@ func (adm *AdminClient) AddFilesExport(ctx context.Context, spec FilesExportSpec
 // has moved on, the call fails with a FilesExportModifiedError.
 //
 // A request whose outcome is unknown is repeated: a transport error once the
-// request was sent, a 502 or 504, or a 503 other than FilesErrNodeUnreachable,
-// SlowDown and RequestTimeout included. The server answers a repeat of a
+// request was sent, a 502 or 504, or a 503 other than FilesErrNodeUnreachable
+// and FilesErrNodeBusy, SlowDown and RequestTimeout included. A
+// FilesErrNodeBusy came before the server acted, and is repeated once. The server answers a repeat of a
 // change it already applied with that change's reply, as long as no other
 // write landed in between.
 //
@@ -1291,7 +1292,16 @@ type filesRetry struct {
 
 	// lastErr is the error of the last attempt that failed.
 	lastErr error
+
+	// busy counts the attempts that answered FilesErrNodeBusy.
+	busy int
 }
+
+// filesBusyRepeats is how many times a write that answered FilesErrNodeBusy
+// is repeated. The server waits for the node's config lock up to 2 minutes on
+// each attempt, so the backoff of MaxRetry repeats would hold the call for
+// 20 minutes and more.
+const filesBusyRepeats = 1
 
 // next records one attempt that did not succeed and reports whether to send
 // the write again. It has the signature of requestData.retry.
@@ -1316,8 +1326,9 @@ func (r *filesRetry) next(status int, errResp ErrorResponse, err error) bool {
 		return false
 	case errResp.Code == FilesErrNodeBusy:
 		// The server answered before acting, so a repeat cannot apply the
-		// write twice, an add included.
-		return true
+		// write twice, an add included, and the outcome stays as it was.
+		r.busy++
+		return r.busy <= filesBusyRepeats
 	case status == http.StatusBadGateway, status == http.StatusServiceUnavailable, status == http.StatusGatewayTimeout,
 		status >= 500 && isAdminErrCodeRetryable(errResp.Code):
 		// AIStor sends a 503 SlowDown or RequestTimeout after it has acted

@@ -1191,6 +1191,23 @@ func TestFilesWriteNodeUnreachableIsFinal(t *testing.T) {
 	}
 }
 
+// TestFilesWriteNodeBusyIsRepeatedOnce verifies that a write meeting NodeBusy
+// is repeated once, not MaxRetry times: each attempt already waited on the
+// server for the node's lock.
+func TestFilesWriteNodeBusyIsRepeatedOnce(t *testing.T) {
+	nodeBusy := filesScriptedReply{http.StatusServiceUnavailable, `{"code": "NodeBusy", "message": "could not take the config lock of node03 in time"}`}
+	server, writes, _ := newFilesScriptedServer(t, filesCarol, nodeBusy, nodeBusy, nodeBusy, filesScriptedReply{http.StatusOK, `{}`})
+	for name, call := range filesWrites(context.Background(), newFilesExportsTestClient(t, server.URL)) {
+		writes.Store(0)
+		if err := call(); ToErrorResponse(err).Code != FilesErrNodeBusy {
+			t.Errorf("%s: err = %v, want code %s", name, err, FilesErrNodeBusy)
+		}
+		if n := writes.Load(); n != 1+filesBusyRepeats {
+			t.Errorf("%s: the server received %d writes, want %d", name, n, 1+filesBusyRepeats)
+		}
+	}
+}
+
 // TestFilesWriteSendsWithoutRetries verifies that a MaxRetry of zero still
 // sends a write once, and reports the answer rather than a success nothing
 // was sent for.
