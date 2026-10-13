@@ -68,7 +68,8 @@ func (r *lockedRandSource) Seed(seed int64) {
 }
 
 // newRetryTimer creates a timer with exponentially increasing
-// delays until the maximum retry attempts are reached.
+// delays until the maximum retry attempts are reached. It waits only
+// between attempts, never after the last one.
 func (adm AdminClient) newRetryTimer(ctx context.Context, maxRetry int, unit time.Duration, capDur time.Duration, jitter float64) iter.Seq[int] {
 	// computes the exponential backoff duration according to
 	// https://www.awsarchitectureblog.com/2015/03/backoff.html
@@ -101,7 +102,7 @@ func (adm AdminClient) newRetryTimer(ctx context.Context, maxRetry int, unit tim
 		}
 
 		for i := range maxRetry {
-			if !yield(i) {
+			if !yield(i) || i == maxRetry-1 {
 				return
 			}
 
