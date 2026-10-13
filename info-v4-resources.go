@@ -269,7 +269,7 @@ type SMARTInfo struct {
 // StatusReason records why a drive was given a status, and when that was evaluated.
 type StatusReason struct {
 	Reason    string    `json:"reason,omitempty" msg:"r,omitempty"`
-	CreatedAt time.Time `json:"created,omitempty" msg:"ca,omitempty"`
+	CreatedAt time.Time `json:"created,omitzero" msg:"ca,omitempty"`
 }
 
 // Merge merges another SMARTInfo into this one.

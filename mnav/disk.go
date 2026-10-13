@@ -2028,7 +2028,7 @@ func (node *DiskSMARTNode) GetLeafData() map[string]string {
 			}
 			detail := fmt.Sprintf("%d %s", entry.count, entry.status)
 			if reason := node.smart.LastStatusReason[entry.status].Reason; reason != "" {
-				detail += fmt.Sprintf(" (%s)", reason)
+				detail += fmt.Sprintf(" (last: %s)", reason)
 			}
 			statusDetails = append(statusDetails, detail)
 		}
