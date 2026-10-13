@@ -1148,6 +1148,8 @@ func TestFilesWriteRetriesOnUnknownOutcome(t *testing.T) {
 		{"slow_down", filesScriptedReply{http.StatusServiceUnavailable, `{"code": "SlowDown", "message": "slow down"}`}, false},
 		{"request_timeout", filesScriptedReply{http.StatusServiceUnavailable, `{"code": "RequestTimeout", "message": "timed out"}`}, false},
 		{"throttled", filesScriptedReply{http.StatusTooManyRequests, `too many requests`}, true},
+		// The node's config lock was not free: nothing was recorded.
+		{"node_busy", filesScriptedReply{http.StatusServiceUnavailable, `{"code": "NodeBusy", "message": "could not take the config lock of node03 in time"}`}, true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
@@ -1392,6 +1394,7 @@ func TestRemoveFilesExportAlreadyRemoved(t *testing.T) {
 	slowDown := filesScriptedReply{http.StatusServiceUnavailable, `{"code": "SlowDown", "message": "slow down"}`}
 	throttled := filesScriptedReply{http.StatusTooManyRequests, `too many requests`}
 	nodeUnreachable := filesScriptedReply{http.StatusServiceUnavailable, `{"code": "NodeUnreachable", "message": "node03 did not answer"}`}
+	nodeBusy := filesScriptedReply{http.StatusServiceUnavailable, `{"code": "NodeBusy", "message": "could not take the config lock of node03 in time"}`}
 
 	for _, tc := range []struct {
 		name    string
@@ -1411,6 +1414,8 @@ func TestRemoveFilesExportAlreadyRemoved(t *testing.T) {
 		{"node_unreachable", []filesScriptedReply{nodeUnreachable, filesNotFound}, FilesErrNodeUnreachable, 1},
 		{"slow_down", []filesScriptedReply{slowDown, filesNotFound}, "", 2},
 		{"throttled", []filesScriptedReply{throttled, filesNotFound}, FilesErrExportNotFound, 2},
+		// NodeBusy comes before the server acts, as a 429 does.
+		{"node_busy", []filesScriptedReply{nodeBusy, filesNotFound}, FilesErrExportNotFound, 2},
 		{"first_attempt", []filesScriptedReply{filesNotFound}, FilesErrExportNotFound, 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -2023,7 +2028,7 @@ func TestFilesWriteReconcileReadsOnce(t *testing.T) {
 // TestFilesRefusedBeforeActing verifies the codes a caller may take as
 // settled: the server answered before acting, or said the change is recorded.
 func TestFilesRefusedBeforeActing(t *testing.T) {
-	for _, code := range []string{FilesErrInvalidRequest, FilesErrExportAlreadyExists, FilesErrNotImplemented, FilesErrNodeUnreachable} {
+	for _, code := range []string{FilesErrInvalidRequest, FilesErrExportAlreadyExists, FilesErrNotImplemented, FilesErrNodeUnreachable, FilesErrNodeBusy} {
 		if !FilesRefusedBeforeActing(code) {
 			t.Errorf("%s: not refused before acting", code)
 		}

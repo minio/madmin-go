@@ -344,6 +344,12 @@ const (
 	// HTTP 503.
 	FilesErrNodeUnreachable = "NodeUnreachable"
 
+	// FilesErrNodeBusy means the write could not take its node's config lock
+	// in time, because another write to the node held it or too few lock
+	// servers answered. The server answers it before acting, so nothing is
+	// recorded and the client repeats the write. HTTP 503.
+	FilesErrNodeBusy = "NodeBusy"
+
 	// FilesErrNotImplemented means the owning node is older than the control
 	// plane. HTTP 501.
 	FilesErrNotImplemented = "NotImplemented"
@@ -1149,7 +1155,7 @@ func FilesRefusedBeforeActing(code string) bool {
 	case FilesErrInvalidRequest, FilesErrAccessDenied, FilesErrExportNotFound,
 		FilesErrExportAlreadyExists, FilesErrExportIDsExhausted, FilesErrExportInUse,
 		FilesErrExportRemoving, FilesErrPreconditionRequired, FilesErrNotImplemented,
-		FilesErrNodeUnreachable:
+		FilesErrNodeUnreachable, FilesErrNodeBusy:
 		return true
 	}
 	return false
@@ -1306,6 +1312,10 @@ func (r *filesRetry) next(status int, errResp ErrorResponse, err error) bool {
 		// The change is recorded, and AIStor sends it when the node answers
 		// again. A repeat would only wait for the node.
 		return false
+	case errResp.Code == FilesErrNodeBusy:
+		// The server answered before acting, so a repeat cannot apply the
+		// write twice, an add included.
+		return true
 	case status == http.StatusBadGateway, status == http.StatusServiceUnavailable, status == http.StatusGatewayTimeout,
 		status >= 500 && isAdminErrCodeRetryable(errResp.Code):
 		// AIStor sends a 503 SlowDown or RequestTimeout after it has acted
