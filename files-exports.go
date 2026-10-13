@@ -18,7 +18,6 @@
 package madmin
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -742,11 +741,13 @@ func (adm *AdminClient) GetFilesExport(ctx context.Context, export string) (File
 }
 
 // filesExportSegment returns export escaped as one path segment. It refuses
-// the names that would reach a route other than the export's: the reserved
-// stats segment, and "." and "..", which url.PathEscape leaves as they are and
-// a router that cleans paths resolves.
+// an empty export, and the names that would reach a route other than the
+// export's: the reserved stats segment, and "." and "..", which url.PathEscape
+// leaves as they are and a router that cleans paths resolves.
 func filesExportSegment(export string) (string, error) {
 	switch export {
+	case "":
+		return "", errors.New("an export name or id is required")
 	case filesStatsSegment, ".", "..":
 		return "", fmt.Errorf("%q is reserved and names no export", export)
 	}
@@ -928,15 +929,15 @@ type filesAccessBody struct {
 // too. The export may then exist, so read it by name
 // before adding it again.
 func (adm *AdminClient) AddFilesExport(ctx context.Context, spec FilesExportSpec) (FilesExport, error) {
-	if spec.Name == "" {
-		return FilesExport{}, errors.New("an export name is required")
-	}
 	if _, err := filesExportSegment(spec.Name); err != nil {
 		return FilesExport{}, err
 	}
 
 	var info FilesExport
-	err := adm.filesWrite(ctx, http.MethodPut, requestData{relPath: filesAPIPrefix + "/exports"}, spec, &info, false, nil)
+	err := adm.filesWrite(ctx, filesWriteRequest{
+		method: http.MethodPut, reqData: requestData{relPath: filesAPIPrefix + "/exports"},
+		in: spec, out: &info,
+	})
 	return info, err
 }
 
@@ -989,7 +990,10 @@ func (adm *AdminClient) SetFilesExportQuota(ctx context.Context, export string, 
 		}
 		return nil
 	}
-	err = adm.filesWrite(ctx, http.MethodPut, reqData, filesQuotaBody{QuotaBytes: quotaBytes}, &change, true, reconcile)
+	err = adm.filesWrite(ctx, filesWriteRequest{
+		method: http.MethodPut, reqData: reqData, in: filesQuotaBody{QuotaBytes: quotaBytes}, out: &change,
+		repeatUnknown: true, reconcile: reconcile,
+	})
 	return change, err
 }
 
@@ -1019,8 +1023,10 @@ func (adm *AdminClient) SetFilesExportAccess(ctx context.Context, export string,
 	}
 
 	var change FilesAccessChange
-	err = adm.filesWrite(ctx, http.MethodPut, reqData, filesAccessBody{Rules: rules}, &change, true,
-		adm.filesAccessReconciler(export, generation, rules, &change))
+	err = adm.filesWrite(ctx, filesWriteRequest{
+		method: http.MethodPut, reqData: reqData, in: filesAccessBody{Rules: rules}, out: &change,
+		repeatUnknown: true, reconcile: adm.filesAccessReconciler(export, generation, rules, &change),
+	})
 	return change, err
 }
 
@@ -1039,8 +1045,10 @@ func (adm *AdminClient) ClearFilesExportAccess(ctx context.Context, export strin
 	}
 
 	var change FilesAccessChange
-	err = adm.filesWrite(ctx, http.MethodDelete, reqData, nil, &change, true,
-		adm.filesAccessReconciler(export, generation, filesaccess.Rules{}, &change))
+	err = adm.filesWrite(ctx, filesWriteRequest{
+		method: http.MethodDelete, reqData: reqData, out: &change,
+		repeatUnknown: true, reconcile: adm.filesAccessReconciler(export, generation, filesaccess.Rules{}, &change),
+	})
 	return change, err
 }
 
@@ -1125,17 +1133,16 @@ func (adm *AdminClient) RemoveFilesExport(ctx context.Context, export string, ge
 		}
 		return err
 	}
-	err = adm.filesWrite(ctx, http.MethodDelete, reqData, nil, &result, true, reconcile)
+	err = adm.filesWrite(ctx, filesWriteRequest{
+		method: http.MethodDelete, reqData: reqData, out: &result,
+		repeatUnknown: true, reconcile: reconcile,
+	})
 	return result, err
 }
 
 // filesExportPath returns the path of one export, followed by suffix. It
-// refuses a token that names no export: an empty one, and the ones
-// filesExportSegment refuses.
+// refuses a token that names no export, as filesExportSegment does.
 func filesExportPath(export, suffix string) (string, error) {
-	if export == "" {
-		return "", errors.New("an export name or id is required")
-	}
 	segment, err := filesExportSegment(export)
 	if err != nil {
 		return "", err
@@ -1290,26 +1297,45 @@ func (adm *AdminClient) filesJSON(ctx context.Context, reqData requestData, out 
 	return json.NewDecoder(resp.Body).Decode(out)
 }
 
-// filesWrite sends one Files management API write, with in, when not nil, as
-// its JSON body, and decodes its JSON reply into out. Any 2xx status is
-// success, and a 2xx reply without a body leaves out unchanged.
+// filesWriteRequest is one Files management API write.
+type filesWriteRequest struct {
+	method  string
+	reqData requestData
+
+	// in, when not nil, is sent as the JSON body.
+	in any
+
+	// out receives the JSON reply.
+	out any
+
+	// repeatUnknown says whether the write is safe to repeat after an attempt
+	// that may have taken effect. Every per-export write is: it names the
+	// generation it was decided on, and the server answers a repeat of a
+	// change it already applied rather than applying it twice. An add is not.
+	repeatUnknown bool
+
+	// reconcile, when not nil, learns whether the write took effect once an
+	// attempt's outcome is unknown.
+	reconcile filesReconciler
+}
+
+// filesWrite sends w and decodes its JSON reply into w.out. Any 2xx status is
+// success, and a 2xx reply without a body leaves w.out unchanged.
 //
 // executeMethod sends the write, and filesRetry decides after each attempt
-// whether to repeat it. repeatUnknown says whether the write is safe to repeat
-// after an attempt that may have taken effect. Every per-export write is: it
-// names the generation it was decided on, and the server answers a repeat of
-// a change it already applied rather than applying it twice. An add is not.
+// whether to repeat it.
 //
 // Once an attempt's outcome is unknown, the error the call ends with, whether
-// a later attempt's answer or that attempt's own, is passed to reconcile,
+// a later attempt's answer or that attempt's own, is passed to w.reconcile,
 // when not nil, to learn whether the write took effect. Without such an
 // attempt an error means what it says, and is returned as it is.
 //
 // When ctx ends while the write is being repeated, the error carries both the
 // context's error and the last attempt's.
-func (adm *AdminClient) filesWrite(ctx context.Context, method string, reqData requestData, in, out any, repeatUnknown bool, reconcile filesReconciler) error {
-	if in != nil {
-		body, err := json.Marshal(in)
+func (adm *AdminClient) filesWrite(ctx context.Context, w filesWriteRequest) error {
+	reqData := w.reqData
+	if w.in != nil {
+		body, err := json.Marshal(w.in)
 		if err != nil {
 			return err
 		}
@@ -1320,24 +1346,28 @@ func (adm *AdminClient) filesWrite(ctx context.Context, method string, reqData r
 		reqData.customHeaders.Set("Content-Type", "application/json")
 	}
 
-	retry := filesRetry{repeatUnknown: repeatUnknown}
+	retry := filesRetry{repeatUnknown: w.repeatUnknown}
 	reqData.retry = retry.next
-	resp, err := adm.executeMethod(ctx, method, reqData)
+	resp, err := adm.executeMethod(ctx, w.method, reqData)
 	defer closeResponse(resp)
-	if err != nil {
+	switch {
+	case err != nil:
 		if ctx.Err() != nil {
 			if retry.lastErr != nil {
 				return fmt.Errorf("%w; the last attempt failed: %w", err, retry.lastErr)
 			}
 			return err
 		}
-	} else if resp.StatusCode >= 200 && resp.StatusCode <= 299 {
-		return filesDecode(resp, out)
-	} else {
+	case resp.StatusCode >= 200 && resp.StatusCode <= 299:
+		return filesDecode(resp, w.out)
+	case resp == retry.lastAnswer:
+		// next decoded this answer to decide on it.
+		err = retry.lastErr
+	default:
 		err = filesErrorResponse(resp, retry.unknown)
 	}
-	if retry.unknown && reconcile != nil {
-		return reconcile(ctx, err)
+	if retry.unknown && w.reconcile != nil {
+		return w.reconcile(ctx, err)
 	}
 	return err
 }
@@ -1359,6 +1389,10 @@ type filesRetry struct {
 	// lastErr is the error of the last attempt that failed, typed as
 	// filesError returns it.
 	lastErr error
+
+	// lastAnswer is the last answer next decoded, the one lastErr is the
+	// error of.
+	lastAnswer *http.Response
 
 	// busy counts the attempts that answered FilesErrNodeBusy.
 	busy int
@@ -1386,7 +1420,7 @@ func (r *filesRetry) next(res *http.Response, body []byte, err error) bool {
 		return false
 	}
 
-	r.lastErr = filesError(res, body, r.unknown)
+	r.lastErr, r.lastAnswer = filesError(res, body, r.unknown), res
 	errResp := ToErrorResponse(r.lastErr)
 	switch {
 	case errResp.Code == FilesErrNodeUnreachable:
@@ -1422,43 +1456,46 @@ func filesNotSent(err error) bool {
 // filesErrorResponse returns the error a Files management API write was
 // answered with, as filesError types it.
 func filesErrorResponse(resp *http.Response, maybeReplay bool) error {
-	if resp == nil || resp.Body == nil {
-		return httpRespToErrorResponse(resp)
-	}
 	body, err := io.ReadAll(io.LimitReader(resp.Body, 100<<10))
 	if err != nil {
-		return httpRespToErrorResponse(resp)
+		return ErrorResponse{
+			Code:       resp.Status,
+			Message:    fmt.Sprintf("Failed to read server response: %s.", err),
+			StatusCode: resp.StatusCode,
+		}
 	}
 	return filesError(resp, body, maybeReplay)
 }
 
 // filesError returns the error of a Files management API answer, res, whose
-// body was read into body. A FilesErrExportModified is a
-// FilesExportModifiedError carrying the export's current generation, and a
+// body was read into body, decoding the body once. A FilesErrExportModified is
+// a FilesExportModifiedError carrying the export's current generation, and a
 // FilesErrNodeRefused a FilesWriteRefusedError carrying the node's reason.
 // maybeReplay, set when an earlier attempt of the call may have taken effect,
 // is copied onto either.
 func filesError(res *http.Response, body []byte, maybeReplay bool) error {
 	var reply struct {
 		ErrorResponse
-		Generation FilesGeneration `json:"generation"`
-		Refusal    string          `json:"refusal"`
+		// Generation and Refusal are kept raw, so a value of another type
+		// leaves the field empty rather than failing the whole body.
+		Generation json.RawMessage `json:"generation"`
+		Refusal    json.RawMessage `json:"refusal"`
 	}
 	if err := json.Unmarshal(body, &reply); err != nil {
-		// Not a JSON error document, such as a proxy's page: decode it as
-		// any other admin API error, from a copy, so res.Body stays the body
-		// for closeResponse.
-		answer := *res
-		answer.Body = io.NopCloser(bytes.NewReader(body))
-		return httpRespToErrorResponse(&answer)
+		// Not a JSON error document, such as a proxy's page.
+		return nonJSONErrorResponse(res, body, err)
 	}
 	errResp := reply.ErrorResponse
 	errResp.StatusCode = res.StatusCode
 	switch errResp.Code {
 	case FilesErrExportModified:
-		return FilesExportModifiedError{ErrorResponse: errResp, Generation: reply.Generation, MaybeReplay: maybeReplay}
+		var generation FilesGeneration
+		_ = json.Unmarshal(reply.Generation, &generation)
+		return FilesExportModifiedError{ErrorResponse: errResp, Generation: generation, MaybeReplay: maybeReplay}
 	case FilesErrNodeRefused:
-		return FilesWriteRefusedError{ErrorResponse: errResp, Refusal: reply.Refusal, MaybeReplay: maybeReplay}
+		var refusal string
+		_ = json.Unmarshal(reply.Refusal, &refusal)
+		return FilesWriteRefusedError{ErrorResponse: errResp, Refusal: refusal, MaybeReplay: maybeReplay}
 	}
 	return errResp
 }

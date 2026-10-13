@@ -1502,6 +1502,47 @@ func TestFilesRetryKeepsTypedError(t *testing.T) {
 	}
 }
 
+// TestFilesErrorResponse verifies that the one decode filesErrorResponse makes
+// builds the ErrorResponse httpRespToErrorResponse does, for a JSON, an XML and
+// a plain-text body, that a 412 also carries the generation, and a 422 the
+// refusal, each left empty when it is not a string.
+func TestFilesErrorResponse(t *testing.T) {
+	for _, tc := range []struct {
+		status     int
+		body       string
+		generation FilesGeneration
+		refusal    string
+	}{
+		{http.StatusConflict, `{"code": "ExportInUse", "message": "in use", "requestId": "18B3"}`, "", ""},
+		{http.StatusConflict, `<Error><Code>ExportInUse</Code><Message>in use</Message></Error>`, "", ""},
+		{http.StatusGatewayTimeout, `gateway timeout`, "", ""},
+		{http.StatusPreconditionFailed, `{"code": "ExportModified", "message": "changed", "generation": "5f2c44"}`, "5f2c44", ""},
+		{http.StatusPreconditionFailed, `{"code": "ExportModified", "message": "changed", "generation": 7}`, "", ""},
+		{http.StatusUnprocessableEntity, `{"code": "NodeRefused", "message": "refused", "refusal": "unknown host build01"}`, "", "unknown host build01"},
+		{http.StatusUnprocessableEntity, `{"code": "NodeRefused", "message": "refused", "refusal": 7}`, "", ""},
+	} {
+		answer := func() *http.Response {
+			return &http.Response{
+				Status: fmt.Sprintf("%d %s", tc.status, http.StatusText(tc.status)), StatusCode: tc.status,
+				Body: io.NopCloser(strings.NewReader(tc.body)),
+			}
+		}
+		err := filesErrorResponse(answer(), false)
+		want := ToErrorResponse(httpRespToErrorResponse(answer()))
+		if got := ToErrorResponse(err); got != want {
+			t.Errorf("%s: error = %+v, want %+v", tc.body, got, want)
+		}
+		var modified FilesExportModifiedError
+		if errors.As(err, &modified) != (tc.status == http.StatusPreconditionFailed) || modified.Generation != tc.generation {
+			t.Errorf("%s: err = %#v, want generation %q", tc.body, err, tc.generation)
+		}
+		var refused FilesWriteRefusedError
+		if errors.As(err, &refused) != (tc.status == http.StatusUnprocessableEntity) || refused.Refusal != tc.refusal {
+			t.Errorf("%s: err = %#v, want refusal %q", tc.body, err, tc.refusal)
+		}
+	}
+}
+
 // TestRemoveFilesExportAlreadyRemoved verifies that a 404 is read as an
 // earlier attempt's remove only when an earlier attempt's outcome is unknown.
 // A 429 comes before the server acts, so a 404 after it is the error it says:
@@ -1778,6 +1819,10 @@ func TestFilesWriteRefusesLocally(t *testing.T) {
 			"clear":  func() error { _, err := client.ClearFilesExportAccess(ctx, export, "5f2a91"); return err },
 			"remove": func() error {
 				_, err := client.RemoveFilesExport(ctx, export, "5f2a91", FilesRemoveOptions{})
+				return err
+			},
+			"add": func() error {
+				_, err := client.AddFilesExport(ctx, FilesExportSpec{Name: export, Pseudo: "/home/carol"})
 				return err
 			},
 		} {

@@ -93,22 +93,30 @@ func httpRespToErrorResponse(resp *http.Response) error {
 	// Decode the json error
 	err = json.Unmarshal(body, &errResp)
 	if err != nil {
-		// We might get errors as XML, try that.
-		xmlErr := xml.Unmarshal(body, &errResp)
+		return nonJSONErrorResponse(resp, body, err)
+	}
+	errResp.StatusCode = resp.StatusCode
+	return errResp
+}
 
-		if xmlErr != nil {
-			bodyString := string(body)
-			if !utf8.Valid(body) {
-				bodyString = hex.EncodeToString(body)
-			}
-			if len(bodyString) > 1024 {
-				bodyString = bodyString[:1021] + "..."
-			}
-			return ErrorResponse{
-				Code:       resp.Status,
-				Message:    fmt.Sprintf("Failed to parse server response (%s): %s", err.Error(), bodyString),
-				StatusCode: resp.StatusCode,
-			}
+// nonJSONErrorResponse returns the ErrorResponse of resp, whose body failed to
+// decode as JSON with jsonErr: the body decoded as XML, or else one carrying
+// the body itself.
+func nonJSONErrorResponse(resp *http.Response, body []byte, jsonErr error) ErrorResponse {
+	var errResp ErrorResponse
+	// We might get errors as XML, try that.
+	if xmlErr := xml.Unmarshal(body, &errResp); xmlErr != nil {
+		bodyString := string(body)
+		if !utf8.Valid(body) {
+			bodyString = hex.EncodeToString(body)
+		}
+		if len(bodyString) > 1024 {
+			bodyString = bodyString[:1021] + "..."
+		}
+		return ErrorResponse{
+			Code:       resp.Status,
+			Message:    fmt.Sprintf("Failed to parse server response (%s): %s", jsonErr.Error(), bodyString),
+			StatusCode: resp.StatusCode,
 		}
 	}
 	errResp.StatusCode = resp.StatusCode
