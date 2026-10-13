@@ -877,11 +877,12 @@ type filesAccessBody struct {
 // repeat after an earlier attempt created the export would be refused with
 // FilesErrExportAlreadyExists, and one arriving after another caller removed
 // the export would create it again. So an add is repeated only after an answer
-// the server sends before acting, a 429 or a 408, or when the connection could
-// not be made. Any other attempt whose outcome is unknown ends the call with
-// its error: a transport error once the request was sent, a 502 or 504, or a
-// 503 other than FilesErrNodeUnreachable, SlowDown included, since AIStor
-// sends that after acting too. The export may then exist, so read it by name
+// the server sends before acting, a 429, a 408 or a FilesErrNodeBusy, or when
+// the connection could not be made. Any other attempt whose outcome is unknown
+// ends the call with its error: a transport error once the request was sent, a
+// 502 or 504, or a 503 other than FilesErrNodeUnreachable and
+// FilesErrNodeBusy, SlowDown included, since AIStor sends that after acting
+// too. The export may then exist, so read it by name
 // before adding it again.
 func (adm *AdminClient) AddFilesExport(ctx context.Context, spec FilesExportSpec) (FilesExport, error) {
 	if spec.Name == "" {
@@ -1155,7 +1156,7 @@ func FilesRefusedBeforeActing(code string) bool {
 	case FilesErrInvalidRequest, FilesErrAccessDenied, FilesErrExportNotFound,
 		FilesErrExportAlreadyExists, FilesErrExportIDsExhausted, FilesErrExportInUse,
 		FilesErrExportRemoving, FilesErrPreconditionRequired, FilesErrNotImplemented,
-		FilesErrNodeUnreachable, FilesErrNodeBusy:
+		FilesErrNodeUnreachable:
 		return true
 	}
 	return false
@@ -1277,7 +1278,8 @@ func (adm *AdminClient) filesWrite(ctx context.Context, method string, reqData r
 // filesRetry is the retry policy of one Files write. It tells an answer that
 // came before the server acted, which is always safe to repeat, from one that
 // may come after: no answer once the request was sent, a 502, 503 or 504
-// other than FilesErrNodeUnreachable, or any 5xx with a retryable code.
+// other than FilesErrNodeUnreachable and FilesErrNodeBusy, or any 5xx with a
+// retryable code.
 type filesRetry struct {
 	// repeatUnknown repeats the write after an attempt that may have taken
 	// effect. Without it, such an attempt ends the call.

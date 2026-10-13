@@ -1893,12 +1893,23 @@ func TestFilesWriteReconcilesLastUnknown(t *testing.T) {
 		}
 	}
 
+	// A repeat that meets NodeBusy may wait on the lock the first attempt,
+	// which went on to apply the change, still holds: the read settles it.
+	MaxRetry = 2
+	nodeBusy := filesScriptedReply{http.StatusServiceUnavailable, `{"code": "NodeBusy", "message": "could not take the config lock of node03 in time"}`}
+	server, _, reads := newFilesScriptedServer(t, filesReadAt(1, filesCatchAllRules, true, "", filesWrittenAt, FilesExportServing), gatewayTimeout, nodeBusy)
+	ok, err := filesWritesByID(context.Background(), newFilesExportsTestClient(t, server.URL))["quota"]()
+	if err != nil || !ok || reads.Load() != 1 {
+		t.Errorf("504 then NodeBusy: ok = %v, err = %v, %d reads, want a reconciled success", ok, err, reads.Load())
+	}
+	MaxRetry = 1
+
 	// A server that does not report applied cannot say the node has not
 	// taken the change, so a read holding it is the write's success.
 	unreported := filesScriptedReply{http.StatusOK, `{"name": "carol", "exportID": 104, "generation": "5f2c44",
 		"changedAt": "` + string(filesWrittenAt) + `", "node": "node03", "status": "serving", "quotaBytes": 1, "accessRules": []}`}
-	server, _, reads := newFilesScriptedServer(t, unreported, gatewayTimeout)
-	ok, err := filesWritesByID(context.Background(), newFilesExportsTestClient(t, server.URL))["quota"]()
+	server, _, reads = newFilesScriptedServer(t, unreported, gatewayTimeout)
+	ok, err = filesWritesByID(context.Background(), newFilesExportsTestClient(t, server.URL))["quota"]()
 	if err != nil || !ok || reads.Load() != 1 {
 		t.Errorf("applied unreported: ok = %v, err = %v, %d reads, want a reconciled success", ok, err, reads.Load())
 	}
@@ -2028,12 +2039,14 @@ func TestFilesWriteReconcileReadsOnce(t *testing.T) {
 // TestFilesRefusedBeforeActing verifies the codes a caller may take as
 // settled: the server answered before acting, or said the change is recorded.
 func TestFilesRefusedBeforeActing(t *testing.T) {
-	for _, code := range []string{FilesErrInvalidRequest, FilesErrExportAlreadyExists, FilesErrNotImplemented, FilesErrNodeUnreachable, FilesErrNodeBusy} {
+	for _, code := range []string{FilesErrInvalidRequest, FilesErrExportAlreadyExists, FilesErrNotImplemented, FilesErrNodeUnreachable} {
 		if !FilesRefusedBeforeActing(code) {
 			t.Errorf("%s: not refused before acting", code)
 		}
 	}
-	for _, code := range []string{FilesErrNodeRefused, FilesErrExportModified, FilesErrInternalError, "SlowDown", ""} {
+	// A NodeBusy repeat may follow an attempt that took effect, and still
+	// holds the node's lock, so it settles nothing.
+	for _, code := range []string{FilesErrNodeRefused, FilesErrExportModified, FilesErrInternalError, FilesErrNodeBusy, "SlowDown", ""} {
 		if FilesRefusedBeforeActing(code) {
 			t.Errorf("%q: refused before acting, but may follow an attempt that took effect", code)
 		}
