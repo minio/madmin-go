@@ -23,31 +23,64 @@ import (
 	"context"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
+	"path"
 	"strings"
 	"sync/atomic"
 	"testing"
 )
 
 func TestAdminPathSegment(t *testing.T) {
-	for _, value := range []string{"tier-name", "name with space", "name?force=true", "name#fragment", "日本語"} {
+	for _, value := range []string{
+		"tier-name",
+		"TIER._~+",
+		"TIER:A=B@C$D&E",
+		"TIER!*()',;",
+		"TIER%41",
+	} {
 		got, err := adminPathSegment("name", value)
 		if err != nil {
 			t.Fatalf("adminPathSegment(%q): %v", value, err)
 		}
-		if want := url.PathEscape(value); got != want {
-			t.Errorf("adminPathSegment(%q) = %q, want %q", value, got, want)
+		if got != value {
+			t.Errorf("adminPathSegment(%q) = %q, want value unchanged", value, got)
 		}
 	}
 
-	for _, value := range []string{"", ".", "..", "../service", "name/child", `name\child`} {
+	for _, value := range []string{
+		"",
+		".",
+		"..",
+		"../service",
+		"name/child",
+		`name\child`,
+		"name?force=true",
+		"name#fragment",
+	} {
 		if _, err := adminPathSegment("name", value); err == nil {
 			t.Errorf("adminPathSegment(%q) should fail", value)
 		}
 	}
 }
 
-func TestAdminAPIsRejectInvalidPathSegmentsBeforeRequest(t *testing.T) {
+func TestTierPathPreservesSupportedNames(t *testing.T) {
+	prefix := path.Join(adminAPIPrefix, tierAPI) + "/"
+	for _, tierName := range []string{
+		"TIER._~-",
+		"TIER+A:B=C@D$E&F",
+		"TIER!*()',;",
+		"TIER%41",
+	} {
+		got, err := tierPath(tierName)
+		if err != nil {
+			t.Fatalf("tierPath(%q): %v", tierName, err)
+		}
+		if want := prefix + tierName; got != want {
+			t.Errorf("tierPath(%q) = %q, want %q", tierName, got, want)
+		}
+	}
+}
+
+func TestTierAPIsRejectRouteChangingNamesBeforeRequest(t *testing.T) {
 	var requests atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		requests.Add(1)
@@ -62,20 +95,17 @@ func TestAdminAPIsRejectInvalidPathSegmentsBeforeRequest(t *testing.T) {
 	ctx := context.Background()
 
 	tests := map[string]func() error{
-		"tier": func() error {
-			return client.RemoveTier(ctx, "../service")
+		"edit": func() error {
+			return client.EditTier(ctx, "tier?force=true", TierCreds{})
 		},
-		"scanner bucket": func() error {
-			_, err := client.BucketScanInfo(ctx, "bucket/status")
-			return err
+		"remove": func() error {
+			return client.RemoveTier(ctx, "tier?force=true")
 		},
-		"inventory ID": func() error {
-			_, err := client.CancelInventoryJob(ctx, "bucket", "../job")
-			return err
+		"remove v2": func() error {
+			return client.RemoveTierV2(ctx, "tier#fragment", RemoveTierOpts{Force: true})
 		},
-		"node hostname": func() error {
-			_, err := client.NodeInfo(ctx, `node\metrics`)
-			return err
+		"verify": func() error {
+			return client.VerifyTier(ctx, "../service")
 		},
 	}
 	for name, call := range tests {
@@ -90,10 +120,10 @@ func TestAdminAPIsRejectInvalidPathSegmentsBeforeRequest(t *testing.T) {
 	}
 }
 
-func TestTierPathEscapesQueryAndFragmentDelimiters(t *testing.T) {
-	var requestURI string
+func TestTierRequestsPreserveSupportedNames(t *testing.T) {
+	requestURIs := make(chan string, 4)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requestURI = r.RequestURI
+		requestURIs <- r.RequestURI
 		w.WriteHeader(http.StatusNoContent)
 	}))
 	defer server.Close()
@@ -102,10 +132,17 @@ func TestTierPathEscapesQueryAndFragmentDelimiters(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = client.RemoveTier(context.Background(), "tier?force=true#fragment"); err != nil {
-		t.Fatal(err)
-	}
-	if !strings.HasSuffix(requestURI, "/tier/tier%3Fforce=true%23fragment") {
-		t.Errorf("request URI = %q, want escaped tier name", requestURI)
+	for _, tierName := range []string{
+		"TIER._~-",
+		"TIER+A:B=C@D$E&F",
+		"TIER!*()',;",
+		"TIER%41",
+	} {
+		if err = client.RemoveTier(context.Background(), tierName); err != nil {
+			t.Fatalf("RemoveTier(%q): %v", tierName, err)
+		}
+		if requestURI := <-requestURIs; !strings.HasSuffix(requestURI, "/tier/"+tierName) {
+			t.Errorf("RemoveTier(%q) request URI = %q", tierName, requestURI)
+		}
 	}
 }

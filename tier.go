@@ -33,6 +33,8 @@ import (
 // tierAPI is API path prefix for tier related admin APIs
 const tierAPI = "tier"
 
+// tierPath validates tierName and returns its admin API path without changing
+// punctuation accepted by the current server router.
 func tierPath(tierName string) (string, error) {
 	if tierName == "" {
 		return "", ErrTierNameEmpty

@@ -609,17 +609,17 @@ func (adm AdminClient) makeTargetURL(r requestData) (*url.URL, error) {
 	return u, nil
 }
 
-// adminPathSegment validates and escapes a caller-provided admin API path
-// segment. Separators and dot segments are rejected because intermediaries may
-// decode or clean them before routing the request.
+// adminPathSegment validates a caller-provided admin API path segment without
+// escaping it. The server router does not unescape route variables, so escaping
+// here would break names containing punctuation that the server already accepts.
 func adminPathSegment(name, value string) (string, error) {
 	if value == "" {
 		return "", fmt.Errorf("%s cannot be empty", name)
 	}
-	if value == "." || value == ".." || strings.ContainsAny(value, `/\`) {
+	if value == "." || value == ".." || strings.ContainsAny(value, `/\?#`) {
 		return "", fmt.Errorf("%s must be a single path segment", name)
 	}
-	return url.PathEscape(value), nil
+	return value, nil
 }
 
 // CredContext returns the context for fetching credentials

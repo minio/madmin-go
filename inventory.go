@@ -66,18 +66,10 @@ func (adm *AdminClient) controlInventoryJob(ctx context.Context, bucket, invento
 	if inventoryID == "" {
 		return nil, fmt.Errorf("inventory ID cannot be empty")
 	}
-	bucketSegment, err := adminPathSegment("bucket name", bucket)
-	if err != nil {
-		return nil, err
-	}
-	inventoryIDSegment, err := adminPathSegment("inventory ID", inventoryID)
-	if err != nil {
-		return nil, err
-	}
 
 	resp, err := adm.executeMethod(ctx, http.MethodPost,
 		requestData{
-			relPath: adminAPIPrefix + fmt.Sprintf("/inventory/%s/%s/%s", bucketSegment, inventoryIDSegment, action),
+			relPath: adminAPIPrefix + fmt.Sprintf("/inventory/%s/%s/%s", bucket, inventoryID, action),
 		},
 	)
 	if err != nil {
