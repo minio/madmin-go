@@ -344,6 +344,12 @@ const (
 	// HTTP 503.
 	FilesErrNodeUnreachable = "NodeUnreachable"
 
+	// FilesErrNodeBusy means the write could not take its node's config lock
+	// in time, because another write to the node held it or too few lock
+	// servers answered. The server answers it before acting, so nothing is
+	// recorded and the client repeats the write once. HTTP 503.
+	FilesErrNodeBusy = "NodeBusy"
+
 	// FilesErrNotImplemented means the owning node is older than the control
 	// plane. HTTP 501.
 	FilesErrNotImplemented = "NotImplemented"
@@ -871,11 +877,12 @@ type filesAccessBody struct {
 // repeat after an earlier attempt created the export would be refused with
 // FilesErrExportAlreadyExists, and one arriving after another caller removed
 // the export would create it again. So an add is repeated only after an answer
-// the server sends before acting, a 429 or a 408, or when the connection could
-// not be made. Any other attempt whose outcome is unknown ends the call with
-// its error: a transport error once the request was sent, a 502 or 504, or a
-// 503 other than FilesErrNodeUnreachable, SlowDown included, since AIStor
-// sends that after acting too. The export may then exist, so read it by name
+// the server sends before acting, a 429, a 408 or a FilesErrNodeBusy, or when
+// the connection could not be made. Any other attempt whose outcome is unknown
+// ends the call with its error: a transport error once the request was sent, a
+// 502 or 504, or a 503 other than FilesErrNodeUnreachable and
+// FilesErrNodeBusy, SlowDown included, since AIStor sends that after acting
+// too. The export may then exist, so read it by name
 // before adding it again.
 func (adm *AdminClient) AddFilesExport(ctx context.Context, spec FilesExportSpec) (FilesExport, error) {
 	if spec.Name == "" {
@@ -896,10 +903,11 @@ func (adm *AdminClient) AddFilesExport(ctx context.Context, spec FilesExportSpec
 // has moved on, the call fails with a FilesExportModifiedError.
 //
 // A request whose outcome is unknown is repeated: a transport error once the
-// request was sent, a 502 or 504, or a 503 other than FilesErrNodeUnreachable,
-// SlowDown and RequestTimeout included. The server answers a repeat of a
-// change it already applied with that change's reply, as long as no other
-// write landed in between.
+// request was sent, a 502 or 504, or a 503 other than FilesErrNodeUnreachable
+// and FilesErrNodeBusy, SlowDown and RequestTimeout included. The server
+// answers FilesErrNodeBusy before acting, and the client repeats it once. The
+// server answers a repeat of a change it already applied with that change's
+// reply, as long as no other write landed in between.
 //
 // When the call still fails after such an attempt, the write may have taken
 // effect: a repeat met FilesErrExportModified because another write landed
@@ -1271,7 +1279,8 @@ func (adm *AdminClient) filesWrite(ctx context.Context, method string, reqData r
 // filesRetry is the retry policy of one Files write. It tells an answer that
 // came before the server acted, which is always safe to repeat, from one that
 // may come after: no answer once the request was sent, a 502, 503 or 504
-// other than FilesErrNodeUnreachable, or any 5xx with a retryable code.
+// other than FilesErrNodeUnreachable and FilesErrNodeBusy, or any 5xx with a
+// retryable code.
 type filesRetry struct {
 	// repeatUnknown repeats the write after an attempt that may have taken
 	// effect. Without it, such an attempt ends the call.
@@ -1283,7 +1292,16 @@ type filesRetry struct {
 
 	// lastErr is the error of the last attempt that failed.
 	lastErr error
+
+	// busy counts the attempts that answered FilesErrNodeBusy.
+	busy int
 }
+
+// filesBusyRepeats is how many times a write that answered FilesErrNodeBusy
+// is repeated. The server waits for the node's config lock up to 2 minutes on
+// each attempt, so MaxRetry repeats would hold the call for 20 minutes and
+// more.
+const filesBusyRepeats = 1
 
 // next records one attempt that did not succeed and reports whether to send
 // the write again. It has the signature of requestData.retry.
@@ -1306,6 +1324,11 @@ func (r *filesRetry) next(status int, errResp ErrorResponse, err error) bool {
 		// The change is recorded, and AIStor sends it when the node answers
 		// again. A repeat would only wait for the node.
 		return false
+	case errResp.Code == FilesErrNodeBusy:
+		// The server answered before acting, so a repeat cannot apply the
+		// write twice, an add included, and the outcome stays as it was.
+		r.busy++
+		return r.busy <= filesBusyRepeats
 	case status == http.StatusBadGateway, status == http.StatusServiceUnavailable, status == http.StatusGatewayTimeout,
 		status >= 500 && isAdminErrCodeRetryable(errResp.Code):
 		// AIStor sends a 503 SlowDown or RequestTimeout after it has acted
