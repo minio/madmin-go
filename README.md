@@ -39,16 +39,6 @@ func main() {
 }
 ```
 
-## Admin API path validation
-
-Resource identifiers used in admin API paths, including tier names, scanner
-bucket names, inventory IDs, and node hostnames, must be a single path segment.
-Empty values, dot segments, and values containing `/` or `\` are rejected
-before a request is sent. Other URL delimiters are escaped.
-
-See [issue #689](https://github.com/minio/madmin-go/issues/689) and
-[pull request #690](https://github.com/minio/madmin-go/pull/690).
-
 ## Documentation
 
 All documentation is available [here](https://pkg.go.dev/github.com/minio/madmin-go/v4)
