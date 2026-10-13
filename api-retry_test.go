@@ -21,10 +21,15 @@ package madmin
 
 import (
 	"context"
+	"io"
+	"math/rand"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
+	"sync/atomic"
 	"testing"
+	"testing/synctest"
+	"time"
 )
 
 // setAdminAPIPrefixes sets the current and previous admin API version prefixes
@@ -144,5 +149,141 @@ func TestUpgradeRequiredOnTheLastAttemptKeepsTheErrorBody(t *testing.T) {
 	}
 	if code := ToErrorResponse(httpRespToErrorResponse(resp)).Code; code != "XMinioAdminVersionMismatch" {
 		t.Errorf("code = %q, want the server's XMinioAdminVersionMismatch", code)
+	}
+}
+
+// noJitterSource makes the client's random numbers zero, so every backoff
+// waits its full length and a test can tell how many waits there were.
+type noJitterSource struct{}
+
+func (noJitterSource) Int63() int64 { return 0 }
+func (noJitterSource) Seed(int64)   {}
+
+// setMaxRetry sets MaxRetry for the rest of the test.
+func setMaxRetry(t *testing.T, n int) {
+	t.Helper()
+	saved := MaxRetry
+	MaxRetry = n
+	t.Cleanup(func() { MaxRetry = saved })
+}
+
+// countingServer starts a server that answers every request with status and
+// body, and counts the requests it receives.
+func countingServer(t *testing.T, status int, body string) (*httptest.Server, *atomic.Int32) {
+	t.Helper()
+	var attempts atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		attempts.Add(1)
+		w.WriteHeader(status)
+		_, _ = w.Write([]byte(body))
+	}))
+	t.Cleanup(server.Close)
+	return server, &attempts
+}
+
+// The retry timer yields once per attempt and waits only between attempts:
+// maxRetry attempts take the first maxRetry-1 backoffs, and no wait follows
+// the last one. It runs on synctest's fake clock, so the elapsed time is
+// exactly the sum of the waits.
+func TestRetryTimerWaitsOnlyBetweenAttempts(t *testing.T) {
+	const unit = time.Second
+	adm := AdminClient{random: rand.New(noJitterSource{})}
+	for maxRetry := 1; maxRetry <= 4; maxRetry++ {
+		synctest.Test(t, func(t *testing.T) {
+			// The waits are unit, 2*unit, 4*unit, ..., so maxRetry-1 of them
+			// add up to (2^(maxRetry-1) - 1) * unit.
+			between := time.Duration(1<<(maxRetry-1)-1) * unit
+
+			start := time.Now()
+			attempts := 0
+			for range adm.newRetryTimer(context.Background(), maxRetry, unit, time.Hour, NoJitter) {
+				attempts++
+			}
+			elapsed := time.Since(start)
+
+			if attempts != maxRetry {
+				t.Errorf("maxRetry %d: %d attempts, want %d", maxRetry, attempts, maxRetry)
+			}
+			if elapsed != between {
+				t.Errorf("maxRetry %d: took %v, want exactly the %v of backoff between attempts", maxRetry, elapsed, between)
+			}
+		})
+	}
+}
+
+// An admin call whose every answer is retryable is sent MaxRetry times, with
+// a backoff between attempts and none after the last, so the caller gets the
+// last answer as soon as it arrives.
+func TestExecuteMethodWaitsOnlyBetweenAttempts(t *testing.T) {
+	setMaxRetry(t, 2)
+	server, attempts := countingServer(t, http.StatusServiceUnavailable, `{"Code":"XMinioServerNotInitialized"}`)
+	client := newFilesExportsTestClient(t, server.URL)
+	client.random = rand.New(noJitterSource{})
+
+	start := time.Now()
+	resp, err := client.executeMethod(context.Background(), http.MethodGet, requestData{relPath: "/v4/info"})
+	elapsed := time.Since(start)
+	if err != nil {
+		t.Fatalf("executeMethod: %v", err)
+	}
+	defer closeResponse(resp)
+
+	if n := attempts.Load(); n != 2 {
+		t.Errorf("the server received %d requests, want 2", n)
+	}
+	if resp.StatusCode != http.StatusServiceUnavailable {
+		t.Errorf("status = %d, want %d", resp.StatusCode, http.StatusServiceUnavailable)
+	}
+	// One full backoff of DefaultRetryUnit separates the two attempts. A wait
+	// after the second would add another 2*DefaultRetryUnit; anything short of
+	// that total is HTTP and scheduler overhead.
+	if elapsed < DefaultRetryUnit {
+		t.Errorf("took %v, want at least the %v backoff between the attempts", elapsed, DefaultRetryUnit)
+	}
+	if withWaitAfterLast := 3 * DefaultRetryUnit; elapsed >= withWaitAfterLast {
+		t.Errorf("took %v, want less than %v: it waited after the last attempt", elapsed, withWaitAfterLast)
+	}
+}
+
+// Every success status ends the call after one attempt with its body intact,
+// even when the body happens to carry a retryable code.
+func TestExecuteMethodSuccessStatusIsFinal(t *testing.T) {
+	setMaxRetry(t, 2)
+	const body = `{"Code":"SlowDown"}`
+	for _, status := range []int{
+		http.StatusOK,
+		http.StatusCreated,
+		http.StatusAccepted,
+		http.StatusNoContent,
+		http.StatusPartialContent,
+	} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			server, attempts := countingServer(t, status, body)
+
+			resp, err := newFilesExportsTestClient(t, server.URL).executeMethod(context.Background(), http.MethodGet,
+				requestData{relPath: "/v4/info"})
+			if err != nil {
+				t.Fatalf("executeMethod: %v", err)
+			}
+			defer closeResponse(resp)
+
+			if n := attempts.Load(); n != 1 {
+				t.Errorf("the server received %d requests, want 1", n)
+			}
+			if resp.StatusCode != status {
+				t.Errorf("status = %d, want %d", resp.StatusCode, status)
+			}
+			got, err := io.ReadAll(resp.Body)
+			if err != nil {
+				t.Fatalf("read body: %v", err)
+			}
+			want := body
+			if status == http.StatusNoContent {
+				want = ""
+			}
+			if string(got) != want {
+				t.Errorf("body = %q, want %q", got, want)
+			}
+		})
 	}
 }
