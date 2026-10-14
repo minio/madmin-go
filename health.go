@@ -1318,20 +1318,27 @@ type ObjectStoreInfo struct {
 	Image        string `json:"image"`
 	SidecarImage string `json:"sidecarImage"`
 	HelmChart    string `json:"helmChart,omitempty"`
-	SFTP         *bool  `json:"sftp,omitempty"` // nil = not reported (operator or server too old)
+	SFTP         *bool  `json:"sftp,omitempty"` // nil = not reported (an older operator, server or client)
 
-	// TLS is the origin of the server certificate, as declared in the CR.
+	// TLS is the TLS setup declared in the CR.
 	TLS *ObjectStoreTLSInfo `json:"tls,omitempty"`
 
-	// StorageClasses has the StorageClass of each pool's volume claim template,
-	// in pool order; "" means the template names no class.
-	StorageClasses []string `json:"storageClasses,omitempty"`
+	// Pools has one entry per pool, in pool order.
+	Pools []ObjectStorePoolInfo `json:"pools,omitempty"`
 }
 
-// ObjectStoreTLSInfo describes where the ObjectStore TLS certificate comes from.
+// ObjectStoreTLSInfo describes who issues the ObjectStore server certificate
+// and how many extra CAs the server trusts.
 type ObjectStoreTLSInfo struct {
 	AutoCert       bool `json:"autoCert"`       // the operator issues the server certificate
 	TrustedCACount int  `json:"trustedCACount"` // CA secrets the CR adds to the server's trusted CAs
+}
+
+// ObjectStorePoolInfo describes one pool of the ObjectStore.
+type ObjectStorePoolInfo struct {
+	// StorageClass is the StorageClass of the pool's volume claim template;
+	// "" means the template names no class.
+	StorageClass string `json:"storageClass"`
 }
 
 // KESInfo contains information about the KES deployment.
