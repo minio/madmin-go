@@ -1320,15 +1320,15 @@ type ObjectStoreInfo struct {
 	HelmChart    string `json:"helmChart,omitempty"`
 	SFTP         *bool  `json:"sftp,omitempty"` // nil = not reported (an older operator, server or client)
 
-	// TLS is the TLS setup declared in the CR.
+	// TLS is the TLS setup declared in the CR; nil = not reported.
 	TLS *ObjectStoreTLSInfo `json:"tls,omitempty"`
 
-	// Pools has one entry per pool, in pool order.
+	// Pools has one entry per pool, in pool order; nil = not reported.
 	Pools []ObjectStorePoolInfo `json:"pools,omitempty"`
 }
 
 // ObjectStoreTLSInfo describes who issues the ObjectStore server certificate
-// and how many extra CAs the server trusts.
+// and how many CA secrets the CR adds to the server's trusted CAs.
 type ObjectStoreTLSInfo struct {
 	AutoCert       bool `json:"autoCert"`       // the operator issues the server certificate
 	TrustedCACount int  `json:"trustedCACount"` // CA secrets the CR adds to the server's trusted CAs
