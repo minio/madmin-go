@@ -35,10 +35,11 @@ func _() {
 	_ = x[TraceSystemInventory-16777216]
 	_ = x[TraceTablesCompaction-33554432]
 	_ = x[TraceMemory-67108864]
-	_ = x[TraceAll-134217727]
+	_ = x[TraceFiles-134217728]
+	_ = x[TraceAll-268435455]
 }
 
-const _TraceType_name = "OSStorageS3InternalScannerDecommissionHealingBatchReplicationBatchKeyRotationBatchExpireRebalanceReplicationResyncBootstrapFTPILMKMSFormattingAdminObjectReplicationIAMTablesPurgeOnDeleteTablesScanSystemInventoryTablesCompactionMemoryAll"
+const _TraceType_name = "OSStorageS3InternalScannerDecommissionHealingBatchReplicationBatchKeyRotationBatchExpireRebalanceReplicationResyncBootstrapFTPILMKMSFormattingAdminObjectReplicationIAMTablesPurgeOnDeleteTablesScanSystemInventoryTablesCompactionMemoryFilesAll"
 
 var _TraceType_map = map[TraceType]string{
 	1:         _TraceType_name[0:2],
@@ -68,7 +69,8 @@ var _TraceType_map = map[TraceType]string{
 	16777216:  _TraceType_name[196:211],
 	33554432:  _TraceType_name[211:227],
 	67108864:  _TraceType_name[227:233],
-	134217727: _TraceType_name[233:236],
+	134217728: _TraceType_name[233:238],
+	268435455: _TraceType_name[238:241],
 }
 
 func (i TraceType) String() string {
