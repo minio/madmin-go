@@ -1319,15 +1319,9 @@ type ObjectStoreInfo struct {
 	SidecarImage string `json:"sidecarImage"`
 	HelmChart    string `json:"helmChart,omitempty"`
 
-	// Pools has one entry per pool, in pool order; nil = not reported.
-	Pools []ObjectStorePoolInfo `json:"pools,omitempty"`
-}
-
-// ObjectStorePoolInfo describes one pool of the ObjectStore.
-type ObjectStorePoolInfo struct {
-	// StorageClass is the StorageClass of the pool's volume claim template;
-	// "" means the template names no class.
-	StorageClass string `json:"storageClass"`
+	// StorageClasses lists the distinct StorageClasses of the pools' volume
+	// claims, sorted; nil = not reported.
+	StorageClasses []string `json:"storageClasses,omitempty"`
 }
 
 // KESInfo contains information about the KES deployment.
