@@ -619,6 +619,9 @@ type SRBucketInfo struct {
 	// Since SSE config does not have a json representation, we use its xml
 	// byte respresentation.
 	SSEConfig *string `json:"sseConfig,omitempty"`
+	// SSEKMSMissingKey names the KMS key SSEConfig resolves to on the reporting
+	// site when that site cannot use it, so writes to the bucket fail there.
+	SSEKMSMissingKey string `json:"sseKMSMissingKey,omitempty"`
 	// replication config in json representation
 	ReplicationConfig *string `json:"replicationConfig,omitempty"`
 	// quota config in json representation
@@ -873,7 +876,10 @@ type SRBucketStatsSummary struct {
 	HasReplicationCfg        bool
 	HasQuotaCfgSet           bool
 	HasCorsCfgSet            bool
-	APIVersion               string
+	// SSEKMSMissingKey names the KMS key this site cannot use for the bucket's
+	// SSE config. Unlike the mismatch flags, it describes this site only.
+	SSEKMSMissingKey string
+	APIVersion       string
 }
 
 // SRILMExpiryStatsSummary has status of ILM Expiry rules metadata replication misses
