@@ -1294,8 +1294,8 @@ func TestSMARTInfoMergeLastStatusReason(t *testing.T) {
 	}
 }
 
-// TestSMARTInfoMergeDoesNotAliasSource pins merge rule 4 (only the receiver may
-// be mutated): the receiver must not end up sharing the source's map.
+// TestSMARTInfoMergeDoesNotAliasSource checks that the merge receiver does not
+// end up sharing LastStatusReason map.
 func TestSMARTInfoMergeDoesNotAliasSource(t *testing.T) {
 	src := &SMARTInfo{
 		N:                1,

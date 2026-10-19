@@ -242,7 +242,7 @@ type DriveResource struct {
 type SMARTInfo struct {
 	N                int                     `json:"n" msg:"n"`                                      // Number of drives included.
 	Status           map[string]int          `json:"status" msg:"st"`                                // healthy, warning, critical, unknown
-	LastStatusReason map[string]StatusReason `json:"lastStatusReason,omitempty" msg:"lsr,omitempty"` // Reason for each status last evaluation.
+	LastStatusReason map[string]StatusReason `json:"lastStatusReason,omitempty" msg:"lsr,omitempty"` // Most recent reason per status key. On merge the newest CreatedAt wins (ties broken by Reason).
 
 	StatsN       int     `json:"stats_n" msg:"stats_n"`  // Drives with following fields filled.
 	Temperature  float64 `json:"temperature" msg:"t"`    // Accumulated temperature Celsius
@@ -295,6 +295,7 @@ func (s *SMARTInfo) Merge(other *SMARTInfo) {
 		}
 		for k, v := range other.LastStatusReason {
 			cur, ok := s.LastStatusReason[k]
+			// keep the most recent, on a tie lexically greater wins so the merge order doesn't change the result
 			if !ok || cur.CreatedAt.Before(v.CreatedAt) || (v.CreatedAt.Equal(cur.CreatedAt) && v.Reason > cur.Reason) {
 				s.LastStatusReason[k] = v
 			}
