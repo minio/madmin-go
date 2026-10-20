@@ -212,9 +212,10 @@ type requestData struct {
 	creds *credentials.Value
 	// retry, when set, decides whether executeMethod repeats the request after
 	// an attempt that did not succeed. It is called with the attempt's
-	// transport error, or with its response and the body read from it. A
-	// refused connection and a canceled context end the call before it is
-	// asked.
+	// transport error, or with its response and the body read from it, which
+	// leaves the response's own body unread. When the hook declines a
+	// response, executeMethod returns that same response. A refused connection
+	// and a canceled context end the call before it is asked.
 	retry func(res *http.Response, body []byte, err error) bool
 }
 
@@ -447,8 +448,9 @@ func (adm AdminClient) executeMethod(ctx context.Context, method string, reqData
 		// and the caller then decodes the 426 error from it.
 		if res.StatusCode == http.StatusUpgradeRequired && adminAPIPrefix != adminAPIOldPrefix {
 			if rest, ok := strings.CutPrefix(reqData.relPath, adminAPIPrefix); ok {
-				body, _ := io.ReadAll(res.Body)
-				closeResponse(res)
+				body, _ := io.ReadAll(io.LimitReader(res.Body, errorBodyLimit))
+				// Close without draining: what is past the limit is not read.
+				res.Body.Close()
 				res.Body = io.NopCloser(bytes.NewReader(body))
 				reqData.relPath = adminAPIOldPrefix + rest
 				continue
@@ -456,9 +458,9 @@ func (adm AdminClient) executeMethod(ctx context.Context, method string, reqData
 		}
 
 		// Read the body to be saved later.
-		errBodyBytes, err := io.ReadAll(res.Body)
-		// res.Body should be closed
-		closeResponse(res)
+		errBodyBytes, err := io.ReadAll(io.LimitReader(res.Body, errorBodyLimit))
+		// Close without draining: what is past the limit is not read.
+		res.Body.Close()
 		if err != nil {
 			return nil, err
 		}
