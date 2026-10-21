@@ -1232,9 +1232,10 @@ func TestSMARTInfoStatusReasonClearedOnReuse(t *testing.T) {
 }
 
 // TestSMARTInfoMergeLastStatusReason covers the merge rules for the per-status
-// reason map: newest CreatedAt wins, a status absent from the receiver is
-// adopted regardless of its timestamp, and the result does not depend on the
-// order the two sides are merged in.
+// reason map: newest CreatedAt wins, a tie on CreatedAt goes to the lexically
+// greater Reason, a status absent from the receiver is adopted regardless of
+// its timestamp, and the result does not depend on the order the two sides are
+// merged in.
 func TestSMARTInfoMergeLastStatusReason(t *testing.T) {
 	older := reasonEvalTime.Add(-time.Hour)
 
@@ -1255,6 +1256,15 @@ func TestSMARTInfoMergeLastStatusReason(t *testing.T) {
 			dst:  map[string]StatusReason{"warning": {Reason: "new", CreatedAt: reasonEvalTime}},
 			src:  map[string]StatusReason{"warning": {Reason: "old", CreatedAt: older}},
 			want: map[string]StatusReason{"warning": {Reason: "new", CreatedAt: reasonEvalTime}},
+		},
+		{
+			// Both orders run below, so the receiver holds the lexically
+			// smaller Reason in one and the greater in the other: only a
+			// "greater wins" tie-break lands on want both times.
+			name: "equal CreatedAt keeps the lexically greater reason",
+			dst:  map[string]StatusReason{"warning": {Reason: "media errors", CreatedAt: reasonEvalTime}},
+			src:  map[string]StatusReason{"warning": {Reason: "temperature high", CreatedAt: reasonEvalTime}},
+			want: map[string]StatusReason{"warning": {Reason: "temperature high", CreatedAt: reasonEvalTime}},
 		},
 		{
 			name: "distinct statuses are kept side by side",
