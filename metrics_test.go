@@ -445,6 +445,9 @@ func TestDiskMetricMergeClonesSourceMaps(t *testing.T) {
 		t.Fatalf("merged SMART.LastStatusReason[healthy] = %q, want %q", got, "media errors")
 	}
 
+	if !reflect.DeepEqual(src.SMART, want.SMART) {
+		t.Errorf("source SMART mutated by Merge:\n got %+v\nwant %+v", *src.SMART, *want.SMART)
+	}
 	if !reflect.DeepEqual(src, want) {
 		t.Errorf("source metric mutated by Merge:\n got %+v\nwant %+v", src, want)
 	}
