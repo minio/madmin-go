@@ -830,7 +830,11 @@ type SRStatusInfo struct {
 	// ILMExpiryStats map of ILM Expiry rules to slice of deployment IDs with stats. This is populated if there
 	// are mismatches or if a specific ILM expiry rule's stats are requested
 	ILMExpiryStats map[string]map[string]SRILMExpiryStatsSummary
-	APIVersion     string `json:"apiVersion,omitempty"`
+	// ComparedSites lists the deployment IDs of the sites whose configuration
+	// was compared. A site in Sites but not here could not be reached, so it is
+	// missing from every stat above. Empty when the server predates this field.
+	ComparedSites []string `json:"comparedSites,omitempty"`
+	APIVersion    string   `json:"apiVersion,omitempty"`
 }
 
 // SRPolicyStatsSummary has status of policy replication misses
