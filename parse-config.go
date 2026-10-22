@@ -240,6 +240,10 @@ const (
 	EnvWordDelimiter = `_`
 
 	EnvLinePrefix = KvComment + KvSpaceSeparator + EnvPrefix
+
+	// ConfigFileLinePrefix starts a `# config file <name>: key=value` line,
+	// which reports a value the server's --config file sets.
+	ConfigFileLinePrefix = KvComment + KvSpaceSeparator + "config file "
 )
 
 // SanitizeValue - this function is needed, to trim off single or double quotes, creeping into the values.
@@ -254,12 +258,21 @@ type EnvOverride struct {
 	Value string `json:"value"`
 }
 
-// ConfigKV represents a configuration key and value, along with any environment
-// override if present.
+// ConfigFileOverride contains the base name of the server's --config file and
+// the value it sets.
+type ConfigFileOverride struct {
+	File  string `json:"file"`
+	Value string `json:"value"`
+}
+
+// ConfigKV represents a configuration key and value, along with any
+// environment or config file override if present. A config file override
+// takes precedence over an environment override.
 type ConfigKV struct {
-	Key         string       `json:"key"`
-	Value       string       `json:"value"`
-	EnvOverride *EnvOverride `json:"envOverride,omitempty"`
+	Key                string              `json:"key"`
+	Value              string              `json:"value"`
+	EnvOverride        *EnvOverride        `json:"envOverride,omitempty"`
+	ConfigFileOverride *ConfigFileOverride `json:"configFileOverride,omitempty"`
 }
 
 // SubsysConfig represents the configuration for a particular subsytem and
@@ -288,7 +301,8 @@ func (c *SubsysConfig) AddConfigKV(ckv ConfigKV) {
 	}
 }
 
-// Lookup resolves the value of a config parameter. If an env variable is
+// Lookup resolves the value of a config parameter. If the server's config file
+// sets the parameter, that value is returned; otherwise, if an env variable is
 // specified on the server for the parameter, it is returned.
 func (c *SubsysConfig) Lookup(key string) (val string, present bool) {
 	if c.kvIndexMap == nil {
@@ -298,6 +312,9 @@ func (c *SubsysConfig) Lookup(key string) (val string, present bool) {
 	idx, ok := c.kvIndexMap[key]
 	if !ok {
 		return "", false
+	}
+	if c.KV[idx].ConfigFileOverride != nil {
+		return c.KV[idx].ConfigFileOverride.Value, true
 	}
 	if c.KV[idx].EnvOverride != nil {
 		return c.KV[idx].EnvOverride.Value, true
@@ -337,9 +354,29 @@ func (c *SubsysConfig) GetEnvOverrides() []EnvOverride {
 }
 
 var (
-	ErrInvalidEnvVarLine = errors.New("expected env var line of the form `# MINIO_...=...`")
-	ErrInvalidConfigKV   = errors.New("expected config value in the format `key=value`")
+	ErrInvalidEnvVarLine     = errors.New("expected env var line of the form `# MINIO_...=...`")
+	ErrInvalidConfigKV       = errors.New("expected config value in the format `key=value`")
+	ErrInvalidConfigFileLine = errors.New("expected config file line of the form `# config file <name>: key=value`")
 )
+
+func parseConfigFileLine(s string) (val ConfigKV, err error) {
+	s = strings.TrimPrefix(s, ConfigFileLinePrefix)
+	file, kvText, ok := strings.Cut(s, ":"+KvSpaceSeparator)
+	if !ok || file == "" {
+		return val, ErrInvalidConfigFileLine
+	}
+	key, rem, err := parseConfigKey(kvText)
+	if err != nil {
+		return val, err
+	}
+	value, _, err := parseConfigValue(rem)
+	if err != nil {
+		return val, err
+	}
+	val.Key = key
+	val.ConfigFileOverride = &ConfigFileOverride{File: file, Value: value}
+	return val, nil
+}
 
 func parseEnvVarLine(s, subSystem, target string) (val ConfigKV, err error) {
 	s = strings.TrimPrefix(s, KvComment+KvSpaceSeparator)
@@ -448,6 +485,10 @@ func isEnvLine(s string) bool {
 	return strings.HasPrefix(s, EnvLinePrefix)
 }
 
+func isConfigFileLine(s string) bool {
+	return strings.HasPrefix(s, ConfigFileLinePrefix)
+}
+
 func isCommentLine(s string) bool {
 	return strings.HasPrefix(s, KvComment)
 }
@@ -501,20 +542,24 @@ func ParseServerConfigOutput(serverConfigOutput string) ([]SubsysConfig, error) 
 	//   2. A comment line showing an environment variable set on the server.
 	//   For example "# MINIO_SITE_NAME=my-cluster".
 	//
-	//   3. Comment lines with other content. These will not start with `#
-	//   MINIO_`.
+	//   3. A comment line showing a value the server's config file sets. For
+	//   example "# config file config.yaml: name=my-cluster".
 	//
-	// For the structured JSON representation, only lines of type 1 and 2 are
-	// required as they correspond to configuration specified by an
+	//   4. Comment lines with other content. These will not start with `#
+	//   MINIO_` or `# config file `.
+	//
+	// For the structured JSON representation, only lines of type 1, 2 and 3
+	// are required as they correspond to configuration specified by an
 	// administrator.
 	//
-	// Additionally, after ignoring lines of type 3 above:
+	// Additionally, after ignoring lines of type 4 above:
 	//
-	//   1. environment variable lines for a subsystem (and target if present)
-	//   appear consecutively.
+	//   1. environment variable and config file lines for a subsystem (and
+	//   target if present) appear consecutively.
 	//
 	//   2. exactly one config line for a subsystem and target immediately
-	//   follows the env var lines for the same subsystem and target.
+	//   follows the env var and config file lines for the same subsystem and
+	//   target.
 	//
 	// The parsing logic below classifies each line and groups them by
 	// subsystem and target.
@@ -523,7 +568,7 @@ func ParseServerConfigOutput(serverConfigOutput string) ([]SubsysConfig, error) 
 	var targets []string
 	var currGroup []string
 	for _, line := range configLines {
-		if isEnvLine(line) {
+		if isEnvLine(line) || isConfigFileLine(line) {
 			currGroup = append(currGroup, line)
 		} else if isCommentLine(line) {
 			continue
@@ -554,15 +599,30 @@ func ParseServerConfigOutput(serverConfigOutput string) ([]SubsysConfig, error) 
 				if err != nil {
 					return nil, err
 				}
-				// Since all env lines have distinct env vars, we can append
-				// here without risk of introducing any duplicates.
-				sc.AddConfigKV(ckv)
+				if idx, ok := sc.kvIndexMap[ckv.Key]; ok {
+					sc.KV[idx].EnvOverride = ckv.EnvOverride
+				} else {
+					sc.AddConfigKV(ckv)
+				}
 				continue
 			}
 
-			// At this point all env vars for this subsys and target are already
-			// in `sc.KV`, so we fill in values if a ConfigKV entry for the
-			// config parameter is already present.
+			if isConfigFileLine(line) {
+				ckv, err := parseConfigFileLine(line)
+				if err != nil {
+					return nil, err
+				}
+				if idx, ok := sc.kvIndexMap[ckv.Key]; ok {
+					sc.KV[idx].ConfigFileOverride = ckv.ConfigFileOverride
+				} else {
+					sc.AddConfigKV(ckv)
+				}
+				continue
+			}
+
+			// At this point all env vars and config file values for this subsys
+			// and target are already in `sc.KV`, so we fill in values if a
+			// ConfigKV entry for the config parameter is already present.
 			lineCfg, err := parseConfigLine(line)
 			if err != nil {
 				return nil, err

@@ -182,10 +182,78 @@ logger_webhook:1 endpoint=http://localhost:8080/ auth_token= client_cert= client
 				},
 			},
 		},
+		{
+			Name: "config file value, alone and over an env var",
+			Config: `# WARNING: config file my.yaml takes precedence over the MINIO_* environment variables listed below
+# MINIO_SUBNET_LICENSE=2
+# config file my.yaml: license=3
+# config file my.yaml: proxy="http://a b"
+subnet license=1 api_key= proxy=`,
+			Expected: []SubsysConfig{
+				{
+					SubSystem: SubnetSubSys,
+					KV: []ConfigKV{
+						{
+							Key:                "license",
+							Value:              "1",
+							EnvOverride:        &EnvOverride{Name: "MINIO_SUBNET_LICENSE", Value: "2"},
+							ConfigFileOverride: &ConfigFileOverride{File: "my.yaml", Value: "3"},
+						},
+						{
+							Key:                "proxy",
+							Value:              "",
+							ConfigFileOverride: &ConfigFileOverride{File: "my.yaml", Value: "http://a b"},
+						},
+						{
+							Key:   "api_key",
+							Value: "",
+						},
+					},
+					kvIndexMap: map[string]int{
+						"license": 0,
+						"proxy":   1,
+						"api_key": 2,
+					},
+				},
+			},
+		},
+		{
+			Name: "config file value for a named target only",
+			Config: `notify_webhook enable=off
+# config file config.yaml: enable=on
+notify_webhook:visado enable=off
+`,
+			Expected: []SubsysConfig{
+				{
+					SubSystem:  NotifyWebhookSubSys,
+					KV:         []ConfigKV{{Key: "enable", Value: "off"}},
+					kvIndexMap: map[string]int{"enable": 0},
+				},
+				{
+					SubSystem: NotifyWebhookSubSys,
+					Target:    "visado",
+					KV: []ConfigKV{{
+						Key:                "enable",
+						Value:              "off",
+						ConfigFileOverride: &ConfigFileOverride{File: "config.yaml", Value: "on"},
+					}},
+					kvIndexMap: map[string]int{"enable": 0},
+				},
+			},
+		},
+		{
+			Name:        "malformed config file line",
+			Config:      "# config file config.yaml enable=on\nnotify_webhook enable=off",
+			ExpectedErr: ErrInvalidConfigFileLine,
+		},
 	}
 
 	for i, test := range tests {
 		r, err := ParseServerConfigOutput(test.Config)
+		if err == nil && test.ExpectedErr != nil {
+			t.Errorf("Test %d (%s) expected error %v, got none", i, test.Name, test.ExpectedErr)
+			continue
+		}
 		if err != nil {
 			if err.Error() != test.ExpectedErr.Error() {
 				t.Errorf("Test %d (%s) got unexpected error: %v", i, test.Name, err)
@@ -195,6 +263,32 @@ logger_webhook:1 endpoint=http://localhost:8080/ auth_token= client_cert= client
 		}
 		if !reflect.DeepEqual(test.Expected, r) {
 			t.Errorf("Test %d (%s) expected:\n%#v\nbut got:\n%#v\n", i, test.Name, test.Expected, r)
+		}
+	}
+}
+
+func TestSubsysConfigLookupPrecedence(t *testing.T) {
+	for _, out := range []string{
+		`# MINIO_SUBNET_LICENSE=env
+# config file config.yaml: license=file
+# MINIO_SUBNET_PROXY=env
+subnet license=stored proxy=stored api_key=stored`,
+		`# config file config.yaml: license=file
+# MINIO_SUBNET_LICENSE=env
+# MINIO_SUBNET_PROXY=env
+subnet license=stored proxy=stored api_key=stored`,
+	} {
+		r, err := ParseServerConfigOutput(out)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for key, want := range map[string]string{"license": "file", "proxy": "env", "api_key": "stored"} {
+			if got, ok := r[0].Lookup(key); !ok || got != want {
+				t.Errorf("Lookup(%s) = %q, %v; want %q for:\n%s", key, got, ok, want, out)
+			}
+		}
+		if _, envVal, _ := r[0].LookupEnv("license"); envVal != "env" {
+			t.Errorf("LookupEnv(license) env = %q, want %q for:\n%s", envVal, "env", out)
 		}
 	}
 }
