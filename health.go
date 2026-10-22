@@ -1318,6 +1318,10 @@ type ObjectStoreInfo struct {
 	Image        string `json:"image"`
 	SidecarImage string `json:"sidecarImage"`
 	HelmChart    string `json:"helmChart,omitempty"`
+
+	// StorageClasses lists the distinct StorageClasses of the pools' volume
+	// claims, sorted; nil = not reported.
+	StorageClasses []string `json:"storageClasses,omitempty"`
 }
 
 // KESInfo contains information about the KES deployment.
