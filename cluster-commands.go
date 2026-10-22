@@ -622,6 +622,11 @@ type SRBucketInfo struct {
 	// SSEKMSMissingKey names the KMS key SSEConfig resolves to on the reporting
 	// site when that site cannot use it, so writes to the bucket fail there.
 	SSEKMSMissingKey string `json:"sseKMSMissingKey,omitempty"`
+	// SSEKMSKeyError describes why the reporting site cannot use the KMS key
+	// SSEConfig resolves to, so writes to the bucket fail there. Empty when usable.
+	// Unlike SSEKMSMissingKey, it is set when no key name is known, such as on a
+	// site without a KMS.
+	SSEKMSKeyError string `json:"sseKMSKeyError,omitempty"`
 	// replication config in json representation
 	ReplicationConfig *string `json:"replicationConfig,omitempty"`
 	// quota config in json representation
@@ -883,7 +888,10 @@ type SRBucketStatsSummary struct {
 	// SSEKMSMissingKey names the KMS key this site cannot use for the bucket's
 	// SSE config. Unlike the mismatch flags, it describes this site only.
 	SSEKMSMissingKey string
-	APIVersion       string
+	// SSEKMSKeyError describes why this site cannot use the KMS key for the
+	// bucket's SSE config. Unlike the mismatch flags, it describes this site only.
+	SSEKMSKeyError string
+	APIVersion     string
 }
 
 // SRILMExpiryStatsSummary has status of ILM Expiry rules metadata replication misses
