@@ -222,6 +222,8 @@ func TestTableMaintenanceJobTypeStatusSkipReason(t *testing.T) {
 		MaintenanceSkipReasonFilterUnbound:          "filterUnbound",
 		MaintenanceSkipReasonGCDisabled:             "gcDisabled",
 		MaintenanceSkipReasonLocationMismatch:       "locationMismatch",
+		MaintenanceSkipReasonInvalidClockColumn:     "invalidClockColumn",
+		MaintenanceSkipReasonRewriteLimitExceeded:   "rewriteLimitExceeded",
 	} {
 		if string(reason) != wire {
 			t.Errorf("skip reason is %q, want %q", reason, wire)
