@@ -1267,6 +1267,103 @@ func TestFilesWriteDialFailureSentNothing(t *testing.T) {
 	}
 }
 
+// filesFailFirstAccept closes the first connection it accepts, so the TLS
+// handshake on it fails before any byte of a request is sent.
+type filesFailFirstAccept struct {
+	net.Listener
+	failed atomic.Bool
+}
+
+func (l *filesFailFirstAccept) Accept() (net.Conn, error) {
+	for {
+		conn, err := l.Listener.Accept()
+		if err != nil || l.failed.Swap(true) {
+			return conn, err
+		}
+		conn.Close()
+	}
+}
+
+// newFilesHandshakeFailureServer starts a TLS server whose first handshake
+// fails and which answers every write after it with reply. It returns a client
+// that trusts the server, and the count of writes the server received.
+func newFilesHandshakeFailureServer(t *testing.T, reply filesScriptedReply) (*AdminClient, *atomic.Int32) {
+	t.Helper()
+	var writes atomic.Int32
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		writes.Add(1)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(reply.status)
+		io.WriteString(w, reply.body)
+	}))
+	server.Listener = &filesFailFirstAccept{Listener: server.Listener}
+	server.StartTLS()
+	t.Cleanup(server.Close)
+
+	client, err := New(mustParseHost(t, server.URL), "ak", "sk", true)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	client.httpClient.Transport = server.Client().Transport
+	return client, &writes
+}
+
+// TestFilesWriteHandshakeFailureSentNothing verifies that a TLS handshake
+// that fails leaves the outcome known, as a failed dial does: the write is
+// repeated, an add included, and a 404 after it is the error it says, not an
+// earlier remove.
+func TestFilesWriteHandshakeFailureSentNothing(t *testing.T) {
+	client, writes := newFilesHandshakeFailureServer(t, filesNotFound)
+	got, err := client.RemoveFilesExport(context.Background(), "carol", "5f2a91", FilesRemoveOptions{})
+	if ToErrorResponse(err).Code != FilesErrExportNotFound || got.AlreadyRemoved {
+		t.Errorf("reply = %+v, err = %v, want %s", got, err, FilesErrExportNotFound)
+	}
+	if n := writes.Load(); n != 1 {
+		t.Errorf("the server received %d writes, want 1", n)
+	}
+
+	client, writes = newFilesHandshakeFailureServer(t, filesScriptedReply{http.StatusOK, `{"name": "carol"}`})
+	if _, err := client.AddFilesExport(context.Background(), FilesExportSpec{Name: "carol", Pseudo: "/home/carol"}); err != nil {
+		t.Errorf("AddFilesExport: %v", err)
+	}
+	if n := writes.Load(); n != 1 {
+		t.Errorf("the server received %d adds, want 1", n)
+	}
+}
+
+// TestFilesWriteCanceledDuringAttempt verifies that a context ending while an
+// attempt waits for its answer returns that attempt's error, not the answer of
+// the attempt before it.
+func TestFilesWriteCanceledDuringAttempt(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	var writes atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if writes.Add(1) == 1 {
+			w.WriteHeader(http.StatusTooManyRequests)
+			io.WriteString(w, `too many requests`)
+			return
+		}
+		// The server notices the client leave only once the body is read.
+		io.Copy(io.Discard, r.Body)
+		cancel()
+		<-r.Context().Done()
+	}))
+	t.Cleanup(server.Close)
+
+	_, err := newFilesExportsTestClient(t, server.URL).SetFilesExportQuota(ctx, "carol", "5f2a91", 1)
+	if !errors.Is(err, context.Canceled) {
+		t.Errorf("err = %v, want context.Canceled", err)
+	}
+	var errResp ErrorResponse
+	if errors.As(err, &errResp) {
+		t.Errorf("err = %v, want the canceled attempt's error, not the 429 before it", err)
+	}
+	if n := writes.Load(); n != 2 {
+		t.Errorf("the server received %d writes, want 2", n)
+	}
+}
+
 // filesCancelAfter reads each answer whole, then calls cancel, so the context
 // ends while the client waits to repeat the request.
 type filesCancelAfter struct {
