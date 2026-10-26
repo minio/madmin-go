@@ -202,6 +202,8 @@ func TestMaintenanceJobStatusHeldValue(t *testing.T) {
 	}
 }
 
+// A skip reason is reported only for a run that was refused, so an unset one
+// must not reach the wire.
 func TestTableMaintenanceJobTypeStatusSkipReason(t *testing.T) {
 	got, err := json.Marshal(TableMaintenanceJobTypeStatus{
 		Status:     MaintenanceJobStatusFailed,
@@ -213,6 +215,15 @@ func TestTableMaintenanceJobTypeStatusSkipReason(t *testing.T) {
 	const want = `{"status":"Failed","skipReason":"nativeEncryption"}`
 	if string(got) != want {
 		t.Errorf("a skipped run encoded as\n %s\nwant\n %s", got, want)
+	}
+
+	got, err = json.Marshal(TableMaintenanceJobTypeStatus{Status: MaintenanceJobStatusFailed})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	const wantUnset = `{"status":"Failed"}`
+	if string(got) != wantUnset {
+		t.Errorf("a failed run without a skip reason encoded as\n %s\nwant\n %s", got, wantUnset)
 	}
 
 	for reason, wire := range map[MaintenanceSkipReason]string{
