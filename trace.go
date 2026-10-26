@@ -86,6 +86,8 @@ const (
 	TraceTablesCompaction
 	// TraceMemory will trace the AIStor Memory API functions.
 	TraceMemory
+	// TraceFiles will trace the operations of the AIStor Files gateway on each node.
+	TraceFiles
 	// Add more here...
 
 	// TraceAll contains all valid trace modes.
