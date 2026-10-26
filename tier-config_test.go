@@ -126,3 +126,51 @@ func TestUnmarshalInvalidTierConfig(t *testing.T) {
 		t.Fatalf("Expected to fail with unsupported type but got %v", err)
 	}
 }
+
+func TestTierConfigEqual(t *testing.T) {
+	base := func() TierConfig {
+		return TierConfig{
+			Version: TierConfigVer,
+			Type:    S3,
+			Name:    "WARM",
+			S3:      &TierS3{Endpoint: "https://s3.example.com", AccessKey: "access", SecretKey: "secret", Bucket: "warm"},
+			Azure:   &TierAzure{AccountKey: "key", SPAuth: ServicePrincipalAuth{ClientSecret: "sp-secret"}},
+			GCS:     &TierGCS{Creds: "creds"},
+			MinIO:   &TierMinIO{SecretKey: "minio-secret"},
+		}
+	}
+
+	testCases := []struct {
+		name   string
+		change func(*TierConfig)
+		equal  bool
+	}{
+		{name: "identical copies", change: func(*TierConfig) {}, equal: true},
+		{name: "version", change: func(c *TierConfig) { c.Version = "v2" }},
+		{name: "type", change: func(c *TierConfig) { c.Type = MinIO }},
+		{name: "name", change: func(c *TierConfig) { c.Name = "COLD" }},
+		{name: "s3 field", change: func(c *TierConfig) { c.S3.SecretKey = "rotated" }},
+		{name: "azure nested field", change: func(c *TierConfig) { c.Azure.SPAuth.ClientSecret = "rotated" }},
+		{name: "gcs field", change: func(c *TierConfig) { c.GCS.Creds = "rotated" }},
+		{name: "minio field", change: func(c *TierConfig) { c.MinIO.SecretKey = "rotated" }},
+		{name: "nil backend", change: func(c *TierConfig) { c.S3 = nil }},
+		{name: "zero backend", change: func(c *TierConfig) { c.S3 = &TierS3{} }},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			a, b := base(), base()
+			tc.change(&b)
+			if got := a.Equal(b); got != tc.equal {
+				t.Fatalf("a.Equal(b) = %v, want %v", got, tc.equal)
+			}
+			if got := b.Equal(a); got != tc.equal {
+				t.Fatalf("b.Equal(a) = %v, want %v", got, tc.equal)
+			}
+		})
+	}
+
+	var empty TierConfig
+	if !empty.Equal(TierConfig{}) {
+		t.Fatal("zero values should be equal")
+	}
+}
