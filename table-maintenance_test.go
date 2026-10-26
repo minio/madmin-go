@@ -201,3 +201,30 @@ func TestMaintenanceJobStatusHeldValue(t *testing.T) {
 		t.Errorf("MaintenanceJobStatusHeld is %q, want %q", MaintenanceJobStatusHeld, "Held")
 	}
 }
+
+func TestTableMaintenanceJobTypeStatusSkipReason(t *testing.T) {
+	got, err := json.Marshal(TableMaintenanceJobTypeStatus{
+		Status:     MaintenanceJobStatusFailed,
+		SkipReason: MaintenanceSkipReasonNativeEncryption,
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	const want = `{"status":"Failed","skipReason":"nativeEncryption"}`
+	if string(got) != want {
+		t.Errorf("a skipped run encoded as\n %s\nwant\n %s", got, want)
+	}
+
+	for reason, wire := range map[MaintenanceSkipReason]string{
+		MaintenanceSkipReasonUnsupportedWriteFormat: "unsupportedWriteFormat",
+		MaintenanceSkipReasonUnsupportedCodec:       "unsupportedCodec",
+		MaintenanceSkipReasonNativeEncryption:       "nativeEncryption",
+		MaintenanceSkipReasonFilterUnbound:          "filterUnbound",
+		MaintenanceSkipReasonGCDisabled:             "gcDisabled",
+		MaintenanceSkipReasonLocationMismatch:       "locationMismatch",
+	} {
+		if string(reason) != wire {
+			t.Errorf("skip reason is %q, want %q", reason, wire)
+		}
+	}
+}
