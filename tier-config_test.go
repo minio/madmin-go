@@ -173,4 +173,9 @@ func TestTierConfigEqual(t *testing.T) {
 	if !empty.Equal(TierConfig{}) {
 		t.Fatal("zero values should be equal")
 	}
+
+	zeroS3 := TierConfig{S3: &TierS3{}}
+	if empty.Equal(zeroS3) || zeroS3.Equal(empty) {
+		t.Fatal("a nil backend should not equal a zero-value backend")
+	}
 }
