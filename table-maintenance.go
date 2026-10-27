@@ -167,11 +167,30 @@ const (
 	MaintenanceJobStatusHeld MaintenanceJobStatus = "Held"
 )
 
+// MaintenanceSkipReason names why a maintenance type cannot run on a table
+// until the table or a maintenance setting changes.
+type MaintenanceSkipReason string
+
+const (
+	MaintenanceSkipReasonUnsupportedWriteFormat MaintenanceSkipReason = "unsupportedWriteFormat"
+	MaintenanceSkipReasonUnsupportedCodec       MaintenanceSkipReason = "unsupportedCodec"
+	MaintenanceSkipReasonNativeEncryption       MaintenanceSkipReason = "nativeEncryption"
+	MaintenanceSkipReasonFilterUnbound          MaintenanceSkipReason = "filterUnbound"
+	MaintenanceSkipReasonGCDisabled             MaintenanceSkipReason = "gcDisabled"
+	MaintenanceSkipReasonLocationMismatch       MaintenanceSkipReason = "locationMismatch"
+	MaintenanceSkipReasonInvalidClockColumn     MaintenanceSkipReason = "invalidClockColumn"
+	MaintenanceSkipReasonRewriteLimitExceeded   MaintenanceSkipReason = "rewriteLimitExceeded"
+)
+
 // TableMaintenanceJobTypeStatus is the per-type status entry in GetTableMaintenanceJobStatusResponse.
 type TableMaintenanceJobTypeStatus struct {
 	Status           MaintenanceJobStatus `json:"status"`
 	LastRunTimestamp *string              `json:"lastRunTimestamp,omitempty"`
 	FailureMessage   string               `json:"failureMessage,omitempty"`
+
+	// SkipReason is set, with a Failed status, when the table or a maintenance
+	// setting stopped the run before it changed anything.
+	SkipReason MaintenanceSkipReason `json:"skipReason,omitempty"`
 
 	// RecordsDeleted, DataFilesRewritten and BytesRemoved report what the last
 	// run removed. Only record expiration reports them, because it is the only
