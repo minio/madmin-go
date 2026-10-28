@@ -541,7 +541,8 @@ type FilesAccessRule = filesaccess.Rule
 // FilesExport is one export: its configuration, with Status for where it is
 // running and UsedBytes for how full it is. GetFilesExport fills every field,
 // and a ListFilesExports entry may leave the configuration-only fields
-// AccessType, Squash and AccessRules empty.
+// AccessType, Squash, AccessRules, RootDirUID, RootDirGID, RootDirMode,
+// AnonUID and AnonGID empty.
 type FilesExport struct {
 	// Name is the export's key in this API. It is never all digits.
 	Name string `json:"name"`
@@ -592,6 +593,20 @@ type FilesExport struct {
 
 	// QuotaBytes is the byte limit. Zero is unlimited.
 	QuotaBytes uint64 `json:"quotaBytes"`
+
+	// RootDirUID, RootDirGID and RootDirMode are the export root's owner and
+	// permission bits given at add. They never change, but they are not the
+	// export root's current attributes: a client may chmod or chown it. Each
+	// is nil when the server does not report it, as in a list entry.
+	RootDirUID  *uint32 `json:"rootDirUid,omitempty"`
+	RootDirGID  *uint32 `json:"rootDirGid,omitempty"`
+	RootDirMode *uint32 `json:"rootDirMode,omitempty"`
+
+	// AnonUID and AnonGID are the ids a squashed user becomes. They never
+	// change. Each is nil when the server does not report it, as in a list
+	// entry.
+	AnonUID *uint32 `json:"anonUid,omitempty"`
+	AnonGID *uint32 `json:"anonGid,omitempty"`
 
 	// AccessRules are in evaluation order. An export with any rule refuses a
 	// client none of them matches. A value this version does not know is
@@ -813,6 +828,22 @@ type FilesExportSpec struct {
 
 	// QuotaBytes is the byte limit. Zero, the default, is unlimited.
 	QuotaBytes uint64 `json:"quotaBytes,omitempty"`
+
+	// RootDirUID and RootDirGID own the export root. Under FilesSquashRoot
+	// both are required and neither may be 0. Under FilesSquashAll both are
+	// refused: the export root takes AnonUID and AnonGID. Under
+	// FilesSquashNone they default to 0.
+	RootDirUID *uint32 `json:"rootDirUid,omitempty"`
+	RootDirGID *uint32 `json:"rootDirGid,omitempty"`
+
+	// RootDirMode is the export root's permission bits, at most 07777. It
+	// defaults to 0755.
+	RootDirMode *uint32 `json:"rootDirMode,omitempty"`
+
+	// AnonUID and AnonGID are the ids a squashed user becomes. Each defaults
+	// to 65534 and may not be 0. Under FilesSquashNone both are refused.
+	AnonUID *uint32 `json:"anonUid,omitempty"`
+	AnonGID *uint32 `json:"anonGid,omitempty"`
 
 	// Node pins the export to a node. Empty lets AIStor select one. A pinned
 	// node that is unreachable is refused rather than left pending.
