@@ -30,12 +30,14 @@ import (
 	"math/rand"
 	"net/http"
 	"net/http/cookiejar"
+	"net/http/httptrace"
 	"net/http/httputil"
 	"net/url"
 	"os"
 	"regexp"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -214,8 +216,11 @@ type requestData struct {
 	// an attempt that did not succeed. It is called with the attempt's
 	// transport error, or with its response and the body read from it, which
 	// leaves the response's own body unread. When the hook declines a
-	// response, executeMethod returns that same response. A refused connection
-	// and a canceled context end the call before it is asked.
+	// response, executeMethod returns that same response. A transport error
+	// that came before the request had a connection, so that nothing was sent,
+	// is given as a *requestNotSentError. A refused connection ends the call
+	// before the hook is asked. A transport error from an attempt the context
+	// ended is given to the hook, and the call then ends whatever it answers.
 	retry func(res *http.Response, body []byte, err error) bool
 }
 
@@ -358,6 +363,39 @@ func (adm AdminClient) do(req *http.Request) (*http.Response, error) {
 	return resp, nil
 }
 
+// attemptTrace records whether one attempt got a connection to send its
+// request on. Nothing of the request is written before that, so a transport
+// error from an attempt that looked for a connection and got none sent
+// nothing: the dial or the TLS handshake failed, or the context ended first.
+type attemptTrace struct {
+	getConn, gotConn atomic.Bool
+}
+
+// with returns ctx carrying a trace that records into a.
+func (a *attemptTrace) with(ctx context.Context) context.Context {
+	return httptrace.WithClientTrace(ctx, &httptrace.ClientTrace{
+		GetConn: func(string) { a.getConn.Store(true) },
+		GotConn: func(httptrace.GotConnInfo) { a.gotConn.Store(true) },
+	})
+}
+
+// notSent reports whether the attempt looked for a connection and got none. A
+// transport that does not report the trace gives false, as does a nil a.
+func (a *attemptTrace) notSent() bool {
+	return a != nil && a.getConn.Load() && !a.gotConn.Load()
+}
+
+// requestNotSentError is a transport error from an attempt that never got a
+// connection, so no byte of the request reached the server. executeMethod
+// gives it only to a retry hook.
+type requestNotSentError struct {
+	err error
+}
+
+func (e *requestNotSentError) Error() string { return e.err.Error() }
+
+func (e *requestNotSentError) Unwrap() error { return e.err }
+
 // List of success status.
 var successStatus = []int{
 	http.StatusOK,
@@ -411,7 +449,12 @@ func (adm AdminClient) executeMethod(ctx context.Context, method string, reqData
 	for range adm.newRetryTimer(retryCtx, reqRetry, DefaultRetryUnit, DefaultRetryCap, MaxJitter) {
 		// Instantiate a new request.
 		var req *http.Request
-		req, err = adm.newRequest(ctx, method, reqData)
+		reqCtx, trace := ctx, (*attemptTrace)(nil)
+		if reqData.retry != nil {
+			trace = &attemptTrace{}
+			reqCtx = trace.with(ctx)
+		}
+		req, err = adm.newRequest(reqCtx, method, reqData)
 		if err != nil {
 			return nil, err
 		}
@@ -423,11 +466,21 @@ func (adm AdminClient) executeMethod(ctx context.Context, method string, reqData
 			if errors.Is(err, syscall.ECONNREFUSED) {
 				return nil, err
 			}
+			repeat := true
+			if reqData.retry != nil {
+				// Asked before the canceled check, so the hook keeps this
+				// attempt's error rather than an earlier attempt's.
+				hookErr := err
+				if trace.notSent() {
+					hookErr = &requestNotSentError{err: err}
+				}
+				repeat = reqData.retry(nil, nil, hookErr)
+			}
 			// Give up if caller canceled.
 			if ctx.Err() != nil {
 				return nil, ctx.Err()
 			}
-			if reqData.retry != nil && !reqData.retry(nil, nil, err) {
+			if !repeat {
 				return nil, err
 			}
 			// retry all network errors.

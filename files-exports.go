@@ -1334,8 +1334,9 @@ type filesWriteRequest struct {
 // when not nil, to learn whether the write took effect. Without such an
 // attempt an error means what it says, and is returned as it is.
 //
-// When ctx ends while the write is being repeated, the error carries both the
-// context's error and the last attempt's.
+// When ctx ends during an attempt, the error is that attempt's, which carries
+// the context's error. When ctx ends while the write waits to be repeated, the
+// error carries both the context's error and the last attempt's.
 func (adm *AdminClient) filesWrite(ctx context.Context, w filesWriteRequest) error {
 	reqData := w.reqData
 	if w.in != nil {
@@ -1357,6 +1358,10 @@ func (adm *AdminClient) filesWrite(ctx context.Context, w filesWriteRequest) err
 	switch {
 	case err != nil:
 		if ctx.Err() != nil {
+			if errors.Is(retry.lastErr, err) {
+				// The context ended this attempt.
+				return retry.lastErr
+			}
 			if retry.lastErr != nil {
 				return fmt.Errorf("%w; the last attempt failed: %w", err, retry.lastErr)
 			}
@@ -1412,6 +1417,11 @@ const filesBusyRepeats = 1
 // the write again. It has the signature of requestData.retry.
 func (r *filesRetry) next(res *http.Response, body []byte, err error) bool {
 	if err != nil {
+		var notSent *requestNotSentError
+		if errors.As(err, &notSent) {
+			r.lastErr = notSent.err
+			return true
+		}
 		r.lastErr = err
 		if filesNotSent(err) {
 			return true
@@ -1450,8 +1460,10 @@ func (r *filesRetry) next(res *http.Response, body []byte, err error) bool {
 	return false
 }
 
-// filesNotSent reports whether a transport error came before the connection
-// was made, so no byte of the request reached the server.
+// filesNotSent reports whether a transport error is a failed dial, so no byte
+// of the request reached the server. executeMethod marks an attempt that never
+// got a connection, a failed TLS handshake included, as a requestNotSentError;
+// this covers a transport that does not report its trace.
 func filesNotSent(err error) bool {
 	var opErr *net.OpError
 	return errors.As(err, &opErr) && opErr.Op == "dial"
