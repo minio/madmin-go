@@ -66,8 +66,9 @@ type TableGrant struct {
 	Access TableAccess `json:"access"`
 	// Warehouse is an exact table bucket name or a pattern ending in "*".
 	Warehouse string `json:"warehouse"`
-	// Namespace is dot-joined for nested namespaces, such as "orders.eu", and
-	// covers the namespace and every namespace nested under it.
+	// Namespace is dot-joined for nested namespaces, such as "orders.eu". On
+	// its own it covers the namespace and every namespace nested under it; a
+	// rule that names a Table matches exactly this namespace.
 	Namespace string `json:"namespace,omitempty"`
 	Table     string `json:"table,omitempty"`
 }
