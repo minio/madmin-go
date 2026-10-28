@@ -491,6 +491,7 @@ func TestGetFilesExportRequest(t *testing.T) {
 	server, seen := newFilesJSONServer(t, http.StatusOK, `{
   "name": "carol", "exportID": 104, "generation": "5f2c44", "pseudo": "/home/carol", "node": "node03.example.com",
   "accessType": "rw", "squash": "root", "quotaBytes": 21474836480,
+  "rootDirUid": 1001, "rootDirGid": 1001, "rootDirMode": 493, "anonUid": 65534, "anonGid": 65534,
   "accessRules": [
     {"clients": ["10.20.9.0/24"], "accessType": "none"},
     {"clients": ["10.20.4.7", "10.20.4.8"], "accessType": "rw"},
@@ -519,6 +520,8 @@ func TestGetFilesExportRequest(t *testing.T) {
 		want := FilesExport{
 			Name: "carol", ExportID: 104, Generation: "5f2c44", Pseudo: "/home/carol", Node: "node03.example.com",
 			Status: FilesExportServing, Applied: filesBool(true), AccessType: FilesAccessRW, Squash: FilesSquashRoot, QuotaBytes: 21474836480,
+			RootDirUID: new(uint32(1001)), RootDirGID: new(uint32(1001)), RootDirMode: new(uint32(0o755)),
+			AnonUID: new(uint32(65534)), AnonGID: new(uint32(65534)),
 			AccessRules: mustFilesRules("10.20.9.0/24 none\n" +
 				"10.20.4.7,10.20.4.8 rw\n" +
 				"*.corp.example.com,10.20.0.0/16 ro\n").All(),
@@ -931,14 +934,17 @@ func jsonKeys(t *testing.T, body []byte) []string {
 func TestAddFilesExportRequest(t *testing.T) {
 	server, seen := newFilesJSONServer(t, http.StatusAccepted, `{
   "name": "carol", "exportID": 104, "generation": "5f2a91", "pseudo": "/home/carol", "node": "node03.example.com",
-  "status": "pending", "accessType": "rw", "squash": "root", "quotaBytes": 10737418240
+  "status": "pending", "accessType": "rw", "squash": "root", "quotaBytes": 10737418240,
+  "rootDirUid": 1001, "rootDirGid": 3000, "rootDirMode": 1533, "anonUid": 2000, "anonGid": 2001
 }`)
 	client := newFilesExportsTestClient(t, server.URL)
 
 	id := uint64(104)
+	rootUID, rootGID, rootMode, anonUID, anonGID := uint32(1001), uint32(3000), uint32(0o2775), uint32(2000), uint32(2001)
 	got, err := client.AddFilesExport(context.Background(), FilesExportSpec{
 		Name: "carol", Pseudo: "/home/carol", AccessType: FilesAccessRW, Squash: FilesSquashRoot,
 		QuotaBytes: 10737418240, Node: "node03.example.com", ExportID: &id,
+		RootDirUID: &rootUID, RootDirGID: &rootGID, RootDirMode: &rootMode, AnonUID: &anonUID, AnonGID: &anonGID,
 	})
 	if err != nil {
 		t.Fatalf("AddFilesExport: %v", err)
@@ -950,12 +956,16 @@ func TestAddFilesExportRequest(t *testing.T) {
 	if req.contentType != "application/json" {
 		t.Errorf("content type = %q, want application/json", req.contentType)
 	}
-	if keys, want := jsonKeys(t, req.body), []string{"accessType", "exportID", "name", "node", "pseudo", "quotaBytes", "squash"}; !slices.Equal(keys, want) {
+	if keys, want := jsonKeys(t, req.body), []string{
+		"accessType", "anonGid", "anonUid", "exportID", "name", "node", "pseudo", "quotaBytes",
+		"rootDirGid", "rootDirMode", "rootDirUid", "squash",
+	}; !slices.Equal(keys, want) {
 		t.Errorf("body keys = %v, want %v", keys, want)
 	}
 	want := FilesExport{
 		Name: "carol", ExportID: 104, Generation: "5f2a91", Pseudo: "/home/carol", Node: "node03.example.com", Status: FilesExportPending,
 		AccessType: FilesAccessRW, Squash: FilesSquashRoot, QuotaBytes: 10737418240,
+		RootDirUID: &rootUID, RootDirGID: &rootGID, RootDirMode: &rootMode, AnonUID: &anonUID, AnonGID: &anonGID,
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("reply = %+v, want %+v", got, want)
