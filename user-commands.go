@@ -712,7 +712,13 @@ func (opts *ListAccessKeysOpts) BuiltinValidate(n int) error {
 }
 
 func (opts *ListAccessKeysOpts) LDAPValidate(n int) error {
-	return opts.BuiltinValidate(n)
+	if err := opts.validate(n); err != nil {
+		return err
+	}
+	if opts.AllConfigs {
+		return errors.New("allConfigs is not supported for LDAP provider")
+	}
+	return nil
 }
 
 func (opts *ListAccessKeysOpts) OpenIDValidate(n int) error {
