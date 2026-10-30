@@ -85,7 +85,7 @@ func TestDescribeMaintenanceJobPerNode(t *testing.T) {
 	got := describeMaintenanceJob(madmin.TableMaintenanceJob{
 		PerNode: true, TablesProcessed: 8, Errors: 1, Retries: 2, Work: map[string]uint64{"snapshots_expired": 14},
 	})
-	for _, want := range []string{"8 tables", "1 errors", "2 retries", "snapshots_expired"} {
+	for _, want := range []string{"8 tables", "1 errors", "2 retries", "snapshots_expired=14"} {
 		if !strings.Contains(got, want) {
 			t.Errorf("describeMaintenanceJob() = %q, want it to contain %q", got, want)
 		}
@@ -116,6 +116,11 @@ func TestDescribeMaintenanceJobRetries(t *testing.T) {
 			name: "leader-owned retries",
 			job:  madmin.TableMaintenanceJob{Retries: 2},
 			want: "never run, 0 cycles, 2 retries",
+		},
+		{
+			name: "leader-owned nonzero cycles",
+			job:  madmin.TableMaintenanceJob{Cycles: 3, Retries: 2},
+			want: "never run, 3 cycles, 2 retries",
 		},
 	} {
 		t.Run(tt.name, func(t *testing.T) {
