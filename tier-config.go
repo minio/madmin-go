@@ -158,6 +158,24 @@ func (cfg *TierConfig) Clone() TierConfig {
 	}
 }
 
+// Equal reports whether cfg and o hold the same tier configuration, comparing
+// the backend configs by value. It does not compile if TierConfig or a backend
+// config gains a field that == cannot compare, so such a change must update it.
+func (cfg TierConfig) Equal(o TierConfig) bool {
+	a, b := cfg, o
+	a.S3, a.Azure, a.GCS, a.MinIO = nil, nil, nil, nil
+	b.S3, b.Azure, b.GCS, b.MinIO = nil, nil, nil, nil
+	return a == b &&
+		tierBackendEqual(cfg.S3, o.S3) &&
+		tierBackendEqual(cfg.Azure, o.Azure) &&
+		tierBackendEqual(cfg.GCS, o.GCS) &&
+		tierBackendEqual(cfg.MinIO, o.MinIO)
+}
+
+func tierBackendEqual[T comparable](a, b *T) bool {
+	return a == b || (a != nil && b != nil && *a == *b)
+}
+
 // UnmarshalJSON unmarshals json value to ensure that Type field is filled in
 // correspondence with the tier config supplied.
 // See TestUnmarshalTierConfig for an example json.
