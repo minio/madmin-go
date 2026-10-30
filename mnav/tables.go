@@ -160,6 +160,9 @@ func describeMaintenanceJob(job madmin.TableMaintenanceJob) string {
 	if job.Errors > 0 {
 		parts = append(parts, fmt.Sprintf("%s errors", humanize.Comma(int64(job.Errors))))
 	}
+	if job.Retries > 0 {
+		parts = append(parts, fmt.Sprintf("%s retries", humanize.Comma(int64(job.Retries))))
+	}
 	if job.ConfigsTotal > 0 {
 		parts = append(parts, fmt.Sprintf("%d/%d enabled", job.ConfigsEnabled, job.ConfigsTotal))
 	}
