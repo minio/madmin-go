@@ -5096,7 +5096,7 @@ func (z *TableMaintenanceJob) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint16 /* 10 bits */
+	var zb0001Mask uint16 /* 11 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -5198,6 +5198,13 @@ func (z *TableMaintenanceJob) DecodeMsg(dc *msgp.Reader) (err error) {
 				z.Work[za0001] = za0002
 			}
 			zb0001Mask |= 0x200
+		case "per_node":
+			z.PerNode, err = dc.ReadBool()
+			if err != nil {
+				err = msgp.WrapError(err, "PerNode")
+				return
+			}
+			zb0001Mask |= 0x400
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -5207,7 +5214,7 @@ func (z *TableMaintenanceJob) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3ff {
+	if zb0001Mask != 0x7ff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Cycles = 0
 		}
@@ -5238,6 +5245,9 @@ func (z *TableMaintenanceJob) DecodeMsg(dc *msgp.Reader) (err error) {
 		if (zb0001Mask & 0x200) == 0 {
 			z.Work = nil
 		}
+		if (zb0001Mask & 0x400) == 0 {
+			z.PerNode = false
+		}
 	}
 	return
 }
@@ -5245,8 +5255,8 @@ func (z *TableMaintenanceJob) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *TableMaintenanceJob) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(10)
-	var zb0001Mask uint16 /* 10 bits */
+	zb0001Len := uint32(11)
+	var zb0001Mask uint16 /* 11 bits */
 	_ = zb0001Mask
 	if z.Cycles == 0 {
 		zb0001Len--
@@ -5287,6 +5297,10 @@ func (z *TableMaintenanceJob) EncodeMsg(en *msgp.Writer) (err error) {
 	if z.Work == nil {
 		zb0001Len--
 		zb0001Mask |= 0x200
+	}
+	if z.PerNode == false {
+		zb0001Len--
+		zb0001Mask |= 0x400
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -5428,6 +5442,18 @@ func (z *TableMaintenanceJob) EncodeMsg(en *msgp.Writer) (err error) {
 				}
 			}
 		}
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
+			// write "per_node"
+			err = en.Append(0xa8, 0x70, 0x65, 0x72, 0x5f, 0x6e, 0x6f, 0x64, 0x65)
+			if err != nil {
+				return
+			}
+			err = en.WriteBool(z.PerNode)
+			if err != nil {
+				err = msgp.WrapError(err, "PerNode")
+				return
+			}
+		}
 	}
 	return
 }
@@ -5436,8 +5462,8 @@ func (z *TableMaintenanceJob) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *TableMaintenanceJob) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(10)
-	var zb0001Mask uint16 /* 10 bits */
+	zb0001Len := uint32(11)
+	var zb0001Mask uint16 /* 11 bits */
 	_ = zb0001Mask
 	if z.Cycles == 0 {
 		zb0001Len--
@@ -5478,6 +5504,10 @@ func (z *TableMaintenanceJob) MarshalMsg(b []byte) (o []byte, err error) {
 	if z.Work == nil {
 		zb0001Len--
 		zb0001Mask |= 0x200
+	}
+	if z.PerNode == false {
+		zb0001Len--
+		zb0001Mask |= 0x400
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -5538,6 +5568,11 @@ func (z *TableMaintenanceJob) MarshalMsg(b []byte) (o []byte, err error) {
 				o = msgp.AppendUint64(o, za0002)
 			}
 		}
+		if (zb0001Mask & 0x400) == 0 { // if not omitted
+			// string "per_node"
+			o = append(o, 0xa8, 0x70, 0x65, 0x72, 0x5f, 0x6e, 0x6f, 0x64, 0x65)
+			o = msgp.AppendBool(o, z.PerNode)
+		}
 	}
 	return
 }
@@ -5552,7 +5587,7 @@ func (z *TableMaintenanceJob) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint16 /* 10 bits */
+	var zb0001Mask uint16 /* 11 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -5654,6 +5689,13 @@ func (z *TableMaintenanceJob) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				z.Work[za0001] = za0002
 			}
 			zb0001Mask |= 0x200
+		case "per_node":
+			z.PerNode, bts, err = msgp.ReadBoolBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "PerNode")
+				return
+			}
+			zb0001Mask |= 0x400
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -5663,7 +5705,7 @@ func (z *TableMaintenanceJob) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3ff {
+	if zb0001Mask != 0x7ff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Cycles = 0
 		}
@@ -5694,6 +5736,9 @@ func (z *TableMaintenanceJob) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		if (zb0001Mask & 0x200) == 0 {
 			z.Work = nil
 		}
+		if (zb0001Mask & 0x400) == 0 {
+			z.PerNode = false
+		}
 	}
 	o = bts
 	return
@@ -5708,5 +5753,6 @@ func (z *TableMaintenanceJob) Msgsize() (s int) {
 			s += msgp.StringPrefixSize + len(za0001) + msgp.Uint64Size
 		}
 	}
+	s += 9 + msgp.BoolSize
 	return
 }

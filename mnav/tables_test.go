@@ -80,6 +80,27 @@ func TestDescribeCatalogScannerFailedCycle(t *testing.T) {
 	}
 }
 
+// A PerNode job has no cycles, so it must not read as a job that never ran.
+func TestDescribeMaintenanceJobPerNode(t *testing.T) {
+	got := describeMaintenanceJob(madmin.TableMaintenanceJob{
+		PerNode: true, TablesProcessed: 8, Errors: 1, Work: map[string]uint64{"snapshots_expired": 14},
+	})
+	for _, want := range []string{"8 tables", "1 errors", "snapshots_expired"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("describeMaintenanceJob() = %q, want it to contain %q", got, want)
+		}
+	}
+	for _, notWant := range []string{"never run", "cycles"} {
+		if strings.Contains(got, notWant) {
+			t.Errorf("describeMaintenanceJob() = %q, must not report %q for a per-node job", got, notWant)
+		}
+	}
+
+	if got := describeMaintenanceJob(madmin.TableMaintenanceJob{PerNode: true}); got != "no runs" {
+		t.Errorf("describeMaintenanceJob() = %q, want %q", got, "no runs")
+	}
+}
+
 func TestTableMetricsNodeLeafDataIncludesCatalogScanner(t *testing.T) {
 	node := NewTableMetricsNode(&madmin.TableAPIMetrics{
 		CatalogScanner: &madmin.CatalogScannerMetrics{Cycles: 5},
