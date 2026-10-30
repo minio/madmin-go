@@ -137,17 +137,20 @@ var (
 // describeMaintenanceJob renders one maintenance job on a single line.
 //
 // Counters reset when the job's leader lock moves to another node, so the cycle
-// count is the current leader's, not the cluster's lifetime total.
+// count is the current leader's, not the cluster's lifetime total. A PerNode
+// job has no cycles; its counters sum every node's runs since each started.
 func describeMaintenanceJob(job madmin.TableMaintenanceJob) string {
 	parts := make([]string, 0, 6)
-	if job.Running {
-		parts = append(parts, "running")
-	} else if job.LastRun.IsZero() {
-		parts = append(parts, "never run")
-	} else {
-		parts = append(parts, "last "+job.LastRun.Format("15:04:05"))
+	if !job.PerNode {
+		if job.Running {
+			parts = append(parts, "running")
+		} else if job.LastRun.IsZero() {
+			parts = append(parts, "never run")
+		} else {
+			parts = append(parts, "last "+job.LastRun.Format("15:04:05"))
+		}
+		parts = append(parts, fmt.Sprintf("%s cycles", humanize.Comma(int64(job.Cycles))))
 	}
-	parts = append(parts, fmt.Sprintf("%s cycles", humanize.Comma(int64(job.Cycles))))
 	if job.TablesProcessed > 0 {
 		parts = append(parts, fmt.Sprintf("%s tables", humanize.Comma(int64(job.TablesProcessed))))
 	}
@@ -157,11 +160,17 @@ func describeMaintenanceJob(job madmin.TableMaintenanceJob) string {
 	if job.Errors > 0 {
 		parts = append(parts, fmt.Sprintf("%s errors", humanize.Comma(int64(job.Errors))))
 	}
+	if job.Retries > 0 {
+		parts = append(parts, fmt.Sprintf("%s retries", humanize.Comma(int64(job.Retries))))
+	}
 	if job.ConfigsTotal > 0 {
 		parts = append(parts, fmt.Sprintf("%d/%d enabled", job.ConfigsEnabled, job.ConfigsTotal))
 	}
 	if len(job.Work) > 0 {
 		parts = append(parts, formatCountMap(job.Work, 3))
+	}
+	if len(parts) == 0 {
+		return "no runs"
 	}
 	return strings.Join(parts, ", ")
 }

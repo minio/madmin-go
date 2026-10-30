@@ -79,10 +79,8 @@ type TableHealth struct {
 	// the 4xx counts in the traffic stat.
 	VendedCreds map[string]uint64 `json:"vended_creds,omitempty"`
 
-	// PeerRPCs is compaction's peer-RPC count. It lives here, not on
-	// TableMaintenanceJob, because it is the one maintenance counter that is
-	// genuinely per-node: mixing it into a leader-owned struct would make that
-	// struct's reduction ambiguous.
+	// PeerRPCs is compaction's peer-RPC count, summed across nodes even
+	// though compaction's TableMaintenanceJob is leader-owned.
 	PeerRPCs uint64 `json:"peer_rpcs,omitempty"`
 }
 
@@ -101,18 +99,11 @@ func (h *TableHealth) Add(other *TableHealth) {
 
 // TableMaintenanceJob is one background table-maintenance job.
 //
-// Each job runs under its own leader lock, so exactly one node's copy is
-// authoritative -- but which node that is changes on failover, and a demoted
-// leader keeps its stale totals in memory. Merge therefore selects per key and
-// never sums: summing would double-count every cycle a former leader ever ran.
-// Because every node collects (these are atomic loads) and Merge picks the
-// winner, this is failover-proof without a leader lookup.
-//
-// Counters reset on failover: the new leader's atomics start at zero. State that
-// in UI copy rather than trying to reconcile it inside the metric.
-//
-// Not time-segmented: Cycles, LastRun and LastCycleSecs already encode the
-// history a post-mortem needs.
+// Leader-owned reports are selected per job rather than summed, since a
+// former leader may retain stale counters. PerNode reports instead sum
+// TablesProcessed, Errors, Retries and Work across nodes. Producers of PerNode
+// reports must leave Cycles, ConfigsEnabled, ConfigsTotal, Running, LastRun and
+// LastCycleSecs unset.
 type TableMaintenanceJob struct {
 	Cycles          uint64 `json:"cycles,omitempty"`
 	TablesProcessed uint64 `json:"tables_processed,omitempty"`
@@ -140,23 +131,23 @@ type TableMaintenanceJob struct {
 	// of wire fields, and so no job carries another job's structurally-zero
 	// counters.
 	Work map[string]uint64 `json:"work,omitempty"`
+
+	// PerNode selects summed per-node counters instead of a leader-owned report.
+	// Per-node reports take precedence over legacy reports of the same job.
+	// Producers must use this mode only with aggregators that support it.
+	PerNode bool `json:"per_node,omitempty"`
 }
 
 // fresherThan reports whether j is the more authoritative report of the same
 // maintenance job than k.
 //
-// A node currently running a cycle wins, because that is the live leader.
-// Otherwise the most recently completed cycle wins, then the highest cycle
-// count. Ordering on Running first matters: a demoted leader can hold a *higher*
-// lifetime cycle count than the node that has since taken over, so selecting on
-// "most cycles" alone would pin the reported state to a node that stopped
-// running the job. Immediately after a failover, before the new leader completes
-// its first cycle, the demoted node's totals can still win; that is
-// self-correcting within one cycle.
-//
-// The trailing comparisons exist only to make the selection a strict total
-// order, so Merge is independent of merge order even when two reports tie.
+// PerNode reports outrank legacy reports. Among legacy reports, Running takes
+// precedence over last-run time and counters so a former leader's larger
+// totals do not hide a job running on the current leader.
 func (j TableMaintenanceJob) fresherThan(k TableMaintenanceJob) bool {
+	if j.PerNode != k.PerNode {
+		return j.PerNode
+	}
 	if j.Running != k.Running {
 		return j.Running
 	}
@@ -170,6 +161,14 @@ func (j TableMaintenanceJob) fresherThan(k TableMaintenanceJob) bool {
 		return j.TablesProcessed > k.TablesProcessed
 	}
 	return j.Errors > k.Errors
+}
+
+// add sums the counters of another node's report of the same PerNode job.
+func (j *TableMaintenanceJob) add(o TableMaintenanceJob) {
+	j.TablesProcessed += o.TablesProcessed
+	j.Errors += o.Errors
+	j.Retries += o.Retries
+	addMap(&j.Work, o.Work)
 }
 
 // CatalogScannerCycle is one catalog scanner cycle's own timing and counts --
@@ -381,7 +380,8 @@ type TableAPIMetrics struct {
 
 	// Maintenance maps a background maintenance job type
 	// ("snapshot_expiration", "unreferenced_file_removal", "compaction") to
-	// its state. Leader-owned: selected between, never summed.
+	// its state. Leader-owned jobs are selected between, never summed;
+	// PerNode jobs are summed.
 	Maintenance map[string]TableMaintenanceJob `json:"maintenance,omitempty"`
 
 	// CatalogScanner is leader-owned: selected between, never summed.
@@ -435,11 +435,17 @@ func (t *TableAPIMetrics) Merge(other *TableAPIMetrics) {
 		t.Health.Add(other.Health)
 	}
 	// Leader-owned: select the authoritative report per job, never sum.
+	// PerNode: every node's report counts its own runs, so sum them.
 	for k, o := range other.Maintenance {
 		if t.Maintenance == nil {
 			t.Maintenance = make(map[string]TableMaintenanceJob, len(other.Maintenance))
 		}
-		if cur, ok := t.Maintenance[k]; !ok || o.fresherThan(cur) {
+		cur, ok := t.Maintenance[k]
+		switch {
+		case ok && cur.PerNode && o.PerNode:
+			cur.add(o)
+			t.Maintenance[k] = cur
+		case !ok || o.fresherThan(cur):
 			// Clone Work: storing o wholesale would share the source report's map,
 			// so a caller mutating the aggregate would reach back into it.
 			o.Work = maps.Clone(o.Work)

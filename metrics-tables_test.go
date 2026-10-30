@@ -295,6 +295,78 @@ func TestTableMaintenanceMergeClonesWork(t *testing.T) {
 	}
 }
 
+// A PerNode job runs on every node, so each report holds only that node's runs
+// and the cluster total is their sum.
+func TestTableMaintenanceMergeSumsPerNode(t *testing.T) {
+	a := &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{
+		"snapshot_expiration": {PerNode: true, TablesProcessed: 5, Errors: 1, Retries: 2, Work: map[string]uint64{"snapshots_expired": 10}},
+	}}
+	b := &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{
+		"snapshot_expiration": {PerNode: true, TablesProcessed: 3, Retries: 1, Work: map[string]uint64{"snapshots_expired": 4, "tables_skipped": 2}},
+	}}
+	c := &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{
+		"snapshot_expiration": {PerNode: true},
+	}}
+
+	want := TableMaintenanceJob{
+		PerNode: true, TablesProcessed: 8, Errors: 1, Retries: 3,
+		Work: map[string]uint64{"snapshots_expired": 14, "tables_skipped": 2},
+	}
+	for _, order := range [][]*TableAPIMetrics{{a, b, c}, {c, b, a}, {b, c, a}} {
+		got := mergeTables(order...).Maintenance["snapshot_expiration"]
+		if !reflect.DeepEqual(got, want) {
+			t.Errorf("got %+v, want %+v", got, want)
+		}
+	}
+	if got := a.Maintenance["snapshot_expiration"].Work["snapshots_expired"]; got != 10 {
+		t.Errorf("source Work mutated through the aggregate: %d, want 10", got)
+	}
+}
+
+// Per-node reports take precedence over legacy reports of the same job.
+func TestTableMaintenanceMergePerNodeMixedVersions(t *testing.T) {
+	t0 := time.Date(2026, 8, 12, 10, 0, 0, 0, time.UTC)
+	a := &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{
+		"snapshot_expiration": {PerNode: true, TablesProcessed: 5},
+	}}
+	b := &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{
+		"snapshot_expiration": {PerNode: true, TablesProcessed: 3},
+	}}
+	for _, legacy := range []TableMaintenanceJob{
+		{},
+		{TablesProcessed: 6},
+		{Cycles: 7, LastRun: t0, TablesProcessed: 40},
+		{Running: true, TablesProcessed: 50},
+	} {
+		old := &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{"snapshot_expiration": legacy}}
+		for _, order := range [][]*TableAPIMetrics{{a, b, old}, {a, old, b}, {b, a, old}, {b, old, a}, {old, a, b}, {old, b, a}} {
+			want := TableMaintenanceJob{PerNode: true, TablesProcessed: 8}
+			got := mergeTables(order...).Maintenance["snapshot_expiration"]
+			if !reflect.DeepEqual(got, want) {
+				t.Errorf("legacy %+v: got %+v, want %+v", legacy, got, want)
+			}
+			nested := mergeTables(order[0], mergeTables(order[1:]...)).Maintenance["snapshot_expiration"]
+			if !reflect.DeepEqual(nested, want) {
+				t.Errorf("legacy %+v: nested merge got %+v, want %+v", legacy, nested, want)
+			}
+		}
+	}
+}
+
+func TestTableMaintenanceMergePerNodeIdle(t *testing.T) {
+	none := &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{
+		"snapshot_expiration": {PerNode: true},
+	}}
+	idle := &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{
+		"snapshot_expiration": {},
+	}}
+	for _, order := range [][]*TableAPIMetrics{{none, idle}, {idle, none}} {
+		if got := mergeTables(order...).Maintenance["snapshot_expiration"]; !reflect.DeepEqual(got, TableMaintenanceJob{PerNode: true}) {
+			t.Errorf("got %+v, want an idle per-node report", got)
+		}
+	}
+}
+
 func TestCatalogScannerMergeSelectsLiveLeader(t *testing.T) {
 	t0 := time.Date(2026, 8, 12, 10, 0, 0, 0, time.UTC)
 
