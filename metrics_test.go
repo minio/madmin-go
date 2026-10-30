@@ -375,6 +375,84 @@ func TestDiskMetricMergeCacheNoDouble(t *testing.T) {
 	}
 }
 
+// TestDiskMetricMergeClonesSourceMaps covers the clone path (`*d = *other`):
+// every map and segment slice must be copied, so a later merge into the
+// destination -- which writes into them in place -- leaves the source metric
+// exactly as it was collected.
+func TestDiskMetricMergeClonesSourceMaps(t *testing.T) {
+	ft := time.Unix(1700000000, 0).UTC()
+
+	// Built twice: once as the merge source, once as the untouched reference.
+	populated := func(reason string, reasonAt time.Time) *DiskMetric {
+		return &DiskMetric{
+			NDisks:      1,
+			CollectedAt: ft,
+			State:       map[string]int{"ok": 1},
+			FSType:      map[string]int{"xfs": 1},
+			LifetimeOps: map[string]DiskAction{"ReadFile": {Count: 10, Bytes: 100}},
+			LastMinute:  map[string]DiskAction{"ReadFile": {Count: 2, Bytes: 20}},
+			LastDaySegmented: map[string]SegmentedDiskActions{
+				"ReadFile": {Interval: 900, FirstTime: ft, Segments: []DiskAction{{Count: 3, Bytes: 30}}},
+			},
+			LastHourSegmented: map[string]SegmentedDiskActions{
+				"ReadFile": {Interval: 60, FirstTime: ft, Segments: []DiskAction{{Count: 4, Bytes: 40}}},
+			},
+			IOStatsDay:  SegmentedDiskIO{Interval: 900, FirstTime: ft, Segments: []DiskIOStats{{N: 1, ReadIOs: 1000}}},
+			IOStatsHour: SegmentedDiskIO{Interval: 60, FirstTime: ft, Segments: []DiskIOStats{{N: 1, ReadIOs: 500}}},
+			SMART: &SMARTInfo{
+				N:                1,
+				StatsN:           1,
+				Status:           map[string]int{"healthy": 1},
+				LastStatusReason: map[string]StatusReason{"healthy": {Reason: reason, CreatedAt: reasonAt}},
+			},
+		}
+	}
+
+	src := populated("no errors", ft)
+	want := populated("no errors", ft)
+
+	merged := &DiskMetric{}
+	merged.Merge(src) // clone path
+
+	// Accumulate path: every key overlaps, so each cloned map and segment slice
+	// is written in place. A newer reason also replaces the cloned entry.
+	merged.Merge(populated("media errors", ft.Add(time.Minute)))
+
+	// The destination must actually have changed, or "source unchanged" is vacuous.
+	if merged.State["ok"] != 2 || merged.FSType["xfs"] != 2 {
+		t.Fatalf("merged State/FSType = %v/%v, want ok:2 / xfs:2", merged.State, merged.FSType)
+	}
+	if merged.LifetimeOps["ReadFile"].Count != 20 || merged.LastMinute["ReadFile"].Count != 4 {
+		t.Fatalf("merged LifetimeOps/LastMinute = %+v/%+v, want Count 20/4",
+			merged.LifetimeOps["ReadFile"], merged.LastMinute["ReadFile"])
+	}
+	if got := merged.LastDaySegmented["ReadFile"].Segments[0].Count; got != 6 {
+		t.Fatalf("merged LastDaySegmented Count = %d, want 6", got)
+	}
+	if got := merged.LastHourSegmented["ReadFile"].Segments[0].Count; got != 8 {
+		t.Fatalf("merged LastHourSegmented Count = %d, want 8", got)
+	}
+	if got := merged.IOStatsDay.Segments[0].ReadIOs; got != 2000 {
+		t.Fatalf("merged IOStatsDay ReadIOs = %d, want 2000", got)
+	}
+	if got := merged.IOStatsHour.Segments[0].ReadIOs; got != 1000 {
+		t.Fatalf("merged IOStatsHour ReadIOs = %d, want 1000", got)
+	}
+	if got := merged.SMART.Status["healthy"]; got != 2 {
+		t.Fatalf("merged SMART.Status[healthy] = %d, want 2", got)
+	}
+	if got := merged.SMART.LastStatusReason["healthy"].Reason; got != "media errors" {
+		t.Fatalf("merged SMART.LastStatusReason[healthy] = %q, want %q", got, "media errors")
+	}
+
+	if !reflect.DeepEqual(src.SMART, want.SMART) {
+		t.Errorf("source SMART mutated by Merge:\n got %+v\nwant %+v", *src.SMART, *want.SMART)
+	}
+	if !reflect.DeepEqual(src, want) {
+		t.Errorf("source metric mutated by Merge:\n got %+v\nwant %+v", src, want)
+	}
+}
+
 // TestDiskMetricMerge tests DiskMetric.Merge functionality
 func TestDiskMetricMerge(t *testing.T) {
 	now := time.Now()
