@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -44,11 +45,20 @@ func TestListAccessKeysLDAPBulkConfig(t *testing.T) {
 }
 
 func TestListAccessKeysLDAPBulkAllConfigsUnsupported(t *testing.T) {
-	adm, err := New("localhost:9000", "access", "secret", false)
+	var requested atomic.Bool
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requested.Store(true)
+		w.WriteHeader(http.StatusBadRequest)
+	}))
+	defer server.Close()
+	adm, err := New(strings.TrimPrefix(server.URL, "http://"), "access", "secret", false)
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
 	if _, err := adm.ListAccessKeysLDAPBulkWithOpts(context.Background(), nil, ListAccessKeysOpts{All: true, AllConfigs: true}); err == nil {
 		t.Fatal("expected an error when allConfigs is set for LDAP")
+	}
+	if requested.Load() {
+		t.Fatal("request with allConfigs reached the server")
 	}
 }
