@@ -20,13 +20,13 @@
 package madmin
 
 import (
-	"encoding/hex"
+	"bufio"
+	"bytes"
 	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"io"
 	"net/http"
-	"unicode/utf8"
 )
 
 /* **** SAMPLE ERROR RESPONSE ****
@@ -78,41 +78,41 @@ func httpRespToErrorResponse(resp *http.Response) error {
 		return ErrInvalidArgument(msg)
 	}
 
-	defer closeResponse(resp)
-	// Limit to 100K
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 100<<10))
-	if err != nil {
-		return ErrorResponse{
-			Code:       resp.Status,
-			Message:    fmt.Sprintf("Failed to read server response: %s.", err),
-			StatusCode: resp.StatusCode,
-		}
-	}
-
+	// Close without draining: decodeErrorResponse reads at most errorBodyLimit.
+	defer resp.Body.Close()
 	var errResp ErrorResponse
-	// Decode the json error
-	err = json.Unmarshal(body, &errResp)
-	if err != nil {
-		// We might get errors as XML, try that.
-		xmlErr := xml.Unmarshal(body, &errResp)
-
-		if xmlErr != nil {
-			bodyString := string(body)
-			if !utf8.Valid(body) {
-				bodyString = hex.EncodeToString(body)
-			}
-			if len(bodyString) > 1024 {
-				bodyString = bodyString[:1021] + "..."
-			}
-			return ErrorResponse{
-				Code:       resp.Status,
-				Message:    fmt.Sprintf("Failed to parse server response (%s): %s", err.Error(), bodyString),
-				StatusCode: resp.StatusCode,
-			}
-		}
+	if err := decodeErrorResponse(resp, &errResp, &errResp); err != nil {
+		return err
 	}
 	errResp.StatusCode = resp.StatusCode
 	return errResp
+}
+
+// errorBodyLimit is the most of an error body that is decoded.
+const errorBodyLimit = 100 << 10
+
+// decodeErrorResponse decodes the error body of resp as it streams: into
+// jsonV when it is JSON, and into xmlV when it starts with '<', as MinIO's
+// S3 errors do. Only the first 1 KiB is held, to quote in the error returned
+// when the body fails to decode.
+func decodeErrorResponse(resp *http.Response, jsonV any, xmlV *ErrorResponse) error {
+	br := bufio.NewReader(io.LimitReader(resp.Body, errorBodyLimit))
+	head, _ := br.Peek(1024)
+	quoted := fmt.Sprintf("%q", head) // decoding reuses head's bytes
+	var err error
+	if trimmed := bytes.TrimLeft(head, " \t\r\n"); len(trimmed) > 0 && trimmed[0] == '<' {
+		err = xml.NewDecoder(br).Decode(xmlV)
+	} else {
+		err = json.NewDecoder(br).Decode(jsonV)
+	}
+	if err != nil {
+		return ErrorResponse{
+			Code:       resp.Status,
+			Message:    fmt.Sprintf("Failed to parse server response (%s): %s", err, quoted),
+			StatusCode: resp.StatusCode,
+		}
+	}
+	return nil
 }
 
 // ToErrorResponse - Returns parsed ErrorResponse struct from body and

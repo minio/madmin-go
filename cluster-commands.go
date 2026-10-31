@@ -619,6 +619,14 @@ type SRBucketInfo struct {
 	// Since SSE config does not have a json representation, we use its xml
 	// byte respresentation.
 	SSEConfig *string `json:"sseConfig,omitempty"`
+	// SSEKMSMissingKey names the KMS key SSEConfig resolves to on the reporting
+	// site when that site cannot use it, so writes to the bucket fail there.
+	SSEKMSMissingKey string `json:"sseKMSMissingKey,omitempty"`
+	// SSEKMSKeyError describes why the reporting site cannot use the KMS key
+	// SSEConfig resolves to, so writes to the bucket fail there. Empty when usable.
+	// Unlike SSEKMSMissingKey, it is set when no key name is known, such as on a
+	// site without a KMS.
+	SSEKMSKeyError string `json:"sseKMSKeyError,omitempty"`
 	// replication config in json representation
 	ReplicationConfig *string `json:"replicationConfig,omitempty"`
 	// quota config in json representation
@@ -822,7 +830,11 @@ type SRStatusInfo struct {
 	// ILMExpiryStats map of ILM Expiry rules to slice of deployment IDs with stats. This is populated if there
 	// are mismatches or if a specific ILM expiry rule's stats are requested
 	ILMExpiryStats map[string]map[string]SRILMExpiryStatsSummary
-	APIVersion     string `json:"apiVersion,omitempty"`
+	// ComparedSites lists the deployment IDs of the sites whose configuration
+	// was compared. A site in Sites but not here could not be reached, so it is
+	// missing from every stat above. Empty when the server predates this field.
+	ComparedSites []string `json:"comparedSites,omitempty"`
+	APIVersion    string   `json:"apiVersion,omitempty"`
 }
 
 // SRPolicyStatsSummary has status of policy replication misses
@@ -873,7 +885,13 @@ type SRBucketStatsSummary struct {
 	HasReplicationCfg        bool
 	HasQuotaCfgSet           bool
 	HasCorsCfgSet            bool
-	APIVersion               string
+	// SSEKMSMissingKey names the KMS key this site cannot use for the bucket's
+	// SSE config. Unlike the mismatch flags, it describes this site only.
+	SSEKMSMissingKey string
+	// SSEKMSKeyError describes why this site cannot use the KMS key for the
+	// bucket's SSE config. Unlike the mismatch flags, it describes this site only.
+	SSEKMSKeyError string
+	APIVersion     string
 }
 
 // SRILMExpiryStatsSummary has status of ILM Expiry rules metadata replication misses

@@ -1304,6 +1304,9 @@ type DeploymentInfo struct {
 	Operator    OperatorInfo    `json:"operator"`
 	ObjectStore ObjectStoreInfo `json:"objectStore"`
 	KES         *KESInfo        `json:"kes,omitempty"`
+	// Flavor is the Kubernetes flavor the operator detected: "openshift",
+	// "eks", or "" for any other cluster or when not reported.
+	Flavor string `json:"flavor,omitempty"`
 }
 
 // OperatorInfo contains information about the AIStor operator.
@@ -1318,6 +1321,10 @@ type ObjectStoreInfo struct {
 	Image        string `json:"image"`
 	SidecarImage string `json:"sidecarImage"`
 	HelmChart    string `json:"helmChart,omitempty"`
+
+	// StorageClasses lists the distinct StorageClasses of the pools' volume
+	// claims, sorted; nil = not reported.
+	StorageClasses []string `json:"storageClasses,omitempty"`
 }
 
 // KESInfo contains information about the KES deployment.

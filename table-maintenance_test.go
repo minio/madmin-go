@@ -201,3 +201,43 @@ func TestMaintenanceJobStatusHeldValue(t *testing.T) {
 		t.Errorf("MaintenanceJobStatusHeld is %q, want %q", MaintenanceJobStatusHeld, "Held")
 	}
 }
+
+// A skip reason is reported only for a run that was refused, so an unset one
+// must not reach the wire.
+func TestTableMaintenanceJobTypeStatusSkipReason(t *testing.T) {
+	got, err := json.Marshal(TableMaintenanceJobTypeStatus{
+		Status:     MaintenanceJobStatusFailed,
+		SkipReason: MaintenanceSkipReasonNativeEncryption,
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	const want = `{"status":"Failed","skipReason":"nativeEncryption"}`
+	if string(got) != want {
+		t.Errorf("a skipped run encoded as\n %s\nwant\n %s", got, want)
+	}
+
+	got, err = json.Marshal(TableMaintenanceJobTypeStatus{Status: MaintenanceJobStatusFailed})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	const wantUnset = `{"status":"Failed"}`
+	if string(got) != wantUnset {
+		t.Errorf("a failed run without a skip reason encoded as\n %s\nwant\n %s", got, wantUnset)
+	}
+
+	for reason, wire := range map[MaintenanceSkipReason]string{
+		MaintenanceSkipReasonUnsupportedWriteFormat: "unsupportedWriteFormat",
+		MaintenanceSkipReasonUnsupportedCodec:       "unsupportedCodec",
+		MaintenanceSkipReasonNativeEncryption:       "nativeEncryption",
+		MaintenanceSkipReasonFilterUnbound:          "filterUnbound",
+		MaintenanceSkipReasonGCDisabled:             "gcDisabled",
+		MaintenanceSkipReasonLocationMismatch:       "locationMismatch",
+		MaintenanceSkipReasonInvalidClockColumn:     "invalidClockColumn",
+		MaintenanceSkipReasonRewriteLimitExceeded:   "rewriteLimitExceeded",
+	} {
+		if string(reason) != wire {
+			t.Errorf("skip reason is %q, want %q", reason, wire)
+		}
+	}
+}

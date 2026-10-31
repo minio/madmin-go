@@ -60,6 +60,9 @@ const (
 	AlertTypeScannerExcessFolders AlertType = "scanner-excess-folders"
 	// AlertTypeScannerExcessVersions represents alerts for objects with excessive versions
 	AlertTypeScannerExcessVersions AlertType = "scanner-excess-versions"
+	// AlertTypeCPUFault represents alerts for a CPU that computed a wrong
+	// drive hash, erasure parity, encryption or compression result
+	AlertTypeCPUFault AlertType = "cpu-fault"
 )
 
 // Alert represents a single alert event in the system.

@@ -287,3 +287,35 @@ func TestExecuteMethodSuccessStatusIsFinal(t *testing.T) {
 		})
 	}
 }
+
+// TestRetryHookLeavesTheBodyReadable verifies that executeMethod returns the
+// response a retry hook declined, with the body the hook was given, and its
+// own body still readable from its start.
+func TestRetryHookLeavesTheBodyReadable(t *testing.T) {
+	const body = `{"Code": "XMinioAdminNoSuchUser", "Message": "no user"}`
+	server, _ := countingServer(t, http.StatusBadRequest, body)
+
+	var declined *http.Response
+	resp, err := newFilesExportsTestClient(t, server.URL).executeMethod(context.Background(), http.MethodGet, requestData{
+		relPath: "/v4/info",
+		retry: func(res *http.Response, b []byte, err error) bool {
+			if err == nil {
+				declined = res
+				if string(b) != body {
+					t.Errorf("the hook was given %q, want %q", b, body)
+				}
+			}
+			return false
+		},
+	})
+	if err != nil {
+		t.Fatalf("executeMethod: %v", err)
+	}
+	defer closeResponse(resp)
+	if resp != declined {
+		t.Errorf("executeMethod returned another response than the one the hook declined")
+	}
+	if got, _ := io.ReadAll(resp.Body); string(got) != body {
+		t.Errorf("body = %q, want %q", got, body)
+	}
+}

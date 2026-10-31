@@ -80,6 +80,57 @@ func TestDescribeCatalogScannerFailedCycle(t *testing.T) {
 	}
 }
 
+// A PerNode job has no cycles, so it must not read as a job that never ran.
+func TestDescribeMaintenanceJobPerNode(t *testing.T) {
+	got := describeMaintenanceJob(madmin.TableMaintenanceJob{
+		PerNode: true, TablesProcessed: 8, Errors: 1, Retries: 2, Work: map[string]uint64{"snapshots_expired": 14},
+	})
+	for _, want := range []string{"8 tables", "1 errors", "2 retries", "snapshots_expired=14"} {
+		if !strings.Contains(got, want) {
+			t.Errorf("describeMaintenanceJob() = %q, want it to contain %q", got, want)
+		}
+	}
+	for _, notWant := range []string{"never run", "cycles"} {
+		if strings.Contains(got, notWant) {
+			t.Errorf("describeMaintenanceJob() = %q, must not report %q for a per-node job", got, notWant)
+		}
+	}
+
+	if got := describeMaintenanceJob(madmin.TableMaintenanceJob{PerNode: true}); got != "no runs" {
+		t.Errorf("describeMaintenanceJob() = %q, want %q", got, "no runs")
+	}
+}
+
+func TestDescribeMaintenanceJobRetries(t *testing.T) {
+	for _, tt := range []struct {
+		name string
+		job  madmin.TableMaintenanceJob
+		want string
+	}{
+		{
+			name: "per-node retries only",
+			job:  madmin.TableMaintenanceJob{PerNode: true, Retries: 1234},
+			want: "1,234 retries",
+		},
+		{
+			name: "leader-owned retries",
+			job:  madmin.TableMaintenanceJob{Retries: 2},
+			want: "never run, 0 cycles, 2 retries",
+		},
+		{
+			name: "leader-owned nonzero cycles",
+			job:  madmin.TableMaintenanceJob{Cycles: 3, Retries: 2},
+			want: "never run, 3 cycles, 2 retries",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := describeMaintenanceJob(tt.job); got != tt.want {
+				t.Errorf("describeMaintenanceJob() = %q, want %q", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestTableMetricsNodeLeafDataIncludesCatalogScanner(t *testing.T) {
 	node := NewTableMetricsNode(&madmin.TableAPIMetrics{
 		CatalogScanner: &madmin.CatalogScannerMetrics{Cycles: 5},
