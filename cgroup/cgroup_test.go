@@ -204,7 +204,7 @@ func fakeProc(t *testing.T, cgroupContents string, mountInfo string) string {
 	t.Helper()
 	root := t.TempDir()
 	writeTestFile(t, filepath.Join(root, fmt.Sprint(testPID), "cgroup"), cgroupContents)
-	writeTestFile(t, filepath.Join(root, "self", "mountinfo"), mountInfo)
+	writeTestFile(t, filepath.Join(root, fmt.Sprint(testPID), "mountinfo"), mountInfo)
 	return root
 }
 

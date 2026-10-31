@@ -58,6 +58,8 @@ func GetEntries(pid int) (CGEntries, error) {
 	return getEntries(procRoot, pid)
 }
 
+// getEntries reads the cgroup membership of pid from procRoot, which is
+// normally /proc.
 func getEntries(procRoot string, pid int) (CGEntries, error) {
 	r, err := os.Open(filepath.Join(procRoot, strconv.Itoa(pid), "cgroup"))
 	if err != nil {
@@ -80,13 +82,18 @@ func GetMemoryLimit(pid int) (uint64, error) {
 	return getMemoryLimit(procRoot, pid)
 }
 
+// getMemoryLimit resolves the memory limit of pid's cgroup below procRoot.
+//
+// The mount table of the target process is used rather than the current
+// process's, because a process in another mount namespace may see a different
+// cgroup hierarchy at the same paths.
 func getMemoryLimit(procRoot string, pid int) (uint64, error) {
 	entries, err := getEntries(procRoot, pid)
 	if err != nil {
 		return 0, err
 	}
 
-	mounts, err := readMounts(filepath.Join(procRoot, "self", "mountinfo"))
+	mounts, err := readMounts(filepath.Join(procRoot, strconv.Itoa(pid), "mountinfo"))
 	if err != nil {
 		return 0, err
 	}
@@ -112,6 +119,7 @@ func getMemoryLimit(procRoot string, pid int) (uint64, error) {
 	return memoryLimitV1(mounts, path)
 }
 
+// readMounts parses the mount table stored at path.
 func readMounts(path string) ([]mountInfo, error) {
 	r, err := os.Open(path)
 	if err != nil {
@@ -158,7 +166,7 @@ func parseProcCGroup(r io.Reader) (CGEntries, error) {
 	return entries, nil
 }
 
-// mountInfo is the subset of a /proc/self/mountinfo line needed to locate the
+// mountInfo is the subset of a /proc/<pid>/mountinfo line needed to locate the
 // files backing a cgroup hierarchy.
 type mountInfo struct {
 	root         string
@@ -192,7 +200,7 @@ func (m mountInfo) resolve(cgPath string) string {
 	return filepath.Join(m.mountPoint, rel)
 }
 
-// parseMountInfo parses /proc/self/mountinfo.
+// parseMountInfo parses a /proc/<pid>/mountinfo file.
 //
 // A line consists of at least six space-separated fields, an optional set of
 // per-mount fields, a "-" separator and three per-filesystem fields:
@@ -270,6 +278,7 @@ func unescapeMountPath(s string) string {
 	return b.String()
 }
 
+// isOctal reports whether c is an octal digit.
 func isOctal(c byte) bool {
 	return c >= '0' && c <= '7'
 }
