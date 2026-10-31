@@ -13,13 +13,18 @@
 package madmin
 
 import (
+	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"reflect"
 	"strconv"
+	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/minio/minio-go/v7/pkg/credentials"
 )
 
 // parseParams runs vals through ParseParams as a server would see them.
@@ -365,5 +370,82 @@ func TestServiceTraceOptsSystemInventory(t *testing.T) {
 
 	if !parsed.SystemInventory {
 		t.Fatalf("ParseParams() did not set SystemInventory flag")
+	}
+}
+
+// traceStreamBody serves one JSON trace event and then reports EOF. Once the
+// test marks reads as observed, every read counts as a read after the
+// consumer stopped, so a drain of the stream fails the test.
+type traceStreamBody struct {
+	event        string
+	served       bool
+	observeReads atomic.Bool
+	reads        atomic.Int32
+	closed       atomic.Bool
+}
+
+func (b *traceStreamBody) Read(p []byte) (int, error) {
+	if !b.served {
+		b.served = true
+		return copy(p, b.event), nil
+	}
+	if b.observeReads.Load() {
+		b.reads.Add(1)
+	}
+	return 0, io.EOF
+}
+
+func (b *traceStreamBody) Close() error {
+	b.closed.Store(true)
+	return nil
+}
+
+// traceStaticTransport answers every request with body, without a network.
+type traceStaticTransport struct {
+	body io.ReadCloser
+}
+
+func (rt *traceStaticTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	if req.Body != nil {
+		_ = req.Body.Close()
+	}
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     make(http.Header),
+		Body:       rt.body,
+		Request:    req,
+	}, nil
+}
+
+// A consumer that stops iterating trace events must close the response body
+// without draining the stream; otherwise the connection leaks and an open
+// stream can block the iterator.
+func TestServiceTraceIterClosesResponseWhenStoppedEarly(t *testing.T) {
+	body := &traceStreamBody{event: `{"type":1}`}
+	client, err := NewWithOptions("localhost:9000", &Options{
+		Creds:     credentials.NewStaticV4("ak", "sk", ""),
+		Transport: &traceStaticTransport{body: body},
+	})
+	if err != nil {
+		t.Fatalf("NewWithOptions: %v", err)
+	}
+
+	count := 0
+	for ev := range client.ServiceTraceIter(context.Background(), ServiceTraceOpts{}) {
+		if ev.Err != nil {
+			t.Fatalf("ServiceTraceIter: %v", ev.Err)
+		}
+		count++
+		body.observeReads.Store(true)
+		break
+	}
+	if count != 1 {
+		t.Fatalf("received %d trace events, want 1", count)
+	}
+	if !body.closed.Load() {
+		t.Fatal("response body was not closed when the iterator stopped early")
+	}
+	if n := body.reads.Load(); n != 0 {
+		t.Fatalf("the iterator read the stream %d more times after the consumer stopped", n)
 	}
 }

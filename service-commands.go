@@ -379,11 +379,16 @@ func (adm AdminClient) ServiceTraceIter(ctx context.Context, opts ServiceTraceOp
 
 				select {
 				case <-ctx.Done():
+					closeResponse(resp)
 					return
 				default:
 				}
 
 				if !yield(ServiceTraceInfo{Trace: info}) {
+					// The trace stream has no end: close the body instead of
+					// draining it, as the drain would block until the server
+					// stops sending.
+					resp.Body.Close()
 					return
 				}
 			}
