@@ -449,3 +449,50 @@ func TestServiceTraceIterClosesResponseWhenStoppedEarly(t *testing.T) {
 		t.Fatalf("the iterator read the stream %d more times after the consumer stopped", n)
 	}
 }
+
+// traceErrorTransport answers every request with a fresh body whose content
+// is not JSON, so a reconnect is observable.
+type traceErrorTransport struct {
+	requests atomic.Int32
+}
+
+func (rt *traceErrorTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	rt.requests.Add(1)
+	if req.Body != nil {
+		_ = req.Body.Close()
+	}
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Header:     make(http.Header),
+		Body:       &traceStreamBody{event: "not json"},
+		Request:    req,
+	}, nil
+}
+
+// A consumer that stops on a decode error ends the iteration: the iterator
+// must not reconnect and yield again, which panics for range-over-function.
+func TestServiceTraceIterStopsWhenConsumerDeclinesDecodeError(t *testing.T) {
+	transport := &traceErrorTransport{}
+	client, err := NewWithOptions("localhost:9000", &Options{
+		Creds:     credentials.NewStaticV4("ak", "sk", ""),
+		Transport: transport,
+	})
+	if err != nil {
+		t.Fatalf("NewWithOptions: %v", err)
+	}
+
+	var gotErr bool
+	for ev := range client.ServiceTraceIter(context.Background(), ServiceTraceOpts{}) {
+		if ev.Err == nil {
+			t.Fatal("expected a decode error")
+		}
+		gotErr = true
+		break
+	}
+	if !gotErr {
+		t.Fatal("the iterator returned no decode error")
+	}
+	if n := transport.requests.Load(); n != 1 {
+		t.Fatalf("the iterator sent %d requests after the consumer stopped, want 1", n)
+	}
+}

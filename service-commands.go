@@ -373,7 +373,12 @@ func (adm AdminClient) ServiceTraceIter(ctx context.Context, opts ServiceTraceOp
 				var info TraceInfo
 				if err = dec.Decode(&info); err != nil {
 					closeResponse(resp)
-					yield(ServiceTraceInfo{Err: err})
+					// A consumer that stops on the error ends the iteration:
+					// yielding again after yield returned false panics for
+					// range-over-function, and reconnecting would be pointless.
+					if !yield(ServiceTraceInfo{Err: err}) {
+						return
+					}
 					break
 				}
 
