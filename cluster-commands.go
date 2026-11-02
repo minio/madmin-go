@@ -518,16 +518,16 @@ func (adm *AdminClient) SRPeerReplicateIAMItem(ctx context.Context, item SRIAMIt
 	return nil
 }
 
-// SRKMSKey - a KMS key name replicated to peer sites. Only the name is
-// replicated; each site generates its own key material.
-type SRKMSKey struct {
-	Name       string `json:"name"`
-	APIVersion string `json:"apiVersion,omitempty"`
+// SRKMSKeys - KMS key names replicated to a peer site in one call. Only the
+// names are replicated; each site generates its own key material.
+type SRKMSKeys struct {
+	Names      []string `json:"names"`
+	APIVersion string   `json:"apiVersion,omitempty"`
 }
 
-// SRPeerReplicateKMSKey - creates a KMS key on a peer cluster.
-func (adm *AdminClient) SRPeerReplicateKMSKey(ctx context.Context, key SRKMSKey) error {
-	b, err := json.Marshal(key)
+// SRPeerReplicateKMSKeys - creates KMS keys on a peer cluster.
+func (adm *AdminClient) SRPeerReplicateKMSKeys(ctx context.Context, keys SRKMSKeys) error {
+	b, err := json.Marshal(keys)
 	if err != nil {
 		return err
 	}
@@ -536,7 +536,7 @@ func (adm *AdminClient) SRPeerReplicateKMSKey(ctx context.Context, key SRKMSKey)
 	q.Add("api-version", SiteReplAPIVersion)
 
 	reqData := requestData{
-		relPath:     adminAPIPrefix + "/site-replication/peer/kms-key",
+		relPath:     adminAPIPrefix + "/site-replication/peer/kms-keys",
 		content:     b,
 		queryValues: q,
 	}
@@ -1012,7 +1012,7 @@ type SRStatusOptions struct {
 	Metrics        bool
 	ILMExpiryRules bool
 	PeerState      bool
-	KMSKeys        bool
+	KMSKeys        bool // requests SRInfo.KMSKeys from SRMetaInfo; SRStatusInfo ignores it
 	Entity         SREntityType
 	EntityValue    string
 	ShowDeleted    bool
