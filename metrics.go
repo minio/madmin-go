@@ -1094,6 +1094,7 @@ func (d *DiskMetric) Merge(other *DiskMetric) {
 		if other.SMART != nil {
 			s := *other.SMART
 			s.Status = maps.Clone(other.SMART.Status)
+			s.LastStatusReason = maps.Clone(other.SMART.LastStatusReason)
 			if other.SMART.NVMe != nil {
 				nvme := *other.SMART.NVMe
 				s.NVMe = &nvme
