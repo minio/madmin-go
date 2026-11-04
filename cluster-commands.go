@@ -818,6 +818,11 @@ type SRInfo struct {
 	// replicating KMS keys between sites. Absent from peers that predate the
 	// field, which decode it as false.
 	ReplicatesKMSKeys bool `json:"replicatesKMSKeys,omitempty"`
+	// KMSKeyIDReplicationOff reports that the site sends replicas without the
+	// name of their SSE-KMS key, so each target encrypts them with its own
+	// default key. Absent from peers that predate the field, which decode it as
+	// false and so as sending the key name.
+	KMSKeyIDReplicationOff bool `json:"kmsKeyIDReplicationOff,omitempty"`
 	// KMSKeys lists the KMS key names the site shares with its peers. Set only
 	// when SRStatusOptions.KMSKeys is requested.
 	KMSKeys []string `json:"kmsKeys,omitempty"`
