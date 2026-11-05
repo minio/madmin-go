@@ -20,12 +20,30 @@
 package madmin
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"io"
 	"net/http"
 	"net/url"
+	"slices"
+	"strings"
 	"time"
+)
+
+// PolicyType classifies a policy by where its definition comes from.
+type PolicyType string
+
+const (
+	// PolicyTypeSystem is a policy shipped with the server. It is read-only,
+	// never stored, and replaced by the server's definition on every upgrade.
+	PolicyTypeSystem PolicyType = "System"
+	// PolicyTypeLegacy is a built-in policy from an earlier release that the
+	// cluster's users have not modified.
+	PolicyTypeLegacy PolicyType = "Legacy"
+	// PolicyTypeUserDefined is every other policy, including a legacy policy
+	// that the cluster's users have modified.
+	PolicyTypeUserDefined PolicyType = "UserDefined"
 )
 
 // PolicyInfo contains information on a policy.
@@ -34,6 +52,18 @@ type PolicyInfo struct {
 	Policy     json.RawMessage
 	CreateDate time.Time `json:",omitempty"`
 	UpdateDate time.Time `json:",omitempty"`
+
+	// Type is empty when the server is too old to report it.
+	Type PolicyType `json:"type,omitempty"`
+	// Legacy is true for a Legacy policy and for a legacy policy the
+	// cluster's users have modified, which is UserDefined.
+	Legacy bool `json:"legacy,omitempty"`
+	// Conflict is true for a stored policy that holds a System policy's
+	// name. The server does not load that System policy while it exists.
+	Conflict bool `json:"conflict,omitempty"`
+	// ReplacedBy names the System policy that replaces a legacy policy, when
+	// there is one.
+	ReplacedBy string `json:"replacedBy,omitempty"`
 }
 
 // MarshalJSON marshaller for JSON
@@ -43,9 +73,17 @@ func (pi PolicyInfo) MarshalJSON() ([]byte, error) {
 		return json.Marshal(&struct {
 			PolicyName string
 			Policy     json.RawMessage
+			Type       PolicyType `json:"type,omitempty"`
+			Legacy     bool       `json:"legacy,omitempty"`
+			Conflict   bool       `json:"conflict,omitempty"`
+			ReplacedBy string     `json:"replacedBy,omitempty"`
 		}{
 			PolicyName: pi.PolicyName,
 			Policy:     pi.Policy,
+			Type:       pi.Type,
+			Legacy:     pi.Legacy,
+			Conflict:   pi.Conflict,
+			ReplacedBy: pi.ReplacedBy,
 		})
 	}
 	return json.Marshal(aliasPolicyInfo(pi))
@@ -113,6 +151,67 @@ func (adm *AdminClient) ListCannedPolicies(ctx context.Context) (map[string]json
 	}
 
 	return policies, nil
+}
+
+// PolicyListEntry describes one policy in the list ListCannedPolicyInfo
+// returns. Its fields mean the same as the PolicyInfo fields of the same name.
+type PolicyListEntry struct {
+	Name       string     `json:"name"`
+	Type       PolicyType `json:"type,omitempty"`
+	Legacy     bool       `json:"legacy,omitempty"`
+	Conflict   bool       `json:"conflict,omitempty"`
+	ReplacedBy string     `json:"replacedBy,omitempty"`
+	CreateDate time.Time  `json:",omitzero"`
+	UpdateDate time.Time  `json:",omitzero"`
+}
+
+// ListCannedPolicyInfo lists all policies with their types, sorted by name.
+// A server too old to report types returns only the names, so every entry
+// has an empty Type.
+func (adm *AdminClient) ListCannedPolicyInfo(ctx context.Context) ([]PolicyListEntry, error) {
+	queryValues := url.Values{}
+	queryValues.Set("v", "2")
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/list-canned-policies",
+		queryValues: queryValues,
+	}
+
+	// Execute GET on /minio/admin/v4/list-canned-policies
+	resp, err := adm.executeMethod(ctx, http.MethodGet, reqData)
+
+	defer closeResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+
+	respBytes, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	var entries []PolicyListEntry
+	if trimmed := bytes.TrimLeft(respBytes, " \t\r\n"); len(trimmed) > 0 && trimmed[0] == '{' {
+		var policies map[string]json.RawMessage
+		if err = json.Unmarshal(respBytes, &policies); err != nil {
+			return nil, err
+		}
+		entries = make([]PolicyListEntry, 0, len(policies))
+		for name := range policies {
+			entries = append(entries, PolicyListEntry{Name: name})
+		}
+	} else if err = json.Unmarshal(respBytes, &entries); err != nil {
+		return nil, err
+	}
+
+	slices.SortFunc(entries, func(a, b PolicyListEntry) int {
+		return strings.Compare(a.Name, b.Name)
+	})
+	return entries, nil
 }
 
 // RemoveCannedPolicy - remove a policy for a canned.

@@ -327,3 +327,32 @@ func TestServerHealthInfoPreservesBufferedFrames(t *testing.T) {
 		t.Errorf("TimeStamp = %v, want the frame after the probe (%v)", got.TimeStamp, second)
 	}
 }
+
+func TestIAMPolicyDiagJSON(t *testing.T) {
+	testCases := []struct {
+		name string
+		diag IAMPolicyDiag
+		want string
+	}{
+		{name: "conflict", diag: IAMPolicyDiag{SystemNameConflict: true}, want: `{"system_name_conflict":true}`},
+		{name: "no-findings", diag: IAMPolicyDiag{}, want: `{}`},
+	}
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			buf, err := json.Marshal(tc.diag)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(buf) != tc.want {
+				t.Fatalf("want %s, got %s", tc.want, buf)
+			}
+			var got IAMPolicyDiag
+			if err := json.Unmarshal(buf, &got); err != nil {
+				t.Fatal(err)
+			}
+			if got.SystemNameConflict != tc.diag.SystemNameConflict {
+				t.Fatalf("round trip: want %v, got %v", tc.diag.SystemNameConflict, got.SystemNameConflict)
+			}
+		})
+	}
+}
