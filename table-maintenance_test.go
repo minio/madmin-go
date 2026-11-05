@@ -21,6 +21,7 @@ package madmin
 import (
 	"encoding/json"
 	"testing"
+	"time"
 )
 
 // The wire names here are a contract with the AIStor server and the ac client,
@@ -199,7 +200,7 @@ func TestTableMaintenanceJobTypeStatusCumulativeCounters(t *testing.T) {
 // just landed reports zero losses rather than omitting them.
 func TestTableMaintenanceJobTypeStatusCommitRacesLost(t *testing.T) {
 	lost, total := int64(3), int64(7)
-	lostAt := "2026-11-05T10:00:00Z"
+	lostAt := time.Date(2026, 11, 5, 10, 0, 0, 0, time.UTC)
 	got, err := json.Marshal(TableMaintenanceJobTypeStatus{
 		Status:                                MaintenanceJobStatusFailed,
 		CompactionCommitRacesLost:             &lost,

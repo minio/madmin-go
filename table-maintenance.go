@@ -19,7 +19,10 @@
 
 package madmin
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"time"
+)
 
 // Table maintenance type constants
 const (
@@ -221,8 +224,8 @@ type TableMaintenanceJobTypeStatus struct {
 	// TotalCompactionCommitRacesLost accumulates across runs, and
 	// LastCompactionCommitRaceLostTimestamp is when the latest loss happened.
 	// Only compaction reports them.
-	CompactionCommitRacesLost             *int64  `json:"compactionCommitRacesLost,omitempty"`
-	TotalCompactionCommitRacesLost        *int64  `json:"totalCompactionCommitRacesLost,omitempty"`
+	CompactionCommitRacesLost             *int64     `json:"compactionCommitRacesLost,omitempty"`
+	TotalCompactionCommitRacesLost        *int64     `json:"totalCompactionCommitRacesLost,omitempty"`
 	LastCompactionCommitRaceLostTimestamp *time.Time `json:"lastCompactionCommitRaceLostTimestamp,omitempty"`
 }
 
