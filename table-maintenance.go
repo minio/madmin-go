@@ -215,14 +215,15 @@ type TableMaintenanceJobTypeStatus struct {
 	TotalRuns           *int64  `json:"totalRuns,omitempty"`
 	FirstRunTimestamp   *string `json:"firstRunTimestamp,omitempty"`
 
-	// CommitRacesLost counts the compaction runs whose rewrite lost its commit
-	// to a concurrent writer since a rewrite last landed; a count that keeps
-	// growing marks a table that never compacts. TotalCommitRacesLost
-	// accumulates across runs, and LastCommitRaceLostTimestamp is when the
-	// latest loss happened. Only compaction reports them.
-	CommitRacesLost             *int64  `json:"commitRacesLost,omitempty"`
-	TotalCommitRacesLost        *int64  `json:"totalCommitRacesLost,omitempty"`
-	LastCommitRaceLostTimestamp *string `json:"lastCommitRaceLostTimestamp,omitempty"`
+	// CompactionCommitRacesLost counts the compaction runs whose rewrite lost
+	// its commit to a concurrent writer since a rewrite last landed; a count
+	// that keeps growing marks a table that never compacts.
+	// TotalCompactionCommitRacesLost accumulates across runs, and
+	// LastCompactionCommitRaceLostTimestamp is when the latest loss happened.
+	// Only compaction reports them.
+	CompactionCommitRacesLost             *int64  `json:"compactionCommitRacesLost,omitempty"`
+	TotalCompactionCommitRacesLost        *int64  `json:"totalCompactionCommitRacesLost,omitempty"`
+	LastCompactionCommitRaceLostTimestamp *string `json:"lastCompactionCommitRaceLostTimestamp,omitempty"`
 }
 
 // GetTableMaintenanceJobStatusResponse is the response for GetTableMaintenanceJobStatus.
