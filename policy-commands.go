@@ -64,6 +64,16 @@ type PolicyInfo struct {
 	// ReplacedBy names the System policy that replaces a legacy policy, when
 	// there is one.
 	ReplacedBy string `json:"replacedBy,omitempty"`
+	// Grants is the rule set the policy compiles from. It is nil for custom
+	// and built-in policies.
+	Grants *PolicyGrants `json:"grants,omitempty"`
+	// GrantsVersion is the compiler version that produces the policy from
+	// Grants.
+	GrantsVersion int `json:"grantsVersion,omitempty"`
+	// GrantsCurrent is false when GrantsVersion is older than the server's
+	// current compiler version.
+	GrantsCurrent bool                `json:"grantsCurrent,omitempty"`
+	Summary       []PolicySummaryLine `json:"summary,omitempty"`
 }
 
 // MarshalJSON marshaller for JSON
@@ -71,19 +81,27 @@ func (pi PolicyInfo) MarshalJSON() ([]byte, error) {
 	type aliasPolicyInfo PolicyInfo // needed to avoid recursive marshal
 	if pi.CreateDate.IsZero() && pi.UpdateDate.IsZero() {
 		return json.Marshal(&struct {
-			PolicyName string
-			Policy     json.RawMessage
-			Type       PolicyType `json:"type,omitempty"`
-			Legacy     bool       `json:"legacy,omitempty"`
-			Conflict   bool       `json:"conflict,omitempty"`
-			ReplacedBy string     `json:"replacedBy,omitempty"`
+			PolicyName    string
+			Policy        json.RawMessage
+			Type          PolicyType          `json:"type,omitempty"`
+			Legacy        bool                `json:"legacy,omitempty"`
+			Conflict      bool                `json:"conflict,omitempty"`
+			ReplacedBy    string              `json:"replacedBy,omitempty"`
+			Grants        *PolicyGrants       `json:"grants,omitempty"`
+			GrantsVersion int                 `json:"grantsVersion,omitempty"`
+			GrantsCurrent bool                `json:"grantsCurrent,omitempty"`
+			Summary       []PolicySummaryLine `json:"summary,omitempty"`
 		}{
-			PolicyName: pi.PolicyName,
-			Policy:     pi.Policy,
-			Type:       pi.Type,
-			Legacy:     pi.Legacy,
-			Conflict:   pi.Conflict,
-			ReplacedBy: pi.ReplacedBy,
+			PolicyName:    pi.PolicyName,
+			Policy:        pi.Policy,
+			Type:          pi.Type,
+			Legacy:        pi.Legacy,
+			Conflict:      pi.Conflict,
+			ReplacedBy:    pi.ReplacedBy,
+			Grants:        pi.Grants,
+			GrantsVersion: pi.GrantsVersion,
+			GrantsCurrent: pi.GrantsCurrent,
+			Summary:       pi.Summary,
 		})
 	}
 	return json.Marshal(aliasPolicyInfo(pi))
