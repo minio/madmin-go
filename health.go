@@ -1439,6 +1439,9 @@ type ShardsHealthInfo struct {
 // IAMPolicyDiag holds per-policy diagnostic findings.
 type IAMPolicyDiag struct {
 	UnsafeConditionKeys []string `json:"unsafe_condition_keys,omitempty"`
+	// SystemNameConflict is set for a stored policy that holds a System
+	// policy's name, which keeps that System policy from loading.
+	SystemNameConflict bool `json:"system_name_conflict,omitempty"`
 }
 
 // IAMInfo carries IAM diagnostics. TotalPolicies is the count of policies

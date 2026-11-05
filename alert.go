@@ -63,6 +63,9 @@ const (
 	// AlertTypeCPUFault represents alerts for a CPU that computed a wrong
 	// drive hash, erasure parity, encryption or compression result
 	AlertTypeCPUFault AlertType = "cpu-fault"
+	// AlertTypeSystemPolicyConflict represents alerts for a stored policy
+	// that holds a System policy's name, which keeps the System policy from loading
+	AlertTypeSystemPolicyConflict AlertType = "system-policy-conflict"
 )
 
 // Alert represents a single alert event in the system.
