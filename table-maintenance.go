@@ -223,7 +223,7 @@ type TableMaintenanceJobTypeStatus struct {
 	// Only compaction reports them.
 	CompactionCommitRacesLost             *int64  `json:"compactionCommitRacesLost,omitempty"`
 	TotalCompactionCommitRacesLost        *int64  `json:"totalCompactionCommitRacesLost,omitempty"`
-	LastCompactionCommitRaceLostTimestamp *string `json:"lastCompactionCommitRaceLostTimestamp,omitempty"`
+	LastCompactionCommitRaceLostTimestamp *time.Time `json:"lastCompactionCommitRaceLostTimestamp,omitempty"`
 }
 
 // GetTableMaintenanceJobStatusResponse is the response for GetTableMaintenanceJobStatus.
