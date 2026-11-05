@@ -195,6 +195,49 @@ func TestTableMaintenanceJobTypeStatusCumulativeCounters(t *testing.T) {
 	}
 }
 
+// Compaction's commit-race counts are read by name, and a table whose rewrite
+// just landed reports zero losses rather than omitting them.
+func TestTableMaintenanceJobTypeStatusCommitRacesLost(t *testing.T) {
+	lost, total := int64(3), int64(7)
+	lostAt := "2026-11-05T10:00:00Z"
+	got, err := json.Marshal(TableMaintenanceJobTypeStatus{
+		Status:                      MaintenanceJobStatusFailed,
+		CommitRacesLost:             &lost,
+		TotalCommitRacesLost:        &total,
+		LastCommitRaceLostTimestamp: &lostAt,
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	const want = `{"status":"Failed","commitRacesLost":3,"totalCommitRacesLost":7,"lastCommitRaceLostTimestamp":"2026-11-05T10:00:00Z"}`
+	if string(got) != want {
+		t.Errorf("a losing compaction encoded as\n %s\nwant\n %s", got, want)
+	}
+
+	zero := int64(0)
+	got, err = json.Marshal(TableMaintenanceJobTypeStatus{
+		Status:               MaintenanceJobStatusSuccessful,
+		CommitRacesLost:      &zero,
+		TotalCommitRacesLost: &total,
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	const wantLanded = `{"status":"Successful","commitRacesLost":0,"totalCommitRacesLost":7}`
+	if string(got) != wantLanded {
+		t.Errorf("a landed compaction encoded as\n %s\nwant\n %s", got, wantLanded)
+	}
+
+	got, err = json.Marshal(TableMaintenanceJobTypeStatus{Status: MaintenanceJobStatusSuccessful})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	const wantUnset = `{"status":"Successful"}`
+	if string(got) != wantUnset {
+		t.Errorf("a status without commit-race counts encoded as\n %s\nwant\n %s", got, wantUnset)
+	}
+}
+
 // A held table reports the hold in place of a run's outcome.
 func TestMaintenanceJobStatusHeldValue(t *testing.T) {
 	if MaintenanceJobStatusHeld != "Held" {
