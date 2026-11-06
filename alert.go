@@ -63,9 +63,9 @@ const (
 	// AlertTypeCPUFault represents alerts for a CPU that computed a wrong
 	// drive hash, erasure parity, encryption or compression result
 	AlertTypeCPUFault AlertType = "cpu-fault"
-	// AlertTypeTableCompactionDebt represents tables whose compaction debt
+	// AlertTypeTableCompactionBacklog represents tables whose compaction backlog
 	// keeps growing because compaction is not keeping up with them
-	AlertTypeTableCompactionDebt AlertType = "table-compaction-debt"
+	AlertTypeTableCompactionBacklog AlertType = "table-compaction-backlog"
 )
 
 // Alert represents a single alert event in the system.
