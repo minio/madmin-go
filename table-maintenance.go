@@ -19,7 +19,10 @@
 
 package madmin
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"time"
+)
 
 // Table maintenance type constants
 const (
@@ -214,6 +217,16 @@ type TableMaintenanceJobTypeStatus struct {
 	TotalBytesRemoved   *int64  `json:"totalBytesRemoved,omitempty"`
 	TotalRuns           *int64  `json:"totalRuns,omitempty"`
 	FirstRunTimestamp   *string `json:"firstRunTimestamp,omitempty"`
+
+	// CompactionCommitRacesLost counts the compaction runs whose rewrite lost
+	// its commit to a concurrent writer since a rewrite last landed; a count
+	// that keeps growing marks a table that never compacts.
+	// TotalCompactionCommitRacesLost accumulates across runs, and
+	// LastCompactionCommitRaceLostTimestamp is when the latest loss happened.
+	// Only compaction reports them.
+	CompactionCommitRacesLost             *int64     `json:"compactionCommitRacesLost,omitempty"`
+	TotalCompactionCommitRacesLost        *int64     `json:"totalCompactionCommitRacesLost,omitempty"`
+	LastCompactionCommitRaceLostTimestamp *time.Time `json:"lastCompactionCommitRaceLostTimestamp,omitempty"`
 }
 
 // GetTableMaintenanceJobStatusResponse is the response for GetTableMaintenanceJobStatus.

@@ -21,6 +21,7 @@ package madmin
 import (
 	"encoding/json"
 	"testing"
+	"time"
 )
 
 // The wire names here are a contract with the AIStor server and the ac client,
@@ -192,6 +193,49 @@ func TestTableMaintenanceJobTypeStatusCumulativeCounters(t *testing.T) {
 	const wantZero = `{"status":"Successful","totalRecordsDeleted":0}`
 	if string(got) != wantZero {
 		t.Errorf("a zero total encoded as\n %s\nwant\n %s", got, wantZero)
+	}
+}
+
+// Compaction's commit-race counts are read by name, and a table whose rewrite
+// just landed reports zero losses rather than omitting them.
+func TestTableMaintenanceJobTypeStatusCommitRacesLost(t *testing.T) {
+	lost, total := int64(3), int64(7)
+	lostAt := time.Date(2026, 11, 5, 10, 0, 0, 0, time.UTC)
+	got, err := json.Marshal(TableMaintenanceJobTypeStatus{
+		Status:                                MaintenanceJobStatusFailed,
+		CompactionCommitRacesLost:             &lost,
+		TotalCompactionCommitRacesLost:        &total,
+		LastCompactionCommitRaceLostTimestamp: &lostAt,
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	const want = `{"status":"Failed","compactionCommitRacesLost":3,"totalCompactionCommitRacesLost":7,"lastCompactionCommitRaceLostTimestamp":"2026-11-05T10:00:00Z"}`
+	if string(got) != want {
+		t.Errorf("a losing compaction encoded as\n %s\nwant\n %s", got, want)
+	}
+
+	zero := int64(0)
+	got, err = json.Marshal(TableMaintenanceJobTypeStatus{
+		Status:                         MaintenanceJobStatusSuccessful,
+		CompactionCommitRacesLost:      &zero,
+		TotalCompactionCommitRacesLost: &total,
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	const wantLanded = `{"status":"Successful","compactionCommitRacesLost":0,"totalCompactionCommitRacesLost":7}`
+	if string(got) != wantLanded {
+		t.Errorf("a landed compaction encoded as\n %s\nwant\n %s", got, wantLanded)
+	}
+
+	got, err = json.Marshal(TableMaintenanceJobTypeStatus{Status: MaintenanceJobStatusSuccessful})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	const wantUnset = `{"status":"Successful"}`
+	if string(got) != wantUnset {
+		t.Errorf("a status without commit-race counts encoded as\n %s\nwant\n %s", got, wantUnset)
 	}
 }
 
