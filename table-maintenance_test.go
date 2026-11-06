@@ -285,3 +285,51 @@ func TestTableMaintenanceJobTypeStatusSkipReason(t *testing.T) {
 		}
 	}
 }
+
+// The compaction debt is read by name, and a status without it omits it.
+func TestTableMaintenanceJobTypeStatusCompactionDebt(t *testing.T) {
+	measured := time.Date(2026, 11, 6, 10, 0, 0, 0, time.UTC)
+	since := measured.Add(-72 * time.Hour)
+	got, err := json.Marshal(TableMaintenanceJobTypeStatus{
+		Status: MaintenanceJobStatusSuccessful,
+		CompactionDebt: &TableCompactionDebt{
+			MeasuredTimestamp: measured,
+			DebtBytes:         2097152,
+			UnplannedFiles:    6,
+			DeferredFiles:     24,
+			SmallFiles:        &TableCompactionDebtComponent{Files: 28, ResidualFiles: 28, Ratio: 2.8, GrowthStreak: 3, GrowingSince: &since, Trend: CompactionDebtGrowing},
+			DeleteFiles:       &TableCompactionDebtComponent{Files: 4, Trend: CompactionDebtShrinking},
+		},
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	const want = `{"status":"Successful","compactionDebt":{"measuredTimestamp":"2026-11-06T10:00:00Z","debtBytes":2097152,"unplannedFiles":6,"deferredFiles":24,` +
+		`"smallFiles":{"files":28,"residualFiles":28,"ratio":2.8,"growthStreak":3,"growingSince":"2026-11-03T10:00:00Z","trend":"growing"},` +
+		`"deleteFiles":{"files":4,"residualFiles":0,"ratio":0,"trend":"shrinking"}}}`
+	if string(got) != want {
+		t.Errorf("compaction debt encoded as\n %s\nwant\n %s", got, want)
+	}
+
+	var decoded TableMaintenanceJobTypeStatus
+	if err := json.Unmarshal([]byte(want), &decoded); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if d := decoded.CompactionDebt; d == nil || d.SmallFiles == nil || d.SmallFiles.Trend != CompactionDebtGrowing || !d.SmallFiles.GrowingSince.Equal(since) || d.Sort != nil {
+		t.Errorf("compaction debt decoded as %+v", decoded.CompactionDebt)
+	}
+
+	got, err = json.Marshal(TableMaintenanceJobTypeStatus{Status: MaintenanceJobStatusSuccessful})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if string(got) != `{"status":"Successful"}` {
+		t.Errorf("a status without compaction debt encoded as %s", got)
+	}
+}
+
+func TestAlertTypeTableCompactionDebtValue(t *testing.T) {
+	if AlertTypeTableCompactionDebt != "table-compaction-debt" {
+		t.Errorf("AlertTypeTableCompactionDebt = %q", AlertTypeTableCompactionDebt)
+	}
+}

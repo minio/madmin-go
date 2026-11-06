@@ -227,7 +227,62 @@ type TableMaintenanceJobTypeStatus struct {
 	CompactionCommitRacesLost             *int64     `json:"compactionCommitRacesLost,omitempty"`
 	TotalCompactionCommitRacesLost        *int64     `json:"totalCompactionCommitRacesLost,omitempty"`
 	LastCompactionCommitRaceLostTimestamp *time.Time `json:"lastCompactionCommitRaceLostTimestamp,omitempty"`
+
+	// CompactionDebt is what the table owed compaction at its last run that
+	// planned it. Only compaction reports it. It is an AIStor extension to the
+	// S3 Tables maintenance job status.
+	CompactionDebt *TableCompactionDebt `json:"compactionDebt,omitempty"`
 }
+
+// TableCompactionDebt is a table's compaction debt as measured by the last
+// compaction run that planned it, within the table's compaction filter.
+type TableCompactionDebt struct {
+	MeasuredTimestamp time.Time `json:"measuredTimestamp"`
+
+	// DebtBytes is what rewriting every candidate file would cost.
+	DebtBytes int64 `json:"debtBytes,omitempty"`
+	// UnplannedFiles are candidates no group was worth rewriting under the
+	// current thresholds.
+	UnplannedFiles int64 `json:"unplannedFiles,omitempty"`
+	// DeferredFiles are planned candidates the run did not rewrite.
+	DeferredFiles int64 `json:"deferredFiles,omitempty"`
+
+	// SmallFiles counts files beyond what the candidates would occupy at the
+	// target file size, DeleteFiles the delete files applying to the table,
+	// and Sort the files not yet in the table's sort order. Each is omitted
+	// while it is zero.
+	SmallFiles  *TableCompactionDebtComponent `json:"smallFiles,omitempty"`
+	DeleteFiles *TableCompactionDebtComponent `json:"deleteFiles,omitempty"`
+	Sort        *TableCompactionDebtComponent `json:"sort,omitempty"`
+}
+
+// TableCompactionDebtComponent is one kind of compaction debt, in files.
+// Files is what the run found and ResidualFiles what it left behind. Ratio is
+// ResidualFiles over the files the table would occupy at the target file
+// size, so tables of any size compare. GrowthStreak counts the consecutive
+// runs whose residual grew, since GrowingSince.
+type TableCompactionDebtComponent struct {
+	Files         int64               `json:"files"`
+	ResidualFiles int64               `json:"residualFiles"`
+	Ratio         float64             `json:"ratio"`
+	GrowthStreak  int                 `json:"growthStreak,omitempty"`
+	GrowingSince  *time.Time          `json:"growingSince,omitempty"`
+	Trend         CompactionDebtTrend `json:"trend"`
+}
+
+// CompactionDebtTrend is the direction of a compaction debt component.
+type CompactionDebtTrend string
+
+const (
+	// CompactionDebtGrowing marks a residual that grew on enough consecutive
+	// runs that compaction is not keeping up with the table.
+	CompactionDebtGrowing CompactionDebtTrend = "growing"
+	// CompactionDebtStable marks a residual that neither kept growing nor
+	// shrank on the last run.
+	CompactionDebtStable CompactionDebtTrend = "stable"
+	// CompactionDebtShrinking marks a residual that shrank on the last run.
+	CompactionDebtShrinking CompactionDebtTrend = "shrinking"
+)
 
 // GetTableMaintenanceJobStatusResponse is the response for GetTableMaintenanceJobStatus.
 type GetTableMaintenanceJobStatusResponse struct {
