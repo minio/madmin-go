@@ -518,6 +518,42 @@ func (adm *AdminClient) SRPeerReplicateIAMItem(ctx context.Context, item SRIAMIt
 	return nil
 }
 
+// SRKMSKeys - KMS key names replicated to a peer site in one call. Only the
+// names are replicated; each site generates its own key material.
+type SRKMSKeys struct {
+	Names      []string `json:"names"`
+	APIVersion string   `json:"apiVersion,omitempty"`
+}
+
+// SRPeerReplicateKMSKeys - creates KMS keys on a peer cluster.
+func (adm *AdminClient) SRPeerReplicateKMSKeys(ctx context.Context, keys SRKMSKeys) error {
+	b, err := json.Marshal(keys)
+	if err != nil {
+		return err
+	}
+
+	q := make(url.Values)
+	q.Add("api-version", SiteReplAPIVersion)
+
+	reqData := requestData{
+		relPath:     adminAPIPrefix + "/site-replication/peer/kms-keys",
+		content:     b,
+		queryValues: q,
+	}
+
+	resp, err := adm.executeMethod(ctx, http.MethodPut, reqData)
+	defer closeResponse(resp)
+	if err != nil {
+		return err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return httpRespToErrorResponse(resp)
+	}
+
+	return nil
+}
+
 // SRBucketMeta.Type constants
 const (
 	SRBucketMetaTypePolicy           = "policy"
@@ -777,6 +813,19 @@ type SRInfo struct {
 	// replica catalog. Absent from peers that predate the field, which decode
 	// it as false.
 	TablesReplicaEnabled bool `json:"tablesReplicaEnabled,omitempty"`
+
+	// ReplicatesKMSKeys reports whether the site's KMS takes part in
+	// replicating KMS keys between sites. Absent from peers that predate the
+	// field, which decode it as false.
+	ReplicatesKMSKeys bool `json:"replicatesKMSKeys,omitempty"`
+	// KMSKeyIDReplicationOff reports that the site sends replicas without the
+	// name of their SSE-KMS key, so each target encrypts them with its own
+	// default key. Absent from peers that predate the field, which decode it as
+	// false and so as sending the key name.
+	KMSKeyIDReplicationOff bool `json:"kmsKeyIDReplicationOff,omitempty"`
+	// KMSKeys lists the KMS key names the site shares with its peers. Set only
+	// when SRStatusOptions.KMSKeys is requested.
+	KMSKeys []string `json:"kmsKeys,omitempty"`
 }
 
 // SRMetaInfo - returns replication metadata info for a site.
@@ -968,6 +1017,7 @@ type SRStatusOptions struct {
 	Metrics        bool
 	ILMExpiryRules bool
 	PeerState      bool
+	KMSKeys        bool // requests SRInfo.KMSKeys from SRMetaInfo; SRStatusInfo ignores it
 	Entity         SREntityType
 	EntityValue    string
 	ShowDeleted    bool
@@ -1012,6 +1062,7 @@ func (o *SRStatusOptions) getURLValues() url.Values {
 	urlValues.Set("metrics", strconv.FormatBool(o.Metrics))
 	urlValues.Set("ilm-expiry-rules", strconv.FormatBool(o.ILMExpiryRules))
 	urlValues.Set("peer-state", strconv.FormatBool(o.PeerState))
+	urlValues.Set("kms-keys", strconv.FormatBool(o.KMSKeys))
 
 	if o.IsEntitySet() {
 		urlValues.Set("entityvalue", o.EntityValue)
