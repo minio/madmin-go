@@ -232,6 +232,13 @@ type TableMaintenanceJobTypeStatus struct {
 	// last run that planned it. Only compaction reports it. It is an AIStor
 	// extension to the S3 Tables maintenance job status.
 	CompactionBacklog *TableCompactionBacklog `json:"compactionBacklog,omitempty"`
+
+	// CompactionDueTimestamp is when the table is due for its next compaction
+	// run: its last run plus its compaction interval. A past timestamp marks
+	// a table still waiting for compaction. Only compaction reports it, once
+	// the table has run. It is an AIStor extension to the S3 Tables
+	// maintenance job status.
+	CompactionDueTimestamp *time.Time `json:"compactionDueTimestamp,omitempty"`
 }
 
 // TableCompactionBacklog is a table's compaction backlog as measured by the last
