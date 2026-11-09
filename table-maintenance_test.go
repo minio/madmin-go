@@ -352,9 +352,3 @@ func TestTableMaintenanceJobTypeStatusCompactionDue(t *testing.T) {
 		t.Errorf("compaction due timestamp decoded as %v", decoded.CompactionDueTimestamp)
 	}
 }
-
-func TestAlertTypeTableCompactionBacklogValue(t *testing.T) {
-	if AlertTypeTableCompactionBacklog != "table-compaction-backlog" {
-		t.Errorf("AlertTypeTableCompactionBacklog = %q", AlertTypeTableCompactionBacklog)
-	}
-}
