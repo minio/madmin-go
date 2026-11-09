@@ -328,6 +328,31 @@ func TestTableMaintenanceJobTypeStatusCompactionBacklog(t *testing.T) {
 	}
 }
 
+// The compaction due timestamp is read by name, and a status without it omits
+// it.
+func TestTableMaintenanceJobTypeStatusCompactionDue(t *testing.T) {
+	due := time.Date(2026, 11, 7, 10, 0, 0, 0, time.UTC)
+	got, err := json.Marshal(TableMaintenanceJobTypeStatus{
+		Status:                 MaintenanceJobStatusSuccessful,
+		CompactionDueTimestamp: &due,
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	const want = `{"status":"Successful","compactionDueTimestamp":"2026-11-07T10:00:00Z"}`
+	if string(got) != want {
+		t.Errorf("compaction due timestamp encoded as\n %s\nwant\n %s", got, want)
+	}
+
+	var decoded TableMaintenanceJobTypeStatus
+	if err := json.Unmarshal([]byte(want), &decoded); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if decoded.CompactionDueTimestamp == nil || !decoded.CompactionDueTimestamp.Equal(due) {
+		t.Errorf("compaction due timestamp decoded as %v", decoded.CompactionDueTimestamp)
+	}
+}
+
 func TestAlertTypeTableCompactionBacklogValue(t *testing.T) {
 	if AlertTypeTableCompactionBacklog != "table-compaction-backlog" {
 		t.Errorf("AlertTypeTableCompactionBacklog = %q", AlertTypeTableCompactionBacklog)
