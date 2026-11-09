@@ -1104,12 +1104,31 @@ type filesScriptedReply struct {
 // read. It returns the server and its write and read counts.
 func newFilesScriptedServer(t *testing.T, read filesScriptedReply, writes ...filesScriptedReply) (*httptest.Server, *atomic.Int32, *atomic.Int32) {
 	t.Helper()
-	var nWrites, nReads atomic.Int32
+	server, nWrites, nReads, _ := newFilesRecordingScriptedServer(t, read, writes...)
+	return server, nWrites, nReads
+}
+
+// newFilesRecordingScriptedServer is newFilesScriptedServer that also returns
+// a function reporting each write it saw, in order.
+func newFilesRecordingScriptedServer(t *testing.T, read filesScriptedReply, writes ...filesScriptedReply) (*httptest.Server, *atomic.Int32, *atomic.Int32, func() []filesRequest) {
+	t.Helper()
+	var (
+		nWrites, nReads atomic.Int32
+		mu              sync.Mutex
+		seen            []filesRequest
+	)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		reply := read
 		if r.Method == http.MethodGet {
 			nReads.Add(1)
 		} else {
+			sent, err := io.ReadAll(r.Body)
+			if err != nil {
+				t.Errorf("read body: %v", err)
+			}
+			mu.Lock()
+			seen = append(seen, filesRequest{r.Method, r.URL.Path, r.URL.EscapedPath(), r.URL.Query(), r.Header.Get("Content-Type"), r.Header.Get("If-Match"), sent})
+			mu.Unlock()
 			n := int(nWrites.Add(1)) - 1
 			reply = writes[min(n, len(writes)-1)]
 		}
@@ -1127,7 +1146,11 @@ func newFilesScriptedServer(t *testing.T, read filesScriptedReply, writes ...fil
 		io.WriteString(w, reply.body)
 	}))
 	t.Cleanup(server.Close)
-	return server, &nWrites, &nReads
+	return server, &nWrites, &nReads, func() []filesRequest {
+		mu.Lock()
+		defer mu.Unlock()
+		return slices.Clone(seen)
+	}
 }
 
 var (

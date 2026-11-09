@@ -81,7 +81,8 @@ func TestRecoverFilesExportRefusesLocally(t *testing.T) {
 
 // TestRecoverFilesExportRepeatsUnknownOutcome verifies that a recover whose
 // outcome is unknown is repeated, since the server answers a repeat with the
-// job already running, and that one the server refused is not.
+// job already running, that the repeat carries the first request's If-Match
+// and no body, and that one the server refused is not.
 func TestRecoverFilesExportRepeatsUnknownOutcome(t *testing.T) {
 	ok := filesScriptedReply{http.StatusOK, filesRecoverRunning}
 	for _, tc := range []struct {
@@ -100,10 +101,22 @@ func TestRecoverFilesExportRepeatsUnknownOutcome(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			t.Parallel()
-			server, writes, _ := newFilesScriptedServer(t, filesCarol, tc.first, ok)
+			server, writes, _, seen := newFilesRecordingScriptedServer(t, filesCarol, tc.first, ok)
 			job, err := newFilesExportsTestClient(t, server.URL).RecoverFilesExport(context.Background(), "104", "5f2a91")
 			if got := writes.Load(); got != tc.writes {
 				t.Errorf("sent %d writes, want %d", got, tc.writes)
+			}
+			sent := seen()
+			for i, req := range sent {
+				if want := "/minio/admin/files/v1/exports/104/recover"; req.method != http.MethodPost || req.path != want {
+					t.Errorf("write %d sent %s %s, want POST %s", i, req.method, req.path, want)
+				}
+				if req.ifMatch != sent[0].ifMatch || req.ifMatch != `"5f2a91"` {
+					t.Errorf("write %d If-Match = %q, want %q as first sent", i, req.ifMatch, `"5f2a91"`)
+				}
+				if len(req.body) != 0 || req.contentType != "" {
+					t.Errorf("write %d sent body %q with Content-Type %q, want none", i, req.body, req.contentType)
+				}
 			}
 			if tc.code == "" {
 				if err != nil || job.JobID != "b1.5f0c1e2d" {
