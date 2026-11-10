@@ -221,8 +221,8 @@ type TableMaintenanceJobTypeStatus struct {
 	// TotalBytesRead and TotalBytesWritten are the table file bytes every run
 	// of the type read and wrote, a run that lost its commit race or failed
 	// included; LastRun has the bytes of the run at LastRunTimestamp. Byte
-	// counts are plaintext, before compression and encryption. They are an AIStor extension to the S3
-	// Tables maintenance job status.
+	// counts are plaintext, before compression and encryption. They are an
+	// AIStor extension to the S3 Tables maintenance job status.
 	TotalBytesRead    *int64 `json:"totalBytesRead,omitempty"`
 	TotalBytesWritten *int64 `json:"totalBytesWritten,omitempty"`
 
