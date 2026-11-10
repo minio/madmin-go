@@ -285,3 +285,82 @@ func TestTableMaintenanceJobTypeStatusSkipReason(t *testing.T) {
 		}
 	}
 }
+
+// The compaction backlog is read by name, and a status without it omits it.
+func TestTableMaintenanceJobTypeStatusCompactionBacklog(t *testing.T) {
+	measured := time.Date(2026, 11, 6, 10, 0, 0, 0, time.UTC)
+	since := measured.Add(-72 * time.Hour)
+	got, err := json.Marshal(TableMaintenanceJobTypeStatus{
+		Status: MaintenanceJobStatusSuccessful,
+		CompactionBacklog: &TableCompactionBacklog{
+			MeasuredTimestamp: measured,
+			BacklogBytes:      2097152,
+			UnplannedFiles:    6,
+			DeferredFiles:     24,
+			SmallFiles:        &TableCompactionBacklogComponent{Files: 28, ResidualFiles: 28, Ratio: 2.8, GrowthStreak: 3, GrowingSince: &since, Trend: CompactionBacklogGrowing},
+			DeleteFiles:       &TableCompactionBacklogComponent{Files: 4, Trend: CompactionBacklogShrinking},
+		},
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	const want = `{"status":"Successful","compactionBacklog":{"measuredTimestamp":"2026-11-06T10:00:00Z","backlogBytes":2097152,"unplannedFiles":6,"deferredFiles":24,` +
+		`"smallFiles":{"files":28,"residualFiles":28,"ratio":2.8,"growthStreak":3,"growingSince":"2026-11-03T10:00:00Z","trend":"growing"},` +
+		`"deleteFiles":{"files":4,"residualFiles":0,"ratio":0,"trend":"shrinking"}}}`
+	if string(got) != want {
+		t.Errorf("compaction backlog encoded as\n %s\nwant\n %s", got, want)
+	}
+
+	var decoded TableMaintenanceJobTypeStatus
+	if err := json.Unmarshal([]byte(want), &decoded); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if d := decoded.CompactionBacklog; d == nil || d.SmallFiles == nil || d.SmallFiles.Trend != CompactionBacklogGrowing || !d.SmallFiles.GrowingSince.Equal(since) {
+		t.Errorf("compaction backlog decoded as %+v", decoded.CompactionBacklog)
+	}
+
+	got, err = json.Marshal(TableMaintenanceJobTypeStatus{Status: MaintenanceJobStatusSuccessful})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if string(got) != `{"status":"Successful"}` {
+		t.Errorf("a status without compaction backlog encoded as %s", got)
+	}
+
+	// A drained component keeps its zero counts and its trend on the wire.
+	got, err = json.Marshal(TableCompactionBacklog{
+		MeasuredTimestamp: measured,
+		SmallFiles:        &TableCompactionBacklogComponent{Trend: CompactionBacklogStable},
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if string(got) != `{"measuredTimestamp":"2026-11-06T10:00:00Z","smallFiles":{"files":0,"residualFiles":0,"ratio":0,"trend":"stable"}}` {
+		t.Errorf("a zero backlog encoded as %s", got)
+	}
+}
+
+// The compaction due timestamp is read by name, and a status without it omits
+// it.
+func TestTableMaintenanceJobTypeStatusCompactionDue(t *testing.T) {
+	due := time.Date(2026, 11, 7, 10, 0, 0, 0, time.UTC)
+	got, err := json.Marshal(TableMaintenanceJobTypeStatus{
+		Status:                 MaintenanceJobStatusSuccessful,
+		CompactionDueTimestamp: &due,
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	const want = `{"status":"Successful","compactionDueTimestamp":"2026-11-07T10:00:00Z"}`
+	if string(got) != want {
+		t.Errorf("compaction due timestamp encoded as\n %s\nwant\n %s", got, want)
+	}
+
+	var decoded TableMaintenanceJobTypeStatus
+	if err := json.Unmarshal([]byte(want), &decoded); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if decoded.CompactionDueTimestamp == nil || !decoded.CompactionDueTimestamp.Equal(due) {
+		t.Errorf("compaction due timestamp decoded as %v", decoded.CompactionDueTimestamp)
+	}
+}
