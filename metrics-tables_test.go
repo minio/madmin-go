@@ -191,6 +191,33 @@ func TestTableHealthMergeMaintenanceMemory(t *testing.T) {
 	}
 }
 
+// Table maintenance I/O is counted on every node that does it, so it sums per
+// job type like the rest of Health.
+func TestTableHealthMergeSumsMaintenanceIO(t *testing.T) {
+	a := &TableAPIMetrics{Health: &TableHealth{N: 1, Maintenance: map[string]TableMaintenanceNode{
+		"compaction": {IO: TableMaintenanceIO{BytesRead: 10, BytesWritten: 4, Ops: TableMaintenanceIOOps{Get: 3, Put: 1}, ThrottleSecs: 1.5}},
+	}}}
+	b := &TableAPIMetrics{Health: &TableHealth{N: 1, Maintenance: map[string]TableMaintenanceNode{
+		"compaction":                {IO: TableMaintenanceIO{BytesRead: 5, BytesWritten: 6, Ops: TableMaintenanceIOOps{Get: 2, List: 1}, ThrottleSecs: 0.5}},
+		"unreferenced_file_removal": {IO: TableMaintenanceIO{BytesRead: 1, Ops: TableMaintenanceIOOps{Head: 4, Delete: 2}}},
+	}}}
+
+	got := mergeTables(a, b).Health
+	if got == nil {
+		t.Fatal("Health = nil")
+	}
+	want := map[string]TableMaintenanceNode{
+		"compaction":                {IO: TableMaintenanceIO{BytesRead: 15, BytesWritten: 10, Ops: TableMaintenanceIOOps{Get: 5, Put: 1, List: 1}, ThrottleSecs: 2}},
+		"unreferenced_file_removal": {IO: TableMaintenanceIO{BytesRead: 1, Ops: TableMaintenanceIOOps{Head: 4, Delete: 2}}},
+	}
+	if !maps.Equal(got.Maintenance, want) {
+		t.Errorf("Maintenance = %+v, want %+v", got.Maintenance, want)
+	}
+	if a.Health.Maintenance["compaction"].IO.BytesRead != 10 {
+		t.Error("merging must not modify an input report")
+	}
+}
+
 // A type that only rewrote groups as a peer carries no runs, and an idle one
 // carries nothing, so neither puts empty objects on the wire.
 func TestTableMaintenanceNodeOmitsZero(t *testing.T) {
@@ -203,6 +230,14 @@ func TestTableMaintenanceNodeOmitsZero(t *testing.T) {
 		{
 			TableMaintenanceNode{Memory: TableMaintenanceMemory{ArrowBytes: GaugeStats{N: 1}}},
 			`{"memory":{"arrow_bytes":{"n":1}}}`,
+		},
+		{
+			TableMaintenanceNode{IO: TableMaintenanceIO{Ops: TableMaintenanceIOOps{Delete: 2}}},
+			`{"io":{"ops":{"delete":2}}}`,
+		},
+		{
+			TableMaintenanceNode{IO: TableMaintenanceIO{BytesRead: 1, ThrottleSecs: 0.5}},
+			`{"io":{"bytes_read":1,"throttle_secs":0.5}}`,
 		},
 	}
 	for _, c := range cases {

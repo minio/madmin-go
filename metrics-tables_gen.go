@@ -5346,6 +5346,633 @@ func (z TableMaintenanceGroups) Msgsize() (s int) {
 }
 
 // DecodeMsg implements msgp.Decodable
+func (z *TableMaintenanceIO) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 4 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "bytes_read":
+			z.BytesRead, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "BytesRead")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "bytes_written":
+			z.BytesWritten, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "BytesWritten")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "ops":
+			err = z.Ops.DecodeMsg(dc)
+			if err != nil {
+				err = msgp.WrapError(err, "Ops")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "throttle_secs":
+			z.ThrottleSecs, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "ThrottleSecs")
+				return
+			}
+			zb0001Mask |= 0x8
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0xf {
+		if (zb0001Mask & 0x1) == 0 {
+			z.BytesRead = 0
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.BytesWritten = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.Ops = TableMaintenanceIOOps{}
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.ThrottleSecs = 0
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *TableMaintenanceIO) EncodeMsg(en *msgp.Writer) (err error) {
+	// check for omitted fields
+	zb0001Len := uint32(4)
+	var zb0001Mask uint8 /* 4 bits */
+	_ = zb0001Mask
+	if z.BytesRead == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.BytesWritten == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.Ops.IsZero() {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	if z.ThrottleSecs == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	// variable map header, size zb0001Len
+	err = en.Append(0x80 | uint8(zb0001Len))
+	if err != nil {
+		return
+	}
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// write "bytes_read"
+			err = en.Append(0xaa, 0x62, 0x79, 0x74, 0x65, 0x73, 0x5f, 0x72, 0x65, 0x61, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.BytesRead)
+			if err != nil {
+				err = msgp.WrapError(err, "BytesRead")
+				return
+			}
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// write "bytes_written"
+			err = en.Append(0xad, 0x62, 0x79, 0x74, 0x65, 0x73, 0x5f, 0x77, 0x72, 0x69, 0x74, 0x74, 0x65, 0x6e)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.BytesWritten)
+			if err != nil {
+				err = msgp.WrapError(err, "BytesWritten")
+				return
+			}
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// write "ops"
+			err = en.Append(0xa3, 0x6f, 0x70, 0x73)
+			if err != nil {
+				return
+			}
+			err = z.Ops.EncodeMsg(en)
+			if err != nil {
+				err = msgp.WrapError(err, "Ops")
+				return
+			}
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// write "throttle_secs"
+			err = en.Append(0xad, 0x74, 0x68, 0x72, 0x6f, 0x74, 0x74, 0x6c, 0x65, 0x5f, 0x73, 0x65, 0x63, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.ThrottleSecs)
+			if err != nil {
+				err = msgp.WrapError(err, "ThrottleSecs")
+				return
+			}
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *TableMaintenanceIO) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// check for omitted fields
+	zb0001Len := uint32(4)
+	var zb0001Mask uint8 /* 4 bits */
+	_ = zb0001Mask
+	if z.BytesRead == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.BytesWritten == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.Ops.IsZero() {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	if z.ThrottleSecs == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	// variable map header, size zb0001Len
+	o = append(o, 0x80|uint8(zb0001Len))
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// string "bytes_read"
+			o = append(o, 0xaa, 0x62, 0x79, 0x74, 0x65, 0x73, 0x5f, 0x72, 0x65, 0x61, 0x64)
+			o = msgp.AppendUint64(o, z.BytesRead)
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// string "bytes_written"
+			o = append(o, 0xad, 0x62, 0x79, 0x74, 0x65, 0x73, 0x5f, 0x77, 0x72, 0x69, 0x74, 0x74, 0x65, 0x6e)
+			o = msgp.AppendUint64(o, z.BytesWritten)
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// string "ops"
+			o = append(o, 0xa3, 0x6f, 0x70, 0x73)
+			o, err = z.Ops.MarshalMsg(o)
+			if err != nil {
+				err = msgp.WrapError(err, "Ops")
+				return
+			}
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// string "throttle_secs"
+			o = append(o, 0xad, 0x74, 0x68, 0x72, 0x6f, 0x74, 0x74, 0x6c, 0x65, 0x5f, 0x73, 0x65, 0x63, 0x73)
+			o = msgp.AppendFloat64(o, z.ThrottleSecs)
+		}
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *TableMaintenanceIO) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 4 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "bytes_read":
+			z.BytesRead, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "BytesRead")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "bytes_written":
+			z.BytesWritten, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "BytesWritten")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "ops":
+			bts, err = z.Ops.UnmarshalMsg(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Ops")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "throttle_secs":
+			z.ThrottleSecs, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ThrottleSecs")
+				return
+			}
+			zb0001Mask |= 0x8
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0xf {
+		if (zb0001Mask & 0x1) == 0 {
+			z.BytesRead = 0
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.BytesWritten = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.Ops = TableMaintenanceIOOps{}
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.ThrottleSecs = 0
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *TableMaintenanceIO) Msgsize() (s int) {
+	s = 1 + 11 + msgp.Uint64Size + 14 + msgp.Uint64Size + 4 + z.Ops.Msgsize() + 14 + msgp.Float64Size
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *TableMaintenanceIOOps) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 5 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "get":
+			z.Get, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "Get")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "head":
+			z.Head, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "Head")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "put":
+			z.Put, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "Put")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "list":
+			z.List, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "List")
+				return
+			}
+			zb0001Mask |= 0x8
+		case "delete":
+			z.Delete, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "Delete")
+				return
+			}
+			zb0001Mask |= 0x10
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x1f {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Get = 0
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.Head = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.Put = 0
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.List = 0
+		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.Delete = 0
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *TableMaintenanceIOOps) EncodeMsg(en *msgp.Writer) (err error) {
+	// check for omitted fields
+	zb0001Len := uint32(5)
+	var zb0001Mask uint8 /* 5 bits */
+	_ = zb0001Mask
+	if z.Get == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.Head == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.Put == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	if z.List == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.Delete == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	// variable map header, size zb0001Len
+	err = en.Append(0x80 | uint8(zb0001Len))
+	if err != nil {
+		return
+	}
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// write "get"
+			err = en.Append(0xa3, 0x67, 0x65, 0x74)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.Get)
+			if err != nil {
+				err = msgp.WrapError(err, "Get")
+				return
+			}
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// write "head"
+			err = en.Append(0xa4, 0x68, 0x65, 0x61, 0x64)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.Head)
+			if err != nil {
+				err = msgp.WrapError(err, "Head")
+				return
+			}
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// write "put"
+			err = en.Append(0xa3, 0x70, 0x75, 0x74)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.Put)
+			if err != nil {
+				err = msgp.WrapError(err, "Put")
+				return
+			}
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// write "list"
+			err = en.Append(0xa4, 0x6c, 0x69, 0x73, 0x74)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.List)
+			if err != nil {
+				err = msgp.WrapError(err, "List")
+				return
+			}
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// write "delete"
+			err = en.Append(0xa6, 0x64, 0x65, 0x6c, 0x65, 0x74, 0x65)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.Delete)
+			if err != nil {
+				err = msgp.WrapError(err, "Delete")
+				return
+			}
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *TableMaintenanceIOOps) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// check for omitted fields
+	zb0001Len := uint32(5)
+	var zb0001Mask uint8 /* 5 bits */
+	_ = zb0001Mask
+	if z.Get == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.Head == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.Put == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	if z.List == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.Delete == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	// variable map header, size zb0001Len
+	o = append(o, 0x80|uint8(zb0001Len))
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// string "get"
+			o = append(o, 0xa3, 0x67, 0x65, 0x74)
+			o = msgp.AppendUint64(o, z.Get)
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// string "head"
+			o = append(o, 0xa4, 0x68, 0x65, 0x61, 0x64)
+			o = msgp.AppendUint64(o, z.Head)
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// string "put"
+			o = append(o, 0xa3, 0x70, 0x75, 0x74)
+			o = msgp.AppendUint64(o, z.Put)
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// string "list"
+			o = append(o, 0xa4, 0x6c, 0x69, 0x73, 0x74)
+			o = msgp.AppendUint64(o, z.List)
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// string "delete"
+			o = append(o, 0xa6, 0x64, 0x65, 0x6c, 0x65, 0x74, 0x65)
+			o = msgp.AppendUint64(o, z.Delete)
+		}
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *TableMaintenanceIOOps) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 5 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "get":
+			z.Get, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Get")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "head":
+			z.Head, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Head")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "put":
+			z.Put, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Put")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "list":
+			z.List, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "List")
+				return
+			}
+			zb0001Mask |= 0x8
+		case "delete":
+			z.Delete, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Delete")
+				return
+			}
+			zb0001Mask |= 0x10
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x1f {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Get = 0
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.Head = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.Put = 0
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.List = 0
+		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.Delete = 0
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *TableMaintenanceIOOps) Msgsize() (s int) {
+	s = 1 + 4 + msgp.Uint64Size + 5 + msgp.Uint64Size + 4 + msgp.Uint64Size + 5 + msgp.Uint64Size + 7 + msgp.Uint64Size
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *TableMaintenanceJob) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
@@ -6303,7 +6930,7 @@ func (z *TableMaintenanceNode) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 3 bits */
+	var zb0001Mask uint8 /* 4 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -6365,6 +6992,13 @@ func (z *TableMaintenanceNode) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 			zb0001Mask |= 0x4
+		case "io":
+			err = z.IO.DecodeMsg(dc)
+			if err != nil {
+				err = msgp.WrapError(err, "IO")
+				return
+			}
+			zb0001Mask |= 0x8
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -6374,7 +7008,7 @@ func (z *TableMaintenanceNode) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x7 {
+	if zb0001Mask != 0xf {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Runs = TableMaintenanceRuns{}
 		}
@@ -6384,6 +7018,9 @@ func (z *TableMaintenanceNode) DecodeMsg(dc *msgp.Reader) (err error) {
 		if (zb0001Mask & 0x4) == 0 {
 			z.Memory = TableMaintenanceMemory{}
 		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.IO = TableMaintenanceIO{}
+		}
 	}
 	return
 }
@@ -6391,8 +7028,8 @@ func (z *TableMaintenanceNode) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *TableMaintenanceNode) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(3)
-	var zb0001Mask uint8 /* 3 bits */
+	zb0001Len := uint32(4)
+	var zb0001Mask uint8 /* 4 bits */
 	_ = zb0001Mask
 	if z.Runs.IsZero() {
 		zb0001Len--
@@ -6405,6 +7042,10 @@ func (z *TableMaintenanceNode) EncodeMsg(en *msgp.Writer) (err error) {
 	if z.Memory.IsZero() {
 		zb0001Len--
 		zb0001Mask |= 0x4
+	}
+	if z.IO.IsZero() {
+		zb0001Len--
+		zb0001Mask |= 0x8
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -6470,6 +7111,18 @@ func (z *TableMaintenanceNode) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// write "io"
+			err = en.Append(0xa2, 0x69, 0x6f)
+			if err != nil {
+				return
+			}
+			err = z.IO.EncodeMsg(en)
+			if err != nil {
+				err = msgp.WrapError(err, "IO")
+				return
+			}
+		}
 	}
 	return
 }
@@ -6478,8 +7131,8 @@ func (z *TableMaintenanceNode) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *TableMaintenanceNode) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(3)
-	var zb0001Mask uint8 /* 3 bits */
+	zb0001Len := uint32(4)
+	var zb0001Mask uint8 /* 4 bits */
 	_ = zb0001Mask
 	if z.Runs.IsZero() {
 		zb0001Len--
@@ -6492,6 +7145,10 @@ func (z *TableMaintenanceNode) MarshalMsg(b []byte) (o []byte, err error) {
 	if z.Memory.IsZero() {
 		zb0001Len--
 		zb0001Mask |= 0x4
+	}
+	if z.IO.IsZero() {
+		zb0001Len--
+		zb0001Mask |= 0x8
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -6535,6 +7192,15 @@ func (z *TableMaintenanceNode) MarshalMsg(b []byte) (o []byte, err error) {
 				return
 			}
 		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// string "io"
+			o = append(o, 0xa2, 0x69, 0x6f)
+			o, err = z.IO.MarshalMsg(o)
+			if err != nil {
+				err = msgp.WrapError(err, "IO")
+				return
+			}
+		}
 	}
 	return
 }
@@ -6549,7 +7215,7 @@ func (z *TableMaintenanceNode) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 3 bits */
+	var zb0001Mask uint8 /* 4 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -6611,6 +7277,13 @@ func (z *TableMaintenanceNode) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 			zb0001Mask |= 0x4
+		case "io":
+			bts, err = z.IO.UnmarshalMsg(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "IO")
+				return
+			}
+			zb0001Mask |= 0x8
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -6620,7 +7293,7 @@ func (z *TableMaintenanceNode) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x7 {
+	if zb0001Mask != 0xf {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Runs = TableMaintenanceRuns{}
 		}
@@ -6630,6 +7303,9 @@ func (z *TableMaintenanceNode) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		if (zb0001Mask & 0x4) == 0 {
 			z.Memory = TableMaintenanceMemory{}
 		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.IO = TableMaintenanceIO{}
+		}
 	}
 	o = bts
 	return
@@ -6637,7 +7313,7 @@ func (z *TableMaintenanceNode) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *TableMaintenanceNode) Msgsize() (s int) {
-	s = 1 + 5 + z.Runs.Msgsize() + 7 + 1 + 9 + msgp.Uint64Size + 7 + z.Memory.Msgsize()
+	s = 1 + 5 + z.Runs.Msgsize() + 7 + 1 + 9 + msgp.Uint64Size + 7 + z.Memory.Msgsize() + 3 + z.IO.Msgsize()
 	return
 }
 

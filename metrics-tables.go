@@ -117,11 +117,15 @@ type TableMaintenanceNode struct {
 	// Memory covers the Arrow buffers the type's work holds, so only the
 	// types that read table data, compaction and record expiration, report it.
 	Memory TableMaintenanceMemory `json:"memory,omitzero"`
+
+	// IO covers the table files the type's work reads and writes on the
+	// reporting nodes, a compaction peer's rewrites included.
+	IO TableMaintenanceIO `json:"io,omitzero"`
 }
 
 // IsZero reports whether nothing has been recorded, for omitzero.
 func (n TableMaintenanceNode) IsZero() bool {
-	return n.Runs.IsZero() && n.Groups.IsZero() && n.Memory.IsZero()
+	return n.Runs.IsZero() && n.Groups.IsZero() && n.Memory.IsZero() && n.IO.IsZero()
 }
 
 // Add other into n.
@@ -129,6 +133,7 @@ func (n *TableMaintenanceNode) Add(other *TableMaintenanceNode) {
 	n.Runs.Add(&other.Runs)
 	n.Groups.Add(&other.Groups)
 	n.Memory.Add(&other.Memory)
+	n.IO.Add(&other.IO)
 }
 
 // TableMaintenanceRuns summarizes one maintenance job type's table runs on
@@ -198,6 +203,57 @@ func (m *TableMaintenanceMemory) Add(other *TableMaintenanceMemory) {
 	m.InputBytes.Add(&other.InputBytes)
 	m.PeakArrowBytes = max(m.PeakArrowBytes, other.PeakArrowBytes)
 	m.NodePeakArrowBytes = max(m.NodePeakArrowBytes, other.NodePeakArrowBytes)
+}
+
+// TableMaintenanceIO is the table file I/O one maintenance type issued on the
+// reporting nodes, cumulative since process start. Byte counts are plaintext,
+// before compression and encryption. It is an AIStor extension.
+type TableMaintenanceIO struct {
+	BytesRead    uint64                `json:"bytes_read,omitempty"`
+	BytesWritten uint64                `json:"bytes_written,omitempty"`
+	Ops          TableMaintenanceIOOps `json:"ops,omitzero"`
+
+	// ThrottleSecs is the time the I/O paused to yield to other cluster
+	// traffic.
+	ThrottleSecs float64 `json:"throttle_secs,omitempty"`
+}
+
+// IsZero reports whether nothing has been recorded, for omitzero.
+func (o TableMaintenanceIO) IsZero() bool { return o == TableMaintenanceIO{} }
+
+// Add other into o.
+func (o *TableMaintenanceIO) Add(other *TableMaintenanceIO) {
+	o.BytesRead += other.BytesRead
+	o.BytesWritten += other.BytesWritten
+	o.Ops.Add(&other.Ops)
+	o.ThrottleSecs += other.ThrottleSecs
+}
+
+// TableMaintenanceIOOps counts the object operations behind table maintenance
+// I/O. It is an AIStor extension.
+type TableMaintenanceIOOps struct {
+	// Get is one ranged object read.
+	Get uint64 `json:"get,omitempty"`
+	// Head is one object stat.
+	Head uint64 `json:"head,omitempty"`
+	// Put is one object upload started.
+	Put uint64 `json:"put,omitempty"`
+	// List is one listing walk of a prefix or of one key's versions.
+	List uint64 `json:"list,omitempty"`
+	// Delete is one object or object version sent for deletion.
+	Delete uint64 `json:"delete,omitempty"`
+}
+
+// IsZero reports whether nothing has been recorded, for omitzero.
+func (o TableMaintenanceIOOps) IsZero() bool { return o == TableMaintenanceIOOps{} }
+
+// Add other into o.
+func (o *TableMaintenanceIOOps) Add(other *TableMaintenanceIOOps) {
+	o.Get += other.Get
+	o.Head += other.Head
+	o.Put += other.Put
+	o.List += other.List
+	o.Delete += other.Delete
 }
 
 // TableMaintenanceJob is one background table-maintenance job.

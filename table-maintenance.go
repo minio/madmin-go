@@ -218,6 +218,14 @@ type TableMaintenanceJobTypeStatus struct {
 	TotalRuns           *int64  `json:"totalRuns,omitempty"`
 	FirstRunTimestamp   *string `json:"firstRunTimestamp,omitempty"`
 
+	// TotalBytesRead and TotalBytesWritten are the table file bytes every run
+	// of the type read and wrote, a run that lost its commit race or failed
+	// included; LastRun has the last run's. Byte counts are plaintext, before
+	// compression and encryption. They are an AIStor extension to the S3
+	// Tables maintenance job status.
+	TotalBytesRead    *int64 `json:"totalBytesRead,omitempty"`
+	TotalBytesWritten *int64 `json:"totalBytesWritten,omitempty"`
+
 	// CompactionCommitRacesLost counts the compaction runs whose rewrite lost
 	// its commit to a concurrent writer since a rewrite last landed; a count
 	// that keeps growing marks a table that never compacts.
@@ -259,6 +267,12 @@ type TableMaintenanceLastRun struct {
 	// on the node that rewrote the group. Only compaction reports them.
 	PeakGroupArrowBytes int64 `json:"peakGroupArrowBytes,omitempty"`
 	PeakGroupInputBytes int64 `json:"peakGroupInputBytes,omitempty"`
+
+	// BytesRead and BytesWritten are the table file bytes the run read and
+	// wrote, plaintext, before compression and encryption. A distributed
+	// compaction run includes what its peers report.
+	BytesRead    int64 `json:"bytesRead,omitempty"`
+	BytesWritten int64 `json:"bytesWritten,omitempty"`
 }
 
 // TableCompactionBacklog is a table's compaction backlog as measured by the last
