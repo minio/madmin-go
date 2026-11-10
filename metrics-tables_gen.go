@@ -6026,7 +6026,7 @@ func (z *TableMaintenanceMemory) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 2 bits */
+	var zb0001Mask uint8 /* 3 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -6048,20 +6048,21 @@ func (z *TableMaintenanceMemory) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "InputBytes")
 				return
 			}
+			zb0001Mask |= 0x1
 		case "peak_arrow_bytes":
 			z.PeakArrowBytes, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "PeakArrowBytes")
 				return
 			}
-			zb0001Mask |= 0x1
+			zb0001Mask |= 0x2
 		case "node_peak_arrow_bytes":
 			z.NodePeakArrowBytes, err = dc.ReadUint64()
 			if err != nil {
 				err = msgp.WrapError(err, "NodePeakArrowBytes")
 				return
 			}
-			zb0001Mask |= 0x2
+			zb0001Mask |= 0x4
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -6071,11 +6072,14 @@ func (z *TableMaintenanceMemory) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3 {
+	if zb0001Mask != 0x7 {
 		if (zb0001Mask & 0x1) == 0 {
-			z.PeakArrowBytes = 0
+			z.InputBytes = GaugeStats{}
 		}
 		if (zb0001Mask & 0x2) == 0 {
+			z.PeakArrowBytes = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
 			z.NodePeakArrowBytes = 0
 		}
 	}
@@ -6088,6 +6092,10 @@ func (z *TableMaintenanceMemory) EncodeMsg(en *msgp.Writer) (err error) {
 	zb0001Len := uint32(4)
 	var zb0001Mask uint8 /* 4 bits */
 	_ = zb0001Mask
+	if z.InputBytes.IsZero() {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
 	if z.PeakArrowBytes == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x4
@@ -6114,15 +6122,17 @@ func (z *TableMaintenanceMemory) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "ArrowBytes")
 			return
 		}
-		// write "input_bytes"
-		err = en.Append(0xab, 0x69, 0x6e, 0x70, 0x75, 0x74, 0x5f, 0x62, 0x79, 0x74, 0x65, 0x73)
-		if err != nil {
-			return
-		}
-		err = z.InputBytes.EncodeMsg(en)
-		if err != nil {
-			err = msgp.WrapError(err, "InputBytes")
-			return
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// write "input_bytes"
+			err = en.Append(0xab, 0x69, 0x6e, 0x70, 0x75, 0x74, 0x5f, 0x62, 0x79, 0x74, 0x65, 0x73)
+			if err != nil {
+				return
+			}
+			err = z.InputBytes.EncodeMsg(en)
+			if err != nil {
+				err = msgp.WrapError(err, "InputBytes")
+				return
+			}
 		}
 		if (zb0001Mask & 0x4) == 0 { // if not omitted
 			// write "peak_arrow_bytes"
@@ -6159,6 +6169,10 @@ func (z *TableMaintenanceMemory) MarshalMsg(b []byte) (o []byte, err error) {
 	zb0001Len := uint32(4)
 	var zb0001Mask uint8 /* 4 bits */
 	_ = zb0001Mask
+	if z.InputBytes.IsZero() {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
 	if z.PeakArrowBytes == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x4
@@ -6179,12 +6193,14 @@ func (z *TableMaintenanceMemory) MarshalMsg(b []byte) (o []byte, err error) {
 			err = msgp.WrapError(err, "ArrowBytes")
 			return
 		}
-		// string "input_bytes"
-		o = append(o, 0xab, 0x69, 0x6e, 0x70, 0x75, 0x74, 0x5f, 0x62, 0x79, 0x74, 0x65, 0x73)
-		o, err = z.InputBytes.MarshalMsg(o)
-		if err != nil {
-			err = msgp.WrapError(err, "InputBytes")
-			return
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// string "input_bytes"
+			o = append(o, 0xab, 0x69, 0x6e, 0x70, 0x75, 0x74, 0x5f, 0x62, 0x79, 0x74, 0x65, 0x73)
+			o, err = z.InputBytes.MarshalMsg(o)
+			if err != nil {
+				err = msgp.WrapError(err, "InputBytes")
+				return
+			}
 		}
 		if (zb0001Mask & 0x4) == 0 { // if not omitted
 			// string "peak_arrow_bytes"
@@ -6210,7 +6226,7 @@ func (z *TableMaintenanceMemory) UnmarshalMsg(bts []byte) (o []byte, err error) 
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 2 bits */
+	var zb0001Mask uint8 /* 3 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -6232,20 +6248,21 @@ func (z *TableMaintenanceMemory) UnmarshalMsg(bts []byte) (o []byte, err error) 
 				err = msgp.WrapError(err, "InputBytes")
 				return
 			}
+			zb0001Mask |= 0x1
 		case "peak_arrow_bytes":
 			z.PeakArrowBytes, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "PeakArrowBytes")
 				return
 			}
-			zb0001Mask |= 0x1
+			zb0001Mask |= 0x2
 		case "node_peak_arrow_bytes":
 			z.NodePeakArrowBytes, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "NodePeakArrowBytes")
 				return
 			}
-			zb0001Mask |= 0x2
+			zb0001Mask |= 0x4
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -6255,11 +6272,14 @@ func (z *TableMaintenanceMemory) UnmarshalMsg(bts []byte) (o []byte, err error) 
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x3 {
+	if zb0001Mask != 0x7 {
 		if (zb0001Mask & 0x1) == 0 {
-			z.PeakArrowBytes = 0
+			z.InputBytes = GaugeStats{}
 		}
 		if (zb0001Mask & 0x2) == 0 {
+			z.PeakArrowBytes = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
 			z.NodePeakArrowBytes = 0
 		}
 	}

@@ -202,7 +202,7 @@ func TestTableMaintenanceNodeOmitsZero(t *testing.T) {
 		{TableMaintenanceNode{Groups: TableMaintenanceGroups{InFlight: 1}}, `{"groups":{"inflight":1}}`},
 		{
 			TableMaintenanceNode{Memory: TableMaintenanceMemory{ArrowBytes: GaugeStats{N: 1}}},
-			`{"memory":{"arrow_bytes":{"n":1},"input_bytes":{}}}`,
+			`{"memory":{"arrow_bytes":{"n":1}}}`,
 		},
 	}
 	for _, c := range cases {

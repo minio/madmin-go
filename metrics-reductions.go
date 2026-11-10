@@ -108,6 +108,9 @@ type GaugeStats struct {
 	Max float64 `json:"max,omitempty"`
 }
 
+// IsZero reports whether no sample has been recorded, for omitzero.
+func (g GaugeStats) IsZero() bool { return g == GaugeStats{} }
+
 // Add other into g. Satisfies Segmenter so a GaugeStats can be time
 // segmented.
 //
