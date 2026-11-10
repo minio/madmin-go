@@ -216,6 +216,9 @@ func TestTableHealthMergeSumsMaintenanceIO(t *testing.T) {
 	if a.Health.Maintenance["compaction"].IO.BytesRead != 10 {
 		t.Error("merging must not modify an input report")
 	}
+	if (TableMaintenanceNode{IO: TableMaintenanceIO{Ops: TableMaintenanceIOOps{List: 1}}}).IsZero() {
+		t.Error("a node that only did I/O must not be zero")
+	}
 }
 
 // A type that only rewrote groups as a peer carries no runs, and an idle one
