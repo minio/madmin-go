@@ -113,17 +113,22 @@ type TableMaintenanceNode struct {
 	// Groups covers the compaction groups the nodes rewrite, whichever node
 	// runs the table, so only compaction reports it.
 	Groups TableMaintenanceGroups `json:"groups,omitzero"`
+
+	// Memory covers the Arrow buffers the type's work holds, so only the
+	// types that read table data, compaction and record expiration, report it.
+	Memory TableMaintenanceMemory `json:"memory,omitzero"`
 }
 
 // IsZero reports whether nothing has been recorded, for omitzero.
 func (n TableMaintenanceNode) IsZero() bool {
-	return n.Runs.IsZero() && n.Groups.IsZero()
+	return n.Runs.IsZero() && n.Groups.IsZero() && n.Memory.IsZero()
 }
 
 // Add other into n.
 func (n *TableMaintenanceNode) Add(other *TableMaintenanceNode) {
 	n.Runs.Add(&other.Runs)
 	n.Groups.Add(&other.Groups)
+	n.Memory.Add(&other.Memory)
 }
 
 // TableMaintenanceRuns summarizes one maintenance job type's table runs on
@@ -163,6 +168,36 @@ func (g TableMaintenanceGroups) IsZero() bool { return g == TableMaintenanceGrou
 // Add other into g.
 func (g *TableMaintenanceGroups) Add(other *TableMaintenanceGroups) {
 	g.InFlight += other.InFlight
+}
+
+// TableMaintenanceMemory is the memory one maintenance type's work holds on
+// the reporting nodes. Each node reports one sample per gauge, idle or not, so
+// across nodes Sum is the cluster total and Max the most loaded node. Peaks of
+// different nodes do not add up, so Add keeps the largest. It is an AIStor
+// extension.
+type TableMaintenanceMemory struct {
+	// ArrowBytes is the Arrow buffer memory the running work holds now.
+	ArrowBytes GaugeStats `json:"arrow_bytes"`
+	// InputBytes is the size of the data and delete files the running work
+	// reads. Only compaction reports it.
+	InputBytes GaugeStats `json:"input_bytes"`
+	// PeakArrowBytes is the largest Arrow buffer peak of a single unit of work,
+	// a compaction group or a record expiration run, since a node started.
+	PeakArrowBytes uint64 `json:"peak_arrow_bytes,omitempty"`
+	// NodePeakArrowBytes is the most Arrow buffer memory all running work on
+	// one node held at once since the node started.
+	NodePeakArrowBytes uint64 `json:"node_peak_arrow_bytes,omitempty"`
+}
+
+// IsZero reports whether nothing has been recorded, for omitzero.
+func (m TableMaintenanceMemory) IsZero() bool { return m == TableMaintenanceMemory{} }
+
+// Add other into m.
+func (m *TableMaintenanceMemory) Add(other *TableMaintenanceMemory) {
+	m.ArrowBytes.Add(&other.ArrowBytes)
+	m.InputBytes.Add(&other.InputBytes)
+	m.PeakArrowBytes = max(m.PeakArrowBytes, other.PeakArrowBytes)
+	m.NodePeakArrowBytes = max(m.NodePeakArrowBytes, other.NodePeakArrowBytes)
 }
 
 // TableMaintenanceJob is one background table-maintenance job.

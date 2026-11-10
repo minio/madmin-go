@@ -252,6 +252,13 @@ type TableMaintenanceLastRun struct {
 	// DurationSeconds is how long the run took, from its start to its status
 	// being recorded.
 	DurationSeconds float64 `json:"durationSeconds,omitempty"`
+
+	// PeakGroupArrowBytes is the largest Arrow buffer peak of any one
+	// compaction group the run rewrote, and PeakGroupInputBytes the largest
+	// size of the data and delete files any one of them read, each measured
+	// on the node that rewrote the group. Only compaction reports them.
+	PeakGroupArrowBytes int64 `json:"peakGroupArrowBytes,omitempty"`
+	PeakGroupInputBytes int64 `json:"peakGroupInputBytes,omitempty"`
 }
 
 // TableCompactionBacklog is a table's compaction backlog as measured by the last

@@ -156,6 +156,41 @@ func TestTableHealthMergeSumsMaintenance(t *testing.T) {
 	}
 }
 
+// Current memory sums with the most loaded node kept, while peaks of different
+// nodes never add up.
+func TestTableHealthMergeMaintenanceMemory(t *testing.T) {
+	node := func(arrow, input float64, peak, nodePeak uint64) map[string]TableMaintenanceNode {
+		return map[string]TableMaintenanceNode{"compaction": {Memory: TableMaintenanceMemory{
+			ArrowBytes:         GaugeStats{N: 1, Sum: arrow, Min: arrow, Max: arrow},
+			InputBytes:         GaugeStats{N: 1, Sum: input, Min: input, Max: input},
+			PeakArrowBytes:     peak,
+			NodePeakArrowBytes: nodePeak,
+		}}}
+	}
+	a := &TableAPIMetrics{Health: &TableHealth{N: 1, Maintenance: node(100, 1000, 700, 900)}}
+	b := &TableAPIMetrics{Health: &TableHealth{N: 1, Maintenance: node(300, 0, 500, 1200)}}
+	c := &TableAPIMetrics{Health: &TableHealth{N: 1, Maintenance: map[string]TableMaintenanceNode{
+		"record_expiration": {Memory: TableMaintenanceMemory{ArrowBytes: GaugeStats{N: 1, Sum: 8, Min: 8, Max: 8}, PeakArrowBytes: 9}},
+	}}}
+
+	got := mergeTables(mergeTables(a, b), c).Health.Maintenance
+	want := map[string]TableMaintenanceNode{
+		"compaction": {Memory: TableMaintenanceMemory{
+			ArrowBytes:         GaugeStats{N: 2, Sum: 400, Min: 100, Max: 300},
+			InputBytes:         GaugeStats{N: 2, Sum: 1000, Min: 0, Max: 1000},
+			PeakArrowBytes:     700,
+			NodePeakArrowBytes: 1200,
+		}},
+		"record_expiration": {Memory: TableMaintenanceMemory{ArrowBytes: GaugeStats{N: 1, Sum: 8, Min: 8, Max: 8}, PeakArrowBytes: 9}},
+	}
+	if !maps.Equal(got, want) {
+		t.Errorf("Maintenance = %+v, want %+v", got, want)
+	}
+	if a.Health.Maintenance["compaction"].Memory.ArrowBytes.N != 1 {
+		t.Error("merging must not modify an input report")
+	}
+}
+
 // A type that only rewrote groups as a peer carries no runs, and an idle one
 // carries nothing, so neither puts empty objects on the wire.
 func TestTableMaintenanceNodeOmitsZero(t *testing.T) {
@@ -165,6 +200,10 @@ func TestTableMaintenanceNodeOmitsZero(t *testing.T) {
 	}{
 		{TableMaintenanceNode{}, `{}`},
 		{TableMaintenanceNode{Groups: TableMaintenanceGroups{InFlight: 1}}, `{"groups":{"inflight":1}}`},
+		{
+			TableMaintenanceNode{Memory: TableMaintenanceMemory{ArrowBytes: GaugeStats{N: 1}}},
+			`{"memory":{"arrow_bytes":{"n":1},"input_bytes":{}}}`,
+		},
 	}
 	for _, c := range cases {
 		got, err := json.Marshal(c.node)
