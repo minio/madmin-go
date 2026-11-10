@@ -82,6 +82,12 @@ type TableHealth struct {
 	// PeerRPCs is compaction's peer-RPC count, summed across nodes even
 	// though compaction's TableMaintenanceJob is leader-owned.
 	PeerRPCs uint64 `json:"peer_rpcs,omitempty"`
+
+	// Maintenance maps a maintenance job type to the work the reporting nodes
+	// ran for it. Each node reports only the work it runs itself, so it sums
+	// across nodes even though TableMaintenanceJob is leader-owned. It is an
+	// AIStor extension.
+	Maintenance map[string]TableMaintenanceNode `json:"maintenance,omitempty"`
 }
 
 // Add other into h.
@@ -95,6 +101,68 @@ func (h *TableHealth) Add(other *TableHealth) {
 	addMap(&h.Rollbacks, other.Rollbacks)
 	addMap(&h.VendedCreds, other.VendedCreds)
 	h.PeerRPCs += other.PeerRPCs
+	mergeMap(&h.Maintenance, other.Maintenance)
+}
+
+// TableMaintenanceNode is one maintenance job type's work on the reporting
+// nodes. Counts and totals sum across nodes and maxima keep the largest. It is
+// an AIStor extension.
+type TableMaintenanceNode struct {
+	Runs TableMaintenanceRuns `json:"runs,omitzero"`
+
+	// Groups covers the compaction groups the nodes rewrite, whichever node
+	// runs the table, so only compaction reports it.
+	Groups TableMaintenanceGroups `json:"groups,omitzero"`
+}
+
+// IsZero reports whether nothing has been recorded, for omitzero.
+func (n TableMaintenanceNode) IsZero() bool {
+	return n.Runs.IsZero() && n.Groups.IsZero()
+}
+
+// Add other into n.
+func (n *TableMaintenanceNode) Add(other *TableMaintenanceNode) {
+	n.Runs.Add(&other.Runs)
+	n.Groups.Add(&other.Groups)
+}
+
+// TableMaintenanceRuns summarizes one maintenance job type's table runs on
+// the reporting nodes. It is an AIStor extension.
+type TableMaintenanceRuns struct {
+	// InFlight is the number of table runs executing now.
+	InFlight uint64 `json:"inflight,omitempty"`
+
+	// Count and TotalSecs cover the scheduled runs finished since process
+	// start, and MaxSecs is the longest of them.
+	Count     uint64  `json:"count,omitempty"`
+	TotalSecs float64 `json:"total_secs,omitempty"`
+	MaxSecs   float64 `json:"max_secs,omitempty"`
+}
+
+// IsZero reports whether nothing has been recorded, for omitzero.
+func (r TableMaintenanceRuns) IsZero() bool { return r == TableMaintenanceRuns{} }
+
+// Add other into r.
+func (r *TableMaintenanceRuns) Add(other *TableMaintenanceRuns) {
+	r.InFlight += other.InFlight
+	r.Count += other.Count
+	r.TotalSecs += other.TotalSecs
+	r.MaxSecs = max(r.MaxSecs, other.MaxSecs)
+}
+
+// TableMaintenanceGroups summarizes the compaction groups the reporting nodes
+// rewrite. It is an AIStor extension.
+type TableMaintenanceGroups struct {
+	// InFlight is the number of groups being rewritten now.
+	InFlight uint64 `json:"inflight,omitempty"`
+}
+
+// IsZero reports whether nothing has been recorded, for omitzero.
+func (g TableMaintenanceGroups) IsZero() bool { return g == TableMaintenanceGroups{} }
+
+// Add other into g.
+func (g *TableMaintenanceGroups) Add(other *TableMaintenanceGroups) {
+	g.InFlight += other.InFlight
 }
 
 // TableMaintenanceJob is one background table-maintenance job.

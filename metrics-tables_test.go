@@ -20,6 +20,7 @@
 package madmin
 
 import (
+	"encoding/json"
 	"maps"
 	"reflect"
 	"testing"
@@ -110,6 +111,80 @@ func TestTableHealthMergeSums(t *testing.T) {
 	}
 	if !maps.Equal(got.VendedCreds, map[string]uint64{"issued": 7, "denied": 1}) {
 		t.Errorf("VendedCreds = %v", got.VendedCreds)
+	}
+}
+
+// Every node runs its own share of maintenance work, so in-flight counts and
+// run totals sum while the longest run is the longest on any node.
+func TestTableHealthMergeSumsMaintenance(t *testing.T) {
+	a := &TableAPIMetrics{Health: &TableHealth{
+		N: 1,
+		Maintenance: map[string]TableMaintenanceNode{
+			"compaction": {
+				Runs:   TableMaintenanceRuns{InFlight: 2, Count: 4, TotalSecs: 100, MaxSecs: 60},
+				Groups: TableMaintenanceGroups{InFlight: 3},
+			},
+			"snapshot_expiration": {Runs: TableMaintenanceRuns{Count: 1, TotalSecs: 2, MaxSecs: 2}},
+		},
+	}}
+	b := &TableAPIMetrics{Health: &TableHealth{
+		N: 1,
+		Maintenance: map[string]TableMaintenanceNode{
+			"compaction": {
+				Runs:   TableMaintenanceRuns{InFlight: 1, Count: 2, TotalSecs: 300, MaxSecs: 250},
+				Groups: TableMaintenanceGroups{InFlight: 5},
+			},
+		},
+	}}
+
+	got := mergeTables(a, b).Health
+	if got == nil {
+		t.Fatal("Health = nil")
+	}
+	want := map[string]TableMaintenanceNode{
+		"compaction": {
+			Runs:   TableMaintenanceRuns{InFlight: 3, Count: 6, TotalSecs: 400, MaxSecs: 250},
+			Groups: TableMaintenanceGroups{InFlight: 8},
+		},
+		"snapshot_expiration": {Runs: TableMaintenanceRuns{Count: 1, TotalSecs: 2, MaxSecs: 2}},
+	}
+	if !maps.Equal(got.Maintenance, want) {
+		t.Errorf("Maintenance = %+v, want %+v", got.Maintenance, want)
+	}
+	if a.Health.Maintenance["compaction"].Runs.Count != 4 {
+		t.Error("merging must not modify an input report")
+	}
+}
+
+// A type that only rewrote groups as a peer carries no runs, and an idle one
+// carries nothing, so neither puts empty objects on the wire.
+func TestTableMaintenanceNodeOmitsZero(t *testing.T) {
+	cases := []struct {
+		node TableMaintenanceNode
+		want string
+	}{
+		{TableMaintenanceNode{}, `{}`},
+		{TableMaintenanceNode{Groups: TableMaintenanceGroups{InFlight: 1}}, `{"groups":{"inflight":1}}`},
+	}
+	for _, c := range cases {
+		got, err := json.Marshal(c.node)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(got) != c.want {
+			t.Errorf("json = %s, want %s", got, c.want)
+		}
+		bts, err := c.node.MarshalMsg(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var back TableMaintenanceNode
+		if _, err := back.UnmarshalMsg(bts); err != nil {
+			t.Fatal(err)
+		}
+		if back != c.node {
+			t.Errorf("msgp round trip = %+v, want %+v", back, c.node)
+		}
 	}
 }
 
