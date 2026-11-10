@@ -182,7 +182,7 @@ func (g *TableMaintenanceGroups) Add(other *TableMaintenanceGroups) {
 // largest. It is an AIStor extension.
 type TableMaintenanceMemory struct {
 	// ArrowBytes is the Arrow buffer memory the running work holds now.
-	ArrowBytes GaugeStats `json:"arrow_bytes"`
+	ArrowBytes GaugeStats `json:"arrow_bytes,omitzero"`
 	// InputBytes is the size of the data and delete files the running work
 	// reads. Only compaction reports it.
 	InputBytes GaugeStats `json:"input_bytes,omitzero"`

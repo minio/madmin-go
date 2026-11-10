@@ -195,10 +195,10 @@ func TestTableHealthMergeMaintenanceMemory(t *testing.T) {
 // job type like the rest of Health.
 func TestTableHealthMergeSumsMaintenanceIO(t *testing.T) {
 	a := &TableAPIMetrics{Health: &TableHealth{N: 1, Maintenance: map[string]TableMaintenanceNode{
-		"compaction": {IO: TableMaintenanceIO{BytesRead: 10, BytesWritten: 4, Ops: TableMaintenanceIOOps{Get: 3, Put: 1}, ThrottleSecs: 1.5}},
+		"compaction": {IO: TableMaintenanceIO{BytesRead: 10, BytesWritten: 4, Ops: TableMaintenanceIOOps{Get: 3, Head: 2, Put: 1, List: 4, Delete: 3}, ThrottleSecs: 1.5}},
 	}}}
 	b := &TableAPIMetrics{Health: &TableHealth{N: 1, Maintenance: map[string]TableMaintenanceNode{
-		"compaction":                {IO: TableMaintenanceIO{BytesRead: 5, BytesWritten: 6, Ops: TableMaintenanceIOOps{Get: 2, List: 1}, ThrottleSecs: 0.5}},
+		"compaction":                {IO: TableMaintenanceIO{BytesRead: 5, BytesWritten: 6, Ops: TableMaintenanceIOOps{Get: 2, Head: 3, Put: 5, List: 1, Delete: 1}, ThrottleSecs: 0.5}},
 		"unreferenced_file_removal": {IO: TableMaintenanceIO{BytesRead: 1, Ops: TableMaintenanceIOOps{Head: 4, Delete: 2}}},
 	}}}
 
@@ -207,7 +207,7 @@ func TestTableHealthMergeSumsMaintenanceIO(t *testing.T) {
 		t.Fatal("Health = nil")
 	}
 	want := map[string]TableMaintenanceNode{
-		"compaction":                {IO: TableMaintenanceIO{BytesRead: 15, BytesWritten: 10, Ops: TableMaintenanceIOOps{Get: 5, Put: 1, List: 1}, ThrottleSecs: 2}},
+		"compaction":                {IO: TableMaintenanceIO{BytesRead: 15, BytesWritten: 10, Ops: TableMaintenanceIOOps{Get: 5, Head: 5, Put: 6, List: 5, Delete: 4}, ThrottleSecs: 2}},
 		"unreferenced_file_removal": {IO: TableMaintenanceIO{BytesRead: 1, Ops: TableMaintenanceIOOps{Head: 4, Delete: 2}}},
 	}
 	if !maps.Equal(got.Maintenance, want) {
@@ -229,10 +229,22 @@ func TestTableMaintenanceNodeOmitsZero(t *testing.T) {
 		want string
 	}{
 		{TableMaintenanceNode{}, `{}`},
+		{
+			TableMaintenanceNode{Runs: TableMaintenanceRuns{Count: 4, TotalSecs: 10, MaxSecs: 6}},
+			`{"runs":{"count":4,"total_secs":10,"max_secs":6}}`,
+		},
 		{TableMaintenanceNode{Groups: TableMaintenanceGroups{InFlight: 1}}, `{"groups":{"inflight":1}}`},
 		{
 			TableMaintenanceNode{Memory: TableMaintenanceMemory{ArrowBytes: GaugeStats{N: 1}}},
 			`{"memory":{"arrow_bytes":{"n":1}}}`,
+		},
+		{
+			TableMaintenanceNode{Memory: TableMaintenanceMemory{InputBytes: GaugeStats{N: 1, Sum: 5, Min: 5, Max: 5}}},
+			`{"memory":{"input_bytes":{"n":1,"sum":5,"min":5,"max":5}}}`,
+		},
+		{
+			TableMaintenanceNode{Memory: TableMaintenanceMemory{PeakArrowBytes: 9}},
+			`{"memory":{"peak_arrow_bytes":9}}`,
 		},
 		{
 			TableMaintenanceNode{IO: TableMaintenanceIO{Ops: TableMaintenanceIOOps{Delete: 2}}},
@@ -244,6 +256,9 @@ func TestTableMaintenanceNodeOmitsZero(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
+		if c.node.IsZero() != (c.node == TableMaintenanceNode{}) {
+			t.Errorf("IsZero(%+v) = %v", c.node, c.node.IsZero())
+		}
 		got, err := json.Marshal(c.node)
 		if err != nil {
 			t.Fatal(err)
