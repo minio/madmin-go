@@ -315,7 +315,7 @@ func TestTableMaintenanceJobTypeStatusCompactionBacklog(t *testing.T) {
 	if err := json.Unmarshal([]byte(want), &decoded); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if d := decoded.CompactionBacklog; d == nil || d.SmallFiles == nil || d.SmallFiles.Trend != CompactionBacklogGrowing || !d.SmallFiles.GrowingSince.Equal(since) || d.Sort != nil {
+	if d := decoded.CompactionBacklog; d == nil || d.SmallFiles == nil || d.SmallFiles.Trend != CompactionBacklogGrowing || !d.SmallFiles.GrowingSince.Equal(since) {
 		t.Errorf("compaction backlog decoded as %+v", decoded.CompactionBacklog)
 	}
 
@@ -325,6 +325,18 @@ func TestTableMaintenanceJobTypeStatusCompactionBacklog(t *testing.T) {
 	}
 	if string(got) != `{"status":"Successful"}` {
 		t.Errorf("a status without compaction backlog encoded as %s", got)
+	}
+
+	// A drained component keeps its zero counts and its trend on the wire.
+	got, err = json.Marshal(TableCompactionBacklog{
+		MeasuredTimestamp: measured,
+		SmallFiles:        &TableCompactionBacklogComponent{Trend: CompactionBacklogStable},
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	if string(got) != `{"measuredTimestamp":"2026-11-06T10:00:00Z","smallFiles":{"files":0,"residualFiles":0,"ratio":0,"trend":"stable"}}` {
+		t.Errorf("a zero backlog encoded as %s", got)
 	}
 }
 

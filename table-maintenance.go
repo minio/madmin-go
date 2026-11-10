@@ -229,15 +229,14 @@ type TableMaintenanceJobTypeStatus struct {
 	LastCompactionCommitRaceLostTimestamp *time.Time `json:"lastCompactionCommitRaceLostTimestamp,omitempty"`
 
 	// CompactionBacklog is the compaction work the table had waiting at its
-	// last run that planned it. Only compaction reports it. It is an AIStor
-	// extension to the S3 Tables maintenance job status.
+	// last run that planned it. It is an AIStor extension to the S3 Tables
+	// maintenance job status.
 	CompactionBacklog *TableCompactionBacklog `json:"compactionBacklog,omitempty"`
 
 	// CompactionDueTimestamp is when the table is due for its next compaction
 	// run: its last run plus its compaction interval. A past timestamp marks
-	// a table still waiting for compaction. Only compaction reports it, once
-	// the table has run. It is an AIStor extension to the S3 Tables
-	// maintenance job status.
+	// a table still waiting for compaction. It is an AIStor extension to the
+	// S3 Tables maintenance job status.
 	CompactionDueTimestamp *time.Time `json:"compactionDueTimestamp,omitempty"`
 }
 
@@ -255,12 +254,10 @@ type TableCompactionBacklog struct {
 	DeferredFiles int64 `json:"deferredFiles,omitempty"`
 
 	// SmallFiles counts files beyond what the candidates would occupy at the
-	// target file size, DeleteFiles the delete files applying to the table,
-	// and Sort the files not yet in the table's sort order. Each is omitted
-	// while it is zero.
+	// target file size, and DeleteFiles the delete files applying to the
+	// table.
 	SmallFiles  *TableCompactionBacklogComponent `json:"smallFiles,omitempty"`
 	DeleteFiles *TableCompactionBacklogComponent `json:"deleteFiles,omitempty"`
-	Sort        *TableCompactionBacklogComponent `json:"sort,omitempty"`
 }
 
 // TableCompactionBacklogComponent is one kind of compaction backlog, in files.
