@@ -227,7 +227,66 @@ type TableMaintenanceJobTypeStatus struct {
 	CompactionCommitRacesLost             *int64     `json:"compactionCommitRacesLost,omitempty"`
 	TotalCompactionCommitRacesLost        *int64     `json:"totalCompactionCommitRacesLost,omitempty"`
 	LastCompactionCommitRaceLostTimestamp *time.Time `json:"lastCompactionCommitRaceLostTimestamp,omitempty"`
+
+	// CompactionBacklog is the compaction work the table had waiting at its
+	// last run that planned it. It is an AIStor extension to the S3 Tables
+	// maintenance job status.
+	CompactionBacklog *TableCompactionBacklog `json:"compactionBacklog,omitempty"`
+
+	// CompactionDueTimestamp is when the table is due for its next compaction
+	// run: its last run plus its compaction interval. A past timestamp marks
+	// a table still waiting for compaction. It is an AIStor extension to the
+	// S3 Tables maintenance job status.
+	CompactionDueTimestamp *time.Time `json:"compactionDueTimestamp,omitempty"`
 }
+
+// TableCompactionBacklog is a table's compaction backlog as measured by the last
+// compaction run that planned it, within the table's compaction filter.
+type TableCompactionBacklog struct {
+	MeasuredTimestamp time.Time `json:"measuredTimestamp"`
+
+	// BacklogBytes is what rewriting every candidate file would cost.
+	BacklogBytes int64 `json:"backlogBytes,omitempty"`
+	// UnplannedFiles are candidates no group was worth rewriting under the
+	// current thresholds.
+	UnplannedFiles int64 `json:"unplannedFiles,omitempty"`
+	// DeferredFiles are planned candidates the run did not rewrite.
+	DeferredFiles int64 `json:"deferredFiles,omitempty"`
+
+	// SmallFiles counts files beyond what the candidates would occupy at the
+	// target file size, and DeleteFiles the delete files applying to the
+	// table.
+	SmallFiles  *TableCompactionBacklogComponent `json:"smallFiles,omitempty"`
+	DeleteFiles *TableCompactionBacklogComponent `json:"deleteFiles,omitempty"`
+}
+
+// TableCompactionBacklogComponent is one kind of compaction backlog, in files.
+// Files is what the run found and ResidualFiles what it left behind. Ratio is
+// ResidualFiles over the files the table would occupy at the target file
+// size, so tables of any size compare. GrowthStreak counts the consecutive
+// runs whose residual grew, since GrowingSince.
+type TableCompactionBacklogComponent struct {
+	Files         int64                  `json:"files"`
+	ResidualFiles int64                  `json:"residualFiles"`
+	Ratio         float64                `json:"ratio"`
+	GrowthStreak  int                    `json:"growthStreak,omitempty"`
+	GrowingSince  *time.Time             `json:"growingSince,omitempty"`
+	Trend         CompactionBacklogTrend `json:"trend"`
+}
+
+// CompactionBacklogTrend is the direction of a compaction backlog component.
+type CompactionBacklogTrend string
+
+const (
+	// CompactionBacklogGrowing marks a residual that grew on enough consecutive
+	// runs that compaction is not keeping up with the table.
+	CompactionBacklogGrowing CompactionBacklogTrend = "growing"
+	// CompactionBacklogStable marks a residual that neither kept growing nor
+	// shrank on the last run.
+	CompactionBacklogStable CompactionBacklogTrend = "stable"
+	// CompactionBacklogShrinking marks a residual that shrank on the last run.
+	CompactionBacklogShrinking CompactionBacklogTrend = "shrinking"
+)
 
 // GetTableMaintenanceJobStatusResponse is the response for GetTableMaintenanceJobStatus.
 type GetTableMaintenanceJobStatusResponse struct {
