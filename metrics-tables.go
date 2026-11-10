@@ -173,9 +173,8 @@ func (g *TableMaintenanceGroups) Add(other *TableMaintenanceGroups) {
 // TableMaintenanceMemory is the memory one maintenance type's work holds on
 // the reporting nodes. Each node sends one sample of every gauge its type
 // carries, idle or not, so across nodes Sum is the cluster total and Max the
-// most loaded node. Peaks of
-// different nodes do not add up, so Add keeps the largest. It is an AIStor
-// extension.
+// most loaded node. Peaks of different nodes do not add up, so Add keeps the
+// largest. It is an AIStor extension.
 type TableMaintenanceMemory struct {
 	// ArrowBytes is the Arrow buffer memory the running work holds now.
 	ArrowBytes GaugeStats `json:"arrow_bytes"`
