@@ -229,6 +229,7 @@ func TestTableMaintenanceNodeOmitsZero(t *testing.T) {
 		want string
 	}{
 		{TableMaintenanceNode{}, `{}`},
+		{TableMaintenanceNode{Runs: TableMaintenanceRuns{InFlight: 1}}, `{"runs":{"inflight":1}}`},
 		{
 			TableMaintenanceNode{Runs: TableMaintenanceRuns{Count: 4, TotalSecs: 10, MaxSecs: 6}},
 			`{"runs":{"count":4,"total_secs":10,"max_secs":6}}`,

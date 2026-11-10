@@ -57,7 +57,7 @@ type TableCatalog struct {
 }
 
 // TableHealth carries node-local transaction counters, cumulative since process
-// start. Every field sums across hosts.
+// start. Counters sum across hosts; Maintenance maxima keep the largest.
 type TableHealth struct {
 	// N is the number of nodes reporting.
 	N int `json:"n"`
@@ -108,6 +108,7 @@ func (h *TableHealth) Add(other *TableHealth) {
 // nodes. Counts and totals sum across nodes and maxima keep the largest. It is
 // an AIStor extension.
 type TableMaintenanceNode struct {
+	// Runs covers the type's table runs the reporting nodes execute.
 	Runs TableMaintenanceRuns `json:"runs,omitzero"`
 
 	// Groups covers the compaction groups the nodes rewrite, whichever node
@@ -209,9 +210,12 @@ func (m *TableMaintenanceMemory) Add(other *TableMaintenanceMemory) {
 // reporting nodes, cumulative since process start. Byte counts are plaintext,
 // before compression and encryption. It is an AIStor extension.
 type TableMaintenanceIO struct {
-	BytesRead    uint64                `json:"bytes_read,omitempty"`
-	BytesWritten uint64                `json:"bytes_written,omitempty"`
-	Ops          TableMaintenanceIOOps `json:"ops,omitzero"`
+	// BytesRead and BytesWritten are the table file bytes read and written.
+	BytesRead    uint64 `json:"bytes_read,omitempty"`
+	BytesWritten uint64 `json:"bytes_written,omitempty"`
+
+	// Ops counts the object operations issued for the I/O.
+	Ops TableMaintenanceIOOps `json:"ops,omitzero"`
 
 	// ThrottleSecs is the time the I/O paused to yield to other cluster
 	// traffic.
