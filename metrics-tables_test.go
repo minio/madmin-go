@@ -121,17 +121,17 @@ func TestTableHealthMergeSumsMaintenance(t *testing.T) {
 		N: 1,
 		Maintenance: map[string]TableMaintenanceNode{
 			"compaction": {
-				Runs:   TableMaintenanceRuns{InFlight: 2, Count: 4, TotalSecs: 100, MaxSecs: 60},
+				Runs:   TableMaintenanceRuns{InFlight: 2, Done: TimedAction{Count: 4, AccTime: 100e9, MinTime: 10e9, MaxTime: 60e9}},
 				Groups: TableMaintenanceGroups{InFlight: 3},
 			},
-			"snapshot_expiration": {Runs: TableMaintenanceRuns{Count: 1, TotalSecs: 2, MaxSecs: 2}},
+			"snapshot_expiration": {Runs: TableMaintenanceRuns{Done: TimedAction{Count: 1, AccTime: 2e9, MinTime: 2e9, MaxTime: 2e9}}},
 		},
 	}}
 	b := &TableAPIMetrics{Health: &TableHealth{
 		N: 1,
 		Maintenance: map[string]TableMaintenanceNode{
 			"compaction": {
-				Runs:   TableMaintenanceRuns{InFlight: 1, Count: 2, TotalSecs: 300, MaxSecs: 250},
+				Runs:   TableMaintenanceRuns{InFlight: 1, Done: TimedAction{Count: 2, AccTime: 300e9, MinTime: 50e9, MaxTime: 250e9}},
 				Groups: TableMaintenanceGroups{InFlight: 5},
 			},
 		},
@@ -143,10 +143,10 @@ func TestTableHealthMergeSumsMaintenance(t *testing.T) {
 	}
 	want := map[string]TableMaintenanceNode{
 		"compaction": {
-			Runs:   TableMaintenanceRuns{InFlight: 3, Count: 6, TotalSecs: 400, MaxSecs: 250},
+			Runs:   TableMaintenanceRuns{InFlight: 3, Done: TimedAction{Count: 6, AccTime: 400e9, MinTime: 10e9, MaxTime: 250e9}},
 			Groups: TableMaintenanceGroups{InFlight: 8},
 		},
-		"snapshot_expiration": {Runs: TableMaintenanceRuns{Count: 1, TotalSecs: 2, MaxSecs: 2}},
+		"snapshot_expiration": {Runs: TableMaintenanceRuns{Done: TimedAction{Count: 1, AccTime: 2e9, MinTime: 2e9, MaxTime: 2e9}}},
 	}
 	if !maps.Equal(got.Maintenance, want) {
 		t.Errorf("Maintenance = %+v, want %+v", got.Maintenance, want)
@@ -154,7 +154,7 @@ func TestTableHealthMergeSumsMaintenance(t *testing.T) {
 	if rev := mergeTables(b, a).Health; !maps.Equal(rev.Maintenance, want) {
 		t.Errorf("reverse Maintenance = %+v, want %+v", rev.Maintenance, want)
 	}
-	if a.Health.Maintenance["compaction"].Runs.Count != 4 {
+	if a.Health.Maintenance["compaction"].Runs.Done.Count != 4 {
 		t.Error("merging must not modify an input report")
 	}
 }
@@ -235,10 +235,10 @@ func TestTableMaintenanceNodeOmitsZero(t *testing.T) {
 		want string
 	}{
 		{TableMaintenanceNode{}, `{}`},
-		{TableMaintenanceNode{Runs: TableMaintenanceRuns{InFlight: 1}}, `{"runs":{"inflight":1}}`},
+		{TableMaintenanceNode{Runs: TableMaintenanceRuns{InFlight: 1}}, `{"runs":{"inflight":1,"done":{"count":0,"acc_time_ns":0}}}`},
 		{
-			TableMaintenanceNode{Runs: TableMaintenanceRuns{Count: 4, TotalSecs: 10, MaxSecs: 6}},
-			`{"runs":{"count":4,"total_secs":10,"max_secs":6}}`,
+			TableMaintenanceNode{Runs: TableMaintenanceRuns{Done: TimedAction{Count: 4, AccTime: 10, MinTime: 2, MaxTime: 6}}},
+			`{"runs":{"done":{"count":4,"acc_time_ns":10,"min_ns":2,"max_ns":6}}}`,
 		},
 		{TableMaintenanceNode{Groups: TableMaintenanceGroups{InFlight: 1}}, `{"groups":{"inflight":1}}`},
 		{

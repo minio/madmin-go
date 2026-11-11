@@ -146,11 +146,8 @@ type TableMaintenanceRuns struct {
 	// InFlight is the number of table runs executing now.
 	InFlight uint64 `json:"inflight,omitempty"`
 
-	// Count and TotalSecs cover the scheduled runs finished since process
-	// start, and MaxSecs is the longest of them.
-	Count     uint64  `json:"count,omitempty"`
-	TotalSecs float64 `json:"total_secs,omitempty"`
-	MaxSecs   float64 `json:"max_secs,omitempty"`
+	// Done covers the scheduled runs finished since process start.
+	Done TimedAction `json:"done,omitempty"`
 }
 
 // IsZero reports whether nothing has been recorded, for omitzero.
@@ -159,9 +156,7 @@ func (r TableMaintenanceRuns) IsZero() bool { return r == TableMaintenanceRuns{}
 // Add other into r.
 func (r *TableMaintenanceRuns) Add(other *TableMaintenanceRuns) {
 	r.InFlight += other.InFlight
-	r.Count += other.Count
-	r.TotalSecs += other.TotalSecs
-	r.MaxSecs = max(r.MaxSecs, other.MaxSecs)
+	r.Done.Add(&other.Done)
 }
 
 // TableMaintenanceGroups summarizes the compaction groups the reporting nodes
