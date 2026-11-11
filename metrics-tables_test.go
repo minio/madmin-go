@@ -20,6 +20,7 @@
 package madmin
 
 import (
+	"encoding/json"
 	"maps"
 	"reflect"
 	"testing"
@@ -110,6 +111,179 @@ func TestTableHealthMergeSums(t *testing.T) {
 	}
 	if !maps.Equal(got.VendedCreds, map[string]uint64{"issued": 7, "denied": 1}) {
 		t.Errorf("VendedCreds = %v", got.VendedCreds)
+	}
+}
+
+// Every node runs its own share of maintenance work, so in-flight counts and
+// run totals sum while the longest run is the longest on any node.
+func TestTableHealthMergeSumsMaintenance(t *testing.T) {
+	a := &TableAPIMetrics{Health: &TableHealth{
+		N: 1,
+		Maintenance: map[string]TableMaintenanceNode{
+			"compaction": {
+				Runs:   TableMaintenanceRuns{InFlight: 2, Done: TimedAction{Count: 4, AccTime: 100e9, MinTime: 10e9, MaxTime: 60e9}},
+				Groups: TableMaintenanceGroups{InFlight: 3},
+			},
+			"snapshot_expiration": {Runs: TableMaintenanceRuns{Done: TimedAction{Count: 1, AccTime: 2e9, MinTime: 2e9, MaxTime: 2e9}}},
+		},
+	}}
+	b := &TableAPIMetrics{Health: &TableHealth{
+		N: 1,
+		Maintenance: map[string]TableMaintenanceNode{
+			"compaction": {
+				Runs:   TableMaintenanceRuns{InFlight: 1, Done: TimedAction{Count: 2, AccTime: 300e9, MinTime: 50e9, MaxTime: 250e9}},
+				Groups: TableMaintenanceGroups{InFlight: 5},
+			},
+		},
+	}}
+
+	got := mergeTables(a, b).Health
+	if got == nil {
+		t.Fatal("Health = nil")
+	}
+	want := map[string]TableMaintenanceNode{
+		"compaction": {
+			Runs:   TableMaintenanceRuns{InFlight: 3, Done: TimedAction{Count: 6, AccTime: 400e9, MinTime: 10e9, MaxTime: 250e9}},
+			Groups: TableMaintenanceGroups{InFlight: 8},
+		},
+		"snapshot_expiration": {Runs: TableMaintenanceRuns{Done: TimedAction{Count: 1, AccTime: 2e9, MinTime: 2e9, MaxTime: 2e9}}},
+	}
+	if !maps.Equal(got.Maintenance, want) {
+		t.Errorf("Maintenance = %+v, want %+v", got.Maintenance, want)
+	}
+	if rev := mergeTables(b, a).Health; !maps.Equal(rev.Maintenance, want) {
+		t.Errorf("reverse Maintenance = %+v, want %+v", rev.Maintenance, want)
+	}
+	if a.Health.Maintenance["compaction"].Runs.Done.Count != 4 {
+		t.Error("merging must not modify an input report")
+	}
+}
+
+// Current memory sums with the most loaded node kept, while peaks of different
+// nodes never add up.
+func TestTableHealthMergeMaintenanceMemory(t *testing.T) {
+	node := func(arrow, input float64, peak, nodePeak uint64) map[string]TableMaintenanceNode {
+		return map[string]TableMaintenanceNode{"compaction": {Memory: TableMaintenanceMemory{
+			ArrowBytes:         GaugeStats{N: 1, Sum: arrow, Min: arrow, Max: arrow},
+			InputBytes:         GaugeStats{N: 1, Sum: input, Min: input, Max: input},
+			PeakArrowBytes:     peak,
+			NodePeakArrowBytes: nodePeak,
+		}}}
+	}
+	a := &TableAPIMetrics{Health: &TableHealth{N: 1, Maintenance: node(100, 1000, 700, 900)}}
+	b := &TableAPIMetrics{Health: &TableHealth{N: 1, Maintenance: node(300, 0, 500, 1200)}}
+	c := &TableAPIMetrics{Health: &TableHealth{N: 1, Maintenance: map[string]TableMaintenanceNode{
+		"record_expiration": {Memory: TableMaintenanceMemory{ArrowBytes: GaugeStats{N: 1, Sum: 8, Min: 8, Max: 8}, PeakArrowBytes: 9}},
+	}}}
+
+	got := mergeTables(mergeTables(a, b), c).Health.Maintenance
+	want := map[string]TableMaintenanceNode{
+		"compaction": {Memory: TableMaintenanceMemory{
+			ArrowBytes:         GaugeStats{N: 2, Sum: 400, Min: 100, Max: 300},
+			InputBytes:         GaugeStats{N: 2, Sum: 1000, Min: 0, Max: 1000},
+			PeakArrowBytes:     700,
+			NodePeakArrowBytes: 1200,
+		}},
+		"record_expiration": {Memory: TableMaintenanceMemory{ArrowBytes: GaugeStats{N: 1, Sum: 8, Min: 8, Max: 8}, PeakArrowBytes: 9}},
+	}
+	if !maps.Equal(got, want) {
+		t.Errorf("Maintenance = %+v, want %+v", got, want)
+	}
+	if rev := mergeTables(mergeTables(c, b), a).Health.Maintenance; !maps.Equal(rev, want) {
+		t.Errorf("reverse Maintenance = %+v, want %+v", rev, want)
+	}
+	if a.Health.Maintenance["compaction"].Memory.ArrowBytes.N != 1 {
+		t.Error("merging must not modify an input report")
+	}
+}
+
+// Table maintenance I/O is counted on every node that does it, so it sums per
+// job type like the rest of Health.
+func TestTableHealthMergeSumsMaintenanceIO(t *testing.T) {
+	a := &TableAPIMetrics{Health: &TableHealth{N: 1, Maintenance: map[string]TableMaintenanceNode{
+		"compaction": {IO: TableMaintenanceIO{BytesRead: 10, BytesWritten: 4, Ops: TableMaintenanceIOOps{Get: 3, Head: 2, Put: 1, List: 4, Delete: 3}, ThrottleSecs: 1.5}},
+	}}}
+	b := &TableAPIMetrics{Health: &TableHealth{N: 1, Maintenance: map[string]TableMaintenanceNode{
+		"compaction":                {IO: TableMaintenanceIO{BytesRead: 5, BytesWritten: 6, Ops: TableMaintenanceIOOps{Get: 2, Head: 3, Put: 5, List: 1, Delete: 1}, ThrottleSecs: 0.5}},
+		"unreferenced_file_removal": {IO: TableMaintenanceIO{BytesRead: 1, Ops: TableMaintenanceIOOps{Head: 4, Delete: 2}}},
+	}}}
+
+	got := mergeTables(a, b).Health
+	if got == nil {
+		t.Fatal("Health = nil")
+	}
+	want := map[string]TableMaintenanceNode{
+		"compaction":                {IO: TableMaintenanceIO{BytesRead: 15, BytesWritten: 10, Ops: TableMaintenanceIOOps{Get: 5, Head: 5, Put: 6, List: 5, Delete: 4}, ThrottleSecs: 2}},
+		"unreferenced_file_removal": {IO: TableMaintenanceIO{BytesRead: 1, Ops: TableMaintenanceIOOps{Head: 4, Delete: 2}}},
+	}
+	if !maps.Equal(got.Maintenance, want) {
+		t.Errorf("Maintenance = %+v, want %+v", got.Maintenance, want)
+	}
+	if a.Health.Maintenance["compaction"].IO.BytesRead != 10 {
+		t.Error("merging must not modify an input report")
+	}
+	if (TableMaintenanceNode{IO: TableMaintenanceIO{Ops: TableMaintenanceIOOps{List: 1}}}).IsZero() {
+		t.Error("a node that only did I/O must not be zero")
+	}
+}
+
+// A type that only rewrote groups as a peer carries no runs, and an idle one
+// carries nothing, so neither puts empty objects on the wire.
+func TestTableMaintenanceNodeOmitsZero(t *testing.T) {
+	cases := []struct {
+		node TableMaintenanceNode
+		want string
+	}{
+		{TableMaintenanceNode{}, `{}`},
+		{TableMaintenanceNode{Runs: TableMaintenanceRuns{InFlight: 1}}, `{"runs":{"inflight":1,"done":{"count":0,"acc_time_ns":0}}}`},
+		{
+			TableMaintenanceNode{Runs: TableMaintenanceRuns{Done: TimedAction{Count: 4, AccTime: 10, MinTime: 2, MaxTime: 6}}},
+			`{"runs":{"done":{"count":4,"acc_time_ns":10,"min_ns":2,"max_ns":6}}}`,
+		},
+		{TableMaintenanceNode{Groups: TableMaintenanceGroups{InFlight: 1}}, `{"groups":{"inflight":1}}`},
+		{
+			TableMaintenanceNode{Memory: TableMaintenanceMemory{ArrowBytes: GaugeStats{N: 1}}},
+			`{"memory":{"arrow_bytes":{"n":1}}}`,
+		},
+		{
+			TableMaintenanceNode{Memory: TableMaintenanceMemory{InputBytes: GaugeStats{N: 1, Sum: 5, Min: 5, Max: 5}}},
+			`{"memory":{"input_bytes":{"n":1,"sum":5,"min":5,"max":5}}}`,
+		},
+		{
+			TableMaintenanceNode{Memory: TableMaintenanceMemory{PeakArrowBytes: 9}},
+			`{"memory":{"peak_arrow_bytes":9}}`,
+		},
+		{
+			TableMaintenanceNode{IO: TableMaintenanceIO{Ops: TableMaintenanceIOOps{Delete: 2}}},
+			`{"io":{"ops":{"delete":2}}}`,
+		},
+		{
+			TableMaintenanceNode{IO: TableMaintenanceIO{BytesRead: 1, ThrottleSecs: 0.5}},
+			`{"io":{"bytes_read":1,"throttle_secs":0.5}}`,
+		},
+	}
+	for _, c := range cases {
+		if c.node.IsZero() != (c.node == TableMaintenanceNode{}) {
+			t.Errorf("IsZero(%+v) = %v", c.node, c.node.IsZero())
+		}
+		got, err := json.Marshal(c.node)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if string(got) != c.want {
+			t.Errorf("json = %s, want %s", got, c.want)
+		}
+		bts, err := c.node.MarshalMsg(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var back TableMaintenanceNode
+		if _, err := back.UnmarshalMsg(bts); err != nil {
+			t.Fatal(err)
+		}
+		if back != c.node {
+			t.Errorf("msgp round trip = %+v, want %+v", back, c.node)
+		}
 	}
 }
 

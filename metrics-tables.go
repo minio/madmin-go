@@ -31,8 +31,8 @@ import (
 // These three carry three different reductions, which is why they are three
 // sub-structs rather than fields on TableAPIMetrics: the catalog inventory is
 // replicated to every node and must never be summed, the transaction counters
-// are per-node and must be, and the maintenance jobs are leader-owned and must
-// be selected between.
+// and each node's maintenance work are per-node and merge across hosts, and
+// the maintenance jobs are leader-owned and must be selected between.
 
 // TableCatalog is the cluster-wide catalog inventory.
 //
@@ -57,7 +57,8 @@ type TableCatalog struct {
 }
 
 // TableHealth carries node-local transaction counters, cumulative since process
-// start. Every field sums across hosts.
+// start, and each node's table maintenance work. Every field sums across hosts
+// except Maintenance, which merges per TableMaintenanceNode.Add.
 type TableHealth struct {
 	// N is the number of nodes reporting.
 	N int `json:"n"`
@@ -82,6 +83,14 @@ type TableHealth struct {
 	// PeerRPCs is compaction's peer-RPC count, summed across nodes even
 	// though compaction's TableMaintenanceJob is leader-owned.
 	PeerRPCs uint64 `json:"peer_rpcs,omitempty"`
+
+	// Maintenance maps a maintenance job type to the work the reporting nodes
+	// ran for it. Keys are "snapshot_expiration", "unreferenced_file_removal",
+	// "compaction", "record_expiration", and "manifest_merge", which carries
+	// only IO. Each node reports only the work it runs itself, so it merges
+	// across nodes even though TableMaintenanceJob is leader-owned. It is an
+	// AIStor extension.
+	Maintenance map[string]TableMaintenanceNode `json:"maintenance,omitempty"`
 }
 
 // Add other into h.
@@ -95,6 +104,158 @@ func (h *TableHealth) Add(other *TableHealth) {
 	addMap(&h.Rollbacks, other.Rollbacks)
 	addMap(&h.VendedCreds, other.VendedCreds)
 	h.PeerRPCs += other.PeerRPCs
+	mergeMap(&h.Maintenance, other.Maintenance)
+}
+
+// TableMaintenanceNode is one maintenance job type's work on the reporting
+// nodes. Counts and totals sum across nodes and maxima keep the largest. It is
+// an AIStor extension.
+type TableMaintenanceNode struct {
+	// Runs covers the type's table runs the reporting nodes execute.
+	Runs TableMaintenanceRuns `json:"runs,omitzero"`
+
+	// Groups covers the compaction groups the nodes rewrite, whichever node
+	// runs the table, so only compaction reports it.
+	Groups TableMaintenanceGroups `json:"groups,omitzero"`
+
+	// Memory covers the Arrow buffers the type's work holds, so only the
+	// types that read table data, compaction and record expiration, report it.
+	Memory TableMaintenanceMemory `json:"memory,omitzero"`
+
+	// IO covers the table files the type's work reads and writes on the
+	// reporting nodes, a compaction peer's rewrites included.
+	IO TableMaintenanceIO `json:"io,omitzero"`
+}
+
+// IsZero reports whether nothing has been recorded, for omitzero.
+func (n TableMaintenanceNode) IsZero() bool {
+	return n.Runs.IsZero() && n.Groups.IsZero() && n.Memory.IsZero() && n.IO.IsZero()
+}
+
+// Add other into n.
+func (n *TableMaintenanceNode) Add(other *TableMaintenanceNode) {
+	n.Runs.Add(&other.Runs)
+	n.Groups.Add(&other.Groups)
+	n.Memory.Add(&other.Memory)
+	n.IO.Add(&other.IO)
+}
+
+// TableMaintenanceRuns summarizes one maintenance job type's table runs on
+// the reporting nodes. It is an AIStor extension.
+type TableMaintenanceRuns struct {
+	// InFlight is the number of table runs executing now.
+	InFlight uint64 `json:"inflight,omitempty"`
+
+	// Done covers the scheduled runs finished since process start.
+	Done TimedAction `json:"done,omitempty"`
+}
+
+// IsZero reports whether nothing has been recorded, for omitzero.
+func (r TableMaintenanceRuns) IsZero() bool { return r == TableMaintenanceRuns{} }
+
+// Add other into r.
+func (r *TableMaintenanceRuns) Add(other *TableMaintenanceRuns) {
+	r.InFlight += other.InFlight
+	r.Done.Add(&other.Done)
+}
+
+// TableMaintenanceGroups summarizes the compaction groups the reporting nodes
+// rewrite. It is an AIStor extension.
+type TableMaintenanceGroups struct {
+	// InFlight is the number of groups being rewritten now.
+	InFlight uint64 `json:"inflight,omitempty"`
+}
+
+// IsZero reports whether nothing has been recorded, for omitzero.
+func (g TableMaintenanceGroups) IsZero() bool { return g == TableMaintenanceGroups{} }
+
+// Add other into g.
+func (g *TableMaintenanceGroups) Add(other *TableMaintenanceGroups) {
+	g.InFlight += other.InFlight
+}
+
+// TableMaintenanceMemory is the memory one maintenance type's work holds on
+// the reporting nodes. Each node sends one sample of every gauge its type
+// carries, idle or not, so across nodes Sum is the cluster total and Max the
+// most loaded node. Peaks of different nodes do not add up, so Add keeps the
+// largest. It is an AIStor extension.
+type TableMaintenanceMemory struct {
+	// ArrowBytes is the Arrow buffer memory the running work holds now.
+	ArrowBytes GaugeStats `json:"arrow_bytes,omitzero"`
+	// InputBytes is the size of the data and delete files the running work
+	// reads. Only compaction reports it.
+	InputBytes GaugeStats `json:"input_bytes,omitzero"`
+	// PeakArrowBytes is the largest Arrow buffer peak of a single unit of work,
+	// a compaction group or a record expiration run, since a node started.
+	PeakArrowBytes uint64 `json:"peak_arrow_bytes,omitempty"`
+	// NodePeakArrowBytes is the most Arrow buffer memory all running work on
+	// one node held at once since the node started.
+	NodePeakArrowBytes uint64 `json:"node_peak_arrow_bytes,omitempty"`
+}
+
+// IsZero reports whether nothing has been recorded, for omitzero.
+func (m TableMaintenanceMemory) IsZero() bool { return m == TableMaintenanceMemory{} }
+
+// Add other into m.
+func (m *TableMaintenanceMemory) Add(other *TableMaintenanceMemory) {
+	m.ArrowBytes.Add(&other.ArrowBytes)
+	m.InputBytes.Add(&other.InputBytes)
+	m.PeakArrowBytes = max(m.PeakArrowBytes, other.PeakArrowBytes)
+	m.NodePeakArrowBytes = max(m.NodePeakArrowBytes, other.NodePeakArrowBytes)
+}
+
+// TableMaintenanceIO is the table file I/O one maintenance type issued on the
+// reporting nodes, cumulative since process start. Byte counts are plaintext,
+// before compression and encryption. It is an AIStor extension.
+type TableMaintenanceIO struct {
+	// BytesRead and BytesWritten are the table file bytes read and written.
+	BytesRead    uint64 `json:"bytes_read,omitempty"`
+	BytesWritten uint64 `json:"bytes_written,omitempty"`
+
+	// Ops counts the object operations issued for the I/O.
+	Ops TableMaintenanceIOOps `json:"ops,omitzero"`
+
+	// ThrottleSecs is the time the I/O paused to yield to other cluster
+	// traffic.
+	ThrottleSecs float64 `json:"throttle_secs,omitempty"`
+}
+
+// IsZero reports whether nothing has been recorded, for omitzero.
+func (o TableMaintenanceIO) IsZero() bool { return o == TableMaintenanceIO{} }
+
+// Add other into o.
+func (o *TableMaintenanceIO) Add(other *TableMaintenanceIO) {
+	o.BytesRead += other.BytesRead
+	o.BytesWritten += other.BytesWritten
+	o.Ops.Add(&other.Ops)
+	o.ThrottleSecs += other.ThrottleSecs
+}
+
+// TableMaintenanceIOOps counts the object operations behind table maintenance
+// I/O. It is an AIStor extension.
+type TableMaintenanceIOOps struct {
+	// Get is one ranged object read.
+	Get uint64 `json:"get,omitempty"`
+	// Head is one object stat.
+	Head uint64 `json:"head,omitempty"`
+	// Put is one object upload started.
+	Put uint64 `json:"put,omitempty"`
+	// List is one listing walk of a prefix or of one key's versions.
+	List uint64 `json:"list,omitempty"`
+	// Delete is one object or object version sent for deletion.
+	Delete uint64 `json:"delete,omitempty"`
+}
+
+// IsZero reports whether nothing has been recorded, for omitzero.
+func (o TableMaintenanceIOOps) IsZero() bool { return o == TableMaintenanceIOOps{} }
+
+// Add other into o.
+func (o *TableMaintenanceIOOps) Add(other *TableMaintenanceIOOps) {
+	o.Get += other.Get
+	o.Head += other.Head
+	o.Put += other.Put
+	o.List += other.List
+	o.Delete += other.Delete
 }
 
 // TableMaintenanceJob is one background table-maintenance job.
@@ -375,7 +536,8 @@ type TableAPIMetrics struct {
 	// tables stats leader lock -- the walk behind it is object-layer I/O.
 	Catalog *TableCatalog `json:"catalog,omitempty"`
 
-	// Health is the node-local transaction counters, summed across hosts.
+	// Health is the node-local transaction counters and table maintenance
+	// work, merged per TableHealth.Add.
 	Health *TableHealth `json:"health,omitempty"`
 
 	// Maintenance maps a background maintenance job type
