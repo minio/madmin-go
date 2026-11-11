@@ -364,3 +364,27 @@ func TestTableMaintenanceJobTypeStatusCompactionDue(t *testing.T) {
 		t.Errorf("compaction due timestamp decoded as %v", decoded.CompactionDueTimestamp)
 	}
 }
+
+// The last run and the type's byte totals are read by name.
+func TestTableMaintenanceJobTypeStatusLastRunAndBytes(t *testing.T) {
+	read, written := int64(1000), int64(400)
+	got, err := json.Marshal(TableMaintenanceJobTypeStatus{
+		Status:            MaintenanceJobStatusSuccessful,
+		TotalBytesRead:    &read,
+		TotalBytesWritten: &written,
+		LastRun: &TableMaintenanceLastRun{
+			DurationSeconds:     1.5,
+			PeakGroupArrowBytes: 64,
+			PeakGroupInputBytes: 128,
+			BytesRead:           100,
+			BytesWritten:        40,
+		},
+	})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	const want = `{"status":"Successful","totalBytesRead":1000,"totalBytesWritten":400,"lastRun":{"durationSeconds":1.5,"peakGroupArrowBytes":64,"peakGroupInputBytes":128,"bytesRead":100,"bytesWritten":40}}`
+	if string(got) != want {
+		t.Errorf("encoded as\n %s\nwant\n %s", got, want)
+	}
+}
