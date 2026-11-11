@@ -151,6 +151,9 @@ func TestTableHealthMergeSumsMaintenance(t *testing.T) {
 	if !maps.Equal(got.Maintenance, want) {
 		t.Errorf("Maintenance = %+v, want %+v", got.Maintenance, want)
 	}
+	if rev := mergeTables(b, a).Health; !maps.Equal(rev.Maintenance, want) {
+		t.Errorf("reverse Maintenance = %+v, want %+v", rev.Maintenance, want)
+	}
 	if a.Health.Maintenance["compaction"].Runs.Count != 4 {
 		t.Error("merging must not modify an input report")
 	}
@@ -185,6 +188,9 @@ func TestTableHealthMergeMaintenanceMemory(t *testing.T) {
 	}
 	if !maps.Equal(got, want) {
 		t.Errorf("Maintenance = %+v, want %+v", got, want)
+	}
+	if rev := mergeTables(mergeTables(c, b), a).Health.Maintenance; !maps.Equal(rev, want) {
+		t.Errorf("reverse Maintenance = %+v, want %+v", rev, want)
 	}
 	if a.Health.Maintenance["compaction"].Memory.ArrowBytes.N != 1 {
 		t.Error("merging must not modify an input report")

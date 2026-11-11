@@ -31,8 +31,8 @@ import (
 // These three carry three different reductions, which is why they are three
 // sub-structs rather than fields on TableAPIMetrics: the catalog inventory is
 // replicated to every node and must never be summed, the transaction counters
-// are per-node and must be, and the maintenance jobs are leader-owned and must
-// be selected between.
+// and each node's maintenance work are per-node and merge across hosts, and
+// the maintenance jobs are leader-owned and must be selected between.
 
 // TableCatalog is the cluster-wide catalog inventory.
 //
@@ -57,7 +57,8 @@ type TableCatalog struct {
 }
 
 // TableHealth carries node-local transaction counters, cumulative since process
-// start. Counters sum across hosts; Maintenance maxima keep the largest.
+// start, and each node's table maintenance work. Every field sums across hosts
+// except Maintenance, which merges per TableMaintenanceNode.Add.
 type TableHealth struct {
 	// N is the number of nodes reporting.
 	N int `json:"n"`
@@ -84,7 +85,9 @@ type TableHealth struct {
 	PeerRPCs uint64 `json:"peer_rpcs,omitempty"`
 
 	// Maintenance maps a maintenance job type to the work the reporting nodes
-	// ran for it. Each node reports only the work it runs itself, so it sums
+	// ran for it. Keys are "snapshot_expiration", "unreferenced_file_removal",
+	// "compaction", "record_expiration", and "manifest_merge", which carries
+	// only IO. Each node reports only the work it runs itself, so it merges
 	// across nodes even though TableMaintenanceJob is leader-owned. It is an
 	// AIStor extension.
 	Maintenance map[string]TableMaintenanceNode `json:"maintenance,omitempty"`
@@ -538,7 +541,8 @@ type TableAPIMetrics struct {
 	// tables stats leader lock -- the walk behind it is object-layer I/O.
 	Catalog *TableCatalog `json:"catalog,omitempty"`
 
-	// Health is the node-local transaction counters, summed across hosts.
+	// Health is the node-local transaction counters and table maintenance
+	// work, merged per TableHealth.Add.
 	Health *TableHealth `json:"health,omitempty"`
 
 	// Maintenance maps a background maintenance job type
