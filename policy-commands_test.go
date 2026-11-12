@@ -27,6 +27,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"testing"
 	"time"
 )
@@ -160,4 +161,191 @@ func TestCannedPolicyRequests(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPolicyInfoTypeJSON(t *testing.T) {
+	policy := json.RawMessage(`{"Version":"2012-10-17","Statement":[]}`)
+	testCases := []struct {
+		name string
+		pi   PolicyInfo
+		want string
+	}{
+		{
+			name: "system-no-dates",
+			pi:   PolicyInfo{PolicyName: "Admin", Policy: policy, Type: PolicyTypeSystem},
+			want: `{"PolicyName":"Admin","Policy":{"Version":"2012-10-17","Statement":[]},"type":"System"}`,
+		},
+		{
+			name: "legacy-no-dates",
+			pi: PolicyInfo{
+				PolicyName: "consoleAdmin", Policy: policy,
+				Type: PolicyTypeLegacy, Legacy: true, ReplacedBy: "Admin",
+			},
+			want: `{"PolicyName":"consoleAdmin","Policy":{"Version":"2012-10-17","Statement":[]},` +
+				`"type":"Legacy","legacy":true,"replacedBy":"Admin"}`,
+		},
+		{
+			name: "conflict-with-dates",
+			pi: PolicyInfo{
+				PolicyName: "Admin", Policy: policy,
+				CreateDate: time.Date(2026, time.October, 1, 10, 0, 0, 0, time.UTC),
+				UpdateDate: time.Date(2026, time.October, 2, 10, 0, 0, 0, time.UTC),
+				Type:       PolicyTypeUserDefined, Conflict: true,
+			},
+			want: `{"PolicyName":"Admin","Policy":{"Version":"2012-10-17","Statement":[]},` +
+				`"CreateDate":"2026-10-01T10:00:00Z","UpdateDate":"2026-10-02T10:00:00Z",` +
+				`"type":"UserDefined","conflict":true}`,
+		},
+		{
+			name: "modified-legacy-with-dates",
+			pi: PolicyInfo{
+				PolicyName: "readwrite", Policy: policy,
+				CreateDate: time.Date(2026, time.October, 1, 10, 0, 0, 0, time.UTC),
+				UpdateDate: time.Date(2026, time.October, 2, 10, 0, 0, 0, time.UTC),
+				Type:       PolicyTypeUserDefined, Legacy: true, ReplacedBy: "ObjectsReadWrite",
+			},
+			want: `{"PolicyName":"readwrite","Policy":{"Version":"2012-10-17","Statement":[]},` +
+				`"CreateDate":"2026-10-01T10:00:00Z","UpdateDate":"2026-10-02T10:00:00Z",` +
+				`"type":"UserDefined","legacy":true,"replacedBy":"ObjectsReadWrite"}`,
+		},
+		{
+			name: "no-type",
+			pi:   PolicyInfo{PolicyName: "p", Policy: policy},
+			want: `{"PolicyName":"p","Policy":{"Version":"2012-10-17","Statement":[]}}`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			buf, err := json.Marshal(tc.pi)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(buf) != tc.want {
+				t.Fatalf("marshal:\nwant %s\ngot  %s", tc.want, buf)
+			}
+			var got PolicyInfo
+			if err := json.Unmarshal(buf, &got); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(got, tc.pi) {
+				t.Fatalf("round trip: want %+v, got %+v", tc.pi, got)
+			}
+		})
+	}
+}
+
+func TestPolicyListEntryJSON(t *testing.T) {
+	testCases := []struct {
+		name string
+		e    PolicyListEntry
+		want string
+	}{
+		{
+			name: "system-no-dates",
+			e:    PolicyListEntry{Name: "Admin", Type: PolicyTypeSystem},
+			want: `{"name":"Admin","type":"System"}`,
+		},
+		{
+			name: "legacy-no-dates",
+			e:    PolicyListEntry{Name: "readonly", Type: PolicyTypeLegacy, Legacy: true, ReplacedBy: "ObjectsRead"},
+			want: `{"name":"readonly","type":"Legacy","legacy":true,"replacedBy":"ObjectsRead"}`,
+		},
+		{
+			name: "conflict-with-dates",
+			e: PolicyListEntry{
+				Name: "Admin", Type: PolicyTypeUserDefined, Conflict: true,
+				CreateDate: time.Date(2026, time.October, 1, 10, 0, 0, 0, time.UTC),
+				UpdateDate: time.Date(2026, time.October, 2, 10, 0, 0, 0, time.UTC),
+			},
+			want: `{"name":"Admin","type":"UserDefined","conflict":true,` +
+				`"CreateDate":"2026-10-01T10:00:00Z","UpdateDate":"2026-10-02T10:00:00Z"}`,
+		},
+		{
+			name: "no-type",
+			e:    PolicyListEntry{Name: "p"},
+			want: `{"name":"p"}`,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			buf, err := json.Marshal(tc.e)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(buf) != tc.want {
+				t.Fatalf("marshal:\nwant %s\ngot  %s", tc.want, buf)
+			}
+			var got PolicyListEntry
+			if err := json.Unmarshal(buf, &got); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(got, tc.e) {
+				t.Fatalf("round trip: want %+v, got %+v", tc.e, got)
+			}
+		})
+	}
+}
+
+func TestListCannedPolicyInfo(t *testing.T) {
+	created := time.Date(2026, time.October, 1, 10, 0, 0, 0, time.UTC)
+	testCases := []struct {
+		name string
+		body string
+		want []PolicyListEntry
+	}{
+		{
+			name: "v2-array",
+			body: `[{"name":"readonly","type":"Legacy","legacy":true,"replacedBy":"ObjectsRead"},` +
+				`{"name":"Admin","type":"UserDefined","conflict":true,"CreateDate":"2026-10-01T10:00:00Z","UpdateDate":"2026-10-01T10:00:00Z"},` +
+				`{"name":"ObjectsRead","type":"System"}]`,
+			want: []PolicyListEntry{
+				{Name: "Admin", Type: PolicyTypeUserDefined, Conflict: true, CreateDate: created, UpdateDate: created},
+				{Name: "ObjectsRead", Type: PolicyTypeSystem},
+				{Name: "readonly", Type: PolicyTypeLegacy, Legacy: true, ReplacedBy: "ObjectsRead"},
+			},
+		},
+		{
+			name: "v2-empty",
+			body: `[]`,
+			want: []PolicyListEntry{},
+		},
+		{
+			name: "old-server-object",
+			body: "\n  " + `{"readwrite":{"Version":"2012-10-17","Statement":[]},"diagnostics":{"Version":"2012-10-17","Statement":[]},"consoleAdmin":{"Version":"2012-10-17","Statement":[]}}`,
+			want: []PolicyListEntry{{Name: "consoleAdmin"}, {Name: "diagnostics"}, {Name: "readwrite"}},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			adm, ch := newCaptureServer(t, http.StatusOK, tc.body)
+			got, err := adm.ListCannedPolicyInfo(context.Background())
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			req := <-ch
+			if req.method != http.MethodGet {
+				t.Errorf("method: want %s, got %s", http.MethodGet, req.method)
+			}
+			if want := "/minio/admin/v4/list-canned-policies"; req.path != want {
+				t.Errorf("path: want %s, got %s", want, req.path)
+			}
+			if req.query != "v=2" {
+				t.Errorf("query: want v=2, got %s", req.query)
+			}
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("entries:\nwant %+v\ngot  %+v", tc.want, got)
+			}
+		})
+	}
+
+	t.Run("error", func(t *testing.T) {
+		adm, _ := newCaptureServer(t, http.StatusForbidden,
+			`<?xml version="1.0" encoding="UTF-8"?><Error><Code>AccessDenied</Code><Message>Access Denied.</Message></Error>`)
+		if _, err := adm.ListCannedPolicyInfo(context.Background()); err == nil {
+			t.Fatal("expected an error")
+		}
+	})
 }
