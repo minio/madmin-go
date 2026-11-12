@@ -503,21 +503,26 @@ func (adm *AdminClient) ListAccessKeysLDAPBulk(ctx context.Context, users []stri
 	return adm.ListAccessKeysLDAPBulkWithOpts(ctx, users, ListAccessKeysOpts{ListType: listType, All: all})
 }
 
+// ListAccessKeysLDAPBulkWithConfig - list access keys belonging to the given users or all users
+// of the named LDAP config
+func (adm *AdminClient) ListAccessKeysLDAPBulkWithConfig(ctx context.Context, users []string, listType string, all bool, configName string) (map[string]ListAccessKeysLDAPResp, error) {
+	return adm.ListAccessKeysLDAPBulkWithOpts(ctx, users, ListAccessKeysOpts{ListType: listType, All: all, ConfigName: configName})
+}
+
 // ListAccessKeysLDAPBulkWithOpts - list access keys belonging to the given users or all users
 func (adm *AdminClient) ListAccessKeysLDAPBulkWithOpts(ctx context.Context, users []string, opts ListAccessKeysOpts) (map[string]ListAccessKeysLDAPResp, error) {
-	if len(users) > 0 && opts.All {
-		return nil, errors.New("either specify userDNs or all, not both")
+	if err := opts.LDAPValidate(len(users)); err != nil {
+		return nil, err
 	}
 
 	queryValues := url.Values{}
-	if opts.ListType == "" {
-		opts.ListType = AccessKeyListAll
-	}
-
 	queryValues.Set("listType", opts.ListType)
 	queryValues["userDNs"] = users
 	if opts.All {
 		queryValues.Set("all", "true")
+	}
+	if opts.ConfigName != "" {
+		queryValues.Set("configName", opts.ConfigName)
 	}
 
 	reqData := requestData{
