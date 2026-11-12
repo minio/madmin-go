@@ -96,12 +96,18 @@ func (adm *AdminClient) ClientPerf(ctx context.Context, dur time.Duration) (resu
 	queryVals := make(url.Values)
 	reader := &clientPerfReader{}
 	reader.Start()
-	_, err = adm.executeMethod(ctx, http.MethodPost, requestData{
+	devNullResp, err := adm.executeMethod(ctx, http.MethodPost, requestData{
 		queryValues:   queryVals,
 		relPath:       adminAPIPrefix + "/speedtest/client/devnull",
 		contentReader: reader,
 	})
 	reader.End()
+	if err == nil {
+		defer closeResponse(devNullResp)
+		if devNullResp.StatusCode != http.StatusOK {
+			return ClientPerfResult{}, httpRespToErrorResponse(devNullResp)
+		}
+	}
 	if errors.Is(err, context.DeadlineExceeded) && ctx.Err() != nil {
 		err = nil
 	}
@@ -112,6 +118,10 @@ func (adm *AdminClient) ClientPerf(ctx context.Context, dur time.Duration) (resu
 	})
 	if err != nil {
 		return ClientPerfResult{}, err
+	}
+	defer closeResponse(resp)
+	if resp.StatusCode != http.StatusOK {
+		return ClientPerfResult{}, httpRespToErrorResponse(resp)
 	}
 	var extraTime ClientPerfExtraTime
 	dec := json.NewDecoder(resp.Body)
