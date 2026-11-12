@@ -374,6 +374,7 @@ func TestFilesWireKeys(t *testing.T) {
 	}
 	for _, root := range []any{
 		FilesExportsQueryResponse{},
+		FilesCellsResponse{},
 		FilesAuthResponse{},
 		FilesAuthSetRequest{},
 		FilesExportList{},
