@@ -20,8 +20,6 @@ package madmin
 import (
 	"context"
 	"encoding/json"
-	"net/url"
-	"strconv"
 	"time"
 )
 
@@ -54,8 +52,9 @@ type FilesCellHealth struct {
 	// ServingSince is when the gateway started to serve the cell.
 	ServingSince *time.Time `json:"servingSince,omitempty"`
 
-	// Leasing, Held, Fenced and Epoch are the cell's lease, as in
-	// FilesExportStatus.
+	// Leasing, Held and Epoch are the cell's lease, as in FilesExportStatus.
+	// Fenced is whether the cell answers no call, as when its gateway lost the
+	// lease, handed the cell off, or has gone a lease TTL without renewing it.
 	Leasing bool   `json:"leasing"`
 	Held    bool   `json:"held"`
 	Fenced  bool   `json:"fenced"`
@@ -76,16 +75,20 @@ type FilesCellHealth struct {
 	// Shipping reports that the cell ships its op-log to the tier.
 	Shipping bool `json:"shipping"`
 
-	// UnshippedSince is no later than the oldest change not yet on the tier.
-	// Its age bounds what a takeover of the cell would lose. It is nil when
-	// every change is on the tier, and when Shipping is false.
+	// UnshippedSince is nil when Shipping is false, and when a ship pass since
+	// the gateway opened the cell has put every change on the tier. Otherwise
+	// it is no later than the oldest change not on the tier yet. The gateway
+	// cannot date a change made before the open. When the op-log holds changes
+	// at the open, UnshippedSince is the time of the open until such a pass,
+	// even when those changes are already on the tier. Its age bounds what a
+	// takeover of the cell would lose of changes made since the open.
 	UnshippedSince *time.Time `json:"unshippedSince,omitempty"`
 
 	// ShipFailed reports that the last ship to the tier failed.
 	ShipFailed bool `json:"shipFailed"`
 
-	// DRDegraded reports that the tier's copy of the op-log has a gap, which
-	// the next snapshot closes.
+	// DRDegraded reports that the tier's copy of the op-log has a gap. It
+	// clears once a snapshot covers the gap and shipping has caught up.
 	DRDegraded bool `json:"drDegraded"`
 
 	// LockGrace reports that the cell takes only lock reclaims, as it does for
@@ -93,15 +96,15 @@ type FilesCellHealth struct {
 	LockGrace bool `json:"lockGrace"`
 
 	// SalvageWaits is how many takeovers the cell still waits on, because the
-	// old owner may return with changes it never shipped. It is nil when the
-	// count was changing as it was read.
-	SalvageWaits *int `json:"salvageWaits,omitempty"`
+	// old owner may return with changes it never shipped.
+	SalvageWaits uint32 `json:"salvageWaits"`
 
 	// SalvageSince is when the oldest takeover the cell waits on happened. It
 	// is nil when the cell waits on none.
 	SalvageSince *time.Time `json:"salvageSince,omitempty"`
 
-	// TS is when the gateway sampled the cell.
+	// TS is when the gateway on Node began its report. Every cell that node
+	// runs carries the same TS.
 	TS time.Time `json:"ts"`
 }
 
@@ -150,7 +153,7 @@ type FilesCellsResponse struct {
 	UnreachableNodes []FilesUnreachableNode `json:"unreachableNodes,omitempty"`
 }
 
-// MarshalJSON encodes a nil Cells as [], so an export with no cell map entry
+// MarshalJSON encodes a nil Cells as [], so an export with no cell map
 // replies with an empty list rather than null.
 func (r FilesCellsResponse) MarshalJSON() ([]byte, error) {
 	type response FilesCellsResponse
@@ -161,13 +164,16 @@ func (r FilesCellsResponse) MarshalJSON() ([]byte, error) {
 }
 
 // FilesCells returns where each cell of an export runs and how healthy it is,
-// as the gateway on each node reports it. A node that cannot be read is named
-// in FilesCellsResponse.UnreachableNodes and does not fail the call.
-func (adm *AdminClient) FilesCells(ctx context.Context, exportID uint64) (FilesCellsResponse, error) {
-	values := make(url.Values)
-	values.Set("exportID", strconv.FormatUint(exportID, 10))
+// as the gateway on each node reports it. export is a name or a numeric export
+// id, sent as given. A node that cannot be read is named in
+// FilesCellsResponse.UnreachableNodes and does not fail the call.
+func (adm *AdminClient) FilesCells(ctx context.Context, export string) (FilesCellsResponse, error) {
+	relPath, err := filesExportPath(export, "/cells")
+	if err != nil {
+		return FilesCellsResponse{}, err
+	}
 
 	var resp FilesCellsResponse
-	err := adm.filesJSON(ctx, requestData{relPath: filesAPIPrefix + "/cells/status", queryValues: values}, &resp)
+	err = adm.filesJSON(ctx, requestData{relPath: relPath}, &resp)
 	return resp, err
 }
