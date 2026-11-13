@@ -374,6 +374,7 @@ func TestFilesWireKeys(t *testing.T) {
 	}
 	for _, root := range []any{
 		FilesExportsQueryResponse{},
+		FilesCellsResponse{},
 		FilesAuthResponse{},
 		FilesAuthSetRequest{},
 		FilesExportList{},
@@ -618,6 +619,8 @@ func TestFilesListsEncodeEmptyAsArray(t *testing.T) {
 		{&FilesStatsList{}, `"stats":[]`},
 		{FilesDaemonExports{}, `"exports":[]`},
 		{&FilesNodeStatus{Daemon: &FilesDaemonExports{}}, `"exports":[]`},
+		{FilesCellsResponse{}, `"cells":[]`},
+		{&FilesCellsResponse{}, `"cells":[]`},
 	} {
 		body, err := json.Marshal(tc.v)
 		if err != nil {
