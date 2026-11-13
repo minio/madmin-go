@@ -21,7 +21,11 @@ package madmin
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -82,7 +86,8 @@ func (adm *AdminClient) ServerUpdate(ctx context.Context, opts ServerUpdateOpts)
 	queryValues.Set("by-node", strconv.FormatBool(opts.ByNode))
 
 	// Request API to Restart server
-	resp, err := adm.executeMethod(ctx,
+	resp, err := adm.executeMethod(
+		ctx,
 		http.MethodPost, requestData{
 			relPath:     adminAPIPrefix + "/update",
 			queryValues: queryValues,
@@ -104,9 +109,87 @@ func (adm *AdminClient) ServerUpdate(ctx context.Context, opts ServerUpdateOpts)
 	return us, nil
 }
 
+// MaxServerUpdateFileSize is the largest update file that servers take in
+// ServerUpdateFromFile.
+const MaxServerUpdateFileSize = 512 << 20
+
+// ServerUpdateFromFileOpts specifies how ServerUpdateFromFile installs its
+// release, as ServerUpdateOpts does for ServerUpdate.
+type ServerUpdateFromFileOpts struct {
+	DryRun              bool
+	Rolling             bool
+	RollingGracefulWait time.Duration
+	ByNode              bool
+}
+
+// ServerUpdateFromFile installs the labeled release in an update file on
+// every server of the cluster and restarts them, as ServerUpdate does after
+// a download. The update file, of size bytes read from r, is a
+// gzip-compressed tar archive of one platform and variant of a release:
+// release.json and the binary, with their minisign signatures. The server
+// checks it as it would a download, and uploading it names the release.
+//
+// The file is read twice from r's current offset, first to sign its SHA-256:
+// servers refuse an update file that the request's signature does not
+// cover. The request is not retried, and ServerUpdateStatus follows a
+// rolling restart.
+func (adm *AdminClient) ServerUpdateFromFile(ctx context.Context, opts ServerUpdateFromFileOpts, r io.ReadSeeker, size int64) (us ServerUpdateStatus, err error) {
+	if size <= 0 || size > MaxServerUpdateFileSize {
+		return us, fmt.Errorf("update file size %d is not between 1 and %d bytes", size, MaxServerUpdateFileSize)
+	}
+	start, err := r.Seek(0, io.SeekCurrent)
+	if err != nil {
+		return us, err
+	}
+	h := sha256.New()
+	if _, err = io.CopyN(h, r, size); err != nil {
+		return us, fmt.Errorf("reading the update file: %w", err)
+	}
+	if _, err = r.Seek(start, io.SeekStart); err != nil {
+		return us, err
+	}
+	contentSHA256 := hex.EncodeToString(h.Sum(nil))
+
+	queryValues := url.Values{}
+	queryValues.Set("dry-run", strconv.FormatBool(opts.DryRun))
+	if opts.Rolling {
+		queryValues.Set("wait", strconv.FormatInt(int64(opts.RollingGracefulWait), 10))
+	}
+	queryValues.Set("by-node", strconv.FormatBool(opts.ByNode))
+
+	resp, err := adm.executeMethod(
+		ctx,
+		http.MethodPost, requestData{
+			relPath:       adminAPIPrefix + "/update-from-file",
+			queryValues:   queryValues,
+			customHeaders: http.Header{"Content-Type": []string{"application/gzip"}},
+			contentReader: io.LimitReader(r, size),
+			contentLength: size,
+			contentSHA256: contentSHA256,
+			// The file has been read: another attempt would send less.
+			retry: func(*http.Response, []byte, error) bool { return false },
+		},
+	)
+	defer closeResponse(resp)
+	if err != nil {
+		return us, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return us, httpRespToErrorResponse(resp)
+	}
+
+	if err = json.NewDecoder(resp.Body).Decode(&us); err != nil {
+		return us, err
+	}
+
+	return us, nil
+}
+
 // CancelServerUpdate will cancel an ongoing update and the rolling restart if already engaged
 func (adm *AdminClient) CancelServerUpdate(ctx context.Context) error {
-	resp, err := adm.executeMethod(ctx,
+	resp, err := adm.executeMethod(
+		ctx,
 		http.MethodPost, requestData{
 			relPath: adminAPIPrefix + "/cancel-update",
 		},
@@ -138,7 +221,8 @@ type ClusterBumpVersionResp struct {
 func (adm *AdminClient) BumpVersion(ctx context.Context, dryRun bool) (r ClusterBumpVersionResp, err error) {
 	values := url.Values{}
 	values.Set("dry-run", strconv.FormatBool(dryRun))
-	resp, err := adm.executeMethod(ctx,
+	resp, err := adm.executeMethod(
+		ctx,
 		http.MethodPost,
 		requestData{
 			queryValues: values,
@@ -172,7 +256,8 @@ type ClusterAPIDesc struct {
 // GetAPIDesc returns the backend format version and the node API version of all nodes in the cluster
 func (adm *AdminClient) GetAPIDesc(ctx context.Context) (r ClusterAPIDesc, err error) {
 	values := url.Values{}
-	resp, err := adm.executeMethod(ctx,
+	resp, err := adm.executeMethod(
+		ctx,
 		http.MethodGet,
 		requestData{
 			queryValues: values,

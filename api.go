@@ -204,6 +204,11 @@ type requestData struct {
 	relPath       string // URL path relative to admin API base endpoint
 	content       []byte
 	contentReader io.Reader
+	// contentLength is the length of contentReader's content, and
+	// contentSHA256 its hex SHA-256, which the signature covers. Without
+	// them, the request is signed for an empty body.
+	contentLength int64
+	contentSHA256 string
 	// endpointOverride overrides target URL with anonymousClient
 	endpointOverride *url.URL
 	// isKMS replaces URL prefix with /kms
@@ -499,7 +504,10 @@ func (adm AdminClient) executeMethod(ctx context.Context, method string, reqData
 		// only when an older version exists. Any other path gets the 426 as its
 		// error. The body stays readable, because this can be the last attempt,
 		// and the caller then decodes the 426 error from it.
-		if res.StatusCode == http.StatusUpgradeRequired && adminAPIPrefix != adminAPIOldPrefix {
+		// A request whose retry hook may refuse a repeat is not sent again
+		// when its body is streamed: contentReader has been read.
+		resendable := reqData.contentReader == nil || reqData.retry == nil
+		if res.StatusCode == http.StatusUpgradeRequired && adminAPIPrefix != adminAPIOldPrefix && resendable {
 			if rest, ok := strings.CutPrefix(reqData.relPath, adminAPIPrefix); ok {
 				body, _ := io.ReadAll(io.LimitReader(res.Body, errorBodyLimit))
 				// Close without draining: what is past the limit is not read.
@@ -635,6 +643,14 @@ func (adm AdminClient) newRequest(ctx context.Context, method string, reqData re
 	req.Header.Set("X-Amz-Content-Sha256", hex.EncodeToString(sum[:]))
 	if reqData.contentReader != nil {
 		req.Body = io.NopCloser(reqData.contentReader)
+		// The reader can't be read again for a redirect or a retry.
+		req.GetBody = nil
+		if reqData.contentLength > 0 {
+			req.ContentLength = reqData.contentLength
+		}
+		if reqData.contentSHA256 != "" {
+			req.Header.Set("X-Amz-Content-Sha256", reqData.contentSHA256)
+		}
 	} else {
 		req.Body = io.NopCloser(bytes.NewReader(reqData.content))
 	}
