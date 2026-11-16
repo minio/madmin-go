@@ -1390,6 +1390,7 @@ type MinioInfo struct {
 	DeploymentID string                         `json:"deploymentID,omitempty"`
 	Buckets      Buckets                        `json:"buckets,omitempty"`
 	BucketQuota  *BucketQuotaDiag               `json:"bucket_quota,omitempty"`
+	Lifecycle    *BucketLifecycleDiag           `json:"bucket_lifecycle,omitempty"`
 	Objects      Objects                        `json:"objects,omitempty"`
 	Usage        Usage                          `json:"usage,omitempty"`
 	Services     Services                       `json:"services,omitempty"`
@@ -1427,6 +1428,23 @@ type BucketQuotaDiagInfo struct {
 type BucketQuotaDiag struct {
 	Buckets []BucketQuotaDiagInfo `json:"buckets,omitempty"`
 	Error   string                `json:"error,omitempty"`
+}
+
+// BucketLifecycleDiagInfo is the versioning, the noncurrent-version expiry and
+// the version counts of a single versioned bucket.
+type BucketLifecycleDiagInfo struct {
+	Bucket              string `json:"bucket"`
+	Versioning          string `json:"versioning"`
+	HasNoncurrentExpiry bool   `json:"hasNoncurrentExpiry"`
+	ObjectsCount        uint64 `json:"objectsCount"`
+	VersionsCount       uint64 `json:"versionsCount"`
+	DeleteMarkersCount  uint64 `json:"deleteMarkersCount"`
+}
+
+// BucketLifecycleDiag holds the lifecycle diagnostics of the versioned buckets.
+type BucketLifecycleDiag struct {
+	Buckets []BucketLifecycleDiagInfo `json:"buckets,omitempty"`
+	Error   string                    `json:"error,omitempty"`
 }
 
 // ShardsHealthInfo holds the per drive count of objects that missing shards in that drive
