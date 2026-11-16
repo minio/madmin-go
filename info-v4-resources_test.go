@@ -1373,3 +1373,65 @@ func TestSMARTNVMeTempThresholdsMsgp(t *testing.T) {
 		t.Fatalf("round trip: got %d/%d, want 75/85", got.WarningTempThreshold, got.CriticalTempThreshold)
 	}
 }
+
+// TestSMARTNVMeTempThresholdsClearedOnReuse decodes a record that carries
+// thresholds and then one that does not, as an older server sends it, into
+// the same receiver: the second decode must not keep the first's values.
+func TestSMARTNVMeTempThresholdsClearedOnReuse(t *testing.T) {
+	withLimits := SMARTNVMe{N: 1, WarningTempThreshold: 75, CriticalTempThreshold: 85}
+	older := SMARTNVMe{N: 1}
+
+	newBuf, err := withLimits.MarshalMsg(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldBuf, err := older.MarshalMsg(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(oldBuf, []byte("wct")) || bytes.Contains(oldBuf, []byte("cct")) {
+		t.Fatalf("unreported thresholds must be omitted from the encoding")
+	}
+
+	var got SMARTNVMe
+	if _, err := got.UnmarshalMsg(newBuf); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := got.UnmarshalMsg(oldBuf); err != nil {
+		t.Fatal(err)
+	}
+	if got.WarningTempThreshold != 0 || got.CriticalTempThreshold != 0 {
+		t.Errorf("UnmarshalMsg kept stale thresholds %d/%d", got.WarningTempThreshold, got.CriticalTempThreshold)
+	}
+
+	var dec SMARTNVMe
+	if err := dec.DecodeMsg(msgp.NewReader(bytes.NewReader(newBuf))); err != nil {
+		t.Fatal(err)
+	}
+	if err := dec.DecodeMsg(msgp.NewReader(bytes.NewReader(oldBuf))); err != nil {
+		t.Fatal(err)
+	}
+	if dec.WarningTempThreshold != 0 || dec.CriticalTempThreshold != 0 {
+		t.Errorf("DecodeMsg kept stale thresholds %d/%d", dec.WarningTempThreshold, dec.CriticalTempThreshold)
+	}
+
+	// SMARTInfo reuses its existing NVMe pointer on decode.
+	infoNew, err := (&SMARTInfo{N: 1, NVMe: &withLimits}).MarshalMsg(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	infoOld, err := (&SMARTInfo{N: 1, NVMe: &older}).MarshalMsg(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var info SMARTInfo
+	if _, err := info.UnmarshalMsg(infoNew); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := info.UnmarshalMsg(infoOld); err != nil {
+		t.Fatal(err)
+	}
+	if info.NVMe == nil || info.NVMe.WarningTempThreshold != 0 || info.NVMe.CriticalTempThreshold != 0 {
+		t.Errorf("SMARTInfo kept stale NVMe thresholds: %+v", info.NVMe)
+	}
+}

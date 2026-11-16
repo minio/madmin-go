@@ -363,8 +363,8 @@ type SMARTNVMe struct {
 
 	// Composite temperature thresholds (WCTEMP/CCTEMP) in Celsius, 0 if the drive does not report them.
 	// A merge keeps the lowest reported value.
-	WarningTempThreshold  uint `json:"warningTempThreshold" msg:"wct"`
-	CriticalTempThreshold uint `json:"criticalTempThreshold" msg:"cct"`
+	WarningTempThreshold  uint `json:"warningTempThreshold" msg:"wct,omitempty"`
+	CriticalTempThreshold uint `json:"criticalTempThreshold" msg:"cct,omitempty"`
 
 	// Min/Max values are excluded if N == 1
 	MinAvailableSpare         uint    `json:"minAvailableSpare" msg:"mas,omitempty"`
