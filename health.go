@@ -384,6 +384,9 @@ type Partition struct {
 	InodeTotal   uint64 `json:"inode_total,omitempty"`
 	InodeFree    uint64 `json:"inode_free,omitempty"`
 	FstabSource  string `json:"fstab_source,omitempty"` // source from /etc/fstab (UUID=, LABEL=, or device path)
+
+	// SMART holds the S.M.A.R.T. data of the drive backing this partition, when it could be read.
+	SMART *SMARTInfo `json:"smart,omitempty"`
 }
 
 // NetSettings - rx/tx settings of an interface

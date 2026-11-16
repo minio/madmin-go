@@ -20,10 +20,12 @@
 package madmin
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"runtime"
 	"testing"
 	"time"
@@ -355,4 +357,62 @@ func TestIAMPolicyDiagJSON(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestPartitionSMARTJSON(t *testing.T) {
+	t.Run("absent", func(t *testing.T) {
+		buf, err := json.Marshal(Partition{Device: "/dev/nvme0n1", Mountpoint: "/mnt/drive1"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if bytes.Contains(buf, []byte(`"smart"`)) {
+			t.Fatalf("partition without SMART must not carry the key, got %s", buf)
+		}
+	})
+
+	t.Run("older payload", func(t *testing.T) {
+		var got Partition
+		if err := json.Unmarshal([]byte(`{"device":"/dev/sdb","major":8,"minor":16,"mountpoint":"/mnt/drive1"}`), &got); err != nil {
+			t.Fatal(err)
+		}
+		if got.SMART != nil {
+			t.Fatalf("want nil SMART, got %+v", got.SMART)
+		}
+	})
+
+	t.Run("round trip", func(t *testing.T) {
+		want := Partition{
+			Device:     "/dev/nvme5n1",
+			Major:      259,
+			Minor:      7,
+			Mountpoint: "/mnt/drive6",
+			SMART: &SMARTInfo{
+				N:            1,
+				Status:       map[string]int{"healthy": 1},
+				StatsN:       1,
+				Temperature:  86,
+				PowerOnHours: 26280,
+				DeviceType:   "nvme",
+				NVMe: &SMARTNVMe{
+					N:                     1,
+					WarningTempTime:       31540,
+					CritCompTime:          95,
+					ThermalManagementTime: 120,
+					WarningTempThreshold:  75,
+					CriticalTempThreshold: 85,
+				},
+			},
+		}
+		buf, err := json.Marshal(want)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got Partition
+		if err := json.Unmarshal(buf, &got); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(got, want) {
+			t.Fatalf("round trip:\nwant %+v\ngot  %+v", want.SMART.NVMe, got.SMART.NVMe)
+		}
+	})
 }
