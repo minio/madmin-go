@@ -43,6 +43,26 @@ func TestTableDeleteProtectionRequestJSON(t *testing.T) {
 	}
 }
 
+func TestTableDeleteProtectionRequestJSONFalse(t *testing.T) {
+	enabled := false
+	got, err := json.Marshal(TableDeleteProtectionRequest{Enabled: &enabled})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	const want = `{"enabled":false}`
+	if string(got) != want {
+		t.Errorf("request encoded as\n %s\nwant\n %s", got, want)
+	}
+
+	var back TableDeleteProtectionRequest
+	if err := json.Unmarshal(got, &back); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if back.Enabled == nil || *back.Enabled != false {
+		t.Errorf("enabled is %v, want non-nil false", back.Enabled)
+	}
+}
+
 func TestTableDeleteProtectionRequestJSONMissingEnabled(t *testing.T) {
 	var back TableDeleteProtectionRequest
 	if err := json.Unmarshal([]byte(`{}`), &back); err != nil {
@@ -69,5 +89,24 @@ func TestTableDeleteProtectionResponseJSON(t *testing.T) {
 	}
 	if back.Enabled != true {
 		t.Errorf("enabled is %v, want true", back.Enabled)
+	}
+}
+
+func TestTableDeleteProtectionResponseJSONFalse(t *testing.T) {
+	got, err := json.Marshal(TableDeleteProtectionResponse{Enabled: false})
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	const want = `{"enabled":false}`
+	if string(got) != want {
+		t.Errorf("response encoded as\n %s\nwant\n %s", got, want)
+	}
+
+	var back TableDeleteProtectionResponse
+	if err := json.Unmarshal(got, &back); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if back.Enabled != false {
+		t.Errorf("enabled is %v, want false", back.Enabled)
 	}
 }
