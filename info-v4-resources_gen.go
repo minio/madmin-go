@@ -9861,6 +9861,18 @@ func (z *SMARTNVMe) DecodeMsg(dc *msgp.Reader) (err error) {
 				err = msgp.WrapError(err, "ThermalManagementTime")
 				return
 			}
+		case "wct":
+			z.WarningTempThreshold, err = dc.ReadUint()
+			if err != nil {
+				err = msgp.WrapError(err, "WarningTempThreshold")
+				return
+			}
+		case "cct":
+			z.CriticalTempThreshold, err = dc.ReadUint()
+			if err != nil {
+				err = msgp.WrapError(err, "CriticalTempThreshold")
+				return
+			}
 		case "mas":
 			z.MinAvailableSpare, err = dc.ReadUint()
 			if err != nil {
@@ -10008,60 +10020,60 @@ func (z *SMARTNVMe) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *SMARTNVMe) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(28)
-	var zb0001Mask uint32 /* 28 bits */
+	zb0001Len := uint32(30)
+	var zb0001Mask uint32 /* 30 bits */
 	_ = zb0001Mask
 	if z.MinAvailableSpare == 0 {
 		zb0001Len--
-		zb0001Mask |= 0x8000
+		zb0001Mask |= 0x20000
 	}
 	if z.MaxPercentageUsed == 0 {
 		zb0001Len--
-		zb0001Mask |= 0x10000
+		zb0001Mask |= 0x40000
 	}
 	if z.MaxMediaErrors == 0 {
 		zb0001Len--
-		zb0001Mask |= 0x20000
+		zb0001Mask |= 0x80000
 	}
 	if z.MaxDataUnitsRead == 0 {
 		zb0001Len--
-		zb0001Mask |= 0x40000
+		zb0001Mask |= 0x100000
 	}
 	if z.MaxDataUnitsWritten == 0 {
 		zb0001Len--
-		zb0001Mask |= 0x80000
+		zb0001Mask |= 0x200000
 	}
 	if z.MaxHostReads == 0 {
 		zb0001Len--
-		zb0001Mask |= 0x100000
+		zb0001Mask |= 0x400000
 	}
 	if z.MaxHostWrites == 0 {
 		zb0001Len--
-		zb0001Mask |= 0x200000
+		zb0001Mask |= 0x800000
 	}
 	if z.MaxCtrlBusyTime == 0 {
 		zb0001Len--
-		zb0001Mask |= 0x400000
+		zb0001Mask |= 0x1000000
 	}
 	if z.MaxUnsafeShutdowns == 0 {
 		zb0001Len--
-		zb0001Mask |= 0x800000
+		zb0001Mask |= 0x2000000
 	}
 	if z.MaxWarningTempTime == 0 {
 		zb0001Len--
-		zb0001Mask |= 0x1000000
+		zb0001Mask |= 0x4000000
 	}
 	if z.MaxCritCompTime == 0 {
 		zb0001Len--
-		zb0001Mask |= 0x2000000
+		zb0001Mask |= 0x8000000
 	}
 	if z.MaxThermalTransitionCount == 0 {
 		zb0001Len--
-		zb0001Mask |= 0x4000000
+		zb0001Mask |= 0x10000000
 	}
 	if z.MaxThermalManagementTime == 0 {
 		zb0001Len--
-		zb0001Mask |= 0x8000000
+		zb0001Mask |= 0x20000000
 	}
 	// variable map header, size zb0001Len
 	err = en.WriteMapHeader(zb0001Len)
@@ -10221,7 +10233,27 @@ func (z *SMARTNVMe) EncodeMsg(en *msgp.Writer) (err error) {
 			err = msgp.WrapError(err, "ThermalManagementTime")
 			return
 		}
-		if (zb0001Mask & 0x8000) == 0 { // if not omitted
+		// write "wct"
+		err = en.Append(0xa3, 0x77, 0x63, 0x74)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint(z.WarningTempThreshold)
+		if err != nil {
+			err = msgp.WrapError(err, "WarningTempThreshold")
+			return
+		}
+		// write "cct"
+		err = en.Append(0xa3, 0x63, 0x63, 0x74)
+		if err != nil {
+			return
+		}
+		err = en.WriteUint(z.CriticalTempThreshold)
+		if err != nil {
+			err = msgp.WrapError(err, "CriticalTempThreshold")
+			return
+		}
+		if (zb0001Mask & 0x20000) == 0 { // if not omitted
 			// write "mas"
 			err = en.Append(0xa3, 0x6d, 0x61, 0x73)
 			if err != nil {
@@ -10233,7 +10265,7 @@ func (z *SMARTNVMe) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x10000) == 0 { // if not omitted
+		if (zb0001Mask & 0x40000) == 0 { // if not omitted
 			// write "mpu"
 			err = en.Append(0xa3, 0x6d, 0x70, 0x75)
 			if err != nil {
@@ -10245,7 +10277,7 @@ func (z *SMARTNVMe) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x20000) == 0 { // if not omitted
+		if (zb0001Mask & 0x80000) == 0 { // if not omitted
 			// write "mme"
 			err = en.Append(0xa3, 0x6d, 0x6d, 0x65)
 			if err != nil {
@@ -10257,7 +10289,7 @@ func (z *SMARTNVMe) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x40000) == 0 { // if not omitted
+		if (zb0001Mask & 0x100000) == 0 { // if not omitted
 			// write "mdur"
 			err = en.Append(0xa4, 0x6d, 0x64, 0x75, 0x72)
 			if err != nil {
@@ -10269,7 +10301,7 @@ func (z *SMARTNVMe) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x80000) == 0 { // if not omitted
+		if (zb0001Mask & 0x200000) == 0 { // if not omitted
 			// write "mduw"
 			err = en.Append(0xa4, 0x6d, 0x64, 0x75, 0x77)
 			if err != nil {
@@ -10281,7 +10313,7 @@ func (z *SMARTNVMe) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x100000) == 0 { // if not omitted
+		if (zb0001Mask & 0x400000) == 0 { // if not omitted
 			// write "mhr"
 			err = en.Append(0xa3, 0x6d, 0x68, 0x72)
 			if err != nil {
@@ -10293,7 +10325,7 @@ func (z *SMARTNVMe) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x200000) == 0 { // if not omitted
+		if (zb0001Mask & 0x800000) == 0 { // if not omitted
 			// write "mhw"
 			err = en.Append(0xa3, 0x6d, 0x68, 0x77)
 			if err != nil {
@@ -10305,7 +10337,7 @@ func (z *SMARTNVMe) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x400000) == 0 { // if not omitted
+		if (zb0001Mask & 0x1000000) == 0 { // if not omitted
 			// write "mbus"
 			err = en.Append(0xa4, 0x6d, 0x62, 0x75, 0x73)
 			if err != nil {
@@ -10317,7 +10349,7 @@ func (z *SMARTNVMe) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x800000) == 0 { // if not omitted
+		if (zb0001Mask & 0x2000000) == 0 { // if not omitted
 			// write "msh"
 			err = en.Append(0xa3, 0x6d, 0x73, 0x68)
 			if err != nil {
@@ -10329,7 +10361,7 @@ func (z *SMARTNVMe) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x1000000) == 0 { // if not omitted
+		if (zb0001Mask & 0x4000000) == 0 { // if not omitted
 			// write "mtt"
 			err = en.Append(0xa3, 0x6d, 0x74, 0x74)
 			if err != nil {
@@ -10341,7 +10373,7 @@ func (z *SMARTNVMe) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x2000000) == 0 { // if not omitted
+		if (zb0001Mask & 0x8000000) == 0 { // if not omitted
 			// write "mcc"
 			err = en.Append(0xa3, 0x6d, 0x63, 0x63)
 			if err != nil {
@@ -10353,7 +10385,7 @@ func (z *SMARTNVMe) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x4000000) == 0 { // if not omitted
+		if (zb0001Mask & 0x10000000) == 0 { // if not omitted
 			// write "mttc"
 			err = en.Append(0xa4, 0x6d, 0x74, 0x74, 0x63)
 			if err != nil {
@@ -10365,7 +10397,7 @@ func (z *SMARTNVMe) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		if (zb0001Mask & 0x8000000) == 0 { // if not omitted
+		if (zb0001Mask & 0x20000000) == 0 { // if not omitted
 			// write "mttt"
 			err = en.Append(0xa4, 0x6d, 0x74, 0x74, 0x74)
 			if err != nil {
@@ -10385,60 +10417,60 @@ func (z *SMARTNVMe) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *SMARTNVMe) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(28)
-	var zb0001Mask uint32 /* 28 bits */
+	zb0001Len := uint32(30)
+	var zb0001Mask uint32 /* 30 bits */
 	_ = zb0001Mask
 	if z.MinAvailableSpare == 0 {
 		zb0001Len--
-		zb0001Mask |= 0x8000
+		zb0001Mask |= 0x20000
 	}
 	if z.MaxPercentageUsed == 0 {
 		zb0001Len--
-		zb0001Mask |= 0x10000
+		zb0001Mask |= 0x40000
 	}
 	if z.MaxMediaErrors == 0 {
 		zb0001Len--
-		zb0001Mask |= 0x20000
+		zb0001Mask |= 0x80000
 	}
 	if z.MaxDataUnitsRead == 0 {
 		zb0001Len--
-		zb0001Mask |= 0x40000
+		zb0001Mask |= 0x100000
 	}
 	if z.MaxDataUnitsWritten == 0 {
 		zb0001Len--
-		zb0001Mask |= 0x80000
+		zb0001Mask |= 0x200000
 	}
 	if z.MaxHostReads == 0 {
 		zb0001Len--
-		zb0001Mask |= 0x100000
+		zb0001Mask |= 0x400000
 	}
 	if z.MaxHostWrites == 0 {
 		zb0001Len--
-		zb0001Mask |= 0x200000
+		zb0001Mask |= 0x800000
 	}
 	if z.MaxCtrlBusyTime == 0 {
 		zb0001Len--
-		zb0001Mask |= 0x400000
+		zb0001Mask |= 0x1000000
 	}
 	if z.MaxUnsafeShutdowns == 0 {
 		zb0001Len--
-		zb0001Mask |= 0x800000
+		zb0001Mask |= 0x2000000
 	}
 	if z.MaxWarningTempTime == 0 {
 		zb0001Len--
-		zb0001Mask |= 0x1000000
+		zb0001Mask |= 0x4000000
 	}
 	if z.MaxCritCompTime == 0 {
 		zb0001Len--
-		zb0001Mask |= 0x2000000
+		zb0001Mask |= 0x8000000
 	}
 	if z.MaxThermalTransitionCount == 0 {
 		zb0001Len--
-		zb0001Mask |= 0x4000000
+		zb0001Mask |= 0x10000000
 	}
 	if z.MaxThermalManagementTime == 0 {
 		zb0001Len--
-		zb0001Mask |= 0x8000000
+		zb0001Mask |= 0x20000000
 	}
 	// variable map header, size zb0001Len
 	o = msgp.AppendMapHeader(o, zb0001Len)
@@ -10490,67 +10522,73 @@ func (z *SMARTNVMe) MarshalMsg(b []byte) (o []byte, err error) {
 		// string "ttt"
 		o = append(o, 0xa3, 0x74, 0x74, 0x74)
 		o = msgp.AppendUint64(o, z.ThermalManagementTime)
-		if (zb0001Mask & 0x8000) == 0 { // if not omitted
+		// string "wct"
+		o = append(o, 0xa3, 0x77, 0x63, 0x74)
+		o = msgp.AppendUint(o, z.WarningTempThreshold)
+		// string "cct"
+		o = append(o, 0xa3, 0x63, 0x63, 0x74)
+		o = msgp.AppendUint(o, z.CriticalTempThreshold)
+		if (zb0001Mask & 0x20000) == 0 { // if not omitted
 			// string "mas"
 			o = append(o, 0xa3, 0x6d, 0x61, 0x73)
 			o = msgp.AppendUint(o, z.MinAvailableSpare)
 		}
-		if (zb0001Mask & 0x10000) == 0 { // if not omitted
+		if (zb0001Mask & 0x40000) == 0 { // if not omitted
 			// string "mpu"
 			o = append(o, 0xa3, 0x6d, 0x70, 0x75)
 			o = msgp.AppendUint(o, z.MaxPercentageUsed)
 		}
-		if (zb0001Mask & 0x20000) == 0 { // if not omitted
+		if (zb0001Mask & 0x80000) == 0 { // if not omitted
 			// string "mme"
 			o = append(o, 0xa3, 0x6d, 0x6d, 0x65)
 			o = msgp.AppendUint64(o, z.MaxMediaErrors)
 		}
-		if (zb0001Mask & 0x40000) == 0 { // if not omitted
+		if (zb0001Mask & 0x100000) == 0 { // if not omitted
 			// string "mdur"
 			o = append(o, 0xa4, 0x6d, 0x64, 0x75, 0x72)
 			o = msgp.AppendFloat64(o, z.MaxDataUnitsRead)
 		}
-		if (zb0001Mask & 0x80000) == 0 { // if not omitted
+		if (zb0001Mask & 0x200000) == 0 { // if not omitted
 			// string "mduw"
 			o = append(o, 0xa4, 0x6d, 0x64, 0x75, 0x77)
 			o = msgp.AppendFloat64(o, z.MaxDataUnitsWritten)
 		}
-		if (zb0001Mask & 0x100000) == 0 { // if not omitted
+		if (zb0001Mask & 0x400000) == 0 { // if not omitted
 			// string "mhr"
 			o = append(o, 0xa3, 0x6d, 0x68, 0x72)
 			o = msgp.AppendFloat64(o, z.MaxHostReads)
 		}
-		if (zb0001Mask & 0x200000) == 0 { // if not omitted
+		if (zb0001Mask & 0x800000) == 0 { // if not omitted
 			// string "mhw"
 			o = append(o, 0xa3, 0x6d, 0x68, 0x77)
 			o = msgp.AppendFloat64(o, z.MaxHostWrites)
 		}
-		if (zb0001Mask & 0x400000) == 0 { // if not omitted
+		if (zb0001Mask & 0x1000000) == 0 { // if not omitted
 			// string "mbus"
 			o = append(o, 0xa4, 0x6d, 0x62, 0x75, 0x73)
 			o = msgp.AppendFloat64(o, z.MaxCtrlBusyTime)
 		}
-		if (zb0001Mask & 0x800000) == 0 { // if not omitted
+		if (zb0001Mask & 0x2000000) == 0 { // if not omitted
 			// string "msh"
 			o = append(o, 0xa3, 0x6d, 0x73, 0x68)
 			o = msgp.AppendUint64(o, z.MaxUnsafeShutdowns)
 		}
-		if (zb0001Mask & 0x1000000) == 0 { // if not omitted
+		if (zb0001Mask & 0x4000000) == 0 { // if not omitted
 			// string "mtt"
 			o = append(o, 0xa3, 0x6d, 0x74, 0x74)
 			o = msgp.AppendFloat64(o, z.MaxWarningTempTime)
 		}
-		if (zb0001Mask & 0x2000000) == 0 { // if not omitted
+		if (zb0001Mask & 0x8000000) == 0 { // if not omitted
 			// string "mcc"
 			o = append(o, 0xa3, 0x6d, 0x63, 0x63)
 			o = msgp.AppendFloat64(o, z.MaxCritCompTime)
 		}
-		if (zb0001Mask & 0x4000000) == 0 { // if not omitted
+		if (zb0001Mask & 0x10000000) == 0 { // if not omitted
 			// string "mttc"
 			o = append(o, 0xa4, 0x6d, 0x74, 0x74, 0x63)
 			o = msgp.AppendUint64(o, z.MaxThermalTransitionCount)
 		}
-		if (zb0001Mask & 0x8000000) == 0 { // if not omitted
+		if (zb0001Mask & 0x20000000) == 0 { // if not omitted
 			// string "mttt"
 			o = append(o, 0xa4, 0x6d, 0x74, 0x74, 0x74)
 			o = msgp.AppendUint64(o, z.MaxThermalManagementTime)
@@ -10667,6 +10705,18 @@ func (z *SMARTNVMe) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.ThermalManagementTime, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
 				err = msgp.WrapError(err, "ThermalManagementTime")
+				return
+			}
+		case "wct":
+			z.WarningTempThreshold, bts, err = msgp.ReadUintBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "WarningTempThreshold")
+				return
+			}
+		case "cct":
+			z.CriticalTempThreshold, bts, err = msgp.ReadUintBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "CriticalTempThreshold")
 				return
 			}
 		case "mas":
@@ -10816,7 +10866,7 @@ func (z *SMARTNVMe) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *SMARTNVMe) Msgsize() (s int) {
-	s = 3 + 2 + msgp.IntSize + 3 + msgp.Uint8Size + 3 + msgp.UintSize + 3 + msgp.UintSize + 3 + msgp.Uint64Size + 4 + msgp.Float64Size + 4 + msgp.Float64Size + 3 + msgp.Float64Size + 3 + msgp.Float64Size + 4 + msgp.Float64Size + 3 + msgp.Uint64Size + 3 + msgp.Float64Size + 3 + msgp.Float64Size + 4 + msgp.Uint64Size + 4 + msgp.Uint64Size + 4 + msgp.UintSize + 4 + msgp.UintSize + 4 + msgp.Uint64Size + 5 + msgp.Float64Size + 5 + msgp.Float64Size + 4 + msgp.Float64Size + 4 + msgp.Float64Size + 5 + msgp.Float64Size + 4 + msgp.Uint64Size + 4 + msgp.Float64Size + 4 + msgp.Float64Size + 5 + msgp.Uint64Size + 5 + msgp.Uint64Size
+	s = 3 + 2 + msgp.IntSize + 3 + msgp.Uint8Size + 3 + msgp.UintSize + 3 + msgp.UintSize + 3 + msgp.Uint64Size + 4 + msgp.Float64Size + 4 + msgp.Float64Size + 3 + msgp.Float64Size + 3 + msgp.Float64Size + 4 + msgp.Float64Size + 3 + msgp.Uint64Size + 3 + msgp.Float64Size + 3 + msgp.Float64Size + 4 + msgp.Uint64Size + 4 + msgp.Uint64Size + 4 + msgp.UintSize + 4 + msgp.UintSize + 4 + msgp.UintSize + 4 + msgp.UintSize + 4 + msgp.Uint64Size + 5 + msgp.Float64Size + 5 + msgp.Float64Size + 4 + msgp.Float64Size + 4 + msgp.Float64Size + 5 + msgp.Float64Size + 4 + msgp.Uint64Size + 4 + msgp.Float64Size + 4 + msgp.Float64Size + 5 + msgp.Uint64Size + 5 + msgp.Uint64Size
 	return
 }
 

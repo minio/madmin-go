@@ -1319,3 +1319,57 @@ func TestSMARTInfoMergeDoesNotAliasSource(t *testing.T) {
 		t.Errorf("Merge aliased the source map: source reason became %q", got)
 	}
 }
+
+func TestSMARTNVMeMergeTempThresholds(t *testing.T) {
+	tests := []struct {
+		name               string
+		dstWarn, dstCrit   uint
+		srcWarn, srcCrit   uint
+		wantWarn, wantCrit uint
+	}{
+		{name: "lowest reported limit wins", dstWarn: 75, dstCrit: 85, srcWarn: 70, srcCrit: 80, wantWarn: 70, wantCrit: 80},
+		{name: "unreported limit does not override", dstWarn: 75, dstCrit: 85, wantWarn: 75, wantCrit: 85},
+		{name: "nothing reported", wantWarn: 0, wantCrit: 0},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// Both merge orders must land on the same limits.
+			for _, rev := range []bool{false, true} {
+				dst := &SMARTNVMe{N: 1, WarningTempThreshold: tt.dstWarn, CriticalTempThreshold: tt.dstCrit}
+				src := &SMARTNVMe{N: 1, WarningTempThreshold: tt.srcWarn, CriticalTempThreshold: tt.srcCrit}
+				if rev {
+					dst, src = src, dst
+				}
+				dst.Merge(src)
+				if dst.WarningTempThreshold != tt.wantWarn || dst.CriticalTempThreshold != tt.wantCrit {
+					t.Errorf("reversed=%v: got %d/%d, want %d/%d", rev,
+						dst.WarningTempThreshold, dst.CriticalTempThreshold, tt.wantWarn, tt.wantCrit)
+				}
+			}
+		})
+	}
+
+	// The first drive merged into an empty aggregate is copied as-is.
+	var agg SMARTInfo
+	agg.Merge(&SMARTInfo{N: 1, NVMe: &SMARTNVMe{N: 1, WarningTempThreshold: 75, CriticalTempThreshold: 85}})
+	agg.Merge(&SMARTInfo{N: 1, NVMe: &SMARTNVMe{N: 1, WarningTempThreshold: 72, CriticalTempThreshold: 88}})
+	if agg.NVMe.WarningTempThreshold != 72 || agg.NVMe.CriticalTempThreshold != 85 {
+		t.Errorf("aggregate: got %d/%d, want 72/85", agg.NVMe.WarningTempThreshold, agg.NVMe.CriticalTempThreshold)
+	}
+}
+
+func TestSMARTNVMeTempThresholdsMsgp(t *testing.T) {
+	want := SMARTNVMe{N: 1, WarningTempThreshold: 75, CriticalTempThreshold: 85}
+	buf, err := want.MarshalMsg(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got SMARTNVMe
+	if _, err := got.UnmarshalMsg(buf); err != nil {
+		t.Fatal(err)
+	}
+	if got.WarningTempThreshold != 75 || got.CriticalTempThreshold != 85 {
+		t.Fatalf("round trip: got %d/%d, want 75/85", got.WarningTempThreshold, got.CriticalTempThreshold)
+	}
+}
