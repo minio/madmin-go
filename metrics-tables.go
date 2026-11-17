@@ -20,8 +20,7 @@
 package madmin
 
 import (
-	"bytes"
-	"encoding/json"
+	"cmp"
 	"maps"
 	"time"
 )
@@ -407,8 +406,8 @@ type TableCompactionClusterBacklogComponent struct {
 }
 
 // newerThan reports whether b should replace c: b's leader took over later, or
-// at the same time with a greater encoding, so the choice does not depend on
-// merge order.
+// at the same time with larger totals, so the choice does not depend on merge
+// order.
 func (b *TableCompactionClusterBacklog) newerThan(c *TableCompactionClusterBacklog) bool {
 	switch {
 	case b == nil:
@@ -418,13 +417,12 @@ func (b *TableCompactionClusterBacklog) newerThan(c *TableCompactionClusterBackl
 	case !b.LeaderSince.Equal(c.LeaderSince):
 		return b.LeaderSince.After(c.LeaderSince)
 	}
-	// LeaderSince is equal here but its encoding keeps the zone offset, which
-	// msgp drops, so leave it out of the tie key.
-	bt, ct := *b, *c
-	bt.LeaderSince, ct.LeaderSince = time.Time{}, time.Time{}
-	bj, _ := json.Marshal(bt)
-	cj, _ := json.Marshal(ct)
-	return bytes.Compare(bj, cj) > 0
+	return cmp.Or(
+		cmp.Compare(b.Bytes, c.Bytes),
+		cmp.Compare(b.UnplannedFiles, c.UnplannedFiles),
+		cmp.Compare(b.TablesOverdue, c.TablesOverdue),
+		cmp.Compare(b.OldestOverdueSecs, c.OldestOverdueSecs),
+	) > 0
 }
 
 // clone deep-copies b so the copy shares no map with it.
