@@ -338,19 +338,18 @@ func (j TableMaintenanceJob) fresherThan(k TableMaintenanceJob) bool {
 // selectFrom folds the leader-owned report o into j: the fresher report wins
 // the job, and Backlog is the one from the latest leader. ok reports whether j
 // holds a report yet.
-func (j TableMaintenanceJob) selectFrom(o TableMaintenanceJob, ok bool) TableMaintenanceJob {
+func (j *TableMaintenanceJob) selectFrom(o TableMaintenanceJob, ok bool) {
 	backlog := j.Backlog
 	// Clone Backlog and Work: storing o's wholesale would share the source
 	// report's maps, so a caller mutating the aggregate would reach back into it.
 	if o.Backlog.newerThan(backlog) {
 		backlog = o.Backlog.clone()
 	}
-	if !ok || o.fresherThan(j) {
-		o.Work = maps.Clone(o.Work)
-		j = o
+	if !ok || o.fresherThan(*j) {
+		*j = o
+		j.Work = maps.Clone(o.Work)
 	}
 	j.Backlog = backlog
-	return j
 }
 
 // add sums the counters of another node's report of the same PerNode job.
@@ -419,8 +418,12 @@ func (b *TableCompactionClusterBacklog) newerThan(c *TableCompactionClusterBackl
 	case !b.LeaderSince.Equal(c.LeaderSince):
 		return b.LeaderSince.After(c.LeaderSince)
 	}
-	bj, _ := json.Marshal(b)
-	cj, _ := json.Marshal(c)
+	// LeaderSince is equal here but its encoding keeps the zone offset, which
+	// msgp drops, so leave it out of the tie key.
+	bt, ct := *b, *c
+	bt.LeaderSince, ct.LeaderSince = time.Time{}, time.Time{}
+	bj, _ := json.Marshal(bt)
+	cj, _ := json.Marshal(ct)
 	return bytes.Compare(bj, cj) > 0
 }
 
@@ -716,7 +719,8 @@ func (t *TableAPIMetrics) Merge(other *TableAPIMetrics) {
 			cur.add(o)
 			t.Maintenance[k] = cur
 		default:
-			t.Maintenance[k] = cur.selectFrom(o, ok)
+			cur.selectFrom(o, ok)
+			t.Maintenance[k] = cur
 		}
 	}
 	if other.CatalogScanner != nil && (t.CatalogScanner == nil || other.CatalogScanner.fresherThan(*t.CatalogScanner)) {

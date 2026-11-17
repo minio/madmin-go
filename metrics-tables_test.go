@@ -617,6 +617,42 @@ func TestTableMaintenanceMergeKeepsLatestBacklogAcrossWire(t *testing.T) {
 	}
 }
 
+// Leaders that took over at the same instant tie the same way whether or not
+// one report went over the wire, which drops LeaderSince's zone offset.
+func TestTableMaintenanceMergeBacklogTieIgnoresZone(t *testing.T) {
+	since := time.Date(2026, 11, 17, 11, 0, 0, 0, time.FixedZone("CET", 3600))
+	report := func(bytes int64) *TableAPIMetrics {
+		return &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{
+			"compaction": {Backlog: &TableCompactionClusterBacklog{LeaderSince: since, Bytes: bytes}},
+		}}
+	}
+	roundTrip := func(m *TableAPIMetrics) *TableAPIMetrics {
+		buf, err := m.MarshalMsg(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out TableAPIMetrics
+		if _, err := out.UnmarshalMsg(buf); err != nil {
+			t.Fatal(err)
+		}
+		return &out
+	}
+	for _, tc := range []struct {
+		name string
+		a, b *TableAPIMetrics
+	}{
+		{"neither sent", report(2), report(1)},
+		{"winner sent", roundTrip(report(2)), report(1)},
+		{"loser sent", report(2), roundTrip(report(1))},
+	} {
+		for _, order := range [][]*TableAPIMetrics{{tc.a, tc.b}, {tc.b, tc.a}} {
+			if got := mergeTables(order...).Maintenance["compaction"].Backlog.Bytes; got != 2 {
+				t.Errorf("%s: Backlog.Bytes = %d, want 2", tc.name, got)
+			}
+		}
+	}
+}
+
 // A PerNode job runs on every node, so each report holds only that node's runs
 // and the cluster total is their sum.
 func TestTableMaintenanceMergeSumsPerNode(t *testing.T) {
