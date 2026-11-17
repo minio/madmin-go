@@ -85,13 +85,56 @@ type BucketAccessInfo struct {
 	Access                  AccountAccess     `json:"access"`
 }
 
-// AccountInfo represents the account usage info of an
-// account across buckets.
+// AccountInfo is the full account info response: the account, the backend,
+// the effective policy, and every bucket the account can access with its
+// usage. Building the bucket list is expensive on servers with many buckets;
+// a caller that does not need it should use AccountSummary.
 type AccountInfo struct {
 	AccountName string
 	Server      BackendInfo
 	Policy      json.RawMessage // Use iam/policy.Parse to parse the result, to be done by the caller.
-	Buckets     []BucketAccessInfo
+	// Buckets lists every bucket the account can access, with its usage and
+	// access. Only the full response returned by AccountInfo carries it.
+	Buckets []BucketAccessInfo
+}
+
+// AccountSummary is the account info response without the bucket list: the
+// account, the backend, and the effective policy. It has no Buckets field, so
+// it cannot be mistaken for an account with no buckets.
+type AccountSummary struct {
+	AccountName string
+	Server      BackendInfo
+	Policy      json.RawMessage // Use iam/policy.Parse to parse the result, to be done by the caller.
+}
+
+// AccountSummary returns the account name, backend info and effective policy
+// for the authenticating account, without listing buckets. It is cheaper than
+// AccountInfo and suits callers that only validate credentials or read the
+// policy. It needs an AIStor server that supports version 2 of the account
+// info API.
+func (adm *AdminClient) AccountSummary(ctx context.Context) (AccountSummary, error) {
+	q := make(url.Values)
+	q.Set("v", "2")
+	resp, err := adm.executeMethod(ctx, http.MethodGet,
+		requestData{
+			relPath:     adminAPIPrefix + "/accountinfo",
+			queryValues: q,
+		},
+	)
+	defer closeResponse(resp)
+	if err != nil {
+		return AccountSummary{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return AccountSummary{}, httpRespToErrorResponse(resp)
+	}
+
+	var summary AccountSummary
+	if err = json.NewDecoder(resp.Body).Decode(&summary); err != nil {
+		return AccountSummary{}, err
+	}
+	return summary, nil
 }
 
 // AccountOpts allows for configurable behavior with "prefix-usage"
@@ -99,7 +142,9 @@ type AccountOpts struct {
 	PrefixUsage bool
 }
 
-// AccountInfo returns the usage info for the authenticating account.
+// AccountInfo returns the full account info for the authenticating account,
+// including every accessible bucket with its usage. Use AccountSummary when
+// the bucket list is not needed.
 func (adm *AdminClient) AccountInfo(ctx context.Context, opts AccountOpts) (AccountInfo, error) {
 	q := make(url.Values)
 	if opts.PrefixUsage {
