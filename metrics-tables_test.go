@@ -469,6 +469,214 @@ func TestTableMaintenanceMergeClonesWork(t *testing.T) {
 	}
 }
 
+// Only the compaction leader reports the backlog, so Merge selects it, never
+// sums it, and shares none of its maps with the source.
+func TestTableMaintenanceMergeSelectsBacklog(t *testing.T) {
+	t0 := time.Date(2026, 11, 17, 10, 0, 0, 0, time.UTC)
+	leaderBacklog := func() *TableCompactionClusterBacklog {
+		return &TableCompactionClusterBacklog{
+			LeaderSince:    t0,
+			Complete:       true,
+			Bytes:          7 << 20,
+			UnplannedFiles: 3,
+			Components: map[string]TableCompactionClusterBacklogComponent{
+				"small_files": {Files: 12, GrowingTables: 1, MaxGrowthStreak: 4, Tables: map[string]int64{"high": 1}},
+			},
+			TablesOverdue:     2,
+			OldestOverdueSecs: 7200,
+		}
+	}
+	backlog, want := leaderBacklog(), leaderBacklog()
+	leader := &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{
+		"compaction": {Cycles: 3, LastRun: t0, Running: true, Backlog: backlog},
+	}}
+	follower := &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{
+		"compaction": {LastRun: t0.Add(-time.Hour)},
+	}}
+	demoted := &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{
+		"compaction": {Cycles: 90, LastRun: t0.Add(-time.Minute), Backlog: &TableCompactionClusterBacklog{LeaderSince: t0.Add(-time.Minute), Bytes: 1, TablesOverdue: 9}},
+	}}
+
+	got := mergeTables(follower, leader, demoted).Maintenance["compaction"]
+	if !reflect.DeepEqual(got.Backlog, want) {
+		t.Errorf("Backlog = %+v, want the leader's %+v, neither summed nor the demoted node's", got.Backlog, want)
+	}
+	if rev := mergeTables(demoted, leader, follower).Maintenance["compaction"]; !reflect.DeepEqual(rev, got) {
+		t.Errorf("order dependent: %+v vs %+v", rev, got)
+	}
+
+	got.Backlog.Components["small_files"].Tables["high"] = 999
+	got.Backlog.Components["delete_files"] = TableCompactionClusterBacklogComponent{Files: 1}
+	if !reflect.DeepEqual(backlog, want) {
+		t.Errorf("source Backlog mutated through the aggregate: %+v", backlog)
+	}
+}
+
+// A job that has never run still reports its configs and work, so the first
+// report of it is kept although it is no fresher than an empty one.
+func TestTableMaintenanceMergeKeepsFirstNeverRunReport(t *testing.T) {
+	want := TableMaintenanceJob{ConfigsEnabled: 2, ConfigsTotal: 3, Work: map[string]uint64{"tables_skipped": 4}}
+	got, ok := mergeTables(&TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{"compaction": want}}).Maintenance["compaction"]
+	if !ok || !reflect.DeepEqual(got, want) {
+		t.Errorf("compaction = %+v (present %v), want %+v", got, ok, want)
+	}
+}
+
+// The backlog is the latest leader's, whichever report wins the job and
+// whatever the merge order.
+func TestTableMaintenanceMergeKeepsLatestBacklog(t *testing.T) {
+	t0 := time.Date(2026, 11, 17, 10, 0, 0, 0, time.UTC)
+	older := func() *TableCompactionClusterBacklog {
+		return &TableCompactionClusterBacklog{LeaderSince: t0.Add(-time.Hour), Bytes: 1, TablesOverdue: 1}
+	}
+	newer := func() *TableCompactionClusterBacklog {
+		return &TableCompactionClusterBacklog{
+			LeaderSince: t0,
+			Bytes:       2,
+			Components:  map[string]TableCompactionClusterBacklogComponent{"small_files": {Files: 4, Tables: map[string]int64{"low": 1}}},
+		}
+	}
+	tied := func() *TableCompactionClusterBacklog {
+		return &TableCompactionClusterBacklog{LeaderSince: t0, Bytes: 3}
+	}
+	report := func(j TableMaintenanceJob) *TableAPIMetrics {
+		return &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{"compaction": j}}
+	}
+	for _, tc := range []struct {
+		name    string
+		a, b, c TableMaintenanceJob
+		want    *TableCompactionClusterBacklog
+		wantJob TableMaintenanceJob
+	}{
+		{
+			name:    "new leader before its first run, idle follower",
+			a:       TableMaintenanceJob{Backlog: newer()},
+			b:       TableMaintenanceJob{},
+			c:       TableMaintenanceJob{},
+			want:    newer(),
+			wantJob: TableMaintenanceJob{Backlog: newer()},
+		},
+		{
+			name:    "new leader yet to run, former leader ran last",
+			a:       TableMaintenanceJob{Cycles: 1, LastRun: t0.Add(-time.Hour), Backlog: newer()},
+			b:       TableMaintenanceJob{Cycles: 9, LastRun: t0},
+			c:       TableMaintenanceJob{},
+			want:    newer(),
+			wantJob: TableMaintenanceJob{Cycles: 9, LastRun: t0, Backlog: newer()},
+		},
+		{
+			name:    "two backlogs under a fresher report without one",
+			a:       TableMaintenanceJob{Cycles: 2, LastRun: t0.Add(-time.Minute), Backlog: newer()},
+			b:       TableMaintenanceJob{Cycles: 5, LastRun: t0.Add(-time.Hour), Backlog: older()},
+			c:       TableMaintenanceJob{Running: true},
+			want:    newer(),
+			wantJob: TableMaintenanceJob{Running: true, Backlog: newer()},
+		},
+		{
+			name:    "leaders that took over at the same time",
+			a:       TableMaintenanceJob{Cycles: 2, Backlog: newer()},
+			b:       TableMaintenanceJob{Cycles: 1, Backlog: tied()},
+			c:       TableMaintenanceJob{},
+			want:    tied(),
+			wantJob: TableMaintenanceJob{Cycles: 2, Backlog: tied()},
+		},
+		{
+			name:    "same tenure and totals, one index complete",
+			a:       TableMaintenanceJob{Cycles: 2, Backlog: &TableCompactionClusterBacklog{LeaderSince: t0, Bytes: 3}},
+			b:       TableMaintenanceJob{Cycles: 1, Backlog: &TableCompactionClusterBacklog{LeaderSince: t0, Bytes: 3, Complete: true}},
+			c:       TableMaintenanceJob{},
+			want:    &TableCompactionClusterBacklog{LeaderSince: t0, Bytes: 3, Complete: true},
+			wantJob: TableMaintenanceJob{Cycles: 2, Backlog: &TableCompactionClusterBacklog{LeaderSince: t0, Bytes: 3, Complete: true}},
+		},
+		{
+			name: "same tenure and totals, more small files",
+			a: TableMaintenanceJob{Cycles: 2, Backlog: &TableCompactionClusterBacklog{
+				LeaderSince: t0, Components: map[string]TableCompactionClusterBacklogComponent{"small_files": {Files: 1}},
+			}},
+			b: TableMaintenanceJob{Cycles: 1, Backlog: &TableCompactionClusterBacklog{
+				LeaderSince: t0, Components: map[string]TableCompactionClusterBacklogComponent{"small_files": {Files: 4}},
+			}},
+			c: TableMaintenanceJob{},
+			want: &TableCompactionClusterBacklog{
+				LeaderSince: t0, Components: map[string]TableCompactionClusterBacklogComponent{"small_files": {Files: 4}},
+			},
+			wantJob: TableMaintenanceJob{Cycles: 2, Backlog: &TableCompactionClusterBacklog{
+				LeaderSince: t0, Components: map[string]TableCompactionClusterBacklogComponent{"small_files": {Files: 4}},
+			}},
+		},
+	} {
+		a, b, c := report(tc.a), report(tc.b), report(tc.c)
+		for _, order := range [][]*TableAPIMetrics{{a, b, c}, {a, c, b}, {b, a, c}, {b, c, a}, {c, a, b}, {c, b, a}} {
+			got := mergeTables(order...).Maintenance["compaction"]
+			if !reflect.DeepEqual(got, tc.wantJob) {
+				t.Errorf("%s: job = %+v, want %+v", tc.name, got, tc.wantJob)
+			}
+		}
+	}
+}
+
+// A partial aggregate sent over the wire and merged again still keeps the
+// latest leader's backlog, though the report it came from lost the job.
+func TestTableMaintenanceMergeKeepsLatestBacklogAcrossWire(t *testing.T) {
+	t0 := time.Date(2026, 11, 17, 10, 0, 0, 0, time.UTC)
+	report := func(j TableMaintenanceJob) *TableAPIMetrics {
+		return &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{"compaction": j}}
+	}
+	stale := report(TableMaintenanceJob{Cycles: 1, LastRun: t0.Add(-time.Hour), Backlog: &TableCompactionClusterBacklog{LeaderSince: t0.Add(-time.Hour), Bytes: 1}})
+	selected := report(TableMaintenanceJob{Cycles: 9, LastRun: t0})
+	latest := &TableCompactionClusterBacklog{LeaderSince: t0.Add(-time.Minute), Bytes: 2}
+	current := report(TableMaintenanceJob{Cycles: 5, LastRun: t0.Add(-30 * time.Minute), Backlog: latest})
+
+	buf, err := mergeTables(stale, selected).MarshalMsg(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var partial TableAPIMetrics
+	if _, err := partial.UnmarshalMsg(buf); err != nil {
+		t.Fatal(err)
+	}
+	got := mergeTables(&partial, current).Maintenance["compaction"]
+	if !reflect.DeepEqual(got.Backlog, latest) {
+		t.Errorf("Backlog = %+v, want %+v", got.Backlog, latest)
+	}
+}
+
+// Leaders that took over at the same instant tie the same way whether or not
+// one report went over the wire, which drops LeaderSince's zone offset.
+func TestTableMaintenanceMergeBacklogTieIgnoresZone(t *testing.T) {
+	since := time.Date(2026, 11, 17, 11, 0, 0, 0, time.FixedZone("CET", 3600))
+	report := func(bytes int64) *TableAPIMetrics {
+		return &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{
+			"compaction": {Backlog: &TableCompactionClusterBacklog{LeaderSince: since, Bytes: bytes}},
+		}}
+	}
+	roundTrip := func(m *TableAPIMetrics) *TableAPIMetrics {
+		buf, err := m.MarshalMsg(nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out TableAPIMetrics
+		if _, err := out.UnmarshalMsg(buf); err != nil {
+			t.Fatal(err)
+		}
+		return &out
+	}
+	for _, tc := range []struct {
+		name string
+		a, b *TableAPIMetrics
+	}{
+		{"neither sent", report(2), report(1)},
+		{"winner sent", roundTrip(report(2)), report(1)},
+		{"loser sent", report(2), roundTrip(report(1))},
+	} {
+		for _, order := range [][]*TableAPIMetrics{{tc.a, tc.b}, {tc.b, tc.a}} {
+			if got := mergeTables(order...).Maintenance["compaction"].Backlog.Bytes; got != 2 {
+				t.Errorf("%s: Backlog.Bytes = %d, want 2", tc.name, got)
+			}
+		}
+	}
+}
+
 // A PerNode job runs on every node, so each report holds only that node's runs
 // and the cluster total is their sum.
 func TestTableMaintenanceMergeSumsPerNode(t *testing.T) {

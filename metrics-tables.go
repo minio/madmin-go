@@ -20,6 +20,7 @@
 package madmin
 
 import (
+	"cmp"
 	"maps"
 	"time"
 )
@@ -263,8 +264,8 @@ func (o *TableMaintenanceIOOps) Add(other *TableMaintenanceIOOps) {
 // Leader-owned reports are selected per job rather than summed, since a
 // former leader may retain stale counters. PerNode reports instead sum
 // TablesProcessed, Errors, Retries and Work across nodes. Producers of PerNode
-// reports must leave Cycles, ConfigsEnabled, ConfigsTotal, Running, LastRun and
-// LastCycleSecs unset.
+// reports must leave Cycles, ConfigsEnabled, ConfigsTotal, Running, LastRun,
+// LastCycleSecs and Backlog unset.
 type TableMaintenanceJob struct {
 	Cycles          uint64 `json:"cycles,omitempty"`
 	TablesProcessed uint64 `json:"tables_processed,omitempty"`
@@ -286,7 +287,10 @@ type TableMaintenanceJob struct {
 	// Work maps a job-type-specific unit of work to its cumulative count:
 	// "snapshots_expired" for snapshot_expiration, "orphan_files_marked" for
 	// unreferenced_file_removal, and "files_rewritten" / "files_added" /
-	// "tables_skipped" for compaction.
+	// "tables_skipped" for compaction. Compaction also counts the backlog files
+	// that arrived between runs and the ones its runs resolved per backlog
+	// component: "backlog_inflow_small_files", "backlog_inflow_delete_files",
+	// "backlog_resolved_small_files" and "backlog_resolved_delete_files".
 	//
 	// Keyed rather than fielded so a new maintenance job type adds keys instead
 	// of wire fields, and so no job carries another job's structurally-zero
@@ -297,6 +301,12 @@ type TableMaintenanceJob struct {
 	// Per-node reports take precedence over legacy reports of the same job.
 	// Producers must use this mode only with aggregators that support it.
 	PerNode bool `json:"per_node,omitempty"`
+
+	// Backlog is the compaction backlog as of each table's last measured run.
+	// Only the compaction leader reports it, so it is never summed: Merge keeps
+	// the one whose leader took over last, whichever report is selected for the
+	// job. It is an AIStor extension.
+	Backlog *TableCompactionClusterBacklog `json:"backlog,omitempty"`
 }
 
 // fresherThan reports whether j is the more authoritative report of the same
@@ -324,12 +334,122 @@ func (j TableMaintenanceJob) fresherThan(k TableMaintenanceJob) bool {
 	return j.Errors > k.Errors
 }
 
+// selectFrom folds the leader-owned report o into j: the fresher report wins
+// the job, and Backlog is the one from the latest leader. ok reports whether j
+// holds a report yet.
+func (j *TableMaintenanceJob) selectFrom(o TableMaintenanceJob, ok bool) {
+	backlog := j.Backlog
+	// Clone Backlog and Work: storing o's wholesale would share the source
+	// report's maps, so a caller mutating the aggregate would reach back into it.
+	if o.Backlog.newerThan(backlog) {
+		backlog = o.Backlog.clone()
+	}
+	if !ok || o.fresherThan(*j) {
+		*j = o
+		j.Work = maps.Clone(o.Work)
+	}
+	j.Backlog = backlog
+}
+
 // add sums the counters of another node's report of the same PerNode job.
 func (j *TableMaintenanceJob) add(o TableMaintenanceJob) {
 	j.TablesProcessed += o.TablesProcessed
 	j.Errors += o.Errors
 	j.Retries += o.Retries
 	addMap(&j.Work, o.Work)
+}
+
+// TableCompactionClusterBacklog is the cluster's compaction backlog, summed
+// over every table the compaction leader measured. It is an AIStor extension.
+type TableCompactionClusterBacklog struct {
+	// LeaderSince is when the reporting node became compaction leader, and is
+	// the Merge selector: a deposed leader that has not noticed yet reports an
+	// earlier tenure than its successor.
+	LeaderSince time.Time `json:"leader_since,omitzero"`
+
+	// Complete reports whether the measured tables cover every table with
+	// compaction enabled. It is false until the leader completes a cycle.
+	Complete bool `json:"complete,omitempty"`
+
+	// Bytes is what compaction would rewrite, and UnplannedFiles counts the
+	// small or delete-heavy files compaction does not plan under the current
+	// thresholds.
+	Bytes          int64 `json:"bytes,omitempty"`
+	UnplannedFiles int64 `json:"unplanned_files,omitempty"`
+
+	// Components maps a backlog component, "small_files" or "delete_files",
+	// to its backlog.
+	Components map[string]TableCompactionClusterBacklogComponent `json:"components,omitempty"`
+
+	// TablesOverdue counts the tables due for compaction and not yet
+	// compacted, and OldestOverdueSecs is how long past its interval the
+	// longest waiting one is.
+	TablesOverdue     int64   `json:"tables_overdue,omitempty"`
+	OldestOverdueSecs float64 `json:"oldest_overdue_secs,omitempty"`
+}
+
+// TableCompactionClusterBacklogComponent is one backlog component across the
+// measured tables. It is an AIStor extension.
+type TableCompactionClusterBacklogComponent struct {
+	// Files counts the files beyond the compacted layout.
+	Files int64 `json:"files,omitempty"`
+
+	// GrowingTables counts the tables whose backlog kept growing over their
+	// last runs, and MaxGrowthStreak is the longest run of consecutive backlog
+	// increases on any table.
+	GrowingTables   int64 `json:"growing_tables,omitempty"`
+	MaxGrowthStreak int64 `json:"max_growth_streak,omitempty"`
+
+	// Tables maps a backlog ratio band, "none" (below 0.1), "low" (below 0.5),
+	// "medium" (below 2) or "high", to the tables in it.
+	Tables map[string]int64 `json:"tables,omitempty"`
+}
+
+// newerThan reports whether b should replace c: b's leader took over later, or
+// at the same time with a complete index or larger totals, so the choice does
+// not depend on merge order. Two backlogs of one tenure that differ only in
+// component growth or bands still tie; they come from the same node.
+func (b *TableCompactionClusterBacklog) newerThan(c *TableCompactionClusterBacklog) bool {
+	switch {
+	case b == nil:
+		return false
+	case c == nil:
+		return true
+	case !b.LeaderSince.Equal(c.LeaderSince):
+		return b.LeaderSince.After(c.LeaderSince)
+	}
+	return cmp.Or(
+		cmp.Compare(boolRank(b.Complete), boolRank(c.Complete)),
+		cmp.Compare(b.Bytes, c.Bytes),
+		cmp.Compare(b.UnplannedFiles, c.UnplannedFiles),
+		cmp.Compare(b.TablesOverdue, c.TablesOverdue),
+		cmp.Compare(b.OldestOverdueSecs, c.OldestOverdueSecs),
+		cmp.Compare(b.Components["small_files"].Files, c.Components["small_files"].Files),
+		cmp.Compare(b.Components["delete_files"].Files, c.Components["delete_files"].Files),
+	) > 0
+}
+
+func boolRank(v bool) int {
+	if v {
+		return 1
+	}
+	return 0
+}
+
+// clone deep-copies b so the copy shares no map with it.
+func (b *TableCompactionClusterBacklog) clone() *TableCompactionClusterBacklog {
+	if b == nil {
+		return nil
+	}
+	c := *b
+	if b.Components != nil {
+		c.Components = make(map[string]TableCompactionClusterBacklogComponent, len(b.Components))
+		for k, v := range b.Components {
+			v.Tables = maps.Clone(v.Tables)
+			c.Components[k] = v
+		}
+	}
+	return &c
 }
 
 // CatalogScannerCycle is one catalog scanner cycle's own timing and counts --
@@ -607,11 +727,9 @@ func (t *TableAPIMetrics) Merge(other *TableAPIMetrics) {
 		case ok && cur.PerNode && o.PerNode:
 			cur.add(o)
 			t.Maintenance[k] = cur
-		case !ok || o.fresherThan(cur):
-			// Clone Work: storing o wholesale would share the source report's map,
-			// so a caller mutating the aggregate would reach back into it.
-			o.Work = maps.Clone(o.Work)
-			t.Maintenance[k] = o
+		default:
+			cur.selectFrom(o, ok)
+			t.Maintenance[k] = cur
 		}
 	}
 	if other.CatalogScanner != nil && (t.CatalogScanner == nil || other.CatalogScanner.fresherThan(*t.CatalogScanner)) {

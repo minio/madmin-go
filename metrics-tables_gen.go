@@ -3885,6 +3885,856 @@ func (z *TableCatalog) Msgsize() (s int) {
 }
 
 // DecodeMsg implements msgp.Decodable
+func (z *TableCompactionClusterBacklog) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 7 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "leader_since":
+			z.LeaderSince, err = dc.ReadTimeUTC()
+			if err != nil {
+				err = msgp.WrapError(err, "LeaderSince")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "complete":
+			z.Complete, err = dc.ReadBool()
+			if err != nil {
+				err = msgp.WrapError(err, "Complete")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "bytes":
+			z.Bytes, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "Bytes")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "unplanned_files":
+			z.UnplannedFiles, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "UnplannedFiles")
+				return
+			}
+			zb0001Mask |= 0x8
+		case "components":
+			var zb0002 uint32
+			zb0002, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "Components")
+				return
+			}
+			if z.Components == nil {
+				z.Components = make(map[string]TableCompactionClusterBacklogComponent, zb0002)
+			} else if len(z.Components) > 0 {
+				clear(z.Components)
+			}
+			for zb0002 > 0 {
+				zb0002--
+				var za0001 string
+				za0001, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "Components")
+					return
+				}
+				var za0002 TableCompactionClusterBacklogComponent
+				err = za0002.DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "Components", za0001)
+					return
+				}
+				z.Components[za0001] = za0002
+			}
+			zb0001Mask |= 0x10
+		case "tables_overdue":
+			z.TablesOverdue, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "TablesOverdue")
+				return
+			}
+			zb0001Mask |= 0x20
+		case "oldest_overdue_secs":
+			z.OldestOverdueSecs, err = dc.ReadFloat64()
+			if err != nil {
+				err = msgp.WrapError(err, "OldestOverdueSecs")
+				return
+			}
+			zb0001Mask |= 0x40
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x7f {
+		if (zb0001Mask & 0x1) == 0 {
+			z.LeaderSince = (time.Time{})
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.Complete = false
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.Bytes = 0
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.UnplannedFiles = 0
+		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.Components = nil
+		}
+		if (zb0001Mask & 0x20) == 0 {
+			z.TablesOverdue = 0
+		}
+		if (zb0001Mask & 0x40) == 0 {
+			z.OldestOverdueSecs = 0
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *TableCompactionClusterBacklog) EncodeMsg(en *msgp.Writer) (err error) {
+	// check for omitted fields
+	zb0001Len := uint32(7)
+	var zb0001Mask uint8 /* 7 bits */
+	_ = zb0001Mask
+	if z.LeaderSince.IsZero() {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.Complete == false {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.Bytes == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	if z.UnplannedFiles == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.Components == nil {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	if z.TablesOverdue == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x20
+	}
+	if z.OldestOverdueSecs == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x40
+	}
+	// variable map header, size zb0001Len
+	err = en.Append(0x80 | uint8(zb0001Len))
+	if err != nil {
+		return
+	}
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// write "leader_since"
+			err = en.Append(0xac, 0x6c, 0x65, 0x61, 0x64, 0x65, 0x72, 0x5f, 0x73, 0x69, 0x6e, 0x63, 0x65)
+			if err != nil {
+				return
+			}
+			err = en.WriteTime(z.LeaderSince)
+			if err != nil {
+				err = msgp.WrapError(err, "LeaderSince")
+				return
+			}
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// write "complete"
+			err = en.Append(0xa8, 0x63, 0x6f, 0x6d, 0x70, 0x6c, 0x65, 0x74, 0x65)
+			if err != nil {
+				return
+			}
+			err = en.WriteBool(z.Complete)
+			if err != nil {
+				err = msgp.WrapError(err, "Complete")
+				return
+			}
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// write "bytes"
+			err = en.Append(0xa5, 0x62, 0x79, 0x74, 0x65, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.Bytes)
+			if err != nil {
+				err = msgp.WrapError(err, "Bytes")
+				return
+			}
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// write "unplanned_files"
+			err = en.Append(0xaf, 0x75, 0x6e, 0x70, 0x6c, 0x61, 0x6e, 0x6e, 0x65, 0x64, 0x5f, 0x66, 0x69, 0x6c, 0x65, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.UnplannedFiles)
+			if err != nil {
+				err = msgp.WrapError(err, "UnplannedFiles")
+				return
+			}
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// write "components"
+			err = en.Append(0xaa, 0x63, 0x6f, 0x6d, 0x70, 0x6f, 0x6e, 0x65, 0x6e, 0x74, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteMapHeader(uint32(len(z.Components)))
+			if err != nil {
+				err = msgp.WrapError(err, "Components")
+				return
+			}
+			for za0001, za0002 := range z.Components {
+				err = en.WriteString(za0001)
+				if err != nil {
+					err = msgp.WrapError(err, "Components")
+					return
+				}
+				err = za0002.EncodeMsg(en)
+				if err != nil {
+					err = msgp.WrapError(err, "Components", za0001)
+					return
+				}
+			}
+		}
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// write "tables_overdue"
+			err = en.Append(0xae, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x73, 0x5f, 0x6f, 0x76, 0x65, 0x72, 0x64, 0x75, 0x65)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.TablesOverdue)
+			if err != nil {
+				err = msgp.WrapError(err, "TablesOverdue")
+				return
+			}
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
+			// write "oldest_overdue_secs"
+			err = en.Append(0xb3, 0x6f, 0x6c, 0x64, 0x65, 0x73, 0x74, 0x5f, 0x6f, 0x76, 0x65, 0x72, 0x64, 0x75, 0x65, 0x5f, 0x73, 0x65, 0x63, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteFloat64(z.OldestOverdueSecs)
+			if err != nil {
+				err = msgp.WrapError(err, "OldestOverdueSecs")
+				return
+			}
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *TableCompactionClusterBacklog) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// check for omitted fields
+	zb0001Len := uint32(7)
+	var zb0001Mask uint8 /* 7 bits */
+	_ = zb0001Mask
+	if z.LeaderSince.IsZero() {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.Complete == false {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.Bytes == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	if z.UnplannedFiles == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	if z.Components == nil {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	if z.TablesOverdue == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x20
+	}
+	if z.OldestOverdueSecs == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x40
+	}
+	// variable map header, size zb0001Len
+	o = append(o, 0x80|uint8(zb0001Len))
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// string "leader_since"
+			o = append(o, 0xac, 0x6c, 0x65, 0x61, 0x64, 0x65, 0x72, 0x5f, 0x73, 0x69, 0x6e, 0x63, 0x65)
+			o = msgp.AppendTime(o, z.LeaderSince)
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// string "complete"
+			o = append(o, 0xa8, 0x63, 0x6f, 0x6d, 0x70, 0x6c, 0x65, 0x74, 0x65)
+			o = msgp.AppendBool(o, z.Complete)
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// string "bytes"
+			o = append(o, 0xa5, 0x62, 0x79, 0x74, 0x65, 0x73)
+			o = msgp.AppendInt64(o, z.Bytes)
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// string "unplanned_files"
+			o = append(o, 0xaf, 0x75, 0x6e, 0x70, 0x6c, 0x61, 0x6e, 0x6e, 0x65, 0x64, 0x5f, 0x66, 0x69, 0x6c, 0x65, 0x73)
+			o = msgp.AppendInt64(o, z.UnplannedFiles)
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// string "components"
+			o = append(o, 0xaa, 0x63, 0x6f, 0x6d, 0x70, 0x6f, 0x6e, 0x65, 0x6e, 0x74, 0x73)
+			o = msgp.AppendMapHeader(o, uint32(len(z.Components)))
+			for za0001, za0002 := range z.Components {
+				o = msgp.AppendString(o, za0001)
+				o, err = za0002.MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "Components", za0001)
+					return
+				}
+			}
+		}
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// string "tables_overdue"
+			o = append(o, 0xae, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x73, 0x5f, 0x6f, 0x76, 0x65, 0x72, 0x64, 0x75, 0x65)
+			o = msgp.AppendInt64(o, z.TablesOverdue)
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
+			// string "oldest_overdue_secs"
+			o = append(o, 0xb3, 0x6f, 0x6c, 0x64, 0x65, 0x73, 0x74, 0x5f, 0x6f, 0x76, 0x65, 0x72, 0x64, 0x75, 0x65, 0x5f, 0x73, 0x65, 0x63, 0x73)
+			o = msgp.AppendFloat64(o, z.OldestOverdueSecs)
+		}
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *TableCompactionClusterBacklog) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 7 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "leader_since":
+			z.LeaderSince, bts, err = msgp.ReadTimeUTCBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "LeaderSince")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "complete":
+			z.Complete, bts, err = msgp.ReadBoolBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Complete")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "bytes":
+			z.Bytes, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Bytes")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "unplanned_files":
+			z.UnplannedFiles, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "UnplannedFiles")
+				return
+			}
+			zb0001Mask |= 0x8
+		case "components":
+			var zb0002 uint32
+			zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Components")
+				return
+			}
+			if z.Components == nil {
+				z.Components = make(map[string]TableCompactionClusterBacklogComponent, zb0002)
+			} else if len(z.Components) > 0 {
+				clear(z.Components)
+			}
+			for zb0002 > 0 {
+				var za0002 TableCompactionClusterBacklogComponent
+				zb0002--
+				var za0001 string
+				za0001, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Components")
+					return
+				}
+				bts, err = za0002.UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Components", za0001)
+					return
+				}
+				z.Components[za0001] = za0002
+			}
+			zb0001Mask |= 0x10
+		case "tables_overdue":
+			z.TablesOverdue, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "TablesOverdue")
+				return
+			}
+			zb0001Mask |= 0x20
+		case "oldest_overdue_secs":
+			z.OldestOverdueSecs, bts, err = msgp.ReadFloat64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "OldestOverdueSecs")
+				return
+			}
+			zb0001Mask |= 0x40
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0x7f {
+		if (zb0001Mask & 0x1) == 0 {
+			z.LeaderSince = (time.Time{})
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.Complete = false
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.Bytes = 0
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.UnplannedFiles = 0
+		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.Components = nil
+		}
+		if (zb0001Mask & 0x20) == 0 {
+			z.TablesOverdue = 0
+		}
+		if (zb0001Mask & 0x40) == 0 {
+			z.OldestOverdueSecs = 0
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *TableCompactionClusterBacklog) Msgsize() (s int) {
+	s = 1 + 13 + msgp.TimeSize + 9 + msgp.BoolSize + 6 + msgp.Int64Size + 16 + msgp.Int64Size + 11 + msgp.MapHeaderSize
+	if z.Components != nil {
+		for za0001, za0002 := range z.Components {
+			_ = za0002
+			s += msgp.StringPrefixSize + len(za0001) + za0002.Msgsize()
+		}
+	}
+	s += 15 + msgp.Int64Size + 20 + msgp.Float64Size
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
+func (z *TableCompactionClusterBacklogComponent) DecodeMsg(dc *msgp.Reader) (err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, err = dc.ReadMapHeader()
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 4 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, err = dc.ReadMapKeyPtr()
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "files":
+			z.Files, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "Files")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "growing_tables":
+			z.GrowingTables, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "GrowingTables")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "max_growth_streak":
+			z.MaxGrowthStreak, err = dc.ReadInt64()
+			if err != nil {
+				err = msgp.WrapError(err, "MaxGrowthStreak")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "tables":
+			var zb0002 uint32
+			zb0002, err = dc.ReadMapHeader()
+			if err != nil {
+				err = msgp.WrapError(err, "Tables")
+				return
+			}
+			if z.Tables == nil {
+				z.Tables = make(map[string]int64, zb0002)
+			} else if len(z.Tables) > 0 {
+				clear(z.Tables)
+			}
+			for zb0002 > 0 {
+				zb0002--
+				var za0001 string
+				za0001, err = dc.ReadString()
+				if err != nil {
+					err = msgp.WrapError(err, "Tables")
+					return
+				}
+				var za0002 int64
+				za0002, err = dc.ReadInt64()
+				if err != nil {
+					err = msgp.WrapError(err, "Tables", za0001)
+					return
+				}
+				z.Tables[za0001] = za0002
+			}
+			zb0001Mask |= 0x8
+		default:
+			err = dc.Skip()
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0xf {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Files = 0
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.GrowingTables = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.MaxGrowthStreak = 0
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.Tables = nil
+		}
+	}
+	return
+}
+
+// EncodeMsg implements msgp.Encodable
+func (z *TableCompactionClusterBacklogComponent) EncodeMsg(en *msgp.Writer) (err error) {
+	// check for omitted fields
+	zb0001Len := uint32(4)
+	var zb0001Mask uint8 /* 4 bits */
+	_ = zb0001Mask
+	if z.Files == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.GrowingTables == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.MaxGrowthStreak == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	if z.Tables == nil {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	// variable map header, size zb0001Len
+	err = en.Append(0x80 | uint8(zb0001Len))
+	if err != nil {
+		return
+	}
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// write "files"
+			err = en.Append(0xa5, 0x66, 0x69, 0x6c, 0x65, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.Files)
+			if err != nil {
+				err = msgp.WrapError(err, "Files")
+				return
+			}
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// write "growing_tables"
+			err = en.Append(0xae, 0x67, 0x72, 0x6f, 0x77, 0x69, 0x6e, 0x67, 0x5f, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.GrowingTables)
+			if err != nil {
+				err = msgp.WrapError(err, "GrowingTables")
+				return
+			}
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// write "max_growth_streak"
+			err = en.Append(0xb1, 0x6d, 0x61, 0x78, 0x5f, 0x67, 0x72, 0x6f, 0x77, 0x74, 0x68, 0x5f, 0x73, 0x74, 0x72, 0x65, 0x61, 0x6b)
+			if err != nil {
+				return
+			}
+			err = en.WriteInt64(z.MaxGrowthStreak)
+			if err != nil {
+				err = msgp.WrapError(err, "MaxGrowthStreak")
+				return
+			}
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// write "tables"
+			err = en.Append(0xa6, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x73)
+			if err != nil {
+				return
+			}
+			err = en.WriteMapHeader(uint32(len(z.Tables)))
+			if err != nil {
+				err = msgp.WrapError(err, "Tables")
+				return
+			}
+			for za0001, za0002 := range z.Tables {
+				err = en.WriteString(za0001)
+				if err != nil {
+					err = msgp.WrapError(err, "Tables")
+					return
+				}
+				err = en.WriteInt64(za0002)
+				if err != nil {
+					err = msgp.WrapError(err, "Tables", za0001)
+					return
+				}
+			}
+		}
+	}
+	return
+}
+
+// MarshalMsg implements msgp.Marshaler
+func (z *TableCompactionClusterBacklogComponent) MarshalMsg(b []byte) (o []byte, err error) {
+	o = msgp.Require(b, z.Msgsize())
+	// check for omitted fields
+	zb0001Len := uint32(4)
+	var zb0001Mask uint8 /* 4 bits */
+	_ = zb0001Mask
+	if z.Files == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x1
+	}
+	if z.GrowingTables == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x2
+	}
+	if z.MaxGrowthStreak == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x4
+	}
+	if z.Tables == nil {
+		zb0001Len--
+		zb0001Mask |= 0x8
+	}
+	// variable map header, size zb0001Len
+	o = append(o, 0x80|uint8(zb0001Len))
+
+	// skip if no fields are to be emitted
+	if zb0001Len != 0 {
+		if (zb0001Mask & 0x1) == 0 { // if not omitted
+			// string "files"
+			o = append(o, 0xa5, 0x66, 0x69, 0x6c, 0x65, 0x73)
+			o = msgp.AppendInt64(o, z.Files)
+		}
+		if (zb0001Mask & 0x2) == 0 { // if not omitted
+			// string "growing_tables"
+			o = append(o, 0xae, 0x67, 0x72, 0x6f, 0x77, 0x69, 0x6e, 0x67, 0x5f, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x73)
+			o = msgp.AppendInt64(o, z.GrowingTables)
+		}
+		if (zb0001Mask & 0x4) == 0 { // if not omitted
+			// string "max_growth_streak"
+			o = append(o, 0xb1, 0x6d, 0x61, 0x78, 0x5f, 0x67, 0x72, 0x6f, 0x77, 0x74, 0x68, 0x5f, 0x73, 0x74, 0x72, 0x65, 0x61, 0x6b)
+			o = msgp.AppendInt64(o, z.MaxGrowthStreak)
+		}
+		if (zb0001Mask & 0x8) == 0 { // if not omitted
+			// string "tables"
+			o = append(o, 0xa6, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x73)
+			o = msgp.AppendMapHeader(o, uint32(len(z.Tables)))
+			for za0001, za0002 := range z.Tables {
+				o = msgp.AppendString(o, za0001)
+				o = msgp.AppendInt64(o, za0002)
+			}
+		}
+	}
+	return
+}
+
+// UnmarshalMsg implements msgp.Unmarshaler
+func (z *TableCompactionClusterBacklogComponent) UnmarshalMsg(bts []byte) (o []byte, err error) {
+	var field []byte
+	_ = field
+	var zb0001 uint32
+	zb0001, bts, err = msgp.ReadMapHeaderBytes(bts)
+	if err != nil {
+		err = msgp.WrapError(err)
+		return
+	}
+	var zb0001Mask uint8 /* 4 bits */
+	_ = zb0001Mask
+	for zb0001 > 0 {
+		zb0001--
+		field, bts, err = msgp.ReadMapKeyZC(bts)
+		if err != nil {
+			err = msgp.WrapError(err)
+			return
+		}
+		switch msgp.UnsafeString(field) {
+		case "files":
+			z.Files, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Files")
+				return
+			}
+			zb0001Mask |= 0x1
+		case "growing_tables":
+			z.GrowingTables, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "GrowingTables")
+				return
+			}
+			zb0001Mask |= 0x2
+		case "max_growth_streak":
+			z.MaxGrowthStreak, bts, err = msgp.ReadInt64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "MaxGrowthStreak")
+				return
+			}
+			zb0001Mask |= 0x4
+		case "tables":
+			var zb0002 uint32
+			zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "Tables")
+				return
+			}
+			if z.Tables == nil {
+				z.Tables = make(map[string]int64, zb0002)
+			} else if len(z.Tables) > 0 {
+				clear(z.Tables)
+			}
+			for zb0002 > 0 {
+				var za0002 int64
+				zb0002--
+				var za0001 string
+				za0001, bts, err = msgp.ReadStringBytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Tables")
+					return
+				}
+				za0002, bts, err = msgp.ReadInt64Bytes(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Tables", za0001)
+					return
+				}
+				z.Tables[za0001] = za0002
+			}
+			zb0001Mask |= 0x8
+		default:
+			bts, err = msgp.Skip(bts)
+			if err != nil {
+				err = msgp.WrapError(err)
+				return
+			}
+		}
+	}
+	// Clear omitted fields.
+	if zb0001Mask != 0xf {
+		if (zb0001Mask & 0x1) == 0 {
+			z.Files = 0
+		}
+		if (zb0001Mask & 0x2) == 0 {
+			z.GrowingTables = 0
+		}
+		if (zb0001Mask & 0x4) == 0 {
+			z.MaxGrowthStreak = 0
+		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.Tables = nil
+		}
+	}
+	o = bts
+	return
+}
+
+// Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
+func (z *TableCompactionClusterBacklogComponent) Msgsize() (s int) {
+	s = 1 + 6 + msgp.Int64Size + 15 + msgp.Int64Size + 18 + msgp.Int64Size + 7 + msgp.MapHeaderSize
+	if z.Tables != nil {
+		for za0001, za0002 := range z.Tables {
+			_ = za0002
+			s += msgp.StringPrefixSize + len(za0001) + msgp.Int64Size
+		}
+	}
+	return
+}
+
+// DecodeMsg implements msgp.Decodable
 func (z *TableHealth) DecodeMsg(dc *msgp.Reader) (err error) {
 	var field []byte
 	_ = field
@@ -5982,7 +6832,7 @@ func (z *TableMaintenanceJob) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint16 /* 11 bits */
+	var zb0001Mask uint16 /* 12 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -6091,6 +6941,25 @@ func (z *TableMaintenanceJob) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 			zb0001Mask |= 0x400
+		case "backlog":
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "Backlog")
+					return
+				}
+				z.Backlog = nil
+			} else {
+				if z.Backlog == nil {
+					z.Backlog = new(TableCompactionClusterBacklog)
+				}
+				err = z.Backlog.DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "Backlog")
+					return
+				}
+			}
+			zb0001Mask |= 0x800
 		default:
 			err = dc.Skip()
 			if err != nil {
@@ -6100,7 +6969,7 @@ func (z *TableMaintenanceJob) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x7ff {
+	if zb0001Mask != 0xfff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Cycles = 0
 		}
@@ -6134,6 +7003,9 @@ func (z *TableMaintenanceJob) DecodeMsg(dc *msgp.Reader) (err error) {
 		if (zb0001Mask & 0x400) == 0 {
 			z.PerNode = false
 		}
+		if (zb0001Mask & 0x800) == 0 {
+			z.Backlog = nil
+		}
 	}
 	return
 }
@@ -6141,8 +7013,8 @@ func (z *TableMaintenanceJob) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *TableMaintenanceJob) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(11)
-	var zb0001Mask uint16 /* 11 bits */
+	zb0001Len := uint32(12)
+	var zb0001Mask uint16 /* 12 bits */
 	_ = zb0001Mask
 	if z.Cycles == 0 {
 		zb0001Len--
@@ -6187,6 +7059,10 @@ func (z *TableMaintenanceJob) EncodeMsg(en *msgp.Writer) (err error) {
 	if z.PerNode == false {
 		zb0001Len--
 		zb0001Mask |= 0x400
+	}
+	if z.Backlog == nil {
+		zb0001Len--
+		zb0001Mask |= 0x800
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -6340,6 +7216,25 @@ func (z *TableMaintenanceJob) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
+			// write "backlog"
+			err = en.Append(0xa7, 0x62, 0x61, 0x63, 0x6b, 0x6c, 0x6f, 0x67)
+			if err != nil {
+				return
+			}
+			if z.Backlog == nil {
+				err = en.WriteNil()
+				if err != nil {
+					return
+				}
+			} else {
+				err = z.Backlog.EncodeMsg(en)
+				if err != nil {
+					err = msgp.WrapError(err, "Backlog")
+					return
+				}
+			}
+		}
 	}
 	return
 }
@@ -6348,8 +7243,8 @@ func (z *TableMaintenanceJob) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *TableMaintenanceJob) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(11)
-	var zb0001Mask uint16 /* 11 bits */
+	zb0001Len := uint32(12)
+	var zb0001Mask uint16 /* 12 bits */
 	_ = zb0001Mask
 	if z.Cycles == 0 {
 		zb0001Len--
@@ -6394,6 +7289,10 @@ func (z *TableMaintenanceJob) MarshalMsg(b []byte) (o []byte, err error) {
 	if z.PerNode == false {
 		zb0001Len--
 		zb0001Mask |= 0x400
+	}
+	if z.Backlog == nil {
+		zb0001Len--
+		zb0001Mask |= 0x800
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -6459,6 +7358,19 @@ func (z *TableMaintenanceJob) MarshalMsg(b []byte) (o []byte, err error) {
 			o = append(o, 0xa8, 0x70, 0x65, 0x72, 0x5f, 0x6e, 0x6f, 0x64, 0x65)
 			o = msgp.AppendBool(o, z.PerNode)
 		}
+		if (zb0001Mask & 0x800) == 0 { // if not omitted
+			// string "backlog"
+			o = append(o, 0xa7, 0x62, 0x61, 0x63, 0x6b, 0x6c, 0x6f, 0x67)
+			if z.Backlog == nil {
+				o = msgp.AppendNil(o)
+			} else {
+				o, err = z.Backlog.MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "Backlog")
+					return
+				}
+			}
+		}
 	}
 	return
 }
@@ -6473,7 +7385,7 @@ func (z *TableMaintenanceJob) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint16 /* 11 bits */
+	var zb0001Mask uint16 /* 12 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -6582,6 +7494,24 @@ func (z *TableMaintenanceJob) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 			zb0001Mask |= 0x400
+		case "backlog":
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.Backlog = nil
+			} else {
+				if z.Backlog == nil {
+					z.Backlog = new(TableCompactionClusterBacklog)
+				}
+				bts, err = z.Backlog.UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "Backlog")
+					return
+				}
+			}
+			zb0001Mask |= 0x800
 		default:
 			bts, err = msgp.Skip(bts)
 			if err != nil {
@@ -6591,7 +7521,7 @@ func (z *TableMaintenanceJob) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x7ff {
+	if zb0001Mask != 0xfff {
 		if (zb0001Mask & 0x1) == 0 {
 			z.Cycles = 0
 		}
@@ -6625,6 +7555,9 @@ func (z *TableMaintenanceJob) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		if (zb0001Mask & 0x400) == 0 {
 			z.PerNode = false
 		}
+		if (zb0001Mask & 0x800) == 0 {
+			z.Backlog = nil
+		}
 	}
 	o = bts
 	return
@@ -6639,7 +7572,12 @@ func (z *TableMaintenanceJob) Msgsize() (s int) {
 			s += msgp.StringPrefixSize + len(za0001) + msgp.Uint64Size
 		}
 	}
-	s += 9 + msgp.BoolSize
+	s += 9 + msgp.BoolSize + 8
+	if z.Backlog == nil {
+		s += msgp.NilSize
+	} else {
+		s += z.Backlog.Msgsize()
+	}
 	return
 }
 
