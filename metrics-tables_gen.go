@@ -3904,10 +3904,10 @@ func (z *TableCompactionClusterBacklog) DecodeMsg(dc *msgp.Reader) (err error) {
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "sampled_at":
-			z.SampledAt, err = dc.ReadTimeUTC()
+		case "leader_since":
+			z.LeaderSince, err = dc.ReadTimeUTC()
 			if err != nil {
-				err = msgp.WrapError(err, "SampledAt")
+				err = msgp.WrapError(err, "LeaderSince")
 				return
 			}
 			zb0001Mask |= 0x1
@@ -3986,7 +3986,7 @@ func (z *TableCompactionClusterBacklog) DecodeMsg(dc *msgp.Reader) (err error) {
 	// Clear omitted fields.
 	if zb0001Mask != 0x7f {
 		if (zb0001Mask & 0x1) == 0 {
-			z.SampledAt = (time.Time{})
+			z.LeaderSince = (time.Time{})
 		}
 		if (zb0001Mask & 0x2) == 0 {
 			z.Complete = false
@@ -4016,7 +4016,7 @@ func (z *TableCompactionClusterBacklog) EncodeMsg(en *msgp.Writer) (err error) {
 	zb0001Len := uint32(7)
 	var zb0001Mask uint8 /* 7 bits */
 	_ = zb0001Mask
-	if z.SampledAt.IsZero() {
+	if z.LeaderSince.IsZero() {
 		zb0001Len--
 		zb0001Mask |= 0x1
 	}
@@ -4053,14 +4053,14 @@ func (z *TableCompactionClusterBacklog) EncodeMsg(en *msgp.Writer) (err error) {
 	// skip if no fields are to be emitted
 	if zb0001Len != 0 {
 		if (zb0001Mask & 0x1) == 0 { // if not omitted
-			// write "sampled_at"
-			err = en.Append(0xaa, 0x73, 0x61, 0x6d, 0x70, 0x6c, 0x65, 0x64, 0x5f, 0x61, 0x74)
+			// write "leader_since"
+			err = en.Append(0xac, 0x6c, 0x65, 0x61, 0x64, 0x65, 0x72, 0x5f, 0x73, 0x69, 0x6e, 0x63, 0x65)
 			if err != nil {
 				return
 			}
-			err = en.WriteTime(z.SampledAt)
+			err = en.WriteTime(z.LeaderSince)
 			if err != nil {
-				err = msgp.WrapError(err, "SampledAt")
+				err = msgp.WrapError(err, "LeaderSince")
 				return
 			}
 		}
@@ -4159,7 +4159,7 @@ func (z *TableCompactionClusterBacklog) MarshalMsg(b []byte) (o []byte, err erro
 	zb0001Len := uint32(7)
 	var zb0001Mask uint8 /* 7 bits */
 	_ = zb0001Mask
-	if z.SampledAt.IsZero() {
+	if z.LeaderSince.IsZero() {
 		zb0001Len--
 		zb0001Mask |= 0x1
 	}
@@ -4193,9 +4193,9 @@ func (z *TableCompactionClusterBacklog) MarshalMsg(b []byte) (o []byte, err erro
 	// skip if no fields are to be emitted
 	if zb0001Len != 0 {
 		if (zb0001Mask & 0x1) == 0 { // if not omitted
-			// string "sampled_at"
-			o = append(o, 0xaa, 0x73, 0x61, 0x6d, 0x70, 0x6c, 0x65, 0x64, 0x5f, 0x61, 0x74)
-			o = msgp.AppendTime(o, z.SampledAt)
+			// string "leader_since"
+			o = append(o, 0xac, 0x6c, 0x65, 0x61, 0x64, 0x65, 0x72, 0x5f, 0x73, 0x69, 0x6e, 0x63, 0x65)
+			o = msgp.AppendTime(o, z.LeaderSince)
 		}
 		if (zb0001Mask & 0x2) == 0 { // if not omitted
 			// string "complete"
@@ -4259,10 +4259,10 @@ func (z *TableCompactionClusterBacklog) UnmarshalMsg(bts []byte) (o []byte, err 
 			return
 		}
 		switch msgp.UnsafeString(field) {
-		case "sampled_at":
-			z.SampledAt, bts, err = msgp.ReadTimeUTCBytes(bts)
+		case "leader_since":
+			z.LeaderSince, bts, err = msgp.ReadTimeUTCBytes(bts)
 			if err != nil {
-				err = msgp.WrapError(err, "SampledAt")
+				err = msgp.WrapError(err, "LeaderSince")
 				return
 			}
 			zb0001Mask |= 0x1
@@ -4341,7 +4341,7 @@ func (z *TableCompactionClusterBacklog) UnmarshalMsg(bts []byte) (o []byte, err 
 	// Clear omitted fields.
 	if zb0001Mask != 0x7f {
 		if (zb0001Mask & 0x1) == 0 {
-			z.SampledAt = (time.Time{})
+			z.LeaderSince = (time.Time{})
 		}
 		if (zb0001Mask & 0x2) == 0 {
 			z.Complete = false
@@ -4368,7 +4368,7 @@ func (z *TableCompactionClusterBacklog) UnmarshalMsg(bts []byte) (o []byte, err 
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *TableCompactionClusterBacklog) Msgsize() (s int) {
-	s = 1 + 11 + msgp.TimeSize + 9 + msgp.BoolSize + 6 + msgp.Int64Size + 16 + msgp.Int64Size + 11 + msgp.MapHeaderSize
+	s = 1 + 13 + msgp.TimeSize + 9 + msgp.BoolSize + 6 + msgp.Int64Size + 16 + msgp.Int64Size + 11 + msgp.MapHeaderSize
 	if z.Components != nil {
 		for za0001, za0002 := range z.Components {
 			_ = za0002

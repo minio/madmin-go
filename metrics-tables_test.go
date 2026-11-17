@@ -475,7 +475,7 @@ func TestTableMaintenanceMergeSelectsBacklog(t *testing.T) {
 	t0 := time.Date(2026, 11, 17, 10, 0, 0, 0, time.UTC)
 	leaderBacklog := func() *TableCompactionClusterBacklog {
 		return &TableCompactionClusterBacklog{
-			SampledAt:      t0,
+			LeaderSince:    t0,
 			Complete:       true,
 			Bytes:          7 << 20,
 			UnplannedFiles: 3,
@@ -494,7 +494,7 @@ func TestTableMaintenanceMergeSelectsBacklog(t *testing.T) {
 		"compaction": {LastRun: t0.Add(-time.Hour)},
 	}}
 	demoted := &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{
-		"compaction": {Cycles: 90, LastRun: t0.Add(-time.Minute), Backlog: &TableCompactionClusterBacklog{SampledAt: t0.Add(-time.Minute), Bytes: 1, TablesOverdue: 9}},
+		"compaction": {Cycles: 90, LastRun: t0.Add(-time.Minute), Backlog: &TableCompactionClusterBacklog{LeaderSince: t0.Add(-time.Minute), Bytes: 1, TablesOverdue: 9}},
 	}}
 
 	got := mergeTables(follower, leader, demoted).Maintenance["compaction"]
@@ -512,22 +512,32 @@ func TestTableMaintenanceMergeSelectsBacklog(t *testing.T) {
 	}
 }
 
-// The backlog is the one sampled last, whichever report wins the job and
+// A job that has never run still reports its configs and work, so the first
+// report of it is kept although it is no fresher than an empty one.
+func TestTableMaintenanceMergeKeepsFirstNeverRunReport(t *testing.T) {
+	want := TableMaintenanceJob{ConfigsEnabled: 2, ConfigsTotal: 3, Work: map[string]uint64{"tables_skipped": 4}}
+	got, ok := mergeTables(&TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{"compaction": want}}).Maintenance["compaction"]
+	if !ok || !reflect.DeepEqual(got, want) {
+		t.Errorf("compaction = %+v (present %v), want %+v", got, ok, want)
+	}
+}
+
+// The backlog is the latest leader's, whichever report wins the job and
 // whatever the merge order.
 func TestTableMaintenanceMergeKeepsLatestBacklog(t *testing.T) {
 	t0 := time.Date(2026, 11, 17, 10, 0, 0, 0, time.UTC)
 	older := func() *TableCompactionClusterBacklog {
-		return &TableCompactionClusterBacklog{SampledAt: t0.Add(-time.Hour), Bytes: 1, TablesOverdue: 1}
+		return &TableCompactionClusterBacklog{LeaderSince: t0.Add(-time.Hour), Bytes: 1, TablesOverdue: 1}
 	}
 	newer := func() *TableCompactionClusterBacklog {
 		return &TableCompactionClusterBacklog{
-			SampledAt:  t0,
-			Bytes:      2,
-			Components: map[string]TableCompactionClusterBacklogComponent{"small_files": {Files: 4, Tables: map[string]int64{"low": 1}}},
+			LeaderSince: t0,
+			Bytes:       2,
+			Components:  map[string]TableCompactionClusterBacklogComponent{"small_files": {Files: 4, Tables: map[string]int64{"low": 1}}},
 		}
 	}
 	tied := func() *TableCompactionClusterBacklog {
-		return &TableCompactionClusterBacklog{SampledAt: t0, Bytes: 3}
+		return &TableCompactionClusterBacklog{LeaderSince: t0, Bytes: 3}
 	}
 	report := func(j TableMaintenanceJob) *TableAPIMetrics {
 		return &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{"compaction": j}}
@@ -563,7 +573,7 @@ func TestTableMaintenanceMergeKeepsLatestBacklog(t *testing.T) {
 			wantJob: TableMaintenanceJob{Running: true, Backlog: newer()},
 		},
 		{
-			name:    "backlogs sampled at the same time",
+			name:    "leaders that took over at the same time",
 			a:       TableMaintenanceJob{Cycles: 2, Backlog: newer()},
 			b:       TableMaintenanceJob{Cycles: 1, Backlog: tied()},
 			c:       TableMaintenanceJob{},
@@ -582,15 +592,15 @@ func TestTableMaintenanceMergeKeepsLatestBacklog(t *testing.T) {
 }
 
 // A partial aggregate sent over the wire and merged again still keeps the
-// backlog sampled last, though the report it came from lost the job.
+// latest leader's backlog, though the report it came from lost the job.
 func TestTableMaintenanceMergeKeepsLatestBacklogAcrossWire(t *testing.T) {
 	t0 := time.Date(2026, 11, 17, 10, 0, 0, 0, time.UTC)
 	report := func(j TableMaintenanceJob) *TableAPIMetrics {
 		return &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{"compaction": j}}
 	}
-	stale := report(TableMaintenanceJob{Cycles: 1, LastRun: t0.Add(-time.Hour), Backlog: &TableCompactionClusterBacklog{SampledAt: t0.Add(-time.Hour), Bytes: 1}})
+	stale := report(TableMaintenanceJob{Cycles: 1, LastRun: t0.Add(-time.Hour), Backlog: &TableCompactionClusterBacklog{LeaderSince: t0.Add(-time.Hour), Bytes: 1}})
 	selected := report(TableMaintenanceJob{Cycles: 9, LastRun: t0})
-	latest := &TableCompactionClusterBacklog{SampledAt: t0.Add(-time.Minute), Bytes: 2}
+	latest := &TableCompactionClusterBacklog{LeaderSince: t0.Add(-time.Minute), Bytes: 2}
 	current := report(TableMaintenanceJob{Cycles: 5, LastRun: t0.Add(-30 * time.Minute), Backlog: latest})
 
 	buf, err := mergeTables(stale, selected).MarshalMsg(nil)

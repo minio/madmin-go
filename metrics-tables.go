@@ -305,8 +305,8 @@ type TableMaintenanceJob struct {
 
 	// Backlog is the compaction backlog as of each table's last measured run.
 	// Only the compaction leader reports it, so it is never summed: Merge keeps
-	// the one sampled last, whichever report is selected for the job. It is an
-	// AIStor extension.
+	// the one whose leader took over last, whichever report is selected for the
+	// job. It is an AIStor extension.
 	Backlog *TableCompactionClusterBacklog `json:"backlog,omitempty"`
 }
 
@@ -336,8 +336,8 @@ func (j TableMaintenanceJob) fresherThan(k TableMaintenanceJob) bool {
 }
 
 // selectFrom folds the leader-owned report o into j: the fresher report wins
-// the job, and Backlog is the one sampled last. ok reports whether j holds a
-// report yet.
+// the job, and Backlog is the one from the latest leader. ok reports whether j
+// holds a report yet.
 func (j TableMaintenanceJob) selectFrom(o TableMaintenanceJob, ok bool) TableMaintenanceJob {
 	backlog := j.Backlog
 	// Clone Backlog and Work: storing o's wholesale would share the source
@@ -364,8 +364,10 @@ func (j *TableMaintenanceJob) add(o TableMaintenanceJob) {
 // TableCompactionClusterBacklog is the cluster's compaction backlog, summed
 // over every table the compaction leader measured. It is an AIStor extension.
 type TableCompactionClusterBacklog struct {
-	// SampledAt is when the leader read the backlog, and is the Merge selector.
-	SampledAt time.Time `json:"sampled_at,omitzero"`
+	// LeaderSince is when the reporting node became compaction leader, and is
+	// the Merge selector: a deposed leader that has not noticed yet reports an
+	// earlier tenure than its successor.
+	LeaderSince time.Time `json:"leader_since,omitzero"`
 
 	// Complete reports whether the measured tables cover every table with
 	// compaction enabled. It is false until the leader completes a cycle.
@@ -405,17 +407,17 @@ type TableCompactionClusterBacklogComponent struct {
 	Tables map[string]int64 `json:"tables,omitempty"`
 }
 
-// newerThan reports whether b should replace c: b was sampled later, or at the
-// same time with a greater encoding, so the choice does not depend on merge
-// order.
+// newerThan reports whether b should replace c: b's leader took over later, or
+// at the same time with a greater encoding, so the choice does not depend on
+// merge order.
 func (b *TableCompactionClusterBacklog) newerThan(c *TableCompactionClusterBacklog) bool {
 	switch {
 	case b == nil:
 		return false
 	case c == nil:
 		return true
-	case !b.SampledAt.Equal(c.SampledAt):
-		return b.SampledAt.After(c.SampledAt)
+	case !b.LeaderSince.Equal(c.LeaderSince):
+		return b.LeaderSince.After(c.LeaderSince)
 	}
 	bj, _ := json.Marshal(b)
 	cj, _ := json.Marshal(c)
