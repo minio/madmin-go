@@ -182,12 +182,19 @@ func (adm *AdminClient) AccountInfo(ctx context.Context, opts AccountOpts) (Acco
 	return accountInfo, nil
 }
 
-// BucketInfo is the usage and configuration of one bucket, as returned by
-// BucketsInfo. Details carries only the configuration the caller may read;
-// the server leaves the other fields empty.
+// BucketInfo is one bucket in the BucketsInfo result. The result holds the
+// buckets that S3 ListBuckets would show the caller. Usage and Details are
+// filled only for buckets the caller may list or locate (ListBucket or
+// GetBucketLocation); for the others NameOnly is set. Details carries only
+// the configuration the caller may read, and the server leaves the other
+// configuration fields empty.
 type BucketInfo struct {
-	Name                    string            `json:"name"`
-	Created                 time.Time         `json:"created"`
+	Name    string    `json:"name"`
+	Created time.Time `json:"created"`
+	// NameOnly reports that the caller may see the bucket's name but not
+	// list it. Its usage and details are then left out (zero and nil), not
+	// empty: a zero Size does not mean the bucket is empty.
+	NameOnly                bool              `json:"nameOnly,omitempty"`
 	Size                    uint64            `json:"size"`
 	Objects                 uint64            `json:"objects"`
 	Versions                uint64            `json:"versions"`
@@ -209,10 +216,12 @@ type BucketsInfoOpts struct {
 	Bucket string
 }
 
-// BucketsInfo returns the usage and configuration of the buckets the
-// authenticating account may list (ListBucket or GetBucketLocation), or of
-// opts.Bucket alone when it is set. It needs an AIStor server that supports
-// the bucket info API.
+// BucketsInfo returns the buckets that S3 ListBuckets would show the
+// authenticating account, or opts.Bucket alone when it is set. Usage and
+// configuration are included only for buckets the account may list or
+// locate (ListBucket or GetBucketLocation); the others carry only their name
+// and creation time and have NameOnly set. It needs an AIStor server that
+// supports the bucket info API.
 func (adm *AdminClient) BucketsInfo(ctx context.Context, opts BucketsInfoOpts) ([]BucketInfo, error) {
 	q := make(url.Values)
 	if opts.Bucket != "" {

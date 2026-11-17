@@ -119,7 +119,8 @@ func TestBucketsInfoRequest(t *testing.T) {
 				"objectsVersionsHistogram": {"UNDER_10_VERSIONS": 3},
 				"details": {"versioning": true, "locking": true, "quota": {"size": 1048576}}
 			},
-			{"name": "logs", "created": "2026-11-02T10:00:00Z"}
+			{"name": "logs", "created": "2026-11-02T10:00:00Z"},
+			{"name": "archive", "created": "2026-11-03T10:00:00Z", "nameOnly": true}
 		]
 	}`
 
@@ -164,10 +165,13 @@ func TestBucketsInfoRequest(t *testing.T) {
 				t.Errorf("bucket = %q (present %v), want %q", req.query.Get("bucket"), ok, tc.bucket)
 			}
 
-			if len(got) != 2 {
-				t.Fatalf("got %d buckets, want 2", len(got))
+			if len(got) != 3 {
+				t.Fatalf("got %d buckets, want 3", len(got))
 			}
 			b := got[0]
+			if b.NameOnly {
+				t.Errorf("photos: NameOnly = true, want false")
+			}
 			if b.Name != "photos" || b.Size != 4096 || b.Objects != 3 || b.Versions != 5 || b.DeleteMarkers != 1 {
 				t.Errorf("counts = %+v", b)
 			}
@@ -183,8 +187,18 @@ func TestBucketsInfoRequest(t *testing.T) {
 			if b.Details == nil || !b.Details.Versioning || !b.Details.Locking || b.Details.Quota == nil || b.Details.Quota.Size != 1048576 {
 				t.Errorf("Details = %+v", b.Details)
 			}
-			if got[1].Name != "logs" || got[1].Details != nil {
-				t.Errorf("second bucket = %+v, want logs with no details", got[1])
+			if got[1].Name != "logs" || got[1].Details != nil || got[1].NameOnly {
+				t.Errorf("second bucket = %+v, want logs with no details, not name-only", got[1])
+			}
+			n := got[2]
+			if n.Name != "archive" || !n.NameOnly {
+				t.Errorf("third bucket = %+v, want archive with NameOnly", n)
+			}
+			if want := time.Date(2026, 11, 3, 10, 0, 0, 0, time.UTC); !n.Created.Equal(want) {
+				t.Errorf("archive: Created = %v, want %v", n.Created, want)
+			}
+			if n.Size != 0 || n.Objects != 0 || n.ObjectSizesHistogram != nil || n.Details != nil {
+				t.Errorf("archive = %+v, want no usage or details", n)
 			}
 		})
 	}
