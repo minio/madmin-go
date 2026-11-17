@@ -469,8 +469,8 @@ func TestTableMaintenanceMergeClonesWork(t *testing.T) {
 	}
 }
 
-// Only the compaction leader reports the backlog, so Merge selects it with the
-// leader's job, never sums it, and shares none of its maps with the source.
+// Only the compaction leader reports the backlog, so Merge selects it, never
+// sums it, and shares none of its maps with the source.
 func TestTableMaintenanceMergeSelectsBacklog(t *testing.T) {
 	t0 := time.Date(2026, 11, 17, 10, 0, 0, 0, time.UTC)
 	backlog := &TableCompactionClusterBacklog{
@@ -483,7 +483,16 @@ func TestTableMaintenanceMergeSelectsBacklog(t *testing.T) {
 		TablesOverdue:     2,
 		OldestOverdueSecs: 7200,
 	}
-	want := backlog.clone()
+	want := &TableCompactionClusterBacklog{
+		Complete:       true,
+		Bytes:          7 << 20,
+		UnplannedFiles: 3,
+		Components: map[string]TableCompactionClusterBacklogComponent{
+			"small_files": {Files: 12, GrowingTables: 1, MaxGrowthStreak: 4, Tables: map[string]int64{"high": 1}},
+		},
+		TablesOverdue:     2,
+		OldestOverdueSecs: 7200,
+	}
 	leader := &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{
 		"compaction": {Cycles: 3, LastRun: t0, Running: true, Backlog: backlog},
 	}}
@@ -506,6 +515,67 @@ func TestTableMaintenanceMergeSelectsBacklog(t *testing.T) {
 	got.Backlog.Components["delete_files"] = TableCompactionClusterBacklogComponent{Files: 1}
 	if !reflect.DeepEqual(backlog, want) {
 		t.Errorf("source Backlog mutated through the aggregate: %+v", backlog)
+	}
+}
+
+// The backlog comes from the freshest report carrying one, even when a fresher
+// report without one wins the job, whatever the merge order.
+func TestTableMaintenanceMergeKeepsBacklogOfFreshestCarrier(t *testing.T) {
+	t0 := time.Date(2026, 11, 17, 10, 0, 0, 0, time.UTC)
+	older := func() *TableCompactionClusterBacklog {
+		return &TableCompactionClusterBacklog{Bytes: 1, TablesOverdue: 1}
+	}
+	newer := func() *TableCompactionClusterBacklog {
+		return &TableCompactionClusterBacklog{
+			Bytes:      2,
+			Components: map[string]TableCompactionClusterBacklogComponent{"small_files": {Files: 4, Tables: map[string]int64{"low": 1}}},
+		}
+	}
+	report := func(j TableMaintenanceJob) *TableAPIMetrics {
+		return &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{"compaction": j}}
+	}
+	for _, tc := range []struct {
+		name    string
+		a, b, c TableMaintenanceJob
+		want    *TableCompactionClusterBacklog
+		wantJob TableMaintenanceJob
+	}{
+		{
+			name:    "new leader before its first run, idle follower",
+			a:       TableMaintenanceJob{Backlog: newer()},
+			b:       TableMaintenanceJob{},
+			c:       TableMaintenanceJob{},
+			want:    newer(),
+			wantJob: TableMaintenanceJob{Backlog: newer()},
+		},
+		{
+			name:    "deposed leader ran last",
+			a:       TableMaintenanceJob{Cycles: 1, LastRun: t0.Add(-time.Hour), Backlog: newer()},
+			b:       TableMaintenanceJob{Cycles: 9, LastRun: t0},
+			c:       TableMaintenanceJob{},
+			want:    newer(),
+			wantJob: TableMaintenanceJob{Cycles: 9, LastRun: t0, Backlog: newer()},
+		},
+		{
+			name:    "two backlogs under a fresher report without one",
+			a:       TableMaintenanceJob{Cycles: 2, LastRun: t0.Add(-time.Minute), Backlog: newer()},
+			b:       TableMaintenanceJob{Cycles: 5, LastRun: t0.Add(-time.Hour), Backlog: older()},
+			c:       TableMaintenanceJob{Running: true},
+			want:    newer(),
+			wantJob: TableMaintenanceJob{Running: true, Backlog: newer()},
+		},
+	} {
+		a, b, c := report(tc.a), report(tc.b), report(tc.c)
+		for _, order := range [][]*TableAPIMetrics{{a, b, c}, {a, c, b}, {b, a, c}, {b, c, a}, {c, a, b}, {c, b, a}} {
+			got := mergeTables(order...).Maintenance["compaction"]
+			if !reflect.DeepEqual(got.Backlog, tc.want) {
+				t.Errorf("%s: Backlog = %+v, want %+v", tc.name, got.Backlog, tc.want)
+			}
+			got.backlogFrom = nil
+			if !reflect.DeepEqual(got, tc.wantJob) {
+				t.Errorf("%s: job = %+v, want %+v", tc.name, got, tc.wantJob)
+			}
+		}
 	}
 }
 

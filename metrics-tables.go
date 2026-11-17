@@ -302,9 +302,24 @@ type TableMaintenanceJob struct {
 	PerNode bool `json:"per_node,omitempty"`
 
 	// Backlog is the compaction backlog as of each table's last measured run.
-	// Only the compaction leader reports it, so it is selected with the job and
-	// never summed. It is an AIStor extension.
+	// Only the compaction leader reports it, so it is never summed: Merge keeps
+	// the one from the freshest report that carries a backlog, even when a
+	// fresher report without one is selected for the job. It is an AIStor
+	// extension.
 	Backlog *TableCompactionClusterBacklog `json:"backlog,omitempty"`
+
+	// backlogFrom ranks the report Backlog came from when that is not this
+	// one. It does not travel on the wire.
+	backlogFrom *jobRank `msg:"-"`
+}
+
+//msgp:ignore jobRank
+
+// jobRank holds the fields fresherThan orders maintenance job reports by.
+type jobRank struct {
+	PerNode, Running                bool
+	LastRun                         time.Time
+	Cycles, TablesProcessed, Errors uint64
 }
 
 // fresherThan reports whether j is the more authoritative report of the same
@@ -314,6 +329,45 @@ type TableMaintenanceJob struct {
 // precedence over last-run time and counters so a former leader's larger
 // totals do not hide a job running on the current leader.
 func (j TableMaintenanceJob) fresherThan(k TableMaintenanceJob) bool {
+	return j.rank().fresherThan(k.rank())
+}
+
+// selectFrom folds the leader-owned report o into j: the fresher report wins,
+// and Backlog comes from the freshest report carrying one. ok reports whether j
+// holds a report yet.
+func (j TableMaintenanceJob) selectFrom(o TableMaintenanceJob, ok bool) TableMaintenanceJob {
+	backlog, from := j.Backlog, j.backlogRank()
+	// Clone Backlog and Work: storing o's wholesale would share the source
+	// report's maps, so a caller mutating the aggregate would reach back into it.
+	if o.Backlog != nil && (backlog == nil || o.backlogRank().fresherThan(from)) {
+		backlog, from = o.Backlog.clone(), o.backlogRank()
+	}
+	if !ok || o.fresherThan(j) {
+		o.Work = maps.Clone(o.Work)
+		j = o
+	}
+	j.Backlog, j.backlogFrom = backlog, nil
+	if r := j.rank(); backlog != nil && (r.fresherThan(from) || from.fresherThan(r)) {
+		j.backlogFrom = &from
+	}
+	return j
+}
+
+func (j TableMaintenanceJob) rank() jobRank {
+	return jobRank{
+		PerNode: j.PerNode, Running: j.Running, LastRun: j.LastRun,
+		Cycles: j.Cycles, TablesProcessed: j.TablesProcessed, Errors: j.Errors,
+	}
+}
+
+func (j TableMaintenanceJob) backlogRank() jobRank {
+	if j.backlogFrom != nil {
+		return *j.backlogFrom
+	}
+	return j.rank()
+}
+
+func (j jobRank) fresherThan(k jobRank) bool {
 	if j.PerNode != k.PerNode {
 		return j.PerNode
 	}
@@ -672,13 +726,8 @@ func (t *TableAPIMetrics) Merge(other *TableAPIMetrics) {
 		case ok && cur.PerNode && o.PerNode:
 			cur.add(o)
 			t.Maintenance[k] = cur
-		case !ok || o.fresherThan(cur):
-			// Clone Work and Backlog: storing o wholesale would share the source
-			// report's maps, so a caller mutating the aggregate would reach back
-			// into it.
-			o.Work = maps.Clone(o.Work)
-			o.Backlog = o.Backlog.clone()
-			t.Maintenance[k] = o
+		default:
+			t.Maintenance[k] = cur.selectFrom(o, ok)
 		}
 	}
 	if other.CatalogScanner != nil && (t.CatalogScanner == nil || other.CatalogScanner.fresherThan(*t.CatalogScanner)) {
