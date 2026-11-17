@@ -469,6 +469,46 @@ func TestTableMaintenanceMergeClonesWork(t *testing.T) {
 	}
 }
 
+// Only the compaction leader reports the backlog, so Merge selects it with the
+// leader's job, never sums it, and shares none of its maps with the source.
+func TestTableMaintenanceMergeSelectsBacklog(t *testing.T) {
+	t0 := time.Date(2026, 11, 17, 10, 0, 0, 0, time.UTC)
+	backlog := &TableCompactionClusterBacklog{
+		Complete:       true,
+		Bytes:          7 << 20,
+		UnplannedFiles: 3,
+		Components: map[string]TableCompactionClusterBacklogComponent{
+			"small_files": {Files: 12, GrowingTables: 1, MaxGrowthStreak: 4, Tables: map[string]int64{"high": 1}},
+		},
+		TablesOverdue:     2,
+		OldestOverdueSecs: 7200,
+	}
+	want := backlog.clone()
+	leader := &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{
+		"compaction": {Cycles: 3, LastRun: t0, Running: true, Backlog: backlog},
+	}}
+	follower := &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{
+		"compaction": {LastRun: t0.Add(-time.Hour)},
+	}}
+	demoted := &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{
+		"compaction": {Cycles: 90, LastRun: t0.Add(-time.Minute), Backlog: &TableCompactionClusterBacklog{Bytes: 1, TablesOverdue: 9}},
+	}}
+
+	got := mergeTables(follower, leader, demoted).Maintenance["compaction"]
+	if !reflect.DeepEqual(got.Backlog, want) {
+		t.Errorf("Backlog = %+v, want the leader's %+v, neither summed nor the demoted node's", got.Backlog, want)
+	}
+	if rev := mergeTables(demoted, leader, follower).Maintenance["compaction"]; !reflect.DeepEqual(rev, got) {
+		t.Errorf("order dependent: %+v vs %+v", rev, got)
+	}
+
+	got.Backlog.Components["small_files"].Tables["high"] = 999
+	got.Backlog.Components["delete_files"] = TableCompactionClusterBacklogComponent{Files: 1}
+	if !reflect.DeepEqual(backlog, want) {
+		t.Errorf("source Backlog mutated through the aggregate: %+v", backlog)
+	}
+}
+
 // A PerNode job runs on every node, so each report holds only that node's runs
 // and the cluster total is their sum.
 func TestTableMaintenanceMergeSumsPerNode(t *testing.T) {
