@@ -20,6 +20,8 @@
 package madmin
 
 import (
+	"bytes"
+	"encoding/json"
 	"maps"
 	"time"
 )
@@ -303,23 +305,9 @@ type TableMaintenanceJob struct {
 
 	// Backlog is the compaction backlog as of each table's last measured run.
 	// Only the compaction leader reports it, so it is never summed: Merge keeps
-	// the one from the freshest report that carries a backlog, even when a
-	// fresher report without one is selected for the job. It is an AIStor
-	// extension.
+	// the one sampled last, whichever report is selected for the job. It is an
+	// AIStor extension.
 	Backlog *TableCompactionClusterBacklog `json:"backlog,omitempty"`
-
-	// backlogFrom ranks the report Backlog came from when that is not this
-	// one. It does not travel on the wire.
-	backlogFrom *jobRank `msg:"-"`
-}
-
-//msgp:ignore jobRank
-
-// jobRank holds the fields fresherThan orders maintenance job reports by.
-type jobRank struct {
-	PerNode, Running                bool
-	LastRun                         time.Time
-	Cycles, TablesProcessed, Errors uint64
 }
 
 // fresherThan reports whether j is the more authoritative report of the same
@@ -329,45 +317,6 @@ type jobRank struct {
 // precedence over last-run time and counters so a former leader's larger
 // totals do not hide a job running on the current leader.
 func (j TableMaintenanceJob) fresherThan(k TableMaintenanceJob) bool {
-	return j.rank().fresherThan(k.rank())
-}
-
-// selectFrom folds the leader-owned report o into j: the fresher report wins,
-// and Backlog comes from the freshest report carrying one. ok reports whether j
-// holds a report yet.
-func (j TableMaintenanceJob) selectFrom(o TableMaintenanceJob, ok bool) TableMaintenanceJob {
-	backlog, from := j.Backlog, j.backlogRank()
-	// Clone Backlog and Work: storing o's wholesale would share the source
-	// report's maps, so a caller mutating the aggregate would reach back into it.
-	if o.Backlog != nil && (backlog == nil || o.backlogRank().fresherThan(from)) {
-		backlog, from = o.Backlog.clone(), o.backlogRank()
-	}
-	if !ok || o.fresherThan(j) {
-		o.Work = maps.Clone(o.Work)
-		j = o
-	}
-	j.Backlog, j.backlogFrom = backlog, nil
-	if r := j.rank(); backlog != nil && (r.fresherThan(from) || from.fresherThan(r)) {
-		j.backlogFrom = &from
-	}
-	return j
-}
-
-func (j TableMaintenanceJob) rank() jobRank {
-	return jobRank{
-		PerNode: j.PerNode, Running: j.Running, LastRun: j.LastRun,
-		Cycles: j.Cycles, TablesProcessed: j.TablesProcessed, Errors: j.Errors,
-	}
-}
-
-func (j TableMaintenanceJob) backlogRank() jobRank {
-	if j.backlogFrom != nil {
-		return *j.backlogFrom
-	}
-	return j.rank()
-}
-
-func (j jobRank) fresherThan(k jobRank) bool {
 	if j.PerNode != k.PerNode {
 		return j.PerNode
 	}
@@ -386,6 +335,24 @@ func (j jobRank) fresherThan(k jobRank) bool {
 	return j.Errors > k.Errors
 }
 
+// selectFrom folds the leader-owned report o into j: the fresher report wins
+// the job, and Backlog is the one sampled last. ok reports whether j holds a
+// report yet.
+func (j TableMaintenanceJob) selectFrom(o TableMaintenanceJob, ok bool) TableMaintenanceJob {
+	backlog := j.Backlog
+	// Clone Backlog and Work: storing o's wholesale would share the source
+	// report's maps, so a caller mutating the aggregate would reach back into it.
+	if o.Backlog.newerThan(backlog) {
+		backlog = o.Backlog.clone()
+	}
+	if !ok || o.fresherThan(j) {
+		o.Work = maps.Clone(o.Work)
+		j = o
+	}
+	j.Backlog = backlog
+	return j
+}
+
 // add sums the counters of another node's report of the same PerNode job.
 func (j *TableMaintenanceJob) add(o TableMaintenanceJob) {
 	j.TablesProcessed += o.TablesProcessed
@@ -397,6 +364,9 @@ func (j *TableMaintenanceJob) add(o TableMaintenanceJob) {
 // TableCompactionClusterBacklog is the cluster's compaction backlog, summed
 // over every table the compaction leader measured. It is an AIStor extension.
 type TableCompactionClusterBacklog struct {
+	// SampledAt is when the leader read the backlog, and is the Merge selector.
+	SampledAt time.Time `json:"sampled_at,omitzero"`
+
 	// Complete reports whether the measured tables cover every table with
 	// compaction enabled. It is false until the leader completes a cycle.
 	Complete bool `json:"complete,omitempty"`
@@ -433,6 +403,23 @@ type TableCompactionClusterBacklogComponent struct {
 	// Tables maps a backlog ratio band, "none" (below 0.1), "low" (below 0.5),
 	// "medium" (below 2) or "high", to the tables in it.
 	Tables map[string]int64 `json:"tables,omitempty"`
+}
+
+// newerThan reports whether b should replace c: b was sampled later, or at the
+// same time with a greater encoding, so the choice does not depend on merge
+// order.
+func (b *TableCompactionClusterBacklog) newerThan(c *TableCompactionClusterBacklog) bool {
+	switch {
+	case b == nil:
+		return false
+	case c == nil:
+		return true
+	case !b.SampledAt.Equal(c.SampledAt):
+		return b.SampledAt.After(c.SampledAt)
+	}
+	bj, _ := json.Marshal(b)
+	cj, _ := json.Marshal(c)
+	return bytes.Compare(bj, cj) > 0
 }
 
 // clone deep-copies b so the copy shares no map with it.

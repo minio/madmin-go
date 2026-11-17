@@ -473,26 +473,20 @@ func TestTableMaintenanceMergeClonesWork(t *testing.T) {
 // sums it, and shares none of its maps with the source.
 func TestTableMaintenanceMergeSelectsBacklog(t *testing.T) {
 	t0 := time.Date(2026, 11, 17, 10, 0, 0, 0, time.UTC)
-	backlog := &TableCompactionClusterBacklog{
-		Complete:       true,
-		Bytes:          7 << 20,
-		UnplannedFiles: 3,
-		Components: map[string]TableCompactionClusterBacklogComponent{
-			"small_files": {Files: 12, GrowingTables: 1, MaxGrowthStreak: 4, Tables: map[string]int64{"high": 1}},
-		},
-		TablesOverdue:     2,
-		OldestOverdueSecs: 7200,
+	leaderBacklog := func() *TableCompactionClusterBacklog {
+		return &TableCompactionClusterBacklog{
+			SampledAt:      t0,
+			Complete:       true,
+			Bytes:          7 << 20,
+			UnplannedFiles: 3,
+			Components: map[string]TableCompactionClusterBacklogComponent{
+				"small_files": {Files: 12, GrowingTables: 1, MaxGrowthStreak: 4, Tables: map[string]int64{"high": 1}},
+			},
+			TablesOverdue:     2,
+			OldestOverdueSecs: 7200,
+		}
 	}
-	want := &TableCompactionClusterBacklog{
-		Complete:       true,
-		Bytes:          7 << 20,
-		UnplannedFiles: 3,
-		Components: map[string]TableCompactionClusterBacklogComponent{
-			"small_files": {Files: 12, GrowingTables: 1, MaxGrowthStreak: 4, Tables: map[string]int64{"high": 1}},
-		},
-		TablesOverdue:     2,
-		OldestOverdueSecs: 7200,
-	}
+	backlog, want := leaderBacklog(), leaderBacklog()
 	leader := &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{
 		"compaction": {Cycles: 3, LastRun: t0, Running: true, Backlog: backlog},
 	}}
@@ -500,7 +494,7 @@ func TestTableMaintenanceMergeSelectsBacklog(t *testing.T) {
 		"compaction": {LastRun: t0.Add(-time.Hour)},
 	}}
 	demoted := &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{
-		"compaction": {Cycles: 90, LastRun: t0.Add(-time.Minute), Backlog: &TableCompactionClusterBacklog{Bytes: 1, TablesOverdue: 9}},
+		"compaction": {Cycles: 90, LastRun: t0.Add(-time.Minute), Backlog: &TableCompactionClusterBacklog{SampledAt: t0.Add(-time.Minute), Bytes: 1, TablesOverdue: 9}},
 	}}
 
 	got := mergeTables(follower, leader, demoted).Maintenance["compaction"]
@@ -518,18 +512,22 @@ func TestTableMaintenanceMergeSelectsBacklog(t *testing.T) {
 	}
 }
 
-// The backlog comes from the freshest report carrying one, even when a fresher
-// report without one wins the job, whatever the merge order.
-func TestTableMaintenanceMergeKeepsBacklogOfFreshestCarrier(t *testing.T) {
+// The backlog is the one sampled last, whichever report wins the job and
+// whatever the merge order.
+func TestTableMaintenanceMergeKeepsLatestBacklog(t *testing.T) {
 	t0 := time.Date(2026, 11, 17, 10, 0, 0, 0, time.UTC)
 	older := func() *TableCompactionClusterBacklog {
-		return &TableCompactionClusterBacklog{Bytes: 1, TablesOverdue: 1}
+		return &TableCompactionClusterBacklog{SampledAt: t0.Add(-time.Hour), Bytes: 1, TablesOverdue: 1}
 	}
 	newer := func() *TableCompactionClusterBacklog {
 		return &TableCompactionClusterBacklog{
+			SampledAt:  t0,
 			Bytes:      2,
 			Components: map[string]TableCompactionClusterBacklogComponent{"small_files": {Files: 4, Tables: map[string]int64{"low": 1}}},
 		}
+	}
+	tied := func() *TableCompactionClusterBacklog {
+		return &TableCompactionClusterBacklog{SampledAt: t0, Bytes: 3}
 	}
 	report := func(j TableMaintenanceJob) *TableAPIMetrics {
 		return &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{"compaction": j}}
@@ -549,7 +547,7 @@ func TestTableMaintenanceMergeKeepsBacklogOfFreshestCarrier(t *testing.T) {
 			wantJob: TableMaintenanceJob{Backlog: newer()},
 		},
 		{
-			name:    "deposed leader ran last",
+			name:    "new leader yet to run, former leader ran last",
 			a:       TableMaintenanceJob{Cycles: 1, LastRun: t0.Add(-time.Hour), Backlog: newer()},
 			b:       TableMaintenanceJob{Cycles: 9, LastRun: t0},
 			c:       TableMaintenanceJob{},
@@ -564,18 +562,48 @@ func TestTableMaintenanceMergeKeepsBacklogOfFreshestCarrier(t *testing.T) {
 			want:    newer(),
 			wantJob: TableMaintenanceJob{Running: true, Backlog: newer()},
 		},
+		{
+			name:    "backlogs sampled at the same time",
+			a:       TableMaintenanceJob{Cycles: 2, Backlog: newer()},
+			b:       TableMaintenanceJob{Cycles: 1, Backlog: tied()},
+			c:       TableMaintenanceJob{},
+			want:    tied(),
+			wantJob: TableMaintenanceJob{Cycles: 2, Backlog: tied()},
+		},
 	} {
 		a, b, c := report(tc.a), report(tc.b), report(tc.c)
 		for _, order := range [][]*TableAPIMetrics{{a, b, c}, {a, c, b}, {b, a, c}, {b, c, a}, {c, a, b}, {c, b, a}} {
 			got := mergeTables(order...).Maintenance["compaction"]
-			if !reflect.DeepEqual(got.Backlog, tc.want) {
-				t.Errorf("%s: Backlog = %+v, want %+v", tc.name, got.Backlog, tc.want)
-			}
-			got.backlogFrom = nil
 			if !reflect.DeepEqual(got, tc.wantJob) {
 				t.Errorf("%s: job = %+v, want %+v", tc.name, got, tc.wantJob)
 			}
 		}
+	}
+}
+
+// A partial aggregate sent over the wire and merged again still keeps the
+// backlog sampled last, though the report it came from lost the job.
+func TestTableMaintenanceMergeKeepsLatestBacklogAcrossWire(t *testing.T) {
+	t0 := time.Date(2026, 11, 17, 10, 0, 0, 0, time.UTC)
+	report := func(j TableMaintenanceJob) *TableAPIMetrics {
+		return &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{"compaction": j}}
+	}
+	stale := report(TableMaintenanceJob{Cycles: 1, LastRun: t0.Add(-time.Hour), Backlog: &TableCompactionClusterBacklog{SampledAt: t0.Add(-time.Hour), Bytes: 1}})
+	selected := report(TableMaintenanceJob{Cycles: 9, LastRun: t0})
+	latest := &TableCompactionClusterBacklog{SampledAt: t0.Add(-time.Minute), Bytes: 2}
+	current := report(TableMaintenanceJob{Cycles: 5, LastRun: t0.Add(-30 * time.Minute), Backlog: latest})
+
+	buf, err := mergeTables(stale, selected).MarshalMsg(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var partial TableAPIMetrics
+	if _, err := partial.UnmarshalMsg(buf); err != nil {
+		t.Fatal(err)
+	}
+	got := mergeTables(&partial, current).Maintenance["compaction"]
+	if !reflect.DeepEqual(got.Backlog, latest) {
+		t.Errorf("Backlog = %+v, want %+v", got.Backlog, latest)
 	}
 }
 
