@@ -21,9 +21,12 @@ package madmin
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
+	"sync/atomic"
 	"testing"
 	"time"
 )
@@ -121,15 +124,24 @@ func TestBucketsInfoRequest(t *testing.T) {
 			},
 			{"name": "logs", "created": "2026-11-02T10:00:00Z"},
 			{"name": "archive", "created": "2026-11-03T10:00:00Z", "nameOnly": true}
-		]
+		],
+		"nextContinuationToken": "tok-2"
 	}`
 
 	for _, tc := range []struct {
-		name   string
-		bucket string
+		name  string
+		opts  BucketsInfoOpts
+		query url.Values
 	}{
-		{"all buckets", ""},
-		{"one bucket", "photos"},
+		{"first page", BucketsInfoOpts{}, url.Values{}},
+		{"zero or less limit left to server", BucketsInfoOpts{Limit: -1}, url.Values{}},
+		{"limit", BucketsInfoOpts{Limit: 50}, url.Values{"limit": {"50"}}},
+		{
+			"next page",
+			BucketsInfoOpts{Limit: 50, ContinuationToken: "tok-1"},
+			url.Values{"limit": {"50"}, "continuation-token": {"tok-1"}},
+		},
+		{"one bucket", BucketsInfoOpts{Bucket: "photos"}, url.Values{"bucket": {"photos"}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			type request struct {
@@ -149,10 +161,14 @@ func TestBucketsInfoRequest(t *testing.T) {
 			if err != nil {
 				t.Fatalf("New: %v", err)
 			}
-			got, err := adm.BucketsInfo(context.Background(), BucketsInfoOpts{Bucket: tc.bucket})
+			page, err := adm.BucketsInfo(context.Background(), tc.opts)
 			if err != nil {
 				t.Fatalf("BucketsInfo: %v", err)
 			}
+			if page.NextContinuationToken != "tok-2" {
+				t.Errorf("NextContinuationToken = %q, want tok-2", page.NextContinuationToken)
+			}
+			got := page.Buckets
 
 			req := <-captured
 			if req.method != http.MethodGet {
@@ -161,8 +177,8 @@ func TestBucketsInfoRequest(t *testing.T) {
 			if want := "/minio/admin/v4/bucket-info"; req.path != want {
 				t.Errorf("path = %q, want %q", req.path, want)
 			}
-			if _, ok := req.query["bucket"]; ok != (tc.bucket != "") || req.query.Get("bucket") != tc.bucket {
-				t.Errorf("bucket = %q (present %v), want %q", req.query.Get("bucket"), ok, tc.bucket)
+			if !reflect.DeepEqual(req.query, tc.query) {
+				t.Errorf("query = %v, want %v", req.query, tc.query)
 			}
 
 			if len(got) != 3 {
@@ -217,5 +233,45 @@ func TestBucketsInfoError(t *testing.T) {
 	}
 	if _, err := adm.BucketsInfo(context.Background(), BucketsInfoOpts{}); err == nil {
 		t.Fatal("BucketsInfo: got nil error for a 403 reply")
+	}
+}
+
+// TestBucketsInfoRefusesPagingOneBucket verifies that a bucket combined with a
+// limit or a continuation token is refused before any request is sent.
+func TestBucketsInfoRefusesPagingOneBucket(t *testing.T) {
+	var requests atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests.Add(1)
+		_, _ = w.Write([]byte(`{"buckets":[]}`))
+	}))
+	defer server.Close()
+
+	adm, err := New(mustParseHost(t, server.URL), "access", "secret", false)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	for _, opts := range []BucketsInfoOpts{
+		{Bucket: "photos", Limit: 10},
+		{Bucket: "photos", Limit: -1},
+		{Bucket: "photos", ContinuationToken: "tok-1"},
+	} {
+		if _, err := adm.BucketsInfo(context.Background(), opts); err == nil {
+			t.Errorf("BucketsInfo(%+v): got nil error", opts)
+		}
+	}
+	if n := requests.Load(); n != 0 {
+		t.Errorf("sent %d requests, want 0", n)
+	}
+}
+
+// TestBucketsInfoRespEmptyList verifies that a last page with no bucket
+// encodes buckets as [] rather than null, and omits the continuation token.
+func TestBucketsInfoRespEmptyList(t *testing.T) {
+	b, err := json.Marshal(BucketsInfoResp{})
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	if want := `{"buckets":[]}`; string(b) != want {
+		t.Errorf("Marshal = %s, want %s", b, want)
 	}
 }

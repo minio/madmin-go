@@ -204,29 +204,66 @@ type BucketInfo struct {
 	Details                 *BucketDetails    `json:"details"`
 }
 
-// BucketsInfoResp is the response body of the bucket info API.
+// MaxBucketsInfoPerPage is the most buckets one page of BucketsInfo holds.
+// The server also uses it when no limit is given, and clamps a larger one to
+// it.
+const MaxBucketsInfoPerPage = 1000
+
+// BucketsInfoResp is one page of BucketsInfo, and the response body of the
+// bucket info API.
 type BucketsInfoResp struct {
+	// Buckets holds the page's buckets, in name order.
 	Buckets []BucketInfo `json:"buckets"`
+
+	// NextContinuationToken asks for the next page. It is empty on the last
+	// page.
+	NextContinuationToken string `json:"nextContinuationToken,omitempty"`
 }
 
-// BucketsInfoOpts selects the buckets BucketsInfo reports.
+// MarshalJSON encodes a nil Buckets as [], so a server that lists no bucket
+// replies with an empty list rather than null.
+func (r BucketsInfoResp) MarshalJSON() ([]byte, error) {
+	type resp BucketsInfoResp
+	if r.Buckets == nil {
+		r.Buckets = []BucketInfo{}
+	}
+	return json.Marshal(resp(r))
+}
+
+// BucketsInfoOpts selects the buckets BucketsInfo reports and picks its page.
 type BucketsInfoOpts struct {
 	// Bucket restricts the result to the named bucket. Empty means every
-	// bucket the caller can see.
+	// bucket the caller can see. A single bucket is not paged, so BucketsInfo
+	// refuses Bucket with Limit or ContinuationToken.
 	Bucket string
+
+	// Limit is the most buckets the page holds. Zero or less leaves it to the
+	// server, which uses MaxBucketsInfoPerPage.
+	Limit int
+
+	// ContinuationToken is the previous page's NextContinuationToken, and
+	// empty for the first page.
+	ContinuationToken string
 }
 
-// BucketsInfo returns the buckets that S3 ListBuckets would show the
-// authenticating account, or opts.Bucket alone when it is set. Usage and
-// configuration are included only for buckets the account may list or
-// locate (ListBucket or GetBucketLocation); the others carry only their name
-// and creation time and have NameOnly set. It needs an AIStor server that
-// supports the bucket info API.
-func (adm *AdminClient) BucketsInfo(ctx context.Context, opts BucketsInfoOpts) ([]BucketInfo, error) {
+// BucketsInfo returns one page of the buckets that S3 ListBuckets would show
+// the authenticating account, in name order, or opts.Bucket alone when it is
+// set. Usage and configuration are included only for buckets the account may
+// list or locate (ListBucket or GetBucketLocation); the others carry only
+// their name and creation time and have NameOnly set. It needs an AIStor
+// server that supports the bucket info API.
+//
+// To list every bucket, call again with BucketsInfoResp.NextContinuationToken
+// in opts.ContinuationToken until it is empty.
+func (adm *AdminClient) BucketsInfo(ctx context.Context, opts BucketsInfoOpts) (BucketsInfoResp, error) {
 	q := make(url.Values)
 	if opts.Bucket != "" {
+		if opts.Limit != 0 || opts.ContinuationToken != "" {
+			return BucketsInfoResp{}, errors.New("a limit and a continuation token apply only to listing every bucket, not to one")
+		}
 		q.Set("bucket", opts.Bucket)
 	}
+	setPageQuery(q, opts.Limit, opts.ContinuationToken)
 	resp, err := adm.executeMethod(ctx, http.MethodGet,
 		requestData{
 			relPath:     adminAPIPrefix + "/bucket-info",
@@ -235,18 +272,18 @@ func (adm *AdminClient) BucketsInfo(ctx context.Context, opts BucketsInfoOpts) (
 	)
 	defer closeResponse(resp)
 	if err != nil {
-		return nil, err
+		return BucketsInfoResp{}, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, httpRespToErrorResponse(resp)
+		return BucketsInfoResp{}, httpRespToErrorResponse(resp)
 	}
 
-	var info BucketsInfoResp
-	if err = json.NewDecoder(resp.Body).Decode(&info); err != nil {
-		return nil, err
+	var page BucketsInfoResp
+	if err = json.NewDecoder(resp.Body).Decode(&page); err != nil {
+		return BucketsInfoResp{}, err
 	}
-	return info.Buckets, nil
+	return page, nil
 }
 
 // AccountStatus - account status.
