@@ -359,6 +359,55 @@ func TestIAMPolicyDiagJSON(t *testing.T) {
 	}
 }
 
+func TestTablesHealthInfoJSON(t *testing.T) {
+	want := HealthInfo{Version: HealthInfoVersion, Minio: MinioHealthInfo{Tables: &TablesHealthInfo{
+		Warehouses: 2,
+		Namespaces: 3,
+		Tables:     5,
+		Maintenance: map[string]TableMaintenanceNode{
+			"compaction": {
+				Runs:   TableMaintenanceRuns{InFlight: 1, Done: TimedAction{Count: 4, AccTime: 9, MinTime: 1, MaxTime: 5}},
+				Groups: TableMaintenanceGroups{InFlight: 2},
+				Memory: TableMaintenanceMemory{PeakArrowBytes: 1 << 20, NodePeakArrowBytes: 2 << 20},
+				IO:     TableMaintenanceIO{BytesRead: 10, BytesWritten: 20, Ops: TableMaintenanceIOOps{Get: 3}, ThrottleSecs: 1.5},
+			},
+		},
+		Work: map[string]map[string]uint64{"compaction": {"files_rewritten": 8, "commit_races_lost": 1}},
+		Compaction: &TableCompactionClusterBacklog{
+			Complete:             true,
+			Components:           map[string]TableCompactionClusterBacklogComponent{"small_files": {Files: 12}, "delete_files": {Files: 4}},
+			TablesOverdue:        2,
+			OldestOverdueSecs:    7200,
+			TablesOverdueBuckets: map[string]int64{"3600": 1, "+Inf": 2},
+		},
+		Config: &TablesMaintenanceConfig{
+			Jobs:                 map[string]TablesMaintenanceJobConfig{"compaction": {Enabled: true, IntervalSecs: 3600}, "snapshot_expiration": {}},
+			PollIntervalSecs:     300,
+			ThrottleFactor:       2,
+			ThrottleMaxSleepSecs: 1,
+		},
+	}}}
+	buf, err := json.Marshal(want)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got HealthInfo
+	if err := json.Unmarshal(buf, &got); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got.Minio.Tables, want.Minio.Tables) {
+		t.Errorf("round trip:\n got %+v\nwant %+v", got.Minio.Tables, want.Minio.Tables)
+	}
+
+	var old HealthInfo
+	if err := json.Unmarshal([]byte(`{"version":"3","minio":{"iam_info":{"total_policies":1}}}`), &old); err != nil {
+		t.Fatalf("payload without tables: %v", err)
+	}
+	if old.Minio.Tables != nil || old.Minio.IAMInfo == nil || old.Minio.IAMInfo.TotalPolicies != 1 {
+		t.Errorf("payload without tables decoded to Tables=%+v IAMInfo=%+v", old.Minio.Tables, old.Minio.IAMInfo)
+	}
+}
+
 func TestPartitionSMARTJSON(t *testing.T) {
 	t.Run("absent", func(t *testing.T) {
 		buf, err := json.Marshal(Partition{Device: "/dev/nvme0n1", Mountpoint: "/mnt/drive1"})

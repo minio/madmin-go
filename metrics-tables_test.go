@@ -482,8 +482,9 @@ func TestTableMaintenanceMergeSelectsBacklog(t *testing.T) {
 			Components: map[string]TableCompactionClusterBacklogComponent{
 				"small_files": {Files: 12, GrowingTables: 1, MaxGrowthStreak: 4, Tables: map[string]int64{"high": 1}},
 			},
-			TablesOverdue:     2,
-			OldestOverdueSecs: 7200,
+			TablesOverdue:        2,
+			OldestOverdueSecs:    7200,
+			TablesOverdueBuckets: map[string]int64{"3600": 0, "21600": 2, "+Inf": 2},
 		}
 	}
 	backlog, want := leaderBacklog(), leaderBacklog()
@@ -507,6 +508,7 @@ func TestTableMaintenanceMergeSelectsBacklog(t *testing.T) {
 
 	got.Backlog.Components["small_files"].Tables["high"] = 999
 	got.Backlog.Components["delete_files"] = TableCompactionClusterBacklogComponent{Files: 1}
+	got.Backlog.TablesOverdueBuckets["+Inf"] = 999
 	if !reflect.DeepEqual(backlog, want) {
 		t.Errorf("source Backlog mutated through the aggregate: %+v", backlog)
 	}

@@ -265,7 +265,7 @@ func (o *TableMaintenanceIOOps) Add(other *TableMaintenanceIOOps) {
 // former leader may retain stale counters. PerNode reports instead sum
 // TablesProcessed, Errors, Retries and Work across nodes. Producers of PerNode
 // reports must leave Cycles, ConfigsEnabled, ConfigsTotal, Running, LastRun,
-// LastCycleSecs and Backlog unset.
+// LastCycleSecs, Warehouses, Namespaces and Backlog unset.
 type TableMaintenanceJob struct {
 	Cycles          uint64 `json:"cycles,omitempty"`
 	TablesProcessed uint64 `json:"tables_processed,omitempty"`
@@ -277,6 +277,12 @@ type TableMaintenanceJob struct {
 	// enabled by their effective configuration.
 	ConfigsEnabled int64 `json:"configs_enabled,omitempty"`
 	ConfigsTotal   int64 `json:"configs_total,omitempty"`
+
+	// Warehouses counts the warehouses in the registry the last completed
+	// cycle walked, and Namespaces the namespaces it listed in warehouses that
+	// configure the job. LastRun is when that walk completed.
+	Warehouses int64 `json:"warehouses,omitempty"`
+	Namespaces int64 `json:"namespaces,omitempty"`
 
 	// Running reports a cycle in progress right now. LastRun is when the last
 	// cycle completed, so a job running its first cycle has a zero LastRun.
@@ -386,6 +392,10 @@ type TableCompactionClusterBacklog struct {
 	// longest waiting one is.
 	TablesOverdue     int64   `json:"tables_overdue,omitempty"`
 	OldestOverdueSecs float64 `json:"oldest_overdue_secs,omitempty"`
+
+	// TablesOverdueBuckets maps an upper bound in seconds, or "+Inf", to the
+	// due tables overdue by at most that long.
+	TablesOverdueBuckets map[string]int64 `json:"tables_overdue_buckets,omitempty"`
 }
 
 // TableCompactionClusterBacklogComponent is one backlog component across the
@@ -442,6 +452,7 @@ func (b *TableCompactionClusterBacklog) clone() *TableCompactionClusterBacklog {
 		return nil
 	}
 	c := *b
+	c.TablesOverdueBuckets = maps.Clone(b.TablesOverdueBuckets)
 	if b.Components != nil {
 		c.Components = make(map[string]TableCompactionClusterBacklogComponent, len(b.Components))
 		for k, v := range b.Components {
