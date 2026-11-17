@@ -25,6 +25,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 )
 
 // TestAccountSummaryRequest verifies that AccountSummary asks for version 2 of
@@ -98,5 +99,109 @@ func TestAccountSummaryError(t *testing.T) {
 	}
 	if _, err := adm.AccountSummary(context.Background()); err == nil {
 		t.Fatal("AccountSummary: got nil error for a 403 reply")
+	}
+}
+
+// TestBucketsInfoRequest verifies the path and query BucketsInfo sends, with
+// and without a bucket, and that it decodes the bucket info reply. The reply
+// is a literal in the server's keys, so a renamed field fails here.
+func TestBucketsInfoRequest(t *testing.T) {
+	const reply = `{
+		"buckets": [
+			{
+				"name": "photos",
+				"created": "2026-11-01T10:00:00Z",
+				"size": 4096,
+				"objects": 3,
+				"versions": 5,
+				"deleteMarkers": 1,
+				"objectHistogram": {"LESS_THAN_1024_B": 3},
+				"objectsVersionsHistogram": {"UNDER_10_VERSIONS": 3},
+				"details": {"versioning": true, "locking": true, "quota": {"size": 1048576}}
+			},
+			{"name": "logs", "created": "2026-11-02T10:00:00Z"}
+		]
+	}`
+
+	for _, tc := range []struct {
+		name   string
+		bucket string
+	}{
+		{"all buckets", ""},
+		{"one bucket", "photos"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			type request struct {
+				method string
+				path   string
+				query  url.Values
+			}
+			captured := make(chan request, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				captured <- request{r.Method, r.URL.Path, r.URL.Query()}
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(reply))
+			}))
+			defer server.Close()
+
+			adm, err := New(mustParseHost(t, server.URL), "access", "secret", false)
+			if err != nil {
+				t.Fatalf("New: %v", err)
+			}
+			got, err := adm.BucketsInfo(context.Background(), BucketsInfoOpts{Bucket: tc.bucket})
+			if err != nil {
+				t.Fatalf("BucketsInfo: %v", err)
+			}
+
+			req := <-captured
+			if req.method != http.MethodGet {
+				t.Errorf("method = %q, want GET", req.method)
+			}
+			if want := "/minio/admin/v4/bucket-info"; req.path != want {
+				t.Errorf("path = %q, want %q", req.path, want)
+			}
+			if _, ok := req.query["bucket"]; ok != (tc.bucket != "") || req.query.Get("bucket") != tc.bucket {
+				t.Errorf("bucket = %q (present %v), want %q", req.query.Get("bucket"), ok, tc.bucket)
+			}
+
+			if len(got) != 2 {
+				t.Fatalf("got %d buckets, want 2", len(got))
+			}
+			b := got[0]
+			if b.Name != "photos" || b.Size != 4096 || b.Objects != 3 || b.Versions != 5 || b.DeleteMarkers != 1 {
+				t.Errorf("counts = %+v", b)
+			}
+			if want := time.Date(2026, 11, 1, 10, 0, 0, 0, time.UTC); !b.Created.Equal(want) {
+				t.Errorf("Created = %v, want %v", b.Created, want)
+			}
+			if b.ObjectSizesHistogram["LESS_THAN_1024_B"] != 3 {
+				t.Errorf("ObjectSizesHistogram = %v", b.ObjectSizesHistogram)
+			}
+			if b.ObjectVersionsHistogram["UNDER_10_VERSIONS"] != 3 {
+				t.Errorf("ObjectVersionsHistogram = %v", b.ObjectVersionsHistogram)
+			}
+			if b.Details == nil || !b.Details.Versioning || !b.Details.Locking || b.Details.Quota == nil || b.Details.Quota.Size != 1048576 {
+				t.Errorf("Details = %+v", b.Details)
+			}
+			if got[1].Name != "logs" || got[1].Details != nil {
+				t.Errorf("second bucket = %+v, want logs with no details", got[1])
+			}
+		})
+	}
+}
+
+// TestBucketsInfoError verifies that a non-200 reply becomes an error.
+func TestBucketsInfoError(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(http.StatusForbidden)
+	}))
+	defer server.Close()
+
+	adm, err := New(mustParseHost(t, server.URL), "access", "secret", false)
+	if err != nil {
+		t.Fatalf("New: %v", err)
+	}
+	if _, err := adm.BucketsInfo(context.Background(), BucketsInfoOpts{}); err == nil {
+		t.Fatal("BucketsInfo: got nil error for a 403 reply")
 	}
 }

@@ -182,6 +182,64 @@ func (adm *AdminClient) AccountInfo(ctx context.Context, opts AccountOpts) (Acco
 	return accountInfo, nil
 }
 
+// BucketInfo is the usage and configuration of one bucket, as returned by
+// BucketsInfo. Details carries only the configuration the caller may read;
+// the server leaves the other fields empty.
+type BucketInfo struct {
+	Name                    string            `json:"name"`
+	Created                 time.Time         `json:"created"`
+	Size                    uint64            `json:"size"`
+	Objects                 uint64            `json:"objects"`
+	Versions                uint64            `json:"versions"`
+	DeleteMarkers           uint64            `json:"deleteMarkers"`
+	ObjectSizesHistogram    map[string]uint64 `json:"objectHistogram"`
+	ObjectVersionsHistogram map[string]uint64 `json:"objectsVersionsHistogram"`
+	Details                 *BucketDetails    `json:"details"`
+}
+
+// BucketsInfoResp is the response body of the bucket info API.
+type BucketsInfoResp struct {
+	Buckets []BucketInfo `json:"buckets"`
+}
+
+// BucketsInfoOpts selects the buckets BucketsInfo reports.
+type BucketsInfoOpts struct {
+	// Bucket restricts the result to the named bucket. Empty means every
+	// bucket the caller can see.
+	Bucket string
+}
+
+// BucketsInfo returns the usage and configuration of the buckets the
+// authenticating account may list (ListBucket or GetBucketLocation), or of
+// opts.Bucket alone when it is set. It needs an AIStor server that supports
+// the bucket info API.
+func (adm *AdminClient) BucketsInfo(ctx context.Context, opts BucketsInfoOpts) ([]BucketInfo, error) {
+	q := make(url.Values)
+	if opts.Bucket != "" {
+		q.Set("bucket", opts.Bucket)
+	}
+	resp, err := adm.executeMethod(ctx, http.MethodGet,
+		requestData{
+			relPath:     adminAPIPrefix + "/bucket-info",
+			queryValues: q,
+		},
+	)
+	defer closeResponse(resp)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, httpRespToErrorResponse(resp)
+	}
+
+	var info BucketsInfoResp
+	if err = json.NewDecoder(resp.Body).Decode(&info); err != nil {
+		return nil, err
+	}
+	return info.Buckets, nil
+}
+
 // AccountStatus - account status.
 type AccountStatus string
 
