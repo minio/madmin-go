@@ -580,6 +580,30 @@ func TestTableMaintenanceMergeKeepsLatestBacklog(t *testing.T) {
 			want:    tied(),
 			wantJob: TableMaintenanceJob{Cycles: 2, Backlog: tied()},
 		},
+		{
+			name:    "same tenure and totals, one index complete",
+			a:       TableMaintenanceJob{Cycles: 2, Backlog: &TableCompactionClusterBacklog{LeaderSince: t0, Bytes: 3}},
+			b:       TableMaintenanceJob{Cycles: 1, Backlog: &TableCompactionClusterBacklog{LeaderSince: t0, Bytes: 3, Complete: true}},
+			c:       TableMaintenanceJob{},
+			want:    &TableCompactionClusterBacklog{LeaderSince: t0, Bytes: 3, Complete: true},
+			wantJob: TableMaintenanceJob{Cycles: 2, Backlog: &TableCompactionClusterBacklog{LeaderSince: t0, Bytes: 3, Complete: true}},
+		},
+		{
+			name: "same tenure and totals, more small files",
+			a: TableMaintenanceJob{Cycles: 2, Backlog: &TableCompactionClusterBacklog{
+				LeaderSince: t0, Components: map[string]TableCompactionClusterBacklogComponent{"small_files": {Files: 1}},
+			}},
+			b: TableMaintenanceJob{Cycles: 1, Backlog: &TableCompactionClusterBacklog{
+				LeaderSince: t0, Components: map[string]TableCompactionClusterBacklogComponent{"small_files": {Files: 4}},
+			}},
+			c: TableMaintenanceJob{},
+			want: &TableCompactionClusterBacklog{
+				LeaderSince: t0, Components: map[string]TableCompactionClusterBacklogComponent{"small_files": {Files: 4}},
+			},
+			wantJob: TableMaintenanceJob{Cycles: 2, Backlog: &TableCompactionClusterBacklog{
+				LeaderSince: t0, Components: map[string]TableCompactionClusterBacklogComponent{"small_files": {Files: 4}},
+			}},
+		},
 	} {
 		a, b, c := report(tc.a), report(tc.b), report(tc.c)
 		for _, order := range [][]*TableAPIMetrics{{a, b, c}, {a, c, b}, {b, a, c}, {b, c, a}, {c, a, b}, {c, b, a}} {

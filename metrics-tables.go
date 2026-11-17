@@ -406,8 +406,9 @@ type TableCompactionClusterBacklogComponent struct {
 }
 
 // newerThan reports whether b should replace c: b's leader took over later, or
-// at the same time with larger totals, so the choice does not depend on merge
-// order.
+// at the same time with a complete index or larger totals, so the choice does
+// not depend on merge order. Two backlogs of one tenure that differ only in
+// component growth or bands still tie; they come from the same node.
 func (b *TableCompactionClusterBacklog) newerThan(c *TableCompactionClusterBacklog) bool {
 	switch {
 	case b == nil:
@@ -418,11 +419,21 @@ func (b *TableCompactionClusterBacklog) newerThan(c *TableCompactionClusterBackl
 		return b.LeaderSince.After(c.LeaderSince)
 	}
 	return cmp.Or(
+		cmp.Compare(boolRank(b.Complete), boolRank(c.Complete)),
 		cmp.Compare(b.Bytes, c.Bytes),
 		cmp.Compare(b.UnplannedFiles, c.UnplannedFiles),
 		cmp.Compare(b.TablesOverdue, c.TablesOverdue),
 		cmp.Compare(b.OldestOverdueSecs, c.OldestOverdueSecs),
+		cmp.Compare(b.Components["small_files"].Files, c.Components["small_files"].Files),
+		cmp.Compare(b.Components["delete_files"].Files, c.Components["delete_files"].Files),
 	) > 0
+}
+
+func boolRank(v bool) int {
+	if v {
+		return 1
+	}
+	return 0
 }
 
 // clone deep-copies b so the copy shares no map with it.
