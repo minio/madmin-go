@@ -85,33 +85,24 @@ type BucketAccessInfo struct {
 	Access                  AccountAccess     `json:"access"`
 }
 
-// AccountInfo is the full account info response: the account, the backend,
-// the effective policy, and every bucket the account can access with its
-// usage. Building the bucket list is expensive on servers with many buckets;
-// a caller that does not need it should use AccountSummary.
+// AccountInfo is the full account info, including every accessible bucket.
 type AccountInfo struct {
 	AccountName string
 	Server      BackendInfo
 	Policy      json.RawMessage // Use iam/policy.Parse to parse the result, to be done by the caller.
-	// Buckets lists every bucket the account can access, with its usage and
-	// access. Only the full response returned by AccountInfo carries it.
-	Buckets []BucketAccessInfo
+	Buckets     []BucketAccessInfo
 }
 
-// AccountSummary is the account info response without the bucket list: the
-// account, the backend, and the effective policy. It has no Buckets field, so
-// it cannot be mistaken for an account with no buckets.
+// AccountSummary is AccountInfo without the bucket list.
 type AccountSummary struct {
 	AccountName string
 	Server      BackendInfo
 	Policy      json.RawMessage // Use iam/policy.Parse to parse the result, to be done by the caller.
 }
 
-// AccountSummary returns the account name, backend info and effective policy
-// for the authenticating account, without listing buckets. It is cheaper than
-// AccountInfo and suits callers that only validate credentials or read the
-// policy. It needs an AIStor server that supports version 2 of the account
-// info API.
+// AccountSummary returns the account name, backend info and policy of the
+// authenticating account. It is cheaper than AccountInfo, which also lists
+// buckets.
 func (adm *AdminClient) AccountSummary(ctx context.Context) (AccountSummary, error) {
 	q := make(url.Values)
 	q.Set("v", "2")
@@ -142,9 +133,8 @@ type AccountOpts struct {
 	PrefixUsage bool
 }
 
-// AccountInfo returns the full account info for the authenticating account,
-// including every accessible bucket with its usage. Use AccountSummary when
-// the bucket list is not needed.
+// AccountInfo returns the full account info, including every accessible
+// bucket. Use AccountSummary when buckets are not needed.
 func (adm *AdminClient) AccountInfo(ctx context.Context, opts AccountOpts) (AccountInfo, error) {
 	q := make(url.Values)
 	if opts.PrefixUsage {
@@ -182,18 +172,12 @@ func (adm *AdminClient) AccountInfo(ctx context.Context, opts AccountOpts) (Acco
 	return accountInfo, nil
 }
 
-// BucketInfo is one bucket in the BucketsInfo result. The result holds the
-// buckets that S3 ListBuckets would show the caller. Usage and Details are
-// filled only for buckets the caller may list or locate (ListBucket or
-// GetBucketLocation); for the others NameOnly is set. Details carries only
-// the configuration the caller may read, and the server leaves the other
-// configuration fields empty.
+// BucketInfo is one bucket returned by BucketsInfo.
 type BucketInfo struct {
 	Name    string    `json:"name"`
 	Created time.Time `json:"created"`
-	// NameOnly reports that the caller may see the bucket's name but not
-	// list it. Its usage and details are then left out (zero and nil), not
-	// empty: a zero Size does not mean the bucket is empty.
+	// NameOnly is set when the caller may see the bucket but not list it.
+	// Usage and Details are then absent.
 	NameOnly                bool              `json:"nameOnly,omitempty"`
 	Size                    uint64            `json:"size"`
 	Objects                 uint64            `json:"objects"`
@@ -204,24 +188,19 @@ type BucketInfo struct {
 	Details                 *BucketDetails    `json:"details"`
 }
 
-// MaxBucketsInfoPerPage is the most buckets one page of BucketsInfo holds.
-// The server also uses it when no limit is given, and clamps a larger one to
-// it.
+// MaxBucketsInfoPerPage is the default and maximum page size of BucketsInfo.
 const MaxBucketsInfoPerPage = 1000
 
-// BucketsInfoResp is one page of BucketsInfo, and the response body of the
-// bucket info API.
+// BucketsInfoResp is one page of BucketsInfo.
 type BucketsInfoResp struct {
-	// Buckets holds the page's buckets, in name order.
+	// Buckets are sorted by name.
 	Buckets []BucketInfo `json:"buckets"`
 
-	// NextContinuationToken asks for the next page. It is empty on the last
-	// page.
+	// NextContinuationToken is empty on the last page.
 	NextContinuationToken string `json:"nextContinuationToken,omitempty"`
 }
 
-// MarshalJSON encodes a nil Buckets as [], so a server that lists no bucket
-// replies with an empty list rather than null.
+// MarshalJSON encodes nil Buckets as [].
 func (r BucketsInfoResp) MarshalJSON() ([]byte, error) {
 	type resp BucketsInfoResp
 	if r.Buckets == nil {
@@ -230,31 +209,23 @@ func (r BucketsInfoResp) MarshalJSON() ([]byte, error) {
 	return json.Marshal(resp(r))
 }
 
-// BucketsInfoOpts selects the buckets BucketsInfo reports and picks its page.
+// BucketsInfoOpts configures BucketsInfo.
 type BucketsInfoOpts struct {
-	// Bucket restricts the result to the named bucket. Empty means every
-	// bucket the caller can see. A single bucket is not paged, so BucketsInfo
-	// refuses Bucket with Limit or ContinuationToken.
+	// Bucket limits the result to one bucket. It cannot be combined with
+	// Limit or ContinuationToken.
 	Bucket string
 
-	// Limit is the most buckets the page holds. Zero or less leaves it to the
-	// server, which uses MaxBucketsInfoPerPage.
+	// Limit caps the page size. Zero or less uses MaxBucketsInfoPerPage.
 	Limit int
 
-	// ContinuationToken is the previous page's NextContinuationToken, and
-	// empty for the first page.
+	// ContinuationToken is the previous page's NextContinuationToken.
 	ContinuationToken string
 }
 
-// BucketsInfo returns one page of the buckets that S3 ListBuckets would show
-// the authenticating account, in name order, or opts.Bucket alone when it is
-// set. Usage and configuration are included only for buckets the account may
-// list or locate (ListBucket or GetBucketLocation); the others carry only
-// their name and creation time and have NameOnly set. It needs an AIStor
-// server that supports the bucket info API.
+// BucketsInfo returns one page of the buckets the caller can see, as S3
+// ListBuckets would. Buckets the caller cannot list have NameOnly set.
 //
-// To list every bucket, call again with BucketsInfoResp.NextContinuationToken
-// in opts.ContinuationToken until it is empty.
+// To list all buckets, repeat with NextContinuationToken until it is empty.
 func (adm *AdminClient) BucketsInfo(ctx context.Context, opts BucketsInfoOpts) (BucketsInfoResp, error) {
 	q := make(url.Values)
 	if opts.Bucket != "" {

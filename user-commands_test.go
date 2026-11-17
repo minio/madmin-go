@@ -31,9 +31,7 @@ import (
 	"time"
 )
 
-// TestAccountSummaryRequest verifies that AccountSummary asks for version 2 of
-// the account info API and decodes its three-field reply. The reply is a
-// literal in the server's keys, so a renamed field fails here.
+// TestAccountSummaryRequest checks the request and the decoded reply.
 func TestAccountSummaryRequest(t *testing.T) {
 	const reply = `{
 		"AccountName": "alice",
@@ -88,8 +86,7 @@ func TestAccountSummaryRequest(t *testing.T) {
 	}
 }
 
-// TestAccountSummaryError verifies that a non-200 reply becomes an error, as
-// an older server that rejects the request would send.
+// TestAccountSummaryError checks that a non-200 reply is an error.
 func TestAccountSummaryError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
@@ -105,9 +102,7 @@ func TestAccountSummaryError(t *testing.T) {
 	}
 }
 
-// TestBucketsInfoRequest verifies the path and query BucketsInfo sends, with
-// and without a bucket, and that it decodes the bucket info reply. The reply
-// is a literal in the server's keys, so a renamed field fails here.
+// TestBucketsInfoRequest checks the query for each option and the decoded reply.
 func TestBucketsInfoRequest(t *testing.T) {
 	const reply = `{
 		"buckets": [
@@ -220,7 +215,7 @@ func TestBucketsInfoRequest(t *testing.T) {
 	}
 }
 
-// TestBucketsInfoError verifies that a non-200 reply becomes an error.
+// TestBucketsInfoError checks that a non-200 reply is an error.
 func TestBucketsInfoError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusForbidden)
@@ -236,8 +231,8 @@ func TestBucketsInfoError(t *testing.T) {
 	}
 }
 
-// TestBucketsInfoRefusesPagingOneBucket verifies that a bucket combined with a
-// limit or a continuation token is refused before any request is sent.
+// TestBucketsInfoRefusesPagingOneBucket checks that Bucket with paging options
+// fails without sending a request.
 func TestBucketsInfoRefusesPagingOneBucket(t *testing.T) {
 	var requests atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
@@ -264,8 +259,8 @@ func TestBucketsInfoRefusesPagingOneBucket(t *testing.T) {
 	}
 }
 
-// TestBucketsInfoRespEmptyList verifies that a last page with no bucket
-// encodes buckets as [] rather than null, and omits the continuation token.
+// TestBucketsInfoRespEmptyList checks that an empty page encodes as
+// {"buckets":[]}.
 func TestBucketsInfoRespEmptyList(t *testing.T) {
 	b, err := json.Marshal(BucketsInfoResp{})
 	if err != nil {

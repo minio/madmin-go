@@ -799,8 +799,8 @@ func (adm *AdminClient) FilesExportStats(ctx context.Context, export string, opt
 	return stats, err
 }
 
-// setPageQuery adds the paging parameters of a paged list. A limit of zero or
-// less is left to the server.
+// setPageQuery sets the limit and continuation-token query parameters. A
+// limit of zero or less is omitted.
 func setPageQuery(values url.Values, limit int, token string) {
 	if limit > 0 {
 		values.Set("limit", strconv.Itoa(limit))
