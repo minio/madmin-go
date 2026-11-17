@@ -399,12 +399,50 @@ func TestTablesHealthInfoJSON(t *testing.T) {
 		t.Errorf("round trip:\n got %+v\nwant %+v", got.Minio.Tables, want.Minio.Tables)
 	}
 
+	var golden HealthInfo
+	if err := json.Unmarshal([]byte(`{"version":"`+HealthInfoVersion+`","minio":{"tables":{
+		"warehouses":2,"namespaces":3,"tables":5,
+		"maintenance":{"compaction":{
+			"runs":{"inflight":1,"done":{"count":4,"acc_time_ns":9,"min_ns":1,"max_ns":5}},
+			"groups":{"inflight":2},
+			"memory":{"peak_arrow_bytes":1048576,"node_peak_arrow_bytes":2097152},
+			"io":{"bytes_read":10,"bytes_written":20,"ops":{"get":3},"throttle_secs":1.5}}},
+		"work":{"compaction":{"files_rewritten":8,"commit_races_lost":1}},
+		"compaction":{"complete":true,
+			"components":{"small_files":{"files":12},"delete_files":{"files":4}},
+			"tables_overdue":2,"oldest_overdue_secs":7200,
+			"tables_overdue_buckets":{"3600":1,"+Inf":2}},
+		"config":{"jobs":{"compaction":{"enabled":true,"interval_secs":3600},"snapshot_expiration":{"enabled":false}},
+			"poll_interval_secs":300,"throttle_factor":2,"throttle_max_sleep_secs":1}}}}`), &golden); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(golden.Minio.Tables, want.Minio.Tables) {
+		t.Errorf("wire names:\n got %+v\nwant %+v", golden.Minio.Tables, want.Minio.Tables)
+	}
+
 	var old HealthInfo
 	if err := json.Unmarshal([]byte(`{"version":"3","minio":{"iam_info":{"total_policies":1}}}`), &old); err != nil {
 		t.Fatalf("payload without tables: %v", err)
 	}
 	if old.Minio.Tables != nil || old.Minio.IAMInfo == nil || old.Minio.IAMInfo.TotalPolicies != 1 {
 		t.Errorf("payload without tables decoded to Tables=%+v IAMInfo=%+v", old.Minio.Tables, old.Minio.IAMInfo)
+	}
+}
+
+// Call-home requests every type in HealthDataTypesList, so a type missing from
+// it is never uploaded.
+func TestHealthDataTypesListComplete(t *testing.T) {
+	listed := make(map[HealthDataType]bool, len(HealthDataTypesList))
+	for _, typ := range HealthDataTypesList {
+		listed[typ] = true
+	}
+	for name, typ := range HealthDataTypesMap {
+		if !listed[typ] {
+			t.Errorf("%s missing from HealthDataTypesList", name)
+		}
+	}
+	if len(listed) != len(HealthDataTypesMap) || !listed[HealthDataTypeTables] {
+		t.Errorf("HealthDataTypesList = %v, want exactly the types of HealthDataTypesMap, tables included", HealthDataTypesList)
 	}
 }
 
