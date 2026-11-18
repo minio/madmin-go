@@ -1487,10 +1487,13 @@ type TablesHealthInfo struct {
 	Tables     int64 `json:"tables,omitempty"`
 
 	// Maintenance maps a maintenance type to its work summed over all nodes.
+	// The maintenance types are a small fixed set defined by the server; no
+	// key comes from user data.
 	Maintenance map[string]TableMaintenanceNode `json:"maintenance,omitempty"`
 
 	// Work maps a maintenance type to its cumulative units of work, as in
-	// TableMaintenanceJob.Work.
+	// TableMaintenanceJob.Work. Each type's counter names are a small fixed
+	// set defined by the server; no key comes from user data.
 	Work map[string]map[string]uint64 `json:"work,omitempty"`
 
 	// Compaction is the compaction leader's backlog.
@@ -1504,7 +1507,8 @@ type TablesHealthInfo struct {
 // MinioConfig holds only the stored "tables" subsystem settings. The throttle
 // has no setting. It is an AIStor extension.
 type TablesMaintenanceConfig struct {
-	// Jobs maps a maintenance type to its configuration.
+	// Jobs maps a maintenance type, one of the small fixed set defined by the
+	// server, to its configuration.
 	Jobs map[string]TablesMaintenanceJobConfig `json:"jobs,omitempty"`
 
 	PollIntervalSecs float64 `json:"poll_interval_secs,omitempty"`
