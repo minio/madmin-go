@@ -416,13 +416,40 @@ func TestPartitionSMARTJSON(t *testing.T) {
 		}
 	})
 
-	t.Run("not reported", func(t *testing.T) {
-		// Values a drive did not report must be absent, never 0.
+	t.Run("wire format", func(t *testing.T) {
+		// Exact JSON, so a renamed key fails here: values a drive reported keep
+		// their names, values it did not report are absent, never 0.
 		testCases := []struct {
 			name  string
 			smart DriveSMART
 			want  string
 		}{
+			{
+				name: "nvme",
+				smart: DriveSMART{
+					DeviceType:   "nvme",
+					ModelNumber:  "WD WUS5BA1A1ESP5E1",
+					SerialNumber: "SN1",
+					FirmwareRev:  "RA109004",
+					Status:       "critical",
+					StatusReason: "critical warnings: temperature out of range",
+					Temperature:  86,
+					PowerOnHours: 26280,
+					NVMe: &DriveSMARTNVMe{
+						CriticalWarning:       0x02,
+						WarningTempTime:       31540,
+						CritCompTime:          95,
+						ThermalManagementTime: 120,
+						WarningTempThreshold:  75,
+						CriticalTempThreshold: 85,
+						HottestSensorTemp:     91,
+					},
+				},
+				want: `{"deviceType":"nvme","modelNumber":"WD WUS5BA1A1ESP5E1","serialNumber":"SN1","firmwareRev":"RA109004",` +
+					`"status":"critical","statusReason":"critical warnings: temperature out of range","temperature":86,"powerOnHours":26280,` +
+					`"nvme":{"criticalWarning":2,"warningTempTime":31540,"critCompTime":95,"thermalManagementTime":120,` +
+					`"warningTempThreshold":75,"criticalTempThreshold":85,"hottestSensorTemp":91}}`,
+			},
 			{
 				name:  "megaraid",
 				smart: DriveSMART{DeviceType: "megaraid", Status: "healthy"},

@@ -390,7 +390,8 @@ type Partition struct {
 }
 
 // DriveSMART is the S.M.A.R.T. data of one drive that health checks use.
-// Values the drive did not report are omitted rather than sent as 0.
+// Optional values are omitted when 0, which means not reported: NVMe uses 0
+// for an unreported temperature or limit, and no running drive reads 0 °C.
 type DriveSMART struct {
 	DeviceType   string `json:"deviceType"` // nvme, sata or megaraid
 	ModelNumber  string `json:"modelNumber,omitempty"`
@@ -400,8 +401,8 @@ type DriveSMART struct {
 	Status       string `json:"status"`                 // healthy, warning, critical, or unknown when only the identity could be read
 	StatusReason string `json:"statusReason,omitempty"` // why the status is not healthy
 
-	Temperature  int    `json:"temperature,omitempty"` // Celsius
-	PowerOnHours uint64 `json:"powerOnHours,omitempty"`
+	Temperature  int    `json:"temperature,omitempty"`  // Celsius
+	PowerOnHours uint64 `json:"powerOnHours,omitempty"` // also 0 within a new drive's first hour
 
 	NVMe *DriveSMARTNVMe `json:"nvme,omitempty"`
 }
