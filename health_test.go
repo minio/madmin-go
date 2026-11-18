@@ -386,20 +386,20 @@ func TestPartitionSMARTJSON(t *testing.T) {
 			Major:      259,
 			Minor:      7,
 			Mountpoint: "/mnt/drive6",
-			SMART: &SMARTInfo{
-				N:            1,
-				Status:       map[string]int{"healthy": 1},
-				StatsN:       1,
+			SMART: &DriveSMART{
+				DeviceType:   "nvme",
+				Status:       "critical",
+				StatusReason: "critical warnings: temperature out of range",
 				Temperature:  86,
 				PowerOnHours: 26280,
-				DeviceType:   "nvme",
-				NVMe: &SMARTNVMe{
-					N:                     1,
+				NVMe: &DriveSMARTNVMe{
+					CriticalWarning:       0x02,
 					WarningTempTime:       31540,
 					CritCompTime:          95,
 					ThermalManagementTime: 120,
 					WarningTempThreshold:  75,
 					CriticalTempThreshold: 85,
+					HottestSensorTemp:     91,
 				},
 			},
 		}
@@ -413,6 +413,42 @@ func TestPartitionSMARTJSON(t *testing.T) {
 		}
 		if !reflect.DeepEqual(got, want) {
 			t.Fatalf("round trip:\nwant %+v\ngot  %+v", want.SMART.NVMe, got.SMART.NVMe)
+		}
+	})
+
+	t.Run("not reported", func(t *testing.T) {
+		// Values a drive did not report must be absent, never 0.
+		testCases := []struct {
+			name  string
+			smart DriveSMART
+			want  string
+		}{
+			{
+				name:  "megaraid",
+				smart: DriveSMART{DeviceType: "megaraid", Status: "healthy"},
+				want:  `{"deviceType":"megaraid","status":"healthy"}`,
+			},
+			{
+				name:  "nvme without temperatures",
+				smart: DriveSMART{DeviceType: "nvme", Status: "healthy", PowerOnHours: 10, NVMe: &DriveSMARTNVMe{WarningTempTime: 5}},
+				want:  `{"deviceType":"nvme","status":"healthy","powerOnHours":10,"nvme":{"criticalWarning":0,"warningTempTime":5,"critCompTime":0,"thermalManagementTime":0}}`,
+			},
+			{
+				name:  "sata",
+				smart: DriveSMART{DeviceType: "sata", Status: "warning", StatusReason: "reallocated sectors: 8", Temperature: 41},
+				want:  `{"deviceType":"sata","status":"warning","statusReason":"reallocated sectors: 8","temperature":41}`,
+			},
+		}
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				buf, err := json.Marshal(tc.smart)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if string(buf) != tc.want {
+					t.Fatalf("want %s\ngot  %s", tc.want, buf)
+				}
+			})
 		}
 	})
 }

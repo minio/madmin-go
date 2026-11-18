@@ -386,7 +386,46 @@ type Partition struct {
 	FstabSource  string `json:"fstab_source,omitempty"` // source from /etc/fstab (UUID=, LABEL=, or device path)
 
 	// SMART holds the S.M.A.R.T. data of the drive backing this partition, when it could be read.
-	SMART *SMARTInfo `json:"smart,omitempty"`
+	SMART *DriveSMART `json:"smart,omitempty"`
+}
+
+// DriveSMART is the S.M.A.R.T. data of one drive that health checks use.
+// Values the drive did not report are omitted rather than sent as 0.
+type DriveSMART struct {
+	DeviceType   string `json:"deviceType"` // nvme, sata or megaraid
+	ModelNumber  string `json:"modelNumber,omitempty"`
+	SerialNumber string `json:"serialNumber,omitempty"`
+	FirmwareRev  string `json:"firmwareRev,omitempty"`
+
+	Status       string `json:"status"`                 // healthy, warning, critical, or unknown when only the identity could be read
+	StatusReason string `json:"statusReason,omitempty"` // why the status is not healthy
+
+	Temperature  int    `json:"temperature,omitempty"` // Celsius
+	PowerOnHours uint64 `json:"powerOnHours,omitempty"`
+
+	NVMe *DriveSMARTNVMe `json:"nvme,omitempty"`
+}
+
+// DriveSMARTNVMe holds the critical warnings and thermal data of an NVMe drive.
+type DriveSMARTNVMe struct {
+	CriticalWarning uint8 `json:"criticalWarning"` // bit flags, as in SMARTNVMe; bit 1 is the temperature alarm
+
+	// Lifetime counters. WarningTempTime counts minutes at or above WCTEMP and
+	// below CCTEMP, CritCompTime minutes at or above CCTEMP.
+	// ThermalManagementTime is the time throttled by host controlled thermal
+	// management, TMT1 and TMT2 added together.
+	WarningTempTime       uint64 `json:"warningTempTime"`       // minutes
+	CritCompTime          uint64 `json:"critCompTime"`          // minutes
+	ThermalManagementTime uint64 `json:"thermalManagementTime"` // seconds
+
+	// Composite temperature thresholds (WCTEMP/CCTEMP) in Celsius.
+	WarningTempThreshold  int `json:"warningTempThreshold,omitempty"`
+	CriticalTempThreshold int `json:"criticalTempThreshold,omitempty"`
+
+	// HottestSensorTemp is the highest reading of temperature sensors 1-8 in
+	// Celsius. Where each sensor sits is vendor specific, and WCTEMP/CCTEMP
+	// apply to the composite Temperature only.
+	HottestSensorTemp int `json:"hottestSensorTemp,omitempty"`
 }
 
 // NetSettings - rx/tx settings of an interface
