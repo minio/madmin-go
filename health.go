@@ -1499,8 +1499,10 @@ type TablesHealthInfo struct {
 	Config *TablesMaintenanceConfig `json:"config,omitempty"`
 }
 
-// TablesMaintenanceConfig is the cluster-wide table maintenance configuration.
-// It is an AIStor extension.
+// TablesMaintenanceConfig is the table maintenance configuration in effect on
+// the reporting node, environment overrides and defaults included, where
+// MinioConfig holds only the stored "tables" subsystem settings. The throttle
+// has no setting. It is an AIStor extension.
 type TablesMaintenanceConfig struct {
 	// Jobs maps a maintenance type to its configuration.
 	Jobs map[string]TablesMaintenanceJobConfig `json:"jobs,omitempty"`
