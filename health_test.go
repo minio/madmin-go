@@ -407,6 +407,9 @@ func TestPartitionSMARTJSON(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		if !bytes.Contains(buf, []byte(`"smart":{`)) {
+			t.Fatalf("partition must carry its SMART data under \"smart\", got %s", buf)
+		}
 		var got Partition
 		if err := json.Unmarshal(buf, &got); err != nil {
 			t.Fatal(err)
