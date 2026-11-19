@@ -359,6 +359,110 @@ func TestIAMPolicyDiagJSON(t *testing.T) {
 	}
 }
 
+func TestTablesHealthInfoJSON(t *testing.T) {
+	want := HealthInfo{Version: HealthInfoVersion, Minio: MinioHealthInfo{Tables: &TablesHealthInfo{
+		Warehouses: 2,
+		Namespaces: 3,
+		Tables:     5,
+		Maintenance: map[string]TableMaintenanceNode{
+			"compaction": {
+				Runs:   TableMaintenanceRuns{InFlight: 1, Done: TimedAction{Count: 4, AccTime: 9, MinTime: 1, MaxTime: 5}},
+				Groups: TableMaintenanceGroups{InFlight: 2},
+				Memory: TableMaintenanceMemory{PeakArrowBytes: 1 << 20, NodePeakArrowBytes: 2 << 20},
+				IO:     TableMaintenanceIO{BytesRead: 10, BytesWritten: 20, Ops: TableMaintenanceIOOps{Get: 3}, ThrottleSecs: 1.5},
+			},
+		},
+		Work: map[string]map[string]uint64{"compaction": {"files_rewritten": 8, "commit_races_lost": 1}},
+		Compaction: &TableCompactionClusterBacklog{
+			Complete:             true,
+			Components:           map[string]TableCompactionClusterBacklogComponent{"small_files": {Files: 12}, "delete_files": {Files: 4}},
+			TablesOverdue:        2,
+			OldestOverdueSecs:    7200,
+			TablesOverdueBuckets: map[string]int64{"3600": 1, "+Inf": 2},
+		},
+		Config: &TablesMaintenanceConfig{
+			Jobs:                 map[string]TablesMaintenanceJobConfig{"compaction": {Enabled: true, IntervalSecs: 3600}, "snapshot_expiration": {}},
+			PollIntervalSecs:     300,
+			ThrottleFactor:       2,
+			ThrottleMaxSleepSecs: 1,
+		},
+	}}}
+	buf, err := json.Marshal(want)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got HealthInfo
+	if err := json.Unmarshal(buf, &got); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(got.Minio.Tables, want.Minio.Tables) {
+		t.Errorf("round trip:\n got %+v\nwant %+v", got.Minio.Tables, want.Minio.Tables)
+	}
+
+	const golden = `{
+		"warehouses":2,"namespaces":3,"tables":5,
+		"maintenance":{"compaction":{
+			"runs":{"inflight":1,"done":{"count":4,"acc_time_ns":9,"min_ns":1,"max_ns":5}},
+			"groups":{"inflight":2},
+			"memory":{"peak_arrow_bytes":1048576,"node_peak_arrow_bytes":2097152},
+			"io":{"bytes_read":10,"bytes_written":20,"ops":{"get":3},"throttle_secs":1.5}}},
+		"work":{"compaction":{"files_rewritten":8,"commit_races_lost":1}},
+		"compaction":{"complete":true,
+			"components":{"small_files":{"files":12},"delete_files":{"files":4}},
+			"tables_overdue":2,"oldest_overdue_secs":7200,
+			"tables_overdue_buckets":{"3600":1,"+Inf":2}},
+		"config":{"jobs":{"compaction":{"enabled":true,"interval_secs":3600},"snapshot_expiration":{"enabled":false}},
+			"poll_interval_secs":300,"throttle_factor":2,"throttle_max_sleep_secs":1}}`
+	var emitted map[string]any
+	if err := json.Unmarshal(buf, &emitted); err != nil {
+		t.Fatal(err)
+	}
+	var wantWire any
+	if err := json.Unmarshal([]byte(golden), &wantWire); err != nil {
+		t.Fatal(err)
+	}
+	minio, _ := emitted["minio"].(map[string]any)
+	if gotWire := minio["tables"]; !reflect.DeepEqual(gotWire, wantWire) {
+		t.Errorf("emitted wire names:\n got %v\nwant %v", gotWire, wantWire)
+	}
+
+	var decoded HealthInfo
+	if err := json.Unmarshal([]byte(`{"version":"`+HealthInfoVersion+`","minio":{"tables":`+golden+`}}`), &decoded); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(decoded.Minio.Tables, want.Minio.Tables) {
+		t.Errorf("decode golden:\n got %+v\nwant %+v", decoded.Minio.Tables, want.Minio.Tables)
+	}
+
+	var old HealthInfo
+	if err := json.Unmarshal([]byte(`{"version":"3","minio":{"iam_info":{"total_policies":1}}}`), &old); err != nil {
+		t.Fatalf("payload without tables: %v", err)
+	}
+	if old.Minio.Tables != nil || old.Minio.IAMInfo == nil || old.Minio.IAMInfo.TotalPolicies != 1 {
+		t.Errorf("payload without tables decoded to Tables=%+v IAMInfo=%+v", old.Minio.Tables, old.Minio.IAMInfo)
+	}
+}
+
+// Call-home requests every type in HealthDataTypesList, so a type missing from
+// it is never uploaded.
+func TestHealthDataTypesListComplete(t *testing.T) {
+	listed := make(map[HealthDataType]bool, len(HealthDataTypesList))
+	for _, typ := range HealthDataTypesList {
+		listed[typ] = true
+	}
+	for name, typ := range HealthDataTypesMap {
+		if !listed[typ] {
+			t.Errorf("%s missing from HealthDataTypesList", name)
+		}
+	}
+	if len(listed) != len(HealthDataTypesMap) || !listed[HealthDataTypeTables] {
+		t.Errorf("HealthDataTypesList = %v, want exactly the types of HealthDataTypesMap, tables included", HealthDataTypesList)
+	}
+	if HealthDataTypesMap["tables"] != HealthDataTypeTables || HealthDataTypeTables != "tables" {
+		t.Errorf(`"tables" must map to HealthDataTypeTables and be its query name`)
+	}
+}
+
 func TestPartitionSMARTJSON(t *testing.T) {
 	t.Run("absent", func(t *testing.T) {
 		buf, err := json.Marshal(Partition{Device: "/dev/nvme0n1", Mountpoint: "/mnt/drive1"})

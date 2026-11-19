@@ -1473,6 +1473,59 @@ type IAMInfo struct {
 	FlaggedPolicies map[string]IAMPolicyDiag `json:"flagged_policies,omitempty"`
 }
 
+// TablesHealthInfo carries cluster-wide aggregates of AIStor Tables
+// maintenance. It holds no warehouse, namespace or table names. It is an AIStor
+// extension.
+type TablesHealthInfo struct {
+	Error string `json:"error,omitempty"`
+
+	// Warehouses counts every warehouse, and Namespaces and Tables those in
+	// warehouses that configure a maintenance type: the most any maintenance
+	// type's last full walk of the warehouse registry listed.
+	Warehouses int64 `json:"warehouses,omitempty"`
+	Namespaces int64 `json:"namespaces,omitempty"`
+	Tables     int64 `json:"tables,omitempty"`
+
+	// Maintenance maps a maintenance type to its work summed over all nodes.
+	// The maintenance types are a small fixed set defined by the server; no
+	// key comes from user data.
+	Maintenance map[string]TableMaintenanceNode `json:"maintenance,omitempty"`
+
+	// Work maps a maintenance type to its cumulative units of work, as in
+	// TableMaintenanceJob.Work. Each type's counter names are a small fixed
+	// set defined by the server; no key comes from user data.
+	Work map[string]map[string]uint64 `json:"work,omitempty"`
+
+	// Compaction is the compaction leader's backlog.
+	Compaction *TableCompactionClusterBacklog `json:"compaction,omitempty"`
+
+	Config *TablesMaintenanceConfig `json:"config,omitempty"`
+}
+
+// TablesMaintenanceConfig is the table maintenance configuration in effect on
+// the reporting node, environment overrides and defaults included, where
+// MinioConfig holds only the stored "tables" subsystem settings. The throttle
+// has no setting. It is an AIStor extension.
+type TablesMaintenanceConfig struct {
+	// Jobs maps a maintenance type, one of the small fixed set defined by the
+	// server, to its configuration.
+	Jobs map[string]TablesMaintenanceJobConfig `json:"jobs,omitempty"`
+
+	PollIntervalSecs float64 `json:"poll_interval_secs,omitempty"`
+
+	// ThrottleFactor scales each compaction I/O wait by the time the I/O
+	// took, and ThrottleMaxSleepSecs caps one wait.
+	ThrottleFactor       float64 `json:"throttle_factor,omitempty"`
+	ThrottleMaxSleepSecs float64 `json:"throttle_max_sleep_secs,omitempty"`
+}
+
+// TablesMaintenanceJobConfig is one maintenance type's server-wide default.
+// It is an AIStor extension.
+type TablesMaintenanceJobConfig struct {
+	Enabled      bool    `json:"enabled"`
+	IntervalSecs float64 `json:"interval_secs,omitempty"`
+}
+
 // MinioHealthInfo - Includes MinIO confifuration information
 type MinioHealthInfo struct {
 	Error string `json:"error,omitempty"`
@@ -1483,6 +1536,7 @@ type MinioHealthInfo struct {
 	ReplicationInfo *ReplDiagInfoV2   `json:"replication_info,omitempty"`
 	ShardsHealth    *ShardsHealthInfo `json:"shards_health,omitempty"`
 	IAMInfo         *IAMInfo          `json:"iam_info,omitempty"`
+	Tables          *TablesHealthInfo `json:"tables,omitempty"`
 }
 
 // HealthInfo - MinIO cluster's health Info
@@ -1550,6 +1604,7 @@ const (
 	HealthDataTypeReplication    HealthDataType = "replication"
 	HealthDataTypeShardsHealth   HealthDataType = "shardshealth"
 	HealthDataTypeIAMInfo        HealthDataType = "iaminfo"
+	HealthDataTypeTables         HealthDataType = "tables"
 )
 
 // HealthDataTypesMap - Map of Health datatypes
@@ -1569,6 +1624,7 @@ var HealthDataTypesMap = map[string]HealthDataType{
 	"replication":    HealthDataTypeReplication,
 	"shardshealth":   HealthDataTypeShardsHealth,
 	"iaminfo":        HealthDataTypeIAMInfo,
+	"tables":         HealthDataTypeTables,
 }
 
 // HealthDataTypesList - List of health datatypes
@@ -1588,6 +1644,7 @@ var HealthDataTypesList = []HealthDataType{
 	HealthDataTypeReplication,
 	HealthDataTypeShardsHealth,
 	HealthDataTypeIAMInfo,
+	HealthDataTypeTables,
 }
 
 // HealthInfoVersionStruct - struct for health info version
