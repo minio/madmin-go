@@ -85,8 +85,7 @@ type BucketAccessInfo struct {
 	Access                  AccountAccess     `json:"access"`
 }
 
-// AccountInfo represents the account usage info of an
-// account across buckets.
+// AccountInfo is the full account info, including every accessible bucket.
 type AccountInfo struct {
 	AccountName string
 	Server      BackendInfo
@@ -94,12 +93,48 @@ type AccountInfo struct {
 	Buckets     []BucketAccessInfo
 }
 
+// AccountSummary is AccountInfo without the bucket list.
+type AccountSummary struct {
+	AccountName string
+	Server      BackendInfo
+	Policy      json.RawMessage // Use iam/policy.Parse to parse the result, to be done by the caller.
+}
+
+// AccountSummary returns the account name, backend info and policy of the
+// authenticating account. It is cheaper than AccountInfo, which also lists
+// buckets.
+func (adm *AdminClient) AccountSummary(ctx context.Context) (AccountSummary, error) {
+	q := make(url.Values)
+	q.Set("v", "2")
+	resp, err := adm.executeMethod(ctx, http.MethodGet,
+		requestData{
+			relPath:     adminAPIPrefix + "/accountinfo",
+			queryValues: q,
+		},
+	)
+	defer closeResponse(resp)
+	if err != nil {
+		return AccountSummary{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return AccountSummary{}, httpRespToErrorResponse(resp)
+	}
+
+	var summary AccountSummary
+	if err = json.NewDecoder(resp.Body).Decode(&summary); err != nil {
+		return AccountSummary{}, err
+	}
+	return summary, nil
+}
+
 // AccountOpts allows for configurable behavior with "prefix-usage"
 type AccountOpts struct {
 	PrefixUsage bool
 }
 
-// AccountInfo returns the usage info for the authenticating account.
+// AccountInfo returns the full account info, including every accessible
+// bucket. Use AccountSummary when buckets are not needed.
 func (adm *AdminClient) AccountInfo(ctx context.Context, opts AccountOpts) (AccountInfo, error) {
 	q := make(url.Values)
 	if opts.PrefixUsage {
@@ -135,6 +170,91 @@ func (adm *AdminClient) AccountInfo(ctx context.Context, opts AccountOpts) (Acco
 	}
 
 	return accountInfo, nil
+}
+
+// BucketInfo is one bucket returned by BucketsInfo.
+type BucketInfo struct {
+	Name    string    `json:"name"`
+	Created time.Time `json:"created"`
+	// NameOnly is set when the caller may see the bucket but not list it.
+	// Usage and Details are then absent.
+	NameOnly                bool              `json:"nameOnly,omitempty"`
+	Size                    uint64            `json:"size"`
+	Objects                 uint64            `json:"objects"`
+	Versions                uint64            `json:"versions"`
+	DeleteMarkers           uint64            `json:"deleteMarkers"`
+	ObjectSizesHistogram    map[string]uint64 `json:"objectHistogram"`
+	ObjectVersionsHistogram map[string]uint64 `json:"objectsVersionsHistogram"`
+	Details                 *BucketDetails    `json:"details"`
+}
+
+// MaxBucketsInfoPerPage is the default and maximum page size of BucketsInfo.
+const MaxBucketsInfoPerPage = 1000
+
+// BucketsInfoResp is one page of BucketsInfo.
+type BucketsInfoResp struct {
+	// Buckets are sorted by name.
+	Buckets []BucketInfo `json:"buckets"`
+
+	// NextContinuationToken is empty on the last page.
+	NextContinuationToken string `json:"nextContinuationToken,omitempty"`
+}
+
+// MarshalJSON encodes nil Buckets as [].
+func (r BucketsInfoResp) MarshalJSON() ([]byte, error) {
+	type resp BucketsInfoResp
+	if r.Buckets == nil {
+		r.Buckets = []BucketInfo{}
+	}
+	return json.Marshal(resp(r))
+}
+
+// BucketsInfoOpts configures BucketsInfo.
+type BucketsInfoOpts struct {
+	// Bucket limits the result to one bucket. It cannot be combined with
+	// Limit or ContinuationToken.
+	Bucket string
+
+	// Limit caps the page size. Zero or less uses MaxBucketsInfoPerPage.
+	Limit int
+
+	// ContinuationToken is the previous page's NextContinuationToken.
+	ContinuationToken string
+}
+
+// BucketsInfo returns one page of the buckets the caller can see, as S3
+// ListBuckets would. Buckets the caller cannot list have NameOnly set.
+//
+// To list all buckets, repeat with NextContinuationToken until it is empty.
+func (adm *AdminClient) BucketsInfo(ctx context.Context, opts BucketsInfoOpts) (BucketsInfoResp, error) {
+	q := make(url.Values)
+	if opts.Bucket != "" {
+		if opts.Limit != 0 || opts.ContinuationToken != "" {
+			return BucketsInfoResp{}, errors.New("a limit and a continuation token apply only to listing every bucket, not to one")
+		}
+		q.Set("bucket", opts.Bucket)
+	}
+	setPageQuery(q, opts.Limit, opts.ContinuationToken)
+	resp, err := adm.executeMethod(ctx, http.MethodGet,
+		requestData{
+			relPath:     adminAPIPrefix + "/bucket-info",
+			queryValues: q,
+		},
+	)
+	defer closeResponse(resp)
+	if err != nil {
+		return BucketsInfoResp{}, err
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return BucketsInfoResp{}, httpRespToErrorResponse(resp)
+	}
+
+	var page BucketsInfoResp
+	if err = json.NewDecoder(resp.Body).Decode(&page); err != nil {
+		return BucketsInfoResp{}, err
+	}
+	return page, nil
 }
 
 // AccountStatus - account status.

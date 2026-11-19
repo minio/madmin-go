@@ -735,7 +735,7 @@ func (adm *AdminClient) ListFilesExports(ctx context.Context, opts FilesListOpti
 	if opts.Status != "" {
 		values.Set("status", string(opts.Status))
 	}
-	setFilesPage(values, opts.Limit, opts.ContinuationToken)
+	setPageQuery(values, opts.Limit, opts.ContinuationToken)
 
 	var list FilesExportList
 	err := adm.filesJSON(ctx, requestData{relPath: filesAPIPrefix + "/exports", queryValues: values}, &list)
@@ -792,16 +792,16 @@ func (adm *AdminClient) FilesExportStats(ctx context.Context, export string, opt
 	if opts.Node != "" {
 		values.Set("node", opts.Node)
 	}
-	setFilesPage(values, opts.Limit, opts.ContinuationToken)
+	setPageQuery(values, opts.Limit, opts.ContinuationToken)
 
 	var stats FilesStatsList
 	err := adm.filesJSON(ctx, requestData{relPath: relPath, queryValues: values}, &stats)
 	return stats, err
 }
 
-// setFilesPage adds the paging parameters of a fleet read. A limit of zero or
-// less is left to the server.
-func setFilesPage(values url.Values, limit int, token string) {
+// setPageQuery sets the limit and continuation-token query parameters. A
+// limit of zero or less is omitted.
+func setPageQuery(values url.Values, limit int, token string) {
 	if limit > 0 {
 		values.Set("limit", strconv.Itoa(limit))
 	}
