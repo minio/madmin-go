@@ -389,28 +389,19 @@ type Partition struct {
 	SMART *DriveSMART `json:"smart,omitempty"`
 }
 
-// DriveSMART is the S.M.A.R.T. data of one drive that health checks use.
-// Optional values are omitted when 0, which means not reported: NVMe uses 0
-// for an unreported temperature or limit, and no running drive reads 0 °C.
+// DriveSMART holds the S.M.A.R.T. values of one drive that health checks use:
+// its temperature and thermal history. Values are omitted when 0, which means
+// not reported: NVMe uses 0 for an unreported temperature or limit, and no
+// running drive reads 0 °C.
 type DriveSMART struct {
-	DeviceType   string `json:"deviceType"` // nvme, sata or megaraid
-	ModelNumber  string `json:"modelNumber,omitempty"`
-	SerialNumber string `json:"serialNumber,omitempty"`
-	FirmwareRev  string `json:"firmwareRev,omitempty"`
-
-	Status       string `json:"status"`                 // healthy, warning, critical, or unknown when only the identity could be read
-	StatusReason string `json:"statusReason,omitempty"` // why the status is not healthy
-
 	Temperature  int    `json:"temperature,omitempty"`  // Celsius
 	PowerOnHours uint64 `json:"powerOnHours,omitempty"` // also 0 within a new drive's first hour
 
 	NVMe *DriveSMARTNVMe `json:"nvme,omitempty"`
 }
 
-// DriveSMARTNVMe holds the critical warnings and thermal data of an NVMe drive.
+// DriveSMARTNVMe holds the thermal data of an NVMe drive.
 type DriveSMARTNVMe struct {
-	CriticalWarning uint8 `json:"criticalWarning"` // bit flags, as in SMARTNVMe; bit 1 is the temperature alarm
-
 	// Lifetime counters. WarningTempTime counts minutes at or above WCTEMP and
 	// below CCTEMP, CritCompTime minutes at or above CCTEMP.
 	// ThermalManagementTime is the time throttled by host controlled thermal

@@ -387,13 +387,9 @@ func TestPartitionSMARTJSON(t *testing.T) {
 			Minor:      7,
 			Mountpoint: "/mnt/drive6",
 			SMART: &DriveSMART{
-				DeviceType:   "nvme",
-				Status:       "critical",
-				StatusReason: "critical warnings: temperature out of range",
 				Temperature:  86,
 				PowerOnHours: 26280,
 				NVMe: &DriveSMARTNVMe{
-					CriticalWarning:       0x02,
 					WarningTempTime:       31540,
 					CritCompTime:          95,
 					ThermalManagementTime: 120,
@@ -430,16 +426,9 @@ func TestPartitionSMARTJSON(t *testing.T) {
 			{
 				name: "nvme",
 				smart: DriveSMART{
-					DeviceType:   "nvme",
-					ModelNumber:  "WD WUS5BA1A1ESP5E1",
-					SerialNumber: "SN1",
-					FirmwareRev:  "RA109004",
-					Status:       "critical",
-					StatusReason: "critical warnings: temperature out of range",
 					Temperature:  86,
 					PowerOnHours: 26280,
 					NVMe: &DriveSMARTNVMe{
-						CriticalWarning:       0x02,
 						WarningTempTime:       31540,
 						CritCompTime:          95,
 						ThermalManagementTime: 120,
@@ -448,25 +437,18 @@ func TestPartitionSMARTJSON(t *testing.T) {
 						HottestSensorTemp:     91,
 					},
 				},
-				want: `{"deviceType":"nvme","modelNumber":"WD WUS5BA1A1ESP5E1","serialNumber":"SN1","firmwareRev":"RA109004",` +
-					`"status":"critical","statusReason":"critical warnings: temperature out of range","temperature":86,"powerOnHours":26280,` +
-					`"nvme":{"criticalWarning":2,"warningTempTime":31540,"critCompTime":95,"thermalManagementTime":120,` +
-					`"warningTempThreshold":75,"criticalTempThreshold":85,"hottestSensorTemp":91}}`,
-			},
-			{
-				name:  "megaraid",
-				smart: DriveSMART{DeviceType: "megaraid", Status: "healthy"},
-				want:  `{"deviceType":"megaraid","status":"healthy"}`,
+				want: `{"temperature":86,"powerOnHours":26280,"nvme":{"warningTempTime":31540,"critCompTime":95,` +
+					`"thermalManagementTime":120,"warningTempThreshold":75,"criticalTempThreshold":85,"hottestSensorTemp":91}}`,
 			},
 			{
 				name:  "nvme without temperatures",
-				smart: DriveSMART{DeviceType: "nvme", Status: "healthy", PowerOnHours: 10, NVMe: &DriveSMARTNVMe{WarningTempTime: 5}},
-				want:  `{"deviceType":"nvme","status":"healthy","powerOnHours":10,"nvme":{"criticalWarning":0,"warningTempTime":5,"critCompTime":0,"thermalManagementTime":0}}`,
+				smart: DriveSMART{PowerOnHours: 10, NVMe: &DriveSMARTNVMe{WarningTempTime: 5}},
+				want:  `{"powerOnHours":10,"nvme":{"warningTempTime":5,"critCompTime":0,"thermalManagementTime":0}}`,
 			},
 			{
 				name:  "sata",
-				smart: DriveSMART{DeviceType: "sata", Status: "warning", StatusReason: "reallocated sectors: 8", Temperature: 41},
-				want:  `{"deviceType":"sata","status":"warning","statusReason":"reallocated sectors: 8","temperature":41}`,
+				smart: DriveSMART{Temperature: 41, PowerOnHours: 1200},
+				want:  `{"temperature":41,"powerOnHours":1200}`,
 			},
 		}
 		for _, tc := range testCases {
