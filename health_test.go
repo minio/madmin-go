@@ -437,18 +437,18 @@ func TestPartitionSMARTJSON(t *testing.T) {
 						HottestSensorTemp:     91,
 					},
 				},
-				want: `{"temperature":86,"powerOnHours":26280,"nvme":{"warningTempTime":31540,"critCompTime":95,` +
-					`"thermalManagementTime":120,"warningTempThreshold":75,"criticalTempThreshold":85,"hottestSensorTemp":91}}`,
+				want: `{"temperature":86,"power_on_hours":26280,"nvme":{"warning_temp_time":31540,"crit_comp_time":95,` +
+					`"thermal_management_time":120,"warning_temp_threshold":75,"critical_temp_threshold":85,"hottest_sensor_temp":91}}`,
 			},
 			{
 				name:  "nvme without temperatures",
 				smart: DriveSMART{PowerOnHours: 10, NVMe: &DriveSMARTNVMe{WarningTempTime: 5}},
-				want:  `{"powerOnHours":10,"nvme":{"warningTempTime":5,"critCompTime":0,"thermalManagementTime":0}}`,
+				want:  `{"power_on_hours":10,"nvme":{"warning_temp_time":5,"crit_comp_time":0,"thermal_management_time":0}}`,
 			},
 			{
 				name:  "sata",
 				smart: DriveSMART{Temperature: 41, PowerOnHours: 1200},
-				want:  `{"temperature":41,"powerOnHours":1200}`,
+				want:  `{"temperature":41,"power_on_hours":1200}`,
 			},
 		}
 		for _, tc := range testCases {
@@ -461,6 +461,43 @@ func TestPartitionSMARTJSON(t *testing.T) {
 					t.Fatalf("want %s\ngot  %s", tc.want, buf)
 				}
 			})
+		}
+	})
+}
+
+func TestPartitionsSMARTSummaryJSON(t *testing.T) {
+	t.Run("absent", func(t *testing.T) {
+		buf, err := json.Marshal(Partitions{NodeCommon: NodeCommon{Addr: "node1:9000"}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if bytes.Contains(buf, []byte(`"smart_summary"`)) {
+			t.Fatalf("a node without SMART data must not carry the key, got %s", buf)
+		}
+	})
+
+	t.Run("wire format", func(t *testing.T) {
+		parts := Partitions{
+			NodeCommon:   NodeCommon{Addr: "node1:9000"},
+			Partitions:   []Partition{{Mountpoint: "/mnt/drive1", SMART: &DriveSMART{Temperature: 74}}},
+			SMARTSummary: &DriveSMARTSummary{Drives: 30, MaxTemperature: 74},
+		}
+		buf, err := json.Marshal(parts)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := `{"addr":"node1:9000","partitions":[{"major":0,"minor":0,"mountpoint":"/mnt/drive1","smart":{"temperature":74}}],` +
+			`"smart_summary":{"drives":30,"max_temperature":74}}`
+		if string(buf) != want {
+			t.Fatalf("want %s\ngot  %s", want, buf)
+		}
+
+		var got Partitions
+		if err := json.Unmarshal(buf, &got); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(got, parts) {
+			t.Fatalf("round trip:\nwant %+v\ngot  %+v", parts, got)
 		}
 	})
 }
