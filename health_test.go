@@ -417,7 +417,8 @@ func TestPartitionSMARTJSON(t *testing.T) {
 
 	t.Run("wire format", func(t *testing.T) {
 		// Exact JSON, so a renamed key fails here: values a drive reported keep
-		// their names, values it did not report are absent, never 0.
+		// their names, and temperatures, limits and power-on hours it did not
+		// report are absent, never 0. The NVMe time counters are always sent.
 		testCases := []struct {
 			name  string
 			smart DriveSMART

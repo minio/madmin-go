@@ -386,16 +386,16 @@ type Partition struct {
 	FstabSource  string `json:"fstab_source,omitempty"` // source from /etc/fstab (UUID=, LABEL=, or device path)
 
 	// SMART holds the S.M.A.R.T. data of the drive backing this partition. A
-	// server includes it only for a drive worth a look, near or above its
-	// warning temperature or with time spent hot or throttled; the other drives
-	// are only counted in the node's Partitions.SMARTSummary.
+	// server may leave it out for a drive that needs no attention; every drive
+	// whose SMART data was read is counted in the node's Partitions.SMARTSummary.
 	SMART *DriveSMART `json:"smart,omitempty"`
 }
 
 // DriveSMART holds the S.M.A.R.T. values of one drive that health checks use:
-// its temperature and thermal history. Values are omitted when 0, which means
-// not reported: NVMe uses 0 for an unreported temperature or limit, and no
-// running drive reads 0 °C.
+// its temperature and thermal history. Temperatures, limits and power-on hours
+// are omitted when 0, which means not reported: NVMe uses 0 for an unreported
+// temperature or limit, and no running drive reads 0 °C. The NVMe time
+// counters are always sent, as 0 there is a reading.
 type DriveSMART struct {
 	Temperature  int    `json:"temperature,omitempty"`    // Celsius
 	PowerOnHours uint64 `json:"power_on_hours,omitempty"` // also 0 within a new drive's first hour
