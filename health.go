@@ -385,8 +385,53 @@ type Partition struct {
 	InodeFree    uint64 `json:"inode_free,omitempty"`
 	FstabSource  string `json:"fstab_source,omitempty"` // source from /etc/fstab (UUID=, LABEL=, or device path)
 
-	// SMART holds the S.M.A.R.T. data of the drive backing this partition, when it could be read.
+	// SMART is not set by servers.
+	//
+	// Deprecated: use DriveSMART.
 	SMART *SMARTInfo `json:"smart,omitempty"`
+
+	// DriveSMART holds the S.M.A.R.T. data of the drive backing this partition. A
+	// server may leave it out for a drive that needs no attention; every drive
+	// whose SMART data was read is counted in the node's Partitions.SMARTSummary.
+	DriveSMART *DriveSMART `json:"drive_smart,omitempty"`
+}
+
+// DriveSMART holds the S.M.A.R.T. values of one drive that health checks use:
+// its temperature and thermal history. Temperatures, limits and power-on hours
+// are omitted when 0, which means not reported: NVMe uses 0 for an unreported
+// temperature or limit, and no running drive reads 0 °C. The NVMe time
+// counters are always sent, as 0 there is a reading.
+type DriveSMART struct {
+	Temperature  int    `json:"temperature,omitempty"`    // Celsius
+	PowerOnHours uint64 `json:"power_on_hours,omitempty"` // also 0 within a new drive's first hour
+
+	NVMe *DriveSMARTNVMe `json:"nvme,omitempty"`
+}
+
+// DriveSMARTNVMe holds the thermal data of an NVMe drive.
+type DriveSMARTNVMe struct {
+	// Lifetime counters. WarningTempTime counts minutes at or above WCTEMP and
+	// below CCTEMP, CritCompTime minutes at or above CCTEMP.
+	// ThermalManagementTime is the time throttled by host controlled thermal
+	// management, TMT1 and TMT2 added together.
+	WarningTempTime       uint64 `json:"warning_temp_time"`       // minutes
+	CritCompTime          uint64 `json:"crit_comp_time"`          // minutes
+	ThermalManagementTime uint64 `json:"thermal_management_time"` // seconds
+
+	// Composite temperature thresholds (WCTEMP/CCTEMP) in Celsius.
+	WarningTempThreshold  int `json:"warning_temp_threshold,omitempty"`
+	CriticalTempThreshold int `json:"critical_temp_threshold,omitempty"`
+
+	// HottestSensorTemp is the highest reading of temperature sensors 1-8 in
+	// Celsius. Where each sensor sits is vendor specific, and WCTEMP/CCTEMP
+	// apply to the composite Temperature only.
+	HottestSensorTemp int `json:"hottest_sensor_temp,omitempty"`
+}
+
+// DriveSMARTSummary sums up the drives of a node whose SMART data was read.
+type DriveSMARTSummary struct {
+	Drives         int `json:"drives"`                    // drives whose SMART data was read
+	MaxTemperature int `json:"max_temperature,omitempty"` // hottest of their temperatures, Celsius
 }
 
 // NetSettings - rx/tx settings of an interface
@@ -418,6 +463,10 @@ type Partitions struct {
 	NodeCommon
 
 	Partitions []Partition `json:"partitions,omitempty"`
+
+	// SMARTSummary covers every drive of the node whose SMART data was read,
+	// including those without per-partition SMART data.
+	SMARTSummary *DriveSMARTSummary `json:"smart_summary,omitempty"`
 }
 
 // driveHwInfo contains hardware information about a drive
