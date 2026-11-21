@@ -338,6 +338,11 @@ const (
 	// HTTP 422.
 	FilesErrNodeRefused = "NodeRefused"
 
+	// FilesErrClientNotFound means the gateway on the node named holds no NFS
+	// client with that id: it never connected, it expired, or it was already
+	// evicted. HTTP 404.
+	FilesErrClientNotFound = "ClientNotFound"
+
 	// FilesErrPreconditionRequired means a per-export write named no
 	// generation. HTTP 428.
 	FilesErrPreconditionRequired = "PreconditionRequired"
