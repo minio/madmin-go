@@ -385,10 +385,15 @@ type Partition struct {
 	InodeFree    uint64 `json:"inode_free,omitempty"`
 	FstabSource  string `json:"fstab_source,omitempty"` // source from /etc/fstab (UUID=, LABEL=, or device path)
 
-	// SMART holds the S.M.A.R.T. data of the drive backing this partition. A
+	// SMART is not set by servers.
+	//
+	// Deprecated: use DriveSMART.
+	SMART *SMARTInfo `json:"smart,omitempty"`
+
+	// DriveSMART holds the S.M.A.R.T. data of the drive backing this partition. A
 	// server may leave it out for a drive that needs no attention; every drive
 	// whose SMART data was read is counted in the node's Partitions.SMARTSummary.
-	SMART *DriveSMART `json:"smart,omitempty"`
+	DriveSMART *DriveSMART `json:"drive_smart,omitempty"`
 }
 
 // DriveSMART holds the S.M.A.R.T. values of one drive that health checks use:

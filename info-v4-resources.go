@@ -361,6 +361,11 @@ type SMARTNVMe struct {
 	ThermalTransitionCount uint64  `json:"thermalTransitionCount" msg:"ttc"` // Thermal Management Transition Count (total)
 	ThermalManagementTime  uint64  `json:"thermalManagementTime" msg:"ttt"`  // Total Time For Thermal Management - seconds (total)
 
+	// Composite temperature thresholds (WCTEMP/CCTEMP) in Celsius, 0 if the drive does not report them.
+	// A merge keeps the lowest reported value.
+	WarningTempThreshold  uint `json:"warningTempThreshold" msg:"wct,omitempty"`
+	CriticalTempThreshold uint `json:"criticalTempThreshold" msg:"cct,omitempty"`
+
 	// Min/Max values are excluded if N == 1
 	MinAvailableSpare         uint    `json:"minAvailableSpare" msg:"mas,omitempty"`
 	MaxPercentageUsed         uint    `json:"maxPercentageUsed" msg:"mpu,omitempty"`
@@ -428,6 +433,12 @@ func (s *SMARTNVMe) Merge(other *SMARTNVMe) {
 	// Merge min/max values
 	if other.MinAvailableSpare > 0 && (s.MinAvailableSpare == 0 || other.MinAvailableSpare < s.MinAvailableSpare) {
 		s.MinAvailableSpare = other.MinAvailableSpare
+	}
+	if other.WarningTempThreshold > 0 && (s.WarningTempThreshold == 0 || other.WarningTempThreshold < s.WarningTempThreshold) {
+		s.WarningTempThreshold = other.WarningTempThreshold
+	}
+	if other.CriticalTempThreshold > 0 && (s.CriticalTempThreshold == 0 || other.CriticalTempThreshold < s.CriticalTempThreshold) {
+		s.CriticalTempThreshold = other.CriticalTempThreshold
 	}
 	s.MaxPercentageUsed = max(s.MaxPercentageUsed, other.MaxPercentageUsed)
 	s.MaxMediaErrors = max(s.MaxMediaErrors, other.MaxMediaErrors)
