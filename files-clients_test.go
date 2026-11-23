@@ -233,6 +233,7 @@ func TestFilesNFSClientNeedsAttention(t *testing.T) {
 	}{
 		{FilesNFSClient{HoldsState: true, OnExport: true, Opens: 3}, false},
 		{FilesNFSClient{Waiting: 1}, true},
+		{FilesNFSClient{Blocking: 2}, true},
 		{FilesNFSClient{LeaseLapsed: true}, true},
 		{FilesNFSClient{CallbackDown: true}, true},
 		{FilesNFSClient{RetriesPerMin: FilesRetryStormPerMin - 1}, false},

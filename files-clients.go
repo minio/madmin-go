@@ -73,6 +73,23 @@ type FilesNFSClient struct {
 	// RetriesPerMin is how many requests the client sent again in the last
 	// minute, as NFSv4.1 session replays: a high count is a retry storm.
 	RetriesPerMin uint32 `json:"retriesPerMin,omitempty"`
+
+	// Blocking is how many lock requests of other clients, on any node, are
+	// parked behind a lock this client holds. A client whose app hung while
+	// holding a lock shows here: evicting it lets them go on.
+	Blocking uint32 `json:"blocking,omitempty"`
+
+	// BlockedBy names the clients holding the locks this client's parked
+	// requests wait for, on any node.
+	BlockedBy []FilesClientRef `json:"blockedBy,omitempty"`
+}
+
+// FilesClientRef names one NFS client: the node whose gateway holds it, its
+// client id there, and its owner string.
+type FilesClientRef struct {
+	Node     string `json:"node"`
+	ClientID string `json:"clientID"`
+	Owner    string `json:"owner,omitempty"`
 }
 
 // FilesRetryStormPerMin is the retries a minute from which a client is
@@ -80,10 +97,11 @@ type FilesNFSClient struct {
 const FilesRetryStormPerMin = 30
 
 // NeedsAttention reports whether anything about the client may need an
-// operator: it waits for a lock, its lease lapsed, its callbacks are down, or
-// it is in a retry storm. None of it alone is a reason to evict it.
+// operator: it blocks other clients' locks, it waits for a lock, its lease
+// lapsed, its callbacks are down, or it is in a retry storm. Blocking is the
+// one that points at a client to evict; none of the others alone is a reason.
 func (c FilesNFSClient) NeedsAttention() bool {
-	return c.Waiting > 0 || c.LeaseLapsed || c.CallbackDown || c.RetriesPerMin >= FilesRetryStormPerMin
+	return c.Blocking > 0 || c.Waiting > 0 || c.LeaseLapsed || c.CallbackDown || c.RetriesPerMin >= FilesRetryStormPerMin
 }
 
 // FilesNodeNFSClients is what one node's gateway reported for an export.
