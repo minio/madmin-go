@@ -671,6 +671,21 @@ func TestTableMaintenanceMergeKeepsLatestOverdue(t *testing.T) {
 			t.Fatalf("source Overdue mutated through the aggregate: %+v", source)
 		}
 	}
+
+	for _, tie := range []struct {
+		name      string
+		lose, win TableMaintenanceOverdue
+	}{
+		{"more tables", TableMaintenanceOverdue{LeaderSince: t0, Tables: 1, OldestSecs: 900}, TableMaintenanceOverdue{LeaderSince: t0, Tables: 3, OldestSecs: 60}},
+		{"same tables, older", TableMaintenanceOverdue{LeaderSince: t0, Tables: 2, OldestSecs: 60}, TableMaintenanceOverdue{LeaderSince: t0, Tables: 2, OldestSecs: 900}},
+	} {
+		lose, win := report(TableMaintenanceJob{Overdue: &tie.lose}), report(TableMaintenanceJob{Overdue: &tie.win})
+		for _, order := range [][]*TableAPIMetrics{{lose, win}, {win, lose}} {
+			if got := mergeTables(order...).Maintenance["record_expiration"].Overdue; !reflect.DeepEqual(got, &tie.win) {
+				t.Errorf("%s: Overdue = %+v, want %+v", tie.name, got, tie.win)
+			}
+		}
+	}
 }
 
 // Leaders that took over at the same instant tie the same way whether or not
