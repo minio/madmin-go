@@ -343,6 +343,10 @@ const (
 	// evicted. HTTP 404.
 	FilesErrClientNotFound = "ClientNotFound"
 
+	// FilesErrClientAmbiguous means an eviction that named no node named a
+	// client id more than one node lists, so name the node.
+	FilesErrClientAmbiguous = "ClientAmbiguous"
+
 	// FilesErrPreconditionRequired means a per-export write named no
 	// generation. HTTP 428.
 	FilesErrPreconditionRequired = "PreconditionRequired"

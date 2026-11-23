@@ -20,7 +20,6 @@ package madmin
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
@@ -117,18 +116,48 @@ const FilesMaxEvictClients = 1000
 // FilesEvictResult is the reply of EvictFilesClient.
 type FilesEvictResult struct {
 	ExportID uint64 `json:"exportID"`
-	Node     string `json:"node"`
 
-	// NFSClients holds what became of each client the call evicted, keyed by
-	// client id: each id it named, or with none named, each client the export's
-	// list held on Node.
-	NFSClients map[string]FilesEvictOutcome `json:"nfsClients"`
+	// Nodes holds what each node did, keyed by node: the node the call named,
+	// or with none named, each node a named client was found on, or with every
+	// client asked for, each node that had any or could not evict them. A
+	// client id belongs to one node's gateway, and two nodes can hand out the
+	// same id, so outcomes are kept per node.
+	Nodes map[string]FilesNodeEvictResult `json:"nodes"`
+
+	// Unplaced holds the named clients the call did not evict because it could
+	// not tell which node holds them, keyed by client id: no node lists it
+	// (FilesErrClientNotFound, or FilesErrNodeUnreachable while a node could
+	// not be read), or several do (FilesErrClientAmbiguous: name the node).
+	// Only a call that names no node has any.
+	Unplaced map[string]FilesEvictOutcome `json:"unplaced,omitempty"`
 }
 
-// MarshalJSON encodes a nil NFSClients as {}, so a reply always names its
-// nfsClients object rather than null.
+// MarshalJSON encodes a nil Nodes as {}, so a reply always names its nodes
+// object rather than null.
 func (r FilesEvictResult) MarshalJSON() ([]byte, error) {
 	type result FilesEvictResult
+	if r.Nodes == nil {
+		r.Nodes = map[string]FilesNodeEvictResult{}
+	}
+	return json.Marshal(result(r))
+}
+
+// FilesNodeEvictResult is what one node did with an eviction.
+type FilesNodeEvictResult struct {
+	// NFSClients holds what became of each client, keyed by client id.
+	NFSClients map[string]FilesEvictOutcome `json:"nfsClients"`
+
+	// Code is why the node evicted none of them, such as
+	// FilesErrNodeUnreachable or FilesErrNotImplemented, with Detail. It is
+	// only set when the call named no node: a call that names one fails
+	// instead.
+	Code   string `json:"code,omitempty"`
+	Detail string `json:"detail,omitempty"`
+}
+
+// MarshalJSON encodes a nil NFSClients as {}.
+func (r FilesNodeEvictResult) MarshalJSON() ([]byte, error) {
+	type result FilesNodeEvictResult
 	if r.NFSClients == nil {
 		r.NFSClients = map[string]FilesEvictOutcome{}
 	}
@@ -170,25 +199,31 @@ func ValidFilesClientID(id string) bool {
 	return true
 }
 
-// EvictFilesClient evicts NFS clients of an export from the gateway on node:
-// each of clientIDs, or with none given, every client the export's list holds
-// on node. The gateway releases every open, lock, delegation and layout a
-// client holds, on every export of that node, since a client id belongs to the
-// node's gateway rather than to one export. A client is not barred: one that
-// is still running connects again under a new client id, without what it held.
+// EvictFilesClient evicts NFS clients of an export: each of clientIDs, or
+// with none given, every client the export's list holds. With node set, it
+// evicts them from that node's gateway only. With node empty, the server finds
+// the node of each named client in the export's list, and asks for a node only
+// when several list the same id; and evicting every client with node empty
+// evicts every client of the export on every node.
 //
-// A client that was not evicted is reported in the result's NFSClients with
-// its Code; the call fails only when the node could not be asked. Evicting
-// every client is sent as its own request, all=true, so a request that names
-// no client is never read as one that evicts them all.
+// A gateway releases every open, lock, delegation and layout a client holds,
+// on every export of its node, since a client id belongs to the node's gateway
+// rather than to one export. A client is not barred: one that is still running
+// connects again under a new client id, without what it held.
+//
+// A client that was not evicted is reported with its Code. With node set, the
+// call fails when that node could not be asked; with node empty, such a node
+// is reported in its Nodes entry instead. Evicting every client is sent as its
+// own request, all=true, so a request that names no client is never read as
+// one that evicts them all.
 func (adm *AdminClient) EvictFilesClient(ctx context.Context, export, node string, clientIDs ...string) (FilesEvictResult, error) {
-	if node == "" {
-		return FilesEvictResult{}, errors.New("the node the clients are connected to is required; read it with FilesExportClients")
-	}
 	if len(clientIDs) > FilesMaxEvictClients {
 		return FilesEvictResult{}, fmt.Errorf("%d client ids: one eviction takes at most %d", len(clientIDs), FilesMaxEvictClients)
 	}
-	query := url.Values{"node": []string{node}}
+	query := url.Values{}
+	if node != "" {
+		query.Set("node", node)
+	}
 	for _, id := range clientIDs {
 		if !ValidFilesClientID(id) {
 			return FilesEvictResult{}, fmt.Errorf("invalid client id %q: want 16 lowercase hex digits, as FilesExportClients lists it", id)

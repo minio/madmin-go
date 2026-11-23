@@ -93,19 +93,19 @@ func TestFilesExportClientsRequest(t *testing.T) {
 // export's clients, naming its node and each client id in the query, and that
 // it decodes each client's outcome.
 func TestEvictFilesClientRequest(t *testing.T) {
-	server, seen := newFilesJSONServer(t, http.StatusOK, `{"exportID": 4, "node": "node1:9000", "nfsClients": {
+	server, seen := newFilesJSONServer(t, http.StatusOK, `{"exportID": 4, "nodes": {"node1:9000": {"nfsClients": {
   "65530a1c00000001": {"evicting": true},
-  "65530a1c00000002": {"code": "ClientNotFound", "detail": "no NFS client 65530a1c00000002"}}}`)
+  "65530a1c00000002": {"code": "ClientNotFound", "detail": "no NFS client 65530a1c00000002"}}}}}`)
 	client := newFilesExportsTestClient(t, server.URL)
 
 	got, err := client.EvictFilesClient(context.Background(), "carol", "node1:9000", "65530a1c00000001", "65530a1c00000002")
 	if err != nil {
 		t.Fatalf("EvictFilesClient: %v", err)
 	}
-	want := FilesEvictResult{ExportID: 4, Node: "node1:9000", NFSClients: map[string]FilesEvictOutcome{
+	want := FilesEvictResult{ExportID: 4, Nodes: map[string]FilesNodeEvictResult{"node1:9000": {NFSClients: map[string]FilesEvictOutcome{
 		"65530a1c00000001": {Evicting: true},
 		"65530a1c00000002": {Code: FilesErrClientNotFound, Detail: "no NFS client 65530a1c00000002"},
-	}}
+	}}}}
 	if !reflect.DeepEqual(got, want) {
 		t.Errorf("EvictFilesClient decoded %+v, want %+v", got, want)
 	}
@@ -122,7 +122,7 @@ func TestEvictFilesClientRequest(t *testing.T) {
 // TestEvictFilesClientAll verifies that an eviction naming no client asks for
 // all of them with all=true and names no client.
 func TestEvictFilesClientAll(t *testing.T) {
-	server, seen := newFilesJSONServer(t, http.StatusOK, `{"exportID": 4, "node": "node1:9000", "nfsClients": {}}`)
+	server, seen := newFilesJSONServer(t, http.StatusOK, `{"exportID": 4, "nodes": {"node1:9000": {"nfsClients": {}}}}`)
 	client := newFilesExportsTestClient(t, server.URL)
 
 	if _, err := client.EvictFilesClient(context.Background(), "carol", "node1:9000"); err != nil {
@@ -138,8 +138,46 @@ func TestEvictFilesClientAll(t *testing.T) {
 	}
 }
 
-// TestEvictFilesClientRefusesBadArguments verifies that a missing node, a
-// misspelled client id or too many ids are refused before anything is sent.
+// TestEvictFilesClientWithoutANode verifies that an eviction naming no node
+// sends no node parameter, both for named clients and for all of them, and
+// decodes the clients it could not place.
+func TestEvictFilesClientWithoutANode(t *testing.T) {
+	server, seen := newFilesJSONServer(t, http.StatusOK, `{"exportID": 4, "nodes": {
+  "node1:9000": {"nfsClients": {"65530a1c00000001": {"evicting": true}}},
+  "node2:9000": {"nfsClients": {}, "code": "NodeUnreachable", "detail": "connection refused"}},
+  "unplaced": {"65530a1c00000002": {"code": "ClientAmbiguous", "detail": "on node1:9000 and node3:9000"}}}`)
+	client := newFilesExportsTestClient(t, server.URL)
+
+	got, err := client.EvictFilesClient(context.Background(), "carol", "", "65530a1c00000001", "65530a1c00000002")
+	if err != nil {
+		t.Fatalf("EvictFilesClient: %v", err)
+	}
+	want := FilesEvictResult{
+		ExportID: 4,
+		Nodes: map[string]FilesNodeEvictResult{
+			"node1:9000": {NFSClients: map[string]FilesEvictOutcome{"65530a1c00000001": {Evicting: true}}},
+			"node2:9000": {NFSClients: map[string]FilesEvictOutcome{}, Code: FilesErrNodeUnreachable, Detail: "connection refused"},
+		},
+		Unplaced: map[string]FilesEvictOutcome{"65530a1c00000002": {Code: FilesErrClientAmbiguous, Detail: "on node1:9000 and node3:9000"}},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("EvictFilesClient decoded %+v, want %+v", got, want)
+	}
+	if _, err := client.EvictFilesClient(context.Background(), "carol", ""); err != nil {
+		t.Fatalf("EvictFilesClient all: %v", err)
+	}
+	for i, wantQuery := range []url.Values{
+		{"client": {"65530a1c00000001", "65530a1c00000002"}},
+		{"all": {"true"}},
+	} {
+		if !reflect.DeepEqual((*seen)[i].query, wantQuery) {
+			t.Errorf("request %d sent ?%v, want ?%v", i, (*seen)[i].query, wantQuery)
+		}
+	}
+}
+
+// TestEvictFilesClientRefusesBadArguments verifies that a misspelled client id
+// or too many ids are refused before anything is sent.
 func TestEvictFilesClientRefusesBadArguments(t *testing.T) {
 	server, seen := newFilesJSONServer(t, http.StatusOK, `{}`)
 	client := newFilesExportsTestClient(t, server.URL)
@@ -152,8 +190,6 @@ func TestEvictFilesClientRefusesBadArguments(t *testing.T) {
 		node string
 		ids  []string
 	}{
-		{"", []string{"65530a1c00000001"}},
-		{"", nil},
 		{"node1:9000", []string{""}},
 		{"node1:9000", []string{"65530A1C00000001"}},
 		{"node1:9000", []string{"65530a1c0000001"}},
@@ -170,13 +206,20 @@ func TestEvictFilesClientRefusesBadArguments(t *testing.T) {
 }
 
 // TestFilesEvictResultEncodesEmptyClients verifies that a result with no
-// clients names an empty nfsClients object rather than null.
+// nodes, and a node with no clients, name empty objects rather than null.
 func TestFilesEvictResultEncodesEmptyClients(t *testing.T) {
-	b, err := json.Marshal(FilesEvictResult{ExportID: 4, Node: "node1:9000"})
+	b, err := json.Marshal(FilesEvictResult{ExportID: 4})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := `{"exportID":4,"node":"node1:9000","nfsClients":{}}`; string(b) != want {
+	if want := `{"exportID":4,"nodes":{}}`; string(b) != want {
+		t.Errorf("encoded %s, want %s", b, want)
+	}
+	b, err = json.Marshal(FilesEvictResult{ExportID: 4, Nodes: map[string]FilesNodeEvictResult{"node1:9000": {}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `{"exportID":4,"nodes":{"node1:9000":{"nfsClients":{}}}}`; string(b) != want {
 		t.Errorf("encoded %s, want %s", b, want)
 	}
 }
