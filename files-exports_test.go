@@ -339,7 +339,7 @@ func TestFilesWireKeys(t *testing.T) {
 
 	var walk func(typ reflect.Type)
 	walk = func(typ reflect.Type) {
-		for typ.Kind() == reflect.Pointer || typ.Kind() == reflect.Slice || typ.Kind() == reflect.Array {
+		for typ.Kind() == reflect.Pointer || typ.Kind() == reflect.Slice || typ.Kind() == reflect.Array || typ.Kind() == reflect.Map {
 			typ = typ.Elem()
 		}
 		if typ.Kind() != reflect.Struct || typ == reflect.TypeOf(time.Time{}) || seen[typ] {
