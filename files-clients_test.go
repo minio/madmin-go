@@ -223,3 +223,23 @@ func TestFilesEvictResultEncodesEmptyClients(t *testing.T) {
 		t.Errorf("encoded %s, want %s", b, want)
 	}
 }
+
+// TestFilesNFSClientNeedsAttention verifies that each signal, and only a retry
+// count at the storm mark, flags a client.
+func TestFilesNFSClientNeedsAttention(t *testing.T) {
+	for _, tc := range []struct {
+		c    FilesNFSClient
+		want bool
+	}{
+		{FilesNFSClient{HoldsState: true, OnExport: true, Opens: 3}, false},
+		{FilesNFSClient{Waiting: 1}, true},
+		{FilesNFSClient{LeaseLapsed: true}, true},
+		{FilesNFSClient{CallbackDown: true}, true},
+		{FilesNFSClient{RetriesPerMin: FilesRetryStormPerMin - 1}, false},
+		{FilesNFSClient{RetriesPerMin: FilesRetryStormPerMin}, true},
+	} {
+		if got := tc.c.NeedsAttention(); got != tc.want {
+			t.Errorf("%+v.NeedsAttention() = %v, want %v", tc.c, got, tc.want)
+		}
+	}
+}

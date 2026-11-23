@@ -55,6 +55,34 @@ type FilesNFSClient struct {
 	// that holds no state anywhere is listed with OnExport false: the gateway
 	// cannot tell which export an idle client has mounted.
 	OnExport bool `json:"onExport"`
+
+	// Waiting is how many of the client's lock requests are parked on its
+	// node, waiting for a range another owner holds: a client stuck behind a
+	// lock.
+	Waiting uint32 `json:"waiting,omitempty"`
+
+	// LeaseLapsed reports that the client has not renewed its lease within the
+	// lease time: it stopped talking, and its gateway expires it shortly.
+	LeaseLapsed bool `json:"leaseLapsed,omitempty"`
+
+	// CallbackDown reports that the gateway cannot call the client back, so a
+	// delegation or layout it holds cannot be recalled.
+	CallbackDown bool `json:"callbackDown,omitempty"`
+
+	// RetriesPerMin is how many requests the client sent again in the last
+	// minute, as NFSv4.1 session replays: a high count is a retry storm.
+	RetriesPerMin uint32 `json:"retriesPerMin,omitempty"`
+}
+
+// FilesRetryStormPerMin is the retries a minute from which a client is
+// reported in a retry storm.
+const FilesRetryStormPerMin = 30
+
+// NeedsAttention reports whether anything about the client may need an
+// operator: it waits for a lock, its lease lapsed, its callbacks are down, or
+// it is in a retry storm. None of it alone is a reason to evict it.
+func (c FilesNFSClient) NeedsAttention() bool {
+	return c.Waiting > 0 || c.LeaseLapsed || c.CallbackDown || c.RetriesPerMin >= FilesRetryStormPerMin
 }
 
 // FilesNodeNFSClients is what one node's gateway reported for an export.
