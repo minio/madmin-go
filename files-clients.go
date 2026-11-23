@@ -61,8 +61,9 @@ type FilesNFSClient struct {
 	// lock.
 	Waiting uint32 `json:"waiting,omitempty"`
 
-	// LeaseLapsed reports that the client has not renewed its lease within the
-	// lease time: it stopped talking, and its gateway expires it shortly.
+	// LeaseLapsed reports that three quarters of the client's lease time passed
+	// with no renewal: it stopped talking, and its gateway expires it once the
+	// lease runs out.
 	LeaseLapsed bool `json:"leaseLapsed,omitempty"`
 
 	// CallbackDown reports that the gateway cannot call the client back, so a
