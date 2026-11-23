@@ -121,7 +121,7 @@ func TestTableHealthMergeSumsMaintenance(t *testing.T) {
 		N: 1,
 		Maintenance: map[string]TableMaintenanceNode{
 			"compaction": {
-				Runs:   TableMaintenanceRuns{InFlight: 2, Done: TimedAction{Count: 4, AccTime: 100e9, MinTime: 10e9, MaxTime: 60e9}},
+				Runs:   TableMaintenanceRuns{InFlight: 2, Done: TimedAction{Count: 4, AccTime: 100e9, MinTime: 10e9, MaxTime: 60e9}, DurationBuckets: map[string]uint64{"15": 1, "60": 4, "+Inf": 4}},
 				Groups: TableMaintenanceGroups{InFlight: 3},
 			},
 			"snapshot_expiration": {Runs: TableMaintenanceRuns{Done: TimedAction{Count: 1, AccTime: 2e9, MinTime: 2e9, MaxTime: 2e9}}},
@@ -131,7 +131,7 @@ func TestTableHealthMergeSumsMaintenance(t *testing.T) {
 		N: 1,
 		Maintenance: map[string]TableMaintenanceNode{
 			"compaction": {
-				Runs:   TableMaintenanceRuns{InFlight: 1, Done: TimedAction{Count: 2, AccTime: 300e9, MinTime: 50e9, MaxTime: 250e9}},
+				Runs:   TableMaintenanceRuns{InFlight: 1, Done: TimedAction{Count: 2, AccTime: 300e9, MinTime: 50e9, MaxTime: 250e9}, DurationBuckets: map[string]uint64{"60": 1, "300": 2, "+Inf": 2}},
 				Groups: TableMaintenanceGroups{InFlight: 5},
 			},
 		},
@@ -143,18 +143,18 @@ func TestTableHealthMergeSumsMaintenance(t *testing.T) {
 	}
 	want := map[string]TableMaintenanceNode{
 		"compaction": {
-			Runs:   TableMaintenanceRuns{InFlight: 3, Done: TimedAction{Count: 6, AccTime: 400e9, MinTime: 10e9, MaxTime: 250e9}},
+			Runs:   TableMaintenanceRuns{InFlight: 3, Done: TimedAction{Count: 6, AccTime: 400e9, MinTime: 10e9, MaxTime: 250e9}, DurationBuckets: map[string]uint64{"15": 1, "60": 5, "300": 2, "+Inf": 6}},
 			Groups: TableMaintenanceGroups{InFlight: 8},
 		},
 		"snapshot_expiration": {Runs: TableMaintenanceRuns{Done: TimedAction{Count: 1, AccTime: 2e9, MinTime: 2e9, MaxTime: 2e9}}},
 	}
-	if !maps.Equal(got.Maintenance, want) {
+	if !reflect.DeepEqual(got.Maintenance, want) {
 		t.Errorf("Maintenance = %+v, want %+v", got.Maintenance, want)
 	}
-	if rev := mergeTables(b, a).Health; !maps.Equal(rev.Maintenance, want) {
+	if rev := mergeTables(b, a).Health; !reflect.DeepEqual(rev.Maintenance, want) {
 		t.Errorf("reverse Maintenance = %+v, want %+v", rev.Maintenance, want)
 	}
-	if a.Health.Maintenance["compaction"].Runs.Done.Count != 4 {
+	if a.Health.Maintenance["compaction"].Runs.Done.Count != 4 || a.Health.Maintenance["compaction"].Runs.DurationBuckets["+Inf"] != 4 {
 		t.Error("merging must not modify an input report")
 	}
 }
@@ -186,10 +186,10 @@ func TestTableHealthMergeMaintenanceMemory(t *testing.T) {
 		}},
 		"record_expiration": {Memory: TableMaintenanceMemory{ArrowBytes: GaugeStats{N: 1, Sum: 8, Min: 8, Max: 8}, PeakArrowBytes: 9}},
 	}
-	if !maps.Equal(got, want) {
+	if !reflect.DeepEqual(got, want) {
 		t.Errorf("Maintenance = %+v, want %+v", got, want)
 	}
-	if rev := mergeTables(mergeTables(c, b), a).Health.Maintenance; !maps.Equal(rev, want) {
+	if rev := mergeTables(mergeTables(c, b), a).Health.Maintenance; !reflect.DeepEqual(rev, want) {
 		t.Errorf("reverse Maintenance = %+v, want %+v", rev, want)
 	}
 	if a.Health.Maintenance["compaction"].Memory.ArrowBytes.N != 1 {
@@ -216,7 +216,7 @@ func TestTableHealthMergeSumsMaintenanceIO(t *testing.T) {
 		"compaction":                {IO: TableMaintenanceIO{BytesRead: 15, BytesWritten: 10, Ops: TableMaintenanceIOOps{Get: 5, Head: 5, Put: 6, List: 5, Delete: 4}, ThrottleSecs: 2}},
 		"unreferenced_file_removal": {IO: TableMaintenanceIO{BytesRead: 1, Ops: TableMaintenanceIOOps{Head: 4, Delete: 2}}},
 	}
-	if !maps.Equal(got.Maintenance, want) {
+	if !reflect.DeepEqual(got.Maintenance, want) {
 		t.Errorf("Maintenance = %+v, want %+v", got.Maintenance, want)
 	}
 	if a.Health.Maintenance["compaction"].IO.BytesRead != 10 {
@@ -239,6 +239,10 @@ func TestTableMaintenanceNodeOmitsZero(t *testing.T) {
 		{
 			TableMaintenanceNode{Runs: TableMaintenanceRuns{Done: TimedAction{Count: 4, AccTime: 10, MinTime: 2, MaxTime: 6}}},
 			`{"runs":{"done":{"count":4,"acc_time_ns":10,"min_ns":2,"max_ns":6}}}`,
+		},
+		{
+			TableMaintenanceNode{Runs: TableMaintenanceRuns{DurationBuckets: map[string]uint64{"+Inf": 1}}},
+			`{"runs":{"done":{"count":0,"acc_time_ns":0},"duration_buckets":{"+Inf":1}}}`,
 		},
 		{TableMaintenanceNode{Groups: TableMaintenanceGroups{InFlight: 1}}, `{"groups":{"inflight":1}}`},
 		{
@@ -263,7 +267,7 @@ func TestTableMaintenanceNodeOmitsZero(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
-		if c.node.IsZero() != (c.node == TableMaintenanceNode{}) {
+		if c.node.IsZero() != reflect.DeepEqual(c.node, TableMaintenanceNode{}) {
 			t.Errorf("IsZero(%+v) = %v", c.node, c.node.IsZero())
 		}
 		got, err := json.Marshal(c.node)
@@ -281,7 +285,7 @@ func TestTableMaintenanceNodeOmitsZero(t *testing.T) {
 		if _, err := back.UnmarshalMsg(bts); err != nil {
 			t.Fatal(err)
 		}
-		if back != c.node {
+		if !reflect.DeepEqual(back, c.node) {
 			t.Errorf("msgp round trip = %+v, want %+v", back, c.node)
 		}
 	}
@@ -640,6 +644,32 @@ func TestTableMaintenanceMergeKeepsLatestBacklogAcrossWire(t *testing.T) {
 	got := mergeTables(&partial, current).Maintenance["compaction"]
 	if !reflect.DeepEqual(got.Backlog, latest) {
 		t.Errorf("Backlog = %+v, want %+v", got.Backlog, latest)
+	}
+}
+
+// Overdue is the latest leader's, whichever report wins the job and whatever
+// the merge order, and shares no map with its source.
+func TestTableMaintenanceMergeKeepsLatestOverdue(t *testing.T) {
+	t0 := time.Date(2026, 11, 23, 10, 0, 0, 0, time.UTC)
+	latest := func() *TableMaintenanceOverdue {
+		return &TableMaintenanceOverdue{LeaderSince: t0, Tables: 2, OldestSecs: 7200, Buckets: map[string]int64{"3600": 1, "+Inf": 2}}
+	}
+	source := latest()
+	report := func(j TableMaintenanceJob) *TableAPIMetrics {
+		return &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{"record_expiration": j}}
+	}
+	a := report(TableMaintenanceJob{Cycles: 1, Running: true, Overdue: source})
+	b := report(TableMaintenanceJob{Cycles: 9, LastRun: t0, Overdue: &TableMaintenanceOverdue{LeaderSince: t0.Add(-time.Hour), Tables: 5}})
+	c := report(TableMaintenanceJob{Cycles: 4, Overdue: &TableMaintenanceOverdue{LeaderSince: t0, Tables: 1}})
+	for _, order := range [][]*TableAPIMetrics{{a, b, c}, {a, c, b}, {b, a, c}, {b, c, a}, {c, a, b}, {c, b, a}} {
+		got := mergeTables(order...).Maintenance["record_expiration"]
+		if !reflect.DeepEqual(got.Overdue, latest()) || got.Cycles != 1 {
+			t.Errorf("job = %+v, want the running report with Overdue %+v", got, latest())
+		}
+		got.Overdue.Buckets["+Inf"] = 999
+		if !reflect.DeepEqual(source, latest()) {
+			t.Fatalf("source Overdue mutated through the aggregate: %+v", source)
+		}
 	}
 }
 

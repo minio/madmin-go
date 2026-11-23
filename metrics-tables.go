@@ -149,15 +149,22 @@ type TableMaintenanceRuns struct {
 
 	// Done covers the scheduled runs finished since process start.
 	Done TimedAction `json:"done,omitempty"`
+
+	// DurationBuckets maps an upper bound in seconds, or "+Inf", to the
+	// finished runs that took at most that long.
+	DurationBuckets map[string]uint64 `json:"duration_buckets,omitempty"`
 }
 
 // IsZero reports whether nothing has been recorded, for omitzero.
-func (r TableMaintenanceRuns) IsZero() bool { return r == TableMaintenanceRuns{} }
+func (r TableMaintenanceRuns) IsZero() bool {
+	return r.InFlight == 0 && r.Done == TimedAction{} && len(r.DurationBuckets) == 0
+}
 
 // Add other into r.
 func (r *TableMaintenanceRuns) Add(other *TableMaintenanceRuns) {
 	r.InFlight += other.InFlight
 	r.Done.Add(&other.Done)
+	addMap(&r.DurationBuckets, other.DurationBuckets)
 }
 
 // TableMaintenanceGroups summarizes the compaction groups the reporting nodes
@@ -265,7 +272,7 @@ func (o *TableMaintenanceIOOps) Add(other *TableMaintenanceIOOps) {
 // former leader may retain stale counters. PerNode reports instead sum
 // TablesProcessed, Errors, Retries and Work across nodes. Producers of PerNode
 // reports must leave Cycles, ConfigsEnabled, ConfigsTotal, Running, LastRun,
-// LastCycleSecs, Warehouses, Namespaces and Backlog unset.
+// LastCycleSecs, Warehouses, Namespaces, Backlog and Overdue unset.
 type TableMaintenanceJob struct {
 	Cycles          uint64 `json:"cycles,omitempty"`
 	TablesProcessed uint64 `json:"tables_processed,omitempty"`
@@ -313,6 +320,11 @@ type TableMaintenanceJob struct {
 	// the one whose leader took over last, whichever report is selected for the
 	// job. It is an AIStor extension.
 	Backlog *TableCompactionClusterBacklog `json:"backlog,omitempty"`
+
+	// Overdue is how far past their interval the job's due tables are, for job
+	// types other than compaction, whose Backlog carries it. Only the job's
+	// leader reports it, and Merge keeps the one whose leader took over last.
+	Overdue *TableMaintenanceOverdue `json:"overdue,omitempty"`
 }
 
 // fresherThan reports whether j is the more authoritative report of the same
@@ -344,17 +356,21 @@ func (j TableMaintenanceJob) fresherThan(k TableMaintenanceJob) bool {
 // the job, and Backlog is the one from the latest leader. ok reports whether j
 // holds a report yet.
 func (j *TableMaintenanceJob) selectFrom(o TableMaintenanceJob, ok bool) {
-	backlog := j.Backlog
-	// Clone Backlog and Work: storing o's wholesale would share the source
-	// report's maps, so a caller mutating the aggregate would reach back into it.
+	backlog, overdue := j.Backlog, j.Overdue
+	// Clone Backlog, Overdue and Work: storing o's wholesale would share the
+	// source report's maps, so a caller mutating the aggregate would reach back
+	// into it.
 	if o.Backlog.newerThan(backlog) {
 		backlog = o.Backlog.clone()
+	}
+	if o.Overdue.newerThan(overdue) {
+		overdue = o.Overdue.clone()
 	}
 	if !ok || o.fresherThan(*j) {
 		*j = o
 		j.Work = maps.Clone(o.Work)
 	}
-	j.Backlog = backlog
+	j.Backlog, j.Overdue = backlog, overdue
 }
 
 // add sums the counters of another node's report of the same PerNode job.
@@ -396,6 +412,51 @@ type TableCompactionClusterBacklog struct {
 	// TablesOverdueBuckets maps an upper bound in seconds, or "+Inf", to the
 	// due tables overdue by at most that long.
 	TablesOverdueBuckets map[string]int64 `json:"tables_overdue_buckets,omitempty"`
+}
+
+// TableMaintenanceOverdue is how far past their interval the tables due for
+// one maintenance type are, as the type's leader sees them. It is an AIStor
+// extension.
+type TableMaintenanceOverdue struct {
+	// LeaderSince is when the reporting node became the type's leader, and is
+	// the Merge selector.
+	LeaderSince time.Time `json:"leader_since,omitzero"`
+
+	// Tables counts the due tables not yet run, and OldestSecs is how long
+	// past its interval the longest waiting one is.
+	Tables     int64   `json:"tables,omitempty"`
+	OldestSecs float64 `json:"oldest_secs,omitempty"`
+
+	// Buckets maps an upper bound in seconds, or "+Inf", to the due tables
+	// overdue by at most that long.
+	Buckets map[string]int64 `json:"buckets,omitempty"`
+}
+
+// newerThan reports whether o should replace p: o's leader took over later,
+// or at the same time with more or older overdue tables.
+func (o *TableMaintenanceOverdue) newerThan(p *TableMaintenanceOverdue) bool {
+	switch {
+	case o == nil:
+		return false
+	case p == nil:
+		return true
+	case !o.LeaderSince.Equal(p.LeaderSince):
+		return o.LeaderSince.After(p.LeaderSince)
+	}
+	return cmp.Or(
+		cmp.Compare(o.Tables, p.Tables),
+		cmp.Compare(o.OldestSecs, p.OldestSecs),
+	) > 0
+}
+
+// clone copies o so the copy shares no map with it.
+func (o *TableMaintenanceOverdue) clone() *TableMaintenanceOverdue {
+	if o == nil {
+		return nil
+	}
+	c := *o
+	c.Buckets = maps.Clone(o.Buckets)
+	return &c
 }
 
 // TableCompactionClusterBacklogComponent is one backlog component across the
