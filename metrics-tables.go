@@ -353,8 +353,8 @@ func (j TableMaintenanceJob) fresherThan(k TableMaintenanceJob) bool {
 }
 
 // selectFrom folds the leader-owned report o into j: the fresher report wins
-// the job, and Backlog is the one from the latest leader. ok reports whether j
-// holds a report yet.
+// the job, and Backlog and Overdue are each the one from the latest leader. ok
+// reports whether j holds a report yet.
 func (j *TableMaintenanceJob) selectFrom(o TableMaintenanceJob, ok bool) {
 	backlog, overdue := j.Backlog, j.Overdue
 	// Clone Backlog, Overdue and Work: storing o's wholesale would share the
