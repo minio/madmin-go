@@ -339,7 +339,7 @@ func TestFilesWireKeys(t *testing.T) {
 
 	var walk func(typ reflect.Type)
 	walk = func(typ reflect.Type) {
-		for typ.Kind() == reflect.Pointer || typ.Kind() == reflect.Slice || typ.Kind() == reflect.Array {
+		for typ.Kind() == reflect.Pointer || typ.Kind() == reflect.Slice || typ.Kind() == reflect.Array || typ.Kind() == reflect.Map {
 			typ = typ.Elem()
 		}
 		if typ.Kind() != reflect.Struct || typ == reflect.TypeOf(time.Time{}) || seen[typ] {
@@ -375,6 +375,8 @@ func TestFilesWireKeys(t *testing.T) {
 	for _, root := range []any{
 		FilesExportsQueryResponse{},
 		FilesCellsResponse{},
+		FilesClientsResponse{},
+		FilesEvictResult{},
 		FilesAuthResponse{},
 		FilesAuthSetRequest{},
 		FilesExportList{},
@@ -621,6 +623,8 @@ func TestFilesListsEncodeEmptyAsArray(t *testing.T) {
 		{&FilesNodeStatus{Daemon: &FilesDaemonExports{}}, `"exports":[]`},
 		{FilesCellsResponse{}, `"cells":[]`},
 		{&FilesCellsResponse{}, `"cells":[]`},
+		{FilesClientsResponse{}, `"nodes":{}`},
+		{&FilesClientsResponse{}, `"nodes":{}`},
 	} {
 		body, err := json.Marshal(tc.v)
 		if err != nil {
