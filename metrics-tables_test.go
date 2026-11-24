@@ -266,44 +266,53 @@ func TestTableHealthMergeSumsMaintenanceIO(t *testing.T) {
 // carries nothing, so neither puts empty objects on the wire.
 func TestTableMaintenanceNodeOmitsZero(t *testing.T) {
 	cases := []struct {
-		node TableMaintenanceNode
-		want string
+		node     TableMaintenanceNode
+		want     string
+		wantZero bool
 	}{
-		{TableMaintenanceNode{}, `{}`},
-		{TableMaintenanceNode{Runs: TableMaintenanceRuns{InFlight: 1}}, `{"runs":{"inflight":1,"done":{"count":0,"acc_time_ns":0}}}`},
+		{TableMaintenanceNode{}, `{}`, true},
+		{TableMaintenanceNode{Runs: TableMaintenanceRuns{DurationBuckets: map[string]uint64{}}}, `{}`, true},
+		{TableMaintenanceNode{Runs: TableMaintenanceRuns{InFlight: 1}}, `{"runs":{"inflight":1,"done":{"count":0,"acc_time_ns":0}}}`, false},
 		{
 			TableMaintenanceNode{Runs: TableMaintenanceRuns{Done: TimedAction{Count: 4, AccTime: 10, MinTime: 2, MaxTime: 6}}},
 			`{"runs":{"done":{"count":4,"acc_time_ns":10,"min_ns":2,"max_ns":6}}}`,
+			false,
 		},
 		{
 			TableMaintenanceNode{Runs: TableMaintenanceRuns{DurationBuckets: map[string]uint64{"+Inf": 1}}},
 			`{"runs":{"done":{"count":0,"acc_time_ns":0},"duration_buckets":{"+Inf":1}}}`,
+			false,
 		},
-		{TableMaintenanceNode{Groups: TableMaintenanceGroups{InFlight: 1}}, `{"groups":{"inflight":1}}`},
+		{TableMaintenanceNode{Groups: TableMaintenanceGroups{InFlight: 1}}, `{"groups":{"inflight":1}}`, false},
 		{
 			TableMaintenanceNode{Memory: TableMaintenanceMemory{ArrowBytes: GaugeStats{N: 1}}},
 			`{"memory":{"arrow_bytes":{"n":1}}}`,
+			false,
 		},
 		{
 			TableMaintenanceNode{Memory: TableMaintenanceMemory{InputBytes: GaugeStats{N: 1, Sum: 5, Min: 5, Max: 5}}},
 			`{"memory":{"input_bytes":{"n":1,"sum":5,"min":5,"max":5}}}`,
+			false,
 		},
 		{
 			TableMaintenanceNode{Memory: TableMaintenanceMemory{PeakArrowBytes: 9}},
 			`{"memory":{"peak_arrow_bytes":9}}`,
+			false,
 		},
 		{
 			TableMaintenanceNode{IO: TableMaintenanceIO{Ops: TableMaintenanceIOOps{Delete: 2}}},
 			`{"io":{"ops":{"delete":2}}}`,
+			false,
 		},
 		{
 			TableMaintenanceNode{IO: TableMaintenanceIO{BytesRead: 1, ThrottleSecs: 0.5}},
 			`{"io":{"bytes_read":1,"throttle_secs":0.5}}`,
+			false,
 		},
 	}
 	for _, c := range cases {
-		if c.node.IsZero() != reflect.DeepEqual(c.node, TableMaintenanceNode{}) {
-			t.Errorf("IsZero(%+v) = %v", c.node, c.node.IsZero())
+		if c.node.IsZero() != c.wantZero {
+			t.Errorf("IsZero(%+v) = %v, want %v", c.node, c.node.IsZero(), c.wantZero)
 		}
 		got, err := json.Marshal(c.node)
 		if err != nil {
@@ -320,8 +329,12 @@ func TestTableMaintenanceNodeOmitsZero(t *testing.T) {
 		if _, err := back.UnmarshalMsg(bts); err != nil {
 			t.Fatal(err)
 		}
-		if !reflect.DeepEqual(back, c.node) {
-			t.Errorf("msgp round trip = %+v, want %+v", back, c.node)
+		want := c.node
+		if c.wantZero {
+			want = TableMaintenanceNode{}
+		}
+		if !reflect.DeepEqual(back, want) {
+			t.Errorf("msgp round trip = %+v, want %+v", back, want)
 		}
 	}
 }
