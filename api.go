@@ -36,6 +36,7 @@ import (
 	"os"
 	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"syscall"
@@ -295,10 +296,9 @@ func (adm AdminClient) dumpHTTP(req *http.Request, resp *http.Response, netErr e
 		// Only display response header.
 		var respTrace []byte
 
-		// For errors we make sure to dump response body as well.
-		if resp.StatusCode != http.StatusOK &&
-			resp.StatusCode != http.StatusPartialContent &&
-			resp.StatusCode != http.StatusNoContent {
+		// For errors we make sure to dump response body as well. A success
+		// body can hold a secret, such as a recipient's activation link.
+		if !slices.Contains(successStatus, resp.StatusCode) {
 			respTrace, err = httputil.DumpResponse(resp, true)
 			if err != nil {
 				return err

@@ -648,3 +648,26 @@ func TestSharingClientTokenExpiryCountsFromRequest(t *testing.T) {
 		t.Fatalf("token fetched %d times, want 2", n)
 	}
 }
+
+func TestSharingTraceOmitsActivationLink(t *testing.T) {
+	const link = "https://aistor/_delta-sharing/v1/activations/secret-code"
+	srv, _ := sharingTestServer(t, http.StatusCreated, `{"id":"r1","name":"acme","authenticationType":"TOKEN","activationUrl":"`+link+`"}`)
+	adm := testAdminClient(t, srv)
+	var trace strings.Builder
+	adm.TraceOn(&trace)
+	if _, err := adm.CreateSharingRecipient(context.Background(), CreateSharingRecipientRequest{Name: "acme"}); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(trace.String(), "secret-code") {
+		t.Fatalf("trace holds the activation link:\n%s", trace.String())
+	}
+
+	srv, _ = sharingTestServer(t, http.StatusNotFound, `{"errorCode":"RESOURCE_DOES_NOT_EXIST","message":"recipient not found"}`)
+	adm = testAdminClient(t, srv)
+	trace.Reset()
+	adm.TraceOn(&trace)
+	_, _ = adm.GetSharingRecipient(context.Background(), "acme")
+	if !strings.Contains(trace.String(), "recipient not found") {
+		t.Fatalf("trace of an error lacks its body:\n%s", trace.String())
+	}
+}
