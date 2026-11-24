@@ -21,8 +21,8 @@ package madmin
 
 import "maps"
 
-// A separate file keeps msgp from inlining the map into TableMaintenanceRuns,
-// where it mis-generates code for a pointer to it (tinylib/msgp#459).
+// A separate file keeps msgp from inlining the map into
+// TableMaintenanceRuns, where it mis-generates code for a pointer to it.
 //go:generate go tool msgp -unexported -d clearomitted -d "tag json" -d "timezone utc" -d "maps binkeys" -file $GOFILE
 
 // TableMaintenanceDurationBuckets maps an upper bound in seconds, or "+Inf",
