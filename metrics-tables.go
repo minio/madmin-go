@@ -151,7 +151,8 @@ type TableMaintenanceRuns struct {
 	Done TimedAction `json:"done,omitempty"`
 
 	// DurationBuckets maps an upper bound in seconds, or "+Inf", to the
-	// finished runs that took at most that long.
+	// finished runs that took at most that long. "+Inf" counts the runs the
+	// buckets cover, which is less than Done.Count when a node reported none.
 	DurationBuckets map[string]uint64 `json:"duration_buckets,omitempty"`
 }
 
