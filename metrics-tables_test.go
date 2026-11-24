@@ -162,33 +162,43 @@ func TestTableHealthMergeSumsMaintenance(t *testing.T) {
 	}
 }
 
-// Run-duration histograms with different bounds cannot be summed, so the one
-// covering more runs is kept, ties going to the lower bound set, and the other
-// node's runs count only in Done.
+// Run-duration histograms with different bounds cannot be summed, so only the
+// reports with the lowest sorted bound set sum, whichever covers more runs, and
+// the others count only in Done, in any merge order.
 func TestTableMaintenanceRunsAddMismatchedBounds(t *testing.T) {
-	runs := func(count uint64, buckets map[string]uint64) TableMaintenanceRuns {
-		return TableMaintenanceRuns{Done: TimedAction{Count: count}, DurationBuckets: buckets}
+	runs := func(count uint64, buckets map[string]uint64) *TableMaintenanceRuns {
+		return &TableMaintenanceRuns{Done: TimedAction{Count: count}, DurationBuckets: buckets}
 	}
-	coarse := func() map[string]uint64 { return map[string]uint64{"60": 3, "+Inf": 3} }
+	coarse := func(n uint64) map[string]uint64 { return map[string]uint64{"60": n, "+Inf": n} }
 	fine := func(n uint64) map[string]uint64 { return map[string]uint64{"15": 1, "300": n, "+Inf": n} }
-	for _, tc := range []struct {
-		name    string
-		a, b    TableMaintenanceRuns
-		wantBkt map[string]uint64
-	}{
-		{"more runs", runs(3, coarse()), runs(2, fine(2)), coarse()},
-		{"tie", runs(3, coarse()), runs(3, fine(3)), fine(3)},
+	a, b, c, d := runs(3, coarse(3)), runs(1, fine(1)), runs(4, coarse(4)), runs(1, fine(1))
+	want := fine(2)
+	want["15"] = 2
+	for _, order := range [][]*TableMaintenanceRuns{
+		{a, b, c, d},
+		{a, c, b, d},
+		{a, c, d, b},
+		{c, a, b, d},
+		{c, a, d, b},
+		{b, a, c, d},
+		{b, d, a, c},
+		{a, b, d, c},
+		{d, c, b, a},
+		{c, d, a, b},
+		{a, d, c, b},
+		{b, c, d, a},
 	} {
-		for _, order := range [][2]TableMaintenanceRuns{{tc.a, tc.b}, {tc.b, tc.a}} {
-			var got TableMaintenanceRuns
-			got.Add(&order[0])
-			got.Add(&order[1])
-			if got.Done.Count != tc.a.Done.Count+tc.b.Done.Count || !maps.Equal(got.DurationBuckets, tc.wantBkt) {
-				t.Errorf("%s: Runs = %+v, want buckets %v", tc.name, got, tc.wantBkt)
-			}
-			got.DurationBuckets["+Inf"] = 999
-			if order[0].DurationBuckets["+Inf"] == 999 || order[1].DurationBuckets["+Inf"] == 999 {
-				t.Fatalf("%s: source buckets mutated through the aggregate", tc.name)
+		var got TableMaintenanceRuns
+		for _, r := range order {
+			got.Add(r)
+		}
+		if got.Done.Count != 9 || !maps.Equal(got.DurationBuckets, want) {
+			t.Errorf("Runs = %+v, want 9 runs in %v", got, want)
+		}
+		got.DurationBuckets["+Inf"] = 999
+		for _, r := range order {
+			if r.DurationBuckets["+Inf"] == 999 {
+				t.Fatal("source buckets mutated through the aggregate")
 			}
 		}
 	}

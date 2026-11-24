@@ -154,8 +154,8 @@ type TableMaintenanceRuns struct {
 	// DurationBuckets maps an upper bound in seconds, or "+Inf", to the
 	// finished runs that took at most that long. "+Inf" counts the runs the
 	// buckets cover, which is less than Done.Count when a node reported none.
-	// Add sums only buckets with the same bounds and otherwise keeps the ones
-	// covering more runs.
+	// Add sums only buckets with the same bounds and otherwise keeps those of the
+	// lowest sorted bound set.
 	DurationBuckets map[string]uint64 `json:"duration_buckets,omitempty"`
 }
 
@@ -172,8 +172,8 @@ func (r *TableMaintenanceRuns) Add(other *TableMaintenanceRuns) {
 }
 
 // mergeDurationBuckets sums b into a when both have the same bounds. Otherwise
-// it keeps the histogram covering more runs, a tie going to the lower sorted
-// bound set, so the result does not depend on which one is a.
+// it keeps the one with the lower sorted bound set, so any number of reports
+// merge to the same result in any order.
 func mergeDurationBuckets(a, b map[string]uint64) map[string]uint64 {
 	switch {
 	case len(b) == 0:
@@ -184,7 +184,7 @@ func mergeDurationBuckets(a, b map[string]uint64) map[string]uint64 {
 		addMap(&a, b)
 		return a
 	}
-	if cmp.Or(cmp.Compare(a["+Inf"], b["+Inf"]), slices.Compare(slices.Sorted(maps.Keys(b)), slices.Sorted(maps.Keys(a)))) < 0 {
+	if slices.Compare(slices.Sorted(maps.Keys(b)), slices.Sorted(maps.Keys(a))) < 0 {
 		return maps.Clone(b)
 	}
 	return a
