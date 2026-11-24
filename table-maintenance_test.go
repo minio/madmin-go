@@ -388,3 +388,24 @@ func TestTableMaintenanceJobTypeStatusLastRunAndBytes(t *testing.T) {
 		t.Errorf("encoded as\n %s\nwant\n %s", got, want)
 	}
 }
+
+// The orphans an unreferenced file removal run found are read by name.
+func TestTableMaintenanceLastRunOrphans(t *testing.T) {
+	want := TableMaintenanceLastRun{OrphanFiles: 1240, OrphanBytes: 209715200, OrphanWindowSeconds: 86400}
+	got, err := json.Marshal(want)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	const wantJSON = `{"orphanFiles":1240,"orphanBytes":209715200,"orphanWindowSeconds":86400}`
+	if string(got) != wantJSON {
+		t.Errorf("encoded as\n %s\nwant\n %s", got, wantJSON)
+	}
+
+	var decoded TableMaintenanceLastRun
+	if err := json.Unmarshal([]byte(wantJSON), &decoded); err != nil {
+		t.Fatalf("unmarshal: %v", err)
+	}
+	if decoded != want {
+		t.Errorf("decoded as %+v, want %+v", decoded, want)
+	}
+}

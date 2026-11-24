@@ -273,6 +273,14 @@ type TableMaintenanceLastRun struct {
 	// compaction run includes what its peers report.
 	BytesRead    int64 `json:"bytesRead,omitempty"`
 	BytesWritten int64 `json:"bytesWritten,omitempty"`
+
+	// OrphanFiles and OrphanBytes are the files the run newly found
+	// unreferenced, and OrphanWindowSeconds is the time since the run before
+	// it, over which they accumulated; it is absent when that run did not
+	// succeed. Only unreferenced file removal reports them.
+	OrphanFiles         int64   `json:"orphanFiles,omitempty"`
+	OrphanBytes         int64   `json:"orphanBytes,omitempty"`
+	OrphanWindowSeconds float64 `json:"orphanWindowSeconds,omitempty"`
 }
 
 // TableCompactionBacklog is a table's compaction backlog as measured by the last
