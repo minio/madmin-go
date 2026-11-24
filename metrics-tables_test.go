@@ -20,11 +20,14 @@
 package madmin
 
 import (
+	"bytes"
 	"encoding/json"
 	"maps"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/tinylib/msgp/msgp"
 )
 
 func timePtr(t time.Time) *time.Time {
@@ -716,6 +719,46 @@ func TestTableMaintenanceMergeKeepsLatestOverdue(t *testing.T) {
 			if got := mergeTables(order...).Maintenance["record_expiration"].Overdue; !reflect.DeepEqual(got, &tie.win) {
 				t.Errorf("%s: Overdue = %+v, want %+v", tie.name, got, tie.win)
 			}
+		}
+	}
+}
+
+// A populated Overdue survives both msgp paths, and a legacy report without
+// one clears the Overdue a reused destination held.
+func TestTableMaintenanceJobOverdueMsgp(t *testing.T) {
+	t0 := time.Date(2026, 11, 24, 10, 0, 0, 0, time.UTC)
+	job := TableMaintenanceJob{Cycles: 3, Overdue: &TableMaintenanceOverdue{LeaderSince: t0, Tables: 2, OldestSecs: 90, Buckets: map[string]int64{"60": 1, "+Inf": 2}}}
+	legacy := TableMaintenanceJob{Cycles: 4}
+	decoders := map[string]func(TableMaintenanceJob, *TableMaintenanceJob) error{
+		"marshal": func(in TableMaintenanceJob, out *TableMaintenanceJob) error {
+			bts, err := in.MarshalMsg(nil)
+			if err != nil {
+				return err
+			}
+			_, err = out.UnmarshalMsg(bts)
+			return err
+		},
+		"encode": func(in TableMaintenanceJob, out *TableMaintenanceJob) error {
+			var buf bytes.Buffer
+			if err := msgp.Encode(&buf, &in); err != nil {
+				return err
+			}
+			return msgp.Decode(&buf, out)
+		},
+	}
+	for name, decode := range decoders {
+		var got TableMaintenanceJob
+		if err := decode(job, &got); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(got, job) {
+			t.Errorf("%s: round trip = %+v, want %+v", name, got, job)
+		}
+		if err := decode(legacy, &got); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(got, legacy) {
+			t.Errorf("%s: legacy decode = %+v, want %+v", name, got, legacy)
 		}
 	}
 }
