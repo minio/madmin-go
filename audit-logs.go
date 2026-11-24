@@ -70,6 +70,9 @@ func (adm AdminClient) GetAuditLogs(ctx context.Context, opts AuditLogOpts) iter
 			yield(log.Audit{}, err)
 			return
 		}
+		// Close the stream without draining it: a caller that stops early
+		// must not wait for the server to send the rest of the logs.
+		defer resp.Body.Close()
 		if resp.StatusCode != http.StatusOK {
 			yield(log.Audit{}, httpRespToErrorResponse(resp))
 			return
