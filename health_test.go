@@ -478,8 +478,8 @@ func TestPartitionSMARTJSON(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if bytes.Contains(buf, []byte(`"smart"`)) {
-			t.Fatalf("partition without SMART must not carry the key, got %s", buf)
+		if bytes.Contains(buf, []byte(`"drive_smart"`)) || bytes.Contains(buf, []byte(`"smart"`)) {
+			t.Fatalf("partition without SMART must not carry the keys, got %s", buf)
 		}
 	})
 
@@ -488,8 +488,21 @@ func TestPartitionSMARTJSON(t *testing.T) {
 		if err := json.Unmarshal([]byte(`{"device":"/dev/sdb","major":8,"minor":16,"mountpoint":"/mnt/drive1"}`), &got); err != nil {
 			t.Fatal(err)
 		}
-		if got.SMART != nil {
-			t.Fatalf("want nil SMART, got %+v", got.SMART)
+		if got.DriveSMART != nil || got.SMART != nil {
+			t.Fatalf("want no SMART, got %+v %+v", got.DriveSMART, got.SMART)
+		}
+	})
+
+	t.Run("v4.11.0 payload", func(t *testing.T) {
+		var got Partition
+		if err := json.Unmarshal([]byte(`{"mountpoint":"/mnt/drive1","smart":{"n":1,"temperature":41,"nvme":{"n":1,"warningTempThreshold":75}}}`), &got); err != nil {
+			t.Fatal(err)
+		}
+		if got.SMART == nil || got.SMART.Temperature != 41 || got.SMART.NVMe == nil || got.SMART.NVMe.WarningTempThreshold != 75 {
+			t.Fatalf("want the released smart key in SMART, got %+v", got.SMART)
+		}
+		if got.DriveSMART != nil {
+			t.Fatalf("want nil DriveSMART, got %+v", got.DriveSMART)
 		}
 	})
 
@@ -499,20 +512,16 @@ func TestPartitionSMARTJSON(t *testing.T) {
 			Major:      259,
 			Minor:      7,
 			Mountpoint: "/mnt/drive6",
-			SMART: &SMARTInfo{
-				N:            1,
-				Status:       map[string]int{"healthy": 1},
-				StatsN:       1,
+			DriveSMART: &DriveSMART{
 				Temperature:  86,
 				PowerOnHours: 26280,
-				DeviceType:   "nvme",
-				NVMe: &SMARTNVMe{
-					N:                     1,
+				NVMe: &DriveSMARTNVMe{
 					WarningTempTime:       31540,
 					CritCompTime:          95,
 					ThermalManagementTime: 120,
 					WarningTempThreshold:  75,
 					CriticalTempThreshold: 85,
+					HottestSensorTemp:     91,
 				},
 			},
 		}
@@ -520,12 +529,102 @@ func TestPartitionSMARTJSON(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		if !bytes.Contains(buf, []byte(`"drive_smart":{`)) {
+			t.Fatalf("partition must carry its SMART data under \"drive_smart\", got %s", buf)
+		}
 		var got Partition
 		if err := json.Unmarshal(buf, &got); err != nil {
 			t.Fatal(err)
 		}
 		if !reflect.DeepEqual(got, want) {
-			t.Fatalf("round trip:\nwant %+v\ngot  %+v", want.SMART.NVMe, got.SMART.NVMe)
+			t.Fatalf("round trip:\nwant %+v\ngot  %+v", want.DriveSMART.NVMe, got.DriveSMART.NVMe)
+		}
+	})
+
+	t.Run("wire format", func(t *testing.T) {
+		// Exact JSON, so a renamed key fails here: values a drive reported keep
+		// their names, and temperatures, limits and power-on hours it did not
+		// report are absent, never 0. The NVMe time counters are always sent.
+		testCases := []struct {
+			name  string
+			smart DriveSMART
+			want  string
+		}{
+			{
+				name: "nvme",
+				smart: DriveSMART{
+					Temperature:  86,
+					PowerOnHours: 26280,
+					NVMe: &DriveSMARTNVMe{
+						WarningTempTime:       31540,
+						CritCompTime:          95,
+						ThermalManagementTime: 120,
+						WarningTempThreshold:  75,
+						CriticalTempThreshold: 85,
+						HottestSensorTemp:     91,
+					},
+				},
+				want: `{"temperature":86,"power_on_hours":26280,"nvme":{"warning_temp_time":31540,"crit_comp_time":95,` +
+					`"thermal_management_time":120,"warning_temp_threshold":75,"critical_temp_threshold":85,"hottest_sensor_temp":91}}`,
+			},
+			{
+				name:  "nvme without temperatures",
+				smart: DriveSMART{PowerOnHours: 10, NVMe: &DriveSMARTNVMe{WarningTempTime: 5}},
+				want:  `{"power_on_hours":10,"nvme":{"warning_temp_time":5,"crit_comp_time":0,"thermal_management_time":0}}`,
+			},
+			{
+				name:  "sata",
+				smart: DriveSMART{Temperature: 41, PowerOnHours: 1200},
+				want:  `{"temperature":41,"power_on_hours":1200}`,
+			},
+		}
+		for _, tc := range testCases {
+			t.Run(tc.name, func(t *testing.T) {
+				buf, err := json.Marshal(tc.smart)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if string(buf) != tc.want {
+					t.Fatalf("want %s\ngot  %s", tc.want, buf)
+				}
+			})
+		}
+	})
+}
+
+func TestPartitionsSMARTSummaryJSON(t *testing.T) {
+	t.Run("absent", func(t *testing.T) {
+		buf, err := json.Marshal(Partitions{NodeCommon: NodeCommon{Addr: "node1:9000"}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if bytes.Contains(buf, []byte(`"smart_summary"`)) {
+			t.Fatalf("a node without SMART data must not carry the key, got %s", buf)
+		}
+	})
+
+	t.Run("wire format", func(t *testing.T) {
+		parts := Partitions{
+			NodeCommon:   NodeCommon{Addr: "node1:9000"},
+			Partitions:   []Partition{{Mountpoint: "/mnt/drive1", DriveSMART: &DriveSMART{Temperature: 74}}},
+			SMARTSummary: &DriveSMARTSummary{Drives: 30, MaxTemperature: 74},
+		}
+		buf, err := json.Marshal(parts)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := `{"addr":"node1:9000","partitions":[{"major":0,"minor":0,"mountpoint":"/mnt/drive1","drive_smart":{"temperature":74}}],` +
+			`"smart_summary":{"drives":30,"max_temperature":74}}`
+		if string(buf) != want {
+			t.Fatalf("want %s\ngot  %s", want, buf)
+		}
+
+		var got Partitions
+		if err := json.Unmarshal(buf, &got); err != nil {
+			t.Fatal(err)
+		}
+		if !reflect.DeepEqual(got, parts) {
+			t.Fatalf("round trip:\nwant %+v\ngot  %+v", parts, got)
 		}
 	})
 }
