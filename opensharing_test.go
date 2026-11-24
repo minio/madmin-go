@@ -567,3 +567,48 @@ func TestActivateSharingRecipient(t *testing.T) {
 		t.Fatalf("second activation: got %+v", resp)
 	}
 }
+
+func TestSharingClientTokenWaitHonorsContext(t *testing.T) {
+	release := make(chan struct{})
+	started := make(chan struct{}, 1)
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/oauth/token") {
+			started <- struct{}{}
+			<-release
+			json.NewEncoder(w).Encode(map[string]any{"access_token": "jwt", "expires_in": 3600})
+			return
+		}
+		io.WriteString(w, `{"items":[]}`)
+	}))
+	defer srv.Close()
+	defer close(release)
+
+	c, err := NewSharingClient(DeltaSharingProfile{
+		Type:          "oauth_client_credentials",
+		Endpoint:      srv.URL + "/_delta-sharing/v1",
+		TokenEndpoint: srv.URL + "/_delta-sharing/v1/oauth/token",
+		ClientID:      "id",
+		ClientSecret:  "secret",
+	}, srv.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+	go c.ListShares(context.Background(), SharingListOptions{})
+	<-started
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	done := make(chan error, 1)
+	go func() {
+		_, err := c.ListShares(ctx, SharingListOptions{})
+		done <- err
+	}()
+	select {
+	case err := <-done:
+		if !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("got %v, want context.DeadlineExceeded", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("caller waiting behind a token refresh ignored its context")
+	}
+}

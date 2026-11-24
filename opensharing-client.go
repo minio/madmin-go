@@ -28,7 +28,6 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -104,7 +103,9 @@ type SharingClient struct {
 	profile    DeltaSharingProfile
 	httpClient *http.Client
 
-	mu          sync.Mutex
+	// refresh holds one slot, taken while a caller reads or renews the OAuth
+	// token, so a waiting caller can give up when its context ends.
+	refresh     chan struct{}
 	accessToken string
 	tokenExpiry time.Time
 }
@@ -130,7 +131,13 @@ func NewSharingClient(profile DeltaSharingProfile, httpClient *http.Client) (*Sh
 	if httpClient == nil {
 		httpClient = http.DefaultClient
 	}
-	return &SharingClient{endpoint: u, profile: profile, httpClient: httpClient, accessToken: profile.BearerToken}, nil
+	return &SharingClient{
+		endpoint:    u,
+		profile:     profile,
+		httpClient:  httpClient,
+		refresh:     make(chan struct{}, 1),
+		accessToken: profile.BearerToken,
+	}, nil
 }
 
 // token returns the bearer token, fetching a new OAuth access token when the
@@ -139,8 +146,12 @@ func (c *SharingClient) token(ctx context.Context) (string, error) {
 	if c.profile.Type != sharingOAuthType {
 		return c.accessToken, nil
 	}
-	c.mu.Lock()
-	defer c.mu.Unlock()
+	select {
+	case c.refresh <- struct{}{}:
+	case <-ctx.Done():
+		return "", ctx.Err()
+	}
+	defer func() { <-c.refresh }()
 	if c.accessToken != "" && time.Until(c.tokenExpiry) > time.Minute {
 		return c.accessToken, nil
 	}
