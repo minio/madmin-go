@@ -123,6 +123,10 @@ type DeltaSharingProfile struct {
 	ShareCredentialsVersion int    `json:"shareCredentialsVersion"`
 	Endpoint                string `json:"endpoint"`
 	BearerToken             string `json:"bearerToken,omitempty"`
+	ExpirationTime          string `json:"expirationTime,omitempty"`
+
+	// Type is "oauth_client_credentials" for a version 2 profile.
+	Type string `json:"type,omitempty"`
 
 	// OAuth 2.0 fields (version 2)
 	TokenEndpoint string `json:"tokenEndpoint,omitempty"`

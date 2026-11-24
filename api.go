@@ -83,6 +83,10 @@ const (
 
 	libraryAdminURLPrefix = "/minio/admin"
 	libraryKMSURLPrefix   = "/minio/kms"
+
+	// deltaSharingURLPrefix is the root of the Delta Sharing and OpenSharing
+	// APIs, which live outside the admin API.
+	deltaSharingURLPrefix = "/_delta-sharing/v1"
 )
 
 // User Agent should always following the below style.
@@ -213,6 +217,8 @@ type requestData struct {
 	endpointOverride *url.URL
 	// isKMS replaces URL prefix with /kms
 	isKMS bool
+	// isDeltaSharing replaces URL prefix with /_delta-sharing/v1
+	isDeltaSharing bool
 	// creds, when set, signs every attempt instead of a fresh lookup. A caller
 	// that encrypted content with a credential sets it, so the body and the
 	// signature always use the same secret.
@@ -664,8 +670,11 @@ func (adm AdminClient) makeTargetURL(r requestData) (*url.URL, error) {
 	host := adm.endpointURL.Host
 	scheme := adm.endpointURL.Scheme
 	prefix := libraryAdminURLPrefix
-	if r.isKMS {
+	switch {
+	case r.isKMS:
 		prefix = libraryKMSURLPrefix
+	case r.isDeltaSharing:
+		prefix = deltaSharingURLPrefix
 	}
 	urlStr := scheme + "://" + host + prefix + r.relPath
 
