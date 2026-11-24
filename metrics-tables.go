@@ -22,6 +22,7 @@ package madmin
 import (
 	"cmp"
 	"maps"
+	"slices"
 	"time"
 )
 
@@ -153,6 +154,8 @@ type TableMaintenanceRuns struct {
 	// DurationBuckets maps an upper bound in seconds, or "+Inf", to the
 	// finished runs that took at most that long. "+Inf" counts the runs the
 	// buckets cover, which is less than Done.Count when a node reported none.
+	// Add sums only buckets with the same bounds and otherwise keeps the ones
+	// covering more runs.
 	DurationBuckets map[string]uint64 `json:"duration_buckets,omitempty"`
 }
 
@@ -165,7 +168,39 @@ func (r TableMaintenanceRuns) IsZero() bool {
 func (r *TableMaintenanceRuns) Add(other *TableMaintenanceRuns) {
 	r.InFlight += other.InFlight
 	r.Done.Add(&other.Done)
-	addMap(&r.DurationBuckets, other.DurationBuckets)
+	r.DurationBuckets = mergeDurationBuckets(r.DurationBuckets, other.DurationBuckets)
+}
+
+// mergeDurationBuckets sums b into a when both have the same bounds. Otherwise
+// it keeps the histogram covering more runs, a tie going to the lower sorted
+// bound set, so the result does not depend on which one is a.
+func mergeDurationBuckets(a, b map[string]uint64) map[string]uint64 {
+	switch {
+	case len(b) == 0:
+		return a
+	case len(a) == 0:
+		return maps.Clone(b)
+	case sameKeys(a, b):
+		addMap(&a, b)
+		return a
+	}
+	if cmp.Or(cmp.Compare(a["+Inf"], b["+Inf"]), slices.Compare(slices.Sorted(maps.Keys(b)), slices.Sorted(maps.Keys(a)))) < 0 {
+		return maps.Clone(b)
+	}
+	return a
+}
+
+// sameKeys reports whether a and b have the same key set.
+func sameKeys[K comparable, V any](a, b map[K]V) bool {
+	if len(a) != len(b) {
+		return false
+	}
+	for k := range a {
+		if _, ok := b[k]; !ok {
+			return false
+		}
+	}
+	return true
 }
 
 // TableMaintenanceGroups summarizes the compaction groups the reporting nodes

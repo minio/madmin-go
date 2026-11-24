@@ -121,7 +121,7 @@ func TestTableHealthMergeSumsMaintenance(t *testing.T) {
 		N: 1,
 		Maintenance: map[string]TableMaintenanceNode{
 			"compaction": {
-				Runs:   TableMaintenanceRuns{InFlight: 2, Done: TimedAction{Count: 4, AccTime: 100e9, MinTime: 10e9, MaxTime: 60e9}, DurationBuckets: map[string]uint64{"15": 1, "60": 4, "+Inf": 4}},
+				Runs:   TableMaintenanceRuns{InFlight: 2, Done: TimedAction{Count: 4, AccTime: 100e9, MinTime: 10e9, MaxTime: 60e9}, DurationBuckets: map[string]uint64{"15": 1, "60": 4, "300": 4, "+Inf": 4}},
 				Groups: TableMaintenanceGroups{InFlight: 3},
 			},
 			"snapshot_expiration": {Runs: TableMaintenanceRuns{Done: TimedAction{Count: 1, AccTime: 2e9, MinTime: 2e9, MaxTime: 2e9}}},
@@ -131,7 +131,7 @@ func TestTableHealthMergeSumsMaintenance(t *testing.T) {
 		N: 1,
 		Maintenance: map[string]TableMaintenanceNode{
 			"compaction": {
-				Runs:   TableMaintenanceRuns{InFlight: 1, Done: TimedAction{Count: 2, AccTime: 300e9, MinTime: 50e9, MaxTime: 250e9}, DurationBuckets: map[string]uint64{"60": 1, "300": 2, "+Inf": 2}},
+				Runs:   TableMaintenanceRuns{InFlight: 1, Done: TimedAction{Count: 2, AccTime: 300e9, MinTime: 50e9, MaxTime: 250e9}, DurationBuckets: map[string]uint64{"15": 0, "60": 1, "300": 2, "+Inf": 2}},
 				Groups: TableMaintenanceGroups{InFlight: 5},
 			},
 		},
@@ -143,7 +143,7 @@ func TestTableHealthMergeSumsMaintenance(t *testing.T) {
 	}
 	want := map[string]TableMaintenanceNode{
 		"compaction": {
-			Runs:   TableMaintenanceRuns{InFlight: 3, Done: TimedAction{Count: 6, AccTime: 400e9, MinTime: 10e9, MaxTime: 250e9}, DurationBuckets: map[string]uint64{"15": 1, "60": 5, "300": 2, "+Inf": 6}},
+			Runs:   TableMaintenanceRuns{InFlight: 3, Done: TimedAction{Count: 6, AccTime: 400e9, MinTime: 10e9, MaxTime: 250e9}, DurationBuckets: map[string]uint64{"15": 1, "60": 5, "300": 6, "+Inf": 6}},
 			Groups: TableMaintenanceGroups{InFlight: 8},
 		},
 		"snapshot_expiration": {Runs: TableMaintenanceRuns{Done: TimedAction{Count: 1, AccTime: 2e9, MinTime: 2e9, MaxTime: 2e9}}},
@@ -156,6 +156,38 @@ func TestTableHealthMergeSumsMaintenance(t *testing.T) {
 	}
 	if a.Health.Maintenance["compaction"].Runs.Done.Count != 4 || a.Health.Maintenance["compaction"].Runs.DurationBuckets["+Inf"] != 4 {
 		t.Error("merging must not modify an input report")
+	}
+}
+
+// Run-duration histograms with different bounds cannot be summed, so the one
+// covering more runs is kept, ties going to the lower bound set, and the other
+// node's runs count only in Done.
+func TestTableMaintenanceRunsAddMismatchedBounds(t *testing.T) {
+	runs := func(count uint64, buckets map[string]uint64) TableMaintenanceRuns {
+		return TableMaintenanceRuns{Done: TimedAction{Count: count}, DurationBuckets: buckets}
+	}
+	coarse := func() map[string]uint64 { return map[string]uint64{"60": 3, "+Inf": 3} }
+	fine := func(n uint64) map[string]uint64 { return map[string]uint64{"15": 1, "300": n, "+Inf": n} }
+	for _, tc := range []struct {
+		name    string
+		a, b    TableMaintenanceRuns
+		wantBkt map[string]uint64
+	}{
+		{"more runs", runs(3, coarse()), runs(2, fine(2)), coarse()},
+		{"tie", runs(3, coarse()), runs(3, fine(3)), fine(3)},
+	} {
+		for _, order := range [][2]TableMaintenanceRuns{{tc.a, tc.b}, {tc.b, tc.a}} {
+			var got TableMaintenanceRuns
+			got.Add(&order[0])
+			got.Add(&order[1])
+			if got.Done.Count != tc.a.Done.Count+tc.b.Done.Count || !maps.Equal(got.DurationBuckets, tc.wantBkt) {
+				t.Errorf("%s: Runs = %+v, want buckets %v", tc.name, got, tc.wantBkt)
+			}
+			got.DurationBuckets["+Inf"] = 999
+			if order[0].DurationBuckets["+Inf"] == 999 || order[1].DurationBuckets["+Inf"] == 999 {
+				t.Fatalf("%s: source buckets mutated through the aggregate", tc.name)
+			}
+		}
 	}
 }
 
