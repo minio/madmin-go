@@ -612,3 +612,39 @@ func TestSharingClientTokenWaitHonorsContext(t *testing.T) {
 		t.Fatal("caller waiting behind a token refresh ignored its context")
 	}
 }
+
+func TestSharingClientTokenExpiryCountsFromRequest(t *testing.T) {
+	var tokenCalls atomic.Int32
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/oauth/token") {
+			tokenCalls.Add(1)
+			time.Sleep(1500 * time.Millisecond)
+			json.NewEncoder(w).Encode(map[string]any{"access_token": "jwt", "expires_in": 61})
+			return
+		}
+		io.WriteString(w, `{"items":[]}`)
+	}))
+	defer srv.Close()
+
+	c, err := NewSharingClient(DeltaSharingProfile{
+		Type:          "oauth_client_credentials",
+		Endpoint:      srv.URL + "/_delta-sharing/v1",
+		TokenEndpoint: srv.URL + "/_delta-sharing/v1/oauth/token",
+		ClientID:      "id",
+		ClientSecret:  "secret",
+	}, srv.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for range 2 {
+		if _, err := c.ListShares(context.Background(), SharingListOptions{}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// The token lives 61s from when it was requested, and the response took
+	// 1.5s, so less than the one-minute margin is left: the second call must
+	// fetch a new token.
+	if n := tokenCalls.Load(); n != 2 {
+		t.Fatalf("token fetched %d times, want 2", n)
+	}
+}

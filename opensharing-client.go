@@ -165,6 +165,7 @@ func (c *SharingClient) token(ctx context.Context) (string, error) {
 	}
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	req.SetBasicAuth(c.profile.ClientID, c.profile.ClientSecret)
+	issued := time.Now()
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return "", err
@@ -189,7 +190,7 @@ func (c *SharingClient) token(ctx context.Context) (string, error) {
 		return "", errors.New("OAuth token response has no access_token")
 	}
 	c.accessToken = tok.AccessToken
-	c.tokenExpiry = time.Now().Add(time.Duration(tok.ExpiresIn) * time.Second)
+	c.tokenExpiry = issued.Add(time.Duration(tok.ExpiresIn) * time.Second)
 	return c.accessToken, nil
 }
 
