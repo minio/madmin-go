@@ -366,7 +366,7 @@ func TestTablesHealthInfoJSON(t *testing.T) {
 		Tables:     5,
 		Maintenance: map[string]TableMaintenanceNode{
 			"compaction": {
-				Runs:   TableMaintenanceRuns{InFlight: 1, Done: TimedAction{Count: 4, AccTime: 9, MinTime: 1, MaxTime: 5}},
+				Runs:   TableMaintenanceRuns{InFlight: 1, Done: TimedAction{Count: 4, AccTime: 9, MinTime: 1, MaxTime: 5}, DurationBuckets: map[string]uint64{"1": 4, "+Inf": 4}},
 				Groups: TableMaintenanceGroups{InFlight: 2},
 				Memory: TableMaintenanceMemory{PeakArrowBytes: 1 << 20, NodePeakArrowBytes: 2 << 20},
 				IO:     TableMaintenanceIO{BytesRead: 10, BytesWritten: 20, Ops: TableMaintenanceIOOps{Get: 3}, ThrottleSecs: 1.5},
@@ -379,6 +379,12 @@ func TestTablesHealthInfoJSON(t *testing.T) {
 			TablesOverdue:        2,
 			OldestOverdueSecs:    7200,
 			TablesOverdueBuckets: map[string]int64{"3600": 1, "+Inf": 2},
+		},
+		Jobs: map[string]TablesMaintenanceJobHealth{
+			"compaction": {Cycles: 7, LastCycleSecs: 42.5},
+			"record_expiration": {Cycles: 3, LastCycleSecs: 1.5, Overdue: &TableMaintenanceOverdue{
+				Tables: 1, OldestSecs: 600, Buckets: map[string]int64{"3600": 1, "+Inf": 1},
+			}},
 		},
 		Config: &TablesMaintenanceConfig{
 			Jobs:                 map[string]TablesMaintenanceJobConfig{"compaction": {Enabled: true, IntervalSecs: 3600}, "snapshot_expiration": {}},
@@ -402,7 +408,7 @@ func TestTablesHealthInfoJSON(t *testing.T) {
 	const golden = `{
 		"warehouses":2,"namespaces":3,"tables":5,
 		"maintenance":{"compaction":{
-			"runs":{"inflight":1,"done":{"count":4,"acc_time_ns":9,"min_ns":1,"max_ns":5}},
+			"runs":{"inflight":1,"done":{"count":4,"acc_time_ns":9,"min_ns":1,"max_ns":5},"duration_buckets":{"1":4,"+Inf":4}},
 			"groups":{"inflight":2},
 			"memory":{"peak_arrow_bytes":1048576,"node_peak_arrow_bytes":2097152},
 			"io":{"bytes_read":10,"bytes_written":20,"ops":{"get":3},"throttle_secs":1.5}}},
@@ -411,6 +417,9 @@ func TestTablesHealthInfoJSON(t *testing.T) {
 			"components":{"small_files":{"files":12},"delete_files":{"files":4}},
 			"tables_overdue":2,"oldest_overdue_secs":7200,
 			"tables_overdue_buckets":{"3600":1,"+Inf":2}},
+		"jobs":{"compaction":{"cycles":7,"last_cycle_secs":42.5},
+			"record_expiration":{"cycles":3,"last_cycle_secs":1.5,
+				"overdue":{"tables":1,"oldest_secs":600,"buckets":{"3600":1,"+Inf":1}}}},
 		"config":{"jobs":{"compaction":{"enabled":true,"interval_secs":3600},"snapshot_expiration":{"enabled":false}},
 			"poll_interval_secs":300,"throttle_factor":2,"throttle_max_sleep_secs":1}}`
 	var emitted map[string]any

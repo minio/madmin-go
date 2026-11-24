@@ -1499,7 +1499,24 @@ type TablesHealthInfo struct {
 	// Compaction is the compaction leader's backlog.
 	Compaction *TableCompactionClusterBacklog `json:"compaction,omitempty"`
 
+	// Jobs maps a maintenance type, one of the small fixed set defined by the
+	// server, to its leader's cycle summary.
+	Jobs map[string]TablesMaintenanceJobHealth `json:"jobs,omitempty"`
+
 	Config *TablesMaintenanceConfig `json:"config,omitempty"`
+}
+
+// TablesMaintenanceJobHealth summarizes one maintenance type's cycles, as its
+// leader reports them. It is an AIStor extension.
+type TablesMaintenanceJobHealth struct {
+	// Cycles counts the cycles the leader completed since it started, and
+	// LastCycleSecs is how long the last one took.
+	Cycles        uint64  `json:"cycles,omitempty"`
+	LastCycleSecs float64 `json:"last_cycle_secs,omitempty"`
+
+	// Overdue is how far past their interval the due tables are, for types
+	// other than compaction, whose backlog carries it.
+	Overdue *TableMaintenanceOverdue `json:"overdue,omitempty"`
 }
 
 // TablesMaintenanceConfig is the table maintenance configuration in effect on
