@@ -42,6 +42,12 @@ func mergeTables(parts ...*TableAPIMetrics) *TableAPIMetrics {
 	return &out
 }
 
+// Callers compare these with ==, as they could in v4.11.0.
+var (
+	_ = TableMaintenanceRuns{} == TableMaintenanceRuns{}
+	_ = TableMaintenanceNode{} == TableMaintenanceNode{}
+)
+
 // The catalog is replicated to every node, so summing it multiplies every count
 // by the node count. The freshest sample wins instead.
 func TestTableCatalogMergeNeverSums(t *testing.T) {
@@ -124,7 +130,7 @@ func TestTableHealthMergeSumsMaintenance(t *testing.T) {
 		N: 1,
 		Maintenance: map[string]TableMaintenanceNode{
 			"compaction": {
-				Runs:   TableMaintenanceRuns{InFlight: 2, Done: TimedAction{Count: 4, AccTime: 100e9, MinTime: 10e9, MaxTime: 60e9}, DurationBuckets: map[string]uint64{"15": 1, "60": 4, "300": 4, "+Inf": 4}},
+				Runs:   TableMaintenanceRuns{InFlight: 2, Done: TimedAction{Count: 4, AccTime: 100e9, MinTime: 10e9, MaxTime: 60e9}, DurationBuckets: &TableMaintenanceDurationBuckets{"15": 1, "60": 4, "300": 4, "+Inf": 4}},
 				Groups: TableMaintenanceGroups{InFlight: 3},
 			},
 			"snapshot_expiration": {Runs: TableMaintenanceRuns{Done: TimedAction{Count: 1, AccTime: 2e9, MinTime: 2e9, MaxTime: 2e9}}},
@@ -134,7 +140,7 @@ func TestTableHealthMergeSumsMaintenance(t *testing.T) {
 		N: 1,
 		Maintenance: map[string]TableMaintenanceNode{
 			"compaction": {
-				Runs:   TableMaintenanceRuns{InFlight: 1, Done: TimedAction{Count: 2, AccTime: 300e9, MinTime: 50e9, MaxTime: 250e9}, DurationBuckets: map[string]uint64{"15": 0, "60": 1, "300": 2, "+Inf": 2}},
+				Runs:   TableMaintenanceRuns{InFlight: 1, Done: TimedAction{Count: 2, AccTime: 300e9, MinTime: 50e9, MaxTime: 250e9}, DurationBuckets: &TableMaintenanceDurationBuckets{"15": 0, "60": 1, "300": 2, "+Inf": 2}},
 				Groups: TableMaintenanceGroups{InFlight: 5},
 			},
 		},
@@ -146,7 +152,7 @@ func TestTableHealthMergeSumsMaintenance(t *testing.T) {
 	}
 	want := map[string]TableMaintenanceNode{
 		"compaction": {
-			Runs:   TableMaintenanceRuns{InFlight: 3, Done: TimedAction{Count: 6, AccTime: 400e9, MinTime: 10e9, MaxTime: 250e9}, DurationBuckets: map[string]uint64{"15": 1, "60": 5, "300": 6, "+Inf": 6}},
+			Runs:   TableMaintenanceRuns{InFlight: 3, Done: TimedAction{Count: 6, AccTime: 400e9, MinTime: 10e9, MaxTime: 250e9}, DurationBuckets: &TableMaintenanceDurationBuckets{"15": 1, "60": 5, "300": 6, "+Inf": 6}},
 			Groups: TableMaintenanceGroups{InFlight: 8},
 		},
 		"snapshot_expiration": {Runs: TableMaintenanceRuns{Done: TimedAction{Count: 1, AccTime: 2e9, MinTime: 2e9, MaxTime: 2e9}}},
@@ -157,7 +163,7 @@ func TestTableHealthMergeSumsMaintenance(t *testing.T) {
 	if rev := mergeTables(b, a).Health; !reflect.DeepEqual(rev.Maintenance, want) {
 		t.Errorf("reverse Maintenance = %+v, want %+v", rev.Maintenance, want)
 	}
-	if a.Health.Maintenance["compaction"].Runs.Done.Count != 4 || a.Health.Maintenance["compaction"].Runs.DurationBuckets["+Inf"] != 4 {
+	if a.Health.Maintenance["compaction"].Runs.Done.Count != 4 || (*a.Health.Maintenance["compaction"].Runs.DurationBuckets)["+Inf"] != 4 {
 		t.Error("merging must not modify an input report")
 	}
 }
@@ -166,14 +172,18 @@ func TestTableHealthMergeSumsMaintenance(t *testing.T) {
 // reports with the lowest sorted bound set sum, whichever covers more runs, and
 // the others count only in Done, in any merge order.
 func TestTableMaintenanceRunsAddMismatchedBounds(t *testing.T) {
-	runs := func(count uint64, buckets map[string]uint64) *TableMaintenanceRuns {
+	runs := func(count uint64, buckets *TableMaintenanceDurationBuckets) *TableMaintenanceRuns {
 		return &TableMaintenanceRuns{Done: TimedAction{Count: count}, DurationBuckets: buckets}
 	}
-	coarse := func(n uint64) map[string]uint64 { return map[string]uint64{"60": n, "+Inf": n} }
-	fine := func(n uint64) map[string]uint64 { return map[string]uint64{"15": 1, "300": n, "+Inf": n} }
+	coarse := func(n uint64) *TableMaintenanceDurationBuckets {
+		return &TableMaintenanceDurationBuckets{"60": n, "+Inf": n}
+	}
+	fine := func(n uint64) *TableMaintenanceDurationBuckets {
+		return &TableMaintenanceDurationBuckets{"15": 1, "300": n, "+Inf": n}
+	}
 	a, b, c, d := runs(3, coarse(3)), runs(1, fine(1)), runs(4, coarse(4)), runs(1, fine(1))
 	want := fine(2)
-	want["15"] = 2
+	(*want)["15"] = 2
 	for _, order := range [][]*TableMaintenanceRuns{
 		{a, b, c, d},
 		{a, c, b, d},
@@ -192,15 +202,21 @@ func TestTableMaintenanceRunsAddMismatchedBounds(t *testing.T) {
 		for _, r := range order {
 			got.Add(r)
 		}
-		if got.Done.Count != 9 || !maps.Equal(got.DurationBuckets, want) {
+		if got.Done.Count != 9 || !reflect.DeepEqual(got.DurationBuckets, want) {
 			t.Errorf("Runs = %+v, want 9 runs in %v", got, want)
 		}
-		got.DurationBuckets["+Inf"] = 999
+		(*got.DurationBuckets)["+Inf"] = 999
 		for _, r := range order {
-			if r.DurationBuckets["+Inf"] == 999 {
+			if (*r.DurationBuckets)["+Inf"] == 999 {
 				t.Fatal("source buckets mutated through the aggregate")
 			}
 		}
+	}
+
+	seeded := *a
+	seeded.Add(c)
+	if (*seeded.DurationBuckets)["+Inf"] != 7 || (*a.DurationBuckets)["+Inf"] != 3 {
+		t.Errorf("aggregate seeded from an input: got %v, input %v", *seeded.DurationBuckets, *a.DurationBuckets)
 	}
 }
 
@@ -281,7 +297,7 @@ func TestTableMaintenanceNodeOmitsZero(t *testing.T) {
 		wantZero bool
 	}{
 		{TableMaintenanceNode{}, `{}`, true},
-		{TableMaintenanceNode{Runs: TableMaintenanceRuns{DurationBuckets: map[string]uint64{}}}, `{}`, true},
+		{TableMaintenanceNode{Runs: TableMaintenanceRuns{DurationBuckets: &TableMaintenanceDurationBuckets{}}}, `{}`, true},
 		{TableMaintenanceNode{Runs: TableMaintenanceRuns{InFlight: 1}}, `{"runs":{"inflight":1,"done":{"count":0,"acc_time_ns":0}}}`, false},
 		{
 			TableMaintenanceNode{Runs: TableMaintenanceRuns{Done: TimedAction{Count: 4, AccTime: 10, MinTime: 2, MaxTime: 6}}},
@@ -289,7 +305,7 @@ func TestTableMaintenanceNodeOmitsZero(t *testing.T) {
 			false,
 		},
 		{
-			TableMaintenanceNode{Runs: TableMaintenanceRuns{DurationBuckets: map[string]uint64{"+Inf": 1}}},
+			TableMaintenanceNode{Runs: TableMaintenanceRuns{DurationBuckets: &TableMaintenanceDurationBuckets{"+Inf": 1}}},
 			`{"runs":{"done":{"count":0,"acc_time_ns":0},"duration_buckets":{"+Inf":1}}}`,
 			false,
 		},

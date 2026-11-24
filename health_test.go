@@ -366,7 +366,7 @@ func TestTablesHealthInfoJSON(t *testing.T) {
 		Tables:     5,
 		Maintenance: map[string]TableMaintenanceNode{
 			"compaction": {
-				Runs:   TableMaintenanceRuns{InFlight: 1, Done: TimedAction{Count: 4, AccTime: 9, MinTime: 1, MaxTime: 5}, DurationBuckets: map[string]uint64{"1": 4, "+Inf": 4}},
+				Runs:   TableMaintenanceRuns{InFlight: 1, Done: TimedAction{Count: 4, AccTime: 9, MinTime: 1, MaxTime: 5}, DurationBuckets: &TableMaintenanceDurationBuckets{"1": 4, "+Inf": 4}},
 				Groups: TableMaintenanceGroups{InFlight: 2},
 				Memory: TableMaintenanceMemory{PeakArrowBytes: 1 << 20, NodePeakArrowBytes: 2 << 20},
 				IO:     TableMaintenanceIO{BytesRead: 10, BytesWritten: 20, Ops: TableMaintenanceIOOps{Get: 3}, ThrottleSecs: 1.5},

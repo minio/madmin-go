@@ -8955,32 +8955,22 @@ func (z *TableMaintenanceRuns) DecodeMsg(dc *msgp.Reader) (err error) {
 			}
 			zb0001Mask |= 0x2
 		case "duration_buckets":
-			var zb0002 uint32
-			zb0002, err = dc.ReadMapHeader()
-			if err != nil {
-				err = msgp.WrapError(err, "DurationBuckets")
-				return
-			}
-			if z.DurationBuckets == nil {
-				z.DurationBuckets = make(map[string]uint64, zb0002)
-			} else if len(z.DurationBuckets) > 0 {
-				clear(z.DurationBuckets)
-			}
-			for zb0002 > 0 {
-				zb0002--
-				var za0001 string
-				za0001, err = dc.ReadString()
+			if dc.IsNil() {
+				err = dc.ReadNil()
 				if err != nil {
 					err = msgp.WrapError(err, "DurationBuckets")
 					return
 				}
-				var za0002 uint64
-				za0002, err = dc.ReadUint64()
+				z.DurationBuckets = nil
+			} else {
+				if z.DurationBuckets == nil {
+					z.DurationBuckets = new(TableMaintenanceDurationBuckets)
+				}
+				err = z.DurationBuckets.DecodeMsg(dc)
 				if err != nil {
-					err = msgp.WrapError(err, "DurationBuckets", za0001)
+					err = msgp.WrapError(err, "DurationBuckets")
 					return
 				}
-				z.DurationBuckets[za0001] = za0002
 			}
 			zb0001Mask |= 0x4
 		default:
@@ -9016,7 +9006,7 @@ func (z *TableMaintenanceRuns) EncodeMsg(en *msgp.Writer) (err error) {
 		zb0001Len--
 		zb0001Mask |= 0x1
 	}
-	if z.DurationBuckets == nil {
+	if z.DurationBuckets.IsZero() {
 		zb0001Len--
 		zb0001Mask |= 0x4
 	}
@@ -9056,20 +9046,15 @@ func (z *TableMaintenanceRuns) EncodeMsg(en *msgp.Writer) (err error) {
 			if err != nil {
 				return
 			}
-			err = en.WriteMapHeader(uint32(len(z.DurationBuckets)))
-			if err != nil {
-				err = msgp.WrapError(err, "DurationBuckets")
-				return
-			}
-			for za0001, za0002 := range z.DurationBuckets {
-				err = en.WriteString(za0001)
+			if z.DurationBuckets == nil {
+				err = en.WriteNil()
 				if err != nil {
-					err = msgp.WrapError(err, "DurationBuckets")
 					return
 				}
-				err = en.WriteUint64(za0002)
+			} else {
+				err = z.DurationBuckets.EncodeMsg(en)
 				if err != nil {
-					err = msgp.WrapError(err, "DurationBuckets", za0001)
+					err = msgp.WrapError(err, "DurationBuckets")
 					return
 				}
 			}
@@ -9089,7 +9074,7 @@ func (z *TableMaintenanceRuns) MarshalMsg(b []byte) (o []byte, err error) {
 		zb0001Len--
 		zb0001Mask |= 0x1
 	}
-	if z.DurationBuckets == nil {
+	if z.DurationBuckets.IsZero() {
 		zb0001Len--
 		zb0001Mask |= 0x4
 	}
@@ -9113,10 +9098,14 @@ func (z *TableMaintenanceRuns) MarshalMsg(b []byte) (o []byte, err error) {
 		if (zb0001Mask & 0x4) == 0 { // if not omitted
 			// string "duration_buckets"
 			o = append(o, 0xb0, 0x64, 0x75, 0x72, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x62, 0x75, 0x63, 0x6b, 0x65, 0x74, 0x73)
-			o = msgp.AppendMapHeader(o, uint32(len(z.DurationBuckets)))
-			for za0001, za0002 := range z.DurationBuckets {
-				o = msgp.AppendString(o, za0001)
-				o = msgp.AppendUint64(o, za0002)
+			if z.DurationBuckets == nil {
+				o = msgp.AppendNil(o)
+			} else {
+				o, err = z.DurationBuckets.MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "DurationBuckets")
+					return
+				}
 			}
 		}
 	}
@@ -9158,32 +9147,21 @@ func (z *TableMaintenanceRuns) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			}
 			zb0001Mask |= 0x2
 		case "duration_buckets":
-			var zb0002 uint32
-			zb0002, bts, err = msgp.ReadMapHeaderBytes(bts)
-			if err != nil {
-				err = msgp.WrapError(err, "DurationBuckets")
-				return
-			}
-			if z.DurationBuckets == nil {
-				z.DurationBuckets = make(map[string]uint64, zb0002)
-			} else if len(z.DurationBuckets) > 0 {
-				clear(z.DurationBuckets)
-			}
-			for zb0002 > 0 {
-				var za0002 uint64
-				zb0002--
-				var za0001 string
-				za0001, bts, err = msgp.ReadStringBytes(bts)
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.DurationBuckets = nil
+			} else {
+				if z.DurationBuckets == nil {
+					z.DurationBuckets = new(TableMaintenanceDurationBuckets)
+				}
+				bts, err = z.DurationBuckets.UnmarshalMsg(bts)
 				if err != nil {
 					err = msgp.WrapError(err, "DurationBuckets")
 					return
 				}
-				za0002, bts, err = msgp.ReadUint64Bytes(bts)
-				if err != nil {
-					err = msgp.WrapError(err, "DurationBuckets", za0001)
-					return
-				}
-				z.DurationBuckets[za0001] = za0002
 			}
 			zb0001Mask |= 0x4
 		default:
@@ -9212,12 +9190,11 @@ func (z *TableMaintenanceRuns) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *TableMaintenanceRuns) Msgsize() (s int) {
-	s = 1 + 9 + msgp.Uint64Size + 5 + z.Done.Msgsize() + 17 + msgp.MapHeaderSize
-	if z.DurationBuckets != nil {
-		for za0001, za0002 := range z.DurationBuckets {
-			_ = za0002
-			s += msgp.StringPrefixSize + len(za0001) + msgp.Uint64Size
-		}
+	s = 1 + 9 + msgp.Uint64Size + 5 + z.Done.Msgsize() + 17
+	if z.DurationBuckets == nil {
+		s += msgp.NilSize
+	} else {
+		s += z.DurationBuckets.Msgsize()
 	}
 	return
 }

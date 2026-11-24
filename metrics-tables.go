@@ -155,13 +155,13 @@ type TableMaintenanceRuns struct {
 	// finished runs that took at most that long. "+Inf" counts the runs the
 	// buckets cover, which is less than Done.Count when a node reported none.
 	// Add sums only buckets with the same bounds and otherwise keeps those of the
-	// lowest sorted bound set.
-	DurationBuckets map[string]uint64 `json:"duration_buckets,omitempty"`
+	// lowest sorted bound set. A pointer keeps TableMaintenanceRuns comparable.
+	DurationBuckets *TableMaintenanceDurationBuckets `json:"duration_buckets,omitzero"`
 }
 
 // IsZero reports whether nothing has been recorded, for omitzero.
 func (r TableMaintenanceRuns) IsZero() bool {
-	return r.InFlight == 0 && r.Done == TimedAction{} && len(r.DurationBuckets) == 0
+	return r.InFlight == 0 && r.Done == TimedAction{} && r.DurationBuckets.IsZero()
 }
 
 // Add other into r.
@@ -171,21 +171,23 @@ func (r *TableMaintenanceRuns) Add(other *TableMaintenanceRuns) {
 	r.DurationBuckets = mergeDurationBuckets(r.DurationBuckets, other.DurationBuckets)
 }
 
-// mergeDurationBuckets sums b into a when both have the same bounds. Otherwise
-// it keeps the one with the lower sorted bound set, so any number of reports
-// merge to the same result in any order.
-func mergeDurationBuckets(a, b map[string]uint64) map[string]uint64 {
+// mergeDurationBuckets returns the sum of a and b when both have the same
+// bounds. Otherwise it keeps the one with the lower sorted bound set, so any
+// number of reports merge to the same result in any order. A changed result
+// is a fresh copy, so it never shares its map with b or mutates a.
+func mergeDurationBuckets(a, b *TableMaintenanceDurationBuckets) *TableMaintenanceDurationBuckets {
 	switch {
-	case len(b) == 0:
+	case b.IsZero():
 		return a
-	case len(a) == 0:
-		return maps.Clone(b)
-	case sameKeys(a, b):
-		addMap(&a, b)
-		return a
+	case a.IsZero():
+		return b.clone()
+	case sameKeys(*a, *b):
+		sum := a.clone()
+		addMap((*map[string]uint64)(sum), *b)
+		return sum
 	}
-	if slices.Compare(slices.Sorted(maps.Keys(b)), slices.Sorted(maps.Keys(a))) < 0 {
-		return maps.Clone(b)
+	if slices.Compare(slices.Sorted(maps.Keys(*b)), slices.Sorted(maps.Keys(*a))) < 0 {
+		return b.clone()
 	}
 	return a
 }
