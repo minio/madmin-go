@@ -381,7 +381,7 @@ func TestTablesHealthInfoJSON(t *testing.T) {
 			TablesOverdueBuckets: map[string]int64{"3600": 1, "+Inf": 2},
 		},
 		Jobs: map[string]TablesMaintenanceJobHealth{
-			"compaction": {Cycles: 7, LastCycleSecs: 42.5},
+			"compaction": {Cycles: 7, LastCycleSecs: 42.5, LastRun: time.Date(2026, 11, 24, 10, 0, 0, 0, time.UTC)},
 			"record_expiration": {Cycles: 3, LastCycleSecs: 1.5, Overdue: &TableMaintenanceOverdue{
 				Tables: 1, OldestSecs: 600, Buckets: map[string]int64{"3600": 1, "+Inf": 1},
 			}},
@@ -417,7 +417,7 @@ func TestTablesHealthInfoJSON(t *testing.T) {
 			"components":{"small_files":{"files":12},"delete_files":{"files":4}},
 			"tables_overdue":2,"oldest_overdue_secs":7200,
 			"tables_overdue_buckets":{"3600":1,"+Inf":2}},
-		"jobs":{"compaction":{"cycles":7,"last_cycle_secs":42.5},
+		"jobs":{"compaction":{"cycles":7,"last_cycle_secs":42.5,"last_run":"2026-11-24T10:00:00Z"},
 			"record_expiration":{"cycles":3,"last_cycle_secs":1.5,
 				"overdue":{"tables":1,"oldest_secs":600,"buckets":{"3600":1,"+Inf":1}}}},
 		"config":{"jobs":{"compaction":{"enabled":true,"interval_secs":3600},"snapshot_expiration":{"enabled":false}},

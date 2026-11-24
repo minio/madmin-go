@@ -1509,10 +1509,13 @@ type TablesHealthInfo struct {
 // TablesMaintenanceJobHealth summarizes one maintenance type's cycles, as its
 // leader reports them. It is an AIStor extension.
 type TablesMaintenanceJobHealth struct {
-	// Cycles counts the cycles the leader completed since it started, and
-	// LastCycleSecs is how long the last one took.
-	Cycles        uint64  `json:"cycles,omitempty"`
-	LastCycleSecs float64 `json:"last_cycle_secs,omitempty"`
+	// Cycles, LastCycleSecs and LastRun describe the reporting leader's
+	// cycles, not necessarily the current leader's. Cycles counts those it
+	// completed since it started, LastCycleSecs is how long the last one
+	// took, and LastRun is when it completed.
+	Cycles        uint64    `json:"cycles,omitempty"`
+	LastCycleSecs float64   `json:"last_cycle_secs,omitempty"`
+	LastRun       time.Time `json:"last_run,omitzero"`
 
 	// Overdue is how far past their interval the due tables are, for types
 	// other than compaction, whose backlog carries it.
