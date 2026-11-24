@@ -374,12 +374,19 @@ func (j *TableMaintenanceJob) selectFrom(o TableMaintenanceJob, ok bool) {
 	j.Backlog, j.Overdue = backlog, overdue
 }
 
-// add sums the counters of another node's report of the same PerNode job.
+// add sums the counters of another node's report of the same PerNode job and
+// keeps the latest leader's Backlog and Overdue.
 func (j *TableMaintenanceJob) add(o TableMaintenanceJob) {
 	j.TablesProcessed += o.TablesProcessed
 	j.Errors += o.Errors
 	j.Retries += o.Retries
 	addMap(&j.Work, o.Work)
+	if o.Backlog.newerThan(j.Backlog) {
+		j.Backlog = o.Backlog.clone()
+	}
+	if o.Overdue.newerThan(j.Overdue) {
+		j.Overdue = o.Overdue.clone()
+	}
 }
 
 // TableCompactionClusterBacklog is the cluster's compaction backlog, summed

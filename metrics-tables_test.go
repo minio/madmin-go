@@ -752,6 +752,31 @@ func TestTableMaintenanceMergeSumsPerNode(t *testing.T) {
 	}
 }
 
+// PerNode reports keep the latest leader's Backlog and Overdue whatever the
+// merge order, like leader-owned reports.
+func TestTableMaintenanceMergePerNodeKeepsLatestLeader(t *testing.T) {
+	t0 := time.Date(2026, 11, 24, 10, 0, 0, 0, time.UTC)
+	latestOverdue := &TableMaintenanceOverdue{LeaderSince: t0, Tables: 2, Buckets: map[string]int64{"+Inf": 2}}
+	latestBacklog := &TableCompactionClusterBacklog{LeaderSince: t0, Bytes: 7}
+	report := func(j TableMaintenanceJob) *TableAPIMetrics {
+		j.PerNode = true
+		return &TableAPIMetrics{Maintenance: map[string]TableMaintenanceJob{"record_expiration": j}}
+	}
+	a := report(TableMaintenanceJob{TablesProcessed: 1, Overdue: latestOverdue, Backlog: latestBacklog})
+	b := report(TableMaintenanceJob{TablesProcessed: 2, Overdue: &TableMaintenanceOverdue{LeaderSince: t0.Add(-time.Hour), Tables: 9}, Backlog: &TableCompactionClusterBacklog{LeaderSince: t0.Add(-time.Hour), Bytes: 9}})
+	c := report(TableMaintenanceJob{TablesProcessed: 4})
+	for _, order := range [][]*TableAPIMetrics{{a, b, c}, {a, c, b}, {b, a, c}, {b, c, a}, {c, a, b}, {c, b, a}} {
+		got := mergeTables(order...).Maintenance["record_expiration"]
+		if got.TablesProcessed != 7 || !reflect.DeepEqual(got.Overdue, latestOverdue) || !reflect.DeepEqual(got.Backlog, latestBacklog) {
+			t.Fatalf("job = %+v, want TablesProcessed 7, Overdue %+v, Backlog %+v", got, latestOverdue, latestBacklog)
+		}
+		got.Overdue.Buckets["+Inf"] = 999
+		if latestOverdue.Buckets["+Inf"] != 2 {
+			t.Fatal("source Overdue mutated through the aggregate")
+		}
+	}
+}
+
 // Per-node reports take precedence over legacy reports of the same job.
 func TestTableMaintenanceMergePerNodeMixedVersions(t *testing.T) {
 	t0 := time.Date(2026, 8, 12, 10, 0, 0, 0, time.UTC)
