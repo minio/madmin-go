@@ -177,15 +177,16 @@ type BucketInfo struct {
 	Name    string    `json:"name"`
 	Created time.Time `json:"created"`
 	// NameOnly is set when the caller may see the bucket but not list it.
-	// Usage and Details are then absent.
+	// The usage counters are then zero and Details is nil, so check NameOnly
+	// before reading a zero Size as an empty bucket.
 	NameOnly                bool              `json:"nameOnly,omitempty"`
-	Size                    uint64            `json:"size"`
-	Objects                 uint64            `json:"objects"`
-	Versions                uint64            `json:"versions"`
-	DeleteMarkers           uint64            `json:"deleteMarkers"`
-	ObjectSizesHistogram    map[string]uint64 `json:"objectHistogram"`
-	ObjectVersionsHistogram map[string]uint64 `json:"objectsVersionsHistogram"`
-	Details                 *BucketDetails    `json:"details"`
+	Size                    uint64            `json:"size,omitempty"`
+	Objects                 uint64            `json:"objects,omitempty"`
+	Versions                uint64            `json:"versions,omitempty"`
+	DeleteMarkers           uint64            `json:"deleteMarkers,omitempty"`
+	ObjectSizesHistogram    map[string]uint64 `json:"objectHistogram,omitempty"`
+	ObjectVersionsHistogram map[string]uint64 `json:"objectsVersionsHistogram,omitempty"`
+	Details                 *BucketDetails    `json:"details,omitempty"`
 }
 
 // MaxBucketsInfoPerPage is the default and maximum page size of BucketsInfo.

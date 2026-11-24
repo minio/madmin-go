@@ -215,6 +215,37 @@ func TestBucketsInfoRequest(t *testing.T) {
 	}
 }
 
+// TestBucketInfoNameOnlyJSON checks that a name-only bucket marshals without
+// usage, histogram or details keys.
+func TestBucketInfoNameOnlyJSON(t *testing.T) {
+	b := BucketInfo{
+		Name:     "archive",
+		Created:  time.Date(2026, 11, 3, 10, 0, 0, 0, time.UTC),
+		NameOnly: true,
+	}
+	data, err := json.Marshal(b)
+	if err != nil {
+		t.Fatalf("Marshal: %v", err)
+	}
+	var keys map[string]json.RawMessage
+	if err := json.Unmarshal(data, &keys); err != nil {
+		t.Fatalf("Unmarshal: %v", err)
+	}
+	want := map[string]string{
+		"name":     `"archive"`,
+		"created":  `"2026-11-03T10:00:00Z"`,
+		"nameOnly": `true`,
+	}
+	if len(keys) != len(want) {
+		t.Errorf("keys = %s, want only name, created and nameOnly", data)
+	}
+	for k, v := range want {
+		if got := string(keys[k]); got != v {
+			t.Errorf("%s = %s, want %s", k, got, v)
+		}
+	}
+}
+
 // TestBucketsInfoError checks that a non-200 reply is an error.
 func TestBucketsInfoError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
