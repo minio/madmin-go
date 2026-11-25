@@ -678,7 +678,7 @@ type SRBucketInfo struct {
 	// BucketTypeUpdatedAt is zero when the site does not report a type.
 	IsWarehouse         bool      `json:"isWarehouse,omitempty"`
 	IsCortex            bool      `json:"isCortex,omitempty"`
-	BucketTypeUpdatedAt time.Time `json:"bucketTypeTimestamp,omitempty"`
+	BucketTypeUpdatedAt time.Time `json:"bucketTypeTimestamp,omitzero"`
 
 	// time stamps of bucket metadata updates
 	PolicyUpdatedAt            time.Time `json:"policyTimestamp,omitempty"`
