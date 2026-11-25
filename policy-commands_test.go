@@ -163,6 +163,75 @@ func TestCannedPolicyRequests(t *testing.T) {
 	}
 }
 
+// TestRemoveCannedPolicyRequests verifies the query parameters that remove
+// requests send to the remove-canned-policy endpoint.
+func TestRemoveCannedPolicyRequests(t *testing.T) {
+	testCases := []struct {
+		name string
+		call func(ctx context.Context, adm *AdminClient) error
+		want url.Values
+	}{
+		{
+			name: "remove",
+			call: func(ctx context.Context, adm *AdminClient) error {
+				return adm.RemoveCannedPolicy(ctx, "Admin")
+			},
+			want: url.Values{"name": {"Admin"}},
+		},
+		{
+			name: "remove-without-load-system-policy",
+			call: func(ctx context.Context, adm *AdminClient) error {
+				return adm.RemoveCannedPolicyWithOpts(ctx, "Admin", RemoveCannedPolicyOpts{})
+			},
+			want: url.Values{"name": {"Admin"}},
+		},
+		{
+			name: "remove-with-load-system-policy",
+			call: func(ctx context.Context, adm *AdminClient) error {
+				return adm.RemoveCannedPolicyWithOpts(ctx, "Admin", RemoveCannedPolicyOpts{LoadSystemPolicy: true})
+			},
+			want: url.Values{"name": {"Admin"}, "loadSystemPolicy": {"true"}},
+		},
+	}
+
+	type request struct {
+		method string
+		path   string
+		query  url.Values
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			capturedCh := make(chan request, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				capturedCh <- request{method: r.Method, path: r.URL.Path, query: r.URL.Query()}
+				w.WriteHeader(http.StatusOK)
+			}))
+			defer server.Close()
+
+			adm, err := New(mustParseHost(t, server.URL), "access", "secret", false)
+			if err != nil {
+				t.Fatalf("New: %v", err)
+			}
+
+			if err := tc.call(context.Background(), adm); err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			got := <-capturedCh
+			if got.method != http.MethodDelete {
+				t.Errorf("method: expected %s, got %s", http.MethodDelete, got.method)
+			}
+			if wantPath := "/minio/admin/v4/remove-canned-policy"; got.path != wantPath {
+				t.Errorf("path: expected %s, got %s", wantPath, got.path)
+			}
+			if got.query.Encode() != tc.want.Encode() {
+				t.Errorf("query: expected %s, got %s", tc.want.Encode(), got.query.Encode())
+			}
+		})
+	}
+}
+
 func TestPolicyInfoTypeJSON(t *testing.T) {
 	policy := json.RawMessage(`{"Version":"2012-10-17","Statement":[]}`)
 	testCases := []struct {

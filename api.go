@@ -36,6 +36,7 @@ import (
 	"os"
 	"regexp"
 	"runtime"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"syscall"
@@ -83,6 +84,10 @@ const (
 
 	libraryAdminURLPrefix = "/minio/admin"
 	libraryKMSURLPrefix   = "/minio/kms"
+
+	// deltaSharingURLPrefix is the root of the Delta Sharing and OpenSharing
+	// APIs, which live outside the admin API.
+	deltaSharingURLPrefix = "/_delta-sharing/v1"
 )
 
 // User Agent should always following the below style.
@@ -213,6 +218,8 @@ type requestData struct {
 	endpointOverride *url.URL
 	// isKMS replaces URL prefix with /kms
 	isKMS bool
+	// isDeltaSharing replaces URL prefix with /_delta-sharing/v1
+	isDeltaSharing bool
 	// creds, when set, signs every attempt instead of a fresh lookup. A caller
 	// that encrypted content with a credential sets it, so the body and the
 	// signature always use the same secret.
@@ -289,10 +296,9 @@ func (adm AdminClient) dumpHTTP(req *http.Request, resp *http.Response, netErr e
 		// Only display response header.
 		var respTrace []byte
 
-		// For errors we make sure to dump response body as well.
-		if resp.StatusCode != http.StatusOK &&
-			resp.StatusCode != http.StatusPartialContent &&
-			resp.StatusCode != http.StatusNoContent {
+		// For errors we make sure to dump response body as well. A success
+		// body can hold a secret, such as a recipient's activation link.
+		if !slices.Contains(successStatus, resp.StatusCode) {
 			respTrace, err = httputil.DumpResponse(resp, true)
 			if err != nil {
 				return err
@@ -664,8 +670,11 @@ func (adm AdminClient) makeTargetURL(r requestData) (*url.URL, error) {
 	host := adm.endpointURL.Host
 	scheme := adm.endpointURL.Scheme
 	prefix := libraryAdminURLPrefix
-	if r.isKMS {
+	switch {
+	case r.isKMS:
 		prefix = libraryKMSURLPrefix
+	case r.isDeltaSharing:
+		prefix = deltaSharingURLPrefix
 	}
 	urlStr := scheme + "://" + host + prefix + r.relPath
 
