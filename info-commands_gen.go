@@ -2071,7 +2071,7 @@ func (z *BucketUsageInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 3 bits */
+	var zb0001Mask uint8 /* 5 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -2108,6 +2108,20 @@ func (z *BucketUsageInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 			zb0001Mask |= 0x4
+		case "atRestPlaintextCount":
+			z.AtRestPlaintextCount, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "AtRestPlaintextCount")
+				return
+			}
+			zb0001Mask |= 0x8
+		case "atRestPlaintextSize":
+			z.AtRestPlaintextSize, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "AtRestPlaintextSize")
+				return
+			}
+			zb0001Mask |= 0x10
 		case "objectsPendingReplicationTotalSize":
 			z.ReplicationPendingSize, err = dc.ReadUint64()
 			if err != nil {
@@ -2301,7 +2315,7 @@ func (z *BucketUsageInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x7 {
+	if zb0001Mask != 0x1f {
 		if (zb0001Mask & 0x1) == 0 {
 			z.CompressedSize = 0
 		}
@@ -2311,6 +2325,12 @@ func (z *BucketUsageInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 		if (zb0001Mask & 0x4) == 0 {
 			z.CompressedVersionsCount = 0
 		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.AtRestPlaintextCount = 0
+		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.AtRestPlaintextSize = 0
+		}
 	}
 	return
 }
@@ -2318,8 +2338,8 @@ func (z *BucketUsageInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *BucketUsageInfo) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(20)
-	var zb0001Mask uint32 /* 20 bits */
+	zb0001Len := uint32(22)
+	var zb0001Mask uint32 /* 22 bits */
 	_ = zb0001Mask
 	if z.CompressedSize == 0 {
 		zb0001Len--
@@ -2332,6 +2352,14 @@ func (z *BucketUsageInfo) EncodeMsg(en *msgp.Writer) (err error) {
 	if z.CompressedVersionsCount == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x8
+	}
+	if z.AtRestPlaintextCount == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	if z.AtRestPlaintextSize == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x20
 	}
 	// variable map header, size zb0001Len
 	err = en.WriteMapHeader(zb0001Len)
@@ -2384,6 +2412,30 @@ func (z *BucketUsageInfo) EncodeMsg(en *msgp.Writer) (err error) {
 			err = en.WriteUint64(z.CompressedVersionsCount)
 			if err != nil {
 				err = msgp.WrapError(err, "CompressedVersionsCount")
+				return
+			}
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// write "atRestPlaintextCount"
+			err = en.Append(0xb4, 0x61, 0x74, 0x52, 0x65, 0x73, 0x74, 0x50, 0x6c, 0x61, 0x69, 0x6e, 0x74, 0x65, 0x78, 0x74, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.AtRestPlaintextCount)
+			if err != nil {
+				err = msgp.WrapError(err, "AtRestPlaintextCount")
+				return
+			}
+		}
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// write "atRestPlaintextSize"
+			err = en.Append(0xb3, 0x61, 0x74, 0x52, 0x65, 0x73, 0x74, 0x50, 0x6c, 0x61, 0x69, 0x6e, 0x74, 0x65, 0x78, 0x74, 0x53, 0x69, 0x7a, 0x65)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.AtRestPlaintextSize)
+			if err != nil {
+				err = msgp.WrapError(err, "AtRestPlaintextSize")
 				return
 			}
 		}
@@ -2603,8 +2655,8 @@ func (z *BucketUsageInfo) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *BucketUsageInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(20)
-	var zb0001Mask uint32 /* 20 bits */
+	zb0001Len := uint32(22)
+	var zb0001Mask uint32 /* 22 bits */
 	_ = zb0001Mask
 	if z.CompressedSize == 0 {
 		zb0001Len--
@@ -2617,6 +2669,14 @@ func (z *BucketUsageInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	if z.CompressedVersionsCount == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x8
+	}
+	if z.AtRestPlaintextCount == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x10
+	}
+	if z.AtRestPlaintextSize == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x20
 	}
 	// variable map header, size zb0001Len
 	o = msgp.AppendMapHeader(o, zb0001Len)
@@ -2640,6 +2700,16 @@ func (z *BucketUsageInfo) MarshalMsg(b []byte) (o []byte, err error) {
 			// string "compressedVersionsCount"
 			o = append(o, 0xb7, 0x63, 0x6f, 0x6d, 0x70, 0x72, 0x65, 0x73, 0x73, 0x65, 0x64, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73, 0x43, 0x6f, 0x75, 0x6e, 0x74)
 			o = msgp.AppendUint64(o, z.CompressedVersionsCount)
+		}
+		if (zb0001Mask & 0x10) == 0 { // if not omitted
+			// string "atRestPlaintextCount"
+			o = append(o, 0xb4, 0x61, 0x74, 0x52, 0x65, 0x73, 0x74, 0x50, 0x6c, 0x61, 0x69, 0x6e, 0x74, 0x65, 0x78, 0x74, 0x43, 0x6f, 0x75, 0x6e, 0x74)
+			o = msgp.AppendUint64(o, z.AtRestPlaintextCount)
+		}
+		if (zb0001Mask & 0x20) == 0 { // if not omitted
+			// string "atRestPlaintextSize"
+			o = append(o, 0xb3, 0x61, 0x74, 0x52, 0x65, 0x73, 0x74, 0x50, 0x6c, 0x61, 0x69, 0x6e, 0x74, 0x65, 0x78, 0x74, 0x53, 0x69, 0x7a, 0x65)
+			o = msgp.AppendUint64(o, z.AtRestPlaintextSize)
 		}
 		// string "objectsPendingReplicationTotalSize"
 		o = append(o, 0xd9, 0x22, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x50, 0x65, 0x6e, 0x64, 0x69, 0x6e, 0x67, 0x52, 0x65, 0x70, 0x6c, 0x69, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x54, 0x6f, 0x74, 0x61, 0x6c, 0x53, 0x69, 0x7a, 0x65)
@@ -2719,7 +2789,7 @@ func (z *BucketUsageInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 3 bits */
+	var zb0001Mask uint8 /* 5 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -2756,6 +2826,20 @@ func (z *BucketUsageInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 			zb0001Mask |= 0x4
+		case "atRestPlaintextCount":
+			z.AtRestPlaintextCount, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "AtRestPlaintextCount")
+				return
+			}
+			zb0001Mask |= 0x8
+		case "atRestPlaintextSize":
+			z.AtRestPlaintextSize, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "AtRestPlaintextSize")
+				return
+			}
+			zb0001Mask |= 0x10
 		case "objectsPendingReplicationTotalSize":
 			z.ReplicationPendingSize, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
@@ -2949,7 +3033,7 @@ func (z *BucketUsageInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x7 {
+	if zb0001Mask != 0x1f {
 		if (zb0001Mask & 0x1) == 0 {
 			z.CompressedSize = 0
 		}
@@ -2959,6 +3043,12 @@ func (z *BucketUsageInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		if (zb0001Mask & 0x4) == 0 {
 			z.CompressedVersionsCount = 0
 		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.AtRestPlaintextCount = 0
+		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.AtRestPlaintextSize = 0
+		}
 	}
 	o = bts
 	return
@@ -2966,7 +3056,7 @@ func (z *BucketUsageInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *BucketUsageInfo) Msgsize() (s int) {
-	s = 3 + 5 + msgp.Uint64Size + 15 + msgp.Uint64Size + 21 + msgp.Uint64Size + 24 + msgp.Uint64Size + 36 + msgp.Uint64Size + 35 + msgp.Uint64Size + 27 + msgp.Uint64Size + 23 + msgp.Uint64Size + 31 + msgp.Uint64Size + 30 + msgp.Uint64Size + 14 + msgp.Uint64Size + 13 + msgp.Uint64Size + 19 + msgp.Uint64Size + 22 + msgp.MapHeaderSize
+	s = 3 + 5 + msgp.Uint64Size + 15 + msgp.Uint64Size + 21 + msgp.Uint64Size + 24 + msgp.Uint64Size + 21 + msgp.Uint64Size + 20 + msgp.Uint64Size + 36 + msgp.Uint64Size + 35 + msgp.Uint64Size + 27 + msgp.Uint64Size + 23 + msgp.Uint64Size + 31 + msgp.Uint64Size + 30 + msgp.Uint64Size + 14 + msgp.Uint64Size + 13 + msgp.Uint64Size + 19 + msgp.Uint64Size + 22 + msgp.MapHeaderSize
 	if z.ObjectSizesHistogram != nil {
 		for za0001, za0002 := range z.ObjectSizesHistogram {
 			_ = za0002
@@ -4301,7 +4391,7 @@ func (z *DataUsageInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 3 bits */
+	var zb0001Mask uint8 /* 5 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -4350,6 +4440,20 @@ func (z *DataUsageInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 				return
 			}
 			zb0001Mask |= 0x4
+		case "objectsTotalAtRestPlaintext":
+			z.ObjectsTotalAtRestPlaintext, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "ObjectsTotalAtRestPlaintext")
+				return
+			}
+			zb0001Mask |= 0x8
+		case "objectsTotalAtRestPlaintextSize":
+			z.ObjectsTotalAtRestPlaintextSize, err = dc.ReadUint64()
+			if err != nil {
+				err = msgp.WrapError(err, "ObjectsTotalAtRestPlaintextSize")
+				return
+			}
+			zb0001Mask |= 0x10
 		case "objectsPendingReplicationTotalSize":
 			z.ReplicationPendingSize, err = dc.ReadUint64()
 			if err != nil {
@@ -4528,7 +4632,7 @@ func (z *DataUsageInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x7 {
+	if zb0001Mask != 0x1f {
 		if (zb0001Mask & 0x1) == 0 {
 			z.ObjectsTotalCompressedSize = 0
 		}
@@ -4538,6 +4642,12 @@ func (z *DataUsageInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 		if (zb0001Mask & 0x4) == 0 {
 			z.ObjectsTotalCompressedVersions = 0
 		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.ObjectsTotalAtRestPlaintext = 0
+		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.ObjectsTotalAtRestPlaintextSize = 0
+		}
 	}
 	return
 }
@@ -4545,8 +4655,8 @@ func (z *DataUsageInfo) DecodeMsg(dc *msgp.Reader) (err error) {
 // EncodeMsg implements msgp.Encodable
 func (z *DataUsageInfo) EncodeMsg(en *msgp.Writer) (err error) {
 	// check for omitted fields
-	zb0001Len := uint32(21)
-	var zb0001Mask uint32 /* 21 bits */
+	zb0001Len := uint32(23)
+	var zb0001Mask uint32 /* 23 bits */
 	_ = zb0001Mask
 	if z.ObjectsTotalCompressedSize == 0 {
 		zb0001Len--
@@ -4559,6 +4669,14 @@ func (z *DataUsageInfo) EncodeMsg(en *msgp.Writer) (err error) {
 	if z.ObjectsTotalCompressedVersions == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x20
+	}
+	if z.ObjectsTotalAtRestPlaintext == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x40
+	}
+	if z.ObjectsTotalAtRestPlaintextSize == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x80
 	}
 	// variable map header, size zb0001Len
 	err = en.WriteMapHeader(zb0001Len)
@@ -4631,6 +4749,30 @@ func (z *DataUsageInfo) EncodeMsg(en *msgp.Writer) (err error) {
 			err = en.WriteUint64(z.ObjectsTotalCompressedVersions)
 			if err != nil {
 				err = msgp.WrapError(err, "ObjectsTotalCompressedVersions")
+				return
+			}
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
+			// write "objectsTotalAtRestPlaintext"
+			err = en.Append(0xbb, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x54, 0x6f, 0x74, 0x61, 0x6c, 0x41, 0x74, 0x52, 0x65, 0x73, 0x74, 0x50, 0x6c, 0x61, 0x69, 0x6e, 0x74, 0x65, 0x78, 0x74)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.ObjectsTotalAtRestPlaintext)
+			if err != nil {
+				err = msgp.WrapError(err, "ObjectsTotalAtRestPlaintext")
+				return
+			}
+		}
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
+			// write "objectsTotalAtRestPlaintextSize"
+			err = en.Append(0xbf, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x54, 0x6f, 0x74, 0x61, 0x6c, 0x41, 0x74, 0x52, 0x65, 0x73, 0x74, 0x50, 0x6c, 0x61, 0x69, 0x6e, 0x74, 0x65, 0x78, 0x74, 0x53, 0x69, 0x7a, 0x65)
+			if err != nil {
+				return
+			}
+			err = en.WriteUint64(z.ObjectsTotalAtRestPlaintextSize)
+			if err != nil {
+				err = msgp.WrapError(err, "ObjectsTotalAtRestPlaintextSize")
 				return
 			}
 		}
@@ -4842,8 +4984,8 @@ func (z *DataUsageInfo) EncodeMsg(en *msgp.Writer) (err error) {
 func (z *DataUsageInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	o = msgp.Require(b, z.Msgsize())
 	// check for omitted fields
-	zb0001Len := uint32(21)
-	var zb0001Mask uint32 /* 21 bits */
+	zb0001Len := uint32(23)
+	var zb0001Mask uint32 /* 23 bits */
 	_ = zb0001Mask
 	if z.ObjectsTotalCompressedSize == 0 {
 		zb0001Len--
@@ -4856,6 +4998,14 @@ func (z *DataUsageInfo) MarshalMsg(b []byte) (o []byte, err error) {
 	if z.ObjectsTotalCompressedVersions == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x20
+	}
+	if z.ObjectsTotalAtRestPlaintext == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x40
+	}
+	if z.ObjectsTotalAtRestPlaintextSize == 0 {
+		zb0001Len--
+		zb0001Mask |= 0x80
 	}
 	// variable map header, size zb0001Len
 	o = msgp.AppendMapHeader(o, zb0001Len)
@@ -4885,6 +5035,16 @@ func (z *DataUsageInfo) MarshalMsg(b []byte) (o []byte, err error) {
 			// string "objectsTotalCompressedVersions"
 			o = append(o, 0xbe, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x54, 0x6f, 0x74, 0x61, 0x6c, 0x43, 0x6f, 0x6d, 0x70, 0x72, 0x65, 0x73, 0x73, 0x65, 0x64, 0x56, 0x65, 0x72, 0x73, 0x69, 0x6f, 0x6e, 0x73)
 			o = msgp.AppendUint64(o, z.ObjectsTotalCompressedVersions)
+		}
+		if (zb0001Mask & 0x40) == 0 { // if not omitted
+			// string "objectsTotalAtRestPlaintext"
+			o = append(o, 0xbb, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x54, 0x6f, 0x74, 0x61, 0x6c, 0x41, 0x74, 0x52, 0x65, 0x73, 0x74, 0x50, 0x6c, 0x61, 0x69, 0x6e, 0x74, 0x65, 0x78, 0x74)
+			o = msgp.AppendUint64(o, z.ObjectsTotalAtRestPlaintext)
+		}
+		if (zb0001Mask & 0x80) == 0 { // if not omitted
+			// string "objectsTotalAtRestPlaintextSize"
+			o = append(o, 0xbf, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x54, 0x6f, 0x74, 0x61, 0x6c, 0x41, 0x74, 0x52, 0x65, 0x73, 0x74, 0x50, 0x6c, 0x61, 0x69, 0x6e, 0x74, 0x65, 0x78, 0x74, 0x53, 0x69, 0x7a, 0x65)
+			o = msgp.AppendUint64(o, z.ObjectsTotalAtRestPlaintextSize)
 		}
 		// string "objectsPendingReplicationTotalSize"
 		o = append(o, 0xd9, 0x22, 0x6f, 0x62, 0x6a, 0x65, 0x63, 0x74, 0x73, 0x50, 0x65, 0x6e, 0x64, 0x69, 0x6e, 0x67, 0x52, 0x65, 0x70, 0x6c, 0x69, 0x63, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x54, 0x6f, 0x74, 0x61, 0x6c, 0x53, 0x69, 0x7a, 0x65)
@@ -4966,7 +5126,7 @@ func (z *DataUsageInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		err = msgp.WrapError(err)
 		return
 	}
-	var zb0001Mask uint8 /* 3 bits */
+	var zb0001Mask uint8 /* 5 bits */
 	_ = zb0001Mask
 	for zb0001 > 0 {
 		zb0001--
@@ -5015,6 +5175,20 @@ func (z *DataUsageInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 				return
 			}
 			zb0001Mask |= 0x4
+		case "objectsTotalAtRestPlaintext":
+			z.ObjectsTotalAtRestPlaintext, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ObjectsTotalAtRestPlaintext")
+				return
+			}
+			zb0001Mask |= 0x8
+		case "objectsTotalAtRestPlaintextSize":
+			z.ObjectsTotalAtRestPlaintextSize, bts, err = msgp.ReadUint64Bytes(bts)
+			if err != nil {
+				err = msgp.WrapError(err, "ObjectsTotalAtRestPlaintextSize")
+				return
+			}
+			zb0001Mask |= 0x10
 		case "objectsPendingReplicationTotalSize":
 			z.ReplicationPendingSize, bts, err = msgp.ReadUint64Bytes(bts)
 			if err != nil {
@@ -5193,7 +5367,7 @@ func (z *DataUsageInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		}
 	}
 	// Clear omitted fields.
-	if zb0001Mask != 0x7 {
+	if zb0001Mask != 0x1f {
 		if (zb0001Mask & 0x1) == 0 {
 			z.ObjectsTotalCompressedSize = 0
 		}
@@ -5203,6 +5377,12 @@ func (z *DataUsageInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 		if (zb0001Mask & 0x4) == 0 {
 			z.ObjectsTotalCompressedVersions = 0
 		}
+		if (zb0001Mask & 0x8) == 0 {
+			z.ObjectsTotalAtRestPlaintext = 0
+		}
+		if (zb0001Mask & 0x10) == 0 {
+			z.ObjectsTotalAtRestPlaintextSize = 0
+		}
 	}
 	o = bts
 	return
@@ -5210,7 +5390,7 @@ func (z *DataUsageInfo) UnmarshalMsg(bts []byte) (o []byte, err error) {
 
 // Msgsize returns an upper bound estimate of the number of bytes occupied by the serialized message
 func (z *DataUsageInfo) Msgsize() (s int) {
-	s = 3 + 11 + msgp.TimeSize + 13 + msgp.Uint64Size + 17 + msgp.Uint64Size + 27 + msgp.Uint64Size + 34 + msgp.Uint64Size + 31 + msgp.Uint64Size + 36 + msgp.Uint64Size + 35 + msgp.Uint64Size + 27 + msgp.Uint64Size + 24 + msgp.Uint64Size + 31 + msgp.Uint64Size + 30 + msgp.Uint64Size + 13 + msgp.Uint64Size + 17 + msgp.MapHeaderSize
+	s = 3 + 11 + msgp.TimeSize + 13 + msgp.Uint64Size + 17 + msgp.Uint64Size + 27 + msgp.Uint64Size + 34 + msgp.Uint64Size + 31 + msgp.Uint64Size + 28 + msgp.Uint64Size + 32 + msgp.Uint64Size + 36 + msgp.Uint64Size + 35 + msgp.Uint64Size + 27 + msgp.Uint64Size + 24 + msgp.Uint64Size + 31 + msgp.Uint64Size + 30 + msgp.Uint64Size + 13 + msgp.Uint64Size + 17 + msgp.MapHeaderSize
 	if z.BucketsUsage != nil {
 		for za0001, za0002 := range z.BucketsUsage {
 			_ = za0002

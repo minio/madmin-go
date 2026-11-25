@@ -42,6 +42,9 @@ const (
 	DistJobTypeDecommission
 	DistJobTypeCompress
 	DistJobTypeRebalance
+	// DistJobTypeClusterEncryption encrypts the data stored before cluster
+	// encryption was enabled. An AIStor extension.
+	DistJobTypeClusterEncryption
 )
 
 // String returns the wire/query-param representation of the job type, e.g.
@@ -54,6 +57,9 @@ func (t DistJobType) String() string {
 		return "compress"
 	case DistJobTypeRebalance:
 		return "rebalance"
+	case DistJobTypeClusterEncryption:
+		// The value names the job's checkpoints on the drives, so it stays.
+		return "encrypt-at-rest"
 	default:
 		return "unknown"
 	}
@@ -87,6 +93,8 @@ func ParseDistJobType(s string) DistJobType {
 		return DistJobTypeCompress
 	case DistJobTypeRebalance.String():
 		return DistJobTypeRebalance
+	case DistJobTypeClusterEncryption.String():
+		return DistJobTypeClusterEncryption
 	default:
 		return DistJobTypeUnknown
 	}

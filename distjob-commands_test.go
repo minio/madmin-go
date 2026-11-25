@@ -93,3 +93,45 @@ func TestListDistJobStatusesError(t *testing.T) {
 		t.Fatal("expected an error for non-200 response, got nil")
 	}
 }
+
+// TestDistJobTypeWire pins each job type's wire value and name, which a
+// rolling upgrade relies on, and checks that names round-trip through
+// ParseDistJobType and JSON.
+func TestDistJobTypeWire(t *testing.T) {
+	tests := []struct {
+		typ   DistJobType
+		value uint8
+		name  string
+	}{
+		{DistJobTypeUnknown, 0, "unknown"},
+		{DistJobTypeDecommission, 1, "decommission"},
+		{DistJobTypeCompress, 2, "compress"},
+		{DistJobTypeRebalance, 3, "rebalance"},
+		{DistJobTypeClusterEncryption, 4, "encrypt-at-rest"},
+	}
+	for _, tc := range tests {
+		if uint8(tc.typ) != tc.value {
+			t.Errorf("%s = %d, want %d", tc.name, uint8(tc.typ), tc.value)
+		}
+		if got := tc.typ.String(); got != tc.name {
+			t.Errorf("DistJobType(%d).String() = %q, want %q", tc.value, got, tc.name)
+		}
+		if got := ParseDistJobType(tc.name); got != tc.typ {
+			t.Errorf("ParseDistJobType(%q) = %d, want %d", tc.name, got, tc.typ)
+		}
+		b, err := json.Marshal(tc.typ)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got DistJobType
+		if err := json.Unmarshal(b, &got); err != nil {
+			t.Fatal(err)
+		}
+		if got != tc.typ {
+			t.Errorf("JSON round trip of %s = %d, want %d", b, got, tc.typ)
+		}
+	}
+	if got := DistJobType(0xff).String(); got != "unknown" {
+		t.Errorf("DistJobType(0xff).String() = %q, want unknown", got)
+	}
+}

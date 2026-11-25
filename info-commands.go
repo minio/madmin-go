@@ -162,6 +162,10 @@ type BucketUsageInfo struct {
 	CompressedActualSize uint64 `json:"compressedActualSize,omitempty"`
 	// Number of object versions stored compressed; omitted when zero
 	CompressedVersionsCount uint64 `json:"compressedVersionsCount,omitempty"`
+	// Versions not encrypted at rest and their on-disk size, omitted when zero.
+	// The scanner counts them whether or not cluster encryption is enabled.
+	AtRestPlaintextCount    uint64 `json:"atRestPlaintextCount,omitempty"`
+	AtRestPlaintextSize     uint64 `json:"atRestPlaintextSize,omitempty"`
 	ReplicationPendingSize  uint64 `json:"objectsPendingReplicationTotalSize"`
 	ReplicationFailedSize   uint64 `json:"objectsFailedReplicationTotalSize"`
 	ReplicatedSize          uint64 `json:"objectsReplicatedTotalSize"`
@@ -203,6 +207,11 @@ type DataUsageInfo struct {
 
 	// Object versions stored compressed across all buckets; omitted when zero
 	ObjectsTotalCompressedVersions uint64 `json:"objectsTotalCompressedVersions,omitempty"`
+
+	// Versions not encrypted at rest and their on-disk size across all buckets;
+	// omitted when zero
+	ObjectsTotalAtRestPlaintext     uint64 `json:"objectsTotalAtRestPlaintext,omitempty"`
+	ObjectsTotalAtRestPlaintextSize uint64 `json:"objectsTotalAtRestPlaintextSize,omitempty"`
 
 	// Total Size for objects that have not yet been replicated
 	ReplicationPendingSize uint64 `json:"objectsPendingReplicationTotalSize"`
