@@ -232,10 +232,26 @@ func (adm *AdminClient) ListCannedPolicyInfo(ctx context.Context) ([]PolicyListE
 	return entries, nil
 }
 
+// RemoveCannedPolicyOpts configures RemoveCannedPolicyWithOpts.
+type RemoveCannedPolicyOpts struct {
+	// LoadSystemPolicy confirms deleting a stored policy that holds the name
+	// of a MinIO AIStor System policy, which loads that System policy for
+	// everyone who names it. The server refuses such a delete without it.
+	LoadSystemPolicy bool
+}
+
 // RemoveCannedPolicy - remove a policy for a canned.
 func (adm *AdminClient) RemoveCannedPolicy(ctx context.Context, policyName string) error {
+	return adm.RemoveCannedPolicyWithOpts(ctx, policyName, RemoveCannedPolicyOpts{})
+}
+
+// RemoveCannedPolicyWithOpts removes a canned policy.
+func (adm *AdminClient) RemoveCannedPolicyWithOpts(ctx context.Context, policyName string, opts RemoveCannedPolicyOpts) error {
 	queryValues := url.Values{}
 	queryValues.Set("name", policyName)
+	if opts.LoadSystemPolicy {
+		queryValues.Set("loadSystemPolicy", "true")
+	}
 
 	reqData := requestData{
 		relPath:     adminAPIPrefix + "/remove-canned-policy",
