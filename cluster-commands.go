@@ -674,6 +674,12 @@ type SRBucketInfo struct {
 
 	CorsConfig *string `json:"corsConfig,omitempty"`
 
+	// IsWarehouse and IsCortex report the bucket type on the reporting site.
+	// BucketTypeUpdatedAt is zero when the site does not report a type.
+	IsWarehouse         bool      `json:"isWarehouse,omitempty"`
+	IsCortex            bool      `json:"isCortex,omitempty"`
+	BucketTypeUpdatedAt time.Time `json:"bucketTypeTimestamp,omitempty"`
+
 	// time stamps of bucket metadata updates
 	PolicyUpdatedAt            time.Time `json:"policyTimestamp,omitempty"`
 	TagConfigUpdatedAt         time.Time `json:"tagTimestamp,omitempty"`
@@ -927,6 +933,7 @@ type SRBucketStatsSummary struct {
 	ReplicationCfgMismatch   bool
 	QuotaCfgMismatch         bool
 	CorsCfgMismatch          bool
+	BucketTypeMismatch       bool
 	HasTagsSet               bool
 	HasOLockConfigSet        bool
 	HasPolicySet             bool
