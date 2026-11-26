@@ -2684,10 +2684,10 @@ func (a *ReplicationStats) Add(other *ReplicationStats) {
 		return
 	}
 	// Handle start/end times
-	if a.StartTime == nil && a.Events == 0 {
+	if a.StartTime == nil && a.Nodes == 0 {
 		a.StartTime = other.StartTime
 	}
-	if a.EndTime == nil && a.Events == 0 {
+	if a.EndTime == nil && a.Nodes == 0 {
 		a.EndTime = other.EndTime
 	}
 	if a.StartTime != nil && other.StartTime != nil && !a.StartTime.Equal(*other.StartTime) {

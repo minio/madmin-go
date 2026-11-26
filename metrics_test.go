@@ -1930,6 +1930,39 @@ func TestReplicationStatsAdd(t *testing.T) {
 			},
 		},
 		{
+			name: "timestamps cleared by a merge stay cleared without object events",
+			base: &ReplicationStats{
+				Nodes:       2,
+				Annotations: 5,
+			},
+			other: &ReplicationStats{
+				Nodes:       1,
+				StartTime:   &later,
+				EndTime:     &later,
+				Annotations: 3,
+			},
+			verify: func(t *testing.T, result *ReplicationStats) {
+				if result.StartTime != nil || result.EndTime != nil {
+					t.Errorf("times %v-%v, want both nil after an earlier mismatch", result.StartTime, result.EndTime)
+				}
+			},
+		},
+		{
+			name: "empty receiver takes the first source's timestamps",
+			base: &ReplicationStats{},
+			other: &ReplicationStats{
+				Nodes:       1,
+				StartTime:   &now,
+				EndTime:     &later,
+				Annotations: 3,
+			},
+			verify: func(t *testing.T, result *ReplicationStats) {
+				if result.StartTime == nil || !result.StartTime.Equal(now) || result.EndTime == nil || !result.EndTime.Equal(later) {
+					t.Errorf("times %v-%v, want the source's", result.StartTime, result.EndTime)
+				}
+			},
+		},
+		{
 			name: "skip when other has zero nodes",
 			base: &ReplicationStats{
 				Nodes:  1,
