@@ -20,9 +20,11 @@
 package madmin
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -4749,7 +4751,7 @@ func TestReplicationMetricsMergeAnnotations(t *testing.T) {
 		Nodes:            1,
 		AnnotationActive: 1,
 		AnnotationQueued: 4,
-		ReceivedAnnotations: ReplicationReceivedStats{
+		ReceivedAnnotations: &ReplicationReceivedStats{
 			LastHour:   ReceivedStat{Count: 2, Bytes: 20},
 			SinceStart: ReceivedStat{Count: 3, Bytes: 30},
 		},
@@ -4762,7 +4764,7 @@ func TestReplicationMetricsMergeAnnotations(t *testing.T) {
 		Nodes:            1,
 		AnnotationActive: 2,
 		AnnotationQueued: 5,
-		ReceivedAnnotations: ReplicationReceivedStats{
+		ReceivedAnnotations: &ReplicationReceivedStats{
 			LastHour:   ReceivedStat{Count: 5, Bytes: 50},
 			SinceStart: ReceivedStat{Count: 7, Bytes: 70},
 		},
@@ -4795,6 +4797,34 @@ func TestReplicationMetricsMergeAnnotations(t *testing.T) {
 	}
 	if got := a.Targets["arn2"].AnnotationState["unknown"]; got != 2 {
 		t.Errorf("arn2 unknown = %d, want 2", got)
+	}
+
+	// The same nodes report each target, so the states do not add up across
+	// targets.
+	if got := a.AllTargets().AnnotationState; got != nil {
+		t.Errorf("all targets state = %v, want none", got)
+	}
+
+	// A merge of nodes that received no annotations has none to report.
+	empty := &ReplicationMetrics{Nodes: 1}
+	empty.Merge(&ReplicationMetrics{Nodes: 1})
+	if empty.ReceivedAnnotations != nil {
+		t.Errorf("received annotations %+v from nodes that received none", empty.ReceivedAnnotations)
+	}
+	js, err := json.Marshal(empty)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(js), "receivedAnn") {
+		t.Errorf("JSON without received annotations names them: %s", js)
+	}
+	bin, err := empty.MarshalMsg(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var back ReplicationMetrics
+	if _, err := back.UnmarshalMsg(bin); err != nil || back.ReceivedAnnotations != nil {
+		t.Errorf("msgp round trip gave %+v, %v", back.ReceivedAnnotations, err)
 	}
 }
 

@@ -2471,8 +2471,8 @@ type ReplicationMetrics struct {
 	AnnotationQueued int64 `json:"annQueued,omitempty"`
 
 	// ReceivedAnnotations tracks inbound annotation changes and their payload
-	// bytes across all sources.
-	ReceivedAnnotations ReplicationReceivedStats `json:"receivedAnn,omitempty"`
+	// bytes across all sources, nil when there were none.
+	ReceivedAnnotations *ReplicationReceivedStats `json:"receivedAnn,omitempty"`
 }
 
 func (m *ReplicationMetrics) Merge(other *ReplicationMetrics) {
@@ -2488,7 +2488,12 @@ func (m *ReplicationMetrics) Merge(other *ReplicationMetrics) {
 	m.Received.Add(&other.Received)
 	m.AnnotationActive += other.AnnotationActive
 	m.AnnotationQueued += other.AnnotationQueued
-	m.ReceivedAnnotations.Add(&other.ReceivedAnnotations)
+	if other.ReceivedAnnotations != nil {
+		if m.ReceivedAnnotations == nil {
+			m.ReceivedAnnotations = &ReplicationReceivedStats{}
+		}
+		m.ReceivedAnnotations.Add(other.ReceivedAnnotations)
+	}
 
 	if len(other.Targets) == 0 {
 		return
@@ -2534,6 +2539,9 @@ func (m *ReplicationMetrics) AllTargets() ReplicationTargetStats {
 	// The day window is clamped per segment: a quarter hour that only some nodes
 	// reported must not be rounded up to the whole-window figure.
 	ReplicationDayNodes(dst.LastDay, nodes)
+	// Each target counts the nodes in each state; across targets the same
+	// node is counted once per target, so the sum describes no node.
+	dst.AnnotationState = nil
 	return dst
 }
 

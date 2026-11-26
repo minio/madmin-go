@@ -31048,10 +31048,22 @@ func (z *ReplicationMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 			}
 			zb0001Mask |= 0x10
 		case "receivedAnn":
-			err = z.ReceivedAnnotations.DecodeMsg(dc)
-			if err != nil {
-				err = msgp.WrapError(err, "ReceivedAnnotations")
-				return
+			if dc.IsNil() {
+				err = dc.ReadNil()
+				if err != nil {
+					err = msgp.WrapError(err, "ReceivedAnnotations")
+					return
+				}
+				z.ReceivedAnnotations = nil
+			} else {
+				if z.ReceivedAnnotations == nil {
+					z.ReceivedAnnotations = new(ReplicationReceivedStats)
+				}
+				err = z.ReceivedAnnotations.DecodeMsg(dc)
+				if err != nil {
+					err = msgp.WrapError(err, "ReceivedAnnotations")
+					return
+				}
 			}
 			zb0001Mask |= 0x20
 		default:
@@ -31080,7 +31092,7 @@ func (z *ReplicationMetrics) DecodeMsg(dc *msgp.Reader) (err error) {
 			z.AnnotationQueued = 0
 		}
 		if (zb0001Mask & 0x20) == 0 {
-			z.ReceivedAnnotations = ReplicationReceivedStats{}
+			z.ReceivedAnnotations = nil
 		}
 	}
 	return
@@ -31107,6 +31119,10 @@ func (z *ReplicationMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 	if z.AnnotationQueued == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x80
+	}
+	if z.ReceivedAnnotations == nil {
+		zb0001Len--
+		zb0001Mask |= 0x100
 	}
 	// variable map header, size zb0001Len
 	err = en.Append(0x80 | uint8(zb0001Len))
@@ -31216,15 +31232,24 @@ func (z *ReplicationMetrics) EncodeMsg(en *msgp.Writer) (err error) {
 				return
 			}
 		}
-		// write "receivedAnn"
-		err = en.Append(0xab, 0x72, 0x65, 0x63, 0x65, 0x69, 0x76, 0x65, 0x64, 0x41, 0x6e, 0x6e)
-		if err != nil {
-			return
-		}
-		err = z.ReceivedAnnotations.EncodeMsg(en)
-		if err != nil {
-			err = msgp.WrapError(err, "ReceivedAnnotations")
-			return
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
+			// write "receivedAnn"
+			err = en.Append(0xab, 0x72, 0x65, 0x63, 0x65, 0x69, 0x76, 0x65, 0x64, 0x41, 0x6e, 0x6e)
+			if err != nil {
+				return
+			}
+			if z.ReceivedAnnotations == nil {
+				err = en.WriteNil()
+				if err != nil {
+					return
+				}
+			} else {
+				err = z.ReceivedAnnotations.EncodeMsg(en)
+				if err != nil {
+					err = msgp.WrapError(err, "ReceivedAnnotations")
+					return
+				}
+			}
 		}
 	}
 	return
@@ -31252,6 +31277,10 @@ func (z *ReplicationMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 	if z.AnnotationQueued == 0 {
 		zb0001Len--
 		zb0001Mask |= 0x80
+	}
+	if z.ReceivedAnnotations == nil {
+		zb0001Len--
+		zb0001Mask |= 0x100
 	}
 	// variable map header, size zb0001Len
 	o = append(o, 0x80|uint8(zb0001Len))
@@ -31302,12 +31331,18 @@ func (z *ReplicationMetrics) MarshalMsg(b []byte) (o []byte, err error) {
 			o = append(o, 0xa9, 0x61, 0x6e, 0x6e, 0x51, 0x75, 0x65, 0x75, 0x65, 0x64)
 			o = msgp.AppendInt64(o, z.AnnotationQueued)
 		}
-		// string "receivedAnn"
-		o = append(o, 0xab, 0x72, 0x65, 0x63, 0x65, 0x69, 0x76, 0x65, 0x64, 0x41, 0x6e, 0x6e)
-		o, err = z.ReceivedAnnotations.MarshalMsg(o)
-		if err != nil {
-			err = msgp.WrapError(err, "ReceivedAnnotations")
-			return
+		if (zb0001Mask & 0x100) == 0 { // if not omitted
+			// string "receivedAnn"
+			o = append(o, 0xab, 0x72, 0x65, 0x63, 0x65, 0x69, 0x76, 0x65, 0x64, 0x41, 0x6e, 0x6e)
+			if z.ReceivedAnnotations == nil {
+				o = msgp.AppendNil(o)
+			} else {
+				o, err = z.ReceivedAnnotations.MarshalMsg(o)
+				if err != nil {
+					err = msgp.WrapError(err, "ReceivedAnnotations")
+					return
+				}
+			}
 		}
 	}
 	return
@@ -31409,10 +31444,21 @@ func (z *ReplicationMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			}
 			zb0001Mask |= 0x10
 		case "receivedAnn":
-			bts, err = z.ReceivedAnnotations.UnmarshalMsg(bts)
-			if err != nil {
-				err = msgp.WrapError(err, "ReceivedAnnotations")
-				return
+			if msgp.IsNil(bts) {
+				bts, err = msgp.ReadNilBytes(bts)
+				if err != nil {
+					return
+				}
+				z.ReceivedAnnotations = nil
+			} else {
+				if z.ReceivedAnnotations == nil {
+					z.ReceivedAnnotations = new(ReplicationReceivedStats)
+				}
+				bts, err = z.ReceivedAnnotations.UnmarshalMsg(bts)
+				if err != nil {
+					err = msgp.WrapError(err, "ReceivedAnnotations")
+					return
+				}
 			}
 			zb0001Mask |= 0x20
 		default:
@@ -31441,7 +31487,7 @@ func (z *ReplicationMetrics) UnmarshalMsg(bts []byte) (o []byte, err error) {
 			z.AnnotationQueued = 0
 		}
 		if (zb0001Mask & 0x20) == 0 {
-			z.ReceivedAnnotations = ReplicationReceivedStats{}
+			z.ReceivedAnnotations = nil
 		}
 	}
 	o = bts
@@ -31457,7 +31503,12 @@ func (z *ReplicationMetrics) Msgsize() (s int) {
 			s += msgp.StringPrefixSize + len(za0001) + za0002.Msgsize()
 		}
 	}
-	s += 9 + z.Received.Msgsize() + 10 + msgp.Int64Size + 10 + msgp.Int64Size + 12 + z.ReceivedAnnotations.Msgsize()
+	s += 9 + z.Received.Msgsize() + 10 + msgp.Int64Size + 10 + msgp.Int64Size + 12
+	if z.ReceivedAnnotations == nil {
+		s += msgp.NilSize
+	} else {
+		s += z.ReceivedAnnotations.Msgsize()
+	}
 	return
 }
 

@@ -20,6 +20,7 @@ package mnav
 import (
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/minio/madmin-go/v4"
 )
@@ -77,4 +78,34 @@ func TestReplicationAnnotationState(t *testing.T) {
 	if _, ok := node.GetLeafData()["Annotation Replication"]; ok {
 		t.Error("target leaf shows annotation replication without any state")
 	}
+}
+
+func TestReplicationLastDayShowsAnnotationOnlySegments(t *testing.T) {
+	seg := &madmin.SegmentedReplicationStats{
+		Interval:  900,
+		FirstTime: time.Now().Truncate(15 * time.Minute).Add(-30 * time.Minute),
+		Segments: []madmin.ReplicationStats{
+			{Nodes: 1, AnnotationErrors: 3},
+			{Nodes: 1, Events: 2, Bytes: 20},
+			{Nodes: 1},
+		},
+	}
+	check := func(name string, children []MetricChild) {
+		t.Helper()
+		descs := make([]string, 0, len(children)-1)
+		for _, c := range children[1:] {
+			descs = append(descs, c.Description)
+		}
+		if len(descs) != 2 {
+			t.Fatalf("%s: segments %q, want the annotation-only and the object one", name, descs)
+		}
+		if !strings.Contains(descs[1], "0 events") || !strings.Contains(descs[1], "3 annotation errors") {
+			t.Errorf("%s: annotation-only segment reads %q", name, descs[1])
+		}
+	}
+	check("target", (&ReplicationLastDayNode{targetName: "arn", segmented: seg}).GetChildren())
+	check("all targets", (&ReplicationLastDayAggregatedNode{replication: &madmin.ReplicationMetrics{
+		Nodes:   1,
+		Targets: map[string]madmin.ReplicationTargetStats{"arn": {Nodes: 1, LastDay: seg}},
+	}}).GetChildren())
 }
