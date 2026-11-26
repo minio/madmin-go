@@ -201,7 +201,38 @@ func generateReplicationStatsDisplay(stats madmin.ReplicationStats, window float
 		}
 	}
 
+	if stats.Annotations+stats.AnnotationsSkipped+stats.AnnotationErrors > 0 {
+		add("Annotations Replicated", humanize.Comma(stats.Annotations))
+		add("Annotations Skipped", humanize.Comma(stats.AnnotationsSkipped))
+		add("Annotation Data", humanize.Bytes(uint64(stats.AnnotationBytes)))
+		add("Annotation Errors", humanize.Comma(stats.AnnotationErrors))
+	}
+
 	return data
+}
+
+// annotationStateDesc renders a target's annotation replication states, most
+// reported first, e.g. "supported (3 nodes), unknown (1 node)".
+func annotationStateDesc(states map[string]int) string {
+	keys := make([]string, 0, len(states))
+	for k := range states {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		if states[keys[i]] != states[keys[j]] {
+			return states[keys[i]] > states[keys[j]]
+		}
+		return keys[i] < keys[j]
+	})
+	parts := make([]string, 0, len(keys))
+	for _, k := range keys {
+		unit := "nodes"
+		if states[k] == 1 {
+			unit = "node"
+		}
+		parts = append(parts, fmt.Sprintf("%s (%d %s)", k, states[k], unit))
+	}
+	return strings.Join(parts, ", ")
 }
 
 // ReplicationMetricsNode is the root node for replication metrics
@@ -287,6 +318,15 @@ func (node *ReplicationMetricsNode) GetLeafData() map[string]string {
 	}
 	if node.replication.Queued > 0 {
 		data["Queued Replications"] = humanize.Comma(node.replication.Queued)
+	}
+	if node.replication.AnnotationActive > 0 {
+		data["Active Annotation Replications"] = humanize.Comma(node.replication.AnnotationActive)
+	}
+	if node.replication.AnnotationQueued > 0 {
+		data["Queued Annotation Replications"] = humanize.Comma(node.replication.AnnotationQueued)
+	}
+	if recv := node.replication.ReceivedAnnotations.LastHour; recv.Count > 0 {
+		data["Last Hour Annotations Received"] = fmt.Sprintf("%s (%s)", humanize.Comma(recv.Count), humanize.Bytes(uint64(recv.Bytes)))
 	}
 
 	// Target summary
@@ -454,6 +494,9 @@ func (node *ReplicationTargetNode) GetLeafData() map[string]string {
 
 	data["Target Name"] = shortARN(node.targetName)
 	data["Nodes Reporting"] = humanize.Comma(int64(node.target.Nodes))
+	if len(node.target.AnnotationState) > 0 {
+		data["Annotation Replication"] = annotationStateDesc(node.target.AnnotationState)
+	}
 
 	addStatsSummary(data, "Last Hour", node.target.LastHour)
 	if node.target.LastDay != nil && len(node.target.LastDay.Segments) > 0 {
