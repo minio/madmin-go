@@ -21,7 +21,6 @@ package madmin
 
 import (
 	"context"
-	"errors"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -418,21 +417,19 @@ func TestClusterReadCheck(t *testing.T) {
 	}
 }
 
-// TestAliveTraceAfterDeadline checks that Alive does not race with the trace
-// hooks of a dial that outlives the request: the DNS lookup here ends only
-// after the deadline has ended the check.
-func TestAliveTraceAfterDeadline(t *testing.T) {
-	release := make(chan struct{})
+// TestAliveTraceAfterCancel checks that Alive does not race with the trace
+// hooks of a dial that outlives the request: the request is canceled while
+// the DNS lookup runs, and the lookup ends on the dial's goroutine.
+func TestAliveTraceAfterCancel(t *testing.T) {
+	resolving := make(chan struct{})
 	dialed := make(chan struct{})
-	var dialOnce sync.Once
+	var resolvingOnce, dialOnce sync.Once
 	dialer := &net.Dialer{Resolver: &net.Resolver{
 		PreferGo: true,
 		Dial: func(ctx context.Context, _, _ string) (net.Conn, error) {
-			select {
-			case <-release:
-			case <-ctx.Done():
-			}
-			return nil, errors.New("no DNS server")
+			resolvingOnce.Do(func() { close(resolving) })
+			<-ctx.Done()
+			return nil, ctx.Err()
 		},
 	}}
 	clnt, err := NewAnonymousClientNoEndpoint()
@@ -446,14 +443,20 @@ func TestAliveTraceAfterDeadline(t *testing.T) {
 		},
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	for r := range clnt.Alive(ctx, AliveOpts{}, ServerProperties{Endpoint: "alive.test:9000"}) {
+	results := clnt.Alive(ctx, AliveOpts{}, ServerProperties{Endpoint: "alive.test:9000"})
+	select {
+	case <-resolving:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the check never looked up the server's name")
+	}
+	cancel()
+	for r := range results {
 		if r.Online {
 			t.Error("a server whose name never resolved is online")
 		}
 	}
-	close(release)
 	select {
 	case <-dialed:
 	case <-time.After(10 * time.Second):
