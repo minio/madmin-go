@@ -21,10 +21,14 @@ package madmin
 
 import (
 	"context"
+	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"sync"
 	"testing"
+	"time"
 )
 
 // mustParseHost extracts the host from a URL string for use with NewAnonymousClient
@@ -411,5 +415,48 @@ func TestClusterReadCheck(t *testing.T) {
 				t.Errorf("Expected Healthy=%v, got %v", tc.expectedHealthy, result.Healthy)
 			}
 		})
+	}
+}
+
+// TestAliveTraceAfterDeadline checks that Alive does not race with the trace
+// hooks of a dial that outlives the request: the DNS lookup here ends only
+// after the deadline has ended the check.
+func TestAliveTraceAfterDeadline(t *testing.T) {
+	release := make(chan struct{})
+	dialed := make(chan struct{})
+	var dialOnce sync.Once
+	dialer := &net.Dialer{Resolver: &net.Resolver{
+		PreferGo: true,
+		Dial: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			select {
+			case <-release:
+			case <-ctx.Done():
+			}
+			return nil, errors.New("no DNS server")
+		},
+	}}
+	clnt, err := NewAnonymousClientNoEndpoint()
+	if err != nil {
+		t.Fatal(err)
+	}
+	clnt.SetCustomTransport(&http.Transport{
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			defer dialOnce.Do(func() { close(dialed) })
+			return dialer.DialContext(ctx, network, addr)
+		},
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	for r := range clnt.Alive(ctx, AliveOpts{}, ServerProperties{Endpoint: "alive.test:9000"}) {
+		if r.Online {
+			t.Error("a server whose name never resolved is online")
+		}
+	}
+	close(release)
+	select {
+	case <-dialed:
+	case <-time.After(10 * time.Second):
+		t.Fatal("the dial did not end")
 	}
 }
