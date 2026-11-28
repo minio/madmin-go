@@ -2465,6 +2465,14 @@ type ReplicationMetrics struct {
 
 	// Received tracks aggregate inbound replication stats across all sources.
 	Received ReplicationReceivedStats `json:"received,omitempty"`
+
+	// Number of active and queued annotation replication tasks.
+	AnnotationActive int64 `json:"annActive,omitempty"`
+	AnnotationQueued int64 `json:"annQueued,omitempty"`
+
+	// ReceivedAnnotations tracks inbound annotation changes and their payload
+	// bytes across all sources, nil when there were none.
+	ReceivedAnnotations *ReplicationReceivedStats `json:"receivedAnn,omitempty"`
 }
 
 func (m *ReplicationMetrics) Merge(other *ReplicationMetrics) {
@@ -2478,6 +2486,14 @@ func (m *ReplicationMetrics) Merge(other *ReplicationMetrics) {
 	m.Active += other.Active
 	m.Queued += other.Queued
 	m.Received.Add(&other.Received)
+	m.AnnotationActive += other.AnnotationActive
+	m.AnnotationQueued += other.AnnotationQueued
+	if other.ReceivedAnnotations != nil {
+		if m.ReceivedAnnotations == nil {
+			m.ReceivedAnnotations = &ReplicationReceivedStats{}
+		}
+		m.ReceivedAnnotations.Add(other.ReceivedAnnotations)
+	}
 
 	if len(other.Targets) == 0 {
 		return
@@ -2523,6 +2539,9 @@ func (m *ReplicationMetrics) AllTargets() ReplicationTargetStats {
 	// The day window is clamped per segment: a quarter hour that only some nodes
 	// reported must not be rounded up to the whole-window figure.
 	ReplicationDayNodes(dst.LastDay, nodes)
+	// Each target counts the nodes in each state; across targets the same
+	// node is counted once per target, so the sum describes no node.
+	dst.AnnotationState = nil
 	return dst
 }
 
@@ -2542,12 +2561,24 @@ type ReplicationTargetStats struct {
 
 	// SinceStart contains operations by target.
 	SinceStart ReplicationStats `json:"since_start"`
+
+	// AnnotationState maps each annotation replication state of the target, as
+	// a node last determined it, to the number of nodes in it. States are
+	// "supported", "unsupported", "denied", "disabled", "not-ready" and
+	// "unknown".
+	AnnotationState map[string]int `json:"annState,omitempty"`
 }
 
 // Merge 'other' into 'r'
 func (r *ReplicationTargetStats) Merge(other *ReplicationTargetStats) {
 	if r == nil || other == nil || other.Nodes == 0 {
 		return
+	}
+	if len(other.AnnotationState) > 0 && r.AnnotationState == nil {
+		r.AnnotationState = make(map[string]int, len(other.AnnotationState))
+	}
+	for state, n := range other.AnnotationState {
+		r.AnnotationState[state] += n
 	}
 	r.Nodes += other.Nodes
 	r.LastMinute.Add(&other.LastMinute)
@@ -2604,6 +2635,12 @@ type ReplicationStats struct {
 	ProxyHeadOK   int64 `json:"proxyHeadOK,omitempty"`   // Proxy HEAD requests that were successful.
 	ProxyGetOK    int64 `json:"proxyGetOK,omitempty"`    // Proxy GET requests that were successful.
 	ProxyGetTagOK int64 `json:"proxyGetTagOK,omitempty"` // Proxy GET TAG requests that were successful.
+
+	// Annotation replication is counted apart from the object events above.
+	Annotations        int64 `json:"ann,omitempty"`        // Annotation changes applied on the target.
+	AnnotationsSkipped int64 `json:"annSkipped,omitempty"` // Annotation changes the target already held, or held a newer one of.
+	AnnotationBytes    int64 `json:"annBytes,omitempty"`   // Annotation payload bytes sent.
+	AnnotationErrors   int64 `json:"annErrs,omitempty"`    // Annotation changes that failed to replicate.
 }
 
 type SegmentedReplicationStats = Segmented[ReplicationStats, *ReplicationStats]
@@ -2655,10 +2692,10 @@ func (a *ReplicationStats) Add(other *ReplicationStats) {
 		return
 	}
 	// Handle start/end times
-	if a.StartTime == nil && a.Events == 0 {
+	if a.StartTime == nil && a.Nodes == 0 {
 		a.StartTime = other.StartTime
 	}
-	if a.EndTime == nil && a.Events == 0 {
+	if a.EndTime == nil && a.Nodes == 0 {
 		a.EndTime = other.EndTime
 	}
 	if a.StartTime != nil && other.StartTime != nil && !a.StartTime.Equal(*other.StartTime) {
@@ -2704,6 +2741,11 @@ func (a *ReplicationStats) Add(other *ReplicationStats) {
 	a.ProxyGetOK += other.ProxyGetOK
 	a.ProxyGetTagOK += other.ProxyGetTagOK
 	a.ProxyHeadOK += other.ProxyHeadOK
+
+	a.Annotations += other.Annotations
+	a.AnnotationsSkipped += other.AnnotationsSkipped
+	a.AnnotationBytes += other.AnnotationBytes
+	a.AnnotationErrors += other.AnnotationErrors
 }
 
 // ReceivedStat tracks inbound replication counts and bytes.

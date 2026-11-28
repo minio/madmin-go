@@ -1389,6 +1389,12 @@ type SRMetric struct {
 	ReplicatedSize int64 `json:"replicatedSize"`
 	// Total number of completed operations
 	ReplicatedCount int64 `json:"replicatedCount"`
+	// Object annotation changes the peer applied, held already or held a
+	// newer one of, and failed to replicate, and the payload bytes sent.
+	AnnotationsSent      int64 `json:"annotationsSent,omitempty"`
+	AnnotationsSkipped   int64 `json:"annotationsSkipped,omitempty"`
+	AnnotationsFailed    int64 `json:"annotationsFailed,omitempty"`
+	AnnotationsSentBytes int64 `json:"annotationsSentBytes,omitempty"`
 	// ReplicationErrorStats captures replication errors
 	Failed TimedErrStats `json:"failed,omitempty"`
 	// XferStats captures transfer stats

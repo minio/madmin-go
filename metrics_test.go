@@ -20,9 +20,11 @@
 package madmin
 
 import (
+	"encoding/json"
 	"fmt"
 	"math"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 
@@ -1743,64 +1745,72 @@ func TestReplicationStatsAdd(t *testing.T) {
 		{
 			name: "add all fields",
 			base: &ReplicationStats{
-				Nodes:            2,
-				StartTime:        &now,
-				EndTime:          &later,
-				WallTimeSecs:     100,
-				Events:           1000,
-				Bytes:            10000,
-				EventTimeSecs:    50,
-				PutObject:        500,
-				UpdateMeta:       50,
-				DelObject:        300,
-				DelTag:           30,
-				LatencySecs:      10.0,
-				MaxLatencySecs:   5.0,
-				PutErrors:        10,
-				UpdateMetaErrors: 5,
-				DelErrors:        8,
-				DelTagErrors:     2,
-				Synced:           800,
-				AlreadyOK:        100,
-				Rejected:         50,
-				ProxyEvents:      20,
-				ProxyBytes:       2000,
-				ProxyHead:        5,
-				ProxyGet:         10,
-				ProxyGetTag:      5,
-				ProxyGetOK:       8,
-				ProxyGetTagOK:    4,
-				ProxyHeadOK:      3,
+				Nodes:              2,
+				StartTime:          &now,
+				EndTime:            &later,
+				WallTimeSecs:       100,
+				Events:             1000,
+				Bytes:              10000,
+				EventTimeSecs:      50,
+				PutObject:          500,
+				UpdateMeta:         50,
+				DelObject:          300,
+				DelTag:             30,
+				LatencySecs:        10.0,
+				MaxLatencySecs:     5.0,
+				PutErrors:          10,
+				UpdateMetaErrors:   5,
+				DelErrors:          8,
+				DelTagErrors:       2,
+				Synced:             800,
+				AlreadyOK:          100,
+				Rejected:           50,
+				ProxyEvents:        20,
+				ProxyBytes:         2000,
+				ProxyHead:          5,
+				ProxyGet:           10,
+				ProxyGetTag:        5,
+				ProxyGetOK:         8,
+				ProxyGetTagOK:      4,
+				ProxyHeadOK:        3,
+				Annotations:        40,
+				AnnotationsSkipped: 4,
+				AnnotationBytes:    4000,
+				AnnotationErrors:   2,
 			},
 			other: &ReplicationStats{
-				Nodes:            3,
-				StartTime:        &now,
-				EndTime:          &later,
-				WallTimeSecs:     150,
-				Events:           2000,
-				Bytes:            20000,
-				EventTimeSecs:    75,
-				PutObject:        1000,
-				UpdateMeta:       100,
-				DelObject:        600,
-				DelTag:           60,
-				LatencySecs:      15.0,
-				MaxLatencySecs:   7.0,
-				PutErrors:        20,
-				UpdateMetaErrors: 10,
-				DelErrors:        15,
-				DelTagErrors:     5,
-				Synced:           1600,
-				AlreadyOK:        200,
-				Rejected:         100,
-				ProxyEvents:      40,
-				ProxyBytes:       4000,
-				ProxyHead:        10,
-				ProxyGet:         20,
-				ProxyGetTag:      10,
-				ProxyGetOK:       16,
-				ProxyGetTagOK:    8,
-				ProxyHeadOK:      7,
+				Nodes:              3,
+				StartTime:          &now,
+				EndTime:            &later,
+				WallTimeSecs:       150,
+				Events:             2000,
+				Bytes:              20000,
+				EventTimeSecs:      75,
+				PutObject:          1000,
+				UpdateMeta:         100,
+				DelObject:          600,
+				DelTag:             60,
+				LatencySecs:        15.0,
+				MaxLatencySecs:     7.0,
+				PutErrors:          20,
+				UpdateMetaErrors:   10,
+				DelErrors:          15,
+				DelTagErrors:       5,
+				Synced:             1600,
+				AlreadyOK:          200,
+				Rejected:           100,
+				ProxyEvents:        40,
+				ProxyBytes:         4000,
+				ProxyHead:          10,
+				ProxyGet:           20,
+				ProxyGetTag:        10,
+				ProxyGetOK:         16,
+				ProxyGetTagOK:      8,
+				ProxyHeadOK:        7,
+				Annotations:        60,
+				AnnotationsSkipped: 6,
+				AnnotationBytes:    6000,
+				AnnotationErrors:   3,
 			},
 			verify: func(t *testing.T, result *ReplicationStats) {
 				if result.Nodes != 5 {
@@ -1881,6 +1891,18 @@ func TestReplicationStatsAdd(t *testing.T) {
 				if result.ProxyHeadOK != 10 {
 					t.Errorf("ProxyHeadOK = %d, want 10", result.ProxyHeadOK)
 				}
+				if result.Annotations != 100 {
+					t.Errorf("Annotations = %d, want 100", result.Annotations)
+				}
+				if result.AnnotationsSkipped != 10 {
+					t.Errorf("AnnotationsSkipped = %d, want 10", result.AnnotationsSkipped)
+				}
+				if result.AnnotationBytes != 10000 {
+					t.Errorf("AnnotationBytes = %d, want 10000", result.AnnotationBytes)
+				}
+				if result.AnnotationErrors != 5 {
+					t.Errorf("AnnotationErrors = %d, want 5", result.AnnotationErrors)
+				}
 			},
 		},
 		{
@@ -1906,6 +1928,39 @@ func TestReplicationStatsAdd(t *testing.T) {
 				}
 				if result.Events != 300 {
 					t.Errorf("Events = %d, want 300", result.Events)
+				}
+			},
+		},
+		{
+			name: "timestamps cleared by a merge stay cleared without object events",
+			base: &ReplicationStats{
+				Nodes:       2,
+				Annotations: 5,
+			},
+			other: &ReplicationStats{
+				Nodes:       1,
+				StartTime:   &later,
+				EndTime:     &later,
+				Annotations: 3,
+			},
+			verify: func(t *testing.T, result *ReplicationStats) {
+				if result.StartTime != nil || result.EndTime != nil {
+					t.Errorf("times %v-%v, want both nil after an earlier mismatch", result.StartTime, result.EndTime)
+				}
+			},
+		},
+		{
+			name: "empty receiver takes the first source's timestamps",
+			base: &ReplicationStats{},
+			other: &ReplicationStats{
+				Nodes:       1,
+				StartTime:   &now,
+				EndTime:     &later,
+				Annotations: 3,
+			},
+			verify: func(t *testing.T, result *ReplicationStats) {
+				if result.StartTime == nil || !result.StartTime.Equal(now) || result.EndTime == nil || !result.EndTime.Equal(later) {
+					t.Errorf("times %v-%v, want the source's", result.StartTime, result.EndTime)
 				}
 			},
 		},
@@ -4688,5 +4743,102 @@ func TestMetricTypeBitsAreStable(t *testing.T) {
 		if got := w.got.String(); got == "" || got == "Unknown" {
 			t.Errorf("%s.String() = %q: add an addIf line in MetricType.String()", w.name, got)
 		}
+	}
+}
+
+func TestReplicationMetricsMergeAnnotations(t *testing.T) {
+	a := &ReplicationMetrics{
+		Nodes:            1,
+		AnnotationActive: 1,
+		AnnotationQueued: 4,
+		ReceivedAnnotations: &ReplicationReceivedStats{
+			LastHour:   ReceivedStat{Count: 2, Bytes: 20},
+			SinceStart: ReceivedStat{Count: 3, Bytes: 30},
+		},
+		Targets: map[string]ReplicationTargetStats{
+			"arn1": {Nodes: 1, AnnotationState: map[string]int{"supported": 1}},
+		},
+	}
+	shared := map[string]int{"unknown": 1}
+	b := &ReplicationMetrics{
+		Nodes:            1,
+		AnnotationActive: 2,
+		AnnotationQueued: 5,
+		ReceivedAnnotations: &ReplicationReceivedStats{
+			LastHour:   ReceivedStat{Count: 5, Bytes: 50},
+			SinceStart: ReceivedStat{Count: 7, Bytes: 70},
+		},
+		Targets: map[string]ReplicationTargetStats{
+			"arn1": {Nodes: 1, AnnotationState: map[string]int{"supported": 1}},
+			"arn2": {Nodes: 1, AnnotationState: shared},
+		},
+	}
+	a.Merge(b)
+	if a.AnnotationActive != 3 || a.AnnotationQueued != 9 {
+		t.Errorf("active/queued = %d/%d, want 3/9", a.AnnotationActive, a.AnnotationQueued)
+	}
+	if got := a.ReceivedAnnotations.LastHour; got != (ReceivedStat{Count: 7, Bytes: 70}) {
+		t.Errorf("received last hour = %+v, want 7/70", got)
+	}
+	if got := a.ReceivedAnnotations.SinceStart; got != (ReceivedStat{Count: 10, Bytes: 100}) {
+		t.Errorf("received since start = %+v, want 10/100", got)
+	}
+	if got := a.Targets["arn1"].AnnotationState; !reflect.DeepEqual(got, map[string]int{"supported": 2}) {
+		t.Errorf("arn1 state = %v, want supported:2", got)
+	}
+	if got := a.Targets["arn2"].AnnotationState; !reflect.DeepEqual(got, map[string]int{"unknown": 1}) {
+		t.Errorf("arn2 state = %v, want unknown:1", got)
+	}
+
+	// Merging again must not write through to the map b still holds.
+	a.Merge(b)
+	if shared["unknown"] != 1 {
+		t.Errorf("merge changed the source's state map: %v", shared)
+	}
+	if got := a.Targets["arn2"].AnnotationState["unknown"]; got != 2 {
+		t.Errorf("arn2 unknown = %d, want 2", got)
+	}
+
+	// The same nodes report each target, so the states do not add up across
+	// targets.
+	if got := a.AllTargets().AnnotationState; got != nil {
+		t.Errorf("all targets state = %v, want none", got)
+	}
+
+	// A merge of nodes that received no annotations has none to report.
+	empty := &ReplicationMetrics{Nodes: 1}
+	empty.Merge(&ReplicationMetrics{Nodes: 1})
+	if empty.ReceivedAnnotations != nil {
+		t.Errorf("received annotations %+v from nodes that received none", empty.ReceivedAnnotations)
+	}
+	js, err := json.Marshal(empty)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(js), "receivedAnn") {
+		t.Errorf("JSON without received annotations names them: %s", js)
+	}
+	bin, err := empty.MarshalMsg(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var back ReplicationMetrics
+	if _, err := back.UnmarshalMsg(bin); err != nil || back.ReceivedAnnotations != nil {
+		t.Errorf("msgp round trip gave %+v, %v", back.ReceivedAnnotations, err)
+	}
+}
+
+func TestReplicationTargetStatsMergeAnnotationState(t *testing.T) {
+	r := ReplicationTargetStats{Nodes: 2, AnnotationState: map[string]int{"supported": 1, "unknown": 1}}
+	r.Merge(&ReplicationTargetStats{Nodes: 1, AnnotationState: map[string]int{"denied": 1, "unknown": 1}})
+	want := map[string]int{"supported": 1, "unknown": 2, "denied": 1}
+	if !reflect.DeepEqual(r.AnnotationState, want) {
+		t.Errorf("state = %v, want %v", r.AnnotationState, want)
+	}
+
+	// A stat without nodes carries nothing, as for the counters.
+	r.Merge(&ReplicationTargetStats{AnnotationState: map[string]int{"denied": 5}})
+	if r.AnnotationState["denied"] != 1 {
+		t.Errorf("denied = %d after merging a stat without nodes, want 1", r.AnnotationState["denied"])
 	}
 }

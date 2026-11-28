@@ -201,7 +201,38 @@ func generateReplicationStatsDisplay(stats madmin.ReplicationStats, window float
 		}
 	}
 
+	if stats.Annotations+stats.AnnotationsSkipped+stats.AnnotationErrors > 0 {
+		add("Annotations Replicated", humanize.Comma(stats.Annotations))
+		add("Annotations Skipped", humanize.Comma(stats.AnnotationsSkipped))
+		add("Annotation Data", humanize.Bytes(uint64(stats.AnnotationBytes)))
+		add("Annotation Errors", humanize.Comma(stats.AnnotationErrors))
+	}
+
 	return data
+}
+
+// annotationStateDesc renders a target's annotation replication states, most
+// reported first, e.g. "supported (3 nodes), unknown (1 node)".
+func annotationStateDesc(states map[string]int) string {
+	keys := make([]string, 0, len(states))
+	for k := range states {
+		keys = append(keys, k)
+	}
+	sort.Slice(keys, func(i, j int) bool {
+		if states[keys[i]] != states[keys[j]] {
+			return states[keys[i]] > states[keys[j]]
+		}
+		return keys[i] < keys[j]
+	})
+	parts := make([]string, 0, len(keys))
+	for _, k := range keys {
+		unit := "nodes"
+		if states[k] == 1 {
+			unit = "node"
+		}
+		parts = append(parts, fmt.Sprintf("%s (%d %s)", k, states[k], unit))
+	}
+	return strings.Join(parts, ", ")
 }
 
 // ReplicationMetricsNode is the root node for replication metrics
@@ -287,6 +318,15 @@ func (node *ReplicationMetricsNode) GetLeafData() map[string]string {
 	}
 	if node.replication.Queued > 0 {
 		data["Queued Replications"] = humanize.Comma(node.replication.Queued)
+	}
+	if node.replication.AnnotationActive > 0 {
+		data["Active Annotation Replications"] = humanize.Comma(node.replication.AnnotationActive)
+	}
+	if node.replication.AnnotationQueued > 0 {
+		data["Queued Annotation Replications"] = humanize.Comma(node.replication.AnnotationQueued)
+	}
+	if recv := node.replication.ReceivedAnnotations; recv != nil && recv.LastHour.Count > 0 {
+		data["Last Hour Annotations Received"] = fmt.Sprintf("%s (%s)", humanize.Comma(recv.LastHour.Count), humanize.Bytes(uint64(recv.LastHour.Bytes)))
 	}
 
 	// Target summary
@@ -454,6 +494,9 @@ func (node *ReplicationTargetNode) GetLeafData() map[string]string {
 
 	data["Target Name"] = shortARN(node.targetName)
 	data["Nodes Reporting"] = humanize.Comma(int64(node.target.Nodes))
+	if len(node.target.AnnotationState) > 0 {
+		data["Annotation Replication"] = annotationStateDesc(node.target.AnnotationState)
+	}
 
 	addStatsSummary(data, "Last Hour", node.target.LastHour)
 	if node.target.LastDay != nil && len(node.target.LastDay.Segments) > 0 {
@@ -624,18 +667,28 @@ func targetChildDesc(ts madmin.ReplicationTargetStats) string {
 		label, humanize.Comma(s.Events), humanize.Bytes(uint64(s.Bytes)), errPct)
 }
 
+// replicationSegmentActive reports whether a time segment saw object events or
+// annotation replication, which object events do not count.
+func replicationSegmentActive(s madmin.ReplicationStats) bool {
+	return s.Events > 0 || s.Annotations+s.AnnotationsSkipped+s.AnnotationErrors > 0
+}
+
 func replicationSegmentDesc(start, end time.Time, s madmin.ReplicationStats) string {
 	totalErrs := s.PutErrors + s.UpdateMetaErrors + s.DelErrors + s.DelTagErrors
 	errPct := float64(0)
 	if s.Events > 0 {
 		errPct = float64(totalErrs) / float64(s.Events) * 100
 	}
-	return fmt.Sprintf("%s → %s  %s events, %s, %.1f%% errors",
+	desc := fmt.Sprintf("%s → %s  %s events, %s, %.1f%% errors",
 		start.Local().Format("15:04"),
 		end.Local().Format("15:04"),
 		humanize.Comma(s.Events),
 		humanize.Bytes(uint64(s.Bytes)),
 		errPct)
+	if s.Annotations+s.AnnotationsSkipped+s.AnnotationErrors > 0 {
+		desc += fmt.Sprintf(", %s annotations, %s annotation errors", humanize.Comma(s.Annotations), humanize.Comma(s.AnnotationErrors))
+	}
+	return desc
 }
 
 // ReplicationLastDayNode handles time segmentation navigation for LastDay data
@@ -680,14 +733,8 @@ func (node *ReplicationLastDayNode) GetChildren() []MetricChild {
 			continue
 		}
 
-		// Get event count for this segment
-		var events int64
-		if i < len(node.segmented.Segments) {
-			events = node.segmented.Segments[i].Events
-		}
-
-		// Filter out time segments with no events
-		if events == 0 {
+		// Filter out time segments with no activity
+		if i >= len(node.segmented.Segments) || !replicationSegmentActive(node.segmented.Segments[i]) {
 			continue
 		}
 
@@ -916,7 +963,7 @@ func (node *ReplicationLastDayAggregatedNode) GetChildren() []MetricChild {
 
 	owners := segmentSecOwners(seg.FirstTime, seg.Interval, len(seg.Segments))
 	for i := len(seg.Segments) - 1; i >= 0; i-- {
-		if seg.Segments[i].Events == 0 {
+		if !replicationSegmentActive(seg.Segments[i]) {
 			continue
 		}
 		segTime := segmentStart(seg.FirstTime, seg.Interval, i)
