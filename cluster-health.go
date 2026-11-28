@@ -188,27 +188,38 @@ func (an *AnonymousClient) Alive(ctx context.Context, opts AliveOpts, servers ..
 }
 
 func (an *AnonymousClient) alive(ctx context.Context, u *url.URL, resource string, resultsCh chan AliveResult) {
+	// The transport calls the hooks on its own goroutines, and a dial or a
+	// response read can still call them after a canceled request returned.
 	var (
+		mu                          sync.Mutex
 		dnsStartTime, dnsDoneTime   time.Time
 		reqStartTime, firstByteTime time.Time
 	)
 
 	trace := &httptrace.ClientTrace{
 		DNSStart: func(_ httptrace.DNSStartInfo) {
+			mu.Lock()
 			dnsStartTime = time.Now()
+			mu.Unlock()
 		},
 		DNSDone: func(_ httptrace.DNSDoneInfo) {
+			mu.Lock()
 			dnsDoneTime = time.Now()
+			mu.Unlock()
 		},
 		GetConn: func(_ string) {
+			mu.Lock()
 			// GetConn is called again when trace is ON
 			// https://github.com/golang/go/issues/44281
 			if reqStartTime.IsZero() {
 				reqStartTime = time.Now()
 			}
+			mu.Unlock()
 		},
 		GotFirstResponseByte: func() {
+			mu.Lock()
 			firstByteTime = time.Now()
+			mu.Unlock()
 		},
 	}
 
@@ -217,17 +228,20 @@ func (an *AnonymousClient) alive(ctx context.Context, u *url.URL, resource strin
 		endpointOverride: u,
 	}, trace)
 	closeResponse(resp)
+	mu.Lock()
 	var respTime time.Duration
 	if firstByteTime.IsZero() {
 		respTime = time.Since(reqStartTime)
 	} else {
 		respTime = firstByteTime.Sub(reqStartTime) - dnsDoneTime.Sub(dnsStartTime)
 	}
+	dnsResolveTime := dnsDoneTime.Sub(dnsStartTime)
+	mu.Unlock()
 
 	result := AliveResult{
 		Endpoint:       u,
 		ResponseTime:   respTime,
-		DNSResolveTime: dnsDoneTime.Sub(dnsStartTime),
+		DNSResolveTime: dnsResolveTime,
 	}
 	if err != nil {
 		result.Error = err
